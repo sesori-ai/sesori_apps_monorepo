@@ -62,6 +62,7 @@ import "repositories/chat_history_repository.dart";
 import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
+import "repositories/mappers/plugin_permission_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
 import "repositories/models/normalized_bridge_event.dart";
 import "repositories/new_session_defaults_repository.dart";
@@ -1612,7 +1613,11 @@ class OrchestratorSession._({
             shouldCapture: shouldCapture,
           );
         }
-        final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event: event, pluginId: pluginId);
+        final sesoriEvent = switch (event) {
+          BridgeSseProjectUpdated() => null,
+          final BridgeSsePermissionAsked permission => permission.toSharedPermissionAsked(),
+          _ => _mapper.map(event: event, pluginId: pluginId),
+        };
         delivery = sesoriEvent == null ? null : SseEventDelivery.uniform(event: sesoriEvent);
       }
       if (!_isCurrentSource(

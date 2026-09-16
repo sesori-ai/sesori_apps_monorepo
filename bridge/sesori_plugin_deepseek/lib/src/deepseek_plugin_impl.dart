@@ -32,6 +32,7 @@ class DeepSeekPlugin({
   AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) => DeepSeekApprovalRegistry(
     client: client,
     emit: emitActivityEvent,
+    shellCommandResolver: eventMapper.shellCommandForToolUpdate,
     activeSessionResolver: () => activeTurnSessionId,
     api: api,
   );

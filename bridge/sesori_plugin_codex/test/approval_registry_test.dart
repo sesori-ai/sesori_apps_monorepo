@@ -4,7 +4,10 @@ import "dart:async";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/api/models/codex_pending_input.dart";
+import "package:codex_plugin/src/api/parsers/codex_file_change_parser.dart";
 import "package:codex_plugin/src/api/parsers/codex_question_parser.dart";
+import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_question_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -17,6 +20,7 @@ void main() {
     late List<_RespondError> errorCalls;
     late List<({String sessionId, String text})> asyncAnswers;
     late ApprovalRegistry registry;
+    late CodexToolLifecycleTracker toolTracker;
 
     setUp(() {
       requests = StreamController<CodexServerRequest>.broadcast();
@@ -24,10 +28,14 @@ void main() {
       respondCalls = [];
       errorCalls = [];
       asyncAnswers = [];
+      toolTracker = CodexToolLifecycleTracker(
+        rolloutToolMapper: const CodexRolloutToolMapper(imageAttachmentMapper: CodexImageAttachmentMapper()),
+      );
       registry = ApprovalRegistry(
         emit: emitted.add,
         questionParser: const CodexQuestionParser(),
         questionMapper: const CodexQuestionMapper(),
+        toolLifecycleTracker: toolTracker,
         respond: (id, result) => respondCalls.add(_RespondCall(id, result)),
         respondError: (id, code, message) => errorCalls.add(_RespondError(id, code, message)),
         sendAsyncAnswer: ({required sessionId, required text}) async =>
@@ -73,9 +81,37 @@ void main() {
         expect(event.tool, equals("exec"));
         expect(event.sessionID, equals("t-1"));
         expect(event.description, equals("delete scratch dir"));
+        expect(event.details, const PluginPermissionDetails.command(command: "rm -rf /tmp/scratch"));
+        expect(registry.pendingPermissionsForSession(sessionId: "t-1").single.details, event.details);
         expect(event.requestID, isNotEmpty);
       },
     );
+
+    test("network context keeps command and host without changing the reply", () async {
+      requests.add(
+        const CodexServerRequest(
+          id: 91,
+          method: "item/commandExecution/requestApproval",
+          params: {
+            "threadId": "t-1",
+            "turnId": "turn-1",
+            "itemId": "i-1",
+            "command": "curl https://example.com/path",
+            "reason": "Needs network",
+            "networkApprovalContext": {"host": "example.com", "protocol": "https"},
+          },
+        ),
+      );
+      await pump();
+      final event = emitted.single as BridgeSsePermissionAsked;
+      expect(
+        event.details,
+        const PluginPermissionDetails.network(targets: ["example.com"], command: "curl https://example.com/path"),
+      );
+      expect(registry.pendingPermissionsForSession(sessionId: "t-1").single.details, event.details);
+      registry.replyPermission(requestId: event.requestID, reply: PluginPermissionReply.reject);
+      expect(respondCalls.single.result, {"decision": "decline"});
+    });
 
     test(
       "command approval falls back to the command string when reason is absent",
@@ -102,8 +138,30 @@ void main() {
     );
 
     test(
-      "item/fileChange/requestApproval surfaces as PermissionAsked(tool=patch)",
+      "item/fileChange/requestApproval preserves native-only file details in events and snapshots",
       () async {
+        const notification = CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": "t-2",
+            "turnId": "turn-1",
+            "item": {
+              "id": "i-2",
+              "type": "fileChange",
+              "status": "inProgress",
+              "changes": [
+                {
+                  "path": "/project/foo.dart",
+                  "kind": {"type": "update"},
+                },
+              ],
+            },
+          },
+        );
+        toolTracker.observeCorrelatableAppServerItem(
+          event: const CodexFileChangeParser().parse(notification: notification)!,
+          notification: notification,
+        );
         requests.add(
           const CodexServerRequest(
             id: 44,
@@ -122,6 +180,13 @@ void main() {
         expect(event.tool, equals("patch"));
         expect(event.sessionID, equals("t-2"));
         expect(event.description, equals("write foo.dart"));
+        expect(
+          event.details,
+          const PluginPermissionDetails.fileChanges(
+            files: [PluginPermissionFile(path: "/project/foo.dart", operation: PluginPermissionFileOperation.write)],
+          ),
+        );
+        expect(registry.pendingPermissionsForSession(sessionId: "t-2").single.details, event.details);
       },
     );
 

@@ -48,8 +48,8 @@ class CodexToolLifecycleTracker({
     };
   }
 
-  /// Applies a typed app-server command or file-change item when it can be
-  /// correlated with durable rollout evidence.
+  /// Correlates typed app-server items with durable rollout evidence, retaining
+  /// file approval details even when a file item has no rollout counterpart.
   ///
   /// A null result means the item must keep its native app-server identity
   /// and continue through the existing native event mapping.
@@ -65,15 +65,18 @@ class CodexToolLifecycleTracker({
           _retainedCommandsByThread.remove(event.threadId);
         }
         _recordAppServerTime(tool: retainedTool, notification: notification);
-        return _applyCorrelatableAppServerItem(
+        final snapshot = _applyCorrelatableAppServerItem(
           tool: retainedTool,
           event: event,
           useAggregatedOutput: true,
         );
+        return retainedTool.isRolloutCall ? snapshot : null;
       }
     }
 
-    final thread = _threads[event.threadId];
+    final thread = event is CodexFileChangeEventDto && event.changes.isNotEmpty
+        ? _threads.putIfAbsent(event.threadId, _ThreadToolLifecycle.new)
+        : _threads[event.threadId];
     if (thread == null) return null;
 
     var canonicalId = thread.appServerItemAliases[event.itemId];
@@ -110,9 +113,23 @@ class CodexToolLifecycleTracker({
       canonicalId = event.itemId;
       thread.appServerItemAliases[event.itemId] = canonicalId;
     }
+    if (canonicalId == null && event is CodexFileChangeEventDto && event.changes.isNotEmpty) {
+      // Native file items can precede or lack a recognized rollout call. Keep
+      // their exact item identity in the same tracker, not a second lookup map.
+      canonicalId = event.itemId;
+      thread.tools[canonicalId] = _TrackedTool(
+        id: canonicalId,
+        tool: "edit",
+        presentation: const CodexOrdinaryToolPresentation(),
+        title: event.changes.map((change) => change.path).join(", "),
+        turnId: turnId,
+        chronologySegment: thread.chronologySegment,
+        isRolloutCall: false,
+      );
+    }
     if (canonicalId == null) return null;
     final tool = thread.tools[canonicalId];
-    if (tool == null || !tool.isRolloutCall) return null;
+    if (tool == null) return null;
 
     _recordAppServerTime(tool: tool, notification: notification);
     final snapshot = _applyCorrelatableAppServerItem(
@@ -122,7 +139,14 @@ class CodexToolLifecycleTracker({
     if (event.lifecycle == CodexCorrelatableItemLifecycle.completed) {
       thread.appServerItemAliases.remove(event.itemId);
     }
-    return snapshot;
+    return tool.isRolloutCall ? snapshot : null;
+  }
+
+  /// Exact native item lookup only; missing correlation keeps the generic ask.
+  List<PluginPermissionFile> permissionFiles({required String threadId, required String itemId}) {
+    final thread = _threads[threadId];
+    final canonicalId = thread?.appServerItemAliases[itemId] ?? itemId;
+    return thread?.tools[canonicalId]?.permissionFiles ?? const [];
   }
 
   CodexProjectedTool _applyCorrelatableAppServerItem({
@@ -140,6 +164,23 @@ class CodexToolLifecycleTracker({
           tool.rolloutOutput = clippedOutput;
         }
       }
+    }
+    if (event case CodexFileChangeEventDto(:final changes)) {
+      tool.permissionFiles = List.unmodifiable([
+        for (final change in changes)
+          PluginPermissionFile(
+            path: change.path,
+            operation: switch (change.kind.type) {
+              CodexFileUpdateKind.add => PluginPermissionFileOperation.create,
+              CodexFileUpdateKind.update => PluginPermissionFileOperation.write,
+              CodexFileUpdateKind.delete => PluginPermissionFileOperation.delete,
+              CodexFileUpdateKind.unknown => null,
+            },
+          ),
+        for (final change in changes)
+          if (change.kind.movePath case final target? when target.isNotEmpty)
+            PluginPermissionFile(path: target, operation: null),
+      ]);
     }
     final status = switch (event) {
       CodexCommandExecutionEventDto() => _commandExecutionStatus(event: event),
@@ -850,6 +891,7 @@ class _TrackedTool({
   String? appServerOutput;
   PluginMessageTime? time;
   bool hasRolloutResult = false;
+  List<PluginPermissionFile> permissionFiles = const [];
   final List<PluginMessageAttachment> attachments = [];
   final Set<String> outstandingCellIds = {};
 

@@ -17,6 +17,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 class CursorApprovalRegistry({
   required AcpStdioClient client,
   required super.emit,
+  required super.shellCommandResolver,
   required final void Function(AcpNotification notification) _onFireAndForgetNotification,
   super.idGenerator,
   super.activeSessionResolver,

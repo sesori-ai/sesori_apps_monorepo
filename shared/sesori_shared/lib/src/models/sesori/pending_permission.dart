@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "permission_details.dart";
+
 part "pending_permission.freezed.dart";
 
 part "pending_permission.g.dart";
@@ -26,6 +28,9 @@ sealed class PendingPermission with _$PendingPermission {
     required String? displaySessionId,
     required String tool,
     required String description,
+    // COMPATIBILITY 2026-09-15 (v1.8.4): Released bridges omit rich details;
+    // remove the default when the minimum supported bridge sends them.
+    @Default(PermissionDetails.generic()) PermissionDetails details,
     // COMPATIBILITY 2026-08-10 (v1.8.0): Older bridges omit this capability;
     // remove the default after the minimum supported bridge sends it.
     @Default(true) bool allowAlways,

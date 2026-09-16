@@ -14,5 +14,6 @@ Map<String, dynamic> _$PluginPendingPermissionToJson(
   'displaySessionId': ?instance.displaySessionId,
   'tool': instance.tool,
   'description': instance.description,
+  'details': instance.details.toJson(),
   'allowAlways': instance.allowAlways,
 };

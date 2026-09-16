@@ -2,6 +2,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show str
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/claude_stream_message.dart";
+import "repositories/mappers/claude_permission_details_mapper.dart";
 
 typedef ClaudeApprovalResponder = bool Function({
   required String sessionId,
@@ -171,6 +172,7 @@ final class ClaudeApprovalRegistry({
         displaySessionId: attributedSessionId,
         tool: pending.tool,
         description: pending.description,
+        details: const ClaudePermissionDetailsMapper().map(tool: pending.tool, input: pending.input),
         allowAlways: pending.allowAlways,
       ),
     );
@@ -186,6 +188,7 @@ final class ClaudeApprovalRegistry({
           displaySessionId: sessionId,
           tool: permission.tool,
           description: permission.description,
+          details: const ClaudePermissionDetailsMapper().map(tool: permission.tool, input: permission.input),
           allowAlways: permission.allowAlways,
         ),
   ];

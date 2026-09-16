@@ -295,6 +295,7 @@ abstract class AcpPlugin({
     return AcpApprovalRegistry.forClient(
       client: client,
       emit: emitActivityEvent,
+      shellCommandResolver: eventMapper.shellCommandForToolUpdate,
       activeSessionResolver: () => activeTurnSessionId,
     );
   }

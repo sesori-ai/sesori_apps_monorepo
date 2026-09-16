@@ -297,6 +297,64 @@ void main() {
     await runFuture.timeout(const Duration(seconds: 5));
   });
 
+  test("permission delivery preserves rich details and the mapped reply owner", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    await relayServer.nextClient();
+    await harness.activatePlugins();
+    await harness.database.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
+    await harness.database.sessionDao.insertSession(
+      sessionId: "public-session",
+      backendSessionId: "native-session",
+      projectId: "project",
+      isDedicated: false,
+      createdAt: 1,
+      worktreePath: null,
+      branchName: null,
+      baseBranch: null,
+      baseCommit: null,
+      lastAgent: null,
+      lastAgentModel: null,
+      pluginId: "one",
+      preservePullRequestScope: false,
+    );
+    final permission = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriPermissionAsked)
+        .cast<SesoriPermissionAsked>()
+        .first;
+
+    harness.plugins.single.emitEvent(
+      const BridgeSsePermissionAsked(
+        requestID: "permission",
+        sessionID: "native-session",
+        displaySessionId: null,
+        tool: "shell",
+        description: "Reason with [docs](https://example.com)",
+        details: PluginPermissionDetails.command(command: "printf '[literal] * command'"),
+        allowAlways: false,
+      ),
+    );
+
+    final event = await permission.timeout(const Duration(seconds: 2));
+    expect(event.requestID, "permission");
+    expect(event.sessionID, "public-session");
+    expect(event.description, "Reason with [docs](https://example.com)");
+    expect(event.details, const PermissionDetails.command(command: "printf '[literal] * command'"));
+    expect(event.allowAlways, isFalse);
+    expect(SesoriSseEvent.fromJson(event.toJson()), event);
+
+    await harness.composition.session.cancel();
+    await running.stopped.timeout(const Duration(seconds: 5));
+  });
+
   test("a sourced reconnect reconciles its active plugin and local events are already mapped", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(

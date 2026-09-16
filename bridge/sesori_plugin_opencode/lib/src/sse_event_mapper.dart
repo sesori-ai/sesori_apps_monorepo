@@ -6,6 +6,7 @@ import "models/openapi/assistant_message.g.dart";
 import "models/openapi/message.g.dart";
 import "models/openapi/user_message.g.dart";
 import "models/sse_event_data.g.dart";
+import "permission_details_mapper.dart";
 import "plugin_model_mapper.dart";
 import "question_info_mapper.dart";
 
@@ -111,14 +112,16 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
       // request id), `permission` (the tool/permission identifier) and the
       // requested `patterns`; there is no separate `description` field, so
       // the requested patterns stand in for the human-readable detail.
-      SsePermissionAsked(:final id, :final sessionID, :final permission, :final patterns) => BridgeSsePermissionAsked(
-        requestID: id,
-        sessionID: sessionID,
-        displaySessionId: displaySessionId,
-        tool: permission,
-        description: patterns.join(", "),
-        allowAlways: true,
-      ),
+      SsePermissionAsked(:final id, :final sessionID, :final permission, :final patterns, :final metadata) =>
+        BridgeSsePermissionAsked(
+          requestID: id,
+          sessionID: sessionID,
+          displaySessionId: displaySessionId,
+          tool: permission,
+          description: patterns.join(", "),
+          details: const PermissionDetailsMapper().map(permission: permission, metadata: metadata),
+          allowAlways: true,
+        ),
       SsePermissionReplied(:final requestID, :final sessionID, :final reply) => BridgeSsePermissionReplied(
         requestID: requestID,
         sessionID: sessionID,

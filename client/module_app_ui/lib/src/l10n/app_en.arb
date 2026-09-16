@@ -1088,6 +1088,18 @@
   "prMergeable": "Ready to merge",
   "prConflicting": "Has merge conflicts",
   "diffPermissionRequestTitle": "Allow this action?",
+  "permissionCommandTitle": "Allow this command?",
+  "permissionFilesTitle": "Allow these file changes?",
+  "permissionNetworkTitle": "Allow this network access?",
+  "permissionFileCreate": "create",
+  "permissionFileWrite": "write",
+  "permissionFileDelete": "delete",
+  "permissionNetworkTarget": "Connect to {target}",
+  "@permissionNetworkTarget": {
+    "placeholders": {
+      "target": { "type": "String" }
+    }
+  },
   "diffPermissionReject": "Don’t allow",
   "diffPermissionOnce": "Allow",
   "diffPermissionAlwaysAllow": "Always approve",

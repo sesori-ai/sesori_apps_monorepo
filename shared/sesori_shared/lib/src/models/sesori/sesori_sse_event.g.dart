@@ -363,6 +363,11 @@ SesoriPermissionAsked _$SesoriPermissionAskedFromJson(Map json) =>
       displaySessionId: json['displaySessionId'] as String?,
       tool: json['tool'] as String,
       description: json['description'] as String,
+      details: json['details'] == null
+          ? const PermissionDetails.generic()
+          : PermissionDetails.fromJson(
+              Map<String, dynamic>.from(json['details'] as Map),
+            ),
       allowAlways: json['allowAlways'] as bool? ?? true,
       $type: json['type'] as String?,
     );
@@ -375,6 +380,7 @@ Map<String, dynamic> _$SesoriPermissionAskedToJson(
   'displaySessionId': ?instance.displaySessionId,
   'tool': instance.tool,
   'description': instance.description,
+  'details': instance.details.toJson(),
   'allowAlways': instance.allowAlways,
   'type': instance.$type,
 };

@@ -350,6 +350,7 @@ void main() {
             generation: 1,
             projectionUpdatedAt: 3,
             event: const BridgeSsePermissionAsked(
+              details: PluginPermissionDetails.generic(),
               requestID: "stale",
               sessionID: "backend-root",
               displaySessionId: "backend-root",
@@ -693,6 +694,7 @@ void main() {
           generation: 1,
           projectionUpdatedAt: 7,
           event: const BridgeSsePermissionAsked(
+            details: PluginPermissionDetails.generic(),
             requestID: "permission",
             sessionID: "backend-root",
             displaySessionId: "unknown-display",
@@ -1024,6 +1026,7 @@ void main() {
         ),
       );
       const rootPermissionEvent = BridgeSsePermissionAsked(
+        details: PluginPermissionDetails.generic(),
         requestID: "root-permission",
         sessionID: "backend-root",
         displaySessionId: "backend-root",
@@ -1032,6 +1035,7 @@ void main() {
         allowAlways: true,
       );
       const childPermissionEvent = BridgeSsePermissionAsked(
+        details: PluginPermissionDetails.generic(),
         requestID: "child-permission",
         sessionID: "backend-child",
         displaySessionId: "backend-root",
@@ -1121,6 +1125,7 @@ void main() {
         rootEvent,
         BridgeSseSessionCreated(info: childInfo),
         const BridgeSsePermissionAsked(
+          details: PluginPermissionDetails.generic(),
           requestID: "child-permission",
           sessionID: "backend-child",
           displaySessionId: "backend-root",

@@ -32,6 +32,7 @@ class AntigravityApprovalRegistry({
           displaySessionId: permission.sessionId,
           tool: permission.tool,
           description: permission.description,
+          details: permission.details,
           allowAlways: false,
         );
       case final AntigravityQuestion question:

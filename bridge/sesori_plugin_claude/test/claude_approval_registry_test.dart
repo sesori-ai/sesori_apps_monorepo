@@ -48,6 +48,15 @@ void main() {
       expect(asked.allowAlways, isFalse);
       final pending = registry.pendingPermissionsForSession(sessionId: "session-1").single;
       expect(pending.allowAlways, isFalse);
+      expect(
+        asked.details,
+        const PluginPermissionDetails.fileChanges(
+          files: [
+            PluginPermissionFile(path: "a.dart", operation: PluginPermissionFileOperation.write),
+          ],
+        ),
+      );
+      expect(pending.details, asked.details);
     });
 
     test("once allows only the current input", () {

@@ -880,6 +880,7 @@ class _RegistryCapturingAcpPlugin({
   @override
   AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) {
     return registry = AcpApprovalRegistry.forClient(
+      shellCommandResolver: ({required update}) => null,
       client: client,
       emit: emitActivityEvent,
       activeSessionResolver: () => activeTurnSessionId,

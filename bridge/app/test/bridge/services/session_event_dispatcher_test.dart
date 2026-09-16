@@ -113,6 +113,7 @@ void main() {
       pluginId: "plugin",
       generation: 1,
       event: const BridgeSsePermissionAsked(
+        details: PluginPermissionDetails.generic(),
         requestID: "permission",
         sessionID: "session",
         displaySessionId: "session",
@@ -168,6 +169,7 @@ void main() {
         (
           generation: 1,
           event: BridgeSsePermissionAsked(
+            details: PluginPermissionDetails.generic(),
             requestID: "stale",
             sessionID: "session",
             displaySessionId: "session",
@@ -179,6 +181,7 @@ void main() {
         (
           generation: 2,
           event: BridgeSsePermissionAsked(
+            details: PluginPermissionDetails.generic(),
             requestID: "current",
             sessionID: "session",
             displaySessionId: "session",

@@ -786,7 +786,15 @@ void main() {
         "method": AcpMethods.sessionRequestPermission,
         "params": {
           "sessionId": "s1",
-          "toolCall": {"toolCallId": "t1", "title": "Run tests", "kind": "execute"},
+          "toolCall": {
+            "toolCallId": "t1",
+            "title": "Run tests",
+            "kind": "execute",
+            "rawInput": {"command": "dart test --reporter=expanded"},
+            "_meta": {
+              "x.ai/tool": {"name": "run_terminal_command"},
+            },
+          },
           "options": [
             {"optionId": "allow", "name": "Allow", "kind": "allow_once"},
             {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
@@ -799,6 +807,8 @@ void main() {
       expect(partTypes, containsAll([PluginMessagePartType.reasoning, PluginMessagePartType.tool]));
       final pending = (await plugin.getPendingPermissions(sessionId: "s1")).single;
       expect(pending.tool, "execute");
+      expect(pending.details, const PluginPermissionDetails.command(command: "dart test --reporter=expanded"));
+      expect(events.whereType<BridgeSsePermissionAsked>().single.details, pending.details);
       await plugin.replyToPermission(requestId: pending.id, sessionId: "s1", reply: PluginPermissionReply.once);
       expect(((fake.written.last["result"] as Map)["outcome"] as Map)["optionId"], "allow");
       fake.emit({

@@ -30,6 +30,7 @@ void main() {
       activeSession = "active-s";
       throwOnForward = false;
       registry = CursorApprovalRegistry(
+        shellCommandResolver: ({required update}) => null,
         client: client,
         emit: emitted.add,
         onFireAndForgetNotification: (notification) {

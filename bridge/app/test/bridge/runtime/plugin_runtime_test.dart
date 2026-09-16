@@ -1146,6 +1146,7 @@ void main() {
       api.eventsController
         ..add(
           const BridgeSsePermissionAsked(
+            details: PluginPermissionDetails.generic(),
             requestID: "ask",
             sessionID: "busy",
             displaySessionId: "busy",

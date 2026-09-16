@@ -65,6 +65,28 @@ whitespace accepted). Expressions, multiple commands and other JavaScript forms
 need trustworthy correlated command-execution evidence; raw scripts never become
 commands. No general JavaScript parser or runtime execution is involved.
 
+## Rich permission request details
+
+All permission dialogs retain Allow / optional Always / Reject. Inline
+instructions and voice feedback are deliberately omitted for every harness;
+rejecting never submits another prompt or restarts a turn.
+
+| Harness / boundary | Status and authoritative detail source |
+|---|---|
+| Codex | ✅ Command approval's complete `command` and managed-network `networkApprovalContext.host`; native or rollout-correlated file-change item's paths and operation kinds via the existing thread/item tracker. File requests lacking matching native item details, broad permission profiles and MCP approvals keep generic details. Command and native-only file approvals verified live on iOS. |
+| Claude | ✅ Native Bash command; Edit/MultiEdit/Write file path; NotebookEdit notebook path; WebFetch URL. A write is not labelled create without creation evidence. Custom/MCP tools retain generic details. |
+| OpenCode | ✅ The same native permission metadata feeds live and snapshot mapping: bash command, edit filepath or apply_patch file rows, and webfetch URL. Verified against pinned 1.18.30 tool sources; patterns/globs are not treated as concrete request contents. |
+| ACP family: Cursor, OMP, Hermes, DeepSeek, Copilot, Grok, Antigravity | ✅ Common standardized diff/location rows and fetch resource-link targets where the actual request includes them. Opaque/title-only requests stay generic; this is not a claim that every adapter emits those fields. |
+| Grok | ✅ Reuses the adapter's exact terminal tool metadata + typed rawInput command for permission requests. Automated fixture evidence, not a new native capture. |
+| Antigravity | ✅ Native command input aliases retain the full command without transcript-title truncation. Existing warning exclusion and once-only policy are unchanged. Automated fixture evidence. |
+| Cursor, OMP, Hermes, DeepSeek, Copilot command approvals | ⬜ Dedicated command extraction remains unimplemented/source-unverified. Execute kinds, titles and arbitrary command-shaped inputs are not command authority; this does not claim native harness non-support. |
+| Pi | 🚫 No tool permission channel on the driven RPC seam. Its existing extension questions are unchanged. |
+
+Missing rich fields from released bridges, unknown future detail kinds and
+unknown file operations degrade to honest generic/unknown presentation. Existing
+request/session IDs, tool/Markdown description, grant scope and reply payloads
+are preserved. These details are transient request data, not persisted history.
+
 ## Ordinary tool titles
 
 Non-shell tool cards show a bounded title naming what the tool touched (file

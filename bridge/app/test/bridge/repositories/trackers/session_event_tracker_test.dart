@@ -270,6 +270,7 @@ PendingTranslationEvent _pendingTranslation({
     pluginId: pluginId,
     generation: 1,
     event: BridgeSsePermissionAsked(
+      details: const PluginPermissionDetails.generic(),
       requestID: "permission-$backendSessionId",
       sessionID: backendSessionId,
       displaySessionId: "root",

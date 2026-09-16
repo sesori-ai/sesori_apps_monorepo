@@ -4,6 +4,7 @@ import "acp_pending_registry.dart";
 import "acp_protocol.dart";
 import "acp_stdio_client.dart";
 import "repositories/mappers/acp_elicitation_mapper.dart";
+import "repositories/mappers/acp_permission_details_mapper.dart";
 
 typedef AcpResponder = void Function(Object id, Object? result);
 typedef AcpErrorResponder = void Function(Object id, int code, String message);
@@ -119,6 +120,7 @@ class AcpApprovalRegistry({
   required super.emit,
   required final AcpResponder _respond,
   required final AcpErrorResponder _respondError,
+  required final String? Function({required Map<String, dynamic> update}) _shellCommandResolver,
   super.idGenerator,
 
   /// Resolves the session a server request belongs to when the request itself
@@ -138,11 +140,13 @@ class AcpApprovalRegistry({
   factory forClient({
     required AcpStdioClient client,
     required void Function(BridgeSseEvent event) emit,
+    required String? Function({required Map<String, dynamic> update}) shellCommandResolver,
     String Function()? idGenerator,
     String? Function()? activeSessionResolver,
   }) {
     return AcpApprovalRegistry(
       emit: emit,
+      shellCommandResolver: shellCommandResolver,
       respond: (id, result) => client.respondToServerRequest(id: id, result: result),
       respondError: (id, code, message) => client.respondToServerRequestWithError(id: id, code: code, message: message),
       idGenerator: idGenerator,
@@ -234,12 +238,17 @@ class AcpApprovalRegistry({
       return;
     }
     final summary = _permissionSummary(request.params);
+    final toolCall = _asMap(request.params["toolCall"]) ?? const <String, dynamic>{};
     registerPendingPermission(
       payload: _AcpPendingPermission(acpId: request.id, params: request.params, respond: _respond),
       sessionId: sessionId,
       displaySessionId: sessionId,
       tool: summary.tool,
       description: summary.description,
+      details: const AcpPermissionDetailsMapper().map(
+        toolCall: toolCall,
+        command: _shellCommandResolver(update: toolCall),
+      ),
       allowAlways: _allowsAlways(request.params),
     );
   }

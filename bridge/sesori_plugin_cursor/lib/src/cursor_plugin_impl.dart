@@ -184,6 +184,7 @@ class CursorPlugin._({
     return CursorApprovalRegistry(
       client: client,
       emit: emitActivityEvent,
+      shellCommandResolver: eventMapper.shellCommandForToolUpdate,
       onFireAndForgetNotification: handleAgentNotification,
       activeSessionResolver: () => activeTurnSessionId,
     );

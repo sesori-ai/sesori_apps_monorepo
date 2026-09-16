@@ -29,15 +29,23 @@ class AntigravityInteractionService({
       return null;
     }
     try {
-      return _classify(requestId: request.id, input: input);
+      return _classify(
+        requestId: request.id,
+        input: input,
+        details: _protocolMapper.mapPermissionDetails(request: request),
+      );
     } on FormatException catch (error, stackTrace) {
       _rejectMalformed(requestId: request.id, error: error, stackTrace: stackTrace);
       return null;
     }
   }
 
-  // ignore: no_slop_linter/prefer_specific_type, ACP request IDs are opaque string or integer values
-  AntigravityInteraction _classify({required Object requestId, required AntigravityPermissionRequestDto input}) {
+  AntigravityInteraction _classify({
+    // ignore: no_slop_linter/prefer_specific_type, ACP request IDs are opaque string or integer values
+    required Object requestId,
+    required AntigravityPermissionRequestDto input,
+    required PluginPermissionDetails details,
+  }) {
     _validateText(value: input.sessionId, limit: 256);
     _validateText(value: input.toolCall.toolCallId, limit: 256);
     _validateText(value: input.toolCall.title, limit: 4096);
@@ -86,6 +94,7 @@ class AntigravityInteractionService({
         final kind => kind.name,
       },
       description: input.toolCall.title,
+      details: details,
       allowOptionId: allows.single.optionId,
       rejectOptionId: rejects.singleOrNull?.optionId,
     );

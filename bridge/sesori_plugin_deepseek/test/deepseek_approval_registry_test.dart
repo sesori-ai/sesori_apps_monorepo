@@ -30,6 +30,7 @@ void main() {
     events = [];
     nextBridgeId = 0;
     registry = DeepSeekApprovalRegistry(
+      shellCommandResolver: ({required update}) => null,
       client: client,
       emit: events.add,
       api: const DeepSeekAcpApi(pluginId: DeepSeekIdentity.id),

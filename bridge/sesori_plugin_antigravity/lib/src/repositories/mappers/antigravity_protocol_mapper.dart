@@ -239,6 +239,20 @@ class const AntigravityProtocolMapper() {
     return "$marker${text.substring(text.length - limit + marker.length)}";
   }
 
+  PluginPermissionDetails mapPermissionDetails({required AcpServerRequest request}) {
+    final toolCall = request.params["toolCall"];
+    if (toolCall is! Map<String, dynamic>) return const PluginPermissionDetails.generic();
+    try {
+      final input = _nativeFields(raw: toolCall["rawInput"]);
+      // Approval contents must remain complete, unlike bounded transcript titles.
+      final command = input?.upperCommandLine ?? input?.snakeCommandLine ?? input?.commandLine ?? input?.command;
+      return const AcpPermissionDetailsMapper().map(toolCall: toolCall, command: command);
+    } on Object catch (error, stackTrace) {
+      Log.w("[antigravity] malformed permission details; retaining original request title", error, stackTrace);
+      return const PluginPermissionDetails.generic();
+    }
+  }
+
   AntigravityPermissionRequestDto? mapPermissionRequest({required AcpServerRequest request}) {
     if (request.method != AcpMethods.sessionRequestPermission) return null;
     try {

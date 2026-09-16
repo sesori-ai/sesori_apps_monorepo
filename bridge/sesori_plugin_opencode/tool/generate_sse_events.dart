@@ -295,6 +295,7 @@ String _dartType(Map<String, dynamic> f, {required bool required}) {
     'int' => 'int',
     'bool' => 'bool',
     'double' => 'double',
+    'object' => 'Map<String, dynamic>',
     _ => 'dynamic',
   };
   if (isList) {
@@ -355,6 +356,7 @@ String _castExpr(String t, String expr) {
     'int' => '($expr as num).toInt()',
     'bool' => '$expr as bool',
     'double' => '($expr as num).toDouble()',
+    'object' => '$expr as Map<String, dynamic>',
     _ => expr,
   };
 }

@@ -77,6 +77,7 @@ void main() {
     test("serves the auto-approval-resolved snapshot", () async {
       plugin.pendingPermissionsResult = const [
         PluginPendingPermission(
+          details: PluginPermissionDetails.generic(),
           id: "p-1",
           sessionID: "backend-root",
           displaySessionId: "backend-root",
@@ -99,6 +100,7 @@ void main() {
     test("maps plugin permissions to shared, preserving displaySessionId", () async {
       plugin.pendingPermissionsResult = [
         const PluginPendingPermission(
+          details: PluginPermissionDetails.command(command: "ls -al /complete/path"),
           id: "p-1",
           sessionID: "backend-child",
           displaySessionId: "backend-root",
@@ -121,6 +123,8 @@ void main() {
       expect(item.tool, equals("bash"));
       expect(item.description, equals("Run ls"));
       expect(item.allowAlways, isFalse);
+      expect(item.details, const PermissionDetails.command(command: "ls -al /complete/path"));
+      expect(PendingPermission.fromJson(item.toJson()).details, item.details);
     });
 
     test("does not query a derived plugin for a tombstoned session", () async {
@@ -162,6 +166,7 @@ void main() {
       final derivedPlugin = _DerivedPermissionPlugin()
         ..permissions = const [
           PluginPendingPermission(
+            details: PluginPermissionDetails.generic(),
             id: "deleted-child",
             sessionID: "gone-child",
             displaySessionId: "root",
@@ -170,6 +175,7 @@ void main() {
             allowAlways: true,
           ),
           PluginPendingPermission(
+            details: PluginPermissionDetails.generic(),
             id: "deleted-root",
             sessionID: "live-child",
             displaySessionId: "gone-root",
@@ -178,6 +184,7 @@ void main() {
             allowAlways: true,
           ),
           PluginPendingPermission(
+            details: PluginPermissionDetails.generic(),
             id: "visible",
             sessionID: "live-child",
             displaySessionId: "root",
@@ -231,6 +238,7 @@ void main() {
       final derivedPlugin = _DerivedPermissionPlugin()
         ..permissions = const [
           PluginPendingPermission(
+            details: PluginPermissionDetails.generic(),
             id: "permission-stale",
             sessionID: "live-child",
             displaySessionId: "gone-root",
@@ -272,6 +280,7 @@ void main() {
       final derivedPlugin = _DerivedPermissionPlugin()
         ..permissions = const [
           PluginPendingPermission(
+            details: PluginPermissionDetails.generic(),
             id: "permission-stale-child",
             sessionID: "gone-child",
             displaySessionId: "live-root",

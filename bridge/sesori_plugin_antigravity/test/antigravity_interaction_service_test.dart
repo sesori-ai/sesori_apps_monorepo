@@ -106,6 +106,31 @@ void main() {
     expect(harness.events.last, isA<BridgeSsePermissionReplied>());
   });
 
+  test("native command details remain complete in live and snapshot permissions", () {
+    final command = "printf '${"x" * 9000}'";
+    final original = request();
+    harness.receive(
+      incoming: AcpServerRequest(
+        id: original.id,
+        method: original.method,
+        params: {
+          ...original.params,
+          "toolCall": {
+            "toolCallId": "command-1",
+            "title": "Long command",
+            "kind": "execute",
+            "rawInput": {"CommandLine": command},
+          },
+        },
+      ),
+    );
+    final pending = harness.registry.pendingPermissionsForSession(sessionId: "session").single;
+    expect(pending.details, PluginPermissionDetails.command(command: command));
+    expect(harness.events.whereType<BridgeSsePermissionAsked>().single.details, pending.details);
+    expect(pending.allowAlways, isFalse);
+    expect(harness.process.written, isEmpty);
+  });
+
   test("missing or unknown tool kind displays an honest fallback rather than a correlation ID", () {
     for (final kind in [null, "future-kind"]) {
       harness.receive(incoming: request(kind: kind));

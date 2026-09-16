@@ -181,7 +181,7 @@ $CodexFileChangeItemDtoCopyWith<$Res> get item {
 /// @nodoc
 mixin _$CodexFileChangeItemDto {
 
-@JsonKey(unknownEnumValue: CodexFileChangeItemType.unknown, defaultValue: CodexFileChangeItemType.unknown) CodexFileChangeItemType get type; String? get id;@JsonKey(fromJson: _fileChangeStatusFromJson) CodexFileChangeStatus get status;
+@JsonKey(unknownEnumValue: CodexFileChangeItemType.unknown, defaultValue: CodexFileChangeItemType.unknown) CodexFileChangeItemType get type; String? get id;@JsonKey(fromJson: _fileChangeStatusFromJson) CodexFileChangeStatus get status; List<CodexFileUpdateDto> get changes;
 /// Create a copy of CodexFileChangeItemDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -195,20 +195,20 @@ $CodexFileChangeItemDtoCopyWith<CodexFileChangeItemDto> get copyWith => _$CodexF
 @override
 bool operator ==(Object other) {
   final _this = this as CodexFileChangeItemDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexFileChangeItemDto&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.status, _this.status) || other.status == _this.status));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexFileChangeItemDto&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.status, _this.status) || other.status == _this.status)&&const DeepCollectionEquality().equals(other.changes, _this.changes));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as CodexFileChangeItemDto;
-  return Object.hash(runtimeType,_this.type,_this.id,_this.status);
+  return Object.hash(runtimeType,_this.type,_this.id,_this.status,const DeepCollectionEquality().hash(_this.changes));
 }
 
 @override
 String toString() {
   final _this = this as CodexFileChangeItemDto;
-  return 'CodexFileChangeItemDto(type: ${_this.type}, id: ${_this.id}, status: ${_this.status})';
+  return 'CodexFileChangeItemDto(type: ${_this.type}, id: ${_this.id}, status: ${_this.status}, changes: ${_this.changes})';
 }
 
 
@@ -219,7 +219,7 @@ abstract mixin class $CodexFileChangeItemDtoCopyWith<$Res>  {
   factory $CodexFileChangeItemDtoCopyWith(CodexFileChangeItemDto value, $Res Function(CodexFileChangeItemDto) _then) = _$CodexFileChangeItemDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(unknownEnumValue: CodexFileChangeItemType.unknown, defaultValue: CodexFileChangeItemType.unknown) CodexFileChangeItemType type, String? id,@JsonKey(fromJson: _fileChangeStatusFromJson) CodexFileChangeStatus status
+@JsonKey(unknownEnumValue: CodexFileChangeItemType.unknown, defaultValue: CodexFileChangeItemType.unknown) CodexFileChangeItemType type, String? id,@JsonKey(fromJson: _fileChangeStatusFromJson) CodexFileChangeStatus status, List<CodexFileUpdateDto> changes
 });
 
 
@@ -236,12 +236,13 @@ class _$CodexFileChangeItemDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexFileChangeItemDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? id = freezed,Object? status = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? id = freezed,Object? status = null,Object? changes = null,}) {
   return _then(CodexFileChangeItemDto(
 type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as CodexFileChangeItemType,id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as CodexFileChangeStatus,
+as CodexFileChangeStatus,changes: null == changes ? _self.changes : changes // ignore: cast_nullable_to_non_nullable
+as List<CodexFileUpdateDto>,
   ));
 }
 
@@ -253,12 +254,19 @@ as CodexFileChangeStatus,
 @JsonSerializable()
 
 class _CodexFileChangeItemDto implements CodexFileChangeItemDto {
-  const _CodexFileChangeItemDto({@JsonKey(unknownEnumValue: CodexFileChangeItemType.unknown, defaultValue: CodexFileChangeItemType.unknown) required this.type, required this.id, @JsonKey(fromJson: _fileChangeStatusFromJson) required this.status});
+  const _CodexFileChangeItemDto({@JsonKey(unknownEnumValue: CodexFileChangeItemType.unknown, defaultValue: CodexFileChangeItemType.unknown) required this.type, required this.id, @JsonKey(fromJson: _fileChangeStatusFromJson) required this.status,  List<CodexFileUpdateDto> changes = const []}): _changes = changes;
   factory _CodexFileChangeItemDto.fromJson(Map<String, dynamic> json) => _$CodexFileChangeItemDtoFromJson(json);
 
 @override@JsonKey(unknownEnumValue: CodexFileChangeItemType.unknown, defaultValue: CodexFileChangeItemType.unknown) final  CodexFileChangeItemType type;
 @override final  String? id;
 @override@JsonKey(fromJson: _fileChangeStatusFromJson) final  CodexFileChangeStatus status;
+ final  List<CodexFileUpdateDto> _changes;
+@override@JsonKey() List<CodexFileUpdateDto> get changes {
+  if (_changes is EqualUnmodifiableListView) return _changes;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_changes);
+}
+
 
 /// Create a copy of CodexFileChangeItemDto
 /// with the given fields replaced by the non-null parameter values.
@@ -273,18 +281,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexFileChangeItemDto&&(identical(other.type, type) || other.type == type)&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexFileChangeItemDto&&(identical(other.type, type) || other.type == type)&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.changes, _changes));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,type,id,status);
+    return Object.hash(runtimeType,type,id,status,const DeepCollectionEquality().hash(_changes));
 }
 
 @override
 String toString() {
-    return 'CodexFileChangeItemDto(type: $type, id: $id, status: $status)';
+    return 'CodexFileChangeItemDto(type: $type, id: $id, status: $status, changes: $changes)';
 }
 
 
@@ -295,7 +303,7 @@ abstract mixin class _$CodexFileChangeItemDtoCopyWith<$Res> implements $CodexFil
   factory _$CodexFileChangeItemDtoCopyWith(_CodexFileChangeItemDto value, $Res Function(_CodexFileChangeItemDto) _then) = __$CodexFileChangeItemDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(unknownEnumValue: CodexFileChangeItemType.unknown, defaultValue: CodexFileChangeItemType.unknown) CodexFileChangeItemType type, String? id,@JsonKey(fromJson: _fileChangeStatusFromJson) CodexFileChangeStatus status
+@JsonKey(unknownEnumValue: CodexFileChangeItemType.unknown, defaultValue: CodexFileChangeItemType.unknown) CodexFileChangeItemType type, String? id,@JsonKey(fromJson: _fileChangeStatusFromJson) CodexFileChangeStatus status, List<CodexFileUpdateDto> changes
 });
 
 
@@ -312,12 +320,319 @@ class __$CodexFileChangeItemDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexFileChangeItemDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? id = freezed,Object? status = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? id = freezed,Object? status = null,Object? changes = null,}) {
   return _then(_CodexFileChangeItemDto(
 type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as CodexFileChangeItemType,id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as CodexFileChangeStatus,
+as CodexFileChangeStatus,changes: null == changes ? _self._changes : changes // ignore: cast_nullable_to_non_nullable
+as List<CodexFileUpdateDto>,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$CodexFileUpdateDto {
+
+ String get path; CodexFileUpdateKindDto get kind;
+/// Create a copy of CodexFileUpdateDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexFileUpdateDtoCopyWith<CodexFileUpdateDto> get copyWith => _$CodexFileUpdateDtoCopyWithImpl<CodexFileUpdateDto>(this as CodexFileUpdateDto, _$identity);
+
+  /// Serializes this CodexFileUpdateDto to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as CodexFileUpdateDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexFileUpdateDto&&(identical(other.path, _this.path) || other.path == _this.path)&&(identical(other.kind, _this.kind) || other.kind == _this.kind));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as CodexFileUpdateDto;
+  return Object.hash(runtimeType,_this.path,_this.kind);
+}
+
+@override
+String toString() {
+  final _this = this as CodexFileUpdateDto;
+  return 'CodexFileUpdateDto(path: ${_this.path}, kind: ${_this.kind})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexFileUpdateDtoCopyWith<$Res>  {
+  factory $CodexFileUpdateDtoCopyWith(CodexFileUpdateDto value, $Res Function(CodexFileUpdateDto) _then) = _$CodexFileUpdateDtoCopyWithImpl;
+@useResult
+$Res call({
+ String path, CodexFileUpdateKindDto kind
+});
+
+
+$CodexFileUpdateKindDtoCopyWith<$Res> get kind;
+
+}
+/// @nodoc
+class _$CodexFileUpdateDtoCopyWithImpl<$Res>
+    implements $CodexFileUpdateDtoCopyWith<$Res> {
+  _$CodexFileUpdateDtoCopyWithImpl(this._self, this._then);
+
+  final CodexFileUpdateDto _self;
+  final $Res Function(CodexFileUpdateDto) _then;
+
+/// Create a copy of CodexFileUpdateDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? path = null,Object? kind = null,}) {
+  return _then(CodexFileUpdateDto(
+path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as CodexFileUpdateKindDto,
+  ));
+}
+/// Create a copy of CodexFileUpdateDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CodexFileUpdateKindDtoCopyWith<$Res> get kind {
+  
+  return $CodexFileUpdateKindDtoCopyWith<$Res>(_self.kind, (value) {
+    return _then(_self.copyWith(kind: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _CodexFileUpdateDto implements CodexFileUpdateDto {
+  const _CodexFileUpdateDto({required this.path, required this.kind});
+  factory _CodexFileUpdateDto.fromJson(Map<String, dynamic> json) => _$CodexFileUpdateDtoFromJson(json);
+
+@override final  String path;
+@override final  CodexFileUpdateKindDto kind;
+
+/// Create a copy of CodexFileUpdateDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CodexFileUpdateDtoCopyWith<_CodexFileUpdateDto> get copyWith => __$CodexFileUpdateDtoCopyWithImpl<_CodexFileUpdateDto>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CodexFileUpdateDtoToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexFileUpdateDto&&(identical(other.path, path) || other.path == path)&&(identical(other.kind, kind) || other.kind == kind));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,path,kind);
+}
+
+@override
+String toString() {
+    return 'CodexFileUpdateDto(path: $path, kind: $kind)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CodexFileUpdateDtoCopyWith<$Res> implements $CodexFileUpdateDtoCopyWith<$Res> {
+  factory _$CodexFileUpdateDtoCopyWith(_CodexFileUpdateDto value, $Res Function(_CodexFileUpdateDto) _then) = __$CodexFileUpdateDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ String path, CodexFileUpdateKindDto kind
+});
+
+
+@override $CodexFileUpdateKindDtoCopyWith<$Res> get kind;
+
+}
+/// @nodoc
+class __$CodexFileUpdateDtoCopyWithImpl<$Res>
+    implements _$CodexFileUpdateDtoCopyWith<$Res> {
+  __$CodexFileUpdateDtoCopyWithImpl(this._self, this._then);
+
+  final _CodexFileUpdateDto _self;
+  final $Res Function(_CodexFileUpdateDto) _then;
+
+/// Create a copy of CodexFileUpdateDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? path = null,Object? kind = null,}) {
+  return _then(_CodexFileUpdateDto(
+path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as CodexFileUpdateKindDto,
+  ));
+}
+
+/// Create a copy of CodexFileUpdateDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CodexFileUpdateKindDtoCopyWith<$Res> get kind {
+  
+  return $CodexFileUpdateKindDtoCopyWith<$Res>(_self.kind, (value) {
+    return _then(_self.copyWith(kind: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$CodexFileUpdateKindDto {
+
+@JsonKey(unknownEnumValue: CodexFileUpdateKind.unknown) CodexFileUpdateKind get type;@JsonKey(name: "move_path") String? get movePath;
+/// Create a copy of CodexFileUpdateKindDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexFileUpdateKindDtoCopyWith<CodexFileUpdateKindDto> get copyWith => _$CodexFileUpdateKindDtoCopyWithImpl<CodexFileUpdateKindDto>(this as CodexFileUpdateKindDto, _$identity);
+
+  /// Serializes this CodexFileUpdateKindDto to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as CodexFileUpdateKindDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexFileUpdateKindDto&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.movePath, _this.movePath) || other.movePath == _this.movePath));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as CodexFileUpdateKindDto;
+  return Object.hash(runtimeType,_this.type,_this.movePath);
+}
+
+@override
+String toString() {
+  final _this = this as CodexFileUpdateKindDto;
+  return 'CodexFileUpdateKindDto(type: ${_this.type}, movePath: ${_this.movePath})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexFileUpdateKindDtoCopyWith<$Res>  {
+  factory $CodexFileUpdateKindDtoCopyWith(CodexFileUpdateKindDto value, $Res Function(CodexFileUpdateKindDto) _then) = _$CodexFileUpdateKindDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(unknownEnumValue: CodexFileUpdateKind.unknown) CodexFileUpdateKind type,@JsonKey(name: "move_path") String? movePath
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexFileUpdateKindDtoCopyWithImpl<$Res>
+    implements $CodexFileUpdateKindDtoCopyWith<$Res> {
+  _$CodexFileUpdateKindDtoCopyWithImpl(this._self, this._then);
+
+  final CodexFileUpdateKindDto _self;
+  final $Res Function(CodexFileUpdateKindDto) _then;
+
+/// Create a copy of CodexFileUpdateKindDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? movePath = freezed,}) {
+  return _then(CodexFileUpdateKindDto(
+type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as CodexFileUpdateKind,movePath: freezed == movePath ? _self.movePath : movePath // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _CodexFileUpdateKindDto implements CodexFileUpdateKindDto {
+  const _CodexFileUpdateKindDto({@JsonKey(unknownEnumValue: CodexFileUpdateKind.unknown) required this.type, @JsonKey(name: "move_path") required this.movePath});
+  factory _CodexFileUpdateKindDto.fromJson(Map<String, dynamic> json) => _$CodexFileUpdateKindDtoFromJson(json);
+
+@override@JsonKey(unknownEnumValue: CodexFileUpdateKind.unknown) final  CodexFileUpdateKind type;
+@override@JsonKey(name: "move_path") final  String? movePath;
+
+/// Create a copy of CodexFileUpdateKindDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CodexFileUpdateKindDtoCopyWith<_CodexFileUpdateKindDto> get copyWith => __$CodexFileUpdateKindDtoCopyWithImpl<_CodexFileUpdateKindDto>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CodexFileUpdateKindDtoToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexFileUpdateKindDto&&(identical(other.type, type) || other.type == type)&&(identical(other.movePath, movePath) || other.movePath == movePath));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,type,movePath);
+}
+
+@override
+String toString() {
+    return 'CodexFileUpdateKindDto(type: $type, movePath: $movePath)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CodexFileUpdateKindDtoCopyWith<$Res> implements $CodexFileUpdateKindDtoCopyWith<$Res> {
+  factory _$CodexFileUpdateKindDtoCopyWith(_CodexFileUpdateKindDto value, $Res Function(_CodexFileUpdateKindDto) _then) = __$CodexFileUpdateKindDtoCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(unknownEnumValue: CodexFileUpdateKind.unknown) CodexFileUpdateKind type,@JsonKey(name: "move_path") String? movePath
+});
+
+
+
+
+}
+/// @nodoc
+class __$CodexFileUpdateKindDtoCopyWithImpl<$Res>
+    implements _$CodexFileUpdateKindDtoCopyWith<$Res> {
+  __$CodexFileUpdateKindDtoCopyWithImpl(this._self, this._then);
+
+  final _CodexFileUpdateKindDto _self;
+  final $Res Function(_CodexFileUpdateKindDto) _then;
+
+/// Create a copy of CodexFileUpdateKindDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? movePath = freezed,}) {
+  return _then(_CodexFileUpdateKindDto(
+type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as CodexFileUpdateKind,movePath: freezed == movePath ? _self.movePath : movePath // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

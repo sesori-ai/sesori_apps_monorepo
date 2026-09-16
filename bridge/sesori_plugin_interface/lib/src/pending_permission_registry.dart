@@ -6,6 +6,7 @@ import "bridge_sse_event.dart";
 import "log.dart";
 import "models/plugin_pending_permission.dart";
 import "models/plugin_pending_question.dart";
+import "models/plugin_permission_details.dart";
 import "plugin_permission_reply.dart";
 
 enum PendingCancellationReason() {
@@ -69,6 +70,7 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
     required String? displaySessionId,
     required String tool,
     required String description,
+    required PluginPermissionDetails details,
     required bool allowAlways,
   }) {
     final id = _generateId();
@@ -78,6 +80,7 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
       displaySessionId: displaySessionId,
       tool: tool,
       description: description,
+      details: details,
       allowAlways: allowAlways,
     );
     _pending[id] = _PendingPermissionEntry(payload: payload, snapshot: snapshot);
@@ -88,6 +91,7 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
         displaySessionId: displaySessionId,
         tool: tool,
         description: description,
+        details: details,
         allowAlways: allowAlways,
       ),
     );

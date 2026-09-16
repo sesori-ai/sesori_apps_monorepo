@@ -108,6 +108,7 @@ sealed class SseEventData {
     required String sessionID,
     required String permission,
     required List<String> patterns,
+    Map<String, dynamic>? metadata,
   }) = SsePermissionAsked;
   const factory SseEventData.permissionReplied({
     required String requestID,
@@ -741,12 +742,14 @@ class SsePermissionAsked extends SseEventData implements SseSessionEventData {
     required this.sessionID,
     required this.permission,
     required this.patterns,
+    this.metadata,
   });
 
   final String id;
   final String sessionID;
   final String permission;
   final List<String> patterns;
+  final Map<String, dynamic>? metadata;
 
   @override
   String get type => "permission.asked";
@@ -758,6 +761,7 @@ class SsePermissionAsked extends SseEventData implements SseSessionEventData {
     "sessionID": sessionID,
     "permission": permission,
     "patterns": patterns,
+    "metadata": metadata,
   };
 
   factory SsePermissionAsked.fromJson(Map<String, dynamic> json) {
@@ -766,6 +770,7 @@ class SsePermissionAsked extends SseEventData implements SseSessionEventData {
       sessionID: json["sessionID"] as String,
       permission: json["permission"] as String,
       patterns: (json["patterns"] as List<dynamic>).cast<String>(),
+      metadata: json["metadata"] == null ? null : json["metadata"] as Map<String, dynamic>,
     );
   }
 }

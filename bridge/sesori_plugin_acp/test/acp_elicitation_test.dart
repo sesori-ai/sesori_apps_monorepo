@@ -19,6 +19,7 @@ void main() {
       responses = [];
       errors = [];
       registry = AcpApprovalRegistry(
+        shellCommandResolver: ({required update}) => null,
         emit: emitted.add,
         respond: (id, result) => responses.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),
@@ -426,6 +427,7 @@ void main() {
     test("cancels a form with a non-string session id", () async {
       await registry.dispose();
       registry = AcpApprovalRegistry(
+        shellCommandResolver: ({required update}) => null,
         emit: emitted.add,
         respond: (id, result) => responses.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),
@@ -458,6 +460,7 @@ void main() {
     test("attributes a sessionless form to the active turn", () async {
       await registry.dispose();
       registry = AcpApprovalRegistry(
+        shellCommandResolver: ({required update}) => null,
         emit: emitted.add,
         respond: (id, result) => responses.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),

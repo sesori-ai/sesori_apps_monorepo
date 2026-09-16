@@ -18,6 +18,7 @@ void main() {
       responds = [];
       errors = [];
       registry = AcpApprovalRegistry(
+        shellCommandResolver: ({required update}) => null,
         emit: emitted.add,
         respond: (id, result) => responds.add((id, result)),
         respondError: (id, code, message) => errors.add((id, code, message)),

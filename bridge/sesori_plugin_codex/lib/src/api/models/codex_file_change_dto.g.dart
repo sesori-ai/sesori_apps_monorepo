@@ -34,6 +34,15 @@ _CodexFileChangeItemDto _$CodexFileChangeItemDtoFromJson(Map json) =>
           CodexFileChangeItemType.unknown,
       id: json['id'] as String?,
       status: _fileChangeStatusFromJson(json['status']),
+      changes:
+          (json['changes'] as List<dynamic>?)
+              ?.map(
+                (e) => CodexFileUpdateDto.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
+              )
+              .toList() ??
+          const [],
     );
 
 Map<String, dynamic> _$CodexFileChangeItemDtoToJson(
@@ -42,6 +51,7 @@ Map<String, dynamic> _$CodexFileChangeItemDtoToJson(
   'type': _$CodexFileChangeItemTypeEnumMap[instance.type]!,
   'id': ?instance.id,
   'status': _$CodexFileChangeStatusEnumMap[instance.status]!,
+  'changes': instance.changes.map((e) => e.toJson()).toList(),
 };
 
 const _$CodexFileChangeItemTypeEnumMap = {
@@ -55,4 +65,39 @@ const _$CodexFileChangeStatusEnumMap = {
   CodexFileChangeStatus.failed: 'failed',
   CodexFileChangeStatus.declined: 'declined',
   CodexFileChangeStatus.unknown: 'unknown',
+};
+
+_CodexFileUpdateDto _$CodexFileUpdateDtoFromJson(Map json) =>
+    _CodexFileUpdateDto(
+      path: json['path'] as String,
+      kind: CodexFileUpdateKindDto.fromJson(
+        Map<String, dynamic>.from(json['kind'] as Map),
+      ),
+    );
+
+Map<String, dynamic> _$CodexFileUpdateDtoToJson(_CodexFileUpdateDto instance) =>
+    <String, dynamic>{'path': instance.path, 'kind': instance.kind.toJson()};
+
+_CodexFileUpdateKindDto _$CodexFileUpdateKindDtoFromJson(Map json) =>
+    _CodexFileUpdateKindDto(
+      type: $enumDecode(
+        _$CodexFileUpdateKindEnumMap,
+        json['type'],
+        unknownValue: CodexFileUpdateKind.unknown,
+      ),
+      movePath: json['move_path'] as String?,
+    );
+
+Map<String, dynamic> _$CodexFileUpdateKindDtoToJson(
+  _CodexFileUpdateKindDto instance,
+) => <String, dynamic>{
+  'type': _$CodexFileUpdateKindEnumMap[instance.type]!,
+  'move_path': ?instance.movePath,
+};
+
+const _$CodexFileUpdateKindEnumMap = {
+  CodexFileUpdateKind.add: 'add',
+  CodexFileUpdateKind.update: 'update',
+  CodexFileUpdateKind.delete: 'delete',
+  CodexFileUpdateKind.unknown: 'unknown',
 };

@@ -262,6 +262,10 @@ void main() {
         status: "inProgress",
       ),
     );
+    final files = target.permissionFiles(threadId: "thread-1", itemId: "exec-file-1");
+    expect(files, const [PluginPermissionFile(path: "marker.txt", operation: PluginPermissionFileOperation.create)]);
+    expect(target.permissionFiles(threadId: "other-thread", itemId: "exec-file-1"), isEmpty);
+    expect(target.permissionFiles(threadId: "thread-1", itemId: "missing"), isEmpty);
     final completed = target.observeAppServerTool(
       imageGeneration: null,
       notification: _fileChangeNotification(
@@ -308,6 +312,52 @@ void main() {
     expect(rolloutResult.tool, "edit");
     expect(rolloutResult.output, contains("*** Add File: marker.txt"));
     expect(rolloutResult.output, isNot(contains("Script completed")));
+  });
+
+  test("native-only file approvals retain details without taking over native projection", () {
+    final target = tracker();
+    final started = target.observeAppServerTool(
+      imageGeneration: null,
+      notification: _fileChangeNotification(
+        method: "item/started",
+        itemId: "native-file-1",
+        turnId: "turn-1",
+        status: "inProgress",
+      ),
+    );
+
+    expect(started, isNull);
+    expect(
+      target.permissionFiles(threadId: "thread-1", itemId: "native-file-1"),
+      const [PluginPermissionFile(path: "marker.txt", operation: PluginPermissionFileOperation.create)],
+    );
+    expect(target.permissionFiles(threadId: "other-thread", itemId: "native-file-1"), isEmpty);
+    expect(target.permissionFiles(threadId: "thread-1", itemId: "other-item"), isEmpty);
+    expect(
+      target.observeAppServerTool(
+        imageGeneration: null,
+        notification: _fileChangeNotification(
+          method: "item/completed",
+          itemId: "native-file-1",
+          turnId: "turn-1",
+          status: "declined",
+        ),
+      ),
+      isNull,
+    );
+    expect(
+      target.observeTerminalNotification(
+        notification: const CodexServerNotification(
+          method: "turn/completed",
+          params: {
+            "threadId": "thread-1",
+            "turn": {"id": "turn-1", "status": "completed"},
+          },
+        ),
+      ),
+      isEmpty,
+    );
+    expect(target.permissionFiles(threadId: "thread-1", itemId: "native-file-1"), isEmpty);
   });
 
   test("correlates code-mode commands containing invocation-like text", () {
@@ -421,8 +471,7 @@ void main() {
         "type": "custom_tool_call",
         "call_id": "call-directed-image-wrapper",
         "name": "exec",
-        "input":
-            "// @exec: {\"yield_time_ms\": 120000}\nconst r = await tools.image_gen__imagegen({prompt: 'private'}); generatedImage(r);",
+        "input": "// @exec: {\"yield_time_ms\": 120000}\nconst r = await tools.image_gen__imagegen({prompt: 'private'}); generatedImage(r);",
       },
     });
     final contentForwardedWrapper = CodexRolloutLineDto.fromJson({
@@ -515,8 +564,7 @@ void main() {
         "type": "custom_tool_call",
         "call_id": "call-mixed-directed-image-wrapper",
         "name": "exec",
-        "input":
-            "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); await tools.exec_command({cmd: 'keep visible'});",
+        "input": "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); await tools.exec_command({cmd: 'keep visible'});",
       },
     });
     final directedWrapperWithTrailingCode = CodexRolloutLineDto.fromJson({
@@ -543,8 +591,7 @@ void main() {
         "type": "custom_tool_call",
         "call_id": "call-directed-image-wrapper-with-parenthesized-trailing-code",
         "name": "exec",
-        "input":
-            "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); process.exitCode = (1);",
+        "input": "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: 'private'}); process.exitCode = (1);",
       },
     });
     final directedWrapperWithNestedToolCall = CodexRolloutLineDto.fromJson({
@@ -553,8 +600,7 @@ void main() {
         "type": "custom_tool_call",
         "call_id": "call-directed-image-wrapper-with-nested-tool",
         "name": "exec",
-        "input":
-            "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: (await tools.exec_command({cmd: 'keep visible'}), 'cat')});",
+        "input": "// @exec: {\"yield_time_ms\": 120000}\nawait tools.image_gen__imagegen({prompt: (await tools.exec_command({cmd: 'keep visible'}), 'cat')});",
       },
     });
     final unrelatedForwarding = CodexRolloutLineDto.fromJson({
@@ -1128,14 +1174,12 @@ void main() {
   test("successful first child followed by a failed child is an error", () {
     final result = mapper.mapResult(
       (_toolContentOutput(
-                callId: "call-exec",
-                outputs: const [
-                  "Script completed with exit code 0\nFinal output:\nfirst\n",
-                  "Process exited with code 1\nFinal output:\nfailed\n",
-                ],
-              )
-              as CodexRolloutResponseItemLineDto)
-          .payload,
+        callId: "call-exec",
+        outputs: const [
+          "Script completed with exit code 0\nFinal output:\nfirst\n",
+          "Process exited with code 1\nFinal output:\nfailed\n",
+        ],
+      ) as CodexRolloutResponseItemLineDto).payload,
     );
 
     expect(result, isA<CodexRolloutToolErrorResult>());
@@ -1144,14 +1188,12 @@ void main() {
   test("successful first child followed by a leading abort is an error", () {
     final result = mapper.mapResult(
       (_toolContentOutput(
-                callId: "call-exec",
-                outputs: const [
-                  "Script completed with exit code 0\nFinal output:\nfirst\n",
-                  "aborted by user after 1.0s",
-                ],
-              )
-              as CodexRolloutResponseItemLineDto)
-          .payload,
+        callId: "call-exec",
+        outputs: const [
+          "Script completed with exit code 0\nFinal output:\nfirst\n",
+          "aborted by user after 1.0s",
+        ],
+      ) as CodexRolloutResponseItemLineDto).payload,
     );
 
     expect(result, isA<CodexRolloutToolErrorResult>());
@@ -1160,16 +1202,14 @@ void main() {
   test("executor marker text later in ordinary stdout does not fail", () {
     final result = mapper.mapResult(
       (_toolOutput(
-                callId: "call-exec",
-                output:
-                    "Script completed with exit code 0\n"
-                    "Final output:\n"
-                    "ordinary stdout\n"
-                    "Process exited with code 1\n"
-                    "aborted by user after 1.0s\n",
-              )
-              as CodexRolloutResponseItemLineDto)
-          .payload,
+        callId: "call-exec",
+        output:
+            "Script completed with exit code 0\n"
+            "Final output:\n"
+            "ordinary stdout\n"
+            "Process exited with code 1\n"
+            "aborted by user after 1.0s\n",
+      ) as CodexRolloutResponseItemLineDto).payload,
     );
 
     expect(result, isA<CodexRolloutToolCompletedResult>());
@@ -1178,14 +1218,12 @@ void main() {
   test("truncated executor metadata still preserves a non-zero exit", () {
     final result = mapper.mapResult(
       (_toolOutput(
-                callId: "call-exec",
-                output:
-                    "Chunk ID: failed\n"
-                    "Wall time: 0.01 seconds\n"
-                    "Process exited with code 7\n",
-              )
-              as CodexRolloutResponseItemLineDto)
-          .payload,
+        callId: "call-exec",
+        output:
+            "Chunk ID: failed\n"
+            "Wall time: 0.01 seconds\n"
+            "Process exited with code 7\n",
+      ) as CodexRolloutResponseItemLineDto).payload,
     );
 
     expect(result, isA<CodexRolloutToolErrorResult>());

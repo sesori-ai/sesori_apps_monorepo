@@ -11,6 +11,7 @@ final class const AntigravityPermission({
   required super.sessionId,
   required final String tool,
   required final String description,
+  required final PluginPermissionDetails details,
   required final String allowOptionId,
   required final String? rejectOptionId,
 }) extends AntigravityInteraction;

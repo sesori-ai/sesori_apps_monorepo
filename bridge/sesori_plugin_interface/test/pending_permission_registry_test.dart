@@ -22,6 +22,7 @@ class _Registry({
   void handleRequest(String request) => requests.add(request);
 
   String addPermission({required String payload, required String sessionId}) => registerPendingPermission(
+    details: const PluginPermissionDetails.generic(),
     payload: _Payload(value: payload),
     sessionId: sessionId,
     displaySessionId: sessionId,

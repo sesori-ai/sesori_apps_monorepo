@@ -239,6 +239,7 @@ class const SessionEventMapper() {
         :final displaySessionId,
         :final tool,
         :final description,
+        :final details,
         :final allowAlways,
       ) =>
         switch ((mapped(sessionID), mappedOptional(displaySessionId))) {
@@ -249,6 +250,7 @@ class const SessionEventMapper() {
               displaySessionId: displayId,
               tool: tool,
               description: description,
+              details: details,
               allowAlways: allowAlways,
             ),
           _ => null,

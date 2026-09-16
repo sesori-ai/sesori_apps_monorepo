@@ -11,6 +11,7 @@ import "models/openapi/session.g.dart";
 import "models/openapi/session_messages_response_item.g.dart";
 import "models/openapi/session_status.g.dart";
 import "models/openapi/user_message.g.dart";
+import "permission_details_mapper.dart";
 import "question_info_mapper.dart";
 
 class const PluginModelMapper({
@@ -119,6 +120,7 @@ class const PluginModelMapper({
       displaySessionId: displaySessionId,
       tool: permission.permission,
       description: permission.patterns.join(", "),
+      details: const PermissionDetailsMapper().map(permission: permission.permission, metadata: permission.metadata),
       allowAlways: true,
     );
   }

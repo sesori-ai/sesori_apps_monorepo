@@ -7,6 +7,7 @@ import "api/models/deepseek_protocol_dto.dart";
 class DeepSeekApprovalRegistry({
   required AcpStdioClient client,
   required super.emit,
+  required super.shellCommandResolver,
   required final DeepSeekAcpApi api,
   super.idGenerator,
   required super.activeSessionResolver,

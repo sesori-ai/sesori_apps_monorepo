@@ -48,7 +48,30 @@ sealed class CodexFileChangeItemDto with _$CodexFileChangeItemDto {
     required CodexFileChangeItemType type,
     required String? id,
     @JsonKey(fromJson: _fileChangeStatusFromJson) required CodexFileChangeStatus status,
+    @Default([]) List<CodexFileUpdateDto> changes,
   }) = _CodexFileChangeItemDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexFileChangeItemDtoFromJson(json);
+}
+
+enum CodexFileUpdateKind() {
+  add,
+  update,
+  delete,
+  unknown,
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class CodexFileUpdateDto with _$CodexFileUpdateDto {
+  const factory({required String path, required CodexFileUpdateKindDto kind}) = _CodexFileUpdateDto;
+  factory fromJson(Map<String, dynamic> json) => _$CodexFileUpdateDtoFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true)
+sealed class CodexFileUpdateKindDto with _$CodexFileUpdateKindDto {
+  const factory({
+    @JsonKey(unknownEnumValue: CodexFileUpdateKind.unknown) required CodexFileUpdateKind type,
+    @JsonKey(name: "move_path") required String? movePath,
+  }) = _CodexFileUpdateKindDto;
+  factory fromJson(Map<String, dynamic> json) => _$CodexFileUpdateKindDtoFromJson(json);
 }

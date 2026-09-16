@@ -2,10 +2,12 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "api/models/codex_approval_details_dto.dart";
 import "api/models/codex_pending_input.dart";
 import "api/models/codex_user_input_dto.dart";
 import "api/parsers/codex_question_parser.dart";
 import "codex_app_server_client.dart";
+import "repositories/codex_tool_lifecycle_tracker.dart";
 import "repositories/mappers/codex_question_mapper.dart";
 
 /// Codex methods that always surface as permission asks.
@@ -177,6 +179,7 @@ class ApprovalRegistry({
   required final AsyncQuestionResponder _sendAsyncAnswer,
   required final CodexQuestionParser _questionParser,
   required final CodexQuestionMapper _questionMapper,
+  required final CodexToolLifecycleTracker _toolLifecycleTracker,
   super.idGenerator,
 }) extends PendingPermissionRegistry<CodexPendingInput, _PendingCodexInput> {
   final Map<String, String> _nativeTurnIdByPendingId = {};
@@ -232,6 +235,7 @@ class ApprovalRegistry({
         displaySessionId: displaySessionId,
         tool: _toolHintFor(method),
         description: _permissionDescriptionFor(entry),
+        details: _permissionDetails(entry: entry, sessionId: resolvedSessionId),
         allowAlways: allowAlways,
       );
     } else if (method == _userInputMethod) {
@@ -372,6 +376,29 @@ class ApprovalRegistry({
   /// never drift.
   String _permissionDescriptionFor(_PendingApproval entry) =>
       (entry.params["reason"] as String?) ?? _descriptionFallback(entry.method, entry.params);
+
+  PluginPermissionDetails _permissionDetails({required _PendingApproval entry, required String sessionId}) {
+    if (entry.method != "item/commandExecution/requestApproval" && entry.method != "item/fileChange/requestApproval") {
+      return const PluginPermissionDetails.generic();
+    }
+    final value = CodexApprovalDetailsDto.fromJson(entry.params);
+    if (entry.method == "item/fileChange/requestApproval") {
+      final itemId = value.itemId;
+      if (itemId == null) return const PluginPermissionDetails.generic();
+      final files = _toolLifecycleTracker.permissionFiles(threadId: sessionId, itemId: itemId);
+      return files.isEmpty
+          ? const PluginPermissionDetails.generic()
+          : PluginPermissionDetails.fileChanges(files: files);
+    }
+    final command = value.command;
+    final host = value.networkApprovalContext?.host;
+    if (host != null && host.isNotEmpty) {
+      return PluginPermissionDetails.network(targets: [host], command: command);
+    }
+    return command != null && command.isNotEmpty
+        ? PluginPermissionDetails.command(command: command)
+        : const PluginPermissionDetails.generic();
+  }
 
   /// Builds the JSON-RPC result payload for a permission reply, keyed by the
   /// request's wire method:

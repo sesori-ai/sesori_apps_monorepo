@@ -48,6 +48,7 @@ class _NeutralRegistry({required final List<String> settlements}) extends AcpPen
   void handleRequest(AcpServerRequest request) {
     requests.add(request);
     registerPendingPermission(
+      details: const PluginPermissionDetails.generic(),
       payload: request.id.toString(),
       sessionId: request.params["sessionId"] as String,
       displaySessionId: null,

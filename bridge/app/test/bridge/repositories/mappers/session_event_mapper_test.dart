@@ -123,6 +123,7 @@ void main() {
         (
           name: "permission asked",
           event: const BridgeSsePermissionAsked(
+            details: PluginPermissionDetails.generic(),
             requestID: "permission",
             sessionID: "backend-session",
             displaySessionId: "backend-parent",
@@ -207,6 +208,7 @@ void main() {
       expect(
         mapper.map(
           event: const BridgeSsePermissionAsked(
+            details: PluginPermissionDetails.generic(),
             requestID: "permission",
             sessionID: "backend-session",
             displaySessionId: "unknown-display",

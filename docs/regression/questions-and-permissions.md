@@ -37,15 +37,29 @@ reaches the backend so the turn continues.
 - Allow once, allow always, and reject each reach the backend with the meaning
   the user chose. Once is never escalated to a broader grant.
 - Permission dialogs use the shared floating Prego action sheet in both themes:
-  a generic action heading, the complete backend tool label and selectable,
-  copyable Markdown description, then full-width stacked **Allow**, optional
+  an action-specific heading when the plugin supplies authoritative command,
+  file-change, or network details, otherwise the generic action heading.
+  Commands remain literal, selectable and copyable rather than interpreted as
+  Markdown; file rows retain complete paths and only known operations; network
+  rows retain complete targets and any accompanying command. The complete
+  backend tool label and selectable, copyable Markdown description remain
+  available (an identical command is displayed only once), followed by stacked **Allow**, optional
   **Always approve**, and **Don’t allow** actions. **Allow** means once only.
   Long details normally scroll above visible actions. When the viewport is
   cramped relative to the text scale, the whole sheet scrolls so every decision
   remains reachable; enlarged text can cause this breakpoint to be crossed.
   Keyboard and safe-area insets keep the floating surface clear of system UI.
   Scrim/swipe dismissal leaves the request pending; external settlement closes
-  it without a reply.
+  it without a reply. Permission dialogs never offer inline text/voice
+  instructions, including on harnesses with native denial feedback. Reject
+  answers the permission only; it never aborts/restarts the turn or sends a
+  follow-up prompt. Users may send a normal message afterward.
+- Rich details survive both live events and pending snapshots, including
+  child-to-root display mapping. Older bridges or unknown future detail kinds
+  retain the generic tool/description UI and existing reply behavior. Clients
+  never infer request kinds from tool names, patterns or prose. See
+  [the harness matrix](../HARNESS_CAPABILITIES.md#rich-permission-request-details)
+  for authoritative sources and gaps.
 - A plugin advertising ACP form elicitation maps supported string, string-enum,
   boolean, and finite string-choice array properties to questions and returns
   typed content under the backend's original property keys. An array whose

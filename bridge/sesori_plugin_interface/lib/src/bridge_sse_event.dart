@@ -1,6 +1,7 @@
 import "models/plugin_agent.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_question.dart";
+import "models/plugin_permission_details.dart";
 import "models/plugin_queued_prompt.dart";
 import "models/plugin_session_status.dart";
 
@@ -110,6 +111,7 @@ class const BridgeSsePermissionAsked({
   required final String? displaySessionId,
   required final String tool,
   required final String description,
+  required final PluginPermissionDetails details,
   required final bool allowAlways,
 }) extends BridgeSseEvent;
 

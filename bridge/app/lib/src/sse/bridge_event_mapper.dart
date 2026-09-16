@@ -98,22 +98,8 @@ class BridgeEventMapper({
             messageID: messageID,
             partID: partID,
           ),
-        BridgeSsePermissionAsked(
-          :final requestID,
-          :final sessionID,
-          :final displaySessionId,
-          :final tool,
-          :final description,
-          :final allowAlways,
-        ) =>
-          SesoriSseEvent.permissionAsked(
-            requestID: requestID,
-            sessionID: sessionID,
-            displaySessionId: displaySessionId,
-            tool: tool,
-            description: description,
-            allowAlways: allowAlways,
-          ),
+        // Permission requests are converted by the repository mapper in Orchestrator.
+        BridgeSsePermissionAsked() => null,
         BridgeSsePermissionReplied(:final requestID, :final sessionID, :final displaySessionId, :final reply) =>
           SesoriSseEvent.permissionReplied(
             requestID: requestID,

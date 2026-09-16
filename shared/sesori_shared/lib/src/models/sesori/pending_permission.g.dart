@@ -26,6 +26,11 @@ _PendingPermission _$PendingPermissionFromJson(Map json) => _PendingPermission(
   displaySessionId: json['displaySessionId'] as String?,
   tool: json['tool'] as String,
   description: json['description'] as String,
+  details: json['details'] == null
+      ? const PermissionDetails.generic()
+      : PermissionDetails.fromJson(
+          Map<String, dynamic>.from(json['details'] as Map),
+        ),
   allowAlways: json['allowAlways'] as bool? ?? true,
 );
 
@@ -36,5 +41,6 @@ Map<String, dynamic> _$PendingPermissionToJson(_PendingPermission instance) =>
       'displaySessionId': ?instance.displaySessionId,
       'tool': instance.tool,
       'description': instance.description,
+      'details': instance.details.toJson(),
       'allowAlways': instance.allowAlways,
     };

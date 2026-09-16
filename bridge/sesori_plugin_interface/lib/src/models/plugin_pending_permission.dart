@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "plugin_permission_details.dart";
+
 part "plugin_pending_permission.freezed.dart";
 
 part "plugin_pending_permission.g.dart";
@@ -15,6 +17,7 @@ sealed class PluginPendingPermission with _$PluginPendingPermission {
     required String? displaySessionId,
     required String tool,
     required String description,
+    required PluginPermissionDetails details,
     required bool allowAlways,
   }) = _PluginPendingPermission;
 }
