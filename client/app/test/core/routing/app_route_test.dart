@@ -412,7 +412,7 @@ void main() {
   });
 
   group("GoRouterRouteDispatcher", () {
-    test("replaceStack rebuilds the stack from root then pushes remaining routes", () async {
+    test("dismissPopups runs before rebuilding the stack and pushing remaining routes", () async {
       final goCalls = <String>[];
       final pushCalls = <String>[];
       final dispatcher = GoRouterRouteDispatcher.test(
@@ -420,8 +420,11 @@ void main() {
         pushRoute: (route) async {
           pushCalls.add(route);
         },
+        dismissPopups: () => goCalls.add("dismiss"),
+        routerReady: Future<void>.value(),
       );
 
+      dispatcher.dismissPopups();
       dispatcher.replaceStack(
         stack: RouteStack(
           paths: [
@@ -442,7 +445,7 @@ void main() {
       );
       await dispatcher.flushPendingForTesting();
 
-      expect(goCalls, equals([const AppRoute.projects().buildPath()]));
+      expect(goCalls, equals(["dismiss", const AppRoute.projects().buildPath()]));
       expect(
         pushCalls,
         equals([
@@ -469,6 +472,8 @@ void main() {
         pushRoute: (route) async {
           pushCalls.add(route);
         },
+        dismissPopups: () => goCalls.add("dismiss"),
+        routerReady: Future<void>.value(),
       );
 
       dispatcher.replaceStack(stack: RouteStack(paths: const []));
