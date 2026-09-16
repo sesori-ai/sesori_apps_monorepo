@@ -44,8 +44,30 @@ class DesktopInstanceService._create({required final DesktopInstanceRepository _
   /// Reads persisted intent only while no newer user action invalidates it.
   Future<BridgeProcessDesiredState?> readBridgeDesiredStateForRestore() async {
     final int generation = _restoreGeneration;
-    final BridgeProcessDesiredState state = await _repository.readBridgeDesiredState();
+    final state = await _repository.readBridgeDesiredState() ?? BridgeProcessDesiredState.off;
     return generation == _restoreGeneration ? state : null;
+  }
+
+  /// Admits the first-run default only while no explicit intent supersedes it.
+  /// Reuses the desired-state write queue so a later Off always wins on disk.
+  Future<bool> initializeFirstRunBridgeState() {
+    final operation = _initializeFirstRunBridgeStateAfter(
+      previousWrite: _pendingDesiredStateWrite,
+      generation: _restoreGeneration,
+    );
+    _pendingDesiredStateWrite = _observeDesiredStateWrite(operation: operation.then((_) {}));
+    return operation;
+  }
+
+  Future<bool> _initializeFirstRunBridgeStateAfter({
+    required Future<void> previousWrite,
+    required int generation,
+  }) async {
+    await previousWrite;
+    final persisted = await _repository.readBridgeDesiredState();
+    if (persisted != null || generation != _restoreGeneration) return false;
+    await _repository.writeBridgeDesiredState(state: BridgeProcessDesiredState.on);
+    return generation == _restoreGeneration;
   }
 
   /// Prevents an in-flight startup read from applying stale desired On.

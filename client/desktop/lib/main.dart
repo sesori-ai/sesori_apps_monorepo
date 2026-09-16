@@ -71,6 +71,7 @@ Future<void> main(List<String> arguments) async {
     ),
   );
   unawaited(startupOrchestrator.restoreBridgeDesiredState());
+  unawaited(startupOrchestrator.applyFirstRunBridgeDefaults());
 }
 
 Future<void> _markProductAnalyticsReady({required ProductAnalyticsService service}) async {

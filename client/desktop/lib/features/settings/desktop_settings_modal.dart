@@ -222,6 +222,7 @@ class const _DesktopBridgeSettingsPage({required final VoidCallback onClose}) ex
   Widget build(BuildContext context) {
     final loc = context.loc;
     final control = context.watch<BridgeControlCubit>();
+    final access = context.watch<FileAccessCubit>();
     return PregoGlassScaffold(
       title: loc.settingsSectionBridge,
       titleMode: PregoTopNavigationTitleMode.inline,
@@ -241,6 +242,17 @@ class const _DesktopBridgeSettingsPage({required final VoidCallback onClose}) ex
                   title: loc.desktopSettingsThisComputer,
                   child: PregoGroupedRows(
                     children: [
+                      if (access.state.status != FileAccessStatus.unsupported)
+                        PregoGroupedRow(
+                          icon: TablerRegular.shield,
+                          title: Text(loc.desktopFileAccessTitle),
+                          subtitle: Text(switch (access.state.status) {
+                            FileAccessStatus.granted => loc.desktopFileAccessGranted,
+                            FileAccessStatus.denied => loc.desktopFileAccessDenied,
+                            FileAccessStatus.unknown || FileAccessStatus.unsupported => loc.desktopFileAccessUnknown,
+                          }),
+                          onTap: access.openSystemSettings,
+                        ),
                       PregoGroupedRow(
                         icon: TablerRegular.server,
                         title: Text(loc.desktopLocalBridgeTitle),

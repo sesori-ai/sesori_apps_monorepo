@@ -68,6 +68,10 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
 
     return MultiBlocProvider(
       providers: <BlocProvider<dynamic>>[
+        BlocProvider<FileAccessCubit>(
+          lazy: false,
+          create: (_) => FileAccessCubit(permission: getIt<FileAccessPermission>(), windowHost: getIt<WindowHost>()),
+        ),
         BlocProvider<ConnectionOverlayCubit>(
           lazy: false,
           create: (_) => ConnectionOverlayCubit(

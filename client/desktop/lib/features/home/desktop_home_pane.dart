@@ -10,6 +10,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
+import "desktop_file_access_card.dart";
 
 /// Home presentation consumes the cockpit's project inventory, never another list.
 class const DesktopHomePane({super.key}) extends StatelessWidget {
@@ -20,6 +21,7 @@ class const DesktopHomePane({super.key}) extends StatelessWidget {
       color: Theme.of(context).scaffoldBackgroundColor,
       child: CustomScrollView(
         slivers: [
+          const SliverToBoxAdapter(child: SafeArea(bottom: false, child: DesktopFileAccessCard())),
           SliverFillRemaining(
             hasScrollBody: false,
             child: SafeArea(

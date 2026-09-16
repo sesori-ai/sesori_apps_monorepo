@@ -61,6 +61,8 @@ import 'package:sesori_desktop/core/platform/io_bridge_process_environment.dart'
     as _i906;
 import 'package:sesori_desktop/core/platform/io_desktop_application_terminator.dart'
     as _i665;
+import 'package:sesori_desktop/core/platform/io_file_access_permission.dart'
+    as _i300;
 import 'package:sesori_desktop/core/platform/io_launch_at_login.dart' as _i122;
 import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
     as _i262;
@@ -154,6 +156,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i316.BridgeProcessEnvironment>(
       () => _i906.IoBridgeProcessEnvironment(),
+    );
+    gh.lazySingleton<_i316.FileAccessPermission>(
+      () => _i300.IoFileAccessPermission(urlLauncher: gh<_i948.UrlLauncher>()),
     );
     gh.lazySingleton<_i316.WindowHost>(
       () => _i789.FlutterWindowHost(),

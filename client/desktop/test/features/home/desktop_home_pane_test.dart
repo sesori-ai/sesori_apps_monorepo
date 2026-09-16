@@ -17,9 +17,17 @@ void main() {
   late _MockBridgeControlCubit bridgeControlCubit;
   late _MockProjectListCubit projects;
   late _MockRegisteredBridgesService bridges;
+  late _MockFileAccessCubit fileAccess;
 
   setUp(() {
     projects = _MockProjectListCubit();
+    fileAccess = _MockFileAccessCubit();
+    whenListen(
+      fileAccess,
+      const Stream<FileAccessState>.empty(),
+      initialState: const FileAccessState(status: FileAccessStatus.unsupported, dismissed: false),
+    );
+    when(fileAccess.openSystemSettings).thenAnswer((_) async {});
     bridges = _MockRegisteredBridgesService();
     when(bridges.hasRegisteredBridges).thenAnswer((_) async => false);
     when(bridges.getRegisteredBridges).thenAnswer((_) async => []);
@@ -51,6 +59,7 @@ void main() {
           providers: [
             BlocProvider<BridgeControlCubit>.value(value: bridgeControlCubit),
             BlocProvider<ProjectListCubit>.value(value: projects),
+            BlocProvider<FileAccessCubit>.value(value: fileAccess),
           ],
           child: const Scaffold(body: DesktopHomePane()),
         ),
@@ -58,6 +67,36 @@ void main() {
     );
     await tester.pump();
   }
+
+  testWidgets("optional local-access card remains usable in a narrow home pane", (tester) async {
+    tester.view.physicalSize = const Size(300, 480);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final states = BehaviorSubject<FileAccessState>.seeded(
+      const FileAccessState(status: FileAccessStatus.denied, dismissed: false),
+    );
+    addTearDown(states.close);
+    whenListen(fileAccess, states, initialState: states.value);
+    when(fileAccess.dismiss)
+        .thenAnswer((_) => states.add(const FileAccessState(status: FileAccessStatus.denied, dismissed: true)));
+    await pumpHome(
+      tester: tester,
+      state: const ProjectListState.loaded(projects: [], activityById: {}),
+    );
+    expect(find.text("Full Disk Access"), findsOneWidget);
+    await tester.ensureVisible(find.text("Open System Settings"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Open System Settings"));
+    verify(fileAccess.openSystemSettings).called(1);
+    await tester.ensureVisible(find.text("Not now"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Not now"));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("desktop-file-access-card")), findsNothing);
+    expect(find.byType(PregoButtonsSolid).hitTestable(), findsOneWidget);
+    verifyNever(bridgeControlCubit.recoverConnection);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets("never-registered recovery offers supervised Start without CLI guidance", (tester) async {
     await pumpHome(
@@ -163,6 +202,7 @@ const BridgeControlState _bridgeControlState = BridgeControlState(
 );
 
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
+class _MockFileAccessCubit() extends MockCubit<FileAccessState> implements FileAccessCubit;
 
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 
