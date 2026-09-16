@@ -57,6 +57,18 @@ void main() {
     expect(lines.last, "stack");
   });
 
+  test("stdout chunks long error-bearing messages without discarding context", () {
+    final lines = <String>[];
+    final message = "context" * 150;
+    final error = StateError("diagnostic" * 100);
+    runZoned(
+      () => loge(message, error),
+      zoneSpecification: ZoneSpecification(print: (_, _, _, line) => lines.add(line)),
+    );
+    expect(lines.every((line) => line.length <= 800), isTrue);
+    expect(lines.join(), "$message: ${error.toString()}");
+  });
+
   test("flush awaits admitted output", () async {
     final sink = _PendingSink();
     setLogSink(sink: sink);

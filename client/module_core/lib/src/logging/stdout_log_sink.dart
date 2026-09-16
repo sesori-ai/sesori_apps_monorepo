@@ -13,11 +13,9 @@ class const StdoutLogSink() implements LogSink {
 
   @override
   void write({required LogRecord record}) {
-    if (record.diagnosticError case final error?) {
-      Zone.current.print("${record.message}: $error");
-    } else {
-      record.message.chunked(chunkSize: 800).forEach(Zone.current.print);
-    }
+    final error = record.diagnosticError;
+    final message = error == null ? record.message : "${record.message}: $error";
+    message.chunked(chunkSize: 800).forEach(Zone.current.print);
     if (record.stackTrace case final stack?) {
       Zone.current.print(stack.toString());
     }
