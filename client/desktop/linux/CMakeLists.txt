@@ -75,12 +75,14 @@ set_target_properties(${BINARY_NAME}
 include(flutter/generated_plugins.cmake)
 
 # Flutter copies plugin libraries with install(FILES), which does not rewrite
-# their build RUNPATH. Resolve libflutter_linux_gtk.so beside this plugin rather
+# their build RUNPATH. Resolve libflutter_linux_gtk.so beside each plugin rather
 # than retaining the build machine's flutter/ephemeral directory.
-set_target_properties(window_manager_plugin PROPERTIES
-  BUILD_WITH_INSTALL_RPATH TRUE
-  INSTALL_RPATH "$ORIGIN"
-)
+foreach(plugin ${FLUTTER_PLUGIN_LIST})
+  set_target_properties(${plugin}_plugin PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "$ORIGIN"
+  )
+endforeach()
 
 
 # === Installation ===
