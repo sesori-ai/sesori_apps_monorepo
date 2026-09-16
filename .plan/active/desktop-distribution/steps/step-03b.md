@@ -1,8 +1,8 @@
 # Step 3.b — Packaged Helper Repair Guidance
 
-Status: **implemented and architecture-reviewed; PR CI/review pending**. PR ordinal
-**4/13**, following merged [3.a](step-03.md). Work stays in `tan-antelope` on
-`desktop-distribution-repair-guidance`.
+Status: **done**, merged in [PR #1495](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1495)
+as `e853838ac29b5d829f13622702c5d47a74eaa829`. PR ordinal **4/14**, following
+[3.a](step-03.md). Implemented in `tan-antelope` on `desktop-distribution-repair-guidance`.
 
 ## Behavior and ownership
 
@@ -54,6 +54,21 @@ runs include the automatic-restart correction and omit a misleading child-log
 action. Coverage proves no spawn, control cleanup, replayed repair state, valid
 explicit retry, tray guidance, safe presentation and non-modal hidden behavior.
 The existing generic failure, cancellation, crash and takeover cases still pass.
+
+## Merge and CI closeout
+
+Accepted PR head: `758bc5548219c08420d1cac86718b4d997de818c`. Final Cubic review
+approved with no findings; all four documentation threads were resolved. Workflow
+[34994634843](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34994634843)
+passed analyzer/tests and macOS, Windows and Linux desktop build jobs. Its measured
+Actions merge checkout was `c40323edd60873d0a7d6f498ab05c4c8fd2b798f`, not the PR
+head or eventual squash. The supervised E2E job was intentionally skipped here;
+3.a's six-target relocated-helper E2E remains separate evidence.
+
+Checkout attribution was read from repository root with
+`gh api --allow-escape-sequences repos/sesori-ai/sesori_apps_monorepo/actions/jobs/104467729892/logs`;
+the checkout step's `git log -1 --format=%H` records that merge SHA. The captured
+log is `build/desktop-repair-evidence/final-analyze-test-ci.log`.
 
 ## Review and release boundaries
 

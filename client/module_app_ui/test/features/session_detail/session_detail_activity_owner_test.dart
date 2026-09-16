@@ -54,8 +54,13 @@ void main() {
     registerFallbackValue(DateTime.utc(2026));
   });
 
-  for (final expectedRoute in [AppRouteDef.sessionDetail, AppRouteDef.archivedSessionDetail]) {
-    testWidgets("$expectedRoute gates cubit and analytics together and disposes only its listeners", (tester) async {
+  for (final (expectedRoute, nested) in [
+    (AppRouteDef.sessionDetail, false),
+    (AppRouteDef.archivedSessionDetail, false),
+    (AppRouteDef.sessionDetail, true),
+    (AppRouteDef.archivedSessionDetail, true),
+  ]) {
+    testWidgets("$expectedRoute gates activity and disposes only its listeners (nested: $nested)", (tester) async {
       final cubit = _MockSessionDetailCubit();
       final routeSource = _MockRouteSource();
       final lifecycleSource = _MockLifecycleSource();
@@ -91,17 +96,27 @@ void main() {
         visibility.add(invocation.namedArguments[#isVisible]! as bool);
       });
 
+      final rootNavigator = GlobalKey<NavigatorState>();
+      final owner = SessionDetailActivityOwner(
+        routeSource: routeSource,
+        lifecycleSource: lifecycleSource,
+        productAnalyticsService: analytics,
+        expectedDetailRoute: expectedRoute,
+        child: const SizedBox(),
+      );
       await tester.pumpWidget(
         BlocProvider<SessionDetailCubit>.value(
           value: cubit,
           child: MaterialApp(
-            home: SessionDetailActivityOwner(
-              routeSource: routeSource,
-              lifecycleSource: lifecycleSource,
-              productAnalyticsService: analytics,
-              expectedDetailRoute: expectedRoute,
-              child: const SizedBox(),
-            ),
+            navigatorKey: rootNavigator,
+            home: nested
+                ? Builder(
+                    builder: (context) => SessionDetailRouteVisibility(
+                      isVisible: ModalRoute.isCurrentOf(context) ?? false,
+                      child: Navigator(onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => owner)),
+                    ),
+                  )
+                : owner,
           ),
         ),
       );
@@ -133,6 +148,24 @@ void main() {
       await tester.pumpAndSettle();
       expect(visibility.last, isTrue);
       expect(events, 1); // Existing analytics deduplication survives cover/return.
+
+      final ownerElement = tester.element(find.byType(SessionDetailActivityOwner));
+      unawaited(
+        showDialog<void>(
+          context: ownerElement,
+          builder: (_) => const Dialog(child: Text("root popup")),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(routeSource.currentRoute, expectedRoute);
+      expect(ModalRoute.of(ownerElement)?.isCurrent, nested);
+      expect(visibility.last, isFalse);
+      expect(events, 1);
+      rootNavigator.currentState!.pop();
+      await tester.pumpAndSettle();
+      expect(visibility.last, isTrue);
+      expect(tester.element(find.byType(SessionDetailActivityOwner)), same(ownerElement));
+      expect(events, 1);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();

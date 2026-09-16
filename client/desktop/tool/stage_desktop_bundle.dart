@@ -139,7 +139,12 @@ Future<void> stageDesktopBundle({
         : path.join(destination.path, "bridge"),
   );
   await _copyDirectory(source: helper, destination: stagedHelper);
-  await File(path.join(stagedHelper.path, DesktopBundleIdentity.manifestName)).writeAsString(
+  // macOS treats Helpers as code-only; the identity is a sealed app resource.
+  final Directory manifestDirectory = identity.os == DesktopBundleOs.macos
+      ? Directory(path.join(destination.path, "Contents", "Resources"))
+      : stagedHelper;
+  await manifestDirectory.create(recursive: true);
+  await File(path.join(manifestDirectory.path, DesktopBundleIdentity.manifestName)).writeAsString(
     "${identity.encode()}\n",
     encoding: utf8,
   );

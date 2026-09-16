@@ -4,12 +4,12 @@
 
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
-- **Status:** Active — steps 1–3.a merged; step 3.b repair presentation in progress.
+- **Status:** Active — steps 1–3.b merged; step 4.a macOS packaging in review; step 4.b startup repair planned.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Delivery:** 13 planned PRs; original step 3 is split into 3.a/3.b. Exact titles below.
+- **Delivery:** 14 planned PRs; original steps 3 and 4 are split into 3.a/3.b and 4.a/4.b. Exact titles below.
 - **Architecture review:** reviewed 2026-09-15; ownership/DI/identity findings applied
   directly. The corrected revision was not re-reviewed; see `TRACKER.md`.
 
@@ -34,6 +34,19 @@ startup/control surfaces before steps 3–5, rather than restoring superseded UI
 first-run behavior. Follow the parent's updated Gate C routing: shell/navigation
 C2/C5 move to the UX step-12 checklist; the other parent sections remain applicable
 on a build after UX step 7. A merged UX plan is not passing coverage evidence.
+
+### Unattended execution direction — 2026-09-15
+
+The user directed completing the implementation series without further questions:
+never stop the running bridge (including indirectly through the local desktop),
+run every safe autonomous check, and collect checks needing user help for the
+final handoff. Fresh native CI is approved for both Mac QA targets. Do not wait
+for human QA, unavailable signing/hosting access or interactive permission decisions
+before continuing independent approved implementation. Record those limits rather
+than inventing credentials, provisioning infrastructure or claiming unexecuted tests
+passed. Platform ship gates continue to constrain public distribution, not progress
+through the remaining implementation PRs. Public release and plan retirement still
+require the recorded final matrix or an explicit end-of-plan acceptance of its limits.
 
 ## Decisions aligned with the user
 
@@ -129,8 +142,10 @@ compile the expected identity into the GUI. The pure-Dart typed model is
 with generated JSON serialization; reuse suitable existing closed OS/CPU types.
 `client/desktop/tool/stage_desktop_bundle.dart` is the build-time producer: it
 builds both components from one committed checkout, serializes that model into
-`desktop-bundle.json` at the helper bundle root, and supplies the same identity through
-an explicit Flutter dotenv build-define file. It enforces dependency locks, preserves
+`desktop-bundle.json` in macOS `Contents/Resources` (the signed app's data location),
+or at the Windows/Linux helper bundle root, and supplies the same identity through
+an explicit Flutter dotenv build-define file. Keep JSON out of macOS's code-only
+Helpers subtree; native signing qualification established this placement. It enforces dependency locks, preserves
 native assets/symlinks and records host-generated Git changes. No suitable existing
 client OS/CPU set covers these targets; the closed desktop-only enums stay beside
 the model. The existing shell
@@ -368,8 +383,13 @@ platform inputs and reusable platform build legs. It must not depend on mobile
 store jobs, move `internal-release-attempt`, or change the existing mobile/CLI
 finalizer's success conditions. PR packaging CI has no signing/publication secrets;
 manual trusted release jobs use protected environments and least-privilege OIDC
-where supported. Preserve source revision versus workflow revision deliberately
-when reusing actions for older refs.
+where supported. Existing private qualification uses the owner's authorized
+repository-level signing secrets; manual dispatch is not isolation from malicious
+repository writers. Before public publication, the owner must approve a protected-
+environment credential migration, including shared CLI callers and removal of
+repository-wide copies. Merely naming an environment does not secure those copies.
+Do not provision protection rules or move credentials without that authorization.
+Preserve source revision versus workflow revision when reusing actions for older refs.
 
 - Artifact identity includes semantic version, build number, source SHA, platform,
   architecture, digest, and signing evidence. Both architectures in a platform leg
@@ -437,23 +457,27 @@ lower for update/lifecycle work. If qualification changes scope or a clean split
 needed, update this single sequence, dependencies, tracker, and total before pushing.
 No generated-churn exception is assumed in advance. Step 3.a is independently
 buildable/verified; 3.b supplies user-facing repair state before installers. Stable
-step IDs remain 1, 2, 3.a, 3.b, 4…12; PR ordinals are respectively 1…13.
+step IDs are 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12; PR ordinals are respectively 1…14.
+Step 4.a delivers verified private packaging; 4.b fixes the independently exposed
+native-attention startup wait before updater work. That split preserves published
+history and keeps lifecycle changes out of the package-signing review.
 
 | Step | Exact PR title | Dependency / scope, risk and expected result |
 |---|---|---|
-| 1 | 🌿 [desktop-distribution] Align platform distribution and update plan [step 1/13] | This plan, tracker, parent handoff, roadmap/vision links. Low risk; docs/link consistency only. No user-visible or database change. |
-| 2 | ⚙️ [desktop-distribution] Qualify six-target packaging prerequisites [step 2/13] | After 1. Bounded native build/plugin/updater probes and repeatable package qualification tooling; freeze bundle layout, updater APIs and concrete adapter/DI/dependency graph, OS minimums, runner sources and signer prerequisites. Qualify mature manual Windows installer replacement; retain macOS automation only if the supported integration stays small. Medium risk; no publication or database change. Block affected platform on a failed capability, not the whole research effort. |
-| 3.a | ⚙️ [desktop-distribution] Bind desktop builds to bundled bridge identity [step 3/13] | After 2's bundle qualification. Packaged resolver, complete helper/native assets, immutable typed build identity, version sync and focused tests. Medium risk at startup/version boundaries. Installed/dev behavior separates cleanly; no database migration or download fallback. |
-| 3.b | ⚙️ [desktop-distribution] Surface packaged helper repair guidance [step 4/13] | After 3.a. Existing service/state/cubit/window flow retains typed startup refusal without a new lifecycle owner. Medium startup/presentation risk; no PID fabrication, forced hidden-startup modal, database or wire change. |
-| 4 | 🚧 [desktop-distribution] Package and notarize native macOS builds [step 5/13] | After 3.b plus signer access. Two DMGs and update archives, nested hardened signing, notarization/stapling, packaged Keychain/TCC/autostart probes. High supply-chain/platform risk. Both Macs install and run without Gatekeeper bypass; no database change. |
-| 5 | 🚧 [desktop-distribution] Apply macOS updates through safe application quit [step 6/13] | After 4 and the qualified macOS adapter graph. Narrow updater layers, Sparkle adapter, existing Quit owner integration, Settings update status/restart control, signed N→N+1 fixtures and failure tests. High lifecycle risk. Background prepare; normal Quit installs without relaunch, explicit restart restores intent. No new database or separate supervisor state machine. |
-| 6 | ⚙️ [desktop-distribution] Publish isolated desktop channels and macOS downloads [step 7/13] | After 5 and parent public-release prerequisite. Trusted manual workflow, GitHub desktop tags, GCS feed staging, download index/runbook, release-isolation tests and macOS ship gate. High operational risk but bounded publication logic; no mobile store uploads or database change. macOS public only after both native gates pass. |
-| 7 | 🚧 [desktop-distribution] Package signed per-user Windows installers [step 8/13] | After 3.b and Windows qualification; delivered after macOS gate. Native x64/arm64 EXEs, complete helper bundle, timestamped signing, shortcuts/autostart/uninstall and clean-host tests. High installer/trust risk. No elevation for normal use, no shared CLI data deletion, no database change. |
-| 8 | ⚙️ [desktop-distribution] Deliver manual Windows updates and winget discovery [step 9/13] | After 6 and 7. Settings download action, signed N→N+1 manual replacement, channel-specific downloads, winget manifests and Windows ship gate. Medium integration risk; no embedded updater, forced helper shutdown or automatic restart. No database change. |
-| 9 | ⚙️ [desktop-distribution] Publish signed native DEB and RPM repositories [step 10/13] | After 3.b and Linux qualification; delivered after Windows gate. Four native packages, dependency manifests, signed APT/RPM metadata/payload publication, desktop integration and Linux ship gate. Medium/high packaging risk; no custom updater or privileged per-user cleanup. Package-manager upgrades retain shared data; no database change. |
-| 10 | 🌿 [desktop-distribution] Offer shipped desktop downloads during onboarding [step 11/13] | After all platform gates. Shared mobile installation guidance and published links, preserve CLI alternative and truthful platform/CPU choices. Low/medium onboarding regression risk; focused UI/link tests and existing analytics assessment. New installation choice, no database change. |
-| 11 | 🌿 [desktop-distribution] Reconcile distribution regression coverage [step 12/13] | After 10. Complete affected feature documents and installation/release runbooks, remove superseded dev-only guidance where behavior changed. Low risk; no runtime or database change. |
-| 12 | ⚙️ [desktop-distribution] Verify six-target releases and retire distribution plan [step 13/13] | After 11. Run/assemble the complete recorded release matrix through packaged/external boundaries, record exact artifacts and evidence, resolve failures, then move this directory to `.plan/completed/desktop-distribution/` and repoint live links. No runtime/database change except independently reviewed required fixes. Never retire partial/blocked coverage. |
+| 1 | 🌿 [desktop-distribution] Align platform distribution and update plan [step 1/14] | This plan, tracker, parent handoff, roadmap/vision links. Low risk; docs/link consistency only. No user-visible or database change. |
+| 2 | ⚙️ [desktop-distribution] Qualify six-target packaging prerequisites [step 2/14] | After 1. Bounded native build/plugin/updater probes and repeatable package qualification tooling; freeze bundle layout, updater APIs and concrete adapter/DI/dependency graph, OS minimums, runner sources and signer prerequisites. Qualify mature manual Windows installer replacement; retain macOS automation only if the supported integration stays small. Medium risk; no publication or database change. Block affected platform on a failed capability, not the whole research effort. |
+| 3.a | ⚙️ [desktop-distribution] Bind desktop builds to bundled bridge identity [step 3/14] | After 2's bundle qualification. Packaged resolver, complete helper/native assets, immutable typed build identity, version sync and focused tests. Medium risk at startup/version boundaries. Installed/dev behavior separates cleanly; no database migration or download fallback. |
+| 3.b | ⚙️ [desktop-distribution] Surface packaged helper repair guidance [step 4/14] | After 3.a. Existing service/state/cubit/window flow retains typed startup refusal without a new lifecycle owner. Medium startup/presentation risk; no PID fabrication, forced hidden-startup modal, database or wire change. |
+| 4.a | 🚧 [desktop-distribution] Package and notarize native macOS builds [step 5/14] | After 3.b plus signer access. Private DMGs/ZIPs, nested hardened signing, notarization/stapling and native platform probes. High supply-chain/platform risk. Both Macs verify/install without Gatekeeper bypass; rendered startup is tracked in 4.b, not claimed passing. No database change. |
+| 4.b | ⚙️ [desktop-distribution] Keep desktop startup independent of native notifications [step 6/14] | After 4.a. Existing attention owner installs listeners before returning, without holding rendering behind native readiness; retain initial-open/account/disposal handling. Medium/high startup risk. Red/green service tests and both signed GUI targets; no new state owner, persistence, wire or database change. |
+| 5 | 🚧 [desktop-distribution] Apply macOS updates through safe application quit [step 7/14] | After 4.b and the qualified macOS adapter graph. Narrow updater layers, Sparkle adapter, existing Quit owner integration, Settings update status/restart control, signed N→N+1 fixtures and failure tests. High lifecycle risk. Background prepare; normal Quit installs without relaunch, explicit restart restores intent. No new database or separate supervisor state machine. |
+| 6 | ⚙️ [desktop-distribution] Publish isolated desktop channels and macOS downloads [step 8/14] | After 5 and parent public-release prerequisite. Trusted manual workflow, GitHub desktop tags, GCS feed staging, download index/runbook, release-isolation tests and macOS ship gate. High operational risk but bounded publication logic; no mobile store uploads or database change. macOS public only after both native gates pass. |
+| 7 | 🚧 [desktop-distribution] Package signed per-user Windows installers [step 9/14] | After 3.b and Windows qualification; delivered after macOS gate. Native x64/arm64 EXEs, complete helper bundle, timestamped signing, shortcuts/autostart/uninstall and clean-host tests. High installer/trust risk. No elevation for normal use, no shared CLI data deletion, no database change. |
+| 8 | ⚙️ [desktop-distribution] Deliver manual Windows updates and winget discovery [step 10/14] | After 6 and 7. Settings download action, signed N→N+1 manual replacement, channel-specific downloads, winget manifests and Windows ship gate. Medium integration risk; no embedded updater, forced helper shutdown or automatic restart. No database change. |
+| 9 | ⚙️ [desktop-distribution] Publish signed native DEB and RPM repositories [step 11/14] | After 3.b and Linux qualification; delivered after Windows gate. Four native packages, dependency manifests, signed APT/RPM metadata/payload publication, desktop integration and Linux ship gate. Medium/high packaging risk; no custom updater or privileged per-user cleanup. Package-manager upgrades retain shared data; no database change. |
+| 10 | 🌿 [desktop-distribution] Offer shipped desktop downloads during onboarding [step 12/14] | After all platform gates. Shared mobile installation guidance and published links, preserve CLI alternative and truthful platform/CPU choices. Low/medium onboarding regression risk; focused UI/link tests and existing analytics assessment. New installation choice, no database change. |
+| 11 | 🌿 [desktop-distribution] Reconcile distribution regression coverage [step 13/14] | After 10. Complete affected feature documents and installation/release runbooks, remove superseded dev-only guidance where behavior changed. Low risk; no runtime or database change. |
+| 12 | ⚙️ [desktop-distribution] Verify six-target releases and retire distribution plan [step 14/14] | After 11. Run/assemble the complete recorded release matrix through packaged/external boundaries, record exact artifacts and evidence, resolve failures, then move this directory to `.plan/completed/desktop-distribution/` and repoint live links. No runtime/database change except independently reviewed required fixes. Never retire partial/blocked coverage. |
 
 Step 2's platform qualification results may be gathered independently; there is no
 requirement to keep one expensive test machine idle until another OS finishes. PRs

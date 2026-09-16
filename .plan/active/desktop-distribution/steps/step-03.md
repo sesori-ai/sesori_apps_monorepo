@@ -3,7 +3,7 @@
 Status: **3.a done**, merged in [PR #1492](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1492)
 as `575dd34dc322f88289efb68731482efe8885fa4b`. Immediate successor
 [3.b](step-03b.md) surfaces retained repair guidance in the window/tray before
-installers. See the 13-PR mapping and ownership in [PLAN.md](../PLAN.md).
+installers. See the 14-PR mapping and ownership in [PLAN.md](../PLAN.md).
 
 ## Foundations
 

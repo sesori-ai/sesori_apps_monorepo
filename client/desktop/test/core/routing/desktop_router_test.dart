@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -5,6 +7,8 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/platform/desktop_route_dispatcher.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
+import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
+import "package:sesori_desktop/features/auth_gate/auth_gate.dart";
 import "package:sesori_desktop/features/home/desktop_home_pane.dart";
 import "package:sesori_desktop/features/new_session/desktop_new_session_screen.dart";
 import "package:sesori_desktop/features/session_diffs/desktop_session_diffs_screen.dart";
@@ -90,7 +94,49 @@ void main() {
     );
   });
 
-  testWidgets("startup and notification stacks use the canonical projects home", (tester) async {
+  testWidgets("the actual cockpit boundary tracks root popups above retained nested pages", (tester) async {
+    final shell = buildDesktopRoutes().single as ShellRoute;
+    final router = GoRouter(
+      initialLocation: AppRouteDef.projects.path,
+      routes: [
+        ShellRoute(
+          builder: (context, state, child) {
+            // Retain the production visibility boundary, not production DI.
+            final gate = shell.builder!(context, state, child) as AuthGate;
+            final shortcuts = (gate.child as Builder).builder(context) as CallbackShortcuts;
+            final provider = shortcuts.child as DesktopCockpitCubitProvider;
+            return (provider.child as DesktopCockpitShell).child;
+          },
+          routes: [
+            GoRoute(
+              path: AppRouteDef.projects.path,
+              builder: (context, _) => Text("visible:${SessionDetailRouteVisibility.isVisibleOf(context: context)}"),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    final element = tester.element(find.text("visible:true"));
+    unawaited(
+      showDialog<void>(
+        context: element,
+        builder: (_) => const Dialog(child: Text("popup")),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("visible:false"), findsOneWidget);
+    expect(ModalRoute.of(element)?.isCurrent, isTrue);
+    final dispatcher = DesktopRouteDispatcher(router: router, routerReady: Future<void>.value());
+    dispatcher.dismissPopups();
+    await dispatcher.flushPendingForTesting();
+    await tester.pumpAndSettle();
+    expect(find.text("popup"), findsNothing);
+    expect(tester.element(find.text("visible:true")), same(element));
+  });
+
+  testWidgets("notification opens dismiss popups while preserving or replacing the canonical stack", (tester) async {
     final router = _callbackRouter(initialRoute: const AppRoute.splash());
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
@@ -109,6 +155,47 @@ void main() {
     await dispatcher.flushPendingForTesting();
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _detail(readOnly: false).buildPath());
+    final opener = tester.element(find.text("diffs"));
+    unawaited(
+      showDialog<void>(
+        context: opener,
+        builder: (_) => const Dialog(child: Text("popup")),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // Same-session reveal, then a no-popup reveal, retain the page and Back stack.
+    for (var attempt = 0; attempt < 2; attempt++) {
+      dispatcher.dismissPopups();
+      await dispatcher.flushPendingForTesting();
+      await tester.pumpAndSettle();
+      expect(find.text("popup"), findsNothing);
+      expect(tester.element(find.text("diffs")), same(opener));
+      expect(find.text("back"), findsOneWidget);
+    }
+    const other = AppRoute.sessionDetail(
+      projectId: "p",
+      projectName: null,
+      sessionId: "other",
+      sessionTitle: null,
+      readOnly: false,
+    );
+    unawaited(
+      showDialog<void>(
+        context: opener,
+        builder: (_) => const Dialog(child: Text("popup")),
+      ),
+    );
+    await tester.pumpAndSettle();
+    dispatcher.dismissPopups();
+    dispatcher.replaceStack(
+      stack: RouteStack(
+        paths: [const AppRoute.projects(), _sessions, other].map((route) => route.buildPath()).toList(),
+      ),
+    );
+    await dispatcher.flushPendingForTesting();
+    await tester.pumpAndSettle();
+    expect(find.text("popup"), findsNothing);
+    expect(router.state.uri.toString(), other.buildPath());
     await tester.tap(find.text("back"));
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _sessions.buildPath());

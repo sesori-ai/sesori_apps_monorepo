@@ -66,12 +66,19 @@ void main() {
       expect(await File(path.join(output.path, guiEntry)).readAsString(), "gui");
       expect(await File(path.join(output.path, "data/flutter_assets/asset.txt")).readAsString(), "asset");
       expect(await File(path.join(helperRoot, "lib", "native-asset")).readAsString(), "native asset");
+      final String manifestDirectory = os == DesktopBundleOs.macos
+          ? path.join(output.path, "Contents", "Resources")
+          : helperRoot;
       expect(
         DesktopBundleIdentity.decode(
-          encoded: await File(path.join(helperRoot, DesktopBundleIdentity.manifestName)).readAsString(),
+          encoded: await File(path.join(manifestDirectory, DesktopBundleIdentity.manifestName)).readAsString(),
         ),
         identity,
       );
+      if (os == DesktopBundleOs.macos) {
+        // Data in this code-only subtree prevents signing the enclosing app.
+        expect(File(path.join(helperRoot, DesktopBundleIdentity.manifestName)).existsSync(), isFalse);
+      }
       await expectLater(
         stageDesktopBundle(gui: gui, helper: helper, destination: output, identity: identity),
         throwsStateError,

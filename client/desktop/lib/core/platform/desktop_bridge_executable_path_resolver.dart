@@ -118,6 +118,9 @@ class DesktopBridgeExecutablePathResolver.forTesting({
     final String bundlePath = _os == DesktopBundleOs.macos
         ? path.join(path.dirname(executableDirectory), "Helpers", "bridge")
         : path.join(executableDirectory, "bridge");
+    final String manifestPath = _os == DesktopBundleOs.macos
+        ? path.join(path.dirname(executableDirectory), "Resources", DesktopBundleIdentity.manifestName)
+        : path.join(bundlePath, DesktopBundleIdentity.manifestName);
     try {
       final String? compiledIdentityJson = _compiledIdentityJson;
       if (compiledIdentityJson == null) {
@@ -125,7 +128,7 @@ class DesktopBridgeExecutablePathResolver.forTesting({
       }
       final DesktopBundleIdentity expected = DesktopBundleIdentity.decode(encoded: compiledIdentityJson);
       final DesktopBundleIdentity actual = DesktopBundleIdentity.decode(
-        encoded: _readManifest(manifestPath: path.join(bundlePath, DesktopBundleIdentity.manifestName)),
+        encoded: _readManifest(manifestPath: manifestPath),
       );
       if (actual != expected || expected.os != _os || expected.architecture != _architecture) {
         throw StateError(

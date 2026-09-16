@@ -5,7 +5,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/platform/desktop_route_dispatcher.dart";
 
 void main() {
-  test("replaces a typed stack after the router is ready", () async {
+  test("dismisses popups then replaces a typed stack after the router is ready", () async {
     final ready = Completer<void>();
     final operations = <String>[];
     final dispatcher = DesktopRouteDispatcher.test(
@@ -13,9 +13,11 @@ void main() {
       pushRoute: (route) async {
         operations.add("push:$route");
       },
+      dismissPopups: () => operations.add("dismiss"),
       routerReady: ready.future,
     );
 
+    dispatcher.dismissPopups();
     dispatcher.replaceStack(
       stack: RouteStack(paths: const <String>["/projects", "/projects/p1/sessions", "/sessions/s1"]),
     );
@@ -27,7 +29,7 @@ void main() {
 
     expect(
       operations,
-      <String>["go:/projects", "push:/projects/p1/sessions", "push:/sessions/s1"],
+      <String>["dismiss", "go:/projects", "push:/projects/p1/sessions", "push:/sessions/s1"],
     );
   });
 
@@ -40,6 +42,7 @@ void main() {
     final dispatcher = DesktopRouteDispatcher.test(
       goRoute: operations.add,
       pushRoute: recordRoute,
+      dismissPopups: () => operations.add("dismiss"),
       routerReady: Future<void>.value(),
     );
 
@@ -47,5 +50,19 @@ void main() {
     await dispatcher.flushPendingForTesting();
 
     expect(operations, isEmpty);
+  });
+
+  test("a failed popup dismissal does not strand later navigation", () async {
+    final operations = <String>[];
+    final dispatcher = DesktopRouteDispatcher.test(
+      goRoute: operations.add,
+      pushRoute: (_) async {},
+      dismissPopups: () => throw StateError("popup failure"),
+      routerReady: Future<void>.value(),
+    );
+    dispatcher.dismissPopups();
+    dispatcher.replaceStack(stack: RouteStack(paths: const ["/projects"]));
+    await dispatcher.flushPendingForTesting();
+    expect(operations, ["/projects"]);
   });
 }

@@ -88,7 +88,12 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
               onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
               onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
-              child: child,
+              child: Builder(
+                builder: (context) => SessionDetailRouteVisibility(
+                  isVisible: ModalRoute.isCurrentOf(context) ?? false,
+                  child: child,
+                ),
+              ),
             ),
           ),
         ),

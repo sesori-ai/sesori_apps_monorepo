@@ -10,19 +10,20 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 1 | 1 | Align platform distribution and update plan | done |
 | 2 | 2 | Qualify six-target packaging prerequisites | done |
 | 3.a | 3 | Bind desktop builds to bundled bridge identity | done |
-| 3.b | 4 | Surface packaged helper repair guidance | in-progress |
-| 4 | 5 | Package and notarize native macOS builds | pending |
-| 5 | 6 | Apply macOS updates through safe application quit | pending |
-| 6 | 7 | Publish isolated desktop channels and macOS downloads | pending |
-| 7 | 8 | Package signed per-user Windows installers | pending |
-| 8 | 9 | Deliver manual Windows updates and winget discovery | pending |
-| 9 | 10 | Publish signed native DEB and RPM repositories | pending |
-| 10 | 11 | Offer shipped desktop downloads during onboarding | pending |
-| 11 | 12 | Reconcile distribution regression coverage | pending |
-| 12 | 13 | Verify six-target releases and retire distribution plan | pending |
+| 3.b | 4 | Surface packaged helper repair guidance | done |
+| 4.a | 5 | Package and notarize native macOS builds | in-progress |
+| 4.b | 6 | Keep desktop startup independent of native notifications | pending |
+| 5 | 7 | Apply macOS updates through safe application quit | pending |
+| 6 | 8 | Publish isolated desktop channels and macOS downloads | pending |
+| 7 | 9 | Package signed per-user Windows installers | pending |
+| 8 | 10 | Deliver manual Windows updates and winget discovery | pending |
+| 9 | 11 | Publish signed native DEB and RPM repositories | pending |
+| 10 | 12 | Offer shipped desktop downloads during onboarding | pending |
+| 11 | 13 | Reconcile distribution regression coverage | pending |
+| 12 | 14 | Verify six-target releases and retire distribution plan | pending |
 
-Exact PR titles, dependencies and the 13-PR total live in [PLAN.md](PLAN.md).
-Stable step IDs 1, 2, 3.a, 3.b, 4…12 map to PR ordinals 1…13. Platform ship gates
+Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
+Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
 ## Alignment — 2026-09-15
@@ -35,8 +36,8 @@ Start step 2 on the merge notification using `sesori-plan-worker`; thereafter ke
 one series PR open and at most one successor step local. This supersedes the earlier
 plan-only hold. Material scope/security decisions, missing credentials/infrastructure,
 and the recorded public-release prerequisites remain gates; do not silently waive
-or bypass them. No signing, infrastructure provisioning, or product publication has
-yet been performed.
+or bypass them. Private signing qualification is underway; no infrastructure was
+provisioned and no product was published. Private macOS test packages are now notarized.
 
 Subsequent user clarification (2026-09-15): trusted, widely used, simple tooling
 outranks automatic updates. A dedicated manual update button is acceptable.
@@ -53,6 +54,18 @@ unless the user explicitly accepts a changed prerequisite. The merged
 to its step-12 checklist; retain that incoming handoff and its separate ownership of
 UI, autostart defaults and app logs. Distribution remains parallel, not a duplicate
 UX implementation or a claim that its new checklist has passed.
+
+## Unattended execution — user direction, 2026-09-15
+
+Continue the entire implementation series without further questions. Never stop,
+take over or replace the user's running bridge, including indirectly through the
+active local desktop. The user selected fresh native CI for both Mac QA targets.
+Run every safe autonomous check available; record checks requiring human input,
+credentials, unavailable hosts or interactive permissions for the final handoff
+instead of waiting. Deferred/blocked checks are not passes and do not authorize
+public publication or silently waive the parent/release gates. Continue independent
+implementation work when such a gate blocks execution; retain an honest final
+verification handoff before deciding retirement/public release.
 
 ## Execution
 
@@ -79,6 +92,28 @@ its focused implementation, approved architecture review and evidence live in
 The existing service/state/presentation path retains user-facing repair guidance
 before any installers. No public gate is waived by the split.
 
+Step 3.b merged in [PR #1495](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1495)
+as `e853838ac29b5d829f13622702c5d47a74eaa829`, accepting PR head `758bc554`.
+Workflow 34994634843 passed its analyzer/test and three desktop build jobs at
+Actions merge checkout `c40323edd60873d0a7d6f498ab05c4c8fd2b798f`. All review
+threads were resolved; the final Cubic review approved with no findings.
+Step 4.a runs in the same worktree on `desktop-distribution-macos-packaging`.
+Existing trusted CI credentials now produce private Developer-ID-signed, notarized
+and stapled packages on both native Macs. The reviewed manifest correction keeps
+JSON in Resources and the complete helper in Helpers. Latest run 35019880379 at
+`d5a03026dbfe7a95af0a262225c9f3ff640c74d1` qualifies 1.8.4/build 17: empty source
+patches, matching downloaded hashes, seven-binary ZIP/DMG inventories, Gatekeeper,
+helper E2E and signed synthetic Keychain/registration/file probes all pass.
+Source/run/artifact attribution and approved manifest reviews are in
+[steps/step-04.md](steps/step-04.md). No public package or local key export occurred.
+
+Native visual review exposed a separate startup wait: both app windows are black,
+and fixed-text breadcrumbs stop at desktop-attention startup before rendering.
+The native notification wait is split into [step 4.b](steps/step-04b.md) so lifecycle
+changes do not grow the package-signing review. The series now has 14 PRs; published
+history is preserved. No visual pass is claimed, and the active local desktop/bridge
+remain untouched. Real account, interactive TCC, OS-login and ship gates stay open.
+
 ## Qualification and ship gates
 
 | Gate | State | Evidence still required |
@@ -86,7 +121,7 @@ before any installers. No public gate is waived by the split.
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
 | macOS update path | API/typecheck passed; runtime ordering pending | Sparkle 2.10.0 has both native slices; supported quit-install API compiles. Prove AppKit termination after helper stop before adopting automatic behavior. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
-| Signing and static hosting | Not provisioned/verified | Developer ID/notarization and update keys, Windows signer, Linux keys, GCS endpoint and least-privilege publication access. |
+| Signing and static hosting | Private macOS signed/notarized payloads and synthetic platform probes verified on both CPUs | Rendered GUI/account restoration, interactive TCC/OS-login, updater/Windows/Linux keys, GCS access and owner-approved protected-environment migration of shared repository signing secrets before public publication. |
 | macOS public gate | Pending | Both CPUs, parent prerequisite, actual signed N→N+1 upgrade, quit semantics, downloads/feed, complete platform coverage from PLAN.md. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
 | Linux public gate | Pending | Both CPUs in DEB/RPM, nominated native distro rows, signed repository install/update/remove and desktop-environment coverage. |
@@ -128,8 +163,8 @@ orchestrator solely for hypothetical future exit callers is not part of this pla
 ## Planning validation
 
 - Local Markdown links in all six changed/new documents: passed.
-- All 13 tracker ordinals match PLAN.md: passed. Published titles #1483/#1487/#1492
-  were synchronized to total 13; commit history was not rewritten.
+- All 14 tracker ordinals match PLAN.md: passed after the 4.a/4.b split. Published
+  titles #1483/#1487/#1492/#1495/#1499 use total 14; commit history was not rewritten.
 - Initial `git diff --check`: passed; final whitespace and diff size are checked again
   after review corrections, before committing/pushing.
 - Initial measured diff: 555 additions + 17 deletions = 572 authored Markdown lines;
