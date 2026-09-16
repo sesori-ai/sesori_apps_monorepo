@@ -493,7 +493,8 @@ arise.
   shared by both continuation kinds. No new registry, timer, or queue.
 - Claude plugin, per operation and disposed in `finally`: one process handle,
   one composite subscription for its two pipes, completers for the
-  authorization URL and the drained exit code, one memoized disposal future, a
+  authorization URL, the exit code, and pipe closure, one memoized disposal
+  future, a
   bounded stderr tail, and two budgets that are timeouts on their waits
   (URL, overall). The
   one-shot rule stays with the runtime gate; the repository holds no second

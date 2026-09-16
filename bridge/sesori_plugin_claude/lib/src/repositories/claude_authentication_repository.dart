@@ -29,6 +29,7 @@ final class ClaudeAuthenticationRepository({
   final ClaudeLoginOutputParser _parser = const ClaudeLoginOutputParser();
   final Completer<Uri> _authorizationUri = Completer<Uri>();
   final Completer<int> _exitCode = Completer<int>();
+  final Completer<void> _pipesClosed = Completer<void>();
   final CompositeSubscription _pipes = CompositeSubscription();
   final List<String> _stderrTail = [];
   Future<ClaudeProcessHandle>? _spawn;
@@ -52,6 +53,7 @@ final class ClaudeAuthenticationRepository({
     final process = await spawn;
     // Broken pipes surface on `stdin.done`; the exit code reports the failure.
     unawaited(process.stdin.done.catchError((Object _) {}));
+    unawaited(process.exitCode.then(_exitCode.complete));
     // Both pipes are drained until they close so the CLI never blocks on a full pipe.
     final stdoutClosed = Completer<void>();
     final stderrClosed = Completer<void>();
@@ -86,13 +88,9 @@ final class ClaudeAuthenticationRepository({
         onDone: stderrClosed.complete,
       ),
     );
-    // The exit can be reported before the last output arrives, so it counts
-    // only once both pipes close and the stderr tail is complete.
+    unawaited(Future.wait([stdoutClosed.future, stderrClosed.future]).then((_) => _pipesClosed.complete()));
     unawaited(
-      Future.wait([stdoutClosed.future, stderrClosed.future]).then((_) => process.exitCode).then(_exitCode.complete),
-    );
-    unawaited(
-      _exitCode.future.then((exitCode) {
+      waitForExit().then((exitCode) {
         if (_authorizationUri.isCompleted) return;
         _authorizationUri.completeError(
           ClaudeAuthenticationException(
@@ -113,8 +111,13 @@ final class ClaudeAuthenticationRepository({
   }
 
   /// Completes with the exit code once the CLI has exited and closed both
-  /// pipes. Call only after [start] returned a URL.
-  Future<int> waitForExit() => _exitCode.future;
+  /// pipes. The exit can be reported before the last output arrives, so this
+  /// waits for the stderr tail to be complete.
+  Future<int> waitForExit() async {
+    final exitCode = await _exitCode.future;
+    await _pipesClosed.future;
+    return exitCode;
+  }
 
   /// Stops a running CLI, forcing it after a grace period, waits for it to
   /// exit, and stops reading its pipes.

@@ -144,6 +144,25 @@ void main() {
       expect(processes.gracefulSignals, [process.pid]);
     });
 
+    test("does not signal a CLI that exited while a descendant holds its pipes", () async {
+      final processes = _LoginProcesses();
+      final events = <PluginAuthenticationPastedCodeEvent>[];
+      final done = _operation(
+        processes: processes,
+        overallBudget: const Duration(milliseconds: 200),
+      ).events.forEach(events.add);
+      final process = await processes.spawnedProcess();
+      process.emitStdout(bytes: utf8.encode("visit: $_url\n"));
+      await _until(condition: () => events.isNotEmpty);
+
+      process.reportExit(code: 0);
+      await done;
+
+      expect(events.last, isA<PluginAuthenticationFailed>());
+      expect(processes.gracefulSignals, isEmpty);
+      expect(process.hasListeners, isFalse);
+    });
+
     test("fails on a non-zero exit after the code and logs the redacted stderr written as it exits", () async {
       final logs = await _logsOf(
         body: () async {
