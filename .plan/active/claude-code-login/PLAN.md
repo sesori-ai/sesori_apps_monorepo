@@ -71,7 +71,8 @@ a local login would. Sesori never sees, stores, refreshes, or exchanges tokens.
   the capability matrix.
 - One pasted code per operation. A rejected or wrong code ends the operation
   with a sanitized failure; the user starts a new login. No retry loop.
-- One overall ten-minute budget bounds the operation from spawn to exit.
+- Two bounded waits: 90 seconds for the authorization URL to appear, and ten
+  minutes overall from spawn to exit.
 - Dismissing the sheet does not cancel login. Cancellation is explicit.
 - One active operation per plugin; repeated start requests join it (existing
   bridge behavior).
@@ -94,9 +95,14 @@ a local login would. Sesori never sees, stores, refreshes, or exchanges tokens.
 
 ## Research And Current Behavior
 
-### Claude CLI login behavior (verified 2026-09-16, Claude Code 2.1.273)
+### Claude CLI login behavior (verified 2026-09-16 on Claude Code 2.1.221, 2.1.269, 2.1.272, and 2.1.273)
 
-Verified against the native binary and Anthropic's authentication docs:
+Verified against the native binaries and Anthropic's authentication docs.
+Every version from the plugin minimum `2.1.221` (the release download,
+checksum-verified against its manifest) through `2.1.273` was probed with an
+isolated `CLAUDE_CONFIG_DIR`, `BROWSER=true`, and a piped malformed line; all
+four print the same manual URL, report the same invalid-code line, keep
+listening, and open no browser:
 
 - `claude auth login --claudeai` runs without a TTY. With piped stdio it writes
   to stdout, in order: `Opening browser to sign in…`, then
@@ -130,8 +136,10 @@ Verified against the native binary and Anthropic's authentication docs:
   write, and the JSON file on Linux and Windows. Sesori sessions already read
   the same store through the same environment.
 - `claude auth status` reports `loggedIn` as JSON; the plugin already uses it.
-- The `auth` subcommands exist since roughly Claude Code 2.1.40; the plugin's
-  minimum is `2.1.221`, so no version gate changes.
+- The `auth` subcommands exist since roughly Claude Code 2.1.40. The plugin's
+  existing minimum `2.1.221` is the oldest verified version, so the existing
+  runtime version gate already covers the verified range and no login-specific
+  floor is added.
 - Unverified without a real account: whether a well-formed but wrong code makes
   the CLI exit non-zero or keep listening. The overall budget covers both.
 
@@ -288,8 +296,11 @@ ClaudeAuthenticationRepository (repositories)
 
 ClaudeAuthenticationService (services)
   authenticate() -> PluginAuthenticationOperation.pastedCode
-  event stream: the ten-minute budget starts at spawn; the URL wait and the
-  wait after the challenge are both raced against exit, abort, and budget ->
+  event stream: two bounded waits. URL acquisition is raced against exit,
+  abort, and a 90-second URL budget (well inside the app's start timeout of
+  two and a half minutes); the wait after the challenge is raced against
+  exit, abort, and the ten-minute overall budget measured from spawn. Both
+  budgets are delayed futures inside the race, not timer objects ->
   Completed on exit 0, otherwise Failed; abort disposes and throws
   PluginStartAbortedException (mapped to cancelled by the bridge); finally
   always disposes, so no wait can outlive the operation
@@ -338,6 +349,13 @@ Extend the existing layers without new owners:
 - `PluginManagementService.submitAuthenticationCode` is fenced by connection
   epoch and bridge identity like the redirect submission. Pasted-code
   challenges are retained like device codes and never auto-driven.
+- `PluginManagementService.startAuthentication` keeps tracking the plugin
+  after an uncertain start so terminal progress still settles it, but its
+  local guard rejects a new start only while a start request is in flight or
+  a challenge is already retained. A retry after an uncertain start therefore
+  reaches the bridge's existing join behavior and re-publishes the same
+  challenge. Today the guard blocks every retry until terminal progress,
+  which also affects Codex and Antigravity.
 - `PluginManagementCubit` gains `submitAuthenticationCode(code)` and handles
   `launchAuthenticationBrowser` for pasted-code challenges through the existing
   `UrlLauncher`. Presentation adds
@@ -394,12 +412,12 @@ advertises a login it cannot route.
 | Failure | User outcome | Local observability |
 |---|---|---|
 | CLI exits before printing a URL (policy block, broken binary) | Sanitized failure; login remains required. | Exit code and scrubbed stderr tail stay in bridge logs. |
-| No HTTPS URL in stdout | No challenge; the operation ends on process exit or the budget. | Exit code or budget expiry. |
+| No HTTPS URL in stdout | No challenge; the start fails on process exit or after the 90-second URL budget, the CLI is killed, and the app's start request returns failure before its own timeout. | Exit code or URL budget expiry with scrubbed stderr. |
 | HTTPS token oversized or unparsable | Immediate typed failure; nothing is presented. | Typed parser outcome with line length, never the line. |
 | Pasted text fails the neutral rule (empty, inner whitespace, oversized) | The app keeps the field editable with a hint; the bridge handler answers 400 only to clients that bypass the app. | Request rejection only. |
 | Code passes the neutral rule but the plugin rejects its shape | The plugin kills its CLI; the operation ends with the generic failure text; the user starts a new login. | Local log names the shape rejection without the code. |
 | Well-formed but wrong code | CLI exchange fails: generic failure on exit, or the ten-minute budget ends it. User starts a new login. | Exit code, budget expiry, scrubbed stderr. |
-| App loses the start response | Existing uncertain-start handling; the next tap joins the active operation and shows the same URL and code field. | Existing relay diagnostics. |
+| App loses the start response | The app shows the uncertain state; a retry is allowed once the start request is no longer in flight and rejoins the active bridge operation, which returns the same challenge. Terminal progress still settles the tracked plugin. | Existing relay diagnostics. |
 | App loses the code response | Retry reports `alreadySubmitted`, shown as waiting. | Existing conflict logging. |
 | App backgrounds or is killed while in the browser | Bridge operation continues for its budget; reopening joins it and accepts the code. | Existing management refresh. |
 | User cancels | CLI is killed; cancelled progress; setup re-inspected. | Cancel request and settlement stay local. |
@@ -452,8 +470,8 @@ arise.
 - Bridge core: the existing per-operation continuation flag, renamed and
   shared by both continuation kinds. No new registry, timer, or queue.
 - Claude plugin, per operation and disposed in `finally`: one process handle,
-  one completer for the authorization URL, one budget timer, one disposed
-  flag. The one-shot rule stays with the runtime gate; the repository holds no
+  one completer for the authorization URL, one disposed flag, and two
+  delayed-future budgets that live only inside the race (URL, overall). The one-shot rule stays with the runtime gate; the repository holds no
   second flag. A rejected code shape reuses the exit race by disposing the
   process; no rejection completer or state.
   `ClaudeLoginEnvironment` is a constant; `ClaudePastedCode` is pure.
@@ -482,10 +500,11 @@ arise.
 
 | Decision | Evidence level | If omitted | Chosen response |
 |---|---|---|---|
-| Drive the official CLI | Verified CLI behavior without a TTY on 2.1.273 | Sesori would own tokens, Keychain writes, and third-party use of Claude Code's client id | Pipe the CLI; treat exit code as authoritative and setup reinspection as truth |
+| Drive the official CLI | Verified CLI behavior without a TTY on every version from the plugin minimum 2.1.221 to 2.1.273 | Sesori would own tokens, Keychain writes, and third-party use of Claude Code's client id | Pipe the CLI; treat exit code as authoritative and setup reinspection as truth |
 | Paste-code flow everywhere | Anthropic documents it as the remote path; the phone can never reach the host's localhost callback | Mobile login impossible; desktop would need loopback machinery | One flow, one sheet variant |
 | Suppress host browser | Verified: the CLI spawns `BROWSER` as one executable and special-cases the value `true`; Antigravity precedent | Confusing or unattended sign-in tab on the bridge host | `BROWSER=true` everywhere; Windows unverified and documented; no bridge-owned helper because the CLI spawns a single executable without a shell |
-| Single ten-minute budget | Ordinary flow: phones background, users paste wrong codes, CLI never exits on its own | A CLI could wait forever after a failed exchange | One timer; no per-step timeouts |
+| URL budget of 90 seconds plus ten minutes overall | The app's start request times out at two and a half minutes; the CLI prints the URL within seconds; users need minutes to approve and paste; the CLI never exits on its own | A single budget would keep a URL-less CLI alive for ten minutes after the app already reported failure | Two bounded waits; no per-submission timer |
+| No cancel before the challenge | Pre-existing shared sheet behavior for every plugin; the URL budget bounds the non-cancellable window to 90 seconds in the abnormal no-URL case | Cancelling an in-flight start needs a cancel/start race in the service | Accept; documented |
 | Terminal failure on rejected code | Restarting costs a few taps; the CLI's own shape check is mirrored; the provider page's copy action yields the full code | A typed rejection would need a new interface result, a wire conflict reason, and client state | Plugin disposes its CLI and the existing exit race reports failure; no retry loop |
 | Generic remote failure text | Existing lifecycle behavior for Codex and Antigravity; plugin detail stays in local logs | Distinguishing timeout from rejection remotely needs a lifecycle change for every plugin | Accept; no lifecycle change |
 | Ordinary relay post for the start request | Typed 409 conflicts are decoded from the body; a malformed successful body needs a bridge defect and leaks no credential | The blanket sensitive mode breaks conflict handling; a selective mode adds shared infrastructure for a theoretical case | Accept the local parsing-error residue; no new client mode |
@@ -584,7 +603,9 @@ it, a new sheet variant, and localization.
 - Tests: shared wire JSON contract including the `unknown` fallback for the
   new type; API contract including that start conflicts still decode their
   409 bodies; service orchestration (fencing, neutral input rule returns
-  `invalidInput` without a request, continuation results); cubit transitions
+  `invalidInput` without a request, continuation results, a retry after an
+  uncertain start rejoins the active operation and re-publishes the same
+  challenge); cubit transitions
   (launch, invalid input keeps the field editable, submit, conflicts,
   terminal); phone and desktop settings widget tests (open
   on explicit tap only, submit enabled by valid text, waiting state, cancel,
@@ -643,16 +664,18 @@ cancellation.
   `SpawnedProcess` pattern: OSC 8 and fragmented URL lines; exit before URL;
   parser outcomes none, found, and invalid (oversized or unparsable https
   token fails immediately); session launch arguments unchanged through the
-  generalized factory; exit 0 after code; non-zero exit; budget expiry; abort
-  during wait and during submit; code shape rejection kills the process,
+  generalized factory; exit 0 after code; non-zero exit; URL budget expiry
+  before a challenge and overall budget expiry after it; abort during wait
+  and during submit; code shape rejection kills the process,
   returns normally, and the stream emits `Failed`;
   `BROWSER=true` present in the spawned environment; `HOME` untouched; stdin
   receives exactly `code\n`; log capture proves no URL or code is logged.
 - Manual check on the developer machine with an isolated `CLAUDE_CONFIG_DIR`
   through the bridge routes.
 - `docs/HARNESS_CAPABILITIES.md` Claude login row and the new
-  `docs/regression/claude-code-authentication.md`, so the capability is
-  documented in the same PR that exposes it.
+  `docs/regression/claude-code-authentication.md` (including the isolated CLI
+  probe and the versions it verified, to re-run on plugin version bumps), so
+  the capability is documented in the same PR that exposes it.
 
 ### Verification
 
@@ -694,8 +717,10 @@ recorded in `TRACKER.md`; then move the directory to
 
 - CLI output may change across versions. The parser keys on the first
   absolute HTTPS URL in stdout, not on prose, and the exit code is
-  authoritative; a missing URL fails within the budget. The verified version
-  is recorded so upgrades re-run the L2 fake and one L3 login.
+  authoritative; a missing URL fails within the URL budget. The verified
+  versions are recorded above and the probe lives in the regression document,
+  so a plugin version bump re-runs the probe on the new minimum and target
+  versions plus one L3 login.
 - The wrong-code exit behavior is unverified; the budget bounds it and the L4
   wrong-code check settles it.
 - Keychain writes from a supervised or launchd-started bridge on macOS rely on
@@ -704,7 +729,9 @@ recorded in `TRACKER.md`; then move the directory to
 - Organization policies (`forceLoginMethod`, org restrictions) can reject the
   login; the CLI exits non-zero and the failure stays sanitized.
 - The `BROWSER=true` convention and the single-executable spawn were read
-  from the 2.1.273 binary. A future CLI that fell back to the system browser
+  from the 2.1.273 binary, and the probe confirmed that `BROWSER=true` opens
+  nothing on 2.1.221, 2.1.269, and 2.1.272 as well. A future CLI that fell
+  back to the system browser
   on a missing opener would only affect systems without `true` on `PATH`;
   the L3 login re-verifies that no host browser opens after CLI upgrades.
 
@@ -787,3 +814,24 @@ findings, all applied:
   keep the wait going.
 - The repository's second one-shot flag was removed; the runtime gate is the
   single owner of the one-submission rule.
+
+2026-09-16, PR #1508 fourth automated review wave (Codex): three findings,
+all applied:
+
+- Version coverage: the flow had been verified only on 2.1.273 while the
+  plugin accepts 2.1.221. The release binaries for 2.1.221 (checksum-verified
+  against its manifest), 2.1.269, and 2.1.272 were probed the same way and
+  behave identically, so the existing minimum-version gate covers the verified
+  range; no login-specific floor is added, and the probe is recorded in the
+  regression document for future version bumps.
+- The failure table promised a rejoin after an uncertain start that the
+  client does not offer: the service keeps the plugin tracked and rejects
+  every retry until terminal progress. Step 2 narrows that guard to in-flight
+  starts and retained challenges so a retry rejoins the active bridge
+  operation, with a test.
+- Cancel is unavailable before the challenge arrives, and the app's start
+  request times out at two and a half minutes, well inside the ten-minute
+  budget. The plugin now bounds URL acquisition at 90 seconds so a URL-less
+  CLI fails before the app's timeout; the pre-existing no-cancel window is
+  accepted and recorded in the proportionality table instead of adding a
+  cancel/start race to the service.

@@ -15,7 +15,7 @@
 - [x] Paste-code flow on every platform; external browser opens only on explicit tap; no loopback or same-host auto-completion.
 - [x] Host browser suppressed with `BROWSER=true` on every platform (the value the CLI treats as no browser; no filesystem probe, no platform branch); Windows unverified and documented.
 - [x] One pasted code per operation; rejected code ends the operation; no retry loop.
-- [x] One ten-minute budget from spawn to exit.
+- [x] Two bounded waits: 90 seconds for the authorization URL, ten minutes overall from spawn to exit.
 - [x] Sheet dismissal keeps the operation; cancel is explicit; one active operation per plugin.
 - [x] Ephemeral operation state; no persistence; no new analytics event.
 - [x] Managed Claude runtime installation is out of scope.
@@ -27,14 +27,14 @@
 - [x] Bridge: `submitAuthenticationCode` through runtime, lifecycle repository, and service; shared one-shot continuation gate; `POST /plugin/:id/authentication/code` with neutral validation.
 - [x] Claude plugin layers: `ClaudePastedCode`, `ClaudeLoginEnvironment`, `ClaudeLoginOutputParser`, the existing `HostClaudeProcessFactory` generalized around a neutral `ClaudeProcessLaunch` (no second wrapper), `ClaudeAuthenticationRepository`, `ClaudeAuthenticationService`, descriptor composition and capability. The runtime gate is the only owner of the one-submission rule.
 - [x] A plugin-rejected code shape ends the operation through the plugin's event stream; no rejection type crosses the plugin boundary; the generic remote failure text is unchanged.
-- [x] Client: extend `PluginApi`, `PluginRepository`, `PluginManagementService`, `PluginManagementCubit`; shared sheet gains a harness-neutral pasted-code branch.
+- [x] Client: extend `PluginApi`, `PluginRepository`, `PluginManagementService`, `PluginManagementCubit`; shared sheet gains a harness-neutral pasted-code branch; the start guard rejects retries only while a start is in flight or a challenge is retained, so an uncertain start can be rejoined.
 - [x] Wire contract and apps (Step 2) merge before the bridge core (Step 3); bridge core merges before the Claude plugin (Step 4).
 
 ## Steps
 
 | Step | Title | Status | PR | Evidence |
 |---|---|---|---|---|
-| 1/6 | 🌱 Publish the plan | In review | #1508 | Architecture plan review 2026-09-16: rejected with 4 must-fix and 2 optional findings; all applied, not re-reviewed per repository rules. PR automated review: three waves, 15 findings applied (one superseded by the second wave) |
+| 1/6 | 🌱 Publish the plan | In review | #1508 | Architecture plan review 2026-09-16: rejected with 4 must-fix and 2 optional findings; all applied, not re-reviewed per repository rules. PR automated review: four waves, 18 findings applied (one superseded by the second wave); CLI login flow verified on 2.1.221, 2.1.269, 2.1.272, and 2.1.273 |
 | 2/6 | 🚧 Add pasted-code login to the wire contract and apps | Not started | — | — |
 | 3/6 | 🚧 Route pasted-code login through the bridge | Not started | — | — |
 | 4/6 | 🚧 Drive Claude CLI login from the bridge | Not started | — | — |
