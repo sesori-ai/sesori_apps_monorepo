@@ -23,7 +23,7 @@ Shared settings, overlay navigation and modal evidence use `step-07a.md`,
 | [x] | 7.a | `desktop-ux/settings-composition` | `🌿 [desktop-ux] Prepare shared settings composition [step 8/15]` | ≤ 500 | done |
 | [x] | 7.b | `desktop-ux/overlay-navigation` | `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/15]` | ≤ 700 | done |
 | [x] | 7.c | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 10/15]` | ≤ 1,750 | done |
-| [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/15]` | ≤ 1,000 | in-progress |
+| [x] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/15]` | ≤ 1,000 | done |
 | [ ] | 9 | `desktop-ux/app-log-files` | `🌿 [desktop-ux] Write app logs to rotating files [step 12/15]` | ≤ 700 | pending |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 13/15]` | ≤ 600 | pending |
 | [ ] | 11 | `desktop-ux/regression-docs` | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 14/15]` | ≤ 600 | pending |
@@ -114,3 +114,6 @@ or waive shipping qualification.
 - Step 7.c: 61 revision-scoped desktop cases, clean analysis and three fresh inspected fixtures.
   Earlier mobile/shared-UI evidence is retained, not rerun; see [step 7.c evidence](steps/step-07c.md).
   The 250% shared-header overflow remains for step 11; native qualification is not waived.
+- Step 8: 81 distinct revision-scoped cases, three owning analyzers, four inspected
+  synthetic renders and scoped architecture review pass. No native permission,
+  login registration or production bridge work ran; see [step 8 evidence](steps/step-08.md).
