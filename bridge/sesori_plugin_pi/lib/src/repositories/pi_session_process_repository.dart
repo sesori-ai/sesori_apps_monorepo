@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart"
     show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
 
+import "../api/models/pi_event.dart";
 import "../api/models/pi_rpc_frame.dart";
 import "../api/models/pi_rpc_state_dto.dart";
 import "../api/models/pi_session_history_dto.dart";
@@ -14,6 +15,7 @@ import "../api/pi_process_factory.dart";
 import "../api/pi_rpc_client.dart";
 import "../api/pi_session_storage_api.dart";
 import "../models/pi_rpc_command.dart";
+import "../models/pi_thinking_level.dart";
 import "../trackers/pi_message_identity_tracker.dart";
 import "mappers/pi_history_mapper.dart";
 import "mappers/pi_persisted_user_text_codec.dart";
@@ -78,7 +80,7 @@ enum _PiPromptStreamingBehavior(final String wireValue) {
 
 final class const PiSessionSelection({
   required final ({String providerID, String modelID}) model,
-  required final String variant,
+  required final PiThinkingLevel variant,
 });
 
 final class const PiAgentState({
@@ -320,9 +322,12 @@ final class PiSessionProcessRepository({
       );
       _residents[sessionId] = resident;
       resident.frameSubscription = client.frames.listen((frame) {
-        if (identical(_residents[sessionId], resident) && !_frames.isClosed) {
-          _frames.add(PiSessionProcessFrame(sessionId: sessionId, generation: generation, frame: frame));
+        if (!identical(_residents[sessionId], resident) || _frames.isClosed) return;
+        if (frame case PiEventFrame(event: PiThinkingLevelChangedEvent(level: final level?))) {
+          final selection = resident.selection;
+          if (selection != null) resident.selection = PiSessionSelection(model: selection.model, variant: level);
         }
+        _frames.add(PiSessionProcessFrame(sessionId: sessionId, generation: generation, frame: frame));
       });
       unawaited(
         client.processExit.then((exitCode) {
@@ -369,7 +374,7 @@ final class PiSessionProcessRepository({
     }
   }
 
-  Future<PiSessionSelection> applySelection({
+  Future<PiSessionSelection?> applySelection({
     required PiSessionConnection connection,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
@@ -387,20 +392,17 @@ final class PiSessionProcessRepository({
       effectiveVariant = null;
     }
     final variantId = variant?.id;
-    if (variantId != null && effectiveVariant != variantId) {
+    if (variantId != null && effectiveVariant?.wireValue != variantId) {
       await resident.client.send(
         command: PiRpcCommand.setThinkingLevel,
         arguments: {"level": variantId},
         timeout: _historyRpcTimeout,
       );
-      effectiveVariant = variantId;
+      effectiveVariant = PiThinkingLevel.tryParse(value: variantId);
     }
     final selection = effectiveModel == null || effectiveVariant == null
         ? (await _readState(resident)).selection
         : PiSessionSelection(model: effectiveModel, variant: effectiveVariant);
-    if (selection == null) {
-      throw const FormatException("Pi get_state response omitted the active model or thinking level");
-    }
     resident.selection = selection;
     return selection;
   }
@@ -435,7 +437,7 @@ final class PiSessionProcessRepository({
   Future<PiAgentState> getState({required PiSessionConnection connection}) async {
     final resident = _requiredResident(connection);
     final state = await _readState(resident);
-    if (state.selection case final selection?) resident.selection = selection;
+    resident.selection = state.selection;
     return state;
   }
 
@@ -447,7 +449,11 @@ final class PiSessionProcessRepository({
     );
     final dto = PiRpcStateDto.fromJson(response.data.cast<String, dynamic>());
     final model = dto.model;
-    final thinkingLevel = dto.thinkingLevel;
+    final rawThinkingLevel = dto.thinkingLevel;
+    final thinkingLevel = PiThinkingLevel.tryParse(value: rawThinkingLevel);
+    if (rawThinkingLevel != null && thinkingLevel == null) {
+      Log.w("[pi] get_state returned an unknown thinking level");
+    }
     return PiAgentState(
       streaming: dto.isStreaming,
       pendingMessageCount: dto.pendingMessageCount < 0 ? 0 : dto.pendingMessageCount,

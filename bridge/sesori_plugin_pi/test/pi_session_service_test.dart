@@ -754,13 +754,13 @@ void main() {
     process.emitResponse(
       id: settledState["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
     process.emitResponse(
       id: confirmedState["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     await _waitForIdle(service: service, sessionId: "session");
     expect(events.whereType<BridgeSsePromptSettled>(), isEmpty);
@@ -946,7 +946,7 @@ void main() {
     process.emitResponse(
       id: stateCommand["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": true, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: true),
     );
     await pump();
 
@@ -1128,6 +1128,127 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
+  for (final runtimeState in [
+    (name: "a missing model", model: null, thinkingLevel: "high"),
+    (
+      name: "an unknown thinking level",
+      model: const <String, Object?>{"provider": "provider", "id": "model"},
+      thinkingLevel: "future-level",
+    ),
+  ]) {
+    test("an inherited prompt tolerates ${runtimeState.name} and keeps explicit selection at the boundary", () async {
+      final process = FakePiProcess();
+      final fixture = _Fixture(processes: [process]);
+      addTearDown(fixture.dispose);
+      final service = fixture.service();
+      const model = (providerID: "provider", modelID: "model");
+      const variant = PluginSessionVariant(id: "high");
+
+      await service.sendPrompt(
+        sessionId: "session",
+        promptId: "unknown-first",
+        directory: "/project",
+        parts: [const PluginPromptPart.text(text: "first")],
+        userVisibleText: "first",
+        variant: null,
+        model: null,
+      );
+
+      await _answerEntries(process, answerInitialSelection: false);
+      final initialState = await waitForCommand(process: process, type: "get_state");
+      process.emitResponse(
+        id: initialState["id"]! as String,
+        command: "get_state",
+        data: {
+          "model": runtimeState.model,
+          "thinkingLevel": runtimeState.thinkingLevel,
+          "isStreaming": false,
+          "pendingMessageCount": 0,
+        },
+      );
+      final firstPrompt = await waitForCommand(process: process, type: "prompt");
+      process.emit(frame: {"type": "agent_start"});
+      process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+
+      await service.sendPrompt(
+        sessionId: "session",
+        promptId: "known-second",
+        directory: "/project",
+        parts: [const PluginPromptPart.text(text: "second")],
+        userVisibleText: "second",
+        variant: variant,
+        model: model,
+      );
+      await pump();
+
+      expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+      expect(process.written.where((frame) => frame["type"] == "set_model"), isEmpty);
+      process.emit(frame: {"type": "agent_settled"});
+
+      final setModel = await waitForCommand(process: process, type: "set_model");
+      process.emitResponse(id: setModel["id"]! as String, command: "set_model");
+      final setThinking = await waitForCommand(process: process, type: "set_thinking_level");
+      process.emitResponse(id: setThinking["id"]! as String, command: "set_thinking_level");
+      final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+      process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+      process.emit(frame: {"type": "agent_settled"});
+      await _waitForIdle(service: service, sessionId: "session");
+    });
+  }
+
+  test("runtime thinking changes update the active selection boundary", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "high");
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "runtime-change-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: variant,
+      model: model,
+    );
+
+    await _answerEntries(process);
+    final initialModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+    final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
+    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "thinking_level_changed", "level": "low"});
+    await pump();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "runtime-change-second",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "second")],
+      userVisibleText: "second",
+      variant: variant,
+      model: model,
+    );
+    await pump();
+
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+    expect(process.written.where((frame) => frame["type"] == "set_thinking_level"), hasLength(1));
+    process.emit(frame: {"type": "agent_settled"});
+
+    final restoredThinking = await _waitForNthCommand(process: process, type: "set_thinking_level", count: 2);
+    expect(restoredThinking["level"], "high");
+    process.emitResponse(id: restoredThinking["id"]! as String, command: "set_thinking_level");
+    final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
   test("queued work resets a terminal retry status before dispatch", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -1274,7 +1395,7 @@ void main() {
     process.emitResponse(
       id: state["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     await accepted;
     await _waitForIdle(service: service, sessionId: "session");
@@ -1461,13 +1582,13 @@ void main() {
     process.emitResponse(
       id: state["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
     process.emitResponse(
       id: confirmedState["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     await idle;
     await _waitForIdle(service: service, sessionId: "session");
@@ -1513,13 +1634,13 @@ void main() {
     process.emitResponse(
       id: state["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
     process.emitResponse(
       id: confirmedState["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     await _waitForEvent<BridgeSsePromptSettled>(events: events);
     await _waitForIdle(service: service, sessionId: "session");
@@ -1567,14 +1688,14 @@ void main() {
     process.emitResponse(
       id: firstState["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
     process.emit(frame: {"type": "agent_start"});
     process.emitResponse(
       id: confirmedState["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     await pump();
 
@@ -2628,26 +2749,34 @@ Future<void> _answerInitialSelectionState(FakePiProcess process) async {
     if (process.written.any((frame) => frame["type"] == "prompt")) return;
     final state = process.written.where((frame) => frame["type"] == "get_state").firstOrNull;
     if (state != null) {
-      final selectedModel = process.written.where((frame) => frame["type"] == "set_model").lastOrNull;
-      final selectedVariant = process.written.where((frame) => frame["type"] == "set_thinking_level").lastOrNull;
       process.emitResponse(
         id: state["id"]! as String,
         command: "get_state",
-        data: {
-          "model": {
-            "provider": selectedModel?["provider"] ?? "provider",
-            "id": selectedModel?["modelId"] ?? "model",
-          },
-          "thinkingLevel": selectedVariant?["level"] ?? "high",
-          "isStreaming": false,
-          "pendingMessageCount": 0,
-        },
+        data: _stateData(process: process, streaming: false),
       );
       process.written.remove(state);
       return;
     }
     await pump();
   }
+}
+
+Map<String, Object?> _stateData({
+  required FakePiProcess process,
+  required bool streaming,
+  int pendingMessageCount = 0,
+}) {
+  final selectedModel = process.written.where((frame) => frame["type"] == "set_model").lastOrNull;
+  final selectedVariant = process.written.where((frame) => frame["type"] == "set_thinking_level").lastOrNull;
+  return {
+    "model": {
+      "provider": selectedModel?["provider"] ?? "provider",
+      "id": selectedModel?["modelId"] ?? "model",
+    },
+    "thinkingLevel": selectedVariant?["level"] ?? "high",
+    "isStreaming": streaming,
+    "pendingMessageCount": pendingMessageCount,
+  };
 }
 
 Future<void> _answerNthEntries(FakePiProcess process, {required int count}) async {

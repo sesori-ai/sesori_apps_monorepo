@@ -505,7 +505,7 @@ final class PiSessionService({
     final nextModel = next.model;
     if (nextModel != null && nextModel != effectiveSelection.model) return true;
     final nextVariant = next.variant?.id;
-    return nextVariant != null && nextVariant != effectiveSelection.variant;
+    return nextVariant != null && nextVariant != effectiveSelection.variant.wireValue;
   }
 
   Future<void> _runTurn({
@@ -700,6 +700,12 @@ final class PiSessionService({
     switch (processFrame.frame) {
       case PiEventFrame(:final event):
         final wasAgentRunning = state.agentRunning;
+        if (event case PiThinkingLevelChangedEvent(level: final level?)) {
+          for (final turn in generationTurns) {
+            final selection = turn.effectiveSelection;
+            if (selection != null) turn.effectiveSelection = PiSessionSelection(model: selection.model, variant: level);
+          }
+        }
         if (event is PiAgentStartEvent) {
           state.agentRunning = true;
           for (final turn in generationTurns) {
