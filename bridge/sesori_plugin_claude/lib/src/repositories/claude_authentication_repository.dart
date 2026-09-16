@@ -21,11 +21,11 @@ final class ClaudeAuthenticationRepository({
   required final String _binaryPath,
   required final String _workingDirectory,
   required final Map<String, String> _environment,
-  final ClaudeLoginOutputParser _parser = const ClaudeLoginOutputParser(),
   final Duration _killGrace = const Duration(seconds: 5),
 }) {
   static const int _stderrTailLines = 20;
 
+  final ClaudeLoginOutputParser _parser = const ClaudeLoginOutputParser();
   final Completer<Uri> _authorizationUri = Completer<Uri>();
   final List<String> _stderrTail = [];
   Future<ClaudeProcessHandle>? _spawn;
