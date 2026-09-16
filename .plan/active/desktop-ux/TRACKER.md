@@ -24,7 +24,7 @@ sidebar follow-ups use `step-09b.md` and `step-09c.md`.
 | [x] | 7.b | `desktop-ux/overlay-navigation` | `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/18]` | ≤ 700 | done |
 | [x] | 7.c | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 10/18]` | ≤ 1,750 | done |
 | [x] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/18]` | ≤ 1,000 | done |
-| [ ] | 9.a.1 | `desktop-ux/logging-foundation` | `⚙️ [desktop-ux] Prepare safe diagnostics and bounded quit flushing [step 12/18]` | ≤ 1,200 | in-progress |
+| [ ] | 9.a.1 | `desktop-ux/logging-foundation` | `⚙️ [desktop-ux] Prepare safe diagnostics and bounded quit flushing [step 12/18]` | ≤ 1,300 | in-progress |
 | [ ] | 9.a.2 | `desktop-ux/app-logs` | `⚙️ [desktop-ux] Write app logs to rotating files [step 13/18]` | ≤ 1,300 | pending |
 | [ ] | 9.b | `desktop-ux/sidebar-interactions` | `🌿 [desktop-ux] Fix sidebar resizing and project hit targets [step 14/18]` | ≤ 500 | pending |
 | [ ] | 9.c | `desktop-ux/sidebar-activity-controls` | `⚙️ [desktop-ux] Prioritize sidebar activity and simplify controls [step 15/18]` | ≤ 1,200 | pending |
@@ -130,10 +130,11 @@ or waive shipping qualification.
   three owning analyzers and four inspected synthetic renders. Follow-up scoped
   architecture review approved; no native permission, login registration or production
   bridge work ran. See [step 8 evidence](steps/step-08.md).
-- Step 9.a.1: 136 distinct retained cases across 14 suites; five owning analyzers
-  are clean at documented checkpoints. Full auth generation retains unrelated outputs.
+- Step 9.a.1: 138 distinct retained cases across 14 suites; five owning analyzers
+  are clean at documented checkpoints. Review fixes add real-adapter URI coverage and
+  long-error console chunking. Full auth generation retains unrelated outputs.
   Scoped architecture plan/implementation reviews approved. See [prerequisite evidence](steps/step-09a1.md).
   No file sinks, production DI or native work.
 - Step 9.a.2: the original 91-case/five-analyzer evidence remains on preserved #1509,
   not evidence for its unimplemented review fixes. File completion/recovery warnings and
-  directory copy follow 9.a.1. Sidebar work remains planned, not implemented.
+  directory copy follow 9.a.1. Remaining sidebar follow-ups are still planned.

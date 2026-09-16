@@ -432,12 +432,12 @@ the modal.
   prepared before sinks and stack. Existing level gates remain (release: info+).
   The existing desktop Quit owner flushes after cleanup with a two-second deadline,
   then terminates; a failed helper stop still refuses Quit without flushing.
-- Desktop `AppLogStorage` is a lazy phase-4 `LogSink` binding. The package-internal
+- Desktop `AppLogStorage` is a lazy DI phase-4 `LogSink` binding, delivered in 9.a.2. The package-internal
   API-layer `RotatingFileStorage` receives resolved directories/file-local options;
   app and bridge facades retain separate state and application-support ownership.
   Each file is capped at 5 MiB with one predecessor, UTF-8-safe truncation and
   POSIX 0700 directories/0600 files. Existing bridge drains remain unchanged.
-- Mobile `IoAppLogSink` is a lazy phase-1 binding using the existing
+- Mobile `IoAppLogSink` is a lazy DI phase-1 binding using the existing
   `ApplicationSupportDirectoryClient`, with the same cap/retention in its sandbox;
   no chmod subprocesses, core IO or desktop-core dependency.
 - Both writers preserve console output, serialize finite asynchronous appends,
@@ -581,7 +581,7 @@ remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 | 7.b | `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/18]` | ≤ 700 | Containing-route visibility for the existing session activity owner; root-popup dismissal through both existing route adapters, ordered before desktop notification same-session detection/replacement. No new state owner, persisted fields or Settings presentation. |
 | 7.c | `⚙️ [desktop-ux] Present settings as a modal [step 10/18]` | ≤ 1,750 | `showDesktopSettingsModal` with blurred/dimmed backdrop, scrollable tab column, declarative harness flow; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
 | 8 | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/18]` | ≤ 1,000 | Nullable `readBridgeDesiredState` through storage/repository with `off` applied by callers; `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (auth-driven) composed beside root bridge controls after dispatcher readiness; `FileAccessPermission` capability + `IoFileAccessPermission`; `FileAccessCubit`; home-pane card with the agent explanation; Settings → Bridge status row; focus re-check. |
-| 9.a.1 | `⚙️ [desktop-ux] Prepare safe diagnostics and bounded quit flushing [step 12/18]` | ≤ 1,200 | Pure stdout/sink seam, typed parsing causes, selective shared URI diagnostics and bounded final Quit completion; all internal consumers together. No file writers or DI/main activation. |
+| 9.a.1 | `⚙️ [desktop-ux] Prepare safe diagnostics and bounded quit flushing [step 12/18]` | ≤ 1,300 | Pure stdout/sink seam, typed parsing causes, selective shared URI diagnostics and bounded final Quit completion; all internal consumers together. No file writers or DI/main activation. |
 | 9.a.2 | `⚙️ [desktop-ux] Write app logs to rotating files [step 13/18]` | ≤ 1,300 | Preserve #1509, merge main forward, implement admitted-write completion and per-episode failure warnings; independent rotating app files, lazy primary-only wiring and prepared logs-directory opening. |
 | 9.b | `🌿 [desktop-ux] Fix sidebar resizing and project hit targets [step 14/18]` | ≤ 500 | Drag-start displacement/clamping, scrollbar gutter, focused interaction regressions. |
 | 9.c | `⚙️ [desktop-ux] Prioritize sidebar activity and simplify controls [step 15/18]` | ≤ 1,200 | Upfront running/unread sessions, purposeful header/compact footer/plain-language local controls, subtle refresh, Prego list transitions and useful-only tooltips. |
@@ -775,7 +775,7 @@ The code-informed D10 plan review rejected underspecified helper ownership,
 DI timing and diagnostic representation. Those findings were applied directly,
 not re-reviewed as a plan. The preserved #1509 implementation was approved at
 `f37931dd4ab9b0c6dceb38a18a9907d5fed0c1ed`; that verdict does not cover review fixes.
-Its original 700-line estimate became 1,450, with publication measuring 1,437.
+Publication measurements remain owned by [preserved PR #1509](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1509).
 Review then identified concrete URI/cause/ordinary-Quit gaps. Rather than expand
 that review loop, extract 9.a.1 and retain file output as 9.a.2. A fresh architecture
 plan review (`e973a005-01ab-43fe-aaf8-eb43ebc854f6`) approved the two-slice ownership;
