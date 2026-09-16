@@ -706,15 +706,14 @@ final class PiSessionService({
       for (final turn in state.turns)
         if (turn.connection?.generation == processFrame.generation) turn,
     ];
+    if (processFrame.selectionUpdate case PiSessionSelectionChanged(:final selection)) {
+      for (final turn in generationTurns) {
+        turn.effectiveSelection = selection;
+      }
+    }
     switch (processFrame.frame) {
       case PiEventFrame(:final event):
         final wasAgentRunning = state.agentRunning;
-        if (event case PiThinkingLevelChangedEvent(level: final level?)) {
-          for (final turn in generationTurns) {
-            final selection = turn.effectiveSelection;
-            if (selection != null) turn.effectiveSelection = PiSessionSelection(model: selection.model, variant: level);
-          }
-        }
         if (event is PiAgentStartEvent) {
           state.agentRunning = true;
           for (final turn in generationTurns) {

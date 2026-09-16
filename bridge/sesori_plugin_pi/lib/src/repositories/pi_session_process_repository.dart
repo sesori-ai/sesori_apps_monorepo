@@ -45,10 +45,18 @@ final class const PiSessionHistoryCommandDiagnostic({required final String detai
   String toString() => "Pi session history command failed: $detail";
 }
 
+sealed class const PiSessionSelectionUpdate();
+
+final class const PiSessionSelectionUnchanged() extends PiSessionSelectionUpdate;
+
+final class const PiSessionSelectionChanged({required final PiSessionSelection? selection})
+    extends PiSessionSelectionUpdate;
+
 final class const PiSessionProcessFrame({
   required final String sessionId,
   required final int generation,
   required final PiRpcFrame frame,
+  required final PiSessionSelectionUpdate selectionUpdate,
 });
 
 final class const PiSessionProcessExit({
@@ -323,11 +331,22 @@ final class PiSessionProcessRepository({
       _residents[sessionId] = resident;
       resident.frameSubscription = client.frames.listen((frame) {
         if (!identical(_residents[sessionId], resident) || _frames.isClosed) return;
-        if (frame case PiEventFrame(event: PiThinkingLevelChangedEvent(level: final level?))) {
+        PiSessionSelectionUpdate selectionUpdate = const PiSessionSelectionUnchanged();
+        if (frame case PiEventFrame(event: PiThinkingLevelChangedEvent(:final level))) {
           final selection = resident.selection;
-          if (selection != null) resident.selection = PiSessionSelection(model: selection.model, variant: level);
+          resident.selection = level == null || selection == null
+              ? null
+              : PiSessionSelection(model: selection.model, variant: level);
+          selectionUpdate = PiSessionSelectionChanged(selection: resident.selection);
         }
-        _frames.add(PiSessionProcessFrame(sessionId: sessionId, generation: generation, frame: frame));
+        _frames.add(
+          PiSessionProcessFrame(
+            sessionId: sessionId,
+            generation: generation,
+            frame: frame,
+            selectionUpdate: selectionUpdate,
+          ),
+        );
       });
       unawaited(
         client.processExit.then((exitCode) {
@@ -388,6 +407,7 @@ final class PiSessionProcessRepository({
         arguments: {"provider": model.providerID, "modelId": model.modelID},
         timeout: _historyRpcTimeout,
       );
+      resident.selection = null;
       effectiveModel = model;
       effectiveVariant = null;
     }
@@ -399,6 +419,9 @@ final class PiSessionProcessRepository({
         timeout: _historyRpcTimeout,
       );
       effectiveVariant = PiThinkingLevel.tryParse(value: variantId);
+      resident.selection = effectiveModel == null || effectiveVariant == null
+          ? null
+          : PiSessionSelection(model: effectiveModel, variant: effectiveVariant);
     }
     final selection = effectiveModel == null || effectiveVariant == null
         ? (await _readState(resident)).selection
