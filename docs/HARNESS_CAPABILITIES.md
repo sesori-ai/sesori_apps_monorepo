@@ -18,6 +18,32 @@ not been verified, so the sub-agent table makes no claim about it.
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Explicit shell-command presentation
+
+Ordinary tools retain name, status and attachments; only adapter-verified shell
+commands retain command/output/error. Subtask outcome/error summaries are separate
+and remain available. All retained tool text is rune-bounded at live/history wire
+projection; the released title alias remains available to older clients.
+
+| Harness | Status and established command source |
+|---|---|
+| Claude | Implemented: exact `Bash` input command, retained through tool-result correlation and transcript replay. |
+| OpenCode | Implemented: exact `bash` tool input command in generated SSE/REST tool parts. |
+| Codex | Implemented: `commandExecution.command`, `exec_command` arguments, literal single-invocation code-mode commands, and correlated command-execution evidence. Normalized `shell` names and arbitrary JavaScript/title text are not authority. |
+| Pi | Implemented: `bash` tool-call arguments and typed `bashExecution.command`, live and replay. |
+| Grok | Implemented: exact `_meta["x.ai/tool"].name == "run_terminal_command"` plus typed `rawInput.command`. Evidence is the owning repository fixture, not a fresh upstream capture. |
+| Antigravity | Implemented: canonical native command normalized from `CommandLine`, `command_line`, `commandLine`, `command`, or native output command aliases. Evidence is owning generated DTOs corroborated against pinned `AntigravityProtocol.ts` and synthetic fixtures; no new upstream/runtime verification. |
+| Cursor, OMP, Hermes, DeepSeek, Copilot | Not implemented / command source not yet verified. Existing execute permission/kind or launch-command fixtures do not establish session shell-command provenance. This does **not** mean not supported by the harness. |
+
+Generic ACP does not infer commands from titles, execute kinds, arbitrary content,
+or command-shaped inputs. Adapter command evidence merges through the same live
+and replay hook; status/output-only updates retain the last verified command.
+Codex code-mode extraction accepts JSON argument objects or a literal first `cmd`
+property in one real `tools.exec_command` invocation (single/double quotes and
+whitespace accepted). Expressions, multiple commands and other JavaScript forms
+need trustworthy correlated command-execution evidence; raw scripts never become
+commands. No general JavaScript parser or runtime execution is involved.
+
 ## Managed runtime
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
@@ -148,12 +174,16 @@ it does not claim an unprobed upstream ACP/RPC login API is supported or unsuppo
 | OMP | Not implemented | Run `omp` locally and log into/configure a provider. |
 | DeepSeek | Not implemented | Local provider setup; adapter `check` verifies readiness. |
 | Grok | Not implemented | `grok login` on the bridge machine. |
-| Antigravity | Implemented: personal Google browser OAuth | No local fallback; current client required. |
+| Antigravity | Implemented: automatic personal Google browser OAuth on mobile and desktop | No copy/paste fallback; current client required. |
 
 Codex and Antigravity implement `InteractivePluginAuthenticationDescriptor.authenticate`.
-Codex uses the existing Sesori device-code UI; Antigravity implements the browser-return action:
-a current phone/desktop client opens Google's authorization page and returns
-the callback through Sesori. It permits personal Google OAuth only, suppresses
+Codex uses the existing Sesori device-code UI; Antigravity implements automatic browser return. Current iOS/Android
+clients use a system authentication browser and nonce-only app return; remote desktop uses exact loopback capture and
+a static return page, while desktop connected to its exact supervised bridge lets the bridge receive callback directly.
+Browser kickoff survives settings dismissal, retained phases replay on reopening, and the one callback-listener lifetime
+is bounded to five minutes; only launch failure can retry an issued challenge against that same live listener.
+Synthetic iOS Simulator and Android emulator coverage proves raw loopback-to-app return; real Google OAuth remains a
+manual verification gap. It permits personal Google OAuth only, suppresses
 the bridge host's browser, and uses the same isolated profile for login and live
 sessions. Ambient Google login is not imported. Neither row is a general API-key
 entry form or a claim of support for every provider authentication method.
@@ -179,19 +209,37 @@ including numbered invocation aliases, while preserving user commands with the
 same name. This command is **not supported** through Pi RPC; ordinary extension,
 prompt, and skill commands remain available.
 
+## Accepted prompts without transcript output
+
+An accepted prompt must gain a bridge-queue or transcript representation, or
+end with `session.prompt-settled` so clients can remove its optimistic row.
+
+| Harness | Status and settlement source |
+|---|---|
+| Claude | ✅ Command dispatch publishes a correlated synthetic user message. |
+| OpenCode | ✅ Reserved message identity correlates the backend user echo. |
+| Codex | ✅ Turn-backed commands correlate their user echo; native `compact` emits explicit prompt settlement because it returns no turn identity. |
+| Pi | ✅ User echoes and agent-running fallback synthesis remain transcript-backed; an accepted slash command with no agent work emits explicit prompt settlement after its state barrier. |
+| Antigravity, Copilot, Cursor, Hermes, OMP, DeepSeek, Grok | ✅ Shared ACP dispatch publishes a correlated user message; no silent accepted-command path is exposed. |
+
+The explicit event is additive across the client/bridge wire boundary. Older
+clients ignore it and converge on refresh; newer clients retain snapshot
+reconciliation when connected to an older bridge.
+
 ## Sub-agents
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
+| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ✅⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅ (snapshot)³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
+| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
-Plugins that report a scoped-stop rejection declare whether "main agent only"
-is honored through `mainAgentOnlySupported`; the app offers the action only
-when it is true.
+ACP plugins declare one closed scoped-stop capability: `unsupported`, `rootSessionCancel` (Cursor),
+`perChildSnapshot` (Grok), or `completeNativeAtomic` (DeepSeek). Plugins that report a scoped-stop rejection declare
+whether "main agent only" is honored through `mainAgentOnlySupported`; the app offers that action only when it is
+true.
 
 ¹ Claude Code's only stop primitive (`interrupt`, verified on 2.1.257) stops
 background sub-agents together with the running main turn.
@@ -206,27 +254,78 @@ its observed-child snapshot retains legacy client fanout.
 through parent activity and status, never `thread/started`; persisted activity
 is `event_msg/item_completed/item/SubAgentActivity`, whose item id exactly
 matches `spawn_agent.call_id`. Normal initial child input is encrypted in the
-rollout and absent from `thread/read`. Live/replayed tiles now join by exact
-parent-local call ID and use that spawn call's message for encrypted input;
-validated initial child plaintext `NEW_TASK` can override it. Missing activity
+rollout and absent from `thread/read`. Live/replayed tiles join by exact
+parent-local call ID and use that spawn call's exact nonblank message for the
+encrypted-input fallback; they never use parent user history, task names,
+labels, order, timing, or the encrypted envelope header. Validated initial
+child-owned plaintext `NEW_TASK` can override the fallback. Missing activity
 leaves the generic tool card. Native-plugin QA verified forked/nonforked tiles,
-cold replay, busy-root handling, and disconnect cleanup. Direct app-server
-`turn/start` input to v2 sub-agents is **not supported** by Codex 0.153.4;
-differently-terminal resumed-child live QA remains unexecuted.
-Sesori exposes child threads under their direct parent. Metadata-only
+cold replay, busy-root handling, and disconnect cleanup. Duplicate display
+names, plaintext input, and a differently-terminal resumed child were not run
+live. Direct app-server `turn/start` input to v2 sub-agents is **not supported**
+by Codex 0.153.4; this does not establish a parent-mediated messaging limit.
+Sesori exposes child threads under their direct parent and keeps running
+descendants in root busy state. Metadata-only
 `thread/read(includeTurns: false)` retains parent and nickname enrichment.
 Raw task paths are formatted for display, not used for tile correlation.
 `turn/interrupt` works per child with its `turnId`, while parent interrupt
-leaves children running, so main-agent-only is supportable.
+leaves children running, so main-agent-only stop is implemented. Full scoped
+stop snapshots the named thread's known running descendants and fans out exact
+per-thread interrupts; it is not atomic subtree authority, so accepted results
+deliberately report `subAgentsHandled: false` and retain client fallback.
+Managed-0.153.4 actual-plugin QA on 2026-09-10 passed its executed scope:
+side-effect-free root and named-child confirmation, accurate descendant counts
+and named-thread state, root-only `keep`, named-child subtree isolation,
+full-root snapshot fanout, authoritative `turn_aborted` for every selected
+target, and a surviving runtime. Full-stop targets became non-busy in plugin
+status; root `keep` stopped its own turn while effective root status remained
+busy for retained descendants. Live matrix is partial: no
+pending-input request surfaced, so that case remains automated rather than
+live-plugin coverage.
 
 ⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
 Agent Client Protocol server exposes no subagent lifecycle, no child session,
 and only the turn-wide `session/cancel`.
 
-⁵ Cursor (cursor-agent 2026.07.23) over ACP emits a subagent as a plain
-`Task: …` tool call plus a `cursor/task` notification without child transcript,
-so a tile is possible but a child session is not; the running count enables a
-confirmation, while ACP's turn-wide `session/cancel` rules out partial stops.
+⁵ Cursor (managed target `cursor-agent 2026.08.11-e8db854`, probed
+2026-09-11) emits a standard `Task: …` call and then one correlated
+`cursor/task` JSON-RPC request when that Task-tool invocation completes. A
+foreground invocation's completion is also sub-agent completion; a background
+invocation completes at launch and exposes `isBackground: true`, while the
+background work continues without a later terminal lifecycle or child
+transcript. `session/load` replays stable full standard Task input/result facts,
+not `cursor/task`; Sesori now replaces an exact completed foreground replay card
+with the same childless tile while preserving replay-local identity and order.
+The live request's nested tagged presentation is `custom → unspecified`; replay
+uses the distinct `unspecified` tag directly. Separate typed boundary DTOs map
+both exact shapes to one closed presentation value, while unknown or malformed
+variants stay generic. Pending/in-progress calls lack presentation facts and `isBackground`, so their
+mode is unknown and they remain generic; cancelled foreground calls also remain
+generic cancelled cards because no `cursor/task` follows cancellation. Sesori
+now replaces only an exact live standard completion with explicit
+`isBackground: false` plus a complete correlated request, producing one
+completed childless tile with stable part identity. Missing/unknown/malformed,
+unmatched, background, and failed cases with standard facts stay generic. A cancelled
+Task is absent from replay when Cursor emits no standard frame; no completed tile is synthesized. Standard `session/cancel`
+authoritatively cancels an active root prompt. Safe Task confirmation is
+side-effect-free with exact active count; named-root stop waits up to 20 seconds,
+then rechecks background and active work. Timeout or survivors yield HTTP 502
+after cancellation, never false success. A background Task survives root cancel,
+so “`stop` cancels them all” remains **not supported**. While that observation is
+unresolved, every policy returns concrete HTTP 409 `notPerformed` before input or
+cancellation. Client drain pauses; that variant retains queued prompts and shows
+restart recovery even for unknown reasons. Malformed bodies, unknown variants,
+and post-cancel failures remain ambiguous. The observation keeps only ACP process
+work state busy until session cleanup or process reset; root `end_turn` and UI
+idle never claim background completion. Bounded managed-target production-
+composition QA passed live terminal replacement, two equivalent cold loads,
+mode-unknown generic presentation, exact active-Task confirmation/keep
+rejection, named-root cancellation with a generic cancelled card, process/session
+reuse, root idle before later background permission, residency, and identical
+non-mutating post-background refusal for all three policies. One bounded race
+attempt cancelled before background resolution, so post-cancel background
+transition remains automated rather than native evidence. No phone, desktop,
+child, background completion, or full-background-stop coverage is inferred.
 
 ⁶ Hermes (hermes-agent 0.19.0) has `delegate_task`, but its ACP adapter
 flattens delegation into an ordinary tool call and maps `session/cancel` to a
@@ -242,18 +341,56 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.1.4 over dsh 0.1.1-rc.2 is the managed target
+⁹ DeepSeek's published adapter 0.1.5 over dsh 0.1.5-rc.2 is the managed target
 and minimum accepted runtime. ACP uses native subtree stop for the named scope
 and every independently resident descendant root, while ordered input cancel,
 exact-child authority, lifecycle, tiles, and child catalogs remain native-backed.
-Released clients retain their own child fanout; final phone/desktop E2E remains outstanding.
+Released clients retain their own child fanout. Phone QA on unchanged published
+adapter 0.1.4 passed the requested stop/input scope after the shared transport fix:
+confirmation dismissal, main-only keep, root/independently resumed child/grandchild
+cancellation, authoritative settlement, runtime reuse, a follow-up turn, earlier
+pending-input cleanup, and one later question preserved and answered. The
+permission sheet's generic label and opaque call ID are not presentation coverage,
+and surviving root-owned shell jobs do not imply failed descendant cancellation or
+broader process-stop support. Cold tile/history reload, read-only child navigation,
+push delivery, restart/reconnect, multiple clients, alternate mobile platforms,
+and macOS desktop remain unexecuted in this gate; desktop was deferred by explicit
+user choice. This 0.1.4 evidence does not requalify the current 0.1.5 managed target.
+The native model catalog includes `deepseek-flash` (DeepSeek V4.1 Flash) with
+image input and reasoning controls. Refresh rereads the installed harness's
+configured catalog; it does not upgrade that harness or fetch a live provider catalog.
+Native `web_search` and `web_fetch` tools are enabled: outbound requests occur
+when invoked, without a Web BFF, HTTP listener, extra process, or telemetry exporter.
 
-¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
-`subagent_finished` with parent and child session ids as
-`_x.ai/session_notification` extension notifications, streams child updates
-under the child id, and exposes `_x.ai/subagent/cancel` per child. A root
-`session/cancel` cancels background children too, so main-agent-only is not
-supported.
+¹⁰ Grok Build (1.0.5, probed 2026-09-03, 2026-09-10, and 2026-09-12) sends
+`subagent_spawned`/`subagent_progress`/`subagent_finished` with parent and child
+session ids as `_x.ai/session_notification` extension notifications and streams
+child updates under the child id. Root `session/load` replays lifecycle as
+`_x.ai/session/update`; an unfinished loaded episode can settle later through
+`_x.ai/session_notification`, so both remain in the replay drain. Sesori exposes
+persisted/live children, loads child transcripts by exact native id, and rebuilds
+root tiles from each exact child's first user-message run only when that run is
+nonblank, without reading live tracker state. A blank or missing first run
+produces no tile; later runs never substitute. Permission denial persistence is
+unverified and has no outcome model. Grok scoped stop snapshots the named
+scope before mutation, sends root `session/cancel` first, and fans out exact
+`_x.ai/subagent/cancel {subagentId}` requests for its running children. This is
+not complete native subtree authority: accepted results deliberately report
+`subAgentsHandled: false` and retain current-client fallback. Main-agent-only
+stop is unsupported because root cancellation stopped every observed child;
+idle-root child-only `keep` remains side-effect free. Automated coverage proves
+rejection, fanout, outcome mapping, lifecycle-only settlement, and exact pending
+permission/queue isolation. Production-composition QA after PR #1429 passed its
+executed named-isolation, full-stop, idle-keep/wake, already-finished, replay,
+settlement, fresh-session, and runtime-reuse scope; root confirmation reuses an
+earlier passing run. That unchanged headless run emitted no permission request.
+Subsequent owned-phone QA exercised one genuine request with `Once`; no question
+support is claimed. The bounded phone matrix passed creation, tile lifecycle,
+exact Stop dismissal and full cancellation, same-session/runtime reuse, cold root
+history, and exact read-only child navigation. Final fixed-build QA showed one
+stable child-owned initial row plus one assistant/tool/assistant sequence on two
+opens. Background completion delivery was attempted, but no OS notification was
+observed; notification and push delivery remain unclaimed.
 
 ¹¹ Pi (0.84.4, probed 2026-09-05) reports it from `pi --list-models`, which
 prints one row per usable model and otherwise prints the

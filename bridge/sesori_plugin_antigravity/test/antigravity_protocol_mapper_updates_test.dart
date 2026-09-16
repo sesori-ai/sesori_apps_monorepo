@@ -12,6 +12,10 @@ class _NormalizedEventMapper({
   required super.childSessions,
   required final AntigravityProtocolMapper protocolMapper,
 }) extends AcpEventMapper {
+  @override
+  String? shellCommandForToolUpdate({required Map<String, dynamic> update}) =>
+      protocolMapper.shellCommandForToolUpdate(update: update);
+
   int normalizations = 0;
   @override
   Map<String, dynamic> normalizeSessionUpdate({required Map<String, dynamic> params}) {
@@ -30,6 +34,7 @@ _NormalizedEventMapper _mapper() => _NormalizedEventMapper(
 
 AcpReplayCollector _collector({required AcpEventMapper mapper}) => AcpReplayCollector(
   sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
+  shellCommandResolver: mapper.shellCommandForToolUpdate,
   sessionId: "s",
   agentId: "antigravity",
   initialUserMessageId: null,
@@ -37,6 +42,7 @@ AcpReplayCollector _collector({required AcpEventMapper mapper}) => AcpReplayColl
   messageTimeResolver: null,
   haltClassifier: null,
   toolPartReplacement: null,
+  toolPartSuppression: null,
 );
 
 Map<String, dynamic> _envelope({required Map<String, dynamic> update}) => {

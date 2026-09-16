@@ -31,16 +31,21 @@ $PluginModelCopyWith<PluginModel> get copyWith => _$PluginModelCopyWithImpl<Plug
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.variants, variants)&&(identical(other.defaultVariant, defaultVariant) || other.defaultVariant == defaultVariant)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+  final _this = this as PluginModel;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginModel&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&const DeepCollectionEquality().equals(other.variants, _this.variants)&&(identical(other.defaultVariant, _this.defaultVariant) || other.defaultVariant == _this.defaultVariant)&&(identical(other.family, _this.family) || other.family == _this.family)&&(identical(other.isAvailable, _this.isAvailable) || other.isAvailable == _this.isAvailable)&&(identical(other.releaseDate, _this.releaseDate) || other.releaseDate == _this.releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(variants),defaultVariant,family,isAvailable,releaseDate);
+int get hashCode {
+  final _this = this as PluginModel;
+  return Object.hash(runtimeType,_this.id,_this.name,const DeepCollectionEquality().hash(_this.variants),_this.defaultVariant,_this.family,_this.isAvailable,_this.releaseDate);
+}
 
 @override
 String toString() {
-  return 'PluginModel(id: $id, name: $name, variants: $variants, defaultVariant: $defaultVariant, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
+  final _this = this as PluginModel;
+  return 'PluginModel(id: ${_this.id}, name: ${_this.name}, variants: ${_this.variants}, defaultVariant: ${_this.defaultVariant}, family: ${_this.family}, isAvailable: ${_this.isAvailable}, releaseDate: ${_this.releaseDate})';
 }
 
 
@@ -123,16 +128,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._variants, _variants)&&(identical(other.defaultVariant, defaultVariant) || other.defaultVariant == defaultVariant)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.variants, _variants)&&(identical(other.defaultVariant, defaultVariant) || other.defaultVariant == defaultVariant)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(_variants),defaultVariant,family,isAvailable,releaseDate);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(_variants),defaultVariant,family,isAvailable,releaseDate);
+}
 
 @override
 String toString() {
-  return 'PluginModel(id: $id, name: $name, variants: $variants, defaultVariant: $defaultVariant, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
+    return 'PluginModel(id: $id, name: $name, variants: $variants, defaultVariant: $defaultVariant, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
 }
 
 
@@ -192,16 +199,21 @@ $PluginProviderCopyWith<PluginProvider> get copyWith => _$PluginProviderCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProvider&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.authType, authType) || other.authType == authType)&&const DeepCollectionEquality().equals(other.models, models)&&(identical(other.defaultModelID, defaultModelID) || other.defaultModelID == defaultModelID));
+  final _this = this as PluginProvider;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProvider&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.authType, _this.authType) || other.authType == _this.authType)&&const DeepCollectionEquality().equals(other.models, _this.models)&&(identical(other.defaultModelID, _this.defaultModelID) || other.defaultModelID == _this.defaultModelID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,authType,const DeepCollectionEquality().hash(models),defaultModelID);
+int get hashCode {
+  final _this = this as PluginProvider;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.authType,const DeepCollectionEquality().hash(_this.models),_this.defaultModelID);
+}
 
 @override
 String toString() {
-  return 'PluginProvider(id: $id, name: $name, authType: $authType, models: $models, defaultModelID: $defaultModelID)';
+  final _this = this as PluginProvider;
+  return 'PluginProvider(id: ${_this.id}, name: ${_this.name}, authType: ${_this.authType}, models: ${_this.models}, defaultModelID: ${_this.defaultModelID})';
 }
 
 
@@ -276,16 +288,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProvider&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.authType, authType) || other.authType == authType)&&const DeepCollectionEquality().equals(other._models, _models)&&(identical(other.defaultModelID, defaultModelID) || other.defaultModelID == defaultModelID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProvider&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.authType, authType) || other.authType == authType)&&const DeepCollectionEquality().equals(other.models, _models)&&(identical(other.defaultModelID, defaultModelID) || other.defaultModelID == defaultModelID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,authType,const DeepCollectionEquality().hash(_models),defaultModelID);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,authType,const DeepCollectionEquality().hash(_models),defaultModelID);
+}
 
 @override
 String toString() {
-  return 'PluginProvider(id: $id, name: $name, authType: $authType, models: $models, defaultModelID: $defaultModelID)';
+    return 'PluginProvider(id: $id, name: $name, authType: $authType, models: $models, defaultModelID: $defaultModelID)';
 }
 
 
@@ -343,16 +357,21 @@ $PluginProvidersResultCopyWith<PluginProvidersResult> get copyWith => _$PluginPr
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProvidersResult&&const DeepCollectionEquality().equals(other.providers, providers));
+  final _this = this as PluginProvidersResult;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProvidersResult&&const DeepCollectionEquality().equals(other.providers, _this.providers));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(providers));
+int get hashCode {
+  final _this = this as PluginProvidersResult;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.providers));
+}
 
 @override
 String toString() {
-  return 'PluginProvidersResult(providers: $providers)';
+  final _this = this as PluginProvidersResult;
+  return 'PluginProvidersResult(providers: ${_this.providers})';
 }
 
 
@@ -419,16 +438,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProvidersResult&&const DeepCollectionEquality().equals(other._providers, _providers));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProvidersResult&&const DeepCollectionEquality().equals(other.providers, _providers));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_providers));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_providers));
+}
 
 @override
 String toString() {
-  return 'PluginProvidersResult(providers: $providers)';
+    return 'PluginProvidersResult(providers: $providers)';
 }
 
 

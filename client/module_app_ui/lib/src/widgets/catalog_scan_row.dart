@@ -21,8 +21,8 @@ const Duration _startupWaitThreshold = Duration(seconds: 3);
 /// terminal outcomes keep their severity-tinted report cards.
 ///
 /// Ordinary live phases keep one supporting row, so progress changes do not
-/// shove the list. Only the prolonged-startup explanation may wrap and grow;
-/// preserving its guidance is more important than the baseline card height.
+/// shove the list. The prolonged-startup heading and explanation may wrap and
+/// grow; preserving their guidance is more important than baseline card height.
 class const CatalogScanRow({
   super.key,
 
@@ -169,7 +169,6 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
       CatalogRescanStarting(:final activePluginName) => activePluginName,
       CatalogRescanIdle() ||
       CatalogRescanPreparingOne() ||
-      CatalogRescanPreparingMany() ||
       CatalogRescanReading() ||
       CatalogRescanSaving() ||
       CatalogRescanSucceeded() ||
@@ -191,7 +190,6 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
         CatalogRescanStarting(:final activePluginName) => activePluginName == pluginName,
         CatalogRescanIdle() ||
         CatalogRescanPreparingOne() ||
-        CatalogRescanPreparingMany() ||
         CatalogRescanReading() ||
         CatalogRescanSaving() ||
         CatalogRescanSucceeded() ||
@@ -289,23 +287,18 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
   /// `null` is the idle row, which folds away to nothing.
   _RowContent? _contentFor({required AppLocalizations loc, required CatalogRescanState scan}) => switch (scan) {
     CatalogRescanIdle() => null,
-    CatalogRescanPreparingOne(:final pendingPluginName) => _RowContent(
+    CatalogRescanPreparingOne(:final pendingPluginName, :final finishedHarnessCount, :final pluginIds) => _RowContent(
       tone: _ScanTone.working,
-      title: loc.catalogScanRunningTitle,
+      title: loc.catalogScanRunningTitle(finishedHarnessCount, pluginIds.length),
       detail: loc.catalogScanPreparingOneDetail(pendingPluginName),
       actionLabel: loc.catalogScanCancel,
       onAction: widget._onCancel,
     ),
-    CatalogRescanPreparingMany(:final pendingPluginNames) => _RowContent(
+    CatalogRescanStarting(:final activePluginName, :final finishedHarnessCount, :final pluginIds) => _RowContent(
       tone: _ScanTone.working,
-      title: loc.catalogScanRunningTitle,
-      detail: loc.catalogScanPreparingManyDetail(_pendingHarnessSummary(loc: loc, names: pendingPluginNames)),
-      actionLabel: loc.catalogScanCancel,
-      onAction: widget._onCancel,
-    ),
-    CatalogRescanStarting(:final activePluginName) => _RowContent(
-      tone: _ScanTone.working,
-      title: _startupWaitElapsed ? loc.catalogScanWaitingTitle(activePluginName) : loc.catalogScanRunningTitle,
+      title: _startupWaitElapsed
+          ? loc.catalogScanWaitingTitle(activePluginName, finishedHarnessCount, pluginIds.length)
+          : loc.catalogScanRunningTitle(finishedHarnessCount, pluginIds.length),
       detail: _startupWaitElapsed
           ? loc.catalogScanWaitingDetail(activePluginName)
           : loc.catalogScanStartingDetail(activePluginName),
@@ -313,18 +306,19 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
       actionLabel: loc.catalogScanCancel,
       onAction: widget._onCancel,
     ),
-    CatalogRescanReading(:final activePluginName, :final sessionsSeen) => _RowContent(
+    CatalogRescanReading(:final activePluginName, :final sessionsSeen, :final finishedHarnessCount, :final pluginIds) =>
+      _RowContent(
+        tone: _ScanTone.working,
+        title: loc.catalogScanRunningTitle(finishedHarnessCount, pluginIds.length),
+        detail: sessionsSeen == 0
+            ? loc.catalogScanReadingDetail(activePluginName)
+            : loc.catalogScanReadingCountDetail(activePluginName, sessionsSeen),
+        actionLabel: loc.catalogScanCancel,
+        onAction: widget._onCancel,
+      ),
+    CatalogRescanSaving(:final activePluginName, :final finishedHarnessCount, :final pluginIds) => _RowContent(
       tone: _ScanTone.working,
-      title: loc.catalogScanRunningTitle,
-      detail: sessionsSeen == 0
-          ? loc.catalogScanReadingDetail(activePluginName)
-          : loc.catalogScanReadingCountDetail(activePluginName, sessionsSeen),
-      actionLabel: loc.catalogScanCancel,
-      onAction: widget._onCancel,
-    ),
-    CatalogRescanSaving(:final activePluginName) => _RowContent(
-      tone: _ScanTone.working,
-      title: loc.catalogScanRunningTitle,
+      title: loc.catalogScanRunningTitle(finishedHarnessCount, pluginIds.length),
       detail: loc.catalogScanSavingDetail(activePluginName),
       actionLabel: loc.catalogScanCancel,
       onAction: widget._onCancel,
@@ -376,11 +370,6 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
       onAction: widget._onDismiss,
     ),
   };
-}
-
-String _pendingHarnessSummary({required AppLocalizations loc, required List<String> names}) {
-  if (names.length == 2) return loc.catalogScanTwoHarnesses(names[0], names[1]);
-  return loc.catalogScanHarnessesWithOthers(names[0], names[1], names.length - 2);
 }
 
 /// What a finished scan found, sessions first.
@@ -696,8 +685,8 @@ class _ScanLoadingCardState()
                           children: [
                             Text(
                               widget.title,
-                              maxLines: wrapsText ? null : 1,
-                              overflow: wrapsText ? null : TextOverflow.ellipsis,
+                              maxLines: wrapsText || widget.wrapSupportingText ? null : 1,
+                              overflow: wrapsText || widget.wrapSupportingText ? null : TextOverflow.ellipsis,
                               style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
                             ),
                             const SizedBox(height: PregoSpacing.xxs),

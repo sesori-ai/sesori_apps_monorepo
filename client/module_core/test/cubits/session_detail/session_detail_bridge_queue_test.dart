@@ -14,8 +14,10 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -219,6 +221,7 @@ void main() {
         pluginManagementService: stubbedPluginManagementService(),
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: mockLoadService,
+        sessionAbortService: SessionAbortService(repository: mockSessionRepository),
         promptDispatcher: mockSessionRepository,
         permissionRepository: MockPermissionRepository(),
         sessionViewingService: stubbedSessionViewingService(),
@@ -1205,6 +1208,129 @@ void main() {
       await subscription.cancel();
     });
 
+    test("a prompt-settled event removes an accepted command with no transcript output", () async {
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit();
+      await cubit.sendMessage(
+        text: "/fast",
+        command: "fast",
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      final promptId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.promptId;
+
+      sessionEvents.add(
+        SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: promptId) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.sendingSubmission, isNull);
+      expect(state.queuedMessages, isEmpty);
+      expect(state.awaitingBridgeSubmissions, isEmpty);
+      expect(state.bridgeQueuedPrompts, isEmpty);
+    });
+
+    test("prompt settlement racing the response resumes the staged FIFO", () async {
+      final sends = <Completer<ApiResponse<void>>>[];
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) {
+        final send = Completer<ApiResponse<void>>();
+        sends.add(send);
+        return send.future;
+      });
+      final cubit = await createLoadedCubit();
+      unawaited(
+        cubit.sendMessage(
+          text: "/fast",
+          command: "fast",
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        ),
+      );
+      await _awaitCondition(() => sends.length == 1);
+      final firstPromptId = (cubit.state as SessionDetailLoaded).sendingSubmission!.promptId;
+      unawaited(
+        cubit.sendMessage(
+          text: "next",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).queuedMessages.single.text, "next");
+
+      sessionEvents.add(
+        SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: firstPromptId) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+      var state = cubit.state as SessionDetailLoaded;
+      expect(state.sendingSubmission, isNull, reason: "settled in-flight prompt is hidden immediately");
+      expect(state.queuedMessages.single.text, "next");
+
+      final refreshStates = <SessionDetailLoaded>[];
+      final refreshSubscription = cubit.stream.whereType<SessionDetailLoaded>().listen(refreshStates.add);
+      sessionEvents.add(
+        const SesoriCommandExecuted(
+          name: "refresh",
+          sessionID: _sessionId,
+          arguments: "",
+          messageID: "refresh-message",
+        ),
+      );
+      await _awaitCondition(
+        () => refreshStates.any((candidate) => candidate.isRefreshing) && !refreshStates.last.isRefreshing,
+      );
+      for (final refreshState in refreshStates) {
+        expect(
+          [
+            ...refreshState.queuedMessages.map((item) => item.promptId),
+            ...refreshState.awaitingBridgeSubmissions.map((item) => item.promptId),
+            refreshState.sendingSubmission?.promptId,
+          ],
+          isNot(contains(firstPromptId)),
+          reason: "refresh emissions must retain the bridge-aware settlement projection",
+        );
+      }
+      await refreshSubscription.cancel();
+
+      sends.first.complete(ApiResponse.success(null));
+      await _awaitCondition(() => sends.length == 2);
+      state = cubit.state as SessionDetailLoaded;
+      final secondPromptId = state.sendingSubmission!.promptId;
+      expect(state.sendingSubmission!.text, "next");
+
+      sends.last.complete(ApiResponse.success(null));
+      await Future<void>.delayed(Duration.zero);
+      sessionEvents.add(
+        SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: secondPromptId) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
+    });
+
     test("a send whose entry was consumed before its response settles on its echo", () async {
       final send = Completer<ApiResponse<void>>();
       when(
@@ -1522,9 +1648,7 @@ void main() {
           sessionId: _sessionId,
           subAgents: any(named: "subAgents"),
         ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(false),
-      );
+      ).thenAnswer((_) async => ApiResponse.success(true));
       final cubit = await createLoadedCubit();
       await cubit.sendMessage(text: "parked", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
       await Future<void>.delayed(Duration.zero);
@@ -1560,6 +1684,74 @@ void main() {
 
       expect(outcome, isA<SessionAbortRejected>().having((o) => o.rejection, "rejection", rejection));
       expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(1));
+    });
+
+    test("not-performed refusal with unknown reason gates dispatch, preserves queue, then resumes drain", () async {
+      final abortCompleter = Completer<ApiResponse<bool>>();
+      when(
+        () => mockSessionRepository.abortSession(
+          sessionId: _sessionId,
+          subAgents: SessionAbortSubAgentPolicy.confirm,
+        ),
+      ).thenAnswer((_) => abortCompleter.future);
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit();
+      final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm);
+      await Future<void>.delayed(Duration.zero);
+      await cubit.sendMessage(
+        text: "queued during abort",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
+
+      const refusal = SessionAbortNotPerformedRefusal(
+        reason: SessionAbortRefusalReason.unknownEnumValue,
+      );
+      abortCompleter.completeError(
+        SessionAbortNotAcceptedException(refusal: refusal, innerError: StateError("409")),
+      );
+      expect(await aborting, isA<SessionAbortNotAccepted>());
+      await _awaitCondition(
+        () => (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.isNotEmpty,
+      );
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+    });
+
+    test("ambiguous abort failure clears work queued during request", () async {
+      final abortCompleter = Completer<ApiResponse<bool>>();
+      when(
+        () => mockSessionRepository.abortSession(
+          sessionId: _sessionId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      ).thenAnswer((_) => abortCompleter.future);
+      final cubit = await createLoadedCubit();
+      final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+      await Future<void>.delayed(Duration.zero);
+      await cubit.sendMessage(
+        text: "ambiguous",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
+
+      abortCompleter.completeError(StateError("502 after cancellation"));
+      expect(await aborting, isA<SessionAbortFailed>());
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
     });
 
     test("cancel removes the entry on success and on not-found, keeps it on transport failure", () async {
@@ -1831,9 +2023,7 @@ void main() {
           sessionId: _sessionId,
           subAgents: any(named: "subAgents"),
         ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(false),
-      );
+      ).thenAnswer((_) async => ApiResponse.success(true));
       final sendCompleter = Completer<ApiResponse<void>>();
       when(
         () => mockSessionRepository.sendMessage(

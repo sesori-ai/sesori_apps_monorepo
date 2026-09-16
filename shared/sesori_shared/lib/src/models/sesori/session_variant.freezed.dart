@@ -29,16 +29,21 @@ $SessionVariantCopyWith<SessionVariant> get copyWith => _$SessionVariantCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionVariant&&(identical(other.id, id) || other.id == id));
+  final _this = this as SessionVariant;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionVariant&&(identical(other.id, _this.id) || other.id == _this.id));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id);
+int get hashCode {
+  final _this = this as SessionVariant;
+  return Object.hash(runtimeType,_this.id);
+}
 
 @override
 String toString() {
-  return 'SessionVariant(id: $id)';
+  final _this = this as SessionVariant;
+  return 'SessionVariant(id: ${_this.id})';
 }
 
 
@@ -99,16 +104,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionVariant&&(identical(other.id, id) || other.id == id));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionVariant&&(identical(other.id, id) || other.id == id));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id);
+int get hashCode {
+    return Object.hash(runtimeType,id);
+}
 
 @override
 String toString() {
-  return 'SessionVariant(id: $id)';
+    return 'SessionVariant(id: $id)';
 }
 
 

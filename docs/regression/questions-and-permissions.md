@@ -78,12 +78,31 @@ reaches the backend so the turn continues.
   detail. Native input cancellation clears only earlier requests on the ordered
   stream; later requests survive even when they reuse a question ID. Abort,
   process exit, and disposal cancel pending requests and reject late replies.
+  Phone QA on unchanged published adapter 0.1.4 proved two bounded live cases:
+  API-triggered Stop rejected an earlier real permission and removed its open
+  sheet, and a real question was cancelled while a distinct prompt submitted
+  after Stop was written produced a new question that remained visible,
+  answerable on the phone, and cleared normally. The permission sheet showed a generic tool label and opaque call ID,
+  so cancellation passed but complete permission presentation did not. Desktop,
+  cross-client observation, restart/reconnect, and alternate mobile platforms
+  were not run.
 - Grok runs in its normal ask mode without `--always-approve` or `--yolo`.
   Standard ACP permissions preserve the exact session, tool call, and offered
   option IDs; Once, Reject, and every scope the request actually advertises stay
   phone-mediated unless an existing explicit bridge auto-approval rule applies.
-  Abort, process exit, and disposal cancel pending Grok requests rather than
-  broadening or silently approving them.
+  Scoped-stop preflight preserves pending Grok requests when `confirm` rejects,
+  when active-root `keep` is unsupported, and when idle-root child-only `keep`
+  succeeds. Accepted named-child stop cancels only that child's pending ACP
+  interaction; full snapshot stop cancels root and selected-child interactions.
+  This input cleanup stays scoped; completion suppression for a fully stopped
+  named child records the root ID and applies to the root session group.
+  Process exit and disposal also cancel pending Grok requests rather than
+  broadening or silently approving them. These guarantees have automated
+  fixture coverage only: production-composition QA emitted zero standard
+  permission requests under unchanged configuration, so live permission
+  preservation, isolation, and cleanup remain unexecuted. Phone automation was
+  blocked before any visible interaction, so no phone permission result is
+  claimed. No native Grok question channel is claimed.
 - A sessionless ACP request first resolves its top-level or nested
   `toolCall.toolCallId` against tracked calls. An exact match retains its session;
   an ambiguous match cancels rather than falling back to another active turn.
@@ -193,7 +212,9 @@ the prompt write is held, proving cancellation does not remove the later request
   or appears outside its imported display root or owning project.
 - A DeepSeek question loses supplemental detail, changes answer ordering or
   scope, accepts custom plan-review input, survives abort/process cleanup, or
-  an ordered input cancellation clears a later reused-ID question.
+  an ordered input cancellation clears a later reused-ID question. A Stop that
+  clears an earlier request also removes a later admitted request, or a cleared
+  permission/question sheet remains actionable.
 - A resolved request stays visible, keeps suppressing notifications, or returns
   after reconnect.
 - One failed backend resolution prevents another pending prompt from clearing,

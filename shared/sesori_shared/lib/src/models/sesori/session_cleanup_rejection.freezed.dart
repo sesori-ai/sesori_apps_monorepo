@@ -29,16 +29,21 @@ $SessionCleanupRejectionCopyWith<SessionCleanupRejection> get copyWith => _$Sess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionCleanupRejection&&const DeepCollectionEquality().equals(other.issues, issues));
+  final _this = this as SessionCleanupRejection;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionCleanupRejection&&const DeepCollectionEquality().equals(other.issues, _this.issues));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(issues));
+int get hashCode {
+  final _this = this as SessionCleanupRejection;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.issues));
+}
 
 @override
 String toString() {
-  return 'SessionCleanupRejection(issues: $issues)';
+  final _this = this as SessionCleanupRejection;
+  return 'SessionCleanupRejection(issues: ${_this.issues})';
 }
 
 
@@ -105,16 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionCleanupRejection&&const DeepCollectionEquality().equals(other._issues, _issues));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionCleanupRejection&&const DeepCollectionEquality().equals(other.issues, _issues));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_issues));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_issues));
+}
 
 @override
 String toString() {
-  return 'SessionCleanupRejection(issues: $issues)';
+    return 'SessionCleanupRejection(issues: $issues)';
 }
 
 
@@ -191,7 +198,7 @@ mixin _$CleanupIssue {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CleanupIssue);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CleanupIssue);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -200,7 +207,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CleanupIssue()';
+    return 'CleanupIssue()';
 }
 
 
@@ -234,7 +241,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CleanupIssueUnstagedChanges);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CleanupIssueUnstagedChanges);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -243,7 +250,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CleanupIssue.unstagedChanges()';
+    return 'CleanupIssue.unstagedChanges()';
 }
 
 
@@ -279,16 +286,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CleanupIssueBranchMismatch&&(identical(other.expected, expected) || other.expected == expected)&&(identical(other.actual, actual) || other.actual == actual));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CleanupIssueBranchMismatch&&(identical(other.expected, expected) || other.expected == expected)&&(identical(other.actual, actual) || other.actual == actual));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,expected,actual);
+int get hashCode {
+    return Object.hash(runtimeType,expected,actual);
+}
 
 @override
 String toString() {
-  return 'CleanupIssue.branchMismatch(expected: $expected, actual: $actual)';
+    return 'CleanupIssue.branchMismatch(expected: $expected, actual: $actual)';
 }
 
 
@@ -348,7 +357,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CleanupIssueSharedWorktree);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CleanupIssueSharedWorktree);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -357,7 +366,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CleanupIssue.sharedWorktree()';
+    return 'CleanupIssue.sharedWorktree()';
 }
 
 

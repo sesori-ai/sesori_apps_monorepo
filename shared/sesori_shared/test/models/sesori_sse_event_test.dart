@@ -117,6 +117,23 @@ void main() {
     });
   });
 
+  test('prompt settlement round-trips as a session-scoped event', () {
+    const event = SesoriSseEvent.sessionPromptSettled(
+      sessionID: 'session-1',
+      promptID: 'prompt-1',
+    );
+
+    final json = event.toJson();
+
+    expect(json, {
+      'type': 'session.prompt-settled',
+      'sessionID': 'session-1',
+      'promptID': 'prompt-1',
+    });
+    expect(SesoriSseEvent.fromJson(json), event);
+    expect(event, isA<SesoriSessionEvent>());
+  });
+
   test('session options update round-trips a project-scoped catalog', () {
     const event = SesoriSseEvent.sessionOptionsUpdated(pluginId: 'cursor', projectId: 'project-1');
 
@@ -692,6 +709,11 @@ void main() {
       expect(deleted, isA<SesoriSessionEvent>());
     });
 
+    test('sessionPromptSettled implements SesoriSessionEvent', () {
+      const event = SesoriSseEvent.sessionPromptSettled(sessionID: 'x', promptID: 'p');
+      expect(event, isA<SesoriSessionEvent>());
+    });
+
     test('sessionStatus implements SesoriSessionEvent', () {
       const status = SesoriSseEvent.sessionStatus(
         sessionID: 'x',
@@ -961,6 +983,11 @@ void main() {
         ),
       ).toJson();
       expect(json['type'], 'session.deleted');
+    });
+
+    test('sessionPromptSettled uses session.prompt-settled', () {
+      final json = const SesoriSseEvent.sessionPromptSettled(sessionID: 'x', promptID: 'p').toJson();
+      expect(json['type'], 'session.prompt-settled');
     });
 
     test('sessionStatus uses session.status', () {

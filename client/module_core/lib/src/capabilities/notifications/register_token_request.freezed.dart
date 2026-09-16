@@ -29,16 +29,21 @@ $RegisterTokenRequestCopyWith<RegisterTokenRequest> get copyWith => _$RegisterTo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RegisterTokenRequest&&(identical(other.token, token) || other.token == token)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId));
+  final _this = this as RegisterTokenRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RegisterTokenRequest&&(identical(other.token, _this.token) || other.token == _this.token)&&(identical(other.platform, _this.platform) || other.platform == _this.platform)&&(identical(other.deviceId, _this.deviceId) || other.deviceId == _this.deviceId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,token,platform,deviceId);
+int get hashCode {
+  final _this = this as RegisterTokenRequest;
+  return Object.hash(runtimeType,_this.token,_this.platform,_this.deviceId);
+}
 
 @override
 String toString() {
-  return 'RegisterTokenRequest(token: $token, platform: $platform, deviceId: $deviceId)';
+  final _this = this as RegisterTokenRequest;
+  return 'RegisterTokenRequest(token: ${_this.token}, platform: ${_this.platform}, deviceId: ${_this.deviceId})';
 }
 
 
@@ -103,16 +108,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RegisterTokenRequest&&(identical(other.token, token) || other.token == token)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RegisterTokenRequest&&(identical(other.token, token) || other.token == token)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,token,platform,deviceId);
+int get hashCode {
+    return Object.hash(runtimeType,token,platform,deviceId);
+}
 
 @override
 String toString() {
-  return 'RegisterTokenRequest(token: $token, platform: $platform, deviceId: $deviceId)';
+    return 'RegisterTokenRequest(token: $token, platform: $platform, deviceId: $deviceId)';
 }
 
 

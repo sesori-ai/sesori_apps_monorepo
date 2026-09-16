@@ -26,16 +26,21 @@ $PluginSessionOptionsCopyWith<PluginSessionOptions> get copyWith => _$PluginSess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionOptions&&const DeepCollectionEquality().equals(other.agents, agents)&&(identical(other.providers, providers) || other.providers == providers)&&const DeepCollectionEquality().equals(other.commands, commands)&&(identical(other.completeness, completeness) || other.completeness == completeness));
+  final _this = this as PluginSessionOptions;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionOptions&&const DeepCollectionEquality().equals(other.agents, _this.agents)&&(identical(other.providers, _this.providers) || other.providers == _this.providers)&&const DeepCollectionEquality().equals(other.commands, _this.commands)&&(identical(other.completeness, _this.completeness) || other.completeness == _this.completeness));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(agents),providers,const DeepCollectionEquality().hash(commands),completeness);
+int get hashCode {
+  final _this = this as PluginSessionOptions;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.agents),_this.providers,const DeepCollectionEquality().hash(_this.commands),_this.completeness);
+}
 
 @override
 String toString() {
-  return 'PluginSessionOptions(agents: $agents, providers: $providers, commands: $commands, completeness: $completeness)';
+  final _this = this as PluginSessionOptions;
+  return 'PluginSessionOptions(agents: ${_this.agents}, providers: ${_this.providers}, commands: ${_this.commands}, completeness: ${_this.completeness})';
 }
 
 
@@ -120,16 +125,18 @@ _$PluginSessionOptionsCopyWith<_PluginSessionOptions> get copyWith => __$PluginS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSessionOptions&&const DeepCollectionEquality().equals(other._agents, _agents)&&(identical(other.providers, providers) || other.providers == providers)&&const DeepCollectionEquality().equals(other._commands, _commands)&&(identical(other.completeness, completeness) || other.completeness == completeness));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSessionOptions&&const DeepCollectionEquality().equals(other.agents, _agents)&&(identical(other.providers, providers) || other.providers == providers)&&const DeepCollectionEquality().equals(other.commands, _commands)&&(identical(other.completeness, completeness) || other.completeness == completeness));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_agents),providers,const DeepCollectionEquality().hash(_commands),completeness);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_agents),providers,const DeepCollectionEquality().hash(_commands),completeness);
+}
 
 @override
 String toString() {
-  return 'PluginSessionOptions(agents: $agents, providers: $providers, commands: $commands, completeness: $completeness)';
+    return 'PluginSessionOptions(agents: $agents, providers: $providers, commands: $commands, completeness: $completeness)';
 }
 
 
@@ -188,7 +195,7 @@ mixin _$PluginSessionOptionsDiscoveryResult {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionOptionsDiscoveryResult);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionOptionsDiscoveryResult);
 }
 
 
@@ -197,7 +204,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginSessionOptionsDiscoveryResult()';
+    return 'PluginSessionOptionsDiscoveryResult()';
 }
 
 
@@ -229,16 +236,18 @@ $PluginSessionOptionsDiscoveryObservedCopyWith<PluginSessionOptionsDiscoveryObse
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionOptionsDiscoveryObserved&&(identical(other.options, options) || other.options == options));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionOptionsDiscoveryObserved&&(identical(other.options, options) || other.options == options));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,options);
+int get hashCode {
+    return Object.hash(runtimeType,options);
+}
 
 @override
 String toString() {
-  return 'PluginSessionOptionsDiscoveryResult.observed(options: $options)';
+    return 'PluginSessionOptionsDiscoveryResult.observed(options: $options)';
 }
 
 
@@ -304,16 +313,18 @@ $PluginSessionOptionsDiscoveryAuthenticationRequiredCopyWith<PluginSessionOption
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionOptionsDiscoveryAuthenticationRequired&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionOptionsDiscoveryAuthenticationRequired&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,actionHint);
+int get hashCode {
+    return Object.hash(runtimeType,actionHint);
+}
 
 @override
 String toString() {
-  return 'PluginSessionOptionsDiscoveryResult.authenticationRequired(actionHint: $actionHint)';
+    return 'PluginSessionOptionsDiscoveryResult.authenticationRequired(actionHint: $actionHint)';
 }
 
 
@@ -365,7 +376,7 @@ class PluginSessionOptionsDiscoveryFailed implements PluginSessionOptionsDiscove
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionOptionsDiscoveryFailed);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionOptionsDiscoveryFailed);
 }
 
 
@@ -374,7 +385,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginSessionOptionsDiscoveryResult.failed()';
+    return 'PluginSessionOptionsDiscoveryResult.failed()';
 }
 
 

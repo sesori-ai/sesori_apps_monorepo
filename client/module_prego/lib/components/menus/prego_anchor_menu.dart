@@ -170,6 +170,11 @@ class const PregoAnchorMenu({
   /// flat on Android.
   final bool flat = false,
 
+  /// Starts a scrollable flat menu at the bottom, keeping the last entries
+  /// visible when the rows do not fit. Entries still render top to bottom in
+  /// [entriesBuilder] order. Requires [flat]; the glass menu owns its scroll.
+  final bool reverseScroll = false,
+
   /// When set, the open menu blurs and dims the page behind it while keeping the
   /// trigger sharp. Null (the default) leaves the backdrop untouched — right for
   /// a menu hung off a button, where the page behind it is not the subject.
@@ -181,7 +186,8 @@ class const PregoAnchorMenu({
         spotlight == null || flat,
         "A spotlight needs the flat path (flat: true): GlassMenu hides its trigger while the "
         "popup is up, so there is no trigger left to keep sharp.",
-      );
+      ),
+      assert(!reverseScroll || flat, "Reverse scrolling requires the flat menu path (flat: true).");
 
   @override
   State<PregoAnchorMenu> createState() => _PregoAnchorMenuState();
@@ -366,6 +372,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
       maxHeight: widget.menuMaxHeight,
       borderRadius: widget.menuBorderRadius,
       screenPadding: widget.menuScreenPadding,
+      reverseScroll: widget.reverseScroll,
       // Menu items meet the panel clip so their ink reaches its outer edges.
       // Labels, dividers, and custom content keep the original edge breathing
       // room when they bookend the menu.

@@ -83,8 +83,16 @@ class const HarnessSettingsFlowView({super.key, required final Widget child}) ex
             },
           ),
           BlocListener<PluginManagementCubit, PluginManagementState>(
-            listenWhen: (previous, current) =>
-                _authenticationChallenge(state: previous) == null && _authenticationChallenge(state: current) != null,
+            listenWhen: (previous, current) {
+              final prior = _authenticationChallenge(state: previous);
+              final next = _authenticationChallenge(state: current);
+              return next != null &&
+                  (prior == null ||
+                      next is PluginAuthenticationPresentationStarting &&
+                          (prior is PluginAuthenticationPresentationSucceeded ||
+                              prior is PluginAuthenticationPresentationCancelled ||
+                              prior is PluginAuthenticationPresentationFailed));
+            },
             listener: (context, state) {
               final challenge = _authenticationChallenge(state: state);
               if (challenge == null || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
@@ -98,19 +106,18 @@ class const HarnessSettingsFlowView({super.key, required final Widget child}) ex
   }
 }
 
-PluginAuthenticationPresentationState? _authenticationChallenge({required PluginManagementState state}) =>
-    switch (state) {
-      PluginManagementReady(authentication: final PluginAuthenticationPresentationChallenge challenge) => challenge,
-      PluginManagementReady(authentication: final PluginAuthenticationPresentationBrowserLaunchFailedState challenge) =>
-        challenge,
-      PluginManagementReady(authentication: final PluginAuthenticationPresentationCancelling challenge) => challenge,
-      PluginManagementReady(authentication: final PluginAuthenticationPresentationCancellingUncertain challenge) =>
-        challenge,
-      PluginManagementReady() ||
-      PluginManagementLoading() ||
-      PluginManagementUnsupported() ||
-      PluginManagementFailure() => null,
-    };
+PluginAuthenticationPresentationState? _authenticationChallenge({
+  required PluginManagementState state,
+}) => switch (state) {
+  PluginManagementReady(:final authentication)
+      when authentication is! PluginAuthenticationPresentationIdle &&
+          (authentication is! PluginAuthenticationPresentationFailed || authentication.pluginId != null) =>
+    authentication,
+  PluginManagementReady() ||
+  PluginManagementLoading() ||
+  PluginManagementUnsupported() ||
+  PluginManagementFailure() => null,
+};
 
 CatalogRescanOutcome? _scanOutcome(PluginManagementState state) => switch (state) {
   PluginManagementReady(:final scanOutcome) => scanOutcome,

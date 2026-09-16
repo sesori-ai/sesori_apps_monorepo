@@ -27,12 +27,16 @@ $ClaudeBackendCatalogDtoCopyWith<ClaudeBackendCatalogDto> get copyWith => _$Clau
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeBackendCatalogDto&&const DeepCollectionEquality().equals(other.commands, commands)&&const DeepCollectionEquality().equals(other.models, models));
+  final _this = this as ClaudeBackendCatalogDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeBackendCatalogDto&&const DeepCollectionEquality().equals(other.commands, _this.commands)&&const DeepCollectionEquality().equals(other.models, _this.models));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(commands),const DeepCollectionEquality().hash(models));
+int get hashCode {
+  final _this = this as ClaudeBackendCatalogDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.commands),const DeepCollectionEquality().hash(_this.models));
+}
 
 
 
@@ -104,12 +108,14 @@ _$ClaudeBackendCatalogDtoCopyWith<_ClaudeBackendCatalogDto> get copyWith => __$C
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeBackendCatalogDto&&const DeepCollectionEquality().equals(other._commands, _commands)&&const DeepCollectionEquality().equals(other._models, _models));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeBackendCatalogDto&&const DeepCollectionEquality().equals(other.commands, _commands)&&const DeepCollectionEquality().equals(other.models, _models));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_commands),const DeepCollectionEquality().hash(_models));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_commands),const DeepCollectionEquality().hash(_models));
+}
 
 
 
@@ -163,12 +169,16 @@ $ClaudeCommandDtoCopyWith<ClaudeCommandDto> get copyWith => _$ClaudeCommandDtoCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeCommandDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.argumentHint, argumentHint) || other.argumentHint == argumentHint));
+  final _this = this as ClaudeCommandDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeCommandDto&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.argumentHint, _this.argumentHint) || other.argumentHint == _this.argumentHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,argumentHint);
+int get hashCode {
+  final _this = this as ClaudeCommandDto;
+  return Object.hash(runtimeType,_this.name,_this.description,_this.argumentHint);
+}
 
 
 
@@ -230,12 +240,14 @@ _$ClaudeCommandDtoCopyWith<_ClaudeCommandDto> get copyWith => __$ClaudeCommandDt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeCommandDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.argumentHint, argumentHint) || other.argumentHint == argumentHint));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeCommandDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.argumentHint, argumentHint) || other.argumentHint == argumentHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,argumentHint);
+int get hashCode {
+    return Object.hash(runtimeType,name,description,argumentHint);
+}
 
 
 
@@ -290,12 +302,16 @@ $ClaudeModelDtoCopyWith<ClaudeModelDto> get copyWith => _$ClaudeModelDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeModelDto&&(identical(other.value, value) || other.value == value)&&(identical(other.resolvedModel, resolvedModel) || other.resolvedModel == resolvedModel)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.supportsEffort, supportsEffort) || other.supportsEffort == supportsEffort)&&const DeepCollectionEquality().equals(other.supportedEffortLevels, supportedEffortLevels));
+  final _this = this as ClaudeModelDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeModelDto&&(identical(other.value, _this.value) || other.value == _this.value)&&(identical(other.resolvedModel, _this.resolvedModel) || other.resolvedModel == _this.resolvedModel)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.supportsEffort, _this.supportsEffort) || other.supportsEffort == _this.supportsEffort)&&const DeepCollectionEquality().equals(other.supportedEffortLevels, _this.supportedEffortLevels));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,value,resolvedModel,displayName,supportsEffort,const DeepCollectionEquality().hash(supportedEffortLevels));
+int get hashCode {
+  final _this = this as ClaudeModelDto;
+  return Object.hash(runtimeType,_this.value,_this.resolvedModel,_this.displayName,_this.supportsEffort,const DeepCollectionEquality().hash(_this.supportedEffortLevels));
+}
 
 
 
@@ -367,12 +383,14 @@ _$ClaudeModelDtoCopyWith<_ClaudeModelDto> get copyWith => __$ClaudeModelDtoCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeModelDto&&(identical(other.value, value) || other.value == value)&&(identical(other.resolvedModel, resolvedModel) || other.resolvedModel == resolvedModel)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.supportsEffort, supportsEffort) || other.supportsEffort == supportsEffort)&&const DeepCollectionEquality().equals(other._supportedEffortLevels, _supportedEffortLevels));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeModelDto&&(identical(other.value, value) || other.value == value)&&(identical(other.resolvedModel, resolvedModel) || other.resolvedModel == resolvedModel)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.supportsEffort, supportsEffort) || other.supportsEffort == supportsEffort)&&const DeepCollectionEquality().equals(other.supportedEffortLevels, _supportedEffortLevels));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,value,resolvedModel,displayName,supportsEffort,const DeepCollectionEquality().hash(_supportedEffortLevels));
+int get hashCode {
+    return Object.hash(runtimeType,value,resolvedModel,displayName,supportsEffort,const DeepCollectionEquality().hash(_supportedEffortLevels));
+}
 
 
 

@@ -140,15 +140,19 @@ final class NdjsonProcessClient({
     unawaited(
       process.done.then(
         (code) {
+          if (generation == _generation) {
+            _failPending(error: _exitError(code), stackTrace: StackTrace.current);
+            if (!_disposed) Log.w("[$_logTag] process exited with code $code");
+          }
+          // Pending response continuations must run before public exit
+          // listeners reset plugin state they need for failure settlement.
           if (!exit.isCompleted) exit.complete(code);
-          if (generation != _generation) return;
-          _failPending(error: _exitError(code), stackTrace: StackTrace.current);
-          if (!_disposed) Log.w("[$_logTag] process exited with code $code");
         },
         onError: (Object error, StackTrace stackTrace) {
+          if (generation == _generation) {
+            _failPending(error: error, stackTrace: stackTrace);
+          }
           if (!exit.isCompleted) exit.completeError(error, stackTrace);
-          if (generation != _generation) return;
-          _failPending(error: error, stackTrace: stackTrace);
         },
       ),
     );

@@ -29,16 +29,21 @@ $NotificationDataCopyWith<NotificationData> get copyWith => _$NotificationDataCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationData&&(identical(other.category, category) || other.category == category)&&(identical(other.eventType, eventType) || other.eventType == eventType)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId));
+  final _this = this as NotificationData;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationData&&(identical(other.category, _this.category) || other.category == _this.category)&&(identical(other.eventType, _this.eventType) || other.eventType == _this.eventType)&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,category,eventType,sessionId,projectId);
+int get hashCode {
+  final _this = this as NotificationData;
+  return Object.hash(runtimeType,_this.category,_this.eventType,_this.sessionId,_this.projectId);
+}
 
 @override
 String toString() {
-  return 'NotificationData(category: $category, eventType: $eventType, sessionId: $sessionId, projectId: $projectId)';
+  final _this = this as NotificationData;
+  return 'NotificationData(category: ${_this.category}, eventType: ${_this.eventType}, sessionId: ${_this.sessionId}, projectId: ${_this.projectId})';
 }
 
 
@@ -105,16 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationData&&(identical(other.category, category) || other.category == category)&&(identical(other.eventType, eventType) || other.eventType == eventType)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationData&&(identical(other.category, category) || other.category == category)&&(identical(other.eventType, eventType) || other.eventType == eventType)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,category,eventType,sessionId,projectId);
+int get hashCode {
+    return Object.hash(runtimeType,category,eventType,sessionId,projectId);
+}
 
 @override
 String toString() {
-  return 'NotificationData(category: $category, eventType: $eventType, sessionId: $sessionId, projectId: $projectId)';
+    return 'NotificationData(category: $category, eventType: $eventType, sessionId: $sessionId, projectId: $projectId)';
 }
 
 

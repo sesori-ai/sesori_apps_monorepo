@@ -26,16 +26,21 @@ $GhAuthenticatedIdentityCopyWith<GhAuthenticatedIdentity> get copyWith => _$GhAu
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhAuthenticatedIdentity&&(identical(other.rawLogin, rawLogin) || other.rawLogin == rawLogin));
+  final _this = this as GhAuthenticatedIdentity;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhAuthenticatedIdentity&&(identical(other.rawLogin, _this.rawLogin) || other.rawLogin == _this.rawLogin));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,rawLogin);
+int get hashCode {
+  final _this = this as GhAuthenticatedIdentity;
+  return Object.hash(runtimeType,_this.rawLogin);
+}
 
 @override
 String toString() {
-  return 'GhAuthenticatedIdentity(rawLogin: $rawLogin)';
+  final _this = this as GhAuthenticatedIdentity;
+  return 'GhAuthenticatedIdentity(rawLogin: ${_this.rawLogin})';
 }
 
 
@@ -93,16 +98,18 @@ _$GhAuthenticatedIdentityCopyWith<_GhAuthenticatedIdentity> get copyWith => __$G
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhAuthenticatedIdentity&&(identical(other.rawLogin, rawLogin) || other.rawLogin == rawLogin));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhAuthenticatedIdentity&&(identical(other.rawLogin, rawLogin) || other.rawLogin == rawLogin));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,rawLogin);
+int get hashCode {
+    return Object.hash(runtimeType,rawLogin);
+}
 
 @override
 String toString() {
-  return 'GhAuthenticatedIdentity(rawLogin: $rawLogin)';
+    return 'GhAuthenticatedIdentity(rawLogin: $rawLogin)';
 }
 
 

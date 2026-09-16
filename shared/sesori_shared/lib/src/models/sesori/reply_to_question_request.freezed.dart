@@ -29,16 +29,21 @@ $ReplyToQuestionRequestCopyWith<ReplyToQuestionRequest> get copyWith => _$ReplyT
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReplyToQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other.answers, answers));
+  final _this = this as ReplyToQuestionRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReplyToQuestionRequest&&(identical(other.requestId, _this.requestId) || other.requestId == _this.requestId)&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&const DeepCollectionEquality().equals(other.answers, _this.answers));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestId,sessionId,const DeepCollectionEquality().hash(answers));
+int get hashCode {
+  final _this = this as ReplyToQuestionRequest;
+  return Object.hash(runtimeType,_this.requestId,_this.sessionId,const DeepCollectionEquality().hash(_this.answers));
+}
 
 @override
 String toString() {
-  return 'ReplyToQuestionRequest(requestId: $requestId, sessionId: $sessionId, answers: $answers)';
+  final _this = this as ReplyToQuestionRequest;
+  return 'ReplyToQuestionRequest(requestId: ${_this.requestId}, sessionId: ${_this.sessionId}, answers: ${_this.answers})';
 }
 
 
@@ -109,16 +114,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReplyToQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other._answers, _answers));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReplyToQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other.answers, _answers));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestId,sessionId,const DeepCollectionEquality().hash(_answers));
+int get hashCode {
+    return Object.hash(runtimeType,requestId,sessionId,const DeepCollectionEquality().hash(_answers));
+}
 
 @override
 String toString() {
-  return 'ReplyToQuestionRequest(requestId: $requestId, sessionId: $sessionId, answers: $answers)';
+    return 'ReplyToQuestionRequest(requestId: $requestId, sessionId: $sessionId, answers: $answers)';
 }
 
 
@@ -175,16 +182,21 @@ $RejectQuestionRequestCopyWith<RejectQuestionRequest> get copyWith => _$RejectQu
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RejectQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
+  final _this = this as RejectQuestionRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RejectQuestionRequest&&(identical(other.requestId, _this.requestId) || other.requestId == _this.requestId)&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestId,sessionId);
+int get hashCode {
+  final _this = this as RejectQuestionRequest;
+  return Object.hash(runtimeType,_this.requestId,_this.sessionId);
+}
 
 @override
 String toString() {
-  return 'RejectQuestionRequest(requestId: $requestId, sessionId: $sessionId)';
+  final _this = this as RejectQuestionRequest;
+  return 'RejectQuestionRequest(requestId: ${_this.requestId}, sessionId: ${_this.sessionId})';
 }
 
 
@@ -247,16 +259,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RejectQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RejectQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestId,sessionId);
+int get hashCode {
+    return Object.hash(runtimeType,requestId,sessionId);
+}
 
 @override
 String toString() {
-  return 'RejectQuestionRequest(requestId: $requestId, sessionId: $sessionId)';
+    return 'RejectQuestionRequest(requestId: $requestId, sessionId: $sessionId)';
 }
 
 
@@ -312,16 +326,21 @@ $ReplyAnswerCopyWith<ReplyAnswer> get copyWith => _$ReplyAnswerCopyWithImpl<Repl
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReplyAnswer&&const DeepCollectionEquality().equals(other.values, values));
+  final _this = this as ReplyAnswer;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReplyAnswer&&const DeepCollectionEquality().equals(other.values, _this.values));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(values));
+int get hashCode {
+  final _this = this as ReplyAnswer;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.values));
+}
 
 @override
 String toString() {
-  return 'ReplyAnswer(values: $values)';
+  final _this = this as ReplyAnswer;
+  return 'ReplyAnswer(values: ${_this.values})';
 }
 
 
@@ -388,16 +407,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReplyAnswer&&const DeepCollectionEquality().equals(other._values, _values));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReplyAnswer&&const DeepCollectionEquality().equals(other.values, _values));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_values));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_values));
+}
 
 @override
 String toString() {
-  return 'ReplyAnswer(values: $values)';
+    return 'ReplyAnswer(values: $values)';
 }
 
 

@@ -64,8 +64,11 @@ reconnect or restart.
 - When DeepSeek needs a first or stale backfill, its plugin calls
   `deepseek/session/history` through the one long-lived adapter connection and
   reads isolated persistence without resuming an agent or starting a scratch
-  process. It pages at complete message boundaries, returns at most 100 messages
-  per page, rejects non-progressing or over-100-page traversal, and reuses the
+  process. Native session observations preserve seeded-child inherited boundaries
+  and parent lineage. Released JSONL sessions use the harness's native format
+  migration; history reads leave source bytes unchanged, and resuming may create
+  a new native generation. It pages at complete message boundaries, returns at
+  most 100 messages per page, rejects non-progressing or over-100-page traversal, and reuses the
   shared ACP replay collector. Direct user message IDs remain exact; assistant
   IDs use the deterministic ACP projection. Known DeepSeek history metadata is
   decoded once into typed fields and validated at the API boundary; malformed
@@ -88,16 +91,44 @@ reconnect or restart.
   reopening a prior session after plugin, process, or bridge restart loads it
   before the next prompt without duplicating replay into the live stream. Sesori
   uses the public protocol and never reads Copilot credential or history files.
-- Grok history also uses standard ACP `session/load` on a dedicated short-lived
-  connection and never reads its local credential or session files. Replay
-  initialization validates Grok identity without changing live process defaults;
-  after load, the session's complete model/provider/effort selection is captured
-  atomically and stamps replayed assistant/error messages. Cold continuation
-  loads that same session before prompting after process, plugin, or bridge
-  restart. Both standard `session/update` history and historical Grok
-  `_x.ai/session/update` lifecycle frames remain suppressed from the live event
-  stream during that load window; extension frames received outside it remain
-  live.
+- Grok history uses standard ACP `session/load` on a dedicated short-lived
+  connection. Historical `_x.ai/session/update` and standard `session/update`
+  frames are suppressed from the live stream only during the load window;
+  extension frames received outside it remain live. The plugin reads only typed
+  `summary.json` and `updates.jsonl` session data under the known Grok sessions
+  tree for catalog attribution and child-owned prompt context; credential and
+  configuration files remain outside the API. Root replay suppresses exact
+  metadata-identified `spawn_subagent` cards and inserts one child-linked tile
+  at the persisted lifecycle position only when that exact child's first
+  user-message run is nonblank. A blank or missing first run produces no tile;
+  later runs never substitute. Child ids use the same inherited load transport
+  and replay their own standard prompt/tool/text history. Replay initialization validates Grok
+  identity without changing live process defaults; after load, the session's
+  complete model/provider/effort selection stamps all assistant/error/tile
+  envelopes. Both persisted `_x.ai/session/update` facts and late
+  `_x.ai/session_notification` settlement remain inside the existing quiet drain
+  and never read or mutate live child state or the event stream. Corrected
+  production-composition QA after PR #1429 verified one exact root/child catalog
+  link, one root tile linked to that child, and a nonblank child-owned prompt in
+  child replay. Owned-phone QA reached cold read-only child history. Fixed build
+  `0187bb2b10` retained one tool row but two adjacent assistant rows on each side
+  across two opens and another backfill. Structural inspection found replay's
+  final text nonempty while live retained an empty text part. Anchored
+  reconciliation now treats that empty retained snapshot as a strict prefix
+  only when replay text is nonempty and every existing window guard passes.
+  Final owned-phone QA on build `493bab1483` and two private backend reads each
+  converged to one imported four-message sequence with no retained live
+  assistant identities.
+- Cursor `session/load` replaces only a fully typed completed foreground Task's
+  generic card, preserving its replay-local part identity, title, output,
+  attachments, and transcript order. Its native replay input uses
+  `subagentType.unspecified`, distinct from the live request's
+  `subagentType.custom.unspecified`; separate typed DTOs map both exact shapes
+  to one closed presentation value. Background, incomplete, malformed,
+  unknown, nonterminal, unmatched, and update-only facts remain generic; an
+  omitted cancelled Task remains absent. Bounded production-composition QA
+  passed two fresh cold loads with one equivalent completed childless tile and
+  stable replay-local identity, without requiring equality with the live id.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. Exact identities satisfy their replay occurrences
   first and anchor neighboring order by identity even when replay revises their
@@ -112,8 +143,17 @@ reconnect or restart.
   The content fingerprint ignores identity, time, agent/model attribution, and
   internal parts hidden from transcripts; alignment still uses available
   creation times as above, normalizes spilled attachments, and keeps replay
-  metadata authoritative. Other retained rows
-  rejoin at their recorded creation time while preserving relative order, so a
+  metadata authoritative. One narrower boundary case also reconciles
+  atomically: a standalone tool row with one exact deterministic identity may
+  anchor immediately adjacent assistant rows when the preceding row is exactly
+  equal and replay's following `MessagePartText.text` strictly extends live text
+  as its only difference. An empty retained snapshot is a valid strict prefix
+  only when replay text is nonempty and every window guard passes. Both
+  three-row windows must be uniquely consumed, ordered identically, and free of
+  conflicting known timestamps;
+  ambiguity, a reverse prefix, changed reasoning/parts, or unrelated text keeps
+  retained rows. Other retained rows rejoin at their recorded creation time
+  while preserving relative order, so a
   catalog re-import cannot move old rows to the newest edge. A message a backend
   replay once contained is the opposite case: its later absence is a removal,
   so a re-read drops it. That is how a session rolled back outside Sesori — an
@@ -169,6 +209,13 @@ reconnect or restart.
   part is swept the same way but to `cancelled` with no error text; because a
   root stays busy while any of its sub-agents runs, a live background
   sub-agent is never swept, only one whose bridge died.
+- Codex parent history joins a `spawn_agent` only to the exact nested
+  `item_completed/SubAgentActivity` id and replaces that generic card with one
+  child-linked subtask tile. Child replay first trims any copied parent prefix,
+  then uses only the initial child-owned turn for plaintext `NEW_TASK` prompt
+  precedence and first-terminal selection; resumed turns cannot rewrite either.
+  Encrypted input keeps the exact matching spawn message and never exposes its
+  envelope header. Missing or mismatched activity leaves the generic card.
 - Codex rollout replay applies each `thread_rolled_back` marker to the history
   surviving before it. `num_turns` counts user turns; each removed turn includes
   its user, assistant, reasoning, tool, and terminal records, while earlier
@@ -250,6 +297,9 @@ rules where supported.
   belong to a different transcript than its messages, or misreports freshness in
   either direction — a current store flagged as awaiting sync, or a stale one
   served as complete.
+- Cursor replay duplicates a generic Task card and tile, changes replay-local
+  identity or order across loads, or turns incomplete/background facts into a
+  completed subtask.
 - DeepSeek replay duplicates a generic delegation card and child tile, attributes
   a nested tile to the root instead of its direct parent, changes live child
   activity, loses latest terminal metadata across pages, or collapses/reorders
@@ -307,9 +357,12 @@ rules where supported.
   normalizes live and replay differently.
 - A Copilot restart prompts before `session/load`, duplicates replay as new live
   output, or reads private history files instead of the ACP replay boundary.
-- Grok replay mutates live defaults during initialize, stamps messages from an
+- Grok replay mutates live defaults or child state, stamps messages from an
   incomplete tuple, loses loaded effort/model attribution, duplicates replay as
-  live output, prompts before cold load, or reads private local files.
+  live output, prompts before cold load, reads credential/configuration files,
+  merges child prompt chunks across the first non-user boundary, renders both a
+  generic spawn card and subtask tile, or fabricates a tile without a child-owned
+  prompt.
 
 ## Known Limitations
 
@@ -327,9 +380,15 @@ rules where supported.
   diagnostic logging is in place and any refresh correction is unfinished.
 - Antigravity's native personal-authenticated history, cold bridge restart, retained-history import/tombstone behavior,
   and cross-target pairs remain unverified.
-- Grok's sub-agent tile and child catalog are live/persisted lifecycle views;
-  reconstructing the inline tile and child transcript from `session/load` is the
-  separate planned child-history step, so the capability matrix remains open.
+- The final DeepSeek phone gate did not cold-reload a root or child, open a
+  read-only child transcript, restart the bridge/plugin, or test reconnect
+  convergence. Existing package tests remain the evidence for replay identity
+  and ordering; no client E2E history pass is claimed from scoped-stop QA.
+- Grok permission denial persistence remains unverified because the unchanged
+  1.0.5 runtime auto-resolved probe interactions without exposing a permission
+  request. Replay therefore has no permission-outcome model; a denied generic
+  spawn card may be absent. An early-cancelled child with no persisted prompt
+  intentionally has no replayed tile.
 
 ## Sources
 
@@ -338,5 +397,5 @@ SSE replay window, and routed request dispatch; database and audit compatibility
 tests under `bridge/app/test/bridge/services/`; client session-detail load/cubit
 code and focused metadata, blocking, reload-race and event-buffer tests; Pi
 session process repository, storage API, and history mapper; shared ACP event mapper, turn serialization,
-and session loader plus Antigravity, Copilot and Grok plugins and package tests; shared
+and session loader plus Antigravity, Copilot, Cursor, and Grok plugins and package tests; shared
 pagination cursor; client detail load service and cubit.

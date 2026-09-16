@@ -27,16 +27,21 @@ $AppClientStatusResponseCopyWith<AppClientStatusResponse> get copyWith => _$AppC
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppClientStatusResponse&&(identical(other.registered, registered) || other.registered == registered));
+  final _this = this as AppClientStatusResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppClientStatusResponse&&(identical(other.registered, _this.registered) || other.registered == _this.registered));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,registered);
+int get hashCode {
+  final _this = this as AppClientStatusResponse;
+  return Object.hash(runtimeType,_this.registered);
+}
 
 @override
 String toString() {
-  return 'AppClientStatusResponse(registered: $registered)';
+  final _this = this as AppClientStatusResponse;
+  return 'AppClientStatusResponse(registered: ${_this.registered})';
 }
 
 
@@ -94,16 +99,18 @@ _$AppClientStatusResponseCopyWith<_AppClientStatusResponse> get copyWith => __$A
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppClientStatusResponse&&(identical(other.registered, registered) || other.registered == registered));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppClientStatusResponse&&(identical(other.registered, registered) || other.registered == registered));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,registered);
+int get hashCode {
+    return Object.hash(runtimeType,registered);
+}
 
 @override
 String toString() {
-  return 'AppClientStatusResponse(registered: $registered)';
+    return 'AppClientStatusResponse(registered: $registered)';
 }
 
 

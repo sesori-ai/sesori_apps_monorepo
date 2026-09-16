@@ -2,8 +2,11 @@ import "dart:convert";
 import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
+import "package:grok_plugin/src/api/grok_acp_api.dart";
 import "package:grok_plugin/src/api/grok_session_store_api.dart";
 import "package:grok_plugin/src/repositories/grok_session_catalog_repository.dart";
+import "package:grok_plugin/src/repositories/grok_session_control_repository.dart";
+import "package:grok_plugin/src/repositories/grok_session_history_repository.dart";
 import "package:grok_plugin/src/services/grok_session_service.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -18,7 +21,7 @@ void main() {
     const rootId = "root";
     const persistedChildId = "persisted-child";
 
-    String sessionDirectory(String sessionId) =>
+    String sessionDirectory({required String sessionId}) =>
         p.join(sessions.path, Uri.encodeComponent(persistedDirectory), sessionId);
 
     PluginSession rootSession() => const PluginSession(
@@ -33,19 +36,29 @@ void main() {
     setUp(() {
       sessions = Directory.systemTemp.createTempSync("grok-child-service-");
       tracker = AcpChildSessionTracker();
-      final repository = GrokSessionCatalogRepository(
-        api: GrokSessionStoreApi(sessionsRoot: sessions.path, pluginId: "grok-test"),
+      final storeApi = GrokSessionStoreApi(sessionsRoot: sessions.path, pluginId: "grok-test");
+      final repository = GrokSessionCatalogRepository(api: storeApi);
+      service = GrokSessionService(
+        catalogRepository: repository,
+        controlRepository: GrokSessionControlRepository(
+          api: GrokAcpApi(
+            binaryPath: "grok",
+            processFactory: (_) => throw StateError("unused"),
+            environment: const {},
+          ),
+        ),
+        historyRepository: GrokSessionHistoryRepository(api: storeApi),
+        liveTracker: tracker,
       );
-      service = GrokSessionService(catalogRepository: repository, liveTracker: tracker);
 
-      File(p.join(sessionDirectory(rootId), "summary.json"))
+      File(p.join(sessionDirectory(sessionId: rootId), "summary.json"))
         ..createSync(recursive: true)
         ..writeAsStringSync(
           jsonEncode({
             "info": {"id": rootId, "cwd": persistedDirectory},
           }),
         );
-      File(p.join(sessionDirectory(rootId), "updates.jsonl")).writeAsStringSync(
+      File(p.join(sessionDirectory(sessionId: rootId), "updates.jsonl")).writeAsStringSync(
         jsonEncode({
           "method": "_x.ai/session/update",
           "params": {
@@ -60,7 +73,7 @@ void main() {
           },
         }),
       );
-      File(p.join(sessionDirectory(persistedChildId), "summary.json"))
+      File(p.join(sessionDirectory(sessionId: persistedChildId), "summary.json"))
         ..createSync(recursive: true)
         ..writeAsStringSync(
           jsonEncode({
@@ -107,8 +120,41 @@ void main() {
       expect(sessions.last.directory, persistedDirectory);
     });
 
+    test("history context uses persisted directory and excludes live-only children", () async {
+      File(p.join(sessionDirectory(sessionId: persistedChildId), "updates.jsonl")).writeAsStringSync(
+        jsonEncode({
+          "method": "session/update",
+          "params": {
+            "sessionId": persistedChildId,
+            "update": {
+              "sessionUpdate": "user_message_chunk",
+              "content": {"type": "text", "text": "Persisted prompt"},
+            },
+          },
+        }),
+      );
+      tracker.spawn(
+        sessionId: rootId,
+        spawn: const AcpChildSpawn(
+          childSessionId: "live-only",
+          description: "Live child",
+          agent: "general-purpose",
+          prompt: "Live prompt",
+          isBackground: false,
+        ),
+        directory: persistedDirectory,
+      );
+
+      final context = await service.prepareReplayContext(
+        sessionId: rootId,
+        fallbackDirectory: "/launch-directory",
+      );
+
+      expect(context.childPrompts, {persistedChildId: "Persisted prompt"});
+    });
+
     test("derived all-session enumeration repairs a root directory even when it has no children", () {
-      File(p.join(sessionDirectory(rootId), "updates.jsonl")).writeAsStringSync("");
+      File(p.join(sessionDirectory(sessionId: rootId), "updates.jsonl")).writeAsStringSync("");
 
       final sessions = service.includeChildrenInAllSessions(sessions: [rootSession()]);
 

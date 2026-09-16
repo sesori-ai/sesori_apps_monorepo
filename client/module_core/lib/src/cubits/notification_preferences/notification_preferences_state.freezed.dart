@@ -21,7 +21,7 @@ mixin _$NotificationPreferencesState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NotificationPreferencesState()';
+    return 'NotificationPreferencesState()';
 }
 
 
@@ -57,7 +57,7 @@ class NotificationPreferencesLoading implements NotificationPreferencesState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesLoading);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesLoading);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NotificationPreferencesState.loading()';
+    return 'NotificationPreferencesState.loading()';
 }
 
 
@@ -89,7 +89,7 @@ class NotificationPreferencesAccountUnavailable implements NotificationPreferenc
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesAccountUnavailable);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesAccountUnavailable);
 }
 
 
@@ -98,7 +98,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NotificationPreferencesState.accountUnavailable()';
+    return 'NotificationPreferencesState.accountUnavailable()';
 }
 
 
@@ -121,7 +121,7 @@ class NotificationPreferencesLoadFailed implements NotificationPreferencesState 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesLoadFailed);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesLoadFailed);
 }
 
 
@@ -130,7 +130,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NotificationPreferencesState.loadFailed()';
+    return 'NotificationPreferencesState.loadFailed()';
 }
 
 
@@ -171,16 +171,18 @@ $NotificationPreferencesLoadedCopyWith<NotificationPreferencesLoaded> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesLoaded&&const DeepCollectionEquality().equals(other._preferences, _preferences)&&const DeepCollectionEquality().equals(other._updatingCategories, _updatingCategories));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesLoaded&&const DeepCollectionEquality().equals(other.preferences, _preferences)&&const DeepCollectionEquality().equals(other.updatingCategories, _updatingCategories));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_preferences),const DeepCollectionEquality().hash(_updatingCategories));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_preferences),const DeepCollectionEquality().hash(_updatingCategories));
+}
 
 @override
 String toString() {
-  return 'NotificationPreferencesState.loaded(preferences: $preferences, updatingCategories: $updatingCategories)';
+    return 'NotificationPreferencesState.loaded(preferences: $preferences, updatingCategories: $updatingCategories)';
 }
 
 

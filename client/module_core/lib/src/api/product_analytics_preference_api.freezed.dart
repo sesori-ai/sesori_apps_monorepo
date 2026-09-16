@@ -29,16 +29,21 @@ $ProductAnalyticsPreferenceApiRecordCopyWith<ProductAnalyticsPreferenceApiRecord
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceApiRecord&&(identical(other.preference, preference) || other.preference == preference)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey));
+  final _this = this as ProductAnalyticsPreferenceApiRecord;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceApiRecord&&(identical(other.preference, _this.preference) || other.preference == _this.preference)&&(identical(other.revision, _this.revision) || other.revision == _this.revision)&&(identical(other.userKey, _this.userKey) || other.userKey == _this.userKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,preference,revision,userKey);
+int get hashCode {
+  final _this = this as ProductAnalyticsPreferenceApiRecord;
+  return Object.hash(runtimeType,_this.preference,_this.revision,_this.userKey);
+}
 
 @override
 String toString() {
-  return 'ProductAnalyticsPreferenceApiRecord(preference: $preference, revision: $revision, userKey: $userKey)';
+  final _this = this as ProductAnalyticsPreferenceApiRecord;
+  return 'ProductAnalyticsPreferenceApiRecord(preference: ${_this.preference}, revision: ${_this.revision}, userKey: ${_this.userKey})';
 }
 
 
@@ -103,16 +108,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProductAnalyticsPreferenceApiRecord&&(identical(other.preference, preference) || other.preference == preference)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProductAnalyticsPreferenceApiRecord&&(identical(other.preference, preference) || other.preference == preference)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,preference,revision,userKey);
+int get hashCode {
+    return Object.hash(runtimeType,preference,revision,userKey);
+}
 
 @override
 String toString() {
-  return 'ProductAnalyticsPreferenceApiRecord(preference: $preference, revision: $revision, userKey: $userKey)';
+    return 'ProductAnalyticsPreferenceApiRecord(preference: $preference, revision: $revision, userKey: $userKey)';
 }
 
 
@@ -161,7 +168,7 @@ mixin _$ProductAnalyticsPreferenceApiResult {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceApiResult);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceApiResult);
 }
 
 
@@ -170,7 +177,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ProductAnalyticsPreferenceApiResult()';
+    return 'ProductAnalyticsPreferenceApiResult()';
 }
 
 
@@ -202,16 +209,18 @@ $ProductAnalyticsPreferenceApiSuccessCopyWith<ProductAnalyticsPreferenceApiSucce
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceApiSuccess&&(identical(other.record, record) || other.record == record));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceApiSuccess&&(identical(other.record, record) || other.record == record));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,record);
+int get hashCode {
+    return Object.hash(runtimeType,record);
+}
 
 @override
 String toString() {
-  return 'ProductAnalyticsPreferenceApiResult.success(record: $record)';
+    return 'ProductAnalyticsPreferenceApiResult.success(record: $record)';
 }
 
 
@@ -277,16 +286,18 @@ $ProductAnalyticsPreferenceApiConflictCopyWith<ProductAnalyticsPreferenceApiConf
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceApiConflict&&(identical(other.record, record) || other.record == record));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceApiConflict&&(identical(other.record, record) || other.record == record));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,record);
+int get hashCode {
+    return Object.hash(runtimeType,record);
+}
 
 @override
 String toString() {
-  return 'ProductAnalyticsPreferenceApiResult.conflict(record: $record)';
+    return 'ProductAnalyticsPreferenceApiResult.conflict(record: $record)';
 }
 
 
@@ -347,7 +358,7 @@ class ProductAnalyticsPreferenceApiTimeout implements ProductAnalyticsPreference
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceApiTimeout);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceApiTimeout);
 }
 
 
@@ -356,7 +367,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ProductAnalyticsPreferenceApiResult.timeout()';
+    return 'ProductAnalyticsPreferenceApiResult.timeout()';
 }
 
 
@@ -379,7 +390,7 @@ class ProductAnalyticsPreferenceApiFailure implements ProductAnalyticsPreference
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceApiFailure);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceApiFailure);
 }
 
 
@@ -388,7 +399,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ProductAnalyticsPreferenceApiResult.failure()';
+    return 'ProductAnalyticsPreferenceApiResult.failure()';
 }
 
 
@@ -412,16 +423,21 @@ $ProductAnalyticsPreferenceConflictResponseCopyWith<ProductAnalyticsPreferenceCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceConflictResponse&&(identical(other.error, error) || other.error == error)&&(identical(other.preference, preference) || other.preference == preference)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey));
+  final _this = this as ProductAnalyticsPreferenceConflictResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceConflictResponse&&(identical(other.error, _this.error) || other.error == _this.error)&&(identical(other.preference, _this.preference) || other.preference == _this.preference)&&(identical(other.revision, _this.revision) || other.revision == _this.revision)&&(identical(other.userKey, _this.userKey) || other.userKey == _this.userKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,error,preference,revision,userKey);
+int get hashCode {
+  final _this = this as ProductAnalyticsPreferenceConflictResponse;
+  return Object.hash(runtimeType,_this.error,_this.preference,_this.revision,_this.userKey);
+}
 
 @override
 String toString() {
-  return 'ProductAnalyticsPreferenceConflictResponse(error: $error, preference: $preference, revision: $revision, userKey: $userKey)';
+  final _this = this as ProductAnalyticsPreferenceConflictResponse;
+  return 'ProductAnalyticsPreferenceConflictResponse(error: ${_this.error}, preference: ${_this.preference}, revision: ${_this.revision}, userKey: ${_this.userKey})';
 }
 
 
@@ -485,16 +501,18 @@ _$ProductAnalyticsPreferenceConflictResponseCopyWith<_ProductAnalyticsPreference
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProductAnalyticsPreferenceConflictResponse&&(identical(other.error, error) || other.error == error)&&(identical(other.preference, preference) || other.preference == preference)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProductAnalyticsPreferenceConflictResponse&&(identical(other.error, error) || other.error == error)&&(identical(other.preference, preference) || other.preference == preference)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,error,preference,revision,userKey);
+int get hashCode {
+    return Object.hash(runtimeType,error,preference,revision,userKey);
+}
 
 @override
 String toString() {
-  return 'ProductAnalyticsPreferenceConflictResponse(error: $error, preference: $preference, revision: $revision, userKey: $userKey)';
+    return 'ProductAnalyticsPreferenceConflictResponse(error: $error, preference: $preference, revision: $revision, userKey: $userKey)';
 }
 
 

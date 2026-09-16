@@ -29,16 +29,21 @@ $PullRequestInfoCopyWith<PullRequestInfo> get copyWith => _$PullRequestInfoCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestInfo&&(identical(other.number, number) || other.number == number)&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.mergeableStatus, mergeableStatus) || other.mergeableStatus == mergeableStatus)&&(identical(other.reviewDecision, reviewDecision) || other.reviewDecision == reviewDecision)&&(identical(other.checkStatus, checkStatus) || other.checkStatus == checkStatus));
+  final _this = this as PullRequestInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestInfo&&(identical(other.number, _this.number) || other.number == _this.number)&&(identical(other.url, _this.url) || other.url == _this.url)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.mergeableStatus, _this.mergeableStatus) || other.mergeableStatus == _this.mergeableStatus)&&(identical(other.reviewDecision, _this.reviewDecision) || other.reviewDecision == _this.reviewDecision)&&(identical(other.checkStatus, _this.checkStatus) || other.checkStatus == _this.checkStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,number,url,title,state,mergeableStatus,reviewDecision,checkStatus);
+int get hashCode {
+  final _this = this as PullRequestInfo;
+  return Object.hash(runtimeType,_this.number,_this.url,_this.title,_this.state,_this.mergeableStatus,_this.reviewDecision,_this.checkStatus);
+}
 
 @override
 String toString() {
-  return 'PullRequestInfo(number: $number, url: $url, title: $title, state: $state, mergeableStatus: $mergeableStatus, reviewDecision: $reviewDecision, checkStatus: $checkStatus)';
+  final _this = this as PullRequestInfo;
+  return 'PullRequestInfo(number: ${_this.number}, url: ${_this.url}, title: ${_this.title}, state: ${_this.state}, mergeableStatus: ${_this.mergeableStatus}, reviewDecision: ${_this.reviewDecision}, checkStatus: ${_this.checkStatus})';
 }
 
 
@@ -111,16 +116,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullRequestInfo&&(identical(other.number, number) || other.number == number)&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.mergeableStatus, mergeableStatus) || other.mergeableStatus == mergeableStatus)&&(identical(other.reviewDecision, reviewDecision) || other.reviewDecision == reviewDecision)&&(identical(other.checkStatus, checkStatus) || other.checkStatus == checkStatus));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullRequestInfo&&(identical(other.number, number) || other.number == number)&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.state, state) || other.state == state)&&(identical(other.mergeableStatus, mergeableStatus) || other.mergeableStatus == mergeableStatus)&&(identical(other.reviewDecision, reviewDecision) || other.reviewDecision == reviewDecision)&&(identical(other.checkStatus, checkStatus) || other.checkStatus == checkStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,number,url,title,state,mergeableStatus,reviewDecision,checkStatus);
+int get hashCode {
+    return Object.hash(runtimeType,number,url,title,state,mergeableStatus,reviewDecision,checkStatus);
+}
 
 @override
 String toString() {
-  return 'PullRequestInfo(number: $number, url: $url, title: $title, state: $state, mergeableStatus: $mergeableStatus, reviewDecision: $reviewDecision, checkStatus: $checkStatus)';
+    return 'PullRequestInfo(number: $number, url: $url, title: $title, state: $state, mergeableStatus: $mergeableStatus, reviewDecision: $reviewDecision, checkStatus: $checkStatus)';
 }
 
 

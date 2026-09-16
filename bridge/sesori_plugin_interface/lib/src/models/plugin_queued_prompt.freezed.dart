@@ -35,16 +35,21 @@ $PluginQueuedPromptCopyWith<PluginQueuedPrompt> get copyWith => _$PluginQueuedPr
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginQueuedPrompt&&(identical(other.id, id) || other.id == id)&&(identical(other.text, text) || other.text == text)&&(identical(other.command, command) || other.command == command)&&(identical(other.attachmentCount, attachmentCount) || other.attachmentCount == attachmentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  final _this = this as PluginQueuedPrompt;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginQueuedPrompt&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.text, _this.text) || other.text == _this.text)&&(identical(other.command, _this.command) || other.command == _this.command)&&(identical(other.attachmentCount, _this.attachmentCount) || other.attachmentCount == _this.attachmentCount)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,text,command,attachmentCount,createdAt);
+int get hashCode {
+  final _this = this as PluginQueuedPrompt;
+  return Object.hash(runtimeType,_this.id,_this.text,_this.command,_this.attachmentCount,_this.createdAt);
+}
 
 @override
 String toString() {
-  return 'PluginQueuedPrompt(id: $id, text: $text, command: $command, attachmentCount: $attachmentCount, createdAt: $createdAt)';
+  final _this = this as PluginQueuedPrompt;
+  return 'PluginQueuedPrompt(id: ${_this.id}, text: ${_this.text}, command: ${_this.command}, attachmentCount: ${_this.attachmentCount}, createdAt: ${_this.createdAt})';
 }
 
 
@@ -120,16 +125,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginQueuedPrompt&&(identical(other.id, id) || other.id == id)&&(identical(other.text, text) || other.text == text)&&(identical(other.command, command) || other.command == command)&&(identical(other.attachmentCount, attachmentCount) || other.attachmentCount == attachmentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginQueuedPrompt&&(identical(other.id, id) || other.id == id)&&(identical(other.text, text) || other.text == text)&&(identical(other.command, command) || other.command == command)&&(identical(other.attachmentCount, attachmentCount) || other.attachmentCount == attachmentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,text,command,attachmentCount,createdAt);
+int get hashCode {
+    return Object.hash(runtimeType,id,text,command,attachmentCount,createdAt);
+}
 
 @override
 String toString() {
-  return 'PluginQueuedPrompt(id: $id, text: $text, command: $command, attachmentCount: $attachmentCount, createdAt: $createdAt)';
+    return 'PluginQueuedPrompt(id: $id, text: $text, command: $command, attachmentCount: $attachmentCount, createdAt: $createdAt)';
 }
 
 

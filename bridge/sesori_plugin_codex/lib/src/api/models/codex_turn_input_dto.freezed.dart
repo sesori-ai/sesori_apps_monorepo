@@ -23,7 +23,7 @@ mixin _$CodexTurnInputDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnInputDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnInputDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -32,7 +32,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexTurnInputDto()';
+    return 'CodexTurnInputDto()';
 }
 
 
@@ -78,16 +78,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnTextInputDto&&(identical(other.text, text) || other.text == text)&&const DeepCollectionEquality().equals(other._textElements, _textElements));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnTextInputDto&&(identical(other.text, text) || other.text == text)&&const DeepCollectionEquality().equals(other.textElements, _textElements));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,text,const DeepCollectionEquality().hash(_textElements));
+int get hashCode {
+    return Object.hash(runtimeType,text,const DeepCollectionEquality().hash(_textElements));
+}
 
 @override
 String toString() {
-  return 'CodexTurnInputDto.text(text: $text, textElements: $textElements)';
+    return 'CodexTurnInputDto.text(text: $text, textElements: $textElements)';
 }
 
 
@@ -152,16 +154,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnLocalImageInputDto&&(identical(other.path, path) || other.path == path));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnLocalImageInputDto&&(identical(other.path, path) || other.path == path));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path);
+int get hashCode {
+    return Object.hash(runtimeType,path);
+}
 
 @override
 String toString() {
-  return 'CodexTurnInputDto.localImage(path: $path)';
+    return 'CodexTurnInputDto.localImage(path: $path)';
 }
 
 
@@ -225,16 +229,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnImageInputDto&&(identical(other.url, url) || other.url == url));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnImageInputDto&&(identical(other.url, url) || other.url == url));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,url);
+int get hashCode {
+    return Object.hash(runtimeType,url);
+}
 
 @override
 String toString() {
-  return 'CodexTurnInputDto.image(url: $url)';
+    return 'CodexTurnInputDto.image(url: $url)';
 }
 
 

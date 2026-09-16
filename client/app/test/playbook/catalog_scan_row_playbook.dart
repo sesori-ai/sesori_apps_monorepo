@@ -207,9 +207,10 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
   CatalogScanRowScenario(
     id: "preparing",
     name: "Preparing / Awaiting progress",
-    description: "Requests were dispatched, but no harness has reported yet.",
-    scan: CatalogRescanState.preparingMany(
-      pendingPluginNames: ["Codex", "OpenCode"],
+    description: "Requests were dispatched; the first harness keeps focus until it reports.",
+    scan: CatalogRescanState.preparingOne(
+      pendingPluginName: "Codex",
+      finishedHarnessCount: 0,
       pluginIds: {"codex", "opencode"},
     ),
     action: CatalogScanRowAction.cancel,
@@ -221,6 +222,7 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     scan: CatalogRescanState.reading(
       activePluginName: "Codex",
       sessionsSeen: 0,
+      finishedHarnessCount: 0,
       pluginIds: {"codex", "opencode"},
     ),
     action: CatalogScanRowAction.cancel,
@@ -232,6 +234,7 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     scan: CatalogRescanState.reading(
       activePluginName: "Codex",
       sessionsSeen: 1,
+      finishedHarnessCount: 0,
       pluginIds: {"codex", "opencode"},
     ),
     action: CatalogScanRowAction.cancel,
@@ -243,6 +246,7 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     scan: CatalogRescanState.reading(
       activePluginName: "Claude Code",
       sessionsSeen: 148,
+      finishedHarnessCount: 0,
       pluginIds: {"claude-code", "codex", "opencode"},
     ),
     action: CatalogScanRowAction.cancel,
@@ -588,32 +592,36 @@ class _CatalogScanRowInActionExampleState() extends State<CatalogScanRowInAction
     if (widget.selection is! CatalogScanGestureDemo) return;
     _cancelTimers();
     setState(() {
-      _scan = const CatalogRescanState.preparingMany(
-        pendingPluginNames: ["Claude Code", "Codex", "OpenCode"],
+      _scan = const CatalogRescanState.preparingOne(
+        pendingPluginName: "Claude Code",
+        finishedHarnessCount: 0,
         pluginIds: {"claude-code", "codex", "opencode"},
       );
     });
     _schedule(
       const Duration(milliseconds: 650),
       const CatalogRescanState.reading(
-        activePluginName: "Codex",
+        activePluginName: "Claude Code",
         sessionsSeen: 0,
+        finishedHarnessCount: 0,
         pluginIds: {"claude-code", "codex", "opencode"},
       ),
     );
     _schedule(
       const Duration(milliseconds: 1400),
       const CatalogRescanState.reading(
-        activePluginName: "Codex",
+        activePluginName: "Claude Code",
         sessionsSeen: 3,
+        finishedHarnessCount: 0,
         pluginIds: {"claude-code", "codex", "opencode"},
       ),
     );
     _schedule(
       const Duration(milliseconds: 2200),
       const CatalogRescanState.reading(
-        activePluginName: "OpenCode",
+        activePluginName: "Codex",
         sessionsSeen: 8,
+        finishedHarnessCount: 1,
         pluginIds: {"claude-code", "codex", "opencode"},
       ),
     );
@@ -826,7 +834,11 @@ class const CatalogScanRowMotionPreview({
 
 class _CatalogScanRowMotionPreviewState() extends State<CatalogScanRowMotionPreview> {
   MotionSnapshot _values = const MotionSnapshot();
-  CatalogRescanState _scan = const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"});
+  CatalogRescanState _scan = const CatalogRescanState.starting(
+    activePluginName: "Codex",
+    finishedHarnessCount: 0,
+    pluginIds: {"codex"},
+  );
   int _replay = 0;
 
   void _replayMotion({required MotionTarget target, required MotionSnapshot values}) {
@@ -835,18 +847,24 @@ class _CatalogScanRowMotionPreviewState() extends State<CatalogScanRowMotionPrev
     setState(() {
       _values = values;
       // Remount at the opposite endpoint so every replay starts consistently.
-      _scan =
-          entering
-              ? const CatalogRescanState.idle()
-              : const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"});
+      _scan = entering
+          ? const CatalogRescanState.idle()
+          : const CatalogRescanState.starting(
+              activePluginName: "Codex",
+              finishedHarnessCount: 0,
+              pluginIds: {"codex"},
+            );
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || replay != _replay) return;
       setState(() {
-        _scan =
-            entering
-                ? const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"})
-                : const CatalogRescanState.idle();
+        _scan = entering
+            ? const CatalogRescanState.starting(
+                activePluginName: "Codex",
+                finishedHarnessCount: 0,
+                pluginIds: {"codex"},
+              )
+            : const CatalogRescanState.idle();
       });
     });
   }

@@ -10,6 +10,10 @@ class AntigravityEventMapper({
   required final AntigravityProtocolMapper _protocolMapper,
 }) extends AcpEventMapper {
   @override
+  String? shellCommandForToolUpdate({required Map<String, dynamic> update}) =>
+      _protocolMapper.shellCommandForToolUpdate(update: update);
+
+  @override
   Map<String, dynamic> normalizeSessionUpdate({required Map<String, dynamic> params}) =>
       _protocolMapper.normalizeSessionUpdate(params: params);
 }

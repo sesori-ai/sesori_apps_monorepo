@@ -29,16 +29,21 @@ $PluginMetadataCopyWith<PluginMetadata> get copyWith => _$PluginMetadataCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments));
+  final _this = this as PluginMetadata;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMetadata&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.isDefault, _this.isDefault) || other.isDefault == _this.isDefault)&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.actionHint, _this.actionHint) || other.actionHint == _this.actionHint)&&(identical(other.supportsPromptAttachments, _this.supportsPromptAttachments) || other.supportsPromptAttachments == _this.supportsPromptAttachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,isDefault,state,actionHint,supportsPromptAttachments);
+int get hashCode {
+  final _this = this as PluginMetadata;
+  return Object.hash(runtimeType,_this.id,_this.displayName,_this.isDefault,_this.state,_this.actionHint,_this.supportsPromptAttachments);
+}
 
 @override
 String toString() {
-  return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint, supportsPromptAttachments: $supportsPromptAttachments)';
+  final _this = this as PluginMetadata;
+  return 'PluginMetadata(id: ${_this.id}, displayName: ${_this.displayName}, isDefault: ${_this.isDefault}, state: ${_this.state}, actionHint: ${_this.actionHint}, supportsPromptAttachments: ${_this.supportsPromptAttachments})';
 }
 
 
@@ -109,16 +114,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,isDefault,state,actionHint,supportsPromptAttachments);
+int get hashCode {
+    return Object.hash(runtimeType,id,displayName,isDefault,state,actionHint,supportsPromptAttachments);
+}
 
 @override
 String toString() {
-  return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint, supportsPromptAttachments: $supportsPromptAttachments)';
+    return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint, supportsPromptAttachments: $supportsPromptAttachments)';
 }
 
 
@@ -178,16 +185,21 @@ $PluginListResponseCopyWith<PluginListResponse> get copyWith => _$PluginListResp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.supportsSessionOptions, supportsSessionOptions) || other.supportsSessionOptions == supportsSessionOptions));
+  final _this = this as PluginListResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, _this.plugins)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId)&&(identical(other.supportsSessionOptions, _this.supportsSessionOptions) || other.supportsSessionOptions == _this.supportsSessionOptions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(plugins),bridgeId,supportsSessionOptions);
+int get hashCode {
+  final _this = this as PluginListResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.plugins),_this.bridgeId,_this.supportsSessionOptions);
+}
 
 @override
 String toString() {
-  return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId, supportsSessionOptions: $supportsSessionOptions)';
+  final _this = this as PluginListResponse;
+  return 'PluginListResponse(plugins: ${_this.plugins}, bridgeId: ${_this.bridgeId}, supportsSessionOptions: ${_this.supportsSessionOptions})';
 }
 
 
@@ -258,16 +270,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginListResponse&&const DeepCollectionEquality().equals(other._plugins, _plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.supportsSessionOptions, supportsSessionOptions) || other.supportsSessionOptions == supportsSessionOptions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, _plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.supportsSessionOptions, supportsSessionOptions) || other.supportsSessionOptions == supportsSessionOptions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins),bridgeId,supportsSessionOptions);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins),bridgeId,supportsSessionOptions);
+}
 
 @override
 String toString() {
-  return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId, supportsSessionOptions: $supportsSessionOptions)';
+    return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId, supportsSessionOptions: $supportsSessionOptions)';
 }
 
 

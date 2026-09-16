@@ -123,6 +123,7 @@ class SessionListCubit({
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
+            SesoriSessionPromptSettled() ||
             SesoriSessionStatus() ||
             SesoriMessageUpdated() ||
             SesoriMessageRemoved() ||

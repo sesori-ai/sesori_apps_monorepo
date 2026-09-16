@@ -29,16 +29,21 @@ $AuthInitRequestCopyWith<AuthInitRequest> get copyWith => _$AuthInitRequestCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthInitRequest&&(identical(other.clientType, clientType) || other.clientType == clientType)&&(identical(other.device, device) || other.device == device));
+  final _this = this as AuthInitRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthInitRequest&&(identical(other.clientType, _this.clientType) || other.clientType == _this.clientType)&&(identical(other.device, _this.device) || other.device == _this.device));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,clientType,device);
+int get hashCode {
+  final _this = this as AuthInitRequest;
+  return Object.hash(runtimeType,_this.clientType,_this.device);
+}
 
 @override
 String toString() {
-  return 'AuthInitRequest(clientType: $clientType, device: $device)';
+  final _this = this as AuthInitRequest;
+  return 'AuthInitRequest(clientType: ${_this.clientType}, device: ${_this.device})';
 }
 
 
@@ -110,16 +115,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthInitRequest&&(identical(other.clientType, clientType) || other.clientType == clientType)&&(identical(other.device, device) || other.device == device));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthInitRequest&&(identical(other.clientType, clientType) || other.clientType == clientType)&&(identical(other.device, device) || other.device == device));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,clientType,device);
+int get hashCode {
+    return Object.hash(runtimeType,clientType,device);
+}
 
 @override
 String toString() {
-  return 'AuthInitRequest(clientType: $clientType, device: $device)';
+    return 'AuthInitRequest(clientType: $clientType, device: $device)';
 }
 
 

@@ -29,16 +29,21 @@ $ProjectActivitySummaryCopyWith<ProjectActivitySummary> get copyWith => _$Projec
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectActivitySummary&&(identical(other.id, id) || other.id == id)&&const DeepCollectionEquality().equals(other.activeSessions, activeSessions));
+  final _this = this as ProjectActivitySummary;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectActivitySummary&&(identical(other.id, _this.id) || other.id == _this.id)&&const DeepCollectionEquality().equals(other.activeSessions, _this.activeSessions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,const DeepCollectionEquality().hash(activeSessions));
+int get hashCode {
+  final _this = this as ProjectActivitySummary;
+  return Object.hash(runtimeType,_this.id,const DeepCollectionEquality().hash(_this.activeSessions));
+}
 
 @override
 String toString() {
-  return 'ProjectActivitySummary(id: $id, activeSessions: $activeSessions)';
+  final _this = this as ProjectActivitySummary;
+  return 'ProjectActivitySummary(id: ${_this.id}, activeSessions: ${_this.activeSessions})';
 }
 
 
@@ -107,16 +112,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectActivitySummary&&(identical(other.id, id) || other.id == id)&&const DeepCollectionEquality().equals(other._activeSessions, _activeSessions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectActivitySummary&&(identical(other.id, id) || other.id == id)&&const DeepCollectionEquality().equals(other.activeSessions, _activeSessions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,const DeepCollectionEquality().hash(_activeSessions));
+int get hashCode {
+    return Object.hash(runtimeType,id,const DeepCollectionEquality().hash(_activeSessions));
+}
 
 @override
 String toString() {
-  return 'ProjectActivitySummary(id: $id, activeSessions: $activeSessions)';
+    return 'ProjectActivitySummary(id: $id, activeSessions: $activeSessions)';
 }
 
 

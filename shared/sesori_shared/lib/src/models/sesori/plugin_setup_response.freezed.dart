@@ -29,16 +29,21 @@ $PluginSetupMetadataCopyWith<PluginSetupMetadata> get copyWith => _$PluginSetupM
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSetupMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.state, state) || other.state == state)&&(identical(other.runtimeVersion, runtimeVersion) || other.runtimeVersion == runtimeVersion)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  final _this = this as PluginSetupMetadata;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSetupMetadata&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.runtimeVersion, _this.runtimeVersion) || other.runtimeVersion == _this.runtimeVersion)&&(identical(other.actionHint, _this.actionHint) || other.actionHint == _this.actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,state,runtimeVersion,actionHint);
+int get hashCode {
+  final _this = this as PluginSetupMetadata;
+  return Object.hash(runtimeType,_this.id,_this.displayName,_this.state,_this.runtimeVersion,_this.actionHint);
+}
 
 @override
 String toString() {
-  return 'PluginSetupMetadata(id: $id, displayName: $displayName, state: $state, runtimeVersion: $runtimeVersion, actionHint: $actionHint)';
+  final _this = this as PluginSetupMetadata;
+  return 'PluginSetupMetadata(id: ${_this.id}, displayName: ${_this.displayName}, state: ${_this.state}, runtimeVersion: ${_this.runtimeVersion}, actionHint: ${_this.actionHint})';
 }
 
 
@@ -107,16 +112,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSetupMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.state, state) || other.state == state)&&(identical(other.runtimeVersion, runtimeVersion) || other.runtimeVersion == runtimeVersion)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSetupMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.state, state) || other.state == state)&&(identical(other.runtimeVersion, runtimeVersion) || other.runtimeVersion == runtimeVersion)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,state,runtimeVersion,actionHint);
+int get hashCode {
+    return Object.hash(runtimeType,id,displayName,state,runtimeVersion,actionHint);
+}
 
 @override
 String toString() {
-  return 'PluginSetupMetadata(id: $id, displayName: $displayName, state: $state, runtimeVersion: $runtimeVersion, actionHint: $actionHint)';
+    return 'PluginSetupMetadata(id: $id, displayName: $displayName, state: $state, runtimeVersion: $runtimeVersion, actionHint: $actionHint)';
 }
 
 
@@ -175,16 +182,21 @@ $PluginSetupResponseCopyWith<PluginSetupResponse> get copyWith => _$PluginSetupR
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSetupResponse&&const DeepCollectionEquality().equals(other.plugins, plugins));
+  final _this = this as PluginSetupResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSetupResponse&&const DeepCollectionEquality().equals(other.plugins, _this.plugins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(plugins));
+int get hashCode {
+  final _this = this as PluginSetupResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.plugins));
+}
 
 @override
 String toString() {
-  return 'PluginSetupResponse(plugins: $plugins)';
+  final _this = this as PluginSetupResponse;
+  return 'PluginSetupResponse(plugins: ${_this.plugins})';
 }
 
 
@@ -251,16 +263,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSetupResponse&&const DeepCollectionEquality().equals(other._plugins, _plugins));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSetupResponse&&const DeepCollectionEquality().equals(other.plugins, _plugins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins));
+}
 
 @override
 String toString() {
-  return 'PluginSetupResponse(plugins: $plugins)';
+    return 'PluginSetupResponse(plugins: $plugins)';
 }
 
 

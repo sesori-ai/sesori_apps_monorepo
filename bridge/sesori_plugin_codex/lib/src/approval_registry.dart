@@ -179,6 +179,8 @@ class ApprovalRegistry({
   required final CodexQuestionMapper _questionMapper,
   super.idGenerator,
 }) extends PendingPermissionRegistry<CodexPendingInput, _PendingCodexInput> {
+  final Map<String, String> _nativeTurnIdByPendingId = {};
+
   this
     : super(
         logContext: "[codex]",
@@ -220,9 +222,11 @@ class ApprovalRegistry({
     final resolvedSessionId = sessionId ?? "";
     final displaySessionId = _resolvePendingInputScope(sessionId: resolvedSessionId).displaySessionId;
 
+    final nativeTurnId = _extractNativeTurnId(request.params);
+    final String pendingId;
     if (isPermission) {
       final allowAlways = _allowsAlways(entry);
-      registerPendingPermission(
+      pendingId = registerPendingPermission(
         payload: entry,
         sessionId: resolvedSessionId,
         displaySessionId: displaySessionId,
@@ -236,21 +240,72 @@ class ApprovalRegistry({
         _respondError(request.id, -32602, "Secret question input is not supported by Sesori.");
         return;
       }
-      registerPendingQuestion(
+      pendingId = registerPendingQuestion(
         payload: _PendingUserInput(codexId: request.id, input: input, respond: _respond, respondError: _respondError),
         sessionId: resolvedSessionId,
         displaySessionId: displaySessionId,
         questions: _questionMapper.mapUserInput(request: input),
       );
     } else {
-      registerPendingQuestion(
+      pendingId = registerPendingQuestion(
         payload: entry,
         sessionId: resolvedSessionId,
         displaySessionId: displaySessionId,
         questions: _questionInfoFor(entry),
       );
     }
+    if (nativeTurnId != null) {
+      _nativeTurnIdByPendingId[pendingId] = nativeTurnId;
+    }
   }
+
+  /// Exact native turn carried by current server-request input for [sessionId].
+  /// Returns null when metadata is absent or current inputs disagree.
+  String? pendingNativeTurnIdForSession({required String sessionId}) {
+    final turnIds = {
+      for (final pendingId in _pendingIdsForSession(sessionId: sessionId)) ?_nativeTurnIdByPendingId[pendingId],
+    };
+    return turnIds.length == 1 ? turnIds.single : null;
+  }
+
+  @override
+  void cancelForSession({required String sessionId}) {
+    final pendingIds = _pendingIdsForSession(sessionId: sessionId);
+    super.cancelForSession(sessionId: sessionId);
+    _nativeTurnIdByPendingId.removeWhere((pendingId, _) => pendingIds.contains(pendingId));
+  }
+
+  @override
+  bool replyPermission({required String requestId, required PluginPermissionReply reply}) {
+    final replied = super.replyPermission(requestId: requestId, reply: reply);
+    if (replied) _nativeTurnIdByPendingId.remove(requestId);
+    return replied;
+  }
+
+  @override
+  Future<bool> replyQuestion({required String requestId, required List<List<String>> answers}) async {
+    final replied = await super.replyQuestion(requestId: requestId, answers: answers);
+    if (replied) _nativeTurnIdByPendingId.remove(requestId);
+    return replied;
+  }
+
+  @override
+  Future<bool> rejectQuestion({required String requestId}) async {
+    final rejected = await super.rejectQuestion(requestId: requestId);
+    if (rejected) _nativeTurnIdByPendingId.remove(requestId);
+    return rejected;
+  }
+
+  @override
+  Future<void> dispose() async {
+    await super.dispose();
+    _nativeTurnIdByPendingId.clear();
+  }
+
+  Set<String> _pendingIdsForSession({required String sessionId}) => {
+    ...pendingPermissionsForSession(sessionId: sessionId).map((pending) => pending.id),
+    ...pendingForSession(sessionId: sessionId).map((pending) => pending.id),
+  };
 
   /// `request_user_input_async` is delivered as an assistant message, not a
   /// server request. Both forms share the existing pending-question surface.
@@ -456,6 +511,13 @@ class ApprovalRegistry({
     final thread = params["threadId"];
     if (thread is String && thread.isNotEmpty) return thread;
     return null;
+  }
+
+  String? _extractNativeTurnId(Map<String, dynamic> params) {
+    final turnId = params["turnId"];
+    if (turnId is! String) return null;
+    final trimmed = turnId.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 
   static Map<String, dynamic>? _asMap(Object? value) {

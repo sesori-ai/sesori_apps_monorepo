@@ -27,16 +27,21 @@ $CodexUserInputParamsDtoCopyWith<CodexUserInputParamsDto> get copyWith => _$Code
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUserInputParamsDto&&const DeepCollectionEquality().equals(other.questions, questions));
+  final _this = this as CodexUserInputParamsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUserInputParamsDto&&const DeepCollectionEquality().equals(other.questions, _this.questions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(questions));
+int get hashCode {
+  final _this = this as CodexUserInputParamsDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.questions));
+}
 
 @override
 String toString() {
-  return 'CodexUserInputParamsDto(questions: $questions)';
+  final _this = this as CodexUserInputParamsDto;
+  return 'CodexUserInputParamsDto(questions: ${_this.questions})';
 }
 
 
@@ -100,16 +105,18 @@ _$CodexUserInputParamsDtoCopyWith<_CodexUserInputParamsDto> get copyWith => __$C
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexUserInputParamsDto&&const DeepCollectionEquality().equals(other._questions, _questions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexUserInputParamsDto&&const DeepCollectionEquality().equals(other.questions, _questions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_questions));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_questions));
+}
 
 @override
 String toString() {
-  return 'CodexUserInputParamsDto(questions: $questions)';
+    return 'CodexUserInputParamsDto(questions: $questions)';
 }
 
 
@@ -162,16 +169,21 @@ $CodexUserInputQuestionDtoCopyWith<CodexUserInputQuestionDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUserInputQuestionDto&&(identical(other.id, id) || other.id == id)&&(identical(other.header, header) || other.header == header)&&(identical(other.question, question) || other.question == question)&&const DeepCollectionEquality().equals(other.options, options)&&(identical(other.isOther, isOther) || other.isOther == isOther)&&(identical(other.isSecret, isSecret) || other.isSecret == isSecret));
+  final _this = this as CodexUserInputQuestionDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUserInputQuestionDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.header, _this.header) || other.header == _this.header)&&(identical(other.question, _this.question) || other.question == _this.question)&&const DeepCollectionEquality().equals(other.options, _this.options)&&(identical(other.isOther, _this.isOther) || other.isOther == _this.isOther)&&(identical(other.isSecret, _this.isSecret) || other.isSecret == _this.isSecret));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,header,question,const DeepCollectionEquality().hash(options),isOther,isSecret);
+int get hashCode {
+  final _this = this as CodexUserInputQuestionDto;
+  return Object.hash(runtimeType,_this.id,_this.header,_this.question,const DeepCollectionEquality().hash(_this.options),_this.isOther,_this.isSecret);
+}
 
 @override
 String toString() {
-  return 'CodexUserInputQuestionDto(id: $id, header: $header, question: $question, options: $options, isOther: $isOther, isSecret: $isSecret)';
+  final _this = this as CodexUserInputQuestionDto;
+  return 'CodexUserInputQuestionDto(id: ${_this.id}, header: ${_this.header}, question: ${_this.question}, options: ${_this.options}, isOther: ${_this.isOther}, isSecret: ${_this.isSecret})';
 }
 
 
@@ -247,16 +259,18 @@ _$CodexUserInputQuestionDtoCopyWith<_CodexUserInputQuestionDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexUserInputQuestionDto&&(identical(other.id, id) || other.id == id)&&(identical(other.header, header) || other.header == header)&&(identical(other.question, question) || other.question == question)&&const DeepCollectionEquality().equals(other._options, _options)&&(identical(other.isOther, isOther) || other.isOther == isOther)&&(identical(other.isSecret, isSecret) || other.isSecret == isSecret));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexUserInputQuestionDto&&(identical(other.id, id) || other.id == id)&&(identical(other.header, header) || other.header == header)&&(identical(other.question, question) || other.question == question)&&const DeepCollectionEquality().equals(other.options, _options)&&(identical(other.isOther, isOther) || other.isOther == isOther)&&(identical(other.isSecret, isSecret) || other.isSecret == isSecret));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,header,question,const DeepCollectionEquality().hash(_options),isOther,isSecret);
+int get hashCode {
+    return Object.hash(runtimeType,id,header,question,const DeepCollectionEquality().hash(_options),isOther,isSecret);
+}
 
 @override
 String toString() {
-  return 'CodexUserInputQuestionDto(id: $id, header: $header, question: $question, options: $options, isOther: $isOther, isSecret: $isSecret)';
+    return 'CodexUserInputQuestionDto(id: $id, header: $header, question: $question, options: $options, isOther: $isOther, isSecret: $isSecret)';
 }
 
 
@@ -314,16 +328,21 @@ $CodexUserInputOptionDtoCopyWith<CodexUserInputOptionDto> get copyWith => _$Code
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUserInputOptionDto&&(identical(other.label, label) || other.label == label)&&(identical(other.description, description) || other.description == description));
+  final _this = this as CodexUserInputOptionDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUserInputOptionDto&&(identical(other.label, _this.label) || other.label == _this.label)&&(identical(other.description, _this.description) || other.description == _this.description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,label,description);
+int get hashCode {
+  final _this = this as CodexUserInputOptionDto;
+  return Object.hash(runtimeType,_this.label,_this.description);
+}
 
 @override
 String toString() {
-  return 'CodexUserInputOptionDto(label: $label, description: $description)';
+  final _this = this as CodexUserInputOptionDto;
+  return 'CodexUserInputOptionDto(label: ${_this.label}, description: ${_this.description})';
 }
 
 
@@ -383,16 +402,18 @@ _$CodexUserInputOptionDtoCopyWith<_CodexUserInputOptionDto> get copyWith => __$C
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexUserInputOptionDto&&(identical(other.label, label) || other.label == label)&&(identical(other.description, description) || other.description == description));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexUserInputOptionDto&&(identical(other.label, label) || other.label == label)&&(identical(other.description, description) || other.description == description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,label,description);
+int get hashCode {
+    return Object.hash(runtimeType,label,description);
+}
 
 @override
 String toString() {
-  return 'CodexUserInputOptionDto(label: $label, description: $description)';
+    return 'CodexUserInputOptionDto(label: $label, description: $description)';
 }
 
 
@@ -446,16 +467,21 @@ $CodexQuestionItemParamsDtoCopyWith<CodexQuestionItemParamsDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexQuestionItemParamsDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.item, item) || other.item == item));
+  final _this = this as CodexQuestionItemParamsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexQuestionItemParamsDto&&(identical(other.threadId, _this.threadId) || other.threadId == _this.threadId)&&(identical(other.item, _this.item) || other.item == _this.item));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,threadId,item);
+int get hashCode {
+  final _this = this as CodexQuestionItemParamsDto;
+  return Object.hash(runtimeType,_this.threadId,_this.item);
+}
 
 @override
 String toString() {
-  return 'CodexQuestionItemParamsDto(threadId: $threadId, item: $item)';
+  final _this = this as CodexQuestionItemParamsDto;
+  return 'CodexQuestionItemParamsDto(threadId: ${_this.threadId}, item: ${_this.item})';
 }
 
 
@@ -524,16 +550,18 @@ _$CodexQuestionItemParamsDtoCopyWith<_CodexQuestionItemParamsDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexQuestionItemParamsDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.item, item) || other.item == item));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexQuestionItemParamsDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.item, item) || other.item == item));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,threadId,item);
+int get hashCode {
+    return Object.hash(runtimeType,threadId,item);
+}
 
 @override
 String toString() {
-  return 'CodexQuestionItemParamsDto(threadId: $threadId, item: $item)';
+    return 'CodexQuestionItemParamsDto(threadId: $threadId, item: $item)';
 }
 
 
@@ -607,7 +635,7 @@ mixin _$CodexQuestionItemDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexQuestionItemDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexQuestionItemDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -616,7 +644,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexQuestionItemDto()';
+    return 'CodexQuestionItemDto()';
 }
 
 
@@ -662,16 +690,18 @@ $CodexAgentQuestionItemDtoCopyWith<CodexAgentQuestionItemDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAgentQuestionItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.delivery, delivery) || other.delivery == delivery)&&const DeepCollectionEquality().equals(other._questions, _questions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAgentQuestionItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.delivery, delivery) || other.delivery == delivery)&&const DeepCollectionEquality().equals(other.questions, _questions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,delivery,const DeepCollectionEquality().hash(_questions));
+int get hashCode {
+    return Object.hash(runtimeType,id,delivery,const DeepCollectionEquality().hash(_questions));
+}
 
 @override
 String toString() {
-  return 'CodexQuestionItemDto.agentMessage(id: $id, delivery: $delivery, questions: $questions)';
+    return 'CodexQuestionItemDto.agentMessage(id: $id, delivery: $delivery, questions: $questions)';
 }
 
 
@@ -729,7 +759,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUnknownQuestionItemDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUnknownQuestionItemDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -738,7 +768,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexQuestionItemDto.unknown()';
+    return 'CodexQuestionItemDto.unknown()';
 }
 
 
@@ -762,16 +792,21 @@ $CodexAsyncUserInputQuestionDtoCopyWith<CodexAsyncUserInputQuestionDto> get copy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAsyncUserInputQuestionDto&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other.options, options));
+  final _this = this as CodexAsyncUserInputQuestionDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAsyncUserInputQuestionDto&&(identical(other.title, _this.title) || other.title == _this.title)&&const DeepCollectionEquality().equals(other.options, _this.options));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title,const DeepCollectionEquality().hash(options));
+int get hashCode {
+  final _this = this as CodexAsyncUserInputQuestionDto;
+  return Object.hash(runtimeType,_this.title,const DeepCollectionEquality().hash(_this.options));
+}
 
 @override
 String toString() {
-  return 'CodexAsyncUserInputQuestionDto(title: $title, options: $options)';
+  final _this = this as CodexAsyncUserInputQuestionDto;
+  return 'CodexAsyncUserInputQuestionDto(title: ${_this.title}, options: ${_this.options})';
 }
 
 
@@ -839,16 +874,18 @@ _$CodexAsyncUserInputQuestionDtoCopyWith<_CodexAsyncUserInputQuestionDto> get co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexAsyncUserInputQuestionDto&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other._options, _options));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexAsyncUserInputQuestionDto&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other.options, _options));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title,const DeepCollectionEquality().hash(_options));
+int get hashCode {
+    return Object.hash(runtimeType,title,const DeepCollectionEquality().hash(_options));
+}
 
 @override
 String toString() {
-  return 'CodexAsyncUserInputQuestionDto(title: $title, options: $options)';
+    return 'CodexAsyncUserInputQuestionDto(title: $title, options: $options)';
 }
 
 

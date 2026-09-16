@@ -32,16 +32,21 @@ $SessionOptionsResponseCopyWith<SessionOptionsResponse> get copyWith => _$Sessio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionOptionsResponse&&(identical(other.agents, agents) || other.agents == agents)&&(identical(other.providers, providers) || other.providers == providers)&&(identical(other.commands, commands) || other.commands == commands)&&(identical(other.lastUsedPromptDefaults, lastUsedPromptDefaults) || other.lastUsedPromptDefaults == lastUsedPromptDefaults)&&(identical(other.stale, stale) || other.stale == stale));
+  final _this = this as SessionOptionsResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionOptionsResponse&&(identical(other.agents, _this.agents) || other.agents == _this.agents)&&(identical(other.providers, _this.providers) || other.providers == _this.providers)&&(identical(other.commands, _this.commands) || other.commands == _this.commands)&&(identical(other.lastUsedPromptDefaults, _this.lastUsedPromptDefaults) || other.lastUsedPromptDefaults == _this.lastUsedPromptDefaults)&&(identical(other.stale, _this.stale) || other.stale == _this.stale));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,agents,providers,commands,lastUsedPromptDefaults,stale);
+int get hashCode {
+  final _this = this as SessionOptionsResponse;
+  return Object.hash(runtimeType,_this.agents,_this.providers,_this.commands,_this.lastUsedPromptDefaults,_this.stale);
+}
 
 @override
 String toString() {
-  return 'SessionOptionsResponse(agents: $agents, providers: $providers, commands: $commands, lastUsedPromptDefaults: $lastUsedPromptDefaults, stale: $stale)';
+  final _this = this as SessionOptionsResponse;
+  return 'SessionOptionsResponse(agents: ${_this.agents}, providers: ${_this.providers}, commands: ${_this.commands}, lastUsedPromptDefaults: ${_this.lastUsedPromptDefaults}, stale: ${_this.stale})';
 }
 
 
@@ -152,16 +157,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionOptionsResponse&&(identical(other.agents, agents) || other.agents == agents)&&(identical(other.providers, providers) || other.providers == providers)&&(identical(other.commands, commands) || other.commands == commands)&&(identical(other.lastUsedPromptDefaults, lastUsedPromptDefaults) || other.lastUsedPromptDefaults == lastUsedPromptDefaults)&&(identical(other.stale, stale) || other.stale == stale));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionOptionsResponse&&(identical(other.agents, agents) || other.agents == agents)&&(identical(other.providers, providers) || other.providers == providers)&&(identical(other.commands, commands) || other.commands == commands)&&(identical(other.lastUsedPromptDefaults, lastUsedPromptDefaults) || other.lastUsedPromptDefaults == lastUsedPromptDefaults)&&(identical(other.stale, stale) || other.stale == stale));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,agents,providers,commands,lastUsedPromptDefaults,stale);
+int get hashCode {
+    return Object.hash(runtimeType,agents,providers,commands,lastUsedPromptDefaults,stale);
+}
 
 @override
 String toString() {
-  return 'SessionOptionsResponse(agents: $agents, providers: $providers, commands: $commands, lastUsedPromptDefaults: $lastUsedPromptDefaults, stale: $stale)';
+    return 'SessionOptionsResponse(agents: $agents, providers: $providers, commands: $commands, lastUsedPromptDefaults: $lastUsedPromptDefaults, stale: $stale)';
 }
 
 

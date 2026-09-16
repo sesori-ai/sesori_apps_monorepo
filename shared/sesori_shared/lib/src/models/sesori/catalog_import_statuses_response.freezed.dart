@@ -29,16 +29,21 @@ $CatalogImportStatusesResponseCopyWith<CatalogImportStatusesResponse> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportStatusesResponse&&const DeepCollectionEquality().equals(other.statuses, statuses));
+  final _this = this as CatalogImportStatusesResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportStatusesResponse&&const DeepCollectionEquality().equals(other.statuses, _this.statuses));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(statuses));
+int get hashCode {
+  final _this = this as CatalogImportStatusesResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.statuses));
+}
 
 @override
 String toString() {
-  return 'CatalogImportStatusesResponse(statuses: $statuses)';
+  final _this = this as CatalogImportStatusesResponse;
+  return 'CatalogImportStatusesResponse(statuses: ${_this.statuses})';
 }
 
 
@@ -105,16 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CatalogImportStatusesResponse&&const DeepCollectionEquality().equals(other._statuses, _statuses));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CatalogImportStatusesResponse&&const DeepCollectionEquality().equals(other.statuses, _statuses));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_statuses));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_statuses));
+}
 
 @override
 String toString() {
-  return 'CatalogImportStatusesResponse(statuses: $statuses)';
+    return 'CatalogImportStatusesResponse(statuses: $statuses)';
 }
 
 

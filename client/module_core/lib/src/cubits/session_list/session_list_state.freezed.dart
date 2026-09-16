@@ -21,7 +21,7 @@ mixin _$SessionListState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SessionListState()';
+    return 'SessionListState()';
 }
 
 
@@ -57,7 +57,7 @@ class SessionListLoading implements SessionListState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListLoading);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListLoading);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SessionListState.loading()';
+    return 'SessionListState.loading()';
 }
 
 
@@ -146,16 +146,18 @@ $SessionListLoadedCopyWith<SessionListLoaded> get copyWith => _$SessionListLoade
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListLoaded&&const DeepCollectionEquality().equals(other._sessions, _sessions)&&(identical(other.filter, filter) || other.filter == filter)&&const DeepCollectionEquality().equals(other._activeSessionIds, _activeSessionIds)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&(identical(other.catalogScan, catalogScan) || other.catalogScan == catalogScan)&&const DeepCollectionEquality().equals(other._unseenBySessionId, _unseenBySessionId)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.repoSlug, repoSlug) || other.repoSlug == repoSlug)&&(identical(other.repoProvider, repoProvider) || other.repoProvider == repoProvider));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListLoaded&&const DeepCollectionEquality().equals(other.sessions, _sessions)&&(identical(other.filter, filter) || other.filter == filter)&&const DeepCollectionEquality().equals(other.activeSessionIds, _activeSessionIds)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&(identical(other.catalogScan, catalogScan) || other.catalogScan == catalogScan)&&const DeepCollectionEquality().equals(other.unseenBySessionId, _unseenBySessionId)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.repoSlug, repoSlug) || other.repoSlug == repoSlug)&&(identical(other.repoProvider, repoProvider) || other.repoProvider == repoProvider));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_sessions),filter,const DeepCollectionEquality().hash(_activeSessionIds),isRefreshing,catalogScan,const DeepCollectionEquality().hash(_unseenBySessionId),baseBranch,repoSlug,repoProvider);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_sessions),filter,const DeepCollectionEquality().hash(_activeSessionIds),isRefreshing,catalogScan,const DeepCollectionEquality().hash(_unseenBySessionId),baseBranch,repoSlug,repoProvider);
+}
 
 @override
 String toString() {
-  return 'SessionListState.loaded(sessions: $sessions, filter: $filter, activeSessionIds: $activeSessionIds, isRefreshing: $isRefreshing, catalogScan: $catalogScan, unseenBySessionId: $unseenBySessionId, baseBranch: $baseBranch, repoSlug: $repoSlug, repoProvider: $repoProvider)';
+    return 'SessionListState.loaded(sessions: $sessions, filter: $filter, activeSessionIds: $activeSessionIds, isRefreshing: $isRefreshing, catalogScan: $catalogScan, unseenBySessionId: $unseenBySessionId, baseBranch: $baseBranch, repoSlug: $repoSlug, repoProvider: $repoProvider)';
 }
 
 
@@ -220,16 +222,18 @@ $SessionListFailedCopyWith<SessionListFailed> get copyWith => _$SessionListFaile
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListFailed&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListFailed&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,reason);
+int get hashCode {
+    return Object.hash(runtimeType,reason);
+}
 
 @override
 String toString() {
-  return 'SessionListState.failed(reason: $reason)';
+    return 'SessionListState.failed(reason: $reason)';
 }
 
 

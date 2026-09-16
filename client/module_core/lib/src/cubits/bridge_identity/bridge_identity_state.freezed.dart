@@ -21,7 +21,7 @@ mixin _$BridgeIdentityState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeIdentityState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeIdentityState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'BridgeIdentityState()';
+    return 'BridgeIdentityState()';
 }
 
 
@@ -57,7 +57,7 @@ class BridgeIdentityPending implements BridgeIdentityState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeIdentityPending);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeIdentityPending);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'BridgeIdentityState.pending()';
+    return 'BridgeIdentityState.pending()';
 }
 
 
@@ -94,16 +94,18 @@ $BridgeIdentityNamedCopyWith<BridgeIdentityNamed> get copyWith => _$BridgeIdenti
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeIdentityNamed&&(identical(other.bridge, bridge) || other.bridge == bridge));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeIdentityNamed&&(identical(other.bridge, bridge) || other.bridge == bridge));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,bridge);
+int get hashCode {
+    return Object.hash(runtimeType,bridge);
+}
 
 @override
 String toString() {
-  return 'BridgeIdentityState.named(bridge: $bridge)';
+    return 'BridgeIdentityState.named(bridge: $bridge)';
 }
 
 
@@ -164,7 +166,7 @@ class BridgeIdentityUnnamed implements BridgeIdentityState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeIdentityUnnamed);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeIdentityUnnamed);
 }
 
 
@@ -173,7 +175,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'BridgeIdentityState.unnamed()';
+    return 'BridgeIdentityState.unnamed()';
 }
 
 

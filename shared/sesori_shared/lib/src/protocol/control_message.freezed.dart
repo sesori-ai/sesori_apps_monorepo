@@ -75,7 +75,7 @@ mixin _$ControlMessage {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlMessage);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlMessage);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -84,7 +84,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ControlMessage()';
+    return 'ControlMessage()';
 }
 
 
@@ -124,16 +124,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlTokenRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.forceRefresh, forceRefresh) || other.forceRefresh == forceRefresh));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlTokenRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.forceRefresh, forceRefresh) || other.forceRefresh == forceRefresh));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,forceRefresh);
+int get hashCode {
+    return Object.hash(runtimeType,id,forceRefresh);
+}
 
 @override
 String toString() {
-  return 'ControlMessage.tokenRequest(id: $id, forceRefresh: $forceRefresh)';
+    return 'ControlMessage.tokenRequest(id: $id, forceRefresh: $forceRefresh)';
 }
 
 
@@ -199,16 +201,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlTokenResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlTokenResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,accessToken);
+int get hashCode {
+    return Object.hash(runtimeType,id,accessToken);
+}
 
 @override
 String toString() {
-  return 'ControlMessage.tokenResponse(id: $id, accessToken: $accessToken)';
+    return 'ControlMessage.tokenResponse(id: $id, accessToken: $accessToken)';
 }
 
 
@@ -273,16 +277,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlTokenRetryLater&&(identical(other.id, id) || other.id == id));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlTokenRetryLater&&(identical(other.id, id) || other.id == id));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id);
+int get hashCode {
+    return Object.hash(runtimeType,id);
+}
 
 @override
 String toString() {
-  return 'ControlMessage.tokenRetryLater(id: $id)';
+    return 'ControlMessage.tokenRetryLater(id: $id)';
 }
 
 
@@ -349,16 +355,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlStatus&&(identical(other.startup, startup) || other.startup == startup)&&(identical(other.relay, relay) || other.relay == relay)&&(identical(other.plugin, plugin) || other.plugin == plugin)&&(identical(other.activeSessionCount, activeSessionCount) || other.activeSessionCount == activeSessionCount));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlStatus&&(identical(other.startup, startup) || other.startup == startup)&&(identical(other.relay, relay) || other.relay == relay)&&(identical(other.plugin, plugin) || other.plugin == plugin)&&(identical(other.activeSessionCount, activeSessionCount) || other.activeSessionCount == activeSessionCount));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,startup,relay,plugin,activeSessionCount);
+int get hashCode {
+    return Object.hash(runtimeType,startup,relay,plugin,activeSessionCount);
+}
 
 @override
 String toString() {
-  return 'ControlMessage.status(startup: $startup, relay: $relay, plugin: $plugin, activeSessionCount: $activeSessionCount)';
+    return 'ControlMessage.status(startup: $startup, relay: $relay, plugin: $plugin, activeSessionCount: $activeSessionCount)';
 }
 
 
@@ -427,16 +435,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlPromptRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlPromptRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,kind,message);
+int get hashCode {
+    return Object.hash(runtimeType,id,kind,message);
+}
 
 @override
 String toString() {
-  return 'ControlMessage.promptRequest(id: $id, kind: $kind, message: $message)';
+    return 'ControlMessage.promptRequest(id: $id, kind: $kind, message: $message)';
 }
 
 
@@ -503,16 +513,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlPromptResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.accepted, accepted) || other.accepted == accepted));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlPromptResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.accepted, accepted) || other.accepted == accepted));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,accepted);
+int get hashCode {
+    return Object.hash(runtimeType,id,accepted);
+}
 
 @override
 String toString() {
-  return 'ControlMessage.promptResponse(id: $id, accepted: $accepted)';
+    return 'ControlMessage.promptResponse(id: $id, accepted: $accepted)';
 }
 
 
@@ -572,7 +584,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlShutdown);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlShutdown);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -581,7 +593,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ControlMessage.shutdown()';
+    return 'ControlMessage.shutdown()';
 }
 
 
@@ -611,7 +623,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlUnregisterAndExit);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlUnregisterAndExit);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -620,7 +632,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ControlMessage.unregisterAndExit()';
+    return 'ControlMessage.unregisterAndExit()';
 }
 
 
@@ -655,16 +667,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlRegistered&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlRegistered&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bridgeId);
+int get hashCode {
+    return Object.hash(runtimeType,bridgeId);
+}
 
 @override
 String toString() {
-  return 'ControlMessage.registered(bridgeId: $bridgeId)';
+    return 'ControlMessage.registered(bridgeId: $bridgeId)';
 }
 
 

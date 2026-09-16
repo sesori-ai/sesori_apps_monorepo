@@ -29,16 +29,21 @@ $CatalogImportNewItemsCopyWith<CatalogImportNewItems> get copyWith => _$CatalogI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportNewItems&&(identical(other.projects, projects) || other.projects == projects)&&(identical(other.sessions, sessions) || other.sessions == sessions));
+  final _this = this as CatalogImportNewItems;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportNewItems&&(identical(other.projects, _this.projects) || other.projects == _this.projects)&&(identical(other.sessions, _this.sessions) || other.sessions == _this.sessions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projects,sessions);
+int get hashCode {
+  final _this = this as CatalogImportNewItems;
+  return Object.hash(runtimeType,_this.projects,_this.sessions);
+}
 
 @override
 String toString() {
-  return 'CatalogImportNewItems(projects: $projects, sessions: $sessions)';
+  final _this = this as CatalogImportNewItems;
+  return 'CatalogImportNewItems(projects: ${_this.projects}, sessions: ${_this.sessions})';
 }
 
 
@@ -101,16 +106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CatalogImportNewItems&&(identical(other.projects, projects) || other.projects == projects)&&(identical(other.sessions, sessions) || other.sessions == sessions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CatalogImportNewItems&&(identical(other.projects, projects) || other.projects == projects)&&(identical(other.sessions, sessions) || other.sessions == sessions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projects,sessions);
+int get hashCode {
+    return Object.hash(runtimeType,projects,sessions);
+}
 
 @override
 String toString() {
-  return 'CatalogImportNewItems(projects: $projects, sessions: $sessions)';
+    return 'CatalogImportNewItems(projects: $projects, sessions: $sessions)';
 }
 
 
@@ -196,16 +203,21 @@ mixin _$CatalogImportProgress {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportProgress&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+  final _this = this as CatalogImportProgress;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportProgress&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId);
+int get hashCode {
+  final _this = this as CatalogImportProgress;
+  return Object.hash(runtimeType,_this.pluginId);
+}
 
 @override
 String toString() {
-  return 'CatalogImportProgress(pluginId: $pluginId)';
+  final _this = this as CatalogImportProgress;
+  return 'CatalogImportProgress(pluginId: ${_this.pluginId})';
 }
 
 
@@ -238,16 +250,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportEnumerating&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectsSeen, projectsSeen) || other.projectsSeen == projectsSeen)&&(identical(other.sessionsSeen, sessionsSeen) || other.sessionsSeen == sessionsSeen));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportEnumerating&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectsSeen, projectsSeen) || other.projectsSeen == projectsSeen)&&(identical(other.sessionsSeen, sessionsSeen) || other.sessionsSeen == sessionsSeen));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,projectsSeen,sessionsSeen);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,projectsSeen,sessionsSeen);
+}
 
 @override
 String toString() {
-  return 'CatalogImportProgress.enumerating(pluginId: $pluginId, projectsSeen: $projectsSeen, sessionsSeen: $sessionsSeen)';
+    return 'CatalogImportProgress.enumerating(pluginId: $pluginId, projectsSeen: $projectsSeen, sessionsSeen: $sessionsSeen)';
 }
 
 
@@ -279,16 +293,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportCommitting&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectsSeen, projectsSeen) || other.projectsSeen == projectsSeen)&&(identical(other.sessionsSeen, sessionsSeen) || other.sessionsSeen == sessionsSeen));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportCommitting&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectsSeen, projectsSeen) || other.projectsSeen == projectsSeen)&&(identical(other.sessionsSeen, sessionsSeen) || other.sessionsSeen == sessionsSeen));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,projectsSeen,sessionsSeen);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,projectsSeen,sessionsSeen);
+}
 
 @override
 String toString() {
-  return 'CatalogImportProgress.committing(pluginId: $pluginId, projectsSeen: $projectsSeen, sessionsSeen: $sessionsSeen)';
+    return 'CatalogImportProgress.committing(pluginId: $pluginId, projectsSeen: $projectsSeen, sessionsSeen: $sessionsSeen)';
 }
 
 
@@ -322,16 +338,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportCompleted&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectsImported, projectsImported) || other.projectsImported == projectsImported)&&(identical(other.sessionsImported, sessionsImported) || other.sessionsImported == sessionsImported)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt)&&(identical(other.newItems, newItems) || other.newItems == newItems));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportCompleted&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectsImported, projectsImported) || other.projectsImported == projectsImported)&&(identical(other.sessionsImported, sessionsImported) || other.sessionsImported == sessionsImported)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt)&&(identical(other.newItems, newItems) || other.newItems == newItems));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,projectsImported,sessionsImported,completedAt,newItems);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,projectsImported,sessionsImported,completedAt,newItems);
+}
 
 @override
 String toString() {
-  return 'CatalogImportProgress.completed(pluginId: $pluginId, projectsImported: $projectsImported, sessionsImported: $sessionsImported, completedAt: $completedAt, newItems: $newItems)';
+    return 'CatalogImportProgress.completed(pluginId: $pluginId, projectsImported: $projectsImported, sessionsImported: $sessionsImported, completedAt: $completedAt, newItems: $newItems)';
 }
 
 
@@ -361,16 +379,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportCancelled&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportCancelled&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId);
+}
 
 @override
 String toString() {
-  return 'CatalogImportProgress.cancelled(pluginId: $pluginId)';
+    return 'CatalogImportProgress.cancelled(pluginId: $pluginId)';
 }
 
 
@@ -401,16 +421,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportFailed&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportFailed&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,message);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,message);
+}
 
 @override
 String toString() {
-  return 'CatalogImportProgress.failed(pluginId: $pluginId, message: $message)';
+    return 'CatalogImportProgress.failed(pluginId: $pluginId, message: $message)';
 }
 
 

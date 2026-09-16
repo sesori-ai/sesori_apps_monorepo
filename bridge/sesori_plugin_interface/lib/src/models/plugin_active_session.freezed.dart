@@ -28,16 +28,21 @@ $PluginActiveSessionCopyWith<PluginActiveSession> get copyWith => _$PluginActive
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginActiveSession&&(identical(other.id, id) || other.id == id)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&const DeepCollectionEquality().equals(other.childSessionIds, childSessionIds));
+  final _this = this as PluginActiveSession;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginActiveSession&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.mainAgentRunning, _this.mainAgentRunning) || other.mainAgentRunning == _this.mainAgentRunning)&&(identical(other.awaitingInput, _this.awaitingInput) || other.awaitingInput == _this.awaitingInput)&&(identical(other.isRetrying, _this.isRetrying) || other.isRetrying == _this.isRetrying)&&const DeepCollectionEquality().equals(other.childSessionIds, _this.childSessionIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,mainAgentRunning,awaitingInput,isRetrying,const DeepCollectionEquality().hash(childSessionIds));
+int get hashCode {
+  final _this = this as PluginActiveSession;
+  return Object.hash(runtimeType,_this.id,_this.mainAgentRunning,_this.awaitingInput,_this.isRetrying,const DeepCollectionEquality().hash(_this.childSessionIds));
+}
 
 @override
 String toString() {
-  return 'PluginActiveSession(id: $id, mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, isRetrying: $isRetrying, childSessionIds: $childSessionIds)';
+  final _this = this as PluginActiveSession;
+  return 'PluginActiveSession(id: ${_this.id}, mainAgentRunning: ${_this.mainAgentRunning}, awaitingInput: ${_this.awaitingInput}, isRetrying: ${_this.isRetrying}, childSessionIds: ${_this.childSessionIds})';
 }
 
 
@@ -112,16 +117,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginActiveSession&&(identical(other.id, id) || other.id == id)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&const DeepCollectionEquality().equals(other._childSessionIds, _childSessionIds));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginActiveSession&&(identical(other.id, id) || other.id == id)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&const DeepCollectionEquality().equals(other.childSessionIds, _childSessionIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,mainAgentRunning,awaitingInput,isRetrying,const DeepCollectionEquality().hash(_childSessionIds));
+int get hashCode {
+    return Object.hash(runtimeType,id,mainAgentRunning,awaitingInput,isRetrying,const DeepCollectionEquality().hash(_childSessionIds));
+}
 
 @override
 String toString() {
-  return 'PluginActiveSession(id: $id, mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, isRetrying: $isRetrying, childSessionIds: $childSessionIds)';
+    return 'PluginActiveSession(id: $id, mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, isRetrying: $isRetrying, childSessionIds: $childSessionIds)';
 }
 
 

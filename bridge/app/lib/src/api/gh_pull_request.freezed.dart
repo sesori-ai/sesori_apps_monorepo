@@ -29,16 +29,21 @@ $GhPullRequestCopyWith<GhPullRequest> get copyWith => _$GhPullRequestCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhPullRequest&&(identical(other.number, number) || other.number == number)&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.state, state) || other.state == state)&&(identical(other.headRefName, headRefName) || other.headRefName == headRefName)&&(identical(other.isCrossRepository, isCrossRepository) || other.isCrossRepository == isCrossRepository)&&(identical(other.mergeable, mergeable) || other.mergeable == mergeable)&&(identical(other.reviewDecision, reviewDecision) || other.reviewDecision == reviewDecision)&&(identical(other.statusCheckRollup, statusCheckRollup) || other.statusCheckRollup == statusCheckRollup));
+  final _this = this as GhPullRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhPullRequest&&(identical(other.number, _this.number) || other.number == _this.number)&&(identical(other.url, _this.url) || other.url == _this.url)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.headRefName, _this.headRefName) || other.headRefName == _this.headRefName)&&(identical(other.isCrossRepository, _this.isCrossRepository) || other.isCrossRepository == _this.isCrossRepository)&&(identical(other.mergeable, _this.mergeable) || other.mergeable == _this.mergeable)&&(identical(other.reviewDecision, _this.reviewDecision) || other.reviewDecision == _this.reviewDecision)&&(identical(other.statusCheckRollup, _this.statusCheckRollup) || other.statusCheckRollup == _this.statusCheckRollup));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,number,url,title,createdAt,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup);
+int get hashCode {
+  final _this = this as GhPullRequest;
+  return Object.hash(runtimeType,_this.number,_this.url,_this.title,_this.createdAt,_this.state,_this.headRefName,_this.isCrossRepository,_this.mergeable,_this.reviewDecision,_this.statusCheckRollup);
+}
 
 @override
 String toString() {
-  return 'GhPullRequest(number: $number, url: $url, title: $title, createdAt: $createdAt, state: $state, headRefName: $headRefName, isCrossRepository: $isCrossRepository, mergeable: $mergeable, reviewDecision: $reviewDecision, statusCheckRollup: $statusCheckRollup)';
+  final _this = this as GhPullRequest;
+  return 'GhPullRequest(number: ${_this.number}, url: ${_this.url}, title: ${_this.title}, createdAt: ${_this.createdAt}, state: ${_this.state}, headRefName: ${_this.headRefName}, isCrossRepository: ${_this.isCrossRepository}, mergeable: ${_this.mergeable}, reviewDecision: ${_this.reviewDecision}, statusCheckRollup: ${_this.statusCheckRollup})';
 }
 
 
@@ -117,16 +122,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhPullRequest&&(identical(other.number, number) || other.number == number)&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.state, state) || other.state == state)&&(identical(other.headRefName, headRefName) || other.headRefName == headRefName)&&(identical(other.isCrossRepository, isCrossRepository) || other.isCrossRepository == isCrossRepository)&&(identical(other.mergeable, mergeable) || other.mergeable == mergeable)&&(identical(other.reviewDecision, reviewDecision) || other.reviewDecision == reviewDecision)&&(identical(other.statusCheckRollup, statusCheckRollup) || other.statusCheckRollup == statusCheckRollup));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhPullRequest&&(identical(other.number, number) || other.number == number)&&(identical(other.url, url) || other.url == url)&&(identical(other.title, title) || other.title == title)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.state, state) || other.state == state)&&(identical(other.headRefName, headRefName) || other.headRefName == headRefName)&&(identical(other.isCrossRepository, isCrossRepository) || other.isCrossRepository == isCrossRepository)&&(identical(other.mergeable, mergeable) || other.mergeable == mergeable)&&(identical(other.reviewDecision, reviewDecision) || other.reviewDecision == reviewDecision)&&(identical(other.statusCheckRollup, statusCheckRollup) || other.statusCheckRollup == statusCheckRollup));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,number,url,title,createdAt,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup);
+int get hashCode {
+    return Object.hash(runtimeType,number,url,title,createdAt,state,headRefName,isCrossRepository,mergeable,reviewDecision,statusCheckRollup);
+}
 
 @override
 String toString() {
-  return 'GhPullRequest(number: $number, url: $url, title: $title, createdAt: $createdAt, state: $state, headRefName: $headRefName, isCrossRepository: $isCrossRepository, mergeable: $mergeable, reviewDecision: $reviewDecision, statusCheckRollup: $statusCheckRollup)';
+    return 'GhPullRequest(number: $number, url: $url, title: $title, createdAt: $createdAt, state: $state, headRefName: $headRefName, isCrossRepository: $isCrossRepository, mergeable: $mergeable, reviewDecision: $reviewDecision, statusCheckRollup: $statusCheckRollup)';
 }
 
 

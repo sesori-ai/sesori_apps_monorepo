@@ -35,6 +35,14 @@ enum AcpChildCancelResult() {
   unknownChild,
 }
 
+/// Native scoped-stop authority one ACP harness can guarantee.
+enum AcpScopedStopCapability() {
+  unsupported,
+  rootSessionCancel,
+  perChildSnapshot,
+  completeNativeAtomic,
+}
+
 /// Base [BridgeDerivedProjectsPluginApi] implementation for any ACP (Agent
 /// Client Protocol) agent driven over stdio.
 ///
@@ -47,7 +55,7 @@ enum AcpChildCancelResult() {
 /// differs: protocol policies ([authMethodId], [authMethodAllowlist], [initializeCapabilityMeta],
 /// [supportsFormElicitation], [serializesPromptsProcessWide],
 /// [cancelsActiveTurnForQueuedInput], [failsTurnOnSelectionError],
-/// [sessionCloseSettlementTimeout]) and behavior hooks ([buildApprovalRegistry],
+/// [sessionCloseSettlementTimeout], [rootSessionCancelSettlementTimeout]) and behavior hooks ([buildApprovalRegistry],
 /// [onConnectionReset], [commandForDispatch]), plus the option/catalog surface
 /// ([getSessionOptions], [getAgents], [getProviders], [getCommands]) when the
 /// agent exposes a richer model catalog than the neutral process default.
@@ -94,6 +102,7 @@ abstract class AcpPlugin({
 
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   StreamSubscription<AcpChildSessionTrackerChange>? _childSessionChanges;
+  StreamSubscription<void>? _processResidencyChanges;
 
   AcpCommandListener? _commandListener;
 
@@ -256,6 +265,8 @@ abstract class AcpPlugin({
   /// Maximum time deletion waits for a cancelled target turn before close.
   Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
 
+  Duration get rootSessionCancelSettlementTimeout => const Duration(seconds: 20);
+
   /// Chooses only among advertised capabilities. Never retries arbitrary errors
   /// using a second method. History replay remains session/load.
   AcpResidencyPreference get residencyPreference => AcpResidencyPreference.loadFirst;
@@ -310,6 +321,15 @@ abstract class AcpPlugin({
   /// [captureSessionConfig] observes the `session/load` result. Base ACP has no
   /// variant state; harnesses with a session-specific variant may override.
   String? replayVariantForSession({required String sessionId}) => null;
+
+  /// Creates a replay-local collector after directory attribution is warmed
+  /// but before the dedicated replay process starts. Harnesses may prepare
+  /// immutable context and wrap one correctly configured standard collector;
+  /// they must not read or mutate live mapper/tracker state.
+  Future<AcpSessionReplayCollector> createSessionReplayCollector({
+    required String sessionId,
+    required AcpReplayCollectorFactory collectorFactory,
+  }) async => collectorFactory(toolPartSuppression: null);
 
   /// Whether [notification] is historical output from a resume `session/load`
   /// and must stay out of the live event stream while its session is in the
@@ -438,7 +458,7 @@ abstract class AcpPlugin({
     eventMapper.map(notification).forEach(_eventBuffer.add);
   }
 
-  void _handleAgentServerRequest({required AcpServerRequest request}) {
+  void handleAgentServerRequest({required AcpServerRequest request}) {
     final registry = _approvalRegistry;
     if (registry == null) return;
     final attribution = _serverRequestAttribution(request: request);
@@ -587,7 +607,7 @@ abstract class AcpPlugin({
         final registry = buildApprovalRegistry(client: client);
         _approvalRegistry = registry;
         _serverRequestSubscription = client.serverRequests.listen(
-          (request) => _handleAgentServerRequest(request: request),
+          (request) => handleAgentServerRequest(request: request),
         );
         final initResult = await _initialize(client);
         captureLiveInitializeResult(initResult);
@@ -1555,6 +1575,9 @@ abstract class AcpPlugin({
       final result = AcpPromptResult.fromJson(
         (raw as Map?)?.cast<String, dynamic>() ?? const {},
       );
+      if (identical(_turnStates[sessionId], state)) {
+        eventMapper.mapPromptResult(sessionId: sessionId, stopReason: result.stopReason).forEach(_eventBuffer.add);
+      }
       _finishTurn(
         sessionId: sessionId,
         state: state,
@@ -1568,12 +1591,21 @@ abstract class AcpPlugin({
       // backend failure must remain observable rather than silently dropping
       // the accepted prompt.
       Log.w("[$id] accepted session/prompt for $sessionId failed", error, stack);
+      final failureMessage = _promptFailureMessage(error: error);
       _eventBuffer.add(
         eventMapper.mapPromptError(
           sessionId: sessionId,
-          message: _promptFailureMessage(error: error),
+          message: failureMessage,
         ),
       );
+      if (identical(_turnStates[sessionId], state)) {
+        eventMapper
+            .mapPromptLifecycleFailure(
+              sessionId: sessionId,
+              failureMessage: failureMessage,
+            )
+            .forEach(_eventBuffer.add);
+      }
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       mapPromptFailure(sessionId: sessionId, error: error).forEach(_eventBuffer.add);
     }
@@ -1740,8 +1772,29 @@ abstract class AcpPlugin({
     return {"type": type, "mimeType": mime, "data": base64};
   }
 
-  /// Capability opt-in: standard ACP alone cannot promise scoped child stops.
-  bool get supportsScopedStop => false;
+  /// Standard ACP alone cannot promise scoped child stops.
+  AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.unsupported;
+
+  /// Whether backend-owned work with no root/session activity representation
+  /// still requires the ACP process to remain resident.
+  bool get requiresProcessResidency => false;
+
+  /// Whether [sessionId] has resident work whose completion is not observable.
+  bool hasUnresolvedResidentWork({required String sessionId}) => false;
+
+  /// Exact pre-terminal work count used only by [rootSessionCancel].
+  int activeScopedStopWorkCount({required String sessionId}) => 0;
+
+  /// Registers one harness-owned residency signal. It only re-derives process
+  /// work state; root status, summaries, children, and stop targets are intact.
+  void registerProcessResidencyChanges({required Stream<void> changes}) {
+    if (_processResidencyChanges != null) {
+      throw StateError("$id process-residency changes were already registered");
+    }
+    _processResidencyChanges = changes.listen((_) {
+      if (_client != null) _syncWorkState();
+    });
+  }
 
   Future<AcpChildCancelResult> cancelChild({
     required AcpStdioClient client,
@@ -1763,9 +1816,12 @@ abstract class AcpPlugin({
     required bool useAtomicStop,
     required Set<String> knownSubAgentSessionIds,
   }) async {
-    if (!supportsScopedStop) {
+    if (scopedStopCapability == AcpScopedStopCapability.unsupported) {
       await _abortSession(sessionId: sessionId, sendSessionCancel: true);
       return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+    }
+    if (scopedStopCapability == AcpScopedStopCapability.rootSessionCancel) {
+      return await _abortRootSessionOnly(sessionId: sessionId, subAgents: subAgents);
     }
 
     final allDescendantSessionIds = {
@@ -1816,37 +1872,85 @@ abstract class AcpPlugin({
         mainAgentOnlySupported: mainOnlySupported,
       );
     }
-    if (subAgents == PluginAbortSubAgentPolicy.keep && activeSubAgentSessionIds.isNotEmpty && !mainRunning) {
+    final hasRetainedSubAgentWork =
+        activeSubAgentSessionIds.isNotEmpty || childSessionTracker.hasActiveWorkForRoot(sessionId: sessionId);
+    if (subAgents == PluginAbortSubAgentPolicy.keep && hasRetainedSubAgentWork && !mainRunning) {
       return const PluginAbortAccepted(workKept: true, subAgentsHandled: true);
     }
 
     if (useAtomicStop && subAgents != PluginAbortSubAgentPolicy.keep) {
-      for (final targetSessionId in {sessionId, ...allDescendantSessionIds}) {
-        _prepareSessionAbort(sessionId: targetSessionId, cancelBufferedInputs: false);
+      if (scopedStopCapability == AcpScopedStopCapability.completeNativeAtomic) {
+        for (final targetSessionId in {sessionId, ...allDescendantSessionIds}) {
+          _prepareSessionAbort(sessionId: targetSessionId, cancelBufferedInputs: false);
+        }
+        final client = _client;
+        if (client == null) {
+          return const PluginAbortAccepted(workKept: false, subAgentsHandled: true);
+        }
+        final parentSessionId = childSessionTracker.parentOf(sessionId: sessionId);
+        final targets = <AcpScopedStopTarget>[
+          if (_residentSessions.contains(sessionId))
+            AcpScopedStopSessionTarget(sessionId: sessionId)
+          else if (parentSessionId != null)
+            AcpScopedStopChildTarget(parentSessionId: parentSessionId, childSessionId: sessionId),
+          for (final descendantSessionId in independentResidentSessionIds)
+            AcpScopedStopSessionTarget(sessionId: descendantSessionId),
+        ];
+        // Calling every hook constructs and dispatches every native request before
+        // Future.wait observes a response. Its default behavior still waits for
+        // every already-dispatched request when one fails.
+        final stopFutures = [
+          for (final target in targets) stopScopedTree(client: client, target: target),
+        ];
+        final results = await Future.wait(stopFutures);
+        return PluginAbortAccepted(
+          workKept: results.any((result) => result.workKept),
+          subAgentsHandled: true,
+        );
       }
-      final client = _client;
-      if (client == null) {
-        return const PluginAbortAccepted(workKept: false, subAgentsHandled: true);
+
+      final targetBySessionId = <String, ({String sessionId, String? parentSessionId})>{
+        sessionId: (
+          sessionId: sessionId,
+          parentSessionId: childSessionTracker.parentOf(sessionId: sessionId),
+        ),
+        for (final child in children)
+          child.childSessionId: (
+            sessionId: child.childSessionId,
+            parentSessionId: child.parentSessionId,
+          ),
+      };
+      for (final residentSessionId in independentResidentSessionIds) {
+        targetBySessionId.putIfAbsent(
+          residentSessionId,
+          () => (
+            sessionId: residentSessionId,
+            parentSessionId: childSessionTracker.parentOf(sessionId: residentSessionId),
+          ),
+        );
       }
-      final parentSessionId = childSessionTracker.parentOf(sessionId: sessionId);
-      final targets = <AcpScopedStopTarget>[
-        if (_residentSessions.contains(sessionId))
-          AcpScopedStopSessionTarget(sessionId: sessionId)
-        else if (parentSessionId != null)
-          AcpScopedStopChildTarget(parentSessionId: parentSessionId, childSessionId: sessionId),
-        for (final descendantSessionId in independentResidentSessionIds)
-          AcpScopedStopSessionTarget(sessionId: descendantSessionId),
+      final targets = List<({String sessionId, String? parentSessionId})>.unmodifiable(targetBySessionId.values);
+
+      // Fence every accepted queue, prompt write, and pending interaction in
+      // the named scope before the first native cancellation is issued.
+      final preparationFutures = [
+        for (final targetSessionId in {sessionId, ...allDescendantSessionIds})
+          _abortSession(sessionId: targetSessionId, sendSessionCancel: false),
       ];
-      // Calling every hook constructs and dispatches every native request before
-      // Future.wait observes a response. Its default behavior still waits for
-      // every already-dispatched request when one fails.
-      final stopFutures = [
-        for (final target in targets) stopScopedTree(client: client, target: target),
+      await Future.wait(preparationFutures);
+      // Root is first in insertion order. Construct all futures before waiting
+      // so one failed request cannot prevent another selected target's attempt.
+      final cancelFutures = [
+        for (final target in targets)
+          _cancelPreparedScopedSession(
+            sessionId: target.sessionId,
+            parentSessionId: target.parentSessionId,
+          ),
       ];
-      final results = await Future.wait(stopFutures);
+      final results = await Future.wait(cancelFutures);
       return PluginAbortAccepted(
-        workKept: results.any((result) => result.workKept),
-        subAgentsHandled: true,
+        workKept: results.any((result) => result == AcpChildCancelResult.notCancellable),
+        subAgentsHandled: false,
       );
     }
 
@@ -1860,6 +1964,68 @@ abstract class AcpPlugin({
     );
   }
 
+  Future<PluginAbortResult> _abortRootSessionOnly({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+  }) async {
+    // Must remain first: this refusal promises that no local or native
+    // cancellation side effect occurred.
+    if (hasUnresolvedResidentWork(sessionId: sessionId)) {
+      return const PluginAbortNotPerformed(
+        reason: PluginAbortRefusalReason.residentWorkCompletionUnknown,
+      );
+    }
+
+    final activeTaskCount = activeScopedStopWorkCount(sessionId: sessionId);
+    final state = _turnStates[sessionId];
+    if (activeTaskCount > 0 && subAgents != PluginAbortSubAgentPolicy.stop) {
+      return PluginAbortRejectedSubAgentsRunning(
+        runningSubAgentCount: activeTaskCount,
+        mainAgentRunning: (state?.pending ?? 0) > 0,
+        mainAgentOnlySupported: false,
+      );
+    }
+
+    final activeSettlement = state?.activeSettlement?.future;
+    _prepareSessionAbort(sessionId: sessionId, cancelBufferedInputs: true);
+    final client = _client;
+    client?.notify(method: AcpMethods.sessionCancel, params: {"sessionId": sessionId});
+    // Match _abortSession: native cancellation precedes input resolution so
+    // unblocking a permission/question cannot start more work first.
+    _approvalRegistry?.cancelForSession(sessionId: sessionId);
+    if (activeSettlement != null && client != null) {
+      try {
+        await activeSettlement.timeout(rootSessionCancelSettlementTimeout);
+      } on TimeoutException catch (cause) {
+        throw PluginOperationException(
+          "abortSession",
+          statusCode: 502,
+          message: "Root cancellation was issued, but its active turn did not settle before the stop deadline",
+          cause: cause,
+        );
+      }
+    }
+
+    if (hasUnresolvedResidentWork(sessionId: sessionId)) {
+      throw const PluginOperationException(
+        "abortSession",
+        statusCode: 502,
+        message: "Root cancellation completed, but resident work completion became unknown",
+      );
+    }
+    final survivingWorkCount = activeScopedStopWorkCount(sessionId: sessionId);
+    if (survivingWorkCount > 0) {
+      final cause = StateError("$survivingWorkCount active scoped-stop work item(s) survived root cancellation");
+      throw PluginOperationException(
+        "abortSession",
+        statusCode: 502,
+        message: "Root cancellation settled without retiring all active scoped-stop work",
+        cause: cause,
+      );
+    }
+    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+  }
+
   Future<AcpChildCancelResult> _cancelScopedSession({
     required String sessionId,
     required String? parentSessionId,
@@ -1870,7 +2036,20 @@ abstract class AcpPlugin({
     final standardCancel = _residentSessions.contains(sessionId);
     await _abortSession(sessionId: sessionId, sendSessionCancel: standardCancel);
     if (standardCancel || parentSessionId == null) return AcpChildCancelResult.interrupted;
+    return await _cancelPreparedScopedSession(sessionId: sessionId, parentSessionId: parentSessionId);
+  }
+
+  Future<AcpChildCancelResult> _cancelPreparedScopedSession({
+    required String sessionId,
+    required String? parentSessionId,
+  }) async {
+    final standardCancel = _residentSessions.contains(sessionId);
     final client = _client;
+    if (standardCancel) {
+      client?.notify(method: AcpMethods.sessionCancel, params: {"sessionId": sessionId});
+      return AcpChildCancelResult.interrupted;
+    }
+    if (parentSessionId == null) return AcpChildCancelResult.interrupted;
     if (client == null) return AcpChildCancelResult.unknownChild;
     try {
       return await cancelChild(client: client, sessionId: parentSessionId, childSessionId: sessionId);
@@ -1924,7 +2103,7 @@ abstract class AcpPlugin({
   Future<Set<String>> interruptActiveWork({required Duration budget}) {
     return () async {
       final activeSessionIds = <String>{
-        if (supportsScopedStop)
+        if (scopedStopCapability != AcpScopedStopCapability.unsupported)
           for (final entry in _turnStates.entries)
             if (entry.value.pending > 0) entry.key,
         for (final summary in getActiveSessionsSummary())
@@ -1937,7 +2116,7 @@ abstract class AcpPlugin({
       };
       if (activeSessionIds.isEmpty) return const <String>{};
 
-      if (supportsScopedStop) {
+      if (scopedStopCapability != AcpScopedStopCapability.unsupported) {
         final roots = {
           for (final sessionId in activeSessionIds) childSessionTracker.rootOf(sessionId: sessionId),
         };
@@ -2071,23 +2250,27 @@ abstract class AcpPlugin({
     // History via `session/load` replay on a dedicated short-lived client so
     // replayed updates don't interleave with the live session's stream.
     final replayClient = _createClient(logTag: "$id-replay");
-    final collector = AcpReplayCollector(
-      sessionUpdateNormalizer: eventMapper.normalizeSessionUpdate,
-      sessionId: sessionId,
-      // Replayed messages must carry the same `agent` the live mapper stamps,
-      // or a reloaded session reports a different agent than the live one did.
-      agentId: eventMapper.pluginId,
-      initialUserMessageId: _syntheticInitialPromptSessions.contains(sessionId)
-          ? AcpEventMapper.initialUserMessageId(sessionId)
-          : null,
-      messageIdOverride: null,
-      messageTimeResolver: null,
-      // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
-      // the live stream does, so reloaded history renders it identically.
-      haltClassifier: eventMapper.classifyHaltNotice,
-      toolPartReplacement: null,
-    );
-    List<PluginMessageWithParts> buildReplay() => collector.buildWithAssistantSelection(
+    AcpReplayCollector collectorFactory({required AcpReplayToolPartSuppression? toolPartSuppression}) =>
+        AcpReplayCollector(
+          sessionUpdateNormalizer: eventMapper.normalizeSessionUpdate,
+          shellCommandResolver: eventMapper.shellCommandForToolUpdate,
+          sessionId: sessionId,
+          // Replayed messages must carry the same `agent` the live mapper stamps,
+          // or a reloaded session reports a different agent than the live one did.
+          agentId: eventMapper.pluginId,
+          initialUserMessageId: _syntheticInitialPromptSessions.contains(sessionId)
+              ? AcpEventMapper.initialUserMessageId(sessionId)
+              : null,
+          messageIdOverride: null,
+          messageTimeResolver: null,
+          // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
+          // the live stream does, so reloaded history renders it identically.
+          haltClassifier: eventMapper.classifyHaltNotice,
+          toolPartReplacement: null,
+          toolPartSuppression: toolPartSuppression,
+        );
+    late final AcpSessionReplayCollector replayCollector;
+    List<PluginMessageWithParts> buildReplay() => replayCollector.buildWithAssistantSelection(
       modelId: eventMapper.modelForSession(sessionId: sessionId),
       providerId: eventMapper.providerForSession(sessionId: sessionId),
       variant: replayVariantForSession(sessionId: sessionId),
@@ -2103,6 +2286,10 @@ abstract class AcpPlugin({
     }
 
     try {
+      replayCollector = await createSessionReplayCollector(
+        sessionId: sessionId,
+        collectorFactory: collectorFactory,
+      );
       await replayClient.connect();
       final replayInit = await _initialize(replayClient);
       if (!replayInit.agentCapabilities.loadSession) {
@@ -2121,9 +2308,9 @@ abstract class AcpPlugin({
         tracker: _commandTracker,
       );
       sub = replayClient.notifications.listen((notification) {
+        received++;
+        replayCollector.consumeNotification(notification: notification);
         if (notification.method == AcpMethods.sessionUpdate) {
-          received++;
-          collector.consume(notification.params);
           final update = notification.params["update"];
           if (update is Map && update["sessionUpdate"] == "available_commands_update") {
             deferredCommandRefresh = eventMapper.map(notification);
@@ -2347,6 +2534,12 @@ abstract class AcpPlugin({
     }
     _childSessionChanges = null;
     try {
+      await _processResidencyChanges?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to cancel process-residency subscription", e, st);
+    }
+    _processResidencyChanges = null;
+    try {
       await childSessionTracker.dispose();
     } on Object catch (e, st) {
       Log.w("[$id] failed to close child-session tracker", e, st);
@@ -2379,7 +2572,8 @@ abstract class AcpPlugin({
         (_approvalRegistry?.hasAnyPendingInput ?? false) ||
         // A sub-agent and its autonomous root settlement live only inside the
         // resident process: no safe stop or suspension while either runs.
-        childSessionTracker.hasActiveWork;
+        childSessionTracker.hasActiveWork ||
+        requiresProcessResidency;
     _workState.set(busy ? PluginWorkState.busy : PluginWorkState.idle);
   }
 }

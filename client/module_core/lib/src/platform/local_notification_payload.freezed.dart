@@ -29,16 +29,21 @@ $LocalNotificationPayloadCopyWith<LocalNotificationPayload> get copyWith => _$Lo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LocalNotificationPayload&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.accountId, accountId) || other.accountId == accountId));
+  final _this = this as LocalNotificationPayload;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LocalNotificationPayload&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.sessionTitle, _this.sessionTitle) || other.sessionTitle == _this.sessionTitle)&&(identical(other.accountId, _this.accountId) || other.accountId == _this.accountId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,projectId,sessionTitle,accountId);
+int get hashCode {
+  final _this = this as LocalNotificationPayload;
+  return Object.hash(runtimeType,_this.sessionId,_this.projectId,_this.sessionTitle,_this.accountId);
+}
 
 @override
 String toString() {
-  return 'LocalNotificationPayload(sessionId: $sessionId, projectId: $projectId, sessionTitle: $sessionTitle, accountId: $accountId)';
+  final _this = this as LocalNotificationPayload;
+  return 'LocalNotificationPayload(sessionId: ${_this.sessionId}, projectId: ${_this.projectId}, sessionTitle: ${_this.sessionTitle}, accountId: ${_this.accountId})';
 }
 
 
@@ -105,16 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LocalNotificationPayload&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.accountId, accountId) || other.accountId == accountId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _LocalNotificationPayload&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.accountId, accountId) || other.accountId == accountId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,projectId,sessionTitle,accountId);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,projectId,sessionTitle,accountId);
+}
 
 @override
 String toString() {
-  return 'LocalNotificationPayload(sessionId: $sessionId, projectId: $projectId, sessionTitle: $sessionTitle, accountId: $accountId)';
+    return 'LocalNotificationPayload(sessionId: $sessionId, projectId: $projectId, sessionTitle: $sessionTitle, accountId: $accountId)';
 }
 
 

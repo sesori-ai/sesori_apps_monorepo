@@ -29,16 +29,21 @@ $RenameProjectRequestCopyWith<RenameProjectRequest> get copyWith => _$RenameProj
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RenameProjectRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.name, name) || other.name == name));
+  final _this = this as RenameProjectRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RenameProjectRequest&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.name, _this.name) || other.name == _this.name));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,name);
+int get hashCode {
+  final _this = this as RenameProjectRequest;
+  return Object.hash(runtimeType,_this.projectId,_this.name);
+}
 
 @override
 String toString() {
-  return 'RenameProjectRequest(projectId: $projectId, name: $name)';
+  final _this = this as RenameProjectRequest;
+  return 'RenameProjectRequest(projectId: ${_this.projectId}, name: ${_this.name})';
 }
 
 
@@ -101,16 +106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RenameProjectRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.name, name) || other.name == name));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RenameProjectRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.name, name) || other.name == name));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,name);
+int get hashCode {
+    return Object.hash(runtimeType,projectId,name);
+}
 
 @override
 String toString() {
-  return 'RenameProjectRequest(projectId: $projectId, name: $name)';
+    return 'RenameProjectRequest(projectId: $projectId, name: $name)';
 }
 
 

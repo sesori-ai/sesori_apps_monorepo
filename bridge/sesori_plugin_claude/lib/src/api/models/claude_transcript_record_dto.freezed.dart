@@ -31,12 +31,16 @@ $ClaudeTranscriptRecordDtoCopyWith<ClaudeTranscriptRecordDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeTranscriptRecordDto&&(identical(other.type, type) || other.type == type)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.isSidechain, isSidechain) || other.isSidechain == isSidechain)&&(identical(other.agentId, agentId) || other.agentId == agentId)&&(identical(other.gitBranch, gitBranch) || other.gitBranch == gitBranch)&&(identical(other.version, version) || other.version == version)&&(identical(other.aiTitle, aiTitle) || other.aiTitle == aiTitle)&&(identical(other.uuid, uuid) || other.uuid == uuid)&&(identical(other.isMeta, isMeta) || other.isMeta == isMeta)&&(identical(other.isVisibleInTranscriptOnly, isVisibleInTranscriptOnly) || other.isVisibleInTranscriptOnly == isVisibleInTranscriptOnly)&&(identical(other.isApiErrorMessage, isApiErrorMessage) || other.isApiErrorMessage == isApiErrorMessage)&&(identical(other.apiErrorStatus, apiErrorStatus) || other.apiErrorStatus == apiErrorStatus)&&(identical(other.effort, effort) || other.effort == effort)&&(identical(other.message, message) || other.message == message)&&(identical(other.toolUseResult, toolUseResult) || other.toolUseResult == toolUseResult)&&(identical(other.originKind, originKind) || other.originKind == originKind));
+  final _this = this as ClaudeTranscriptRecordDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeTranscriptRecordDto&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.cwd, _this.cwd) || other.cwd == _this.cwd)&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp)&&(identical(other.isSidechain, _this.isSidechain) || other.isSidechain == _this.isSidechain)&&(identical(other.agentId, _this.agentId) || other.agentId == _this.agentId)&&(identical(other.gitBranch, _this.gitBranch) || other.gitBranch == _this.gitBranch)&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.aiTitle, _this.aiTitle) || other.aiTitle == _this.aiTitle)&&(identical(other.uuid, _this.uuid) || other.uuid == _this.uuid)&&(identical(other.isMeta, _this.isMeta) || other.isMeta == _this.isMeta)&&(identical(other.isVisibleInTranscriptOnly, _this.isVisibleInTranscriptOnly) || other.isVisibleInTranscriptOnly == _this.isVisibleInTranscriptOnly)&&(identical(other.isApiErrorMessage, _this.isApiErrorMessage) || other.isApiErrorMessage == _this.isApiErrorMessage)&&(identical(other.apiErrorStatus, _this.apiErrorStatus) || other.apiErrorStatus == _this.apiErrorStatus)&&(identical(other.effort, _this.effort) || other.effort == _this.effort)&&(identical(other.message, _this.message) || other.message == _this.message)&&(identical(other.toolUseResult, _this.toolUseResult) || other.toolUseResult == _this.toolUseResult)&&(identical(other.originKind, _this.originKind) || other.originKind == _this.originKind));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,sessionId,cwd,timestamp,isSidechain,agentId,gitBranch,version,aiTitle,uuid,isMeta,isVisibleInTranscriptOnly,isApiErrorMessage,apiErrorStatus,effort,message,toolUseResult,originKind);
+int get hashCode {
+  final _this = this as ClaudeTranscriptRecordDto;
+  return Object.hash(runtimeType,_this.type,_this.sessionId,_this.cwd,_this.timestamp,_this.isSidechain,_this.agentId,_this.gitBranch,_this.version,_this.aiTitle,_this.uuid,_this.isMeta,_this.isVisibleInTranscriptOnly,_this.isApiErrorMessage,_this.apiErrorStatus,_this.effort,_this.message,_this.toolUseResult,_this.originKind);
+}
 
 
 
@@ -144,12 +148,14 @@ _$ClaudeTranscriptRecordDtoCopyWith<_ClaudeTranscriptRecordDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeTranscriptRecordDto&&(identical(other.type, type) || other.type == type)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.isSidechain, isSidechain) || other.isSidechain == isSidechain)&&(identical(other.agentId, agentId) || other.agentId == agentId)&&(identical(other.gitBranch, gitBranch) || other.gitBranch == gitBranch)&&(identical(other.version, version) || other.version == version)&&(identical(other.aiTitle, aiTitle) || other.aiTitle == aiTitle)&&(identical(other.uuid, uuid) || other.uuid == uuid)&&(identical(other.isMeta, isMeta) || other.isMeta == isMeta)&&(identical(other.isVisibleInTranscriptOnly, isVisibleInTranscriptOnly) || other.isVisibleInTranscriptOnly == isVisibleInTranscriptOnly)&&(identical(other.isApiErrorMessage, isApiErrorMessage) || other.isApiErrorMessage == isApiErrorMessage)&&(identical(other.apiErrorStatus, apiErrorStatus) || other.apiErrorStatus == apiErrorStatus)&&(identical(other.effort, effort) || other.effort == effort)&&(identical(other.message, message) || other.message == message)&&(identical(other.toolUseResult, toolUseResult) || other.toolUseResult == toolUseResult)&&(identical(other.originKind, originKind) || other.originKind == originKind));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeTranscriptRecordDto&&(identical(other.type, type) || other.type == type)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.isSidechain, isSidechain) || other.isSidechain == isSidechain)&&(identical(other.agentId, agentId) || other.agentId == agentId)&&(identical(other.gitBranch, gitBranch) || other.gitBranch == gitBranch)&&(identical(other.version, version) || other.version == version)&&(identical(other.aiTitle, aiTitle) || other.aiTitle == aiTitle)&&(identical(other.uuid, uuid) || other.uuid == uuid)&&(identical(other.isMeta, isMeta) || other.isMeta == isMeta)&&(identical(other.isVisibleInTranscriptOnly, isVisibleInTranscriptOnly) || other.isVisibleInTranscriptOnly == isVisibleInTranscriptOnly)&&(identical(other.isApiErrorMessage, isApiErrorMessage) || other.isApiErrorMessage == isApiErrorMessage)&&(identical(other.apiErrorStatus, apiErrorStatus) || other.apiErrorStatus == apiErrorStatus)&&(identical(other.effort, effort) || other.effort == effort)&&(identical(other.message, message) || other.message == message)&&(identical(other.toolUseResult, toolUseResult) || other.toolUseResult == toolUseResult)&&(identical(other.originKind, originKind) || other.originKind == originKind));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,sessionId,cwd,timestamp,isSidechain,agentId,gitBranch,version,aiTitle,uuid,isMeta,isVisibleInTranscriptOnly,isApiErrorMessage,apiErrorStatus,effort,message,toolUseResult,originKind);
+int get hashCode {
+    return Object.hash(runtimeType,type,sessionId,cwd,timestamp,isSidechain,agentId,gitBranch,version,aiTitle,uuid,isMeta,isVisibleInTranscriptOnly,isApiErrorMessage,apiErrorStatus,effort,message,toolUseResult,originKind);
+}
 
 
 
@@ -231,12 +237,16 @@ $ClaudeTranscriptMessageDtoCopyWith<ClaudeTranscriptMessageDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeTranscriptMessageDto&&(identical(other.id, id) || other.id == id)&&(identical(other.model, model) || other.model == model)&&const DeepCollectionEquality().equals(other.content, content));
+  final _this = this as ClaudeTranscriptMessageDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeTranscriptMessageDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.model, _this.model) || other.model == _this.model)&&const DeepCollectionEquality().equals(other.content, _this.content));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,model,const DeepCollectionEquality().hash(content));
+int get hashCode {
+  final _this = this as ClaudeTranscriptMessageDto;
+  return Object.hash(runtimeType,_this.id,_this.model,const DeepCollectionEquality().hash(_this.content));
+}
 
 
 
@@ -297,12 +307,14 @@ _$ClaudeTranscriptMessageDtoCopyWith<_ClaudeTranscriptMessageDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeTranscriptMessageDto&&(identical(other.id, id) || other.id == id)&&(identical(other.model, model) || other.model == model)&&const DeepCollectionEquality().equals(other.content, content));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeTranscriptMessageDto&&(identical(other.id, id) || other.id == id)&&(identical(other.model, model) || other.model == model)&&const DeepCollectionEquality().equals(other.content, content));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,model,const DeepCollectionEquality().hash(content));
+int get hashCode {
+    return Object.hash(runtimeType,id,model,const DeepCollectionEquality().hash(content));
+}
 
 
 

@@ -31,16 +31,21 @@ $SessionOptionsErrorResponseCopyWith<SessionOptionsErrorResponse> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionOptionsErrorResponse&&(identical(other.code, code) || other.code == code)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  final _this = this as SessionOptionsErrorResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionOptionsErrorResponse&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.actionHint, _this.actionHint) || other.actionHint == _this.actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,code,actionHint);
+int get hashCode {
+  final _this = this as SessionOptionsErrorResponse;
+  return Object.hash(runtimeType,_this.code,_this.actionHint);
+}
 
 @override
 String toString() {
-  return 'SessionOptionsErrorResponse(code: $code, actionHint: $actionHint)';
+  final _this = this as SessionOptionsErrorResponse;
+  return 'SessionOptionsErrorResponse(code: ${_this.code}, actionHint: ${_this.actionHint})';
 }
 
 
@@ -105,16 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionOptionsErrorResponse&&(identical(other.code, code) || other.code == code)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionOptionsErrorResponse&&(identical(other.code, code) || other.code == code)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,code,actionHint);
+int get hashCode {
+    return Object.hash(runtimeType,code,actionHint);
+}
 
 @override
 String toString() {
-  return 'SessionOptionsErrorResponse(code: $code, actionHint: $actionHint)';
+    return 'SessionOptionsErrorResponse(code: $code, actionHint: $actionHint)';
 }
 
 

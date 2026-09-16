@@ -26,16 +26,21 @@ $DeletedSessionDtoCopyWith<DeletedSessionDto> get copyWith => _$DeletedSessionDt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeletedSessionDto&&(identical(other.ownerIdentity, ownerIdentity) || other.ownerIdentity == ownerIdentity)&&(identical(other.backendSessionId, backendSessionId) || other.backendSessionId == backendSessionId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
+  final _this = this as DeletedSessionDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeletedSessionDto&&(identical(other.ownerIdentity, _this.ownerIdentity) || other.ownerIdentity == _this.ownerIdentity)&&(identical(other.backendSessionId, _this.backendSessionId) || other.backendSessionId == _this.backendSessionId)&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&(identical(other.deletedAt, _this.deletedAt) || other.deletedAt == _this.deletedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,ownerIdentity,backendSessionId,pluginId,deletedAt);
+int get hashCode {
+  final _this = this as DeletedSessionDto;
+  return Object.hash(runtimeType,_this.ownerIdentity,_this.backendSessionId,_this.pluginId,_this.deletedAt);
+}
 
 @override
 String toString() {
-  return 'DeletedSessionDto(ownerIdentity: $ownerIdentity, backendSessionId: $backendSessionId, pluginId: $pluginId, deletedAt: $deletedAt)';
+  final _this = this as DeletedSessionDto;
+  return 'DeletedSessionDto(ownerIdentity: ${_this.ownerIdentity}, backendSessionId: ${_this.backendSessionId}, pluginId: ${_this.pluginId}, deletedAt: ${_this.deletedAt})';
 }
 
 
@@ -99,16 +104,18 @@ _$DeletedSessionDtoCopyWith<_DeletedSessionDto> get copyWith => __$DeletedSessio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeletedSessionDto&&(identical(other.ownerIdentity, ownerIdentity) || other.ownerIdentity == ownerIdentity)&&(identical(other.backendSessionId, backendSessionId) || other.backendSessionId == backendSessionId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeletedSessionDto&&(identical(other.ownerIdentity, ownerIdentity) || other.ownerIdentity == ownerIdentity)&&(identical(other.backendSessionId, backendSessionId) || other.backendSessionId == backendSessionId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,ownerIdentity,backendSessionId,pluginId,deletedAt);
+int get hashCode {
+    return Object.hash(runtimeType,ownerIdentity,backendSessionId,pluginId,deletedAt);
+}
 
 @override
 String toString() {
-  return 'DeletedSessionDto(ownerIdentity: $ownerIdentity, backendSessionId: $backendSessionId, pluginId: $pluginId, deletedAt: $deletedAt)';
+    return 'DeletedSessionDto(ownerIdentity: $ownerIdentity, backendSessionId: $backendSessionId, pluginId: $pluginId, deletedAt: $deletedAt)';
 }
 
 

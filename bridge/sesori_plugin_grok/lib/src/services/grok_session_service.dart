@@ -1,15 +1,37 @@
-import "package:acp_plugin/acp_plugin.dart" show AcpChildSessionTracker;
+import "package:acp_plugin/acp_plugin.dart" show AcpChildCancelResult, AcpChildSessionTracker, AcpStdioClient;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginSession;
 
 import "../repositories/grok_session_catalog_repository.dart";
+import "../repositories/grok_session_control_repository.dart";
+import "../repositories/grok_session_history_repository.dart";
+import "../repositories/models/grok_session_replay_context.dart";
 
-/// Layer-3 coordination for Grok child-session lineage across the persisted
-/// session tree and the current ACP process's live tracker.
+/// Layer-3 coordination for Grok session control and child-session lineage.
 class GrokSessionService({
   required final GrokSessionCatalogRepository _catalogRepository,
+  required final GrokSessionControlRepository _controlRepository,
+  required final GrokSessionHistoryRepository _historyRepository,
   required final AcpChildSessionTracker _liveTracker,
 }) {
+  Future<AcpChildCancelResult> cancelChild({
+    required AcpStdioClient client,
+    required String parentSessionId,
+    required String childSessionId,
+  }) => _controlRepository.cancelChild(
+    client: client,
+    parentSessionId: parentSessionId,
+    childSessionId: childSessionId,
+  );
+
+  Future<GrokSessionReplayContext> prepareReplayContext({
+    required String sessionId,
+    required String fallbackDirectory,
+  }) => _historyRepository.prepareReplayContext(
+    cwd: _directoryForSession(sessionId: sessionId, fallbackDirectory: fallbackDirectory),
+    rootSessionId: sessionId,
+  );
+
   List<PluginSession> childSessions({
     required String rootSessionId,
     required String fallbackDirectory,

@@ -521,7 +521,7 @@ void main() {
     expect(find.text("Cold-start prompt"), findsOneWidget);
   });
 
-  testWidgets("settled user text renders Markdown inside the shared brand bubble", (tester) async {
+  testWidgets("settled user text renders Markdown inside the shared neutral bubble", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],

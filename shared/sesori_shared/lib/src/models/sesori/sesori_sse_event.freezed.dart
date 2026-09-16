@@ -76,6 +76,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriSessionCompacted.fromJson(
             json
           );
+                case 'session.prompt-settled':
+          return SesoriSessionPromptSettled.fromJson(
+            json
+          );
                 case 'session.prompt_defaults_changed':
           return SesoriSessionPromptDefaultsChanged.fromJson(
             json
@@ -195,7 +199,7 @@ mixin _$SesoriSseEvent {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSseEvent);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSseEvent);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -204,7 +208,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SesoriSseEvent()';
+    return 'SesoriSseEvent()';
 }
 
 
@@ -238,7 +242,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriServerConnected);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriServerConnected);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -247,7 +251,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SesoriSseEvent.serverConnected()';
+    return 'SesoriSseEvent.serverConnected()';
 }
 
 
@@ -277,7 +281,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriServerHeartbeat);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriServerHeartbeat);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -286,7 +290,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SesoriSseEvent.serverHeartbeat()';
+    return 'SesoriSseEvent.serverHeartbeat()';
 }
 
 
@@ -321,16 +325,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriServerInstanceDisposed&&(identical(other.directory, directory) || other.directory == directory));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriServerInstanceDisposed&&(identical(other.directory, directory) || other.directory == directory));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,directory);
+int get hashCode {
+    return Object.hash(runtimeType,directory);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.serverInstanceDisposed(directory: $directory)';
+    return 'SesoriSseEvent.serverInstanceDisposed(directory: $directory)';
 }
 
 
@@ -389,7 +395,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriGlobalDisposed);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriGlobalDisposed);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -398,7 +404,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SesoriSseEvent.globalDisposed()';
+    return 'SesoriSseEvent.globalDisposed()';
 }
 
 
@@ -433,16 +439,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriCatalogImportProgress&&(identical(other.progress, progress) || other.progress == progress));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriCatalogImportProgress&&(identical(other.progress, progress) || other.progress == progress));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,progress);
+int get hashCode {
+    return Object.hash(runtimeType,progress);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.catalogImportProgress(progress: $progress)';
+    return 'SesoriSseEvent.catalogImportProgress(progress: $progress)';
 }
 
 
@@ -506,16 +514,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPluginManagementChanged&&(identical(other.snapshotToken, snapshotToken) || other.snapshotToken == snapshotToken));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPluginManagementChanged&&(identical(other.snapshotToken, snapshotToken) || other.snapshotToken == snapshotToken));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,snapshotToken);
+int get hashCode {
+    return Object.hash(runtimeType,snapshotToken);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.pluginManagementChanged(snapshotToken: $snapshotToken)';
+    return 'SesoriSseEvent.pluginManagementChanged(snapshotToken: $snapshotToken)';
 }
 
 
@@ -582,16 +592,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPluginInstallProgress&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.phase, phase) || other.phase == phase)&&(identical(other.percent, percent) || other.percent == percent)&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPluginInstallProgress&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.phase, phase) || other.phase == phase)&&(identical(other.percent, percent) || other.percent == percent)&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,phase,percent,message);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,phase,percent,message);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.pluginInstallProgress(pluginId: $pluginId, phase: $phase, percent: $percent, message: $message)';
+    return 'SesoriSseEvent.pluginInstallProgress(pluginId: $pluginId, phase: $phase, percent: $percent, message: $message)';
 }
 
 
@@ -659,16 +671,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPluginAuthenticationProgress&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.progress, progress) || other.progress == progress));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPluginAuthenticationProgress&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.progress, progress) || other.progress == progress));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,progress);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,progress);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.pluginAuthenticationProgress(pluginId: $pluginId, progress: $progress)';
+    return 'SesoriSseEvent.pluginAuthenticationProgress(pluginId: $pluginId, progress: $progress)';
 }
 
 
@@ -734,16 +748,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionOptionsUpdated&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectId, projectId) || other.projectId == projectId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionOptionsUpdated&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectId, projectId) || other.projectId == projectId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,projectId);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,projectId);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionOptionsUpdated(pluginId: $pluginId, projectId: $projectId)';
+    return 'SesoriSseEvent.sessionOptionsUpdated(pluginId: $pluginId, projectId: $projectId)';
 }
 
 
@@ -808,16 +824,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionCreated&&(identical(other.info, info) || other.info == info));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionCreated&&(identical(other.info, info) || other.info == info));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,info);
+int get hashCode {
+    return Object.hash(runtimeType,info);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionCreated(info: $info)';
+    return 'SesoriSseEvent.sessionCreated(info: $info)';
 }
 
 
@@ -890,16 +908,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionUpdated&&(identical(other.info, info) || other.info == info));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionUpdated&&(identical(other.info, info) || other.info == info));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,info);
+int get hashCode {
+    return Object.hash(runtimeType,info);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionUpdated(info: $info)';
+    return 'SesoriSseEvent.sessionUpdated(info: $info)';
 }
 
 
@@ -972,16 +992,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionDeleted&&(identical(other.info, info) || other.info == info));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionDeleted&&(identical(other.info, info) || other.info == info));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,info);
+int get hashCode {
+    return Object.hash(runtimeType,info);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionDeleted(info: $info)';
+    return 'SesoriSseEvent.sessionDeleted(info: $info)';
 }
 
 
@@ -1054,16 +1076,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionDiff&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionDiff&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID);
+int get hashCode {
+    return Object.hash(runtimeType,sessionID);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionDiff(sessionID: $sessionID)';
+    return 'SesoriSseEvent.sessionDiff(sessionID: $sessionID)';
 }
 
 
@@ -1127,16 +1151,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionError&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionError&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID);
+int get hashCode {
+    return Object.hash(runtimeType,sessionID);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionError(sessionID: $sessionID)';
+    return 'SesoriSseEvent.sessionError(sessionID: $sessionID)';
 }
 
 
@@ -1200,16 +1226,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionCompacted&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionCompacted&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID);
+int get hashCode {
+    return Object.hash(runtimeType,sessionID);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionCompacted(sessionID: $sessionID)';
+    return 'SesoriSseEvent.sessionCompacted(sessionID: $sessionID)';
 }
 
 
@@ -1250,6 +1278,83 @@ as String,
 /// @nodoc
 @JsonSerializable()
 
+class SesoriSessionPromptSettled implements SesoriSseEvent, SesoriSessionEvent {
+  const SesoriSessionPromptSettled({required this.sessionID, required this.promptID,  String? $type}): $type = $type ?? 'session.prompt-settled';
+  factory SesoriSessionPromptSettled.fromJson(Map<String, dynamic> json) => _$SesoriSessionPromptSettledFromJson(json);
+
+ final  String sessionID;
+ final  String promptID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriSessionPromptSettledCopyWith<SesoriSessionPromptSettled> get copyWith => _$SesoriSessionPromptSettledCopyWithImpl<SesoriSessionPromptSettled>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriSessionPromptSettledToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionPromptSettled&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.promptID, promptID) || other.promptID == promptID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,sessionID,promptID);
+}
+
+@override
+String toString() {
+    return 'SesoriSseEvent.sessionPromptSettled(sessionID: $sessionID, promptID: $promptID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriSessionPromptSettledCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriSessionPromptSettledCopyWith(SesoriSessionPromptSettled value, $Res Function(SesoriSessionPromptSettled) _then) = _$SesoriSessionPromptSettledCopyWithImpl;
+@useResult
+$Res call({
+ String sessionID, String promptID
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriSessionPromptSettledCopyWithImpl<$Res>
+    implements $SesoriSessionPromptSettledCopyWith<$Res> {
+  _$SesoriSessionPromptSettledCopyWithImpl(this._self, this._then);
+
+  final SesoriSessionPromptSettled _self;
+  final $Res Function(SesoriSessionPromptSettled) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = null,Object? promptID = null,}) {
+  return _then(SesoriSessionPromptSettled(
+sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,promptID: null == promptID ? _self.promptID : promptID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
 class SesoriSessionPromptDefaultsChanged implements SesoriSseEvent, SesoriSessionEvent {
   const SesoriSessionPromptDefaultsChanged({required this.sessionID, required this.promptDefaults,  String? $type}): $type = $type ?? 'session.prompt_defaults_changed';
   factory SesoriSessionPromptDefaultsChanged.fromJson(Map<String, dynamic> json) => _$SesoriSessionPromptDefaultsChangedFromJson(json);
@@ -1274,16 +1379,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionPromptDefaultsChanged&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.promptDefaults, promptDefaults) || other.promptDefaults == promptDefaults));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionPromptDefaultsChanged&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.promptDefaults, promptDefaults) || other.promptDefaults == promptDefaults));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID,promptDefaults);
+int get hashCode {
+    return Object.hash(runtimeType,sessionID,promptDefaults);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionPromptDefaultsChanged(sessionID: $sessionID, promptDefaults: $promptDefaults)';
+    return 'SesoriSseEvent.sessionPromptDefaultsChanged(sessionID: $sessionID, promptDefaults: $promptDefaults)';
 }
 
 
@@ -1358,16 +1465,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionStatus&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.status, status) || other.status == status));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionStatus&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.status, status) || other.status == status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID,status);
+int get hashCode {
+    return Object.hash(runtimeType,sessionID,status);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionStatus(sessionID: $sessionID, status: $status)';
+    return 'SesoriSseEvent.sessionStatus(sessionID: $sessionID, status: $status)';
 }
 
 
@@ -1444,16 +1553,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriCommandExecuted&&(identical(other.name, name) || other.name == name)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriCommandExecuted&&(identical(other.name, name) || other.name == name)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,sessionID,arguments,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,name,sessionID,arguments,messageID);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.commandExecuted(name: $name, sessionID: $sessionID, arguments: $arguments, messageID: $messageID)';
+    return 'SesoriSseEvent.commandExecuted(name: $name, sessionID: $sessionID, arguments: $arguments, messageID: $messageID)';
 }
 
 
@@ -1527,16 +1638,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionQueuedPrompts&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&const DeepCollectionEquality().equals(other._prompts, _prompts));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionQueuedPrompts&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&const DeepCollectionEquality().equals(other.prompts, _prompts));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID,const DeepCollectionEquality().hash(_prompts));
+int get hashCode {
+    return Object.hash(runtimeType,sessionID,const DeepCollectionEquality().hash(_prompts));
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionQueuedPrompts(sessionID: $sessionID, prompts: $prompts)';
+    return 'SesoriSseEvent.sessionQueuedPrompts(sessionID: $sessionID, prompts: $prompts)';
 }
 
 
@@ -1601,16 +1714,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriMessageUpdated&&(identical(other.info, info) || other.info == info));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriMessageUpdated&&(identical(other.info, info) || other.info == info));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,info);
+int get hashCode {
+    return Object.hash(runtimeType,info);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.messageUpdated(info: $info)';
+    return 'SesoriSseEvent.messageUpdated(info: $info)';
 }
 
 
@@ -1684,16 +1799,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriMessageRemoved&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriMessageRemoved&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,sessionID,messageID);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.messageRemoved(sessionID: $sessionID, messageID: $messageID)';
+    return 'SesoriSseEvent.messageRemoved(sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -1758,16 +1875,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriMessagePartUpdated&&(identical(other.part, part) || other.part == part));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriMessagePartUpdated&&(identical(other.part, part) || other.part == part));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,part);
+int get hashCode {
+    return Object.hash(runtimeType,part);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.messagePartUpdated(part: $part)';
+    return 'SesoriSseEvent.messagePartUpdated(part: $part)';
 }
 
 
@@ -1844,16 +1963,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriMessagePartDelta&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.partID, partID) || other.partID == partID)&&(identical(other.field, field) || other.field == field)&&(identical(other.delta, delta) || other.delta == delta));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriMessagePartDelta&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.partID, partID) || other.partID == partID)&&(identical(other.field, field) || other.field == field)&&(identical(other.delta, delta) || other.delta == delta));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID,messageID,partID,field,delta);
+int get hashCode {
+    return Object.hash(runtimeType,sessionID,messageID,partID,field,delta);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.messagePartDelta(sessionID: $sessionID, messageID: $messageID, partID: $partID, field: $field, delta: $delta)';
+    return 'SesoriSseEvent.messagePartDelta(sessionID: $sessionID, messageID: $messageID, partID: $partID, field: $field, delta: $delta)';
 }
 
 
@@ -1923,16 +2044,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriMessagePartRemoved&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.partID, partID) || other.partID == partID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriMessagePartRemoved&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.partID, partID) || other.partID == partID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID,messageID,partID);
+int get hashCode {
+    return Object.hash(runtimeType,sessionID,messageID,partID);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.messagePartRemoved(sessionID: $sessionID, messageID: $messageID, partID: $partID)';
+    return 'SesoriSseEvent.messagePartRemoved(sessionID: $sessionID, messageID: $messageID, partID: $partID)';
 }
 
 
@@ -2006,16 +2129,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionAsked&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description)&&(identical(other.allowAlways, allowAlways) || other.allowAlways == allowAlways));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionAsked&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description)&&(identical(other.allowAlways, allowAlways) || other.allowAlways == allowAlways));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestID,sessionID,displaySessionId,tool,description,allowAlways);
+int get hashCode {
+    return Object.hash(runtimeType,requestID,sessionID,displaySessionId,tool,description,allowAlways);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.permissionAsked(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description, allowAlways: $allowAlways)';
+    return 'SesoriSseEvent.permissionAsked(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description, allowAlways: $allowAlways)';
 }
 
 
@@ -2089,16 +2214,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionReplied&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.reply, reply) || other.reply == reply));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionReplied&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.reply, reply) || other.reply == reply));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestID,sessionID,displaySessionId,reply);
+int get hashCode {
+    return Object.hash(runtimeType,requestID,sessionID,displaySessionId,reply);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.permissionReplied(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId, reply: $reply)';
+    return 'SesoriSseEvent.permissionReplied(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId, reply: $reply)';
 }
 
 
@@ -2160,7 +2287,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionUpdated);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionUpdated);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2169,7 +2296,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SesoriSseEvent.permissionUpdated()';
+    return 'SesoriSseEvent.permissionUpdated()';
 }
 
 
@@ -2216,16 +2343,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionAsked&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other._questions, _questions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionAsked&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other.questions, _questions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(_questions));
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(_questions));
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.questionAsked(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions)';
+    return 'SesoriSseEvent.questionAsked(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions)';
 }
 
 
@@ -2296,16 +2425,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionReplied&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionReplied&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestID,sessionID,displaySessionId);
+int get hashCode {
+    return Object.hash(runtimeType,requestID,sessionID,displaySessionId);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.questionReplied(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId)';
+    return 'SesoriSseEvent.questionReplied(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId)';
 }
 
 
@@ -2375,16 +2506,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionRejected&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionRejected&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestID,sessionID,displaySessionId);
+int get hashCode {
+    return Object.hash(runtimeType,requestID,sessionID,displaySessionId);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.questionRejected(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId)';
+    return 'SesoriSseEvent.questionRejected(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId)';
 }
 
 
@@ -2450,16 +2583,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriTodoUpdated&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriTodoUpdated&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID);
+int get hashCode {
+    return Object.hash(runtimeType,sessionID);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.todoUpdated(sessionID: $sessionID)';
+    return 'SesoriSseEvent.todoUpdated(sessionID: $sessionID)';
 }
 
 
@@ -2529,16 +2664,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriProjectsSummary&&const DeepCollectionEquality().equals(other._projects, _projects));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriProjectsSummary&&const DeepCollectionEquality().equals(other.projects, _projects));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects));
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.projectsSummary(projects: $projects)';
+    return 'SesoriSseEvent.projectsSummary(projects: $projects)';
 }
 
 
@@ -2603,16 +2740,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriProjectUpdated&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriProjectUpdated&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectID,updatedAt);
+int get hashCode {
+    return Object.hash(runtimeType,projectID,updatedAt);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.projectUpdated(projectID: $projectID, updatedAt: $updatedAt)';
+    return 'SesoriSseEvent.projectUpdated(projectID: $projectID, updatedAt: $updatedAt)';
 }
 
 
@@ -2672,7 +2811,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriVcsBranchUpdated);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriVcsBranchUpdated);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2681,7 +2820,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SesoriSseEvent.vcsBranchUpdated()';
+    return 'SesoriSseEvent.vcsBranchUpdated()';
 }
 
 
@@ -2716,16 +2855,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionsUpdated&&(identical(other.projectID, projectID) || other.projectID == projectID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionsUpdated&&(identical(other.projectID, projectID) || other.projectID == projectID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectID);
+int get hashCode {
+    return Object.hash(runtimeType,projectID);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionsUpdated(projectID: $projectID)';
+    return 'SesoriSseEvent.sessionsUpdated(projectID: $projectID)';
 }
 
 
@@ -2793,16 +2934,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionUnseenChanged&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.unseen, unseen) || other.unseen == unseen)&&(identical(other.projectHasUnseenChanges, projectHasUnseenChanges) || other.projectHasUnseenChanges == projectHasUnseenChanges)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionUnseenChanged&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.unseen, unseen) || other.unseen == unseen)&&(identical(other.projectHasUnseenChanges, projectHasUnseenChanges) || other.projectHasUnseenChanges == projectHasUnseenChanges)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectID,sessionId,unseen,projectHasUnseenChanges,lastUserActivityAt);
+int get hashCode {
+    return Object.hash(runtimeType,projectID,sessionId,unseen,projectHasUnseenChanges,lastUserActivityAt);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.sessionUnseenChanged(projectID: $projectID, sessionId: $sessionId, unseen: $unseen, projectHasUnseenChanges: $projectHasUnseenChanges, lastUserActivityAt: $lastUserActivityAt)';
+    return 'SesoriSseEvent.sessionUnseenChanged(projectID: $projectID, sessionId: $sessionId, unseen: $unseen, projectHasUnseenChanges: $projectHasUnseenChanges, lastUserActivityAt: $lastUserActivityAt)';
 }
 
 
@@ -2870,16 +3013,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriFileEdited&&(identical(other.file, file) || other.file == file));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriFileEdited&&(identical(other.file, file) || other.file == file));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,file);
+int get hashCode {
+    return Object.hash(runtimeType,file);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.fileEdited(file: $file)';
+    return 'SesoriSseEvent.fileEdited(file: $file)';
 }
 
 
@@ -2943,16 +3088,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriInstallationUpdateAvailable&&(identical(other.version, version) || other.version == version));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriInstallationUpdateAvailable&&(identical(other.version, version) || other.version == version));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,version);
+int get hashCode {
+    return Object.hash(runtimeType,version);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.installationUpdateAvailable(version: $version)';
+    return 'SesoriSseEvent.installationUpdateAvailable(version: $version)';
 }
 
 
@@ -3019,16 +3166,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriTuiToastShow&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.title, title) || other.title == title)&&(identical(other.message, message) || other.message == message)&&(identical(other.variant, variant) || other.variant == variant));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriTuiToastShow&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.title, title) || other.title == title)&&(identical(other.message, message) || other.message == message)&&(identical(other.variant, variant) || other.variant == variant));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionID,title,message,variant);
+int get hashCode {
+    return Object.hash(runtimeType,sessionID,title,message,variant);
+}
 
 @override
 String toString() {
-  return 'SesoriSseEvent.tuiToastShow(sessionID: $sessionID, title: $title, message: $message, variant: $variant)';
+    return 'SesoriSseEvent.tuiToastShow(sessionID: $sessionID, title: $title, message: $message, variant: $variant)';
 }
 
 

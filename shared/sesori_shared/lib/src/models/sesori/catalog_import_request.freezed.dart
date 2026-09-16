@@ -29,16 +29,21 @@ $CatalogImportRequestCopyWith<CatalogImportRequest> get copyWith => _$CatalogImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportRequest&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+  final _this = this as CatalogImportRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogImportRequest&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId);
+int get hashCode {
+  final _this = this as CatalogImportRequest;
+  return Object.hash(runtimeType,_this.pluginId);
+}
 
 @override
 String toString() {
-  return 'CatalogImportRequest(pluginId: $pluginId)';
+  final _this = this as CatalogImportRequest;
+  return 'CatalogImportRequest(pluginId: ${_this.pluginId})';
 }
 
 
@@ -99,16 +104,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CatalogImportRequest&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CatalogImportRequest&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId);
+}
 
 @override
 String toString() {
-  return 'CatalogImportRequest(pluginId: $pluginId)';
+    return 'CatalogImportRequest(pluginId: $pluginId)';
 }
 
 

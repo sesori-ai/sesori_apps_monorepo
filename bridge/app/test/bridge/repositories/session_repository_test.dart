@@ -1561,6 +1561,21 @@ void main() {
             .having((result) => result.workKept, "kept", true)
             .having((result) => result.subAgentsHandled, "handled", true),
       );
+
+      plugin.abortResult = const PluginAbortNotPerformed(
+        reason: PluginAbortRefusalReason.residentWorkCompletionUnknown,
+      );
+      final refusalResult = await repository.abortSession(
+        sessionId: "root",
+        subAgents: SessionAbortSubAgentPolicy.confirm,
+        useAtomicStop: true,
+      );
+      expect(
+        (refusalResult as SessionAbortNotPerformed).refusal,
+        const SessionAbortNotPerformedRefusal(
+          reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
+        ),
+      );
     });
 
     test("unknown sessions reject message and abort operations", () async {

@@ -7,7 +7,7 @@ import "package:test/test.dart";
 import "support/deepseek_test_plugin.dart";
 
 void main() {
-  test("live initialization requires adapter 0.1.4 or newer", () async {
+  test("live initialization requires adapter 0.1.5 or newer", () async {
     final fake = FakeAcpProcess();
     final plugin = buildDeepSeekTestPlugin(fake: fake);
     AcpInitializeResult result(String version) => AcpInitializeResult.fromJson({
@@ -35,8 +35,18 @@ void main() {
       ),
     );
     expect(() => plugin.validateInitializeResult(result("0.1.3")), throwsFormatException);
-    expect(() => plugin.validateInitializeResult(result("0.1.4")), returnsNormally);
+    expect(
+      () => plugin.validateInitializeResult(result("0.1.4")),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          "message",
+          "DeepSeek requires adapter 0.1.5 or newer",
+        ),
+      ),
+    );
     expect(() => plugin.validateInitializeResult(result("0.1.5")), returnsNormally);
+    expect(() => plugin.validateInitializeResult(result("0.1.6")), returnsNormally);
     await plugin.dispose();
     await fake.close();
   });

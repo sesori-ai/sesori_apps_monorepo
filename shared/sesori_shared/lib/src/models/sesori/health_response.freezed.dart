@@ -29,16 +29,21 @@ $HealthResponseCopyWith<HealthResponse> get copyWith => _$HealthResponseCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version)&&(identical(other.filesystemAccessDegraded, filesystemAccessDegraded) || other.filesystemAccessDegraded == filesystemAccessDegraded));
+  final _this = this as HealthResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HealthResponse&&(identical(other.healthy, _this.healthy) || other.healthy == _this.healthy)&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.filesystemAccessDegraded, _this.filesystemAccessDegraded) || other.filesystemAccessDegraded == _this.filesystemAccessDegraded));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,healthy,version,filesystemAccessDegraded);
+int get hashCode {
+  final _this = this as HealthResponse;
+  return Object.hash(runtimeType,_this.healthy,_this.version,_this.filesystemAccessDegraded);
+}
 
 @override
 String toString() {
-  return 'HealthResponse(healthy: $healthy, version: $version, filesystemAccessDegraded: $filesystemAccessDegraded)';
+  final _this = this as HealthResponse;
+  return 'HealthResponse(healthy: ${_this.healthy}, version: ${_this.version}, filesystemAccessDegraded: ${_this.filesystemAccessDegraded})';
 }
 
 
@@ -103,16 +108,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version)&&(identical(other.filesystemAccessDegraded, filesystemAccessDegraded) || other.filesystemAccessDegraded == filesystemAccessDegraded));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version)&&(identical(other.filesystemAccessDegraded, filesystemAccessDegraded) || other.filesystemAccessDegraded == filesystemAccessDegraded));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,healthy,version,filesystemAccessDegraded);
+int get hashCode {
+    return Object.hash(runtimeType,healthy,version,filesystemAccessDegraded);
+}
 
 @override
 String toString() {
-  return 'HealthResponse(healthy: $healthy, version: $version, filesystemAccessDegraded: $filesystemAccessDegraded)';
+    return 'HealthResponse(healthy: $healthy, version: $version, filesystemAccessDegraded: $filesystemAccessDegraded)';
 }
 
 

@@ -48,7 +48,7 @@ mixin _$BridgeSettingUpdate {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeSettingUpdate);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeSettingUpdate);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -57,7 +57,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'BridgeSettingUpdate()';
+    return 'BridgeSettingUpdate()';
 }
 
 
@@ -88,16 +88,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestRefreshIntervalSettingUpdate&&(identical(other.intervalSeconds, intervalSeconds) || other.intervalSeconds == intervalSeconds));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestRefreshIntervalSettingUpdate&&(identical(other.intervalSeconds, intervalSeconds) || other.intervalSeconds == intervalSeconds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,intervalSeconds);
+int get hashCode {
+    return Object.hash(runtimeType,intervalSeconds);
+}
 
 @override
 String toString() {
-  return 'BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: $intervalSeconds)';
+    return 'BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: $intervalSeconds)';
 }
 
 
@@ -127,16 +129,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is YoloSettingUpdate&&(identical(other.enabled, enabled) || other.enabled == enabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is YoloSettingUpdate&&(identical(other.enabled, enabled) || other.enabled == enabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,enabled);
+int get hashCode {
+    return Object.hash(runtimeType,enabled);
+}
 
 @override
 String toString() {
-  return 'BridgeSettingUpdate.yolo(enabled: $enabled)';
+    return 'BridgeSettingUpdate.yolo(enabled: $enabled)';
 }
 
 
@@ -166,16 +170,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is WarmUpPluginsOnSessionOpenSettingUpdate&&(identical(other.enabled, enabled) || other.enabled == enabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is WarmUpPluginsOnSessionOpenSettingUpdate&&(identical(other.enabled, enabled) || other.enabled == enabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,enabled);
+int get hashCode {
+    return Object.hash(runtimeType,enabled);
+}
 
 @override
 String toString() {
-  return 'BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: $enabled)';
+    return 'BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: $enabled)';
 }
 
 
@@ -205,7 +211,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UnknownBridgeSettingUpdate);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is UnknownBridgeSettingUpdate);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -214,7 +220,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'BridgeSettingUpdate.unknown()';
+    return 'BridgeSettingUpdate.unknown()';
 }
 
 
@@ -251,7 +257,7 @@ mixin _$BridgeSettingUpdateRejection {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeSettingUpdateRejection);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeSettingUpdateRejection);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -260,7 +266,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'BridgeSettingUpdateRejection()';
+    return 'BridgeSettingUpdateRejection()';
 }
 
 
@@ -292,16 +298,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection&&(identical(other.minimumIntervalSeconds, minimumIntervalSeconds) || other.minimumIntervalSeconds == minimumIntervalSeconds)&&(identical(other.maximumIntervalSeconds, maximumIntervalSeconds) || other.maximumIntervalSeconds == maximumIntervalSeconds));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestRefreshIntervalOutOfRangeSettingUpdateRejection&&(identical(other.minimumIntervalSeconds, minimumIntervalSeconds) || other.minimumIntervalSeconds == minimumIntervalSeconds)&&(identical(other.maximumIntervalSeconds, maximumIntervalSeconds) || other.maximumIntervalSeconds == maximumIntervalSeconds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,minimumIntervalSeconds,maximumIntervalSeconds);
+int get hashCode {
+    return Object.hash(runtimeType,minimumIntervalSeconds,maximumIntervalSeconds);
+}
 
 @override
 String toString() {
-  return 'BridgeSettingUpdateRejection.pullRequestRefreshIntervalOutOfRange(minimumIntervalSeconds: $minimumIntervalSeconds, maximumIntervalSeconds: $maximumIntervalSeconds)';
+    return 'BridgeSettingUpdateRejection.pullRequestRefreshIntervalOutOfRange(minimumIntervalSeconds: $minimumIntervalSeconds, maximumIntervalSeconds: $maximumIntervalSeconds)';
 }
 
 
@@ -331,7 +339,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UnknownBridgeSettingUpdateRejection);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is UnknownBridgeSettingUpdateRejection);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -340,7 +348,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'BridgeSettingUpdateRejection.unknown()';
+    return 'BridgeSettingUpdateRejection.unknown()';
 }
 
 

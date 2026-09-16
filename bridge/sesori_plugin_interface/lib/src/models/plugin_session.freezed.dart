@@ -28,16 +28,21 @@ $PluginSessionCopyWith<PluginSession> get copyWith => _$PluginSessionCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSession&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time));
+  final _this = this as PluginSession;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSession&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.projectID, _this.projectID) || other.projectID == _this.projectID)&&(identical(other.directory, _this.directory) || other.directory == _this.directory)&&(identical(other.parentID, _this.parentID) || other.parentID == _this.parentID)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.time, _this.time) || other.time == _this.time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time);
+int get hashCode {
+  final _this = this as PluginSession;
+  return Object.hash(runtimeType,_this.id,_this.projectID,_this.directory,_this.parentID,_this.title,_this.time);
+}
 
 @override
 String toString() {
-  return 'PluginSession(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time)';
+  final _this = this as PluginSession;
+  return 'PluginSession(id: ${_this.id}, projectID: ${_this.projectID}, directory: ${_this.directory}, parentID: ${_this.parentID}, title: ${_this.title}, time: ${_this.time})';
 }
 
 
@@ -120,16 +125,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSession&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSession&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time);
+int get hashCode {
+    return Object.hash(runtimeType,id,projectID,directory,parentID,title,time);
+}
 
 @override
 String toString() {
-  return 'PluginSession(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time)';
+    return 'PluginSession(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time)';
 }
 
 
@@ -200,16 +207,21 @@ $PluginSessionTimeCopyWith<PluginSessionTime> get copyWith => _$PluginSessionTim
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated)&&(identical(other.archived, archived) || other.archived == archived));
+  final _this = this as PluginSessionTime;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionTime&&(identical(other.created, _this.created) || other.created == _this.created)&&(identical(other.updated, _this.updated) || other.updated == _this.updated)&&(identical(other.archived, _this.archived) || other.archived == _this.archived));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,updated,archived);
+int get hashCode {
+  final _this = this as PluginSessionTime;
+  return Object.hash(runtimeType,_this.created,_this.updated,_this.archived);
+}
 
 @override
 String toString() {
-  return 'PluginSessionTime(created: $created, updated: $updated, archived: $archived)';
+  final _this = this as PluginSessionTime;
+  return 'PluginSessionTime(created: ${_this.created}, updated: ${_this.updated}, archived: ${_this.archived})';
 }
 
 
@@ -274,16 +286,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSessionTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated)&&(identical(other.archived, archived) || other.archived == archived));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginSessionTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated)&&(identical(other.archived, archived) || other.archived == archived));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,updated,archived);
+int get hashCode {
+    return Object.hash(runtimeType,created,updated,archived);
+}
 
 @override
 String toString() {
-  return 'PluginSessionTime(created: $created, updated: $updated, archived: $archived)';
+    return 'PluginSessionTime(created: $created, updated: $updated, archived: $archived)';
 }
 
 

@@ -170,6 +170,48 @@ void main() {
     );
   });
 
+  test("extracts shell commands without forwarding other tool input", () {
+    final shell = mapper.mapPart(
+      const ToolPart(
+        id: "part-shell",
+        sessionID: "session-1",
+        messageID: "message-1",
+        callID: "call-1",
+        tool: "bash",
+        state: ToolStateCompleted(
+          input: {"command": "git status --short", "description": "inspect files"},
+          output: " M file.dart",
+          title: "Shell",
+          metadata: {},
+          time: ToolStateCompletedTime(start: 0, end: 1, compacted: null),
+          attachments: null,
+        ),
+        metadata: null,
+      ),
+    );
+    final read = mapper.mapPart(
+      const ToolPart(
+        id: "part-read",
+        sessionID: "session-1",
+        messageID: "message-1",
+        callID: "call-2",
+        tool: "read",
+        state: ToolStateCompleted(
+          input: {"command": "must not leak"},
+          output: "file contents",
+          title: "Read",
+          metadata: {},
+          time: ToolStateCompletedTime(start: 0, end: 1, compacted: null),
+          attachments: null,
+        ),
+        metadata: null,
+      ),
+    );
+
+    expect(shell.state.shellCommand, "git status --short");
+    expect(read.state.shellCommand, isNull);
+  });
+
   test("carries a bounded number of completed tool attachments through tool state", () {
     final part = mapper.mapPart(
       ToolPart(

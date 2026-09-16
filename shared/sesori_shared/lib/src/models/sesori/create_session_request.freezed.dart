@@ -29,16 +29,21 @@ $CreateSessionRequestCopyWith<CreateSessionRequest> get copyWith => _$CreateSess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateSessionRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other.parts, parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.command, command) || other.command == command)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.dedicatedWorktree, dedicatedWorktree) || other.dedicatedWorktree == dedicatedWorktree));
+  final _this = this as CreateSessionRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateSessionRequest&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&const DeepCollectionEquality().equals(other.parts, _this.parts)&&(identical(other.agent, _this.agent) || other.agent == _this.agent)&&(identical(other.model, _this.model) || other.model == _this.model)&&(identical(other.command, _this.command) || other.command == _this.command)&&(identical(other.variant, _this.variant) || other.variant == _this.variant)&&(identical(other.dedicatedWorktree, _this.dedicatedWorktree) || other.dedicatedWorktree == _this.dedicatedWorktree));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,pluginId,const DeepCollectionEquality().hash(parts),agent,model,command,variant,dedicatedWorktree);
+int get hashCode {
+  final _this = this as CreateSessionRequest;
+  return Object.hash(runtimeType,_this.projectId,_this.pluginId,const DeepCollectionEquality().hash(_this.parts),_this.agent,_this.model,_this.command,_this.variant,_this.dedicatedWorktree);
+}
 
 @override
 String toString() {
-  return 'CreateSessionRequest(projectId: $projectId, pluginId: $pluginId, parts: $parts, agent: $agent, model: $model, command: $command, variant: $variant, dedicatedWorktree: $dedicatedWorktree)';
+  final _this = this as CreateSessionRequest;
+  return 'CreateSessionRequest(projectId: ${_this.projectId}, pluginId: ${_this.pluginId}, parts: ${_this.parts}, agent: ${_this.agent}, model: ${_this.model}, command: ${_this.command}, variant: ${_this.variant}, dedicatedWorktree: ${_this.dedicatedWorktree})';
 }
 
 
@@ -143,16 +148,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateSessionRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other._parts, _parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.command, command) || other.command == command)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.dedicatedWorktree, dedicatedWorktree) || other.dedicatedWorktree == dedicatedWorktree));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateSessionRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other.parts, _parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.command, command) || other.command == command)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.dedicatedWorktree, dedicatedWorktree) || other.dedicatedWorktree == dedicatedWorktree));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,pluginId,const DeepCollectionEquality().hash(_parts),agent,model,command,variant,dedicatedWorktree);
+int get hashCode {
+    return Object.hash(runtimeType,projectId,pluginId,const DeepCollectionEquality().hash(_parts),agent,model,command,variant,dedicatedWorktree);
+}
 
 @override
 String toString() {
-  return 'CreateSessionRequest(projectId: $projectId, pluginId: $pluginId, parts: $parts, agent: $agent, model: $model, command: $command, variant: $variant, dedicatedWorktree: $dedicatedWorktree)';
+    return 'CreateSessionRequest(projectId: $projectId, pluginId: $pluginId, parts: $parts, agent: $agent, model: $model, command: $command, variant: $variant, dedicatedWorktree: $dedicatedWorktree)';
 }
 
 

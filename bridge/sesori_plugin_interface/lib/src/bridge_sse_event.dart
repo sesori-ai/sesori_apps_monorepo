@@ -53,6 +53,10 @@ class const BridgeSseSessionError({required final String? sessionID}) extends Br
 
 class const BridgeSseSessionCompacted({required final String sessionID}) extends BridgeSseEvent;
 
+/// Confirms that an accepted prompt completed without a queue or transcript representation.
+class const BridgeSsePromptSettled({required final String sessionID, required final String promptID})
+    extends BridgeSseEvent;
+
 class const BridgeSseSessionStatus({required final String sessionID, required final PluginSessionStatus status})
     extends BridgeSseEvent;
 

@@ -29,16 +29,21 @@ $YoloSettingsResponseCopyWith<YoloSettingsResponse> get copyWith => _$YoloSettin
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is YoloSettingsResponse&&(identical(other.enabled, enabled) || other.enabled == enabled));
+  final _this = this as YoloSettingsResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is YoloSettingsResponse&&(identical(other.enabled, _this.enabled) || other.enabled == _this.enabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,enabled);
+int get hashCode {
+  final _this = this as YoloSettingsResponse;
+  return Object.hash(runtimeType,_this.enabled);
+}
 
 @override
 String toString() {
-  return 'YoloSettingsResponse(enabled: $enabled)';
+  final _this = this as YoloSettingsResponse;
+  return 'YoloSettingsResponse(enabled: ${_this.enabled})';
 }
 
 
@@ -99,16 +104,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _YoloSettingsResponse&&(identical(other.enabled, enabled) || other.enabled == enabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _YoloSettingsResponse&&(identical(other.enabled, enabled) || other.enabled == enabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,enabled);
+int get hashCode {
+    return Object.hash(runtimeType,enabled);
+}
 
 @override
 String toString() {
-  return 'YoloSettingsResponse(enabled: $enabled)';
+    return 'YoloSettingsResponse(enabled: $enabled)';
 }
 
 

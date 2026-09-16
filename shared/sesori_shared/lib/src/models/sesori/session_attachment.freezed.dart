@@ -29,16 +29,21 @@ $SessionAttachmentRequestCopyWith<SessionAttachmentRequest> get copyWith => _$Se
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAttachmentRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.attachmentId, attachmentId) || other.attachmentId == attachmentId)&&(identical(other.rendition, rendition) || other.rendition == rendition));
+  final _this = this as SessionAttachmentRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAttachmentRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.attachmentId, _this.attachmentId) || other.attachmentId == _this.attachmentId)&&(identical(other.rendition, _this.rendition) || other.rendition == _this.rendition));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,attachmentId,rendition);
+int get hashCode {
+  final _this = this as SessionAttachmentRequest;
+  return Object.hash(runtimeType,_this.sessionId,_this.attachmentId,_this.rendition);
+}
 
 @override
 String toString() {
-  return 'SessionAttachmentRequest(sessionId: $sessionId, attachmentId: $attachmentId, rendition: $rendition)';
+  final _this = this as SessionAttachmentRequest;
+  return 'SessionAttachmentRequest(sessionId: ${_this.sessionId}, attachmentId: ${_this.attachmentId}, rendition: ${_this.rendition})';
 }
 
 
@@ -103,16 +108,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAttachmentRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.attachmentId, attachmentId) || other.attachmentId == attachmentId)&&(identical(other.rendition, rendition) || other.rendition == rendition));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAttachmentRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.attachmentId, attachmentId) || other.attachmentId == attachmentId)&&(identical(other.rendition, rendition) || other.rendition == rendition));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,attachmentId,rendition);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,attachmentId,rendition);
+}
 
 @override
 String toString() {
-  return 'SessionAttachmentRequest(sessionId: $sessionId, attachmentId: $attachmentId, rendition: $rendition)';
+    return 'SessionAttachmentRequest(sessionId: $sessionId, attachmentId: $attachmentId, rendition: $rendition)';
 }
 
 
@@ -169,12 +176,16 @@ $SessionAttachmentResponseCopyWith<SessionAttachmentResponse> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAttachmentResponse&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.byteLength, byteLength) || other.byteLength == byteLength));
+  final _this = this as SessionAttachmentResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAttachmentResponse&&(identical(other.mime, _this.mime) || other.mime == _this.mime)&&(identical(other.base64, _this.base64) || other.base64 == _this.base64)&&(identical(other.byteLength, _this.byteLength) || other.byteLength == _this.byteLength));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,base64,byteLength);
+int get hashCode {
+  final _this = this as SessionAttachmentResponse;
+  return Object.hash(runtimeType,_this.mime,_this.base64,_this.byteLength);
+}
 
 
 
@@ -239,12 +250,14 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAttachmentResponse&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.byteLength, byteLength) || other.byteLength == byteLength));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAttachmentResponse&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.byteLength, byteLength) || other.byteLength == byteLength));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,base64,byteLength);
+int get hashCode {
+    return Object.hash(runtimeType,mime,base64,byteLength);
+}
 
 
 

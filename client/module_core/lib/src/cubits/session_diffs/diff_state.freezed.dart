@@ -21,7 +21,7 @@ mixin _$DiffState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DiffState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DiffState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'DiffState()';
+    return 'DiffState()';
 }
 
 
@@ -57,7 +57,7 @@ class DiffStateLoading implements DiffState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DiffStateLoading);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DiffStateLoading);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'DiffState.loading()';
+    return 'DiffState.loading()';
 }
 
 
@@ -100,16 +100,18 @@ $DiffStateLoadedCopyWith<DiffStateLoaded> get copyWith => _$DiffStateLoadedCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DiffStateLoaded&&const DeepCollectionEquality().equals(other._files, _files));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DiffStateLoaded&&const DeepCollectionEquality().equals(other.files, _files));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_files));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_files));
+}
 
 @override
 String toString() {
-  return 'DiffState.loaded(files: $files)';
+    return 'DiffState.loaded(files: $files)';
 }
 
 
@@ -166,16 +168,18 @@ $DiffStateFailedCopyWith<DiffStateFailed> get copyWith => _$DiffStateFailedCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DiffStateFailed&&const DeepCollectionEquality().equals(other.error, error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DiffStateFailed&&const DeepCollectionEquality().equals(other.error, error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(error));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(error));
+}
 
 @override
 String toString() {
-  return 'DiffState.failed(error: $error)';
+    return 'DiffState.failed(error: $error)';
 }
 
 

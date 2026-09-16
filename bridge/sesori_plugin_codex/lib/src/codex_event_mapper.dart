@@ -392,6 +392,7 @@ class CodexEventMapper({
           threadId: threadId,
           itemId: itemId,
           tool: "image_generation",
+          shellCommand: null,
           status: toolStatus,
           time: time,
           attachments: toolStatus == PluginToolStatus.completed
@@ -417,6 +418,7 @@ class CodexEventMapper({
           threadId: threadId,
           itemId: itemId,
           tool: tool ?? "mcp",
+          shellCommand: null,
           title: _mcpToolTitle(server: server, tool: tool),
           status: _parsedToolStatus(status: status, completed: completed),
           time: time,
@@ -444,6 +446,7 @@ class CodexEventMapper({
           threadId: threadId,
           itemId: itemId,
           tool: tool,
+          shellCommand: null,
           title: _dynamicToolTitle(arguments),
           status: _parsedToolStatus(
             status: status,
@@ -514,6 +517,7 @@ class CodexEventMapper({
           threadId: threadId,
           itemId: itemId,
           tool: "shell",
+          shellCommand: _rolloutToolMapper.logicalCommandTitle(item["command"] as String?),
           title: _rolloutToolMapper.logicalCommandTitle(
             item["command"] as String?,
           ),
@@ -529,6 +533,7 @@ class CodexEventMapper({
           threadId: threadId,
           itemId: itemId,
           tool: "edit",
+          shellCommand: null,
           title: _fileChangeTitle(item["changes"]),
           status: _toolStatus(item["status"], completed: completed),
           time: time,
@@ -540,6 +545,7 @@ class CodexEventMapper({
           threadId: threadId,
           itemId: itemId,
           tool: "web_search",
+          shellCommand: null,
           title: item["query"] as String?,
           // webSearch items carry no status field.
           status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
@@ -552,6 +558,7 @@ class CodexEventMapper({
             threadId: threadId,
             itemId: itemId,
             tool: "compact",
+            shellCommand: null,
             title: completed ? "Context compacted" : "Compacting context",
             status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
             time: time,
@@ -577,6 +584,7 @@ class CodexEventMapper({
     required String threadId,
     required String itemId,
     required String tool,
+    required String? shellCommand,
     required PluginToolStatus status,
     required PluginMessageTime? time,
     required List<PluginMessageAttachment> attachments,
@@ -597,6 +605,7 @@ class CodexEventMapper({
           state: PluginToolState(
             status: status,
             title: title,
+            shellCommand: shellCommand,
             output: output,
             error: error ?? (status == PluginToolStatus.error ? output : null),
             attachments: attachments,

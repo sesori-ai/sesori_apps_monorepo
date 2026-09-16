@@ -1,8 +1,11 @@
 import "dart:async";
+import "dart:convert";
+import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
+import "package:cursor_plugin/src/repositories/trackers/cursor_task_replay_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -128,11 +131,103 @@ void main() {
       throw StateError("agent never wrote a '$method' frame");
     }
 
-    Future<void> respond(String method, Map<String, dynamic> result) async {
-      final frame = await waitForFrame(method);
+    void respondFrame(Map<String, dynamic> frame, Map<String, dynamic> result) {
       fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
+    }
+
+    Future<void> respond(String method, Map<String, dynamic> result) async {
+      respondFrame(await waitForFrame(method), result);
       await pump();
     }
+
+    Future<PluginAbortResult> abort({required String sessionId, required PluginAbortSubAgentPolicy policy}) =>
+        plugin.abortSession(
+          sessionId: sessionId,
+          subAgents: policy,
+          useAtomicStop: true,
+          knownSubAgentSessionIds: const {"must-not-fan-out"},
+        );
+
+    Future<Map<String, dynamic>> startTaskPrompt({
+      required String sessionId,
+      required String toolCallId,
+      required bool connect,
+    }) async {
+      if (connect) {
+        final connecting = plugin.ensureConnected();
+        await respond("initialize", const {
+          "protocolVersion": 1,
+          "agentCapabilities": <String, dynamic>{},
+          "authMethods": <Object?>[],
+        });
+        expect(await connecting, isTrue);
+      }
+      final creating = plugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await respond("session/new", {"sessionId": sessionId});
+      final session = await creating;
+      await plugin.sendPrompt(
+        sessionId: session.id,
+        promptId: "prompt-$sessionId",
+        parts: const [PluginPromptPart.text(text: "delegate")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": toolCallId,
+            "title": "Task: inspect",
+            "status": "pending",
+            "rawInput": {"_toolName": "task"},
+          },
+        },
+      });
+      await pump();
+      return prompt;
+    }
+
+    test("replay composition configures one standard collector without suppression", () async {
+      var factoryCalls = 0;
+      AcpReplayToolPartSuppression? receivedSuppression;
+
+      final collector = await plugin.createSessionReplayCollector(
+        sessionId: "replay-root",
+        collectorFactory: ({required toolPartSuppression}) {
+          factoryCalls++;
+          receivedSuppression = toolPartSuppression;
+          return AcpReplayCollector(
+            sessionUpdateNormalizer: null,
+            shellCommandResolver: null,
+            sessionId: "replay-root",
+            agentId: CursorPlugin.pluginId,
+            initialUserMessageId: null,
+            messageIdOverride: null,
+            messageTimeResolver: null,
+            haltClassifier: null,
+            toolPartReplacement: null,
+            toolPartSuppression: toolPartSuppression,
+          );
+        },
+      );
+
+      expect(collector, isA<CursorTaskReplayTracker>());
+      expect(factoryCalls, 1);
+      expect(receivedSuppression, isNull);
+    });
 
     test("delegates persisted session cleanup", () async {
       expect(plugin, isA<PersistedSessionCleanupApi>());
@@ -299,6 +394,247 @@ void main() {
       expect(events.whereType<BridgeSseSessionError>(), isEmpty);
     });
 
+    test("prompt cancellation settles active Task before the root turns idle", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final prompt = await startTaskPrompt(
+        sessionId: "s-task-cancel",
+        toolCallId: "task-cancel-1",
+        connect: true,
+      );
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": prompt["id"],
+        "result": {"stopReason": "cancelled"},
+      });
+      for (var i = 0; i < 10 && events.whereType<BridgeSseSessionIdle>().isEmpty; i++) {
+        await pump();
+      }
+
+      final cancelledIndex = events.indexWhere(
+        (event) =>
+            event is BridgeSseMessagePartUpdated &&
+            event.part is PluginMessagePartTool &&
+            (event.part as PluginMessagePartTool).state.status == PluginToolStatus.cancelled,
+      );
+      final idleIndex = events.indexWhere((event) => event is BridgeSseSessionIdle);
+      expect(cancelledIndex, greaterThanOrEqualTo(0));
+      expect(idleIndex, greaterThan(cancelledIndex));
+    });
+
+    test("prompt failure errors active Task after prompt error and before root settlement", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final prompt = await startTaskPrompt(
+        sessionId: "s-task-failure",
+        toolCallId: "task-failure-1",
+        connect: true,
+      );
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": prompt["id"],
+        "error": {"code": -32000, "message": "Agent connection failed"},
+      });
+      for (var i = 0; i < 10 && events.whereType<BridgeSseSessionIdle>().isEmpty; i++) {
+        await pump();
+      }
+
+      final promptErrorIndex = events.indexWhere(
+        (event) => event is BridgeSseMessageUpdated && event.info is PluginMessageError,
+      );
+      final taskErrorIndex = events.indexWhere(
+        (event) =>
+            event is BridgeSseMessagePartUpdated &&
+            event.part is PluginMessagePartTool &&
+            (event.part as PluginMessagePartTool).state.status == PluginToolStatus.error,
+      );
+      final sessionErrorIndex = events.indexWhere((event) => event is BridgeSseSessionError);
+      final idleIndex = events.indexWhere((event) => event is BridgeSseSessionIdle);
+      expect(promptErrorIndex, greaterThanOrEqualTo(0));
+      expect(taskErrorIndex, greaterThan(promptErrorIndex));
+      expect(
+        ((events[taskErrorIndex] as BridgeSseMessagePartUpdated).part as PluginMessagePartTool).state.error,
+        "Agent connection failed",
+      );
+      expect(idleIndex, greaterThan(taskErrorIndex));
+      expect(sessionErrorIndex, greaterThan(idleIndex));
+    });
+
+    test("process exit errors active Task before root settlement resets correlation", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+      final wrapper = AcpBridgePlugin(plugin: plugin, clock: const ServerClock());
+      addTearDown(() => wrapper.shutdown(budget: null));
+
+      final connecting = wrapper.connect(
+        budget: const Duration(seconds: 1),
+        startAborted: StartAbortSignal.never,
+      );
+      await respond("initialize", const {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+      await connecting;
+      await startTaskPrompt(
+        sessionId: "s-task-exit",
+        toolCallId: "task-exit-1",
+        connect: false,
+      );
+
+      fake.exit(17);
+      for (var i = 0; i < 10 && (events.whereType<BridgeSseSessionIdle>().isEmpty || plugin.client != null); i++) {
+        await pump();
+      }
+
+      final taskErrorIndex = events.indexWhere(
+        (event) =>
+            event is BridgeSseMessagePartUpdated &&
+            event.part is PluginMessagePartTool &&
+            (event.part as PluginMessagePartTool).state.status == PluginToolStatus.error,
+      );
+      final sessionErrorIndex = events.indexWhere((event) => event is BridgeSseSessionError);
+      final idleIndex = events.indexWhere((event) => event is BridgeSseSessionIdle);
+      expect(taskErrorIndex, greaterThanOrEqualTo(0));
+      expect(
+        ((events[taskErrorIndex] as BridgeSseMessagePartUpdated).part as PluginMessagePartTool).state.error,
+        "agent process exited with code 17",
+      );
+      expect(idleIndex, greaterThan(taskErrorIndex));
+      expect(sessionErrorIndex, greaterThan(idleIndex));
+      expect(plugin.client, isNull);
+    });
+
+    test("prompt-write Task completion stays ordered before its acknowledged cursor/task request", () async {
+      const sessionId = "s-task-prompt-write";
+      const toolCallId = "task-prompt-write-1";
+      final promptWriteFake = _PromptWriteCursorProcess(
+        sessionId: sessionId,
+        toolCallId: toolCallId,
+      );
+      final promptWritePlugin = CursorPlugin(
+        launchDirectory: "/repo",
+        processFactory: (_) async => promptWriteFake,
+        sessionCleanupService: _FakeCursorSessionCleanupService(),
+      );
+      final events = <BridgeSseEvent>[];
+      final subscription = promptWritePlugin.events.listen(events.add);
+      addTearDown(() async {
+        await subscription.cancel();
+        await promptWritePlugin.dispose();
+        await promptWriteFake.close();
+      });
+
+      Future<Map<String, dynamic>> waitForPromptWriteFrame(String method) async {
+        for (var i = 0; i < 50; i++) {
+          final matches = promptWriteFake.written.where((frame) => frame["method"] == method);
+          if (matches.isNotEmpty) return matches.first;
+          await pump();
+        }
+        throw StateError("agent never wrote a '$method' frame");
+      }
+
+      final connecting = promptWritePlugin.ensureConnected();
+      final initialize = await waitForPromptWriteFrame("initialize");
+      promptWriteFake.emit({
+        "jsonrpc": "2.0",
+        "id": initialize["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": <String, dynamic>{},
+          "authMethods": <Object?>[],
+        },
+      });
+      expect(await connecting, isTrue);
+
+      final creating = promptWritePlugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final sessionNew = await waitForPromptWriteFrame("session/new");
+      promptWriteFake.emit({
+        "jsonrpc": "2.0",
+        "id": sessionNew["id"],
+        "result": {"sessionId": sessionId},
+      });
+      final session = await creating;
+
+      await promptWritePlugin.sendPrompt(
+        sessionId: session.id,
+        promptId: "prompt-task-write",
+        parts: const [PluginPromptPart.text(text: "delegate")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final prompt = await waitForPromptWriteFrame("session/prompt");
+      for (
+        var i = 0;
+        i < 50 &&
+            (events
+                    .whereType<BridgeSseMessagePartUpdated>()
+                    .where((event) => event.part is PluginMessagePartSubtask)
+                    .isEmpty ||
+                promptWriteFake.written.every((frame) => frame["id"] != _PromptWriteCursorProcess.taskRequestId));
+        i++
+      ) {
+        await pump();
+      }
+
+      final userIndex = events.indexWhere(
+        (event) =>
+            event is BridgeSseMessageUpdated &&
+            event.info is PluginMessageUser &&
+            (event.info as PluginMessageUser).promptId == "prompt-task-write",
+      );
+      final genericIndex = events.indexWhere(
+        (event) =>
+            event is BridgeSseMessagePartUpdated &&
+            event.part is PluginMessagePartTool &&
+            event.part.id.contains(toolCallId) &&
+            (event.part as PluginMessagePartTool).state.status == PluginToolStatus.completed,
+      );
+      final tiles = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartSubtask>()
+          .where((part) => part.id.contains(toolCallId))
+          .toList(growable: false);
+      final tileIndex = events.indexWhere(
+        (event) => event is BridgeSseMessagePartUpdated && event.part is PluginMessagePartSubtask,
+      );
+      expect(userIndex, greaterThanOrEqualTo(0));
+      expect(genericIndex, greaterThan(userIndex), reason: "accepted user content precedes buffered Task output");
+      expect(tileIndex, greaterThan(genericIndex), reason: "terminal Task maps before cursor/task reinjection");
+      expect(tiles, hasLength(1));
+      expect(tiles.single.taskState?.status, PluginToolStatus.completed);
+      expect(
+        promptWriteFake.written.singleWhere(
+          (frame) => frame["id"] == _PromptWriteCursorProcess.taskRequestId,
+        )["result"],
+        isA<Map<Object?, Object?>>(),
+        reason: "cursor/task is acknowledged through production Cursor composition",
+      );
+
+      promptWriteFake.emit({
+        "jsonrpc": "2.0",
+        "id": prompt["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+    });
+
     test("tool-correlated extensions keep the earlier session with two turns in flight", () async {
       final events = <BridgeSseEvent>[];
       final subscription = plugin.events.listen(events.add);
@@ -385,6 +721,84 @@ void main() {
         "id": secondPrompt["id"],
         "result": {"stopReason": "end_turn"},
       });
+    });
+
+    test("active Task rejects confirm and keep, while stop cancels only root and waits", () async {
+      const sessionId = "s-task-stop";
+      final prompt = await startTaskPrompt(sessionId: sessionId, toolCallId: "task-stop-1", connect: true);
+      final writesBeforePolicy = fake.written.length;
+      for (final policy in [PluginAbortSubAgentPolicy.confirm, PluginAbortSubAgentPolicy.keep]) {
+        expect(
+          await abort(sessionId: sessionId, policy: policy),
+          isA<PluginAbortRejectedSubAgentsRunning>().having((result) => result.runningSubAgentCount, "count", 1),
+        );
+      }
+      expect(fake.written, hasLength(writesBeforePolicy));
+
+      final stopping = abort(sessionId: sessionId, policy: PluginAbortSubAgentPolicy.stop);
+      await pump();
+      expect(fake.written.where((frame) => frame["method"] == AcpMethods.sessionCancel), hasLength(1));
+      respondFrame(prompt, {"stopReason": "cancelled"});
+      expect(await stopping, const PluginAbortAccepted(workKept: false, subAgentsHandled: false));
+    });
+
+    test("background transition makes stop partial, then every policy refuses without effects", () async {
+      final workStates = <PluginWorkState>[];
+      final workSubscription = plugin.workState.listen(workStates.add);
+      addTearDown(workSubscription.cancel);
+      const sessionId = "s-background-stop";
+      final prompt = await startTaskPrompt(
+        sessionId: sessionId,
+        toolCallId: "task-background-stop",
+        connect: true,
+      );
+      final stopping = abort(sessionId: sessionId, policy: PluginAbortSubAgentPolicy.stop);
+      await pump();
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "task-background-stop",
+            "status": "completed",
+            "rawOutput": {"durationMs": 5, "isBackground": true},
+          },
+        },
+      });
+      respondFrame(prompt, {"stopReason": "cancelled"});
+      await expectLater(
+        stopping,
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 502)),
+      );
+      await pump();
+      expect(await plugin.getSessionStatuses(), {sessionId: const PluginSessionStatus.idle()});
+      expect(workStates.last, PluginWorkState.busy);
+
+      await plugin.sendPrompt(
+        sessionId: sessionId,
+        promptId: "prompt-after-background",
+        parts: const [PluginPromptPart.text(text: "must survive refusal")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final survivingPrompt = await waitForFrame("session/prompt");
+      final writesBeforeRefusals = fake.written.length;
+      for (final policy in PluginAbortSubAgentPolicy.values) {
+        expect(
+          await abort(sessionId: sessionId, policy: policy),
+          const PluginAbortNotPerformed(reason: PluginAbortRefusalReason.residentWorkCompletionUnknown),
+        );
+      }
+      expect(fake.written, hasLength(writesBeforeRefusals));
+      expect(plugin.getActiveSessionsSummary().single.activeSessions.single.mainAgentRunning, isTrue);
+      respondFrame(survivingPrompt, {"stopReason": "end_turn"});
+      await pump();
+
+      await plugin.resetConnectionAfterExit();
+      expect(workStates.last, PluginWorkState.idle);
     });
 
     test("captureSessionConfig populates providers, effort variants, and mode agents", () async {
@@ -1559,6 +1973,99 @@ void main() {
       );
     });
   });
+}
+
+final class _PromptWriteCursorProcess({required final String sessionId, required final String toolCallId})
+    implements AcpProcessHandle {
+  static const taskRequestId = 700;
+
+  final StreamController<List<int>> _stdout = StreamController<List<int>>();
+  final StreamController<List<int>> _stderr = StreamController<List<int>>();
+  final Completer<int> _exit = Completer<int>();
+  late final _PromptWriteCursorInput _stdin = _PromptWriteCursorInput(
+    onFrame: (frame) {
+      if (_emittedTaskFrames || frame["method"] != AcpMethods.sessionPrompt) return;
+      _emittedTaskFrames = true;
+      emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": toolCallId,
+            "title": "Task: inspect",
+            "status": "completed",
+            "rawInput": {"_toolName": "task"},
+            "rawOutput": {"isBackground": false},
+          },
+        },
+      });
+      emit({
+        "jsonrpc": "2.0",
+        "id": taskRequestId,
+        "method": "cursor/task",
+        "params": {
+          "toolCallId": toolCallId,
+          "description": "Inspect",
+          "prompt": "Inspect code",
+          "subagentType": {
+            "custom": {"unspecified": <String, Object?>{}},
+          },
+        },
+      });
+    },
+  );
+  var _emittedTaskFrames = false;
+  var _stdoutTapped = false;
+  var _stderrTapped = false;
+
+  List<Map<String, dynamic>> get written => _stdin.frames;
+
+  @override
+  Stream<List<int>> get stdout {
+    _stdoutTapped = true;
+    return _stdout.stream;
+  }
+
+  @override
+  Stream<List<int>> get stderr {
+    _stderrTapped = true;
+    return _stderr.stream;
+  }
+
+  @override
+  IOSink get stdin => _stdin;
+
+  @override
+  Future<int> get exitCode => _exit.future;
+
+  @override
+  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) {
+    if (!_exit.isCompleted) _exit.complete(-15);
+    return true;
+  }
+
+  void emit(Map<String, dynamic> message) {
+    _stdout.add(utf8.encode("${jsonEncode(message)}\n"));
+  }
+
+  Future<void> close() async {
+    if (!_stdoutTapped) _stdout.stream.listen(null);
+    if (!_stderrTapped) _stderr.stream.listen(null);
+    await _stdout.close();
+    await _stderr.close();
+  }
+}
+
+final class _PromptWriteCursorInput({required final void Function(Map<String, dynamic>) onFrame})
+    extends CapturingIOSink {
+  @override
+  void add(List<int> data) {
+    final priorLength = frames.length;
+    super.add(data);
+    frames.skip(priorLength).forEach(onFrame);
+  }
 }
 
 class _FakeCursorSessionCleanupService() implements CursorSessionCleanupService {

@@ -23,7 +23,7 @@ mixin _$PluginPromptPart {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPart);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPart);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -32,7 +32,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginPromptPart()';
+    return 'PluginPromptPart()';
 }
 
 
@@ -71,16 +71,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPartText&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPartText&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,text);
+int get hashCode {
+    return Object.hash(runtimeType,text);
+}
 
 @override
 String toString() {
-  return 'PluginPromptPart.text(text: $text)';
+    return 'PluginPromptPart.text(text: $text)';
 }
 
 
@@ -146,16 +148,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPartFilePath&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.path, path) || other.path == path)&&(identical(other.filename, filename) || other.filename == filename));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPartFilePath&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.path, path) || other.path == path)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,path,filename);
+int get hashCode {
+    return Object.hash(runtimeType,mime,path,filename);
+}
 
 @override
 String toString() {
-  return 'PluginPromptPart.filePath(mime: $mime, path: $path, filename: $filename)';
+    return 'PluginPromptPart.filePath(mime: $mime, path: $path, filename: $filename)';
 }
 
 
@@ -223,16 +227,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPartFileUrl&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPartFileUrl&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,url,filename);
+int get hashCode {
+    return Object.hash(runtimeType,mime,url,filename);
+}
 
 @override
 String toString() {
-  return 'PluginPromptPart.fileUrl(mime: $mime, url: $url, filename: $filename)';
+    return 'PluginPromptPart.fileUrl(mime: $mime, url: $url, filename: $filename)';
 }
 
 
@@ -300,16 +306,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPartFileData&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPromptPartFileData&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,base64,filename);
+int get hashCode {
+    return Object.hash(runtimeType,mime,base64,filename);
+}
 
 @override
 String toString() {
-  return 'PluginPromptPart.fileData(mime: $mime, base64: $base64, filename: $filename)';
+    return 'PluginPromptPart.fileData(mime: $mime, base64: $base64, filename: $filename)';
 }
 
 

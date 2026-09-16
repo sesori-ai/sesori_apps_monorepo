@@ -3,12 +3,45 @@
 ## Status
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Status:** Series completed 2026-09-02 (Step 8/8; L4 matrix recorded in
-  `TRACKER.md`); reactivated 2026-09-02 for the harness follow-ups in
-  `HARNESS_FOLLOWUPS.md`, retired again when their coverage PRs merge
+- **Status:** **COMPLETED 2026-09-12.** Series completed 2026-09-02
+  (Step 8/8; L4 matrix recorded in `TRACKER.md`), was reactivated for harness
+  follow-ups, and now has every recorded harness gate disposition reconciled. DeepSeek
+  coverage merged as PR #1431 at `7dd323d1d7`. Current Cursor
+  `2026.08.11-e8db854` native evidence and the six-step delivery plan are
+  recorded in `HARNESS_FOLLOWUPS.md` and `followups/cursor-probe.md`. Cursor
+  Step 1 merged as PR #1435 at `b83b64901c`; Step 2 merged as PR #1438 at
+  `116392cb71`, settling generic Task lifecycle and acknowledging `cursor/task`.
+  Step 3 merged as PR #1441 at `bb85f48148`; Step 4 safe stop merged as PR
+  #1442 at `a7d3014e1a`; Step 5 replay merged at `f5e4e7f67a`. Step 6
+  merged as PR #1444 at `67e173be1a` after actual-plugin coverage passed its
+  executed scope and repaired exact native live/replay tagged presentation
+  shapes; the cancellation race settled
+  before background resolution and remains focused fake-test coverage. Step 4 includes
+  the typed refusal, Cursor-only residency,
+  bounded named-root cancellation with post-settlement re-check/HTTP 502 partial
+  failure, repository-owned concurrent descendant fallback, client queue gate,
+  and limitation UI, with no replay/native QA. Full reviewed checkpoint
+  `5cc54ad013` is preserved by branches
+  `claude-inline-subtasks-cursor-tiles-step2-of5` and
+  `checkpoint/cursor-step2-combined-reviewed-5cc54` as split source evidence.
+  Earlier refs `c5c0def` and `ab03528` remain stale, unpublishable historical
+  evidence. None of these refs may be mutated or deleted. Retirement was
+  previously blocked by one material Grok phone finding. The 2026-09-12 owned-phone run
+  passed visible Grok-only creation, two-child lifecycle, exact scope-dialog
+  count/copy and dismissal, full stop, same-session/runtime reuse, cold root
+  reload, read-only child controls, and normal one-time permission handling.
+  Cold child history stably duplicated its assistant/tool/final sequence under
+  distinct rows. Push was attempted while backgrounded but not delivered. A
+  fixed-build rerun at `0187bb2b10` deduplicated the exact tool anchor, but two
+  assistant rows remained on each side because live retained an empty final text
+  snapshot. The anchored predicate now accepts that exact empty-prefix case.
+  Final QA at `493bab1483` passed exact cold convergence twice and two private
+  backfills. Grok phone coverage now passes its bounded matrix and the plan is
+  retired.
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Implementation base:** `main` at `ba725ec84`
+- **Historical original implementation base:** `main` at `ba725ec84`
+- **Current Cursor series base after Step 1 merge:** `main` at `b83b64901c`
 - **Plan branch:** `inline-subtask-plan`
 - **Plan PR:** [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027)
 - **Delivery:** eight PRs: plan, contract + client tile, Claude lifecycle,
@@ -22,9 +55,17 @@
   `followups/deepseek-phone-qa.md`. Desktop is deferred by user choice. Codex
   now uses nine steps after automatic size-based splitting: #1387 remains
   historical preparation, and cleanup #1396 is merged. Native facts are step
-  5/9 (#1398, merged at `d801d722f2`), live/replay tile integration 6/9,
-  lifecycle coverage 7/9, scoped stop 8/9, and final coverage 9/9. Historical merged PR titles
-  remain unchanged. Overall harness plan remains active.
+  5/9 (#1398, merged at `d801d722f2`), live/replay tile integration 6/9
+  (#1399, merged at `db2b71134d`), lifecycle coverage 7/9 merged as #1420,
+  and scoped stop 8/9 merged as #1421 at `77165f784f`. Final coverage 9/9
+  records a passed bounded actual-plugin policy scope and a partial live matrix.
+  Grok delivery completed in seven steps: scoped stop PR #1428, child-cancel
+  envelope PR #1429, and coverage PR #1430 close the series. Canonical Grok QA,
+  fixed-history, permission, notification, and final phone evidence lives in the
+  Status section above and `followups/grok-probe.md`; no duplicate matrix is
+  maintained here. DeepSeek's final documentation reconciles the passed phone
+  stop/input scope and user-deferred desktop matrix without changing adapter
+  0.1.4 evidence. Grok and Cursor follow-ups are complete; the plan is retired.
 
 ## Goal
 

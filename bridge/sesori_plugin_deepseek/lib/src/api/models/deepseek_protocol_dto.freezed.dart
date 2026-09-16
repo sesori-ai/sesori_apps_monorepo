@@ -52,16 +52,21 @@ $DeepSeekSessionStopRequestDtoCopyWith<DeepSeekSessionStopRequestDto> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeepSeekSessionStopRequestDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
+  final _this = this as DeepSeekSessionStopRequestDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeepSeekSessionStopRequestDto&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId);
+int get hashCode {
+  final _this = this as DeepSeekSessionStopRequestDto;
+  return Object.hash(runtimeType,_this.sessionId);
+}
 
 @override
 String toString() {
-  return 'DeepSeekSessionStopRequestDto(sessionId: $sessionId)';
+  final _this = this as DeepSeekSessionStopRequestDto;
+  return 'DeepSeekSessionStopRequestDto(sessionId: ${_this.sessionId})';
 }
 
 
@@ -255,16 +260,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeepSeekSessionStopSessionRequestDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DeepSeekSessionStopSessionRequestDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId);
+}
 
 @override
 String toString() {
-  return 'DeepSeekSessionStopRequestDto.session(sessionId: $sessionId)';
+    return 'DeepSeekSessionStopRequestDto.session(sessionId: $sessionId)';
 }
 
 
@@ -329,16 +336,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeepSeekSessionStopChildRequestDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.childSessionId, childSessionId) || other.childSessionId == childSessionId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DeepSeekSessionStopChildRequestDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.childSessionId, childSessionId) || other.childSessionId == childSessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,childSessionId);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,childSessionId);
+}
 
 @override
 String toString() {
-  return 'DeepSeekSessionStopRequestDto.child(sessionId: $sessionId, childSessionId: $childSessionId)';
+    return 'DeepSeekSessionStopRequestDto.child(sessionId: $sessionId, childSessionId: $childSessionId)';
 }
 
 

@@ -27,16 +27,21 @@ $NotificationPreferencesApiRecordCopyWith<NotificationPreferencesApiRecord> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesApiRecord&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId)&&(identical(other.notifications, notifications) || other.notifications == notifications)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  final _this = this as NotificationPreferencesApiRecord;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesApiRecord&&(identical(other.deviceId, _this.deviceId) || other.deviceId == _this.deviceId)&&(identical(other.notifications, _this.notifications) || other.notifications == _this.notifications)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,deviceId,notifications,updatedAt);
+int get hashCode {
+  final _this = this as NotificationPreferencesApiRecord;
+  return Object.hash(runtimeType,_this.deviceId,_this.notifications,_this.updatedAt);
+}
 
 @override
 String toString() {
-  return 'NotificationPreferencesApiRecord(deviceId: $deviceId, notifications: $notifications, updatedAt: $updatedAt)';
+  final _this = this as NotificationPreferencesApiRecord;
+  return 'NotificationPreferencesApiRecord(deviceId: ${_this.deviceId}, notifications: ${_this.notifications}, updatedAt: ${_this.updatedAt})';
 }
 
 
@@ -107,16 +112,18 @@ _$NotificationPreferencesApiRecordCopyWith<_NotificationPreferencesApiRecord> ge
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationPreferencesApiRecord&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId)&&(identical(other.notifications, notifications) || other.notifications == notifications)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationPreferencesApiRecord&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId)&&(identical(other.notifications, notifications) || other.notifications == notifications)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,deviceId,notifications,updatedAt);
+int get hashCode {
+    return Object.hash(runtimeType,deviceId,notifications,updatedAt);
+}
 
 @override
 String toString() {
-  return 'NotificationPreferencesApiRecord(deviceId: $deviceId, notifications: $notifications, updatedAt: $updatedAt)';
+    return 'NotificationPreferencesApiRecord(deviceId: $deviceId, notifications: $notifications, updatedAt: $updatedAt)';
 }
 
 
@@ -180,16 +187,21 @@ $NotificationPreferencesApiNotificationsCopyWith<NotificationPreferencesApiNotif
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesApiNotifications&&(identical(other.aiInteraction, aiInteraction) || other.aiInteraction == aiInteraction)&&(identical(other.sessionMessage, sessionMessage) || other.sessionMessage == sessionMessage)&&(identical(other.connectionStatus, connectionStatus) || other.connectionStatus == connectionStatus)&&(identical(other.systemUpdate, systemUpdate) || other.systemUpdate == systemUpdate));
+  final _this = this as NotificationPreferencesApiNotifications;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencesApiNotifications&&(identical(other.aiInteraction, _this.aiInteraction) || other.aiInteraction == _this.aiInteraction)&&(identical(other.sessionMessage, _this.sessionMessage) || other.sessionMessage == _this.sessionMessage)&&(identical(other.connectionStatus, _this.connectionStatus) || other.connectionStatus == _this.connectionStatus)&&(identical(other.systemUpdate, _this.systemUpdate) || other.systemUpdate == _this.systemUpdate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,aiInteraction,sessionMessage,connectionStatus,systemUpdate);
+int get hashCode {
+  final _this = this as NotificationPreferencesApiNotifications;
+  return Object.hash(runtimeType,_this.aiInteraction,_this.sessionMessage,_this.connectionStatus,_this.systemUpdate);
+}
 
 @override
 String toString() {
-  return 'NotificationPreferencesApiNotifications(aiInteraction: $aiInteraction, sessionMessage: $sessionMessage, connectionStatus: $connectionStatus, systemUpdate: $systemUpdate)';
+  final _this = this as NotificationPreferencesApiNotifications;
+  return 'NotificationPreferencesApiNotifications(aiInteraction: ${_this.aiInteraction}, sessionMessage: ${_this.sessionMessage}, connectionStatus: ${_this.connectionStatus}, systemUpdate: ${_this.systemUpdate})';
 }
 
 
@@ -253,16 +265,18 @@ _$NotificationPreferencesApiNotificationsCopyWith<_NotificationPreferencesApiNot
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationPreferencesApiNotifications&&(identical(other.aiInteraction, aiInteraction) || other.aiInteraction == aiInteraction)&&(identical(other.sessionMessage, sessionMessage) || other.sessionMessage == sessionMessage)&&(identical(other.connectionStatus, connectionStatus) || other.connectionStatus == connectionStatus)&&(identical(other.systemUpdate, systemUpdate) || other.systemUpdate == systemUpdate));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationPreferencesApiNotifications&&(identical(other.aiInteraction, aiInteraction) || other.aiInteraction == aiInteraction)&&(identical(other.sessionMessage, sessionMessage) || other.sessionMessage == sessionMessage)&&(identical(other.connectionStatus, connectionStatus) || other.connectionStatus == connectionStatus)&&(identical(other.systemUpdate, systemUpdate) || other.systemUpdate == systemUpdate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,aiInteraction,sessionMessage,connectionStatus,systemUpdate);
+int get hashCode {
+    return Object.hash(runtimeType,aiInteraction,sessionMessage,connectionStatus,systemUpdate);
+}
 
 @override
 String toString() {
-  return 'NotificationPreferencesApiNotifications(aiInteraction: $aiInteraction, sessionMessage: $sessionMessage, connectionStatus: $connectionStatus, systemUpdate: $systemUpdate)';
+    return 'NotificationPreferencesApiNotifications(aiInteraction: $aiInteraction, sessionMessage: $sessionMessage, connectionStatus: $connectionStatus, systemUpdate: $systemUpdate)';
 }
 
 
@@ -317,16 +331,21 @@ $NotificationPreferencePatchApiRequestCopyWith<NotificationPreferencePatchApiReq
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencePatchApiRequest&&(identical(other.enabled, enabled) || other.enabled == enabled));
+  final _this = this as NotificationPreferencePatchApiRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencePatchApiRequest&&(identical(other.enabled, _this.enabled) || other.enabled == _this.enabled));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,enabled);
+int get hashCode {
+  final _this = this as NotificationPreferencePatchApiRequest;
+  return Object.hash(runtimeType,_this.enabled);
+}
 
 @override
 String toString() {
-  return 'NotificationPreferencePatchApiRequest(enabled: $enabled)';
+  final _this = this as NotificationPreferencePatchApiRequest;
+  return 'NotificationPreferencePatchApiRequest(enabled: ${_this.enabled})';
 }
 
 
@@ -384,16 +403,18 @@ $NotificationPreferencePatchAiInteractionCopyWith<NotificationPreferencePatchAiI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencePatchAiInteraction&&(identical(other.enabled, enabled) || other.enabled == enabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencePatchAiInteraction&&(identical(other.enabled, enabled) || other.enabled == enabled));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,enabled);
+int get hashCode {
+    return Object.hash(runtimeType,enabled);
+}
 
 @override
 String toString() {
-  return 'NotificationPreferencePatchApiRequest.aiInteraction(enabled: $enabled)';
+    return 'NotificationPreferencePatchApiRequest.aiInteraction(enabled: $enabled)';
 }
 
 
@@ -450,16 +471,18 @@ $NotificationPreferencePatchSessionMessageCopyWith<NotificationPreferencePatchSe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencePatchSessionMessage&&(identical(other.enabled, enabled) || other.enabled == enabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencePatchSessionMessage&&(identical(other.enabled, enabled) || other.enabled == enabled));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,enabled);
+int get hashCode {
+    return Object.hash(runtimeType,enabled);
+}
 
 @override
 String toString() {
-  return 'NotificationPreferencePatchApiRequest.sessionMessage(enabled: $enabled)';
+    return 'NotificationPreferencePatchApiRequest.sessionMessage(enabled: $enabled)';
 }
 
 
@@ -516,16 +539,18 @@ $NotificationPreferencePatchConnectionStatusCopyWith<NotificationPreferencePatch
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencePatchConnectionStatus&&(identical(other.enabled, enabled) || other.enabled == enabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencePatchConnectionStatus&&(identical(other.enabled, enabled) || other.enabled == enabled));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,enabled);
+int get hashCode {
+    return Object.hash(runtimeType,enabled);
+}
 
 @override
 String toString() {
-  return 'NotificationPreferencePatchApiRequest.connectionStatus(enabled: $enabled)';
+    return 'NotificationPreferencePatchApiRequest.connectionStatus(enabled: $enabled)';
 }
 
 
@@ -582,16 +607,18 @@ $NotificationPreferencePatchSystemUpdateCopyWith<NotificationPreferencePatchSyst
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencePatchSystemUpdate&&(identical(other.enabled, enabled) || other.enabled == enabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationPreferencePatchSystemUpdate&&(identical(other.enabled, enabled) || other.enabled == enabled));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,enabled);
+int get hashCode {
+    return Object.hash(runtimeType,enabled);
+}
 
 @override
 String toString() {
-  return 'NotificationPreferencePatchApiRequest.systemUpdate(enabled: $enabled)';
+    return 'NotificationPreferencePatchApiRequest.systemUpdate(enabled: $enabled)';
 }
 
 

@@ -29,16 +29,21 @@ $ReplyToPermissionRequestCopyWith<ReplyToPermissionRequest> get copyWith => _$Re
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReplyToPermissionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.reply, reply) || other.reply == reply));
+  final _this = this as ReplyToPermissionRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReplyToPermissionRequest&&(identical(other.requestId, _this.requestId) || other.requestId == _this.requestId)&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.reply, _this.reply) || other.reply == _this.reply));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestId,sessionId,reply);
+int get hashCode {
+  final _this = this as ReplyToPermissionRequest;
+  return Object.hash(runtimeType,_this.requestId,_this.sessionId,_this.reply);
+}
 
 @override
 String toString() {
-  return 'ReplyToPermissionRequest(requestId: $requestId, sessionId: $sessionId, reply: $reply)';
+  final _this = this as ReplyToPermissionRequest;
+  return 'ReplyToPermissionRequest(requestId: ${_this.requestId}, sessionId: ${_this.sessionId}, reply: ${_this.reply})';
 }
 
 
@@ -103,16 +108,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReplyToPermissionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.reply, reply) || other.reply == reply));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReplyToPermissionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.reply, reply) || other.reply == reply));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestId,sessionId,reply);
+int get hashCode {
+    return Object.hash(runtimeType,requestId,sessionId,reply);
+}
 
 @override
 String toString() {
-  return 'ReplyToPermissionRequest(requestId: $requestId, sessionId: $sessionId, reply: $reply)';
+    return 'ReplyToPermissionRequest(requestId: $requestId, sessionId: $sessionId, reply: $reply)';
 }
 
 

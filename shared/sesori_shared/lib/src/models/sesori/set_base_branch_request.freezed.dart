@@ -29,16 +29,21 @@ $SetBaseBranchRequestCopyWith<SetBaseBranchRequest> get copyWith => _$SetBaseBra
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SetBaseBranchRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch));
+  final _this = this as SetBaseBranchRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SetBaseBranchRequest&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.baseBranch, _this.baseBranch) || other.baseBranch == _this.baseBranch));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,baseBranch);
+int get hashCode {
+  final _this = this as SetBaseBranchRequest;
+  return Object.hash(runtimeType,_this.projectId,_this.baseBranch);
+}
 
 @override
 String toString() {
-  return 'SetBaseBranchRequest(projectId: $projectId, baseBranch: $baseBranch)';
+  final _this = this as SetBaseBranchRequest;
+  return 'SetBaseBranchRequest(projectId: ${_this.projectId}, baseBranch: ${_this.baseBranch})';
 }
 
 
@@ -101,16 +106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SetBaseBranchRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SetBaseBranchRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,baseBranch);
+int get hashCode {
+    return Object.hash(runtimeType,projectId,baseBranch);
+}
 
 @override
 String toString() {
-  return 'SetBaseBranchRequest(projectId: $projectId, baseBranch: $baseBranch)';
+    return 'SetBaseBranchRequest(projectId: $projectId, baseBranch: $baseBranch)';
 }
 
 

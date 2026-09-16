@@ -3,21 +3,43 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at `86ccc283fb`
-- **Series state:** all eight steps merged, including the L4-found fix
-  [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257), which
-  also made the scoped stop harness-neutral (OpenCode honors it; rejections
-  declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
-  the original Claude series is complete; harness follow-ups remain active
-- **Next action:** finalize Codex live/replay integration
-  [PR #1399](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1399)
-  (step 6/9) after native-facts PR #1398 merged at `d801d722f2`;
-  actual-plugin QA passed its bounded cases, then preserved lifecycle coverage
-  step 7/9 follows. Cleanup #1396 merged at `7f6fb8cb50`; #1387 is
-  historical preparation superseded by the verified 0.153.4 rollout seam. DeepSeek #1363,
-  #1370, and the live-QA crash fix #1379 are merged. Requested phone-only
-  stop/input checks passed; see `followups/deepseek-phone-qa.md`. Desktop
-  remains deferred by user choice; the overall plan remains active.
+- **Implementation base:** Cursor Step 5 merged at `f5e4e7f67a`.
+- **Series state:** all eight original Claude steps merged, including the
+  L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
+  which made scoped stop harness-neutral and added
+  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9, Grok steps 1–7, and
+  Cursor steps 1–6 are merged;
+  bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
+  2026-09-10. Grok bounded phone coverage now passes: visible lifecycle, stop,
+  reuse, permission, cold-root, and read-only-child cases passed after cold child
+  history initially remained duplicated. Fixed build `0187bb2b10`
+  isolated an empty live final snapshot; final build `493bab1483` then passed
+  exact cold convergence on two opens and two private backfills. All harness
+  follow-ups are reconciled.
+- **Next action:** None; plan retired after the final Grok phone gate passed. PR #1444 merged at
+  `67e173be1a`. The 2026-09-12 owned-phone run used an authenticated isolated
+  official 1.0.5 runtime and executed the bounded matrix. Cursor actual-plugin
+  coverage passed its
+  executed scope; one native cancellation race remains fake-test-only.
+  Full reviewed checkpoint `5cc54ad013` is preserved by branches
+  `claude-inline-subtasks-cursor-tiles-step2-of5` and
+  `checkpoint/cursor-step2-combined-reviewed-5cc54`; the 2,038-line checkpoint
+  was split to stay near the owner's 1,500-line publication limit. Refs
+  `c5c0def` and `ab03528` remain stale, unpublishable historical evidence. None
+  of these refs may be mutated or deleted.
+  Step 6 used the same current managed target through `CursorPlugin`
+  production composition, found and repaired distinct exact live/replay tagged
+  sub-agent presentation shapes, and cleaned every owned resource. The
+  2026-09-11 native probe used current managed target
+  `2026.08.11-e8db854`, not the old plan's installed PATH build. Foreground
+  Task correlation, mode-unknown pre-terminal state, cancellation authority,
+  post-turn background survival, repeated `session/load` facts, and the
+  corrected exact ownership/stop policy
+  are recorded in `followups/cursor-probe.md`. DeepSeek coverage merged as PR
+  #1431. Overall plan is **COMPLETED** after build `493bab1483` passed the
+  bounded Grok cold-history phone gate. Earlier WebDriverAgent,
+  stale-authentication, and history-convergence blocks are superseded. Grok and
+  Cursor follow-ups are complete.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -171,15 +193,17 @@ post-merge E2E gates are unchanged.
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse typed child prompts from thread reads [step 3/6]` | #1387 merged; historical title unchanged (now step 3/9) |
 | [x] | Codex | `🌿 [claude-inline-subtasks] codex: remove obsolete child-prompt cache [step 4/7]` | #1396 merged at `7f6fb8cb50`; no tile code |
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse native rollout facts for sub-agent tiles [step 5/9]` | [PR #1398](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1398) merged at `d801d722f2`; no tile capability activated |
-| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay tiles [step 6/9]` | [PR #1399](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1399) open; full live/replay production, tests and behavior docs; [actual-plugin QA](followups/codex-plugin-qa.md) passed bounded cases, with explicit unexecuted coverage |
-| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | Preserved local successor `e33c33caa4`; write-path coverage, remaining docs, and removal of test-only `CodexMessageRepository.readMessages` with caller migration |
-| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | Not started |
-| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | Final matrix outstanding; bounded actual-plugin results in [QA handoff](followups/codex-plugin-qa.md) |
-| [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |
-| [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged |
-| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: child session history` | Not started |
-| [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents` | Not started |
-| [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage` | Not started |
+| [x] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay tiles [step 6/9]` | [PR #1399](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1399) merged at `db2b71134d`; full live/replay production and behavior docs; [actual-plugin QA](followups/codex-plugin-qa.md) passed bounded cases with explicit unexecuted coverage |
+| [x] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | [PR #1420](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1420) merged at `ae2a9297e3`; write-path/lifecycle coverage and docs |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | [PR #1421](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1421) merged at `77165f784f`; per-thread snapshot fanout, non-atomic (not native subtree cancellation); automated coverage included |
+| [x] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | [PR #1424](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1424) merged at `b945755bfe`; managed-0.153.4 actual-plugin policy QA passed; pending-input live case unexecuted |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged; historical original title unchanged (now step 1/7) |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged; historical original title unchanged (now step 2/7) |
+| [x] | Grok | `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]` | [PR #1426](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1426) merged at `517cbb9703`; historical title unchanged (now step 3/7); approved production, root/direct-child integration, and no-`loadSession` coverage |
+| [x] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427) merged at `4d0d8de7e3`; historical title unchanged (now step 4/7); approved collector/repository/service coverage and docs |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | [PR #1428](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1428) merged at `3934f32ec9`; historical title unchanged (now step 5/7) |
+| [x] | Grok | `🌿 [claude-inline-subtasks] grok: decode child-cancel response envelope [step 6/7]` | [PR #1429](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1429) merged at `2ebcc7d01a`; exact title unchanged |
+| [x] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok sub-agent coverage [step 7/7]` | [PR #1430](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1430) merged at `a28e860557`; actual-plugin scope passed; subsequent owned-phone matrix passed, including genuine permission Once and fixed cold child history; notification unavailable and questions unsupported |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; release completed through #16 |
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
@@ -190,9 +214,138 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek (adapter) | `release: prepare v0.1.4 for atomic-stop consumer` | Adapter #18 merged at `e2ea207f21`; v0.1.4 published and verified |
 | [x] | DeepSeek native stop | `⚙️ [claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | [#1363](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1363) merged at `b13d197d51`; replaces the contract/pin portion of closed #1356 |
 | [x] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) merged; transport crash fixed by #1379; phone handoff in `followups/deepseek-phone-qa.md`, desktop deferred |
-| [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
-| [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
+| [x] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | [PR #1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431) merged at `7dd323d1d7`; requested phone stop/input scope passed, desktop explicitly deferred, other unexecuted matrices recorded; no overall retirement |
+| [x] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | [#1435](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1435) merged at `b83b64901c` originally titled `[step 1/5]`; its GitHub title was deliberately renumbered to `[step 1/6]` after the split, matching this current table; privacy-safe evidence and original plan, with no feature implementation |
+| [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | [PR #1438](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1438) merged at `116392cb71`; Cursor-local active generic cards, terminal settlement, request acknowledgement, and process-exit ordering; no tile |
+| [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | [PR #1441](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1441) merged at `bb85f48148`; exact completed-phase correlation, childless live replacement, tests, and docs |
+| [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | [PR #1442](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1442) merged at `a7d3014e1a`; exact active Task count, unresolved-background residency, typed refusal, bounded named-root stop, concurrent descendant fallback, queue gate, and limitation UI; no replay/native QA |
+| [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured ACP collector/shared `CursorTaskMapper`, typed stable completed replacement, fallbacks, tests, and history docs; no native QA |
+| [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | PR #1444 merged at `67e173be1a`; actual-plugin executed scope passed; distinct exact native live/replay presentation shapes repaired and generated; background stop/lifecycle and child-session gaps remain explicit |
+
+### Cursor native probe (2026-09-11)
+
+- [x] Fetched `origin/main`, verified clean, and branched from merged PR #1431
+  at exact head `7dd323d1d762009d9a6f530630eb0683f986ab3d`; no reset, rebase, or new
+  worktree.
+- [x] Inspected current managed target `2026.08.11-e8db854`, installed PATH
+  runtime `2026.07.23-e383d2b`, and empty managed Cursor inventory. Ran only a
+  checksum-verified ephemeral current-target copy with existing login/model/
+  config and `/tmp` temp variables.
+- [x] Foreground natural: pending → in-progress → completed standard Task;
+  one matching `cursor/task` request followed completion; root ended normally.
+- [x] Foreground cancel: standard root cancel produced authoritative native
+  `stopReason: cancelled` within 9 ms; no Task terminal frame followed; same
+  process/session completed a follow-up.
+- [x] Background launch: standard completion had `isBackground: true`; later
+  permission activity proved work continued after root end. Active root cancel
+  returned `cancelled`, but background requests continued 5–21 seconds later,
+  so full background stop is not supported. No accepted response may report
+  `workKept: false` while that observation remains, and the client wire cannot
+  carry `workKept: true` as a qualifier.
+- [x] Replay: `session/load` emitted full standard Task input and terminal facts,
+  no `cursor/task`; replay-local id was stable across two loads but differed
+  from live. Cancelled Task replay was absent. No child session/transcript.
+- [x] Private raw captures used mode 0700/0600 only and were deleted with owned
+  scratch/runtime/session resources after the privacy-safe facts in
+  `followups/cursor-probe.md` were recorded. No phone/desktop/client QA.
+
+### Cursor architecture-plan correction (2026-09-11)
+
+- [x] Added explicit neutral `rootSessionCancel` branch and the
+  `CursorPlugin.scopedStopCapability` override that selects it: named root only,
+  one root cancel, existing prompt settlement, no child id/fanout;
+  DeepSeek/Grok behavior unchanged.
+- [x] Named every new source file, constructor, required named field, and
+  `CursorPlugin.factory` composition owner. Pre-terminal phase/count names are
+  `activeModeUnknown` and `activeTaskCount`; foreground is asserted only after
+  terminal `isBackground: false`. New replay role is
+  `CursorTaskReplayTracker` under the Cursor repository tracker layer; it
+  receives a configured ACP collector and the shared injected pure projection.
+- [x] Routed standard Task updates, re-injected `cursor/task`, parsed prompt
+  results, and prompt lifecycle failures through existing `CursorEventMapper`
+  plus `AcpChildSessionTracker`; abort policy has no presentation mutation. The
+  new neutral mapper hook is `mapPromptLifecycleFailure({required String
+  sessionId, required String failureMessage})`, distinct from
+  `AcpPlugin.mapPromptFailure`, and
+  runs in the existing catch path after `mapPromptError` but before
+  `_finishTurn`; Cursor maps every active mode-unknown generic Task to error and
+  retires its record. Parsed cancellation maps those records to cancelled and
+  retires them. Other ACP mappers return no events.
+- [x] Replaced turn-bounded background retention with one root-level unresolved
+  observation lasting until authoritative terminal/session or process teardown.
+  Backend-neutral `requiresProcessResidency` feeds only ACP
+  `PluginWorkState.busy`; root/session status, deferred idle, active roots, and
+  counts stay unchanged. Recording, authoritative removal, root-only
+  `forgetSession`, and `clear()` notify the existing tracker stream so process
+  work state resyncs in both directions. Accepted tradeoff: silent completion
+  may block safe suspension until session deletion/process reset.
+- [x] Corrected transport/client policy: bridge-internal `SessionAborted` has
+  `workKept`, `AbortSessionHandler` omits it, and `SessionDetailCubit.abort`
+  treats every 2xx as aborted. While unresolved background exists, all
+  `confirm`/`keep`/`stop` requests now fail through one side-effect-free
+  typed backend-neutral `PluginAbortNotPerformed` path before root/input
+  preparation or cancel because `workKept` cannot qualify a success omitted
+  from the client wire. Bridge/shared layers serialize a required
+  `SessionAbortRefusal.notPerformed(reason: residentWorkCompletionUnknown)`
+  HTTP 409 variant. Client-local exceptions, cubit outcome, queue gate, and UI
+  trust only that variant; unknown reasons retain the queue, while unknown kinds
+  and malformed bodies remain ambiguous. Active mode-unknown
+  confirmation/count and safe named-root stop remain planned: `confirm`/`keep`
+  map exact `activeTaskCount` through the existing
+  `PluginAbortRejectedSubAgentsRunning`/`SessionAbortRejection` path with
+  main-only false and no wire change;
+  explicit `stop` waits at most 20 seconds, then rechecks background and active
+  work. Timeout or survivors return HTTP 502 after cancellation; acceptance
+  requires both absent and `workKept: false`.
+- [x] Corrected rendering scope to completed foreground tiles only.
+  Pending/in-progress are mode-unknown and remain generic; cancelled and failed
+  prompts settle generic cancelled/error standard cards and retire active
+  records. Only complete correlated terminal `isBackground: false` facts create
+  a completed childless tile. Only typed live nested `custom → unspecified` or
+  replay direct `unspecified` tags normalize in `CursorTaskMapper`; missing,
+  unknown, or malformed tags remain generic with no default or converter. Native
+  root `end_turn` remains honest root idle, not
+  background completion; no background completion notification/tile is claimed.
+- [x] Assigned behavior docs to implementation slices: Step 2 generic lifecycle
+  and request ack, Step 3 completed live tiles, Step 4 stop/lifecycle/capability,
+  Step 5 replay/history, and Step 6 actual-plugin evidence/final reconciliation.
+- [x] Kept Cursor vocabulary/DTO parsing in Cursor. Background completion/full
+  stop and child sessions remain unsupported; background history stays generic.
+  Task terminal frames preceding a prompt result are assumed mapped before
+  active settlement completes; no quiet timer, poller, speculative `end_turn`
+  missing-terminal machinery, lock, controller, or recovery path was added. The
+  additive typed refusal follows plugin interface → bridge repository/route →
+  shared transport → client API/repository/cubit.
+- The earlier architecture correction is superseded on process residency,
+  successful retained-work ACKs, tile lifecycle claims, and documentation
+  timing by the verified bridge transport/client path and native presentation
+  facts above. Its other ownership/layering decisions remain current. Preserved
+  code refs `c5c0def` and `ab03528` are preserved stale, unpublishable
+  historical evidence. Full reviewed checkpoint `5cc54ad013` remains preserved
+  by its two named branches as publication-split source evidence. Regenerate
+  successors from each merged slice without mutating or deleting those refs.
+- Architecture review verdict was rejected with six findings. All six valid
+  findings were applied directly to this plan; the corrected version was not
+  re-reviewed and does not claim approval.
+- PR #1435 review at `ec0553d97d` produced three later Codex findings, all
+  applied directly: pre-terminal Task mode is unknown and explicit stop now
+  re-checks unresolved background after authoritative settlement; missing
+  nullable enum keys remain null/incomplete rather than falsely becoming
+  `unknown`; and the current prompt-error catch path gains the distinct neutral
+  mapper lifecycle hook before `_finishTurn`, retiring every active generic Task
+  as error. Cubic independently duplicated the stop-race finding. Its separate
+  `workKept` wording comment is also applied: no sentence suggests relying on a
+  field omitted from the client wire. The next review found that generic 409
+  handling clears queued prompts and that current capability docs prematurely
+  listed the planned enum value. The first revision's broad unparseable-409
+  inference was then rejected in a late post-merge Codex finding. The final
+  Step 4 contract uses a discriminated backend-neutral typed not-performed
+  result across plugin, bridge, shared transport, and client; only the exact
+  discriminator preserves the queue even with an unknown reason; missing/malformed
+  bodies and unknown kinds remain ambiguous, HTTP 502 remains the post-cancel
+  partial failure, and `rootSessionCancel`
+  stays out of implemented capabilities until Step 4 lands. Per user direction
+  after two architecture passes, there is no further architecture-review loop.
 
 ## Step 1 Checklist
 
@@ -245,7 +398,7 @@ post-merge E2E gates are unchanged.
   titles, and step total agree; PR
   [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open.
   Changed lines (informational, not a pass/fail check): `git diff --numstat
-  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 907
+  <merge-base>..HEAD -- .plan/completed/claude-inline-subtasks/PLAN.md` = 907
   additions / 0 deletions at the last plan edit — 257 lines over the 450-650
   target after the user-review lifecycle amendment, the scoped-stop step the
   user added, two architecture reviews, and the bot rounds; accepted
@@ -374,12 +527,33 @@ post-merge E2E gates are unchanged.
   #1257 fix, OpenCode representative proof partial (widget-test covered),
   notifications end to end not run. Plan retired with those two limitations
   recorded here and in the regression documents.
+- **Cursor Step 2/6:** merged as PR #1438 at `116392cb71`; source codegen,
+  focused ACP/Cursor/runtime tests, analyzers, and diff checks passed. It added
+  no completed tile, replay, stop/refusal, residency, child session, client, or
+  runtime/config change.
+- **Cursor Step 3/6:** PR #1441 merged at `bb85f48148`; Step 4 was regenerated
+  from that tree (matching pre-squash `d3297ad4b9`).
+- **Cursor Step 4/6:** PR #1442 merged at `a7d3014e1a`; exact Task count,
+  residency, typed refusal, bounded root stop, concurrent descendant fallback,
+  queue gate, and restart UI shipped without replay or native QA.
+- **Cursor Step 5/6:** PR #1443 merged at `f5e4e7f67a` with a standard ACP collector/shared typed mapper; no analytics or native QA.
+- **Cursor Step 6/6:** managed-target production-composition QA passed live
+  foreground terminal replacement, two cold loads, generic mode-unknown and
+  background cards, exact side-effect-free active confirmation/keep rejection,
+  authoritative named-root cancellation, process/session reuse, root idle before
+  later background permission, residency, and identical non-mutating
+  post-background refusal. It exposed distinct native presentation tags: live
+  `custom → unspecified`, replay direct `unspecified`; separate typed DTOs now
+  converge through one closed presentation value. A bounded race attempt
+  cancelled before background resolution, leaving HTTP 502 race coverage
+  fake-test-only. All private evidence and owned resources were deleted. No
+  analytics event was added because no product-decision consumer appeared.
 
 ## Plan Review
 
 - **Reviewer:** `architecture-plan-review` (sub-agent)
 - **Date:** 2026-08-22
-- **Reviewed scope:** complete `.plan/active/claude-inline-subtasks/`
+- **Reviewed scope:** complete `.plan/completed/claude-inline-subtasks/`
 - **Verdict:** rejected on first pass with six blocking ownership/layering
   findings; no client or shared findings. All six were applied directly to
   `PLAN.md` per repository policy (no re-review of applied fixes):
@@ -539,11 +713,13 @@ and prompt-id conventions before invoking backend-neutral hold/release
 operations.
 
 A second follow-up `architecture-plan-review` on 2026-09-03 covered the later
-stop-policy, Grok denied-spawn, and DeepSeek prompt/settlement amendments. It
-rejected one finding, applied without re-review: deferred Grok tool-call state
-moved out of `AcpEventMapper` into a Layer-2
-`AcpDeferredToolCallTracker` with session, disconnect, and process-exit
-cleanup. The stop policy and DeepSeek adapter/plugin ownership passed.
+stop-policy, Grok denied-spawn, and DeepSeek prompt/settlement amendments. Its
+historical deferred Grok permission-state finding was superseded before
+implementation: current production has no `AcpDeferredToolCallTracker`, and the
+2026-09-10 unchanged-config probe exposed no denyable permission request or
+persisted outcome. This history step therefore keeps exact spawn suppression
+and accepts denied generic-card omission. The stop policy and DeepSeek
+adapter/plugin ownership passed.
 
 A third follow-up `architecture-plan-review` on 2026-09-03 approved the Codex
 service-owned lifecycle flow and replay replacement, the proportional Grok
@@ -752,6 +928,11 @@ its item id exactly matches `spawn_agent.call_id`. Normal child input appends as
 `inter_agent_communication_metadata` plus encrypted
 `response_item/agent_message`; `thread/read` exposes no initial child user item.
 The existing rollout tail sees this append, so no new watcher or timer is needed.
+A bounded managed-0.153.4 stop probe then proved exact-thread interruption:
+parent interrupt left two direct children and a grandchild running; direct
+child interrupt stopped only that child while its sibling and grandchild stayed
+running. Scoped full stop therefore uses per-thread snapshot fanout and cannot
+claim atomic subtree authority.
 
 User decision: for encrypted child input, tile prompt may use only the exact
 nonblank `message` from the matching `spawn_agent` call. It must never use an
@@ -763,11 +944,127 @@ Merged cleanup #1396 (historical step 4/7, now 4/9) removed obsolete #1387 machi
 thread DTOs, `includeTurns: true`, prompt cache/lookups/cleanup, and synthetic
 prompt-cache tests. Parent/source/nickname metadata remains. Workspace codegen,
 focused metadata/write-path/service tests, the complete Codex package suite,
-and `dart analyze --fatal-infos` passed. Native facts are step 5/9, full
-live/replay integration 6/9, lifecycle coverage 7/9, scoped stop 8/9, and final
-coverage 9/9. Rejected tile work remains at
+and `dart analyze --fatal-infos` passed. Native facts are step 5/9. Full
+live/replay integration 6/9 merged as #1399 at `db2b71134d` after bounded
+actual-plugin QA passed the cases recorded in `followups/codex-plugin-qa.md`.
+Lifecycle coverage 7/9 merged as PR #1420 at `ae2a9297e3`. Scoped stop
+8/9 merged as PR #1421 at `77165f784f`. Bounded Step 9 actual-plugin policy QA
+passed root/named-child confirmation and scoped interruption, including
+persisted native terminals, plugin settlement, runtime survival, and the
+non-atomic `subAgentsHandled: false` acknowledgment that retains client fanout.
+The live matrix remains partial because no pending question or permission
+surfaced. Final coverage 9/9 merged as PR #1424 at `b945755bfe`; at that point,
+the overall plan remained active for the other harness gates.
+Rejected tile work remains at
 `claude-inline-subtasks-codex-tiles-step4-integrated` (`c6aa29a8ce`), while
 `claude-inline-subtasks-codex-tiles-successor` (`8f9923b663`) and
 `claude-inline-subtasks-codex-tiles-successor-ready` (`8a2952f318`) remain
 untouched. No runtime pin, native source, client/shared contract, database, or
 stop behavior changed in cleanup #1396.
+
+Grok history Step 3/6 keeps inherited ACP load/auth/drain ownership while a
+replay-local collector consumes standard updates plus both Grok lifecycle
+methods. Typed store → history repository → session service context uses each
+exact child's first child-owned user-message run only when nonblank; a blank or
+missing first run emits no tile, and later runs never substitute. Exact
+metadata-based spawn suppression leaves ordinary tools intact and no empty
+envelope, while one collector preserves deterministic identities/order around
+inserted tiles. DeepSeek's nullable replacement contract remains unchanged.
+Review follow-up renamed the new stateful replay seam and Grok implementation
+from mapper to collector, moved shared protocol classification below the
+live/replay collectors, and made history prompt discovery consume lazy typed
+records with first-run cancellation. Architecture and correctness review
+approved production at `b0d4974e`; packaging preserves that checkpoint on a
+named branch and changes no production/generated blob. Step 4 coverage is
+current on `claude-inline-subtasks-grok-history-coverage-step4-current` in PR
+#1427: Collector imports/names replace Mapper, tests use Dart `await` when
+calling asynchronous repository/service preparation, and original plus moved
+collector, repository, service, malformed-boundary, privacy, cancellation, and
+missing-prompt coverage remain present. This records completed async call
+semantics, not unfinished preparation work. Original Step 4 stays untouched at
+`fb47206bd`.
+
+Grok scoped stop Step 5 merged as PR #1428 at `3934f32ec9`; its `[step 5/6]`
+title remains historical. Step 6/7 merged as PR #1429 at `2ebcc7d01a` under its
+exact `[step 6/7]` title, repairing the required application envelope without a
+flat-format fallback.
+
+Corrected Grok 1.0.5 production-composition QA then passed its executed scope.
+Active-root `keep` rejected without outbound cancellation or local input
+mutation. Named-child stop targeted exactly one child and left root and sibling
+active. Idle-child `keep` retained work through natural completion,
+`will_wake`, the autonomous root turn, and one final idle. Root replay linked
+exactly one tile to the exact child transcript and its child-owned prompt.
+`already_finished` remained non-retained without changing terminal state. Root
+full stop sent root cancellation before the immutable two-child snapshot,
+parsed both nested cancelled outcomes, reached authoritative root/child and
+plugin idle settlement, and left the runtime usable. Fresh sessions after named
+cleanup, already-finished, and full stop all settled on the same runtime. Root
+`confirm` was not rerun; its earlier side-effect-free actual-plugin pass remains
+valid because the envelope repair did not affect preflight policy.
+
+At the Step 7/7 checkpoint, unchanged headless configuration produced no
+standard permission request, and the first phone attempt was infrastructure-
+blocked before visible UI. PR #1430 at `a28e860557` accurately recorded that
+then-partial state.
+
+DeepSeek final coverage reconciliation used existing private summary reports and
+structural artifact summaries only; raw logs, screenshots, transcripts, prompts,
+and credentials were not inspected or copied. The first phone run against merged
+#1370 and published adapter 0.1.4 passed permission cancellation, dialog dismissal,
+and main-only keep, then exposed the shared IOSink concurrent-dispatch crash on
+an independently resumed child with a running grandchild. #1379 fixed that crash.
+The post-fix rerun passed root/child/grandchild cancellation with authoritative
+idle settlement while bridge and native runtime survived, followed by a successful
+new turn. Final phone input checks passed cancellation of an earlier real question
+and preservation of one distinct prompt submitted after Stop was written; the new
+question it produced remained visible, was answered on the phone, and cleared
+normally.
+The earlier permission case used API-triggered Stop and proved cancellation only:
+its generic tool label and opaque call ID remain a separate UX gap. Root-owned
+background shell jobs surviving agent-turn cancellation are outside descendant
+agent stop semantics and were cleaned explicitly.
+
+Unexecuted DeepSeek scope remains explicit: macOS desktop by user choice; cold
+live/replay tile convergence, history reload, and read-only child navigation;
+push/notification delivery; bridge restart/reconnect; multiple clients; and
+alternate mobile platforms. Existing automated package coverage still applies to
+its own bounded cases but is not relabeled client E2E. This documentation-only
+gate changes no adapter/runtime, production/configuration/authentication code,
+persisted data, or capability implementation. At that point, the plan remained
+active for the Grok phone gate and both Cursor gates.
+
+A fresh headless Grok 1.0.5 reproduction then isolated the child-history
+regression without retaining private content. Live history held an id-less
+assistant/tool/assistant fragment; direct replay added its leading user row.
+The first two assistant rows were exactly equal after existing normalization,
+while the final live text was a strict prefix of replay and every other typed
+field matched. One typed opaque tool-call identity was stable across live and
+replay, but ACP projected it into different message/part identities. Local
+production changes now centralize the standalone tool identity across ACP live
+and replay and let repository reconciliation atomically replace only a unique
+exactly anchored assistant/tool/assistant window whose final replay text is a
+strict extension. Correctness follow-up cites ACP v1's session-unique
+`ToolCallId` contract, aligns empty-ID rejection between live and replay,
+exercises real ACP mapper/collector output through stored history, and proves a
+non-ACP unanchored transcript plus duplicated imported anchor remain unchanged.
+Two-sided candidate usage remains required: distinct valid tool anchors can
+cross-align through one shared assistant index on only the imported or stored
+side. Focused overlap negatives now preserve both ambiguous windows, alongside
+positive, idempotence, multiplicity, ordering, timestamp, part-shape,
+reverse-prefix, unrelated-text, distinct/duplicate-anchor, and new-live-suffix
+coverage. Fixed-build phone confirmation at `0187bb2b10` retained one exact
+anchor but two assistant rows on each side. Private structural inspection found
+the live final text part empty while replay supplied nonempty text, so the
+nonempty strict-prefix predicate rejected the otherwise matching unique window.
+The strict extension now accepts empty retained text only when replay text is
+nonempty; every anchor, adjacency, field, timestamp, ordering, and two-sided
+consumption guard remains unchanged. Final owned-phone QA at `493bab1483`
+showed exactly one initial row plus one assistant/tool/assistant sequence on two
+opens; two private reads remained at four imported rows with no retained live
+assistant identities. The Grok phone gate passed and the plan is retired.
+Together, the later owned-phone runs superseded both Step 7/7 gaps: bounded
+creation, lifecycle, scoped stop, reuse, cold history, and read-only child
+navigation passed, and one genuine native permission used `Once`. Notification
+delivery was attempted but not observed and remains unclaimed; no question
+support is claimed.

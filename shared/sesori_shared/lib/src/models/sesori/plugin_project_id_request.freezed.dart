@@ -29,16 +29,21 @@ $PluginProjectIdRequestCopyWith<PluginProjectIdRequest> get copyWith => _$Plugin
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProjectIdRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+  final _this = this as PluginProjectIdRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProjectIdRequest&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,pluginId);
+int get hashCode {
+  final _this = this as PluginProjectIdRequest;
+  return Object.hash(runtimeType,_this.projectId,_this.pluginId);
+}
 
 @override
 String toString() {
-  return 'PluginProjectIdRequest(projectId: $projectId, pluginId: $pluginId)';
+  final _this = this as PluginProjectIdRequest;
+  return 'PluginProjectIdRequest(projectId: ${_this.projectId}, pluginId: ${_this.pluginId})';
 }
 
 
@@ -101,16 +106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProjectIdRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProjectIdRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,pluginId);
+int get hashCode {
+    return Object.hash(runtimeType,projectId,pluginId);
+}
 
 @override
 String toString() {
-  return 'PluginProjectIdRequest(projectId: $projectId, pluginId: $pluginId)';
+    return 'PluginProjectIdRequest(projectId: $projectId, pluginId: $pluginId)';
 }
 
 

@@ -159,6 +159,7 @@ void _registerDependencies({
   getIt.registerSingleton<PluginManagementService>(stubbedPluginManagementService());
   getIt.registerSingleton<SessionInteractionCalculator>(const SessionInteractionCalculator());
   getIt.registerSingleton<SessionRepository>(promptDispatcher);
+  getIt.registerSingleton<SessionAbortService>(SessionAbortService(repository: promptDispatcher));
   getIt.registerSingleton<PermissionRepository>(permissionRepository);
   getIt.registerSingleton<SessionViewingService>(sessionViewingService);
   getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());

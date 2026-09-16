@@ -46,7 +46,7 @@ mixin _$CodexImageBearingItemDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexImageBearingItemDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexImageBearingItemDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -55,7 +55,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexImageBearingItemDto()';
+    return 'CodexImageBearingItemDto()';
 }
 
 
@@ -95,16 +95,18 @@ $CodexImageGenerationItemDtoCopyWith<CodexImageGenerationItemDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexImageGenerationItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&(identical(other.revisedPrompt, revisedPrompt) || other.revisedPrompt == revisedPrompt)&&(identical(other.result, result) || other.result == result)&&(identical(other.savedPath, savedPath) || other.savedPath == savedPath));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexImageGenerationItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&(identical(other.revisedPrompt, revisedPrompt) || other.revisedPrompt == revisedPrompt)&&(identical(other.result, result) || other.result == result)&&(identical(other.savedPath, savedPath) || other.savedPath == savedPath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,status,revisedPrompt,result,savedPath);
+int get hashCode {
+    return Object.hash(runtimeType,id,status,revisedPrompt,result,savedPath);
+}
 
 @override
 String toString() {
-  return 'CodexImageBearingItemDto.imageGeneration(id: $id, status: $status, revisedPrompt: $revisedPrompt, result: $result, savedPath: $savedPath)';
+    return 'CodexImageBearingItemDto.imageGeneration(id: $id, status: $status, revisedPrompt: $revisedPrompt, result: $result, savedPath: $savedPath)';
 }
 
 
@@ -180,16 +182,18 @@ $CodexMcpToolCallItemDtoCopyWith<CodexMcpToolCallItemDto> get copyWith => _$Code
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexMcpToolCallItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.server, server) || other.server == server)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexMcpToolCallItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.server, server) || other.server == server)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.error, error) || other.error == error));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,server,tool,status,const DeepCollectionEquality().hash(_content),error);
+int get hashCode {
+    return Object.hash(runtimeType,id,server,tool,status,const DeepCollectionEquality().hash(_content),error);
+}
 
 @override
 String toString() {
-  return 'CodexImageBearingItemDto.mcpToolCall(id: $id, server: $server, tool: $tool, status: $status, content: $content, error: $error)';
+    return 'CodexImageBearingItemDto.mcpToolCall(id: $id, server: $server, tool: $tool, status: $status, content: $content, error: $error)';
 }
 
 
@@ -265,16 +269,18 @@ $CodexDynamicToolCallItemDtoCopyWith<CodexDynamicToolCallItemDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDynamicToolCallItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.tool, tool) || other.tool == tool)&&const DeepCollectionEquality().equals(other.arguments, arguments)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._content, _content));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDynamicToolCallItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.tool, tool) || other.tool == tool)&&const DeepCollectionEquality().equals(other.arguments, arguments)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.content, _content));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,tool,const DeepCollectionEquality().hash(arguments),status,const DeepCollectionEquality().hash(_content));
+int get hashCode {
+    return Object.hash(runtimeType,id,tool,const DeepCollectionEquality().hash(arguments),status,const DeepCollectionEquality().hash(_content));
+}
 
 @override
 String toString() {
-  return 'CodexImageBearingItemDto.dynamicToolCall(id: $id, tool: $tool, arguments: $arguments, status: $status, content: $content)';
+    return 'CodexImageBearingItemDto.dynamicToolCall(id: $id, tool: $tool, arguments: $arguments, status: $status, content: $content)';
 }
 
 
@@ -333,7 +339,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUnknownImageBearingItemDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUnknownImageBearingItemDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -342,7 +348,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexImageBearingItemDto.unknown()';
+    return 'CodexImageBearingItemDto.unknown()';
 }
 
 
@@ -393,7 +399,7 @@ mixin _$CodexImageBearingContentDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexImageBearingContentDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexImageBearingContentDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -402,7 +408,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexImageBearingContentDto()';
+    return 'CodexImageBearingContentDto()';
 }
 
 
@@ -438,16 +444,18 @@ $CodexMcpTextContentDtoCopyWith<CodexMcpTextContentDto> get copyWith => _$CodexM
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexMcpTextContentDto&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexMcpTextContentDto&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,text);
+int get hashCode {
+    return Object.hash(runtimeType,text);
+}
 
 @override
 String toString() {
-  return 'CodexImageBearingContentDto.mcpText(text: $text)';
+    return 'CodexImageBearingContentDto.mcpText(text: $text)';
 }
 
 
@@ -509,16 +517,18 @@ $CodexMcpImageContentDtoCopyWith<CodexMcpImageContentDto> get copyWith => _$Code
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexMcpImageContentDto&&(identical(other.data, data) || other.data == data)&&(identical(other.mimeType, mimeType) || other.mimeType == mimeType));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexMcpImageContentDto&&(identical(other.data, data) || other.data == data)&&(identical(other.mimeType, mimeType) || other.mimeType == mimeType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,data,mimeType);
+int get hashCode {
+    return Object.hash(runtimeType,data,mimeType);
+}
 
 @override
 String toString() {
-  return 'CodexImageBearingContentDto.mcpImage(data: $data, mimeType: $mimeType)';
+    return 'CodexImageBearingContentDto.mcpImage(data: $data, mimeType: $mimeType)';
 }
 
 
@@ -580,16 +590,18 @@ $CodexDynamicTextContentDtoCopyWith<CodexDynamicTextContentDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDynamicTextContentDto&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDynamicTextContentDto&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,text);
+int get hashCode {
+    return Object.hash(runtimeType,text);
+}
 
 @override
 String toString() {
-  return 'CodexImageBearingContentDto.dynamicText(text: $text)';
+    return 'CodexImageBearingContentDto.dynamicText(text: $text)';
 }
 
 
@@ -650,16 +662,18 @@ $CodexDynamicImageContentDtoCopyWith<CodexDynamicImageContentDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDynamicImageContentDto&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDynamicImageContentDto&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,imageUrl);
+int get hashCode {
+    return Object.hash(runtimeType,imageUrl);
+}
 
 @override
 String toString() {
-  return 'CodexImageBearingContentDto.dynamicImage(imageUrl: $imageUrl)';
+    return 'CodexImageBearingContentDto.dynamicImage(imageUrl: $imageUrl)';
 }
 
 
@@ -720,16 +734,18 @@ $CodexDynamicAudioContentDtoCopyWith<CodexDynamicAudioContentDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDynamicAudioContentDto&&(identical(other.audioUrl, audioUrl) || other.audioUrl == audioUrl));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDynamicAudioContentDto&&(identical(other.audioUrl, audioUrl) || other.audioUrl == audioUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,audioUrl);
+int get hashCode {
+    return Object.hash(runtimeType,audioUrl);
+}
 
 @override
 String toString() {
-  return 'CodexImageBearingContentDto.dynamicAudio(audioUrl: $audioUrl)';
+    return 'CodexImageBearingContentDto.dynamicAudio(audioUrl: $audioUrl)';
 }
 
 
@@ -785,7 +801,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUnknownImageBearingContentDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUnknownImageBearingContentDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -794,7 +810,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexImageBearingContentDto.unknown()';
+    return 'CodexImageBearingContentDto.unknown()';
 }
 
 

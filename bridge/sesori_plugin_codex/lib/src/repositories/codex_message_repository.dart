@@ -38,28 +38,6 @@ class CodexMessageRepository({
   required final CodexRolloutToolMapper _rolloutToolMapper,
   required final CodexUserContentMapper _userContentMapper,
 }) {
-  List<PluginMessageWithParts> readMessages({
-    required String rolloutPath,
-    required String sessionId,
-    required List<CodexThreadRecord> children,
-    required CodexReplayToolDisposition replayToolDisposition,
-    required Map<String, PluginToolStatus> structuredToolStatusByCallId,
-    CodexConfigDefaults config = const CodexConfigDefaults.empty(),
-  }) {
-    return projectMessages(
-      read: prepareMessageRead(
-        rolloutPath: rolloutPath,
-        sessionId: sessionId,
-      ),
-      sessionId: sessionId,
-      children: children,
-      replayToolDisposition: replayToolDisposition,
-      structuredToolStatusByCallId: structuredToolStatusByCallId,
-      childReplayDataById: const {},
-      config: config,
-    );
-  }
-
   CodexPreparedMessageRead prepareMessageRead({
     required String rolloutPath,
     required String sessionId,
@@ -413,6 +391,7 @@ class CodexMessageRepository({
               tool: tool.tool,
               presentation: tool.presentation,
               title: tool.title,
+              shellCommand: tool.shellCommand,
               status: structuredToolStatusByCallId[tool.canonicalId] ?? tool.status,
               output: tool.output,
               time: tool.time,
@@ -863,6 +842,7 @@ class CodexMessageRepository({
           state: PluginToolState(
             status: status,
             title: title,
+            shellCommand: null,
             output: output,
             error: status == PluginToolStatus.error ? output : null,
             attachments: attachments,

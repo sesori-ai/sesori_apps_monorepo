@@ -34,16 +34,21 @@ $SendPromptRequestCopyWith<SendPromptRequest> get copyWith => _$SendPromptReques
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendPromptRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other.parts, parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.command, command) || other.command == command)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.promptId, promptId) || other.promptId == promptId));
+  final _this = this as SendPromptRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendPromptRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&const DeepCollectionEquality().equals(other.parts, _this.parts)&&(identical(other.agent, _this.agent) || other.agent == _this.agent)&&(identical(other.model, _this.model) || other.model == _this.model)&&(identical(other.command, _this.command) || other.command == _this.command)&&(identical(other.variant, _this.variant) || other.variant == _this.variant)&&(identical(other.promptId, _this.promptId) || other.promptId == _this.promptId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,const DeepCollectionEquality().hash(parts),agent,model,command,variant,promptId);
+int get hashCode {
+  final _this = this as SendPromptRequest;
+  return Object.hash(runtimeType,_this.sessionId,const DeepCollectionEquality().hash(_this.parts),_this.agent,_this.model,_this.command,_this.variant,_this.promptId);
+}
 
 @override
 String toString() {
-  return 'SendPromptRequest(sessionId: $sessionId, parts: $parts, agent: $agent, model: $model, command: $command, variant: $variant, promptId: $promptId)';
+  final _this = this as SendPromptRequest;
+  return 'SendPromptRequest(sessionId: ${_this.sessionId}, parts: ${_this.parts}, agent: ${_this.agent}, model: ${_this.model}, command: ${_this.command}, variant: ${_this.variant}, promptId: ${_this.promptId})';
 }
 
 
@@ -151,16 +156,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendPromptRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other._parts, _parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.command, command) || other.command == command)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.promptId, promptId) || other.promptId == promptId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendPromptRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other.parts, _parts)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.command, command) || other.command == command)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.promptId, promptId) || other.promptId == promptId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,const DeepCollectionEquality().hash(_parts),agent,model,command,variant,promptId);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,const DeepCollectionEquality().hash(_parts),agent,model,command,variant,promptId);
+}
 
 @override
 String toString() {
-  return 'SendPromptRequest(sessionId: $sessionId, parts: $parts, agent: $agent, model: $model, command: $command, variant: $variant, promptId: $promptId)';
+    return 'SendPromptRequest(sessionId: $sessionId, parts: $parts, agent: $agent, model: $model, command: $command, variant: $variant, promptId: $promptId)';
 }
 
 
@@ -271,7 +278,7 @@ mixin _$PromptPart {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPart);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPart);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -280,7 +287,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PromptPart()';
+    return 'PromptPart()';
 }
 
 
@@ -319,16 +326,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPartText&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPartText&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,text);
+int get hashCode {
+    return Object.hash(runtimeType,text);
+}
 
 @override
 String toString() {
-  return 'PromptPart.text(text: $text)';
+    return 'PromptPart.text(text: $text)';
 }
 
 
@@ -394,16 +403,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPartFilePath&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.path, path) || other.path == path)&&(identical(other.filename, filename) || other.filename == filename));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPartFilePath&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.path, path) || other.path == path)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,path,filename);
+int get hashCode {
+    return Object.hash(runtimeType,mime,path,filename);
+}
 
 @override
 String toString() {
-  return 'PromptPart.filePath(mime: $mime, path: $path, filename: $filename)';
+    return 'PromptPart.filePath(mime: $mime, path: $path, filename: $filename)';
 }
 
 
@@ -471,16 +482,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPartFileUrl&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPartFileUrl&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,url,filename);
+int get hashCode {
+    return Object.hash(runtimeType,mime,url,filename);
+}
 
 @override
 String toString() {
-  return 'PromptPart.fileUrl(mime: $mime, url: $url, filename: $filename)';
+    return 'PromptPart.fileUrl(mime: $mime, url: $url, filename: $filename)';
 }
 
 
@@ -548,16 +561,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPartFileData&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptPartFileData&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,base64,filename);
+int get hashCode {
+    return Object.hash(runtimeType,mime,base64,filename);
+}
 
 @override
 String toString() {
-  return 'PromptPart.fileData(mime: $mime, base64: $base64, filename: $filename)';
+    return 'PromptPart.fileData(mime: $mime, base64: $base64, filename: $filename)';
 }
 
 
@@ -614,16 +629,21 @@ $PromptModelCopyWith<PromptModel> get copyWith => _$PromptModelCopyWithImpl<Prom
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptModel&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.modelID, modelID) || other.modelID == modelID));
+  final _this = this as PromptModel;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PromptModel&&(identical(other.providerID, _this.providerID) || other.providerID == _this.providerID)&&(identical(other.modelID, _this.modelID) || other.modelID == _this.modelID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,providerID,modelID);
+int get hashCode {
+  final _this = this as PromptModel;
+  return Object.hash(runtimeType,_this.providerID,_this.modelID);
+}
 
 @override
 String toString() {
-  return 'PromptModel(providerID: $providerID, modelID: $modelID)';
+  final _this = this as PromptModel;
+  return 'PromptModel(providerID: ${_this.providerID}, modelID: ${_this.modelID})';
 }
 
 
@@ -686,16 +706,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PromptModel&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.modelID, modelID) || other.modelID == modelID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PromptModel&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.modelID, modelID) || other.modelID == modelID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,providerID,modelID);
+int get hashCode {
+    return Object.hash(runtimeType,providerID,modelID);
+}
 
 @override
 String toString() {
-  return 'PromptModel(providerID: $providerID, modelID: $modelID)';
+    return 'PromptModel(providerID: $providerID, modelID: $modelID)';
 }
 
 

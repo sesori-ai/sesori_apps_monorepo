@@ -27,12 +27,16 @@ $PiCatalogModelDtoCopyWith<PiCatalogModelDto> get copyWith => _$PiCatalogModelDt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCatalogModelDto&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.reasoning, reasoning) || other.reasoning == reasoning)&&const DeepCollectionEquality().equals(other.input, input));
+  final _this = this as PiCatalogModelDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCatalogModelDto&&(identical(other.provider, _this.provider) || other.provider == _this.provider)&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.reasoning, _this.reasoning) || other.reasoning == _this.reasoning)&&const DeepCollectionEquality().equals(other.input, _this.input));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,provider,id,name,reasoning,const DeepCollectionEquality().hash(input));
+int get hashCode {
+  final _this = this as PiCatalogModelDto;
+  return Object.hash(runtimeType,_this.provider,_this.id,_this.name,_this.reasoning,const DeepCollectionEquality().hash(_this.input));
+}
 
 
 
@@ -104,12 +108,14 @@ _$PiCatalogModelDtoCopyWith<_PiCatalogModelDto> get copyWith => __$PiCatalogMode
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiCatalogModelDto&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.reasoning, reasoning) || other.reasoning == reasoning)&&const DeepCollectionEquality().equals(other._input, _input));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiCatalogModelDto&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.reasoning, reasoning) || other.reasoning == reasoning)&&const DeepCollectionEquality().equals(other.input, _input));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,provider,id,name,reasoning,const DeepCollectionEquality().hash(_input));
+int get hashCode {
+    return Object.hash(runtimeType,provider,id,name,reasoning,const DeepCollectionEquality().hash(_input));
+}
 
 
 
@@ -166,12 +172,16 @@ $PiStateCatalogDtoCopyWith<PiStateCatalogDto> get copyWith => _$PiStateCatalogDt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiStateCatalogDto&&(identical(other.model, model) || other.model == model));
+  final _this = this as PiStateCatalogDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiStateCatalogDto&&(identical(other.model, _this.model) || other.model == _this.model));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,model);
+int get hashCode {
+  final _this = this as PiStateCatalogDto;
+  return Object.hash(runtimeType,_this.model);
+}
 
 
 
@@ -241,12 +251,14 @@ _$PiStateCatalogDtoCopyWith<_PiStateCatalogDto> get copyWith => __$PiStateCatalo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiStateCatalogDto&&(identical(other.model, model) || other.model == model));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiStateCatalogDto&&(identical(other.model, model) || other.model == model));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,model);
+int get hashCode {
+    return Object.hash(runtimeType,model);
+}
 
 
 
@@ -311,12 +323,16 @@ $PiAvailableModelsDtoCopyWith<PiAvailableModelsDto> get copyWith => _$PiAvailabl
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiAvailableModelsDto&&const DeepCollectionEquality().equals(other.models, models));
+  final _this = this as PiAvailableModelsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiAvailableModelsDto&&const DeepCollectionEquality().equals(other.models, _this.models));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(models));
+int get hashCode {
+  final _this = this as PiAvailableModelsDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.models));
+}
 
 
 
@@ -380,12 +396,14 @@ _$PiAvailableModelsDtoCopyWith<_PiAvailableModelsDto> get copyWith => __$PiAvail
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiAvailableModelsDto&&const DeepCollectionEquality().equals(other._models, _models));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiAvailableModelsDto&&const DeepCollectionEquality().equals(other.models, _models));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_models));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_models));
+}
 
 
 
@@ -438,12 +456,16 @@ $PiThinkingLevelsDtoCopyWith<PiThinkingLevelsDto> get copyWith => _$PiThinkingLe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiThinkingLevelsDto&&const DeepCollectionEquality().equals(other.levels, levels));
+  final _this = this as PiThinkingLevelsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiThinkingLevelsDto&&const DeepCollectionEquality().equals(other.levels, _this.levels));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(levels));
+int get hashCode {
+  final _this = this as PiThinkingLevelsDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.levels));
+}
 
 
 
@@ -507,12 +529,14 @@ _$PiThinkingLevelsDtoCopyWith<_PiThinkingLevelsDto> get copyWith => __$PiThinkin
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiThinkingLevelsDto&&const DeepCollectionEquality().equals(other._levels, _levels));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiThinkingLevelsDto&&const DeepCollectionEquality().equals(other.levels, _levels));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_levels));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_levels));
+}
 
 
 
@@ -565,12 +589,16 @@ $PiCatalogCommandDtoCopyWith<PiCatalogCommandDto> get copyWith => _$PiCatalogCom
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCatalogCommandDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourcePath, sourcePath) || other.sourcePath == sourcePath));
+  final _this = this as PiCatalogCommandDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCatalogCommandDto&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.source, _this.source) || other.source == _this.source)&&(identical(other.sourcePath, _this.sourcePath) || other.sourcePath == _this.sourcePath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,source,sourcePath);
+int get hashCode {
+  final _this = this as PiCatalogCommandDto;
+  return Object.hash(runtimeType,_this.name,_this.description,_this.source,_this.sourcePath);
+}
 
 
 
@@ -634,12 +662,14 @@ _$PiCatalogCommandDtoCopyWith<_PiCatalogCommandDto> get copyWith => __$PiCatalog
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiCatalogCommandDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourcePath, sourcePath) || other.sourcePath == sourcePath));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiCatalogCommandDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourcePath, sourcePath) || other.sourcePath == sourcePath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,source,sourcePath);
+int get hashCode {
+    return Object.hash(runtimeType,name,description,source,sourcePath);
+}
 
 
 
@@ -695,12 +725,16 @@ $PiCommandsDtoCopyWith<PiCommandsDto> get copyWith => _$PiCommandsDtoCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCommandsDto&&const DeepCollectionEquality().equals(other.commands, commands));
+  final _this = this as PiCommandsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCommandsDto&&const DeepCollectionEquality().equals(other.commands, _this.commands));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(commands));
+int get hashCode {
+  final _this = this as PiCommandsDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.commands));
+}
 
 
 
@@ -764,12 +798,14 @@ _$PiCommandsDtoCopyWith<_PiCommandsDto> get copyWith => __$PiCommandsDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiCommandsDto&&const DeepCollectionEquality().equals(other._commands, _commands));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiCommandsDto&&const DeepCollectionEquality().equals(other.commands, _commands));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_commands));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_commands));
+}
 
 
 

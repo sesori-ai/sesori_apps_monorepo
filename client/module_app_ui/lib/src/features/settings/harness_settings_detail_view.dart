@@ -126,24 +126,41 @@ class const _HarnessControlCard({
     final authenticationForThisHarness = switch (authentication) {
       PluginAuthenticationPresentationStarting(pluginId: final targetPluginId) ||
       PluginAuthenticationPresentationChallenge(pluginId: final targetPluginId) ||
+      PluginAuthenticationPresentationBrowserOpening(pluginId: final targetPluginId) ||
+      PluginAuthenticationPresentationBrowserWaiting(pluginId: final targetPluginId) ||
+      PluginAuthenticationPresentationBrowserFinalizing(pluginId: final targetPluginId) ||
       PluginAuthenticationPresentationBrowserLaunchFailedState(pluginId: final targetPluginId) ||
       PluginAuthenticationPresentationCancelling(pluginId: final targetPluginId) ||
       PluginAuthenticationPresentationCancellingUncertain(pluginId: final targetPluginId) => targetPluginId == pluginId,
-      PluginAuthenticationPresentationIdle() || PluginAuthenticationPresentationFailed() => false,
+      PluginAuthenticationPresentationIdle() ||
+      PluginAuthenticationPresentationSucceeded() ||
+      PluginAuthenticationPresentationCancelled() ||
+      PluginAuthenticationPresentationFailed() => false,
     };
     final authenticationStarting = switch (authentication) {
       PluginAuthenticationPresentationStarting(pluginId: final targetPluginId) => targetPluginId == pluginId,
       PluginAuthenticationPresentationIdle() ||
       PluginAuthenticationPresentationChallenge() ||
+      PluginAuthenticationPresentationBrowserOpening() ||
+      PluginAuthenticationPresentationBrowserWaiting() ||
+      PluginAuthenticationPresentationBrowserFinalizing() ||
       PluginAuthenticationPresentationBrowserLaunchFailedState() ||
       PluginAuthenticationPresentationCancelling() ||
       PluginAuthenticationPresentationCancellingUncertain() ||
+      PluginAuthenticationPresentationSucceeded() ||
+      PluginAuthenticationPresentationCancelled() ||
       PluginAuthenticationPresentationFailed() => false,
     };
     final authenticationActive = switch (authentication) {
-      PluginAuthenticationPresentationIdle() || PluginAuthenticationPresentationFailed() => false,
+      PluginAuthenticationPresentationIdle() ||
+      PluginAuthenticationPresentationSucceeded() ||
+      PluginAuthenticationPresentationCancelled() ||
+      PluginAuthenticationPresentationFailed() => false,
       PluginAuthenticationPresentationStarting() ||
       PluginAuthenticationPresentationChallenge() ||
+      PluginAuthenticationPresentationBrowserOpening() ||
+      PluginAuthenticationPresentationBrowserWaiting() ||
+      PluginAuthenticationPresentationBrowserFinalizing() ||
       PluginAuthenticationPresentationBrowserLaunchFailedState() ||
       PluginAuthenticationPresentationCancelling() ||
       PluginAuthenticationPresentationCancellingUncertain() => true,
@@ -202,7 +219,7 @@ class const _HarnessControlCard({
                     icon: TablerRegular.login,
                     title: Text(
                       plugin.authenticationState == PluginAuthenticationState.inProgress || authenticationForThisHarness
-                          ? loc.harnessAuthenticationContinue
+                          ? loc.harnessAuthenticationViewProgress
                           : loc.harnessAuthenticationLogIn,
                     ),
                     subtitle: Text(loc.harnessAuthenticationDescription),

@@ -37,16 +37,21 @@ $QueuedSessionPromptCopyWith<QueuedSessionPrompt> get copyWith => _$QueuedSessio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is QueuedSessionPrompt&&(identical(other.id, id) || other.id == id)&&(identical(other.text, text) || other.text == text)&&(identical(other.command, command) || other.command == command)&&(identical(other.attachmentCount, attachmentCount) || other.attachmentCount == attachmentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  final _this = this as QueuedSessionPrompt;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is QueuedSessionPrompt&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.text, _this.text) || other.text == _this.text)&&(identical(other.command, _this.command) || other.command == _this.command)&&(identical(other.attachmentCount, _this.attachmentCount) || other.attachmentCount == _this.attachmentCount)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,text,command,attachmentCount,createdAt);
+int get hashCode {
+  final _this = this as QueuedSessionPrompt;
+  return Object.hash(runtimeType,_this.id,_this.text,_this.command,_this.attachmentCount,_this.createdAt);
+}
 
 @override
 String toString() {
-  return 'QueuedSessionPrompt(id: $id, text: $text, command: $command, attachmentCount: $attachmentCount, createdAt: $createdAt)';
+  final _this = this as QueuedSessionPrompt;
+  return 'QueuedSessionPrompt(id: ${_this.id}, text: ${_this.text}, command: ${_this.command}, attachmentCount: ${_this.attachmentCount}, createdAt: ${_this.createdAt})';
 }
 
 
@@ -123,16 +128,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _QueuedSessionPrompt&&(identical(other.id, id) || other.id == id)&&(identical(other.text, text) || other.text == text)&&(identical(other.command, command) || other.command == command)&&(identical(other.attachmentCount, attachmentCount) || other.attachmentCount == attachmentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _QueuedSessionPrompt&&(identical(other.id, id) || other.id == id)&&(identical(other.text, text) || other.text == text)&&(identical(other.command, command) || other.command == command)&&(identical(other.attachmentCount, attachmentCount) || other.attachmentCount == attachmentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,text,command,attachmentCount,createdAt);
+int get hashCode {
+    return Object.hash(runtimeType,id,text,command,attachmentCount,createdAt);
+}
 
 @override
 String toString() {
-  return 'QueuedSessionPrompt(id: $id, text: $text, command: $command, attachmentCount: $attachmentCount, createdAt: $createdAt)';
+    return 'QueuedSessionPrompt(id: $id, text: $text, command: $command, attachmentCount: $attachmentCount, createdAt: $createdAt)';
 }
 
 
@@ -191,16 +198,21 @@ $QueuedPromptResponseCopyWith<QueuedPromptResponse> get copyWith => _$QueuedProm
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is QueuedPromptResponse&&const DeepCollectionEquality().equals(other.data, data));
+  final _this = this as QueuedPromptResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is QueuedPromptResponse&&const DeepCollectionEquality().equals(other.data, _this.data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(data));
+int get hashCode {
+  final _this = this as QueuedPromptResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.data));
+}
 
 @override
 String toString() {
-  return 'QueuedPromptResponse(data: $data)';
+  final _this = this as QueuedPromptResponse;
+  return 'QueuedPromptResponse(data: ${_this.data})';
 }
 
 
@@ -267,16 +279,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _QueuedPromptResponse&&const DeepCollectionEquality().equals(other._data, _data));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _QueuedPromptResponse&&const DeepCollectionEquality().equals(other.data, _data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+}
 
 @override
 String toString() {
-  return 'QueuedPromptResponse(data: $data)';
+    return 'QueuedPromptResponse(data: $data)';
 }
 
 
@@ -331,16 +345,21 @@ $CancelQueuedPromptRequestCopyWith<CancelQueuedPromptRequest> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CancelQueuedPromptRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.promptId, promptId) || other.promptId == promptId));
+  final _this = this as CancelQueuedPromptRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CancelQueuedPromptRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.promptId, _this.promptId) || other.promptId == _this.promptId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,promptId);
+int get hashCode {
+  final _this = this as CancelQueuedPromptRequest;
+  return Object.hash(runtimeType,_this.sessionId,_this.promptId);
+}
 
 @override
 String toString() {
-  return 'CancelQueuedPromptRequest(sessionId: $sessionId, promptId: $promptId)';
+  final _this = this as CancelQueuedPromptRequest;
+  return 'CancelQueuedPromptRequest(sessionId: ${_this.sessionId}, promptId: ${_this.promptId})';
 }
 
 
@@ -403,16 +422,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CancelQueuedPromptRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.promptId, promptId) || other.promptId == promptId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CancelQueuedPromptRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.promptId, promptId) || other.promptId == promptId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,promptId);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,promptId);
+}
 
 @override
 String toString() {
-  return 'CancelQueuedPromptRequest(sessionId: $sessionId, promptId: $promptId)';
+    return 'CancelQueuedPromptRequest(sessionId: $sessionId, promptId: $promptId)';
 }
 
 

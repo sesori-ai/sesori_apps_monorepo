@@ -19,6 +19,8 @@ import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_desktop/core/di/register_module.dart' as _i893;
+import 'package:sesori_desktop/core/platform/desktop_active_bridge_locality.dart'
+    as _i202;
 import 'package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart'
     as _i964;
 import 'package:sesori_desktop/core/platform/desktop_composer_image_picker.dart'
@@ -41,6 +43,8 @@ import 'package:sesori_desktop/core/platform/desktop_oauth_device_descriptor_pro
     as _i20;
 import 'package:sesori_desktop/core/platform/desktop_pasteboard_client.dart'
     as _i210;
+import 'package:sesori_desktop/core/platform/desktop_plugin_authentication_browser.dart'
+    as _i916;
 import 'package:sesori_desktop/core/platform/desktop_route_source.dart'
     as _i911;
 import 'package:sesori_desktop/core/platform/desktop_secure_storage_adapter.dart'
@@ -136,6 +140,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i227.DesktopFailureReporter(),
     );
+    gh.lazySingleton<_i948.ActiveBridgeLocality>(
+      () => _i202.DesktopActiveBridgeLocality(
+        statusTracker: gh<_i316.BridgeStatusTracker>(),
+      ),
+    );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
     gh.lazySingleton<_i948.LocalNotificationClient>(
       () => _i500.DesktopLocalNotificationClient(
@@ -178,6 +187,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.NotificationCanceller>(
       () => registerModule.notificationCanceller(
         client: gh<_i948.LocalNotificationClient>(),
+      ),
+    );
+    gh.lazySingleton<_i948.PluginAuthenticationBrowser>(
+      () => _i916.DesktopPluginAuthenticationBrowser(
+        urlLauncher: gh<_i948.UrlLauncher>(),
       ),
     );
     return this;

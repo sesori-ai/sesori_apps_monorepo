@@ -9,6 +9,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         NativeProjectsPluginApi,
         PersistedSessionCleanupApi,
         PluginAbortAccepted,
+        PluginAbortNotPerformed,
         PluginAbortRejectedSubAgentsRunning,
         PluginActiveSession,
         PluginOperationException,
@@ -29,6 +30,7 @@ import "package:sesori_shared/sesori_shared.dart"
         PullRequestInfo,
         QueuedSessionPrompt,
         Session,
+        SessionAbortNotPerformedRefusal,
         SessionAbortSubAgentPolicy,
         SessionPromptDefaults,
         SessionStatus,
@@ -1009,6 +1011,9 @@ class SessionRepository({
           subAgentsHandled: subAgentsHandled,
         ),
         final PluginAbortRejectedSubAgentsRunning rejected => SessionAbortRejected(rejection: rejected.toShared()),
+        PluginAbortNotPerformed(:final reason) => SessionAbortNotPerformed(
+          refusal: SessionAbortNotPerformedRefusal(reason: reason.toShared()),
+        ),
       };
     },
   );

@@ -28,16 +28,21 @@ $PluginProjectActivitySummaryCopyWith<PluginProjectActivitySummary> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProjectActivitySummary&&(identical(other.id, id) || other.id == id)&&const DeepCollectionEquality().equals(other.activeSessions, activeSessions));
+  final _this = this as PluginProjectActivitySummary;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProjectActivitySummary&&(identical(other.id, _this.id) || other.id == _this.id)&&const DeepCollectionEquality().equals(other.activeSessions, _this.activeSessions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,const DeepCollectionEquality().hash(activeSessions));
+int get hashCode {
+  final _this = this as PluginProjectActivitySummary;
+  return Object.hash(runtimeType,_this.id,const DeepCollectionEquality().hash(_this.activeSessions));
+}
 
 @override
 String toString() {
-  return 'PluginProjectActivitySummary(id: $id, activeSessions: $activeSessions)';
+  final _this = this as PluginProjectActivitySummary;
+  return 'PluginProjectActivitySummary(id: ${_this.id}, activeSessions: ${_this.activeSessions})';
 }
 
 
@@ -106,16 +111,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProjectActivitySummary&&(identical(other.id, id) || other.id == id)&&const DeepCollectionEquality().equals(other._activeSessions, _activeSessions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProjectActivitySummary&&(identical(other.id, id) || other.id == id)&&const DeepCollectionEquality().equals(other.activeSessions, _activeSessions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,const DeepCollectionEquality().hash(_activeSessions));
+int get hashCode {
+    return Object.hash(runtimeType,id,const DeepCollectionEquality().hash(_activeSessions));
+}
 
 @override
 String toString() {
-  return 'PluginProjectActivitySummary(id: $id, activeSessions: $activeSessions)';
+    return 'PluginProjectActivitySummary(id: $id, activeSessions: $activeSessions)';
 }
 
 

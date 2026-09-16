@@ -21,7 +21,7 @@ mixin _$ProjectListState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ProjectListState()';
+    return 'ProjectListState()';
 }
 
 
@@ -57,7 +57,7 @@ class ProjectListLoading implements ProjectListState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoading);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoading);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ProjectListState.loading()';
+    return 'ProjectListState.loading()';
 }
 
 
@@ -128,16 +128,18 @@ $ProjectListLoadedCopyWith<ProjectListLoaded> get copyWith => _$ProjectListLoade
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoaded&&const DeepCollectionEquality().equals(other._projects, _projects)&&const DeepCollectionEquality().equals(other._activityById, _activityById)&&const DeepCollectionEquality().equals(other._unseenByProjectId, _unseenByProjectId)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&(identical(other.catalogScan, catalogScan) || other.catalogScan == catalogScan));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoaded&&const DeepCollectionEquality().equals(other.projects, _projects)&&const DeepCollectionEquality().equals(other.activityById, _activityById)&&const DeepCollectionEquality().equals(other.unseenByProjectId, _unseenByProjectId)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&(identical(other.catalogScan, catalogScan) || other.catalogScan == catalogScan));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects),const DeepCollectionEquality().hash(_activityById),const DeepCollectionEquality().hash(_unseenByProjectId),isRefreshing,catalogScan);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects),const DeepCollectionEquality().hash(_activityById),const DeepCollectionEquality().hash(_unseenByProjectId),isRefreshing,catalogScan);
+}
 
 @override
 String toString() {
-  return 'ProjectListState.loaded(projects: $projects, activityById: $activityById, unseenByProjectId: $unseenByProjectId, isRefreshing: $isRefreshing, catalogScan: $catalogScan)';
+    return 'ProjectListState.loaded(projects: $projects, activityById: $activityById, unseenByProjectId: $unseenByProjectId, isRefreshing: $isRefreshing, catalogScan: $catalogScan)';
 }
 
 
@@ -198,16 +200,18 @@ $ProjectListFailedCopyWith<ProjectListFailed> get copyWith => _$ProjectListFaile
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListFailed&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListFailed&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,reason);
+int get hashCode {
+    return Object.hash(runtimeType,reason);
+}
 
 @override
 String toString() {
-  return 'ProjectListState.failed(reason: $reason)';
+    return 'ProjectListState.failed(reason: $reason)';
 }
 
 
@@ -264,16 +268,18 @@ $ProjectListBridgeDisconnectedCopyWith<ProjectListBridgeDisconnected> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListBridgeDisconnected&&(identical(other.hasRegisteredBridges, hasRegisteredBridges) || other.hasRegisteredBridges == hasRegisteredBridges));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListBridgeDisconnected&&(identical(other.hasRegisteredBridges, hasRegisteredBridges) || other.hasRegisteredBridges == hasRegisteredBridges));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,hasRegisteredBridges);
+int get hashCode {
+    return Object.hash(runtimeType,hasRegisteredBridges);
+}
 
 @override
 String toString() {
-  return 'ProjectListState.bridgeDisconnected(hasRegisteredBridges: $hasRegisteredBridges)';
+    return 'ProjectListState.bridgeDisconnected(hasRegisteredBridges: $hasRegisteredBridges)';
 }
 
 

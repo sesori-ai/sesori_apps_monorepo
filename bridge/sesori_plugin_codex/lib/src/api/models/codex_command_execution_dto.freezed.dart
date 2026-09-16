@@ -29,16 +29,21 @@ $CodexCommandExecutionParamsDtoCopyWith<CodexCommandExecutionParamsDto> get copy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCommandExecutionParamsDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.item, item) || other.item == item));
+  final _this = this as CodexCommandExecutionParamsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCommandExecutionParamsDto&&(identical(other.threadId, _this.threadId) || other.threadId == _this.threadId)&&(identical(other.turnId, _this.turnId) || other.turnId == _this.turnId)&&(identical(other.item, _this.item) || other.item == _this.item));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,threadId,turnId,item);
+int get hashCode {
+  final _this = this as CodexCommandExecutionParamsDto;
+  return Object.hash(runtimeType,_this.threadId,_this.turnId,_this.item);
+}
 
 @override
 String toString() {
-  return 'CodexCommandExecutionParamsDto(threadId: $threadId, turnId: $turnId, item: $item)';
+  final _this = this as CodexCommandExecutionParamsDto;
+  return 'CodexCommandExecutionParamsDto(threadId: ${_this.threadId}, turnId: ${_this.turnId}, item: ${_this.item})';
 }
 
 
@@ -112,16 +117,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexCommandExecutionParamsDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.item, item) || other.item == item));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexCommandExecutionParamsDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.item, item) || other.item == item));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,threadId,turnId,item);
+int get hashCode {
+    return Object.hash(runtimeType,threadId,turnId,item);
+}
 
 @override
 String toString() {
-  return 'CodexCommandExecutionParamsDto(threadId: $threadId, turnId: $turnId, item: $item)';
+    return 'CodexCommandExecutionParamsDto(threadId: $threadId, turnId: $turnId, item: $item)';
 }
 
 
@@ -187,16 +194,21 @@ $CodexCommandExecutionItemDtoCopyWith<CodexCommandExecutionItemDto> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCommandExecutionItemDto&&(identical(other.type, type) || other.type == type)&&(identical(other.id, id) || other.id == id)&&(identical(other.command, command) || other.command == command)&&(identical(other.aggregatedOutput, aggregatedOutput) || other.aggregatedOutput == aggregatedOutput)&&(identical(other.status, status) || other.status == status)&&(identical(other.exitCode, exitCode) || other.exitCode == exitCode));
+  final _this = this as CodexCommandExecutionItemDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCommandExecutionItemDto&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.command, _this.command) || other.command == _this.command)&&(identical(other.aggregatedOutput, _this.aggregatedOutput) || other.aggregatedOutput == _this.aggregatedOutput)&&(identical(other.status, _this.status) || other.status == _this.status)&&(identical(other.exitCode, _this.exitCode) || other.exitCode == _this.exitCode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,id,command,aggregatedOutput,status,exitCode);
+int get hashCode {
+  final _this = this as CodexCommandExecutionItemDto;
+  return Object.hash(runtimeType,_this.type,_this.id,_this.command,_this.aggregatedOutput,_this.status,_this.exitCode);
+}
 
 @override
 String toString() {
-  return 'CodexCommandExecutionItemDto(type: $type, id: $id, command: $command, aggregatedOutput: $aggregatedOutput, status: $status, exitCode: $exitCode)';
+  final _this = this as CodexCommandExecutionItemDto;
+  return 'CodexCommandExecutionItemDto(type: ${_this.type}, id: ${_this.id}, command: ${_this.command}, aggregatedOutput: ${_this.aggregatedOutput}, status: ${_this.status}, exitCode: ${_this.exitCode})';
 }
 
 
@@ -267,16 +279,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexCommandExecutionItemDto&&(identical(other.type, type) || other.type == type)&&(identical(other.id, id) || other.id == id)&&(identical(other.command, command) || other.command == command)&&(identical(other.aggregatedOutput, aggregatedOutput) || other.aggregatedOutput == aggregatedOutput)&&(identical(other.status, status) || other.status == status)&&(identical(other.exitCode, exitCode) || other.exitCode == exitCode));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexCommandExecutionItemDto&&(identical(other.type, type) || other.type == type)&&(identical(other.id, id) || other.id == id)&&(identical(other.command, command) || other.command == command)&&(identical(other.aggregatedOutput, aggregatedOutput) || other.aggregatedOutput == aggregatedOutput)&&(identical(other.status, status) || other.status == status)&&(identical(other.exitCode, exitCode) || other.exitCode == exitCode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,id,command,aggregatedOutput,status,exitCode);
+int get hashCode {
+    return Object.hash(runtimeType,type,id,command,aggregatedOutput,status,exitCode);
+}
 
 @override
 String toString() {
-  return 'CodexCommandExecutionItemDto(type: $type, id: $id, command: $command, aggregatedOutput: $aggregatedOutput, status: $status, exitCode: $exitCode)';
+    return 'CodexCommandExecutionItemDto(type: $type, id: $id, command: $command, aggregatedOutput: $aggregatedOutput, status: $status, exitCode: $exitCode)';
 }
 
 

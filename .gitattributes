@@ -14,3 +14,4 @@
 
 # Test directories — don't render diffs by default
 **/test/** linguist-generated=true
+**/integration_test/** linguist-generated=true

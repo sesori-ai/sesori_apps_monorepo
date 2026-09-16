@@ -26,16 +26,21 @@ $ProjectDtoCopyWith<ProjectDto> get copyWith => _$ProjectDtoCopyWithImpl<Project
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectDto&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.path, path) || other.path == path)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.prCacheGithubLogin, prCacheGithubLogin) || other.prCacheGithubLogin == prCacheGithubLogin)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.projectionUpdatedAt, projectionUpdatedAt) || other.projectionUpdatedAt == projectionUpdatedAt));
+  final _this = this as ProjectDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectDto&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.path, _this.path) || other.path == _this.path)&&(identical(other.hidden, _this.hidden) || other.hidden == _this.hidden)&&(identical(other.baseBranch, _this.baseBranch) || other.baseBranch == _this.baseBranch)&&(identical(other.prCacheGithubLogin, _this.prCacheGithubLogin) || other.prCacheGithubLogin == _this.prCacheGithubLogin)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt)&&(identical(other.projectionUpdatedAt, _this.projectionUpdatedAt) || other.projectionUpdatedAt == _this.projectionUpdatedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,projectId,path,hidden,baseBranch,prCacheGithubLogin,displayName,createdAt,updatedAt,projectionUpdatedAt);
+int get hashCode {
+  final _this = this as ProjectDto;
+  return Object.hash(runtimeType,_this.projectId,_this.path,_this.hidden,_this.baseBranch,_this.prCacheGithubLogin,_this.displayName,_this.createdAt,_this.updatedAt,_this.projectionUpdatedAt);
+}
 
 @override
 String toString() {
-  return 'ProjectDto(projectId: $projectId, path: $path, hidden: $hidden, baseBranch: $baseBranch, prCacheGithubLogin: $prCacheGithubLogin, displayName: $displayName, createdAt: $createdAt, updatedAt: $updatedAt, projectionUpdatedAt: $projectionUpdatedAt)';
+  final _this = this as ProjectDto;
+  return 'ProjectDto(projectId: ${_this.projectId}, path: ${_this.path}, hidden: ${_this.hidden}, baseBranch: ${_this.baseBranch}, prCacheGithubLogin: ${_this.prCacheGithubLogin}, displayName: ${_this.displayName}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt}, projectionUpdatedAt: ${_this.projectionUpdatedAt})';
 }
 
 
@@ -109,16 +114,18 @@ _$ProjectDtoCopyWith<_ProjectDto> get copyWith => __$ProjectDtoCopyWithImpl<_Pro
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectDto&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.path, path) || other.path == path)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.prCacheGithubLogin, prCacheGithubLogin) || other.prCacheGithubLogin == prCacheGithubLogin)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.projectionUpdatedAt, projectionUpdatedAt) || other.projectionUpdatedAt == projectionUpdatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectDto&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.path, path) || other.path == path)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.prCacheGithubLogin, prCacheGithubLogin) || other.prCacheGithubLogin == prCacheGithubLogin)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.projectionUpdatedAt, projectionUpdatedAt) || other.projectionUpdatedAt == projectionUpdatedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,projectId,path,hidden,baseBranch,prCacheGithubLogin,displayName,createdAt,updatedAt,projectionUpdatedAt);
+int get hashCode {
+    return Object.hash(runtimeType,projectId,path,hidden,baseBranch,prCacheGithubLogin,displayName,createdAt,updatedAt,projectionUpdatedAt);
+}
 
 @override
 String toString() {
-  return 'ProjectDto(projectId: $projectId, path: $path, hidden: $hidden, baseBranch: $baseBranch, prCacheGithubLogin: $prCacheGithubLogin, displayName: $displayName, createdAt: $createdAt, updatedAt: $updatedAt, projectionUpdatedAt: $projectionUpdatedAt)';
+    return 'ProjectDto(projectId: $projectId, path: $path, hidden: $hidden, baseBranch: $baseBranch, prCacheGithubLogin: $prCacheGithubLogin, displayName: $displayName, createdAt: $createdAt, updatedAt: $updatedAt, projectionUpdatedAt: $projectionUpdatedAt)';
 }
 
 

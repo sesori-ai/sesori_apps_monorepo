@@ -85,12 +85,6 @@ sealed class const PluginAuthenticationChallengePresentation() {
       PluginAuthenticationBrowserPresentation;
   const factory updateRequired({required PluginAuthenticationUnsupportedChallenge challenge}) =
       PluginAuthenticationUpdateRequiredPresentation;
-  const factory invalidRedirect({required PluginAuthenticationBrowserChallenge challenge}) =
-      PluginAuthenticationInvalidRedirectPresentation;
-  const factory redirectSubmitting({required PluginAuthenticationBrowserChallenge challenge}) =
-      PluginAuthenticationRedirectSubmittingPresentation;
-  const factory redirectSubmitted({required PluginAuthenticationBrowserChallenge challenge}) =
-      PluginAuthenticationRedirectSubmittedPresentation;
 
   PluginAuthenticationChallenge get challenge;
 }
@@ -104,15 +98,6 @@ final class const PluginAuthenticationBrowserPresentation({
 final class const PluginAuthenticationUpdateRequiredPresentation({
   @override required final PluginAuthenticationUnsupportedChallenge challenge,
 }) extends PluginAuthenticationChallengePresentation;
-final class const PluginAuthenticationInvalidRedirectPresentation({
-  @override required final PluginAuthenticationBrowserChallenge challenge,
-}) extends PluginAuthenticationChallengePresentation;
-final class const PluginAuthenticationRedirectSubmittingPresentation({
-  @override required final PluginAuthenticationBrowserChallenge challenge,
-}) extends PluginAuthenticationChallengePresentation;
-final class const PluginAuthenticationRedirectSubmittedPresentation({
-  @override required final PluginAuthenticationBrowserChallenge challenge,
-}) extends PluginAuthenticationChallengePresentation;
 
 @Freezed()
 sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPresentationState {
@@ -122,6 +107,18 @@ sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPr
     required String pluginId,
     required PluginAuthenticationChallengePresentation challenge,
   }) = PluginAuthenticationPresentationChallenge;
+  const factory browserOpening({
+    required String pluginId,
+    required PluginAuthenticationBrowserChallenge challenge,
+  }) = PluginAuthenticationPresentationBrowserOpening;
+  const factory browserWaiting({
+    required String pluginId,
+    required PluginAuthenticationBrowserChallenge challenge,
+  }) = PluginAuthenticationPresentationBrowserWaiting;
+  const factory browserFinalizing({
+    required String pluginId,
+    required PluginAuthenticationBrowserChallenge challenge,
+  }) = PluginAuthenticationPresentationBrowserFinalizing;
   const factory browserLaunchFailed({
     required String pluginId,
     required PluginAuthenticationChallenge challenge,
@@ -134,6 +131,8 @@ sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPr
     required String pluginId,
     required PluginAuthenticationChallenge challenge,
   }) = PluginAuthenticationPresentationCancellingUncertain;
+  const factory succeeded({required String pluginId}) = PluginAuthenticationPresentationSucceeded;
+  const factory cancelled({required String pluginId}) = PluginAuthenticationPresentationCancelled;
   const factory failed({
     required String? pluginId,
     required PluginAuthenticationPresentationError error,
@@ -219,10 +218,16 @@ extension PluginManagementReadyActions on PluginManagementReady {
   String? get authenticationPluginId => switch (authentication) {
     PluginAuthenticationPresentationStarting(:final pluginId) ||
     PluginAuthenticationPresentationChallenge(:final pluginId) ||
+    PluginAuthenticationPresentationBrowserOpening(:final pluginId) ||
+    PluginAuthenticationPresentationBrowserWaiting(:final pluginId) ||
+    PluginAuthenticationPresentationBrowserFinalizing(:final pluginId) ||
     PluginAuthenticationPresentationBrowserLaunchFailedState(:final pluginId) ||
     PluginAuthenticationPresentationCancelling(:final pluginId) ||
     PluginAuthenticationPresentationCancellingUncertain(:final pluginId) => pluginId,
-    PluginAuthenticationPresentationIdle() || PluginAuthenticationPresentationFailed() => null,
+    PluginAuthenticationPresentationIdle() ||
+    PluginAuthenticationPresentationSucceeded() ||
+    PluginAuthenticationPresentationCancelled() ||
+    PluginAuthenticationPresentationFailed() => null,
   };
 }
 

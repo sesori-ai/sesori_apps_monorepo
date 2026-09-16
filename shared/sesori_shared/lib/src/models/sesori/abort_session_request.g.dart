@@ -41,6 +41,27 @@ Map<String, dynamic> _$SessionAbortResponseToJson(
   _SessionAbortResponse instance,
 ) => <String, dynamic>{'subAgentsHandled': instance.subAgentsHandled};
 
+SessionAbortNotPerformedRefusal _$SessionAbortNotPerformedRefusalFromJson(
+  Map json,
+) => SessionAbortNotPerformedRefusal(
+  reason: _abortRefusalReasonFromJson(json['reason'] as String),
+  $type: json['kind'] as String?,
+);
+
+Map<String, dynamic> _$SessionAbortNotPerformedRefusalToJson(
+  SessionAbortNotPerformedRefusal instance,
+) => <String, dynamic>{
+  'reason': _abortRefusalReasonToJson(instance.reason),
+  'kind': instance.$type,
+};
+
+SessionAbortUnknownRefusal _$SessionAbortUnknownRefusalFromJson(Map json) =>
+    SessionAbortUnknownRefusal($type: json['kind'] as String?);
+
+Map<String, dynamic> _$SessionAbortUnknownRefusalToJson(
+  SessionAbortUnknownRefusal instance,
+) => <String, dynamic>{'kind': instance.$type};
+
 _SessionAbortRejection _$SessionAbortRejectionFromJson(Map json) =>
     _SessionAbortRejection(
       runningSubAgentCount: (json['runningSubAgentCount'] as num).toInt(),

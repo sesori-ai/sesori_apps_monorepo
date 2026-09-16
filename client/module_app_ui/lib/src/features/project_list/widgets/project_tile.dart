@@ -335,7 +335,7 @@ class const _StatusRow({
           if (activeSessions > 0)
             Flexible(
               child: _StatusLabel(
-                icon: PregoAiLoader(phase: PregoAiLoader.phaseFor(project.id)),
+                icon: const PregoAiLoader(),
                 label: loc.projectListRunning(activeSessions),
               ),
             )

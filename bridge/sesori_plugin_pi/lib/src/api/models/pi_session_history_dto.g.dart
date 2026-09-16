@@ -378,6 +378,7 @@ PiToolCallContentDto _$PiToolCallContentDtoFromJson(Map json) =>
     PiToolCallContentDto(
       id: json['id'] as String,
       name: json['name'] as String,
+      arguments: json['arguments'],
       $type: json['type'] as String?,
     );
 

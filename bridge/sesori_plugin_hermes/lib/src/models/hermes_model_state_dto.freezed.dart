@@ -29,16 +29,21 @@ $HermesModelInfoDtoCopyWith<HermesModelInfoDto> get copyWith => _$HermesModelInf
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is HermesModelInfoDto&&(identical(other.modelId, modelId) || other.modelId == modelId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description));
+  final _this = this as HermesModelInfoDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HermesModelInfoDto&&(identical(other.modelId, _this.modelId) || other.modelId == _this.modelId)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,modelId,name,description);
+int get hashCode {
+  final _this = this as HermesModelInfoDto;
+  return Object.hash(runtimeType,_this.modelId,_this.name,_this.description);
+}
 
 @override
 String toString() {
-  return 'HermesModelInfoDto(modelId: $modelId, name: $name, description: $description)';
+  final _this = this as HermesModelInfoDto;
+  return 'HermesModelInfoDto(modelId: ${_this.modelId}, name: ${_this.name}, description: ${_this.description})';
 }
 
 
@@ -103,16 +108,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HermesModelInfoDto&&(identical(other.modelId, modelId) || other.modelId == modelId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _HermesModelInfoDto&&(identical(other.modelId, modelId) || other.modelId == modelId)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,modelId,name,description);
+int get hashCode {
+    return Object.hash(runtimeType,modelId,name,description);
+}
 
 @override
 String toString() {
-  return 'HermesModelInfoDto(modelId: $modelId, name: $name, description: $description)';
+    return 'HermesModelInfoDto(modelId: $modelId, name: $name, description: $description)';
 }
 
 
@@ -169,16 +176,21 @@ $HermesSessionModelStateDtoCopyWith<HermesSessionModelStateDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is HermesSessionModelStateDto&&const DeepCollectionEquality().equals(other.availableModels, availableModels)&&(identical(other.currentModelId, currentModelId) || other.currentModelId == currentModelId));
+  final _this = this as HermesSessionModelStateDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HermesSessionModelStateDto&&const DeepCollectionEquality().equals(other.availableModels, _this.availableModels)&&(identical(other.currentModelId, _this.currentModelId) || other.currentModelId == _this.currentModelId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(availableModels),currentModelId);
+int get hashCode {
+  final _this = this as HermesSessionModelStateDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.availableModels),_this.currentModelId);
+}
 
 @override
 String toString() {
-  return 'HermesSessionModelStateDto(availableModels: $availableModels, currentModelId: $currentModelId)';
+  final _this = this as HermesSessionModelStateDto;
+  return 'HermesSessionModelStateDto(availableModels: ${_this.availableModels}, currentModelId: ${_this.currentModelId})';
 }
 
 
@@ -247,16 +259,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HermesSessionModelStateDto&&const DeepCollectionEquality().equals(other._availableModels, _availableModels)&&(identical(other.currentModelId, currentModelId) || other.currentModelId == currentModelId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _HermesSessionModelStateDto&&const DeepCollectionEquality().equals(other.availableModels, _availableModels)&&(identical(other.currentModelId, currentModelId) || other.currentModelId == currentModelId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availableModels),currentModelId);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_availableModels),currentModelId);
+}
 
 @override
 String toString() {
-  return 'HermesSessionModelStateDto(availableModels: $availableModels, currentModelId: $currentModelId)';
+    return 'HermesSessionModelStateDto(availableModels: $availableModels, currentModelId: $currentModelId)';
 }
 
 

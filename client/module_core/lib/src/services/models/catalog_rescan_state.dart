@@ -36,27 +36,26 @@ sealed class const CatalogRescanState() {
 
   const factory preparingOne({
     required String pendingPluginName,
+    required int finishedHarnessCount,
     required Set<String> pluginIds,
   }) = CatalogRescanPreparingOne;
 
-  const factory preparingMany({
-    required List<String> pendingPluginNames,
-    required Set<String> pluginIds,
-  }) = CatalogRescanPreparingMany;
-
   const factory starting({
     required String activePluginName,
+    required int finishedHarnessCount,
     required Set<String> pluginIds,
   }) = CatalogRescanStarting;
 
   const factory reading({
     required String activePluginName,
     required int sessionsSeen,
+    required int finishedHarnessCount,
     required Set<String> pluginIds,
   }) = CatalogRescanReading;
 
   const factory saving({
     required String activePluginName,
+    required int finishedHarnessCount,
     required Set<String> pluginIds,
   }) = CatalogRescanSaving;
 
@@ -80,7 +79,6 @@ sealed class const CatalogRescanState() {
   /// refresh, since a committed import raises no invalidation of its own.
   bool get isLive =>
       this is CatalogRescanPreparingOne ||
-      this is CatalogRescanPreparingMany ||
       this is CatalogRescanStarting ||
       this is CatalogRescanReading ||
       this is CatalogRescanSaving;
@@ -88,18 +86,10 @@ sealed class const CatalogRescanState() {
 
 final class const CatalogRescanIdle() extends CatalogRescanState;
 
-/// Scan members that have not reported catalog progress yet.
-///
-/// Names include only unfinished members, so a harness that already completed
-/// cannot remain visible while another waits to begin.
+/// The first scan member that has not reported a terminal progress state yet.
 final class const CatalogRescanPreparingOne({
   required final String pendingPluginName,
-  required final Set<String> pluginIds,
-}) extends CatalogRescanState;
-
-/// Multiple scan members have not reported catalog progress yet.
-final class const CatalogRescanPreparingMany({
-  required final List<String> pendingPluginNames,
+  required final int finishedHarnessCount,
   required final Set<String> pluginIds,
 }) extends CatalogRescanState;
 
@@ -107,6 +97,7 @@ final class const CatalogRescanPreparingMany({
 /// fresh management snapshot.
 final class const CatalogRescanStarting({
   required final String activePluginName,
+  required final int finishedHarnessCount,
   required final Set<String> pluginIds,
 }) extends CatalogRescanState;
 
@@ -114,12 +105,14 @@ final class const CatalogRescanStarting({
 final class const CatalogRescanReading({
   required final String activePluginName,
   required final int sessionsSeen,
+  required final int finishedHarnessCount,
   required final Set<String> pluginIds,
 }) extends CatalogRescanState;
 
 /// One scan member is committing its catalog snapshot.
 final class const CatalogRescanSaving({
   required final String activePluginName,
+  required final int finishedHarnessCount,
   required final Set<String> pluginIds,
 }) extends CatalogRescanState;
 

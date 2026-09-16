@@ -29,16 +29,21 @@ $PullRequestRefreshSettingsResponseCopyWith<PullRequestRefreshSettingsResponse> 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestRefreshSettingsResponse&&(identical(other.intervalSeconds, intervalSeconds) || other.intervalSeconds == intervalSeconds));
+  final _this = this as PullRequestRefreshSettingsResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestRefreshSettingsResponse&&(identical(other.intervalSeconds, _this.intervalSeconds) || other.intervalSeconds == _this.intervalSeconds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,intervalSeconds);
+int get hashCode {
+  final _this = this as PullRequestRefreshSettingsResponse;
+  return Object.hash(runtimeType,_this.intervalSeconds);
+}
 
 @override
 String toString() {
-  return 'PullRequestRefreshSettingsResponse(intervalSeconds: $intervalSeconds)';
+  final _this = this as PullRequestRefreshSettingsResponse;
+  return 'PullRequestRefreshSettingsResponse(intervalSeconds: ${_this.intervalSeconds})';
 }
 
 
@@ -99,16 +104,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullRequestRefreshSettingsResponse&&(identical(other.intervalSeconds, intervalSeconds) || other.intervalSeconds == intervalSeconds));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullRequestRefreshSettingsResponse&&(identical(other.intervalSeconds, intervalSeconds) || other.intervalSeconds == intervalSeconds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,intervalSeconds);
+int get hashCode {
+    return Object.hash(runtimeType,intervalSeconds);
+}
 
 @override
 String toString() {
-  return 'PullRequestRefreshSettingsResponse(intervalSeconds: $intervalSeconds)';
+    return 'PullRequestRefreshSettingsResponse(intervalSeconds: $intervalSeconds)';
 }
 
 

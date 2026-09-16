@@ -21,7 +21,7 @@ mixin _$ApiResponse<T> {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ApiResponse<T>);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ApiResponse<T>);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ApiResponse<$T>()';
+    return 'ApiResponse<$T>()';
 }
 
 
@@ -62,16 +62,18 @@ $SuccessResponseCopyWith<T, SuccessResponse<T>> get copyWith => _$SuccessRespons
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SuccessResponse<T>&&const DeepCollectionEquality().equals(other.data, data));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SuccessResponse<T>&&const DeepCollectionEquality().equals(other.data, data));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(data));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(data));
+}
 
 @override
 String toString() {
-  return 'ApiResponse<$T>.success(data: $data)';
+    return 'ApiResponse<$T>.success(data: $data)';
 }
 
 
@@ -128,16 +130,18 @@ $ErrorResponseCopyWith<T, ErrorResponse<T>> get copyWith => _$ErrorResponseCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ErrorResponse<T>&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ErrorResponse<T>&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString() {
-  return 'ApiResponse<$T>.error(error: $error)';
+    return 'ApiResponse<$T>.error(error: $error)';
 }
 
 

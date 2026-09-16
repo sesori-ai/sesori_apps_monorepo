@@ -10,6 +10,8 @@ on:
       - '.github/scripts/test_check_internal_release.py'
       - '.github/workflows/release-all-platforms.yml'
       - '.github/workflows/release-workflow-ci.yml'
+      - 'tool/release_scheduler/**'
+      - 'docs/regression/bridge-installation-and-updates.md'
       - 'client/app/fastlane/**'
       - 'client/app/ios/fastlane/Fastfile'
       - 'client/app/android/fastlane/Fastfile'
@@ -21,6 +23,8 @@ on:
       - '.github/scripts/test_check_internal_release.py'
       - '.github/workflows/release-all-platforms.yml'
       - '.github/workflows/release-workflow-ci.yml'
+      - 'tool/release_scheduler/**'
+      - 'docs/regression/bridge-installation-and-updates.md'
       - 'client/app/fastlane/**'
       - 'client/app/ios/fastlane/Fastfile'
       - 'client/app/android/fastlane/Fastfile'
@@ -36,8 +40,19 @@ jobs:
       - uses: actions/checkout@v6
       - name: Lint release gate
         run: shellcheck .github/scripts/check_internal_release.sh
-      - name: Test scheduled release decisions and attempt recording
+      - name: Test automatic release decisions and attempt recording
         run: python3 .github/scripts/test_check_internal_release.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tool/release_scheduler/package-lock.json
+      - name: Install release dispatcher tooling
+        run: npm ci --prefix tool/release_scheduler
+      - name: Typecheck release dispatcher
+        run: npm run typecheck --prefix tool/release_scheduler
+      - name: Test release dispatcher
+        run: npm test --prefix tool/release_scheduler
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'

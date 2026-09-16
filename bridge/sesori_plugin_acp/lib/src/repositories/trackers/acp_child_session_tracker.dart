@@ -347,7 +347,8 @@ final class AcpChildSessionTracker() {
     final removedRootHolds = _rootHolds.remove(sessionId);
     final children = _byRoot.remove(sessionId);
     if (children != null) {
-      _deletedSessionIds.addAll(children.map((child) => child.childSessionId));
+      final removedChildIds = children.map((child) => child.childSessionId).toSet();
+      _deletedSessionIds.addAll(removedChildIds);
       final hadActiveWork =
           children.any((child) => !child.status.isTerminal) || (removedRootHolds?.isNotEmpty ?? false);
       if (removedRootHolds?.isNotEmpty ?? false) _signalRootHoldChange(rootSessionId: sessionId);
@@ -466,7 +467,14 @@ final class _Child({
       prompt: prompt.toString(),
       description: description,
       agent: agent,
-      taskState: PluginToolState(status: status, title: null, output: output, error: error, attachments: const []),
+      taskState: PluginToolState(
+        status: status,
+        title: null,
+        shellCommand: null,
+        output: output,
+        error: error,
+        attachments: const [],
+      ),
       childSessionID: childSessionId,
     );
   }

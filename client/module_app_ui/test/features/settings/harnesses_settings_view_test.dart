@@ -50,7 +50,9 @@ void main() {
   late _Service service;
   late BehaviorSubject<PluginManagementLoadResult> snapshots;
   late BehaviorSubject<Map<String, PluginInstallState>> installs;
+  late BehaviorSubject<Map<String, PluginAuthenticationChallenge>> authenticationChallenges;
   late StreamController<PluginAuthenticationTerminalUpdate> terminal;
+  late BehaviorSubject<Map<String, PluginAuthenticationBrowserState>> browserStates;
   late PluginManagementCubit cubit;
   late FakeCatalogRescanService scan;
   final opened = <String>[];
@@ -60,11 +62,15 @@ void main() {
     service = _Service();
     snapshots = BehaviorSubject(sync: true);
     installs = BehaviorSubject.seeded(const {}, sync: true);
+    authenticationChallenges = BehaviorSubject.seeded(const {}, sync: true);
     terminal = StreamController.broadcast();
+    browserStates = BehaviorSubject.seeded(const {});
     scan = FakeCatalogRescanService();
     when(() => service.snapshots).thenAnswer((_) => snapshots.stream);
     when(() => service.installStates).thenAnswer((_) => installs.stream);
+    when(() => service.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
     when(() => service.authenticationTerminal).thenAnswer((_) => terminal.stream);
+    when(() => service.authenticationBrowserStates).thenAnswer((_) => browserStates.stream);
     when(
       () => service.command(
         pluginId: any(named: "pluginId"),
@@ -78,7 +84,9 @@ void main() {
     await cubit.close();
     await snapshots.close();
     await installs.close();
+    await authenticationChallenges.close();
     await terminal.close();
+    await browserStates.close();
     await scan.onDispose();
   });
 

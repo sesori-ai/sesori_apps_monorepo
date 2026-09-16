@@ -21,7 +21,7 @@ mixin _$LegalDocumentState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LegalDocumentState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LegalDocumentState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'LegalDocumentState()';
+    return 'LegalDocumentState()';
 }
 
 
@@ -57,7 +57,7 @@ class LegalDocumentLoading implements LegalDocumentState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LegalDocumentLoading);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LegalDocumentLoading);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'LegalDocumentState.loading()';
+    return 'LegalDocumentState.loading()';
 }
 
 
@@ -94,16 +94,18 @@ $LegalDocumentLoadedCopyWith<LegalDocumentLoaded> get copyWith => _$LegalDocumen
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LegalDocumentLoaded&&(identical(other.markdown, markdown) || other.markdown == markdown));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LegalDocumentLoaded&&(identical(other.markdown, markdown) || other.markdown == markdown));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,markdown);
+int get hashCode {
+    return Object.hash(runtimeType,markdown);
+}
 
 @override
 String toString() {
-  return 'LegalDocumentState.loaded(markdown: $markdown)';
+    return 'LegalDocumentState.loaded(markdown: $markdown)';
 }
 
 
@@ -160,16 +162,18 @@ $LegalDocumentFailedCopyWith<LegalDocumentFailed> get copyWith => _$LegalDocumen
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LegalDocumentFailed&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LegalDocumentFailed&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,reason);
+int get hashCode {
+    return Object.hash(runtimeType,reason);
+}
 
 @override
 String toString() {
-  return 'LegalDocumentState.failed(reason: $reason)';
+    return 'LegalDocumentState.failed(reason: $reason)';
 }
 
 

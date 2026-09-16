@@ -51,6 +51,7 @@ MessagePartTool _$MessagePartToolFromJson(Map json) => MessagePartTool(
       ? const ToolState(
           status: ToolStatus.pending,
           title: null,
+          shellCommand: null,
           output: null,
           error: null,
         )
@@ -317,6 +318,7 @@ _ToolState _$ToolStateFromJson(Map json) => _ToolState(
     unknownValue: ToolStatus.unknown,
   ),
   title: json['title'] as String?,
+  shellCommand: json['shellCommand'] as String?,
   output: json['output'] as String?,
   error: json['error'] as String?,
   attachments: json['attachments'] == null
@@ -328,6 +330,7 @@ Map<String, dynamic> _$ToolStateToJson(_ToolState instance) =>
     <String, dynamic>{
       'status': _$ToolStatusEnumMap[instance.status]!,
       'title': ?instance.title,
+      'shellCommand': ?instance.shellCommand,
       'output': ?instance.output,
       'error': ?instance.error,
       'attachments': instance.attachments.map((e) => e.toJson()).toList(),

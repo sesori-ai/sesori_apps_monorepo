@@ -283,10 +283,9 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
   Widget build(BuildContext context) {
     final backgroundColor = widget.backgroundColor ?? context.prego.colors.bgSurface1;
     // The status-bar icons have to contrast with this scaffold's surface, so
-    // they follow the active palette's brightness. GlassStatusBarStyle.auto
-    // would read the *device* brightness instead, which ignores an in-app
-    // appearance choice: picking Light on a phone in dark mode would leave
-    // white icons on a light surface (and the reverse).
+    // they follow the active palette's brightness rather than
+    // GlassStatusBarStyle.auto, which resolves through the package's theme
+    // brightness instead of the palette that paints this surface.
     final statusBarStyle = switch (context.prego.colors.brightness) {
       Brightness.dark => GlassStatusBarStyle.light,
       Brightness.light => GlassStatusBarStyle.dark,

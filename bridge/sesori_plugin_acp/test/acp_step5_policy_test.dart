@@ -25,6 +25,8 @@ class _PolicyPlugin({
       );
 
   int selectionFailures = 0;
+  int activeWorkCount = 0;
+  void Function()? onPromptWriting;
 
   @override
   bool get serializesPromptsProcessWide => processWide;
@@ -37,6 +39,21 @@ class _PolicyPlugin({
 
   @override
   Duration get sessionCloseSettlementTimeout => closeTimeout;
+
+  @override
+  AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.rootSessionCancel;
+
+  @override
+  Duration get rootSessionCancelSettlementTimeout => closeTimeout;
+
+  @override
+  int activeScopedStopWorkCount({required String sessionId}) => activeWorkCount;
+
+  @override
+  Map<String, dynamic>? outboundPromptMeta({required String sessionId, required String messageId}) {
+    onPromptWriting?.call();
+    return null;
+  }
 
   @override
   Future<void> applyTurnSelection({
@@ -161,6 +178,28 @@ void main() {
       model: null,
     );
 
+    Future<PluginAbortResult> stop({required PluginSession session}) => plugin.abortSession(
+      sessionId: session.id,
+      subAgents: PluginAbortSubAgentPolicy.stop,
+      useAtomicStop: true,
+      knownSubAgentSessionIds: const {},
+    );
+
+    Matcher operationFailure({required Matcher cause}) => isA<PluginOperationException>()
+        .having((error) => error.statusCode, "status", 502)
+        .having((error) => error.cause, "cause", cause);
+
+    Future<PluginSession> setUpRootCancel({required Duration timeout}) async {
+      await plugin.dispose();
+      plugin = buildPlugin(
+        processWide: false,
+        failClosed: false,
+        closeTimeout: timeout,
+      );
+      await connect();
+      return await create("session-1");
+    }
+
     test("opt-in process lane serializes prompts across sessions", () async {
       await plugin.dispose();
       plugin = buildPlugin(processWide: true, failClosed: false);
@@ -272,6 +311,47 @@ void main() {
       respond(runningPrompt, {"stopReason": "end_turn"});
       await pump();
       expect(frames(AcpMethods.sessionPrompt), hasLength(1));
+    });
+
+    test("root cancel timeout returns cause-preserving 502 after native cancellation", () async {
+      final session = await setUpRootCancel(timeout: const Duration(milliseconds: 20));
+      await send(session.id, "active turn");
+      await waitForFrameCount(AcpMethods.sessionPrompt, 1);
+      await expectLater(
+        stop(session: session),
+        throwsA(operationFailure(cause: isA<TimeoutException>())),
+      );
+      expect(frames(AcpMethods.sessionCancel), hasLength(1));
+    });
+
+    test("root cancel orders native cancellation before prompt-write input resolution", () async {
+      final session = await setUpRootCancel(timeout: const Duration(seconds: 1));
+      late Future<PluginAbortResult> stopping;
+      plugin.onPromptWriting = () {
+        plugin.handleAgentServerRequest(
+          request: AcpServerRequest(
+            id: 91,
+            method: AcpMethods.sessionRequestPermission,
+            params: {
+              "sessionId": session.id,
+              "toolCall": {"toolCallId": "tool-1", "title": "Run", "kind": "execute"},
+              "options": [
+                {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+              ],
+            },
+          ),
+        );
+        plugin.activeWorkCount = 1;
+        stopping = stop(session: session);
+      };
+      await send(session.id, "active turn");
+      final prompt = await waitForFrameCount(AcpMethods.sessionPrompt, 1);
+      await waitForFrameCount(AcpMethods.sessionCancel, 1);
+      final cancelIndex = fake.written.indexWhere((frame) => frame["method"] == AcpMethods.sessionCancel);
+      final permissionIndex = fake.written.indexWhere((frame) => frame["id"] == 91);
+      expect(cancelIndex, lessThan(permissionIndex));
+      respond(prompt, {"stopReason": "cancelled"});
+      await expectLater(stopping, throwsA(operationFailure(cause: isA<StateError>())));
     });
 
     test("close timeout fails deletion and preserves local session state", () async {

@@ -92,16 +92,21 @@ $MessagePartCopyWith<MessagePart> get copyWith => _$MessagePartCopyWithImpl<Mess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+  final _this = this as MessagePart;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePart&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.sessionID, _this.sessionID) || other.sessionID == _this.sessionID)&&(identical(other.messageID, _this.messageID) || other.messageID == _this.messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+  final _this = this as MessagePart;
+  return Object.hash(runtimeType,_this.id,_this.sessionID,_this.messageID);
+}
 
 @override
 String toString() {
-  return 'MessagePart(id: $id, sessionID: $sessionID, messageID: $messageID)';
+  final _this = this as MessagePart;
+  return 'MessagePart(id: ${_this.id}, sessionID: ${_this.sessionID}, messageID: ${_this.messageID})';
 }
 
 
@@ -171,16 +176,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartText&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartText&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,text);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,text);
+}
 
 @override
 String toString() {
-  return 'MessagePart.text(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
+    return 'MessagePart.text(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
 }
 
 
@@ -250,16 +257,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartReasoning&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartReasoning&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,text);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,text);
+}
 
 @override
 String toString() {
-  return 'MessagePart.reasoning(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
+    return 'MessagePart.reasoning(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
 }
 
 
@@ -304,7 +313,7 @@ as String,
 @JsonSerializable()
 
 class MessagePartTool extends MessagePart {
-  const MessagePartTool({required this.id, required this.sessionID, required this.messageID, this.tool = "", this.state = const ToolState(status: ToolStatus.pending, title: null, output: null, error: null),  String? $type}): $type = $type ?? 'tool',super._();
+  const MessagePartTool({required this.id, required this.sessionID, required this.messageID, this.tool = "", this.state = const ToolState(status: ToolStatus.pending, title: null, shellCommand: null, output: null, error: null),  String? $type}): $type = $type ?? 'tool',super._();
   factory MessagePartTool.fromJson(Map<String, dynamic> json) => _$MessagePartToolFromJson(json);
 
 @override final  String id;
@@ -330,16 +339,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartTool&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartTool&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,tool,state);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,tool,state);
+}
 
 @override
 String toString() {
-  return 'MessagePart.tool(id: $id, sessionID: $sessionID, messageID: $messageID, tool: $tool, state: $state)';
+    return 'MessagePart.tool(id: $id, sessionID: $sessionID, messageID: $messageID, tool: $tool, state: $state)';
 }
 
 
@@ -428,16 +439,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartSubtask&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.taskState, taskState) || other.taskState == taskState)&&(identical(other.childSessionID, childSessionID) || other.childSessionID == childSessionID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartSubtask&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.taskState, taskState) || other.taskState == taskState)&&(identical(other.childSessionID, childSessionID) || other.childSessionID == childSessionID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,prompt,description,agent,taskState,childSessionID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,prompt,description,agent,taskState,childSessionID);
+}
 
 @override
 String toString() {
-  return 'MessagePart.subtask(id: $id, sessionID: $sessionID, messageID: $messageID, prompt: $prompt, description: $description, agent: $agent, taskState: $taskState, childSessionID: $childSessionID)';
+    return 'MessagePart.subtask(id: $id, sessionID: $sessionID, messageID: $messageID, prompt: $prompt, description: $description, agent: $agent, taskState: $taskState, childSessionID: $childSessionID)';
 }
 
 
@@ -522,16 +535,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartStepStart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartStepStart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID);
+}
 
 @override
 String toString() {
-  return 'MessagePart.stepStart(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'MessagePart.stepStart(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -599,16 +614,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartStepFinish&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartStepFinish&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID);
+}
 
 @override
 String toString() {
-  return 'MessagePart.stepFinish(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'MessagePart.stepFinish(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -677,16 +694,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartFile&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.attachment, attachment) || other.attachment == attachment));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartFile&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.attachment, attachment) || other.attachment == attachment));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,attachment);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,attachment);
+}
 
 @override
 String toString() {
-  return 'MessagePart.file(id: $id, sessionID: $sessionID, messageID: $messageID, attachment: $attachment)';
+    return 'MessagePart.file(id: $id, sessionID: $sessionID, messageID: $messageID, attachment: $attachment)';
 }
 
 
@@ -764,16 +783,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartSnapshot&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartSnapshot&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID);
+}
 
 @override
 String toString() {
-  return 'MessagePart.snapshot(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'MessagePart.snapshot(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -841,16 +862,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartPatch&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartPatch&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID);
+}
 
 @override
 String toString() {
-  return 'MessagePart.patch(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'MessagePart.patch(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -919,16 +942,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartAgent&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.agentName, agentName) || other.agentName == agentName));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartAgent&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.agentName, agentName) || other.agentName == agentName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,agentName);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,agentName);
+}
 
 @override
 String toString() {
-  return 'MessagePart.agent(id: $id, sessionID: $sessionID, messageID: $messageID, agentName: $agentName)';
+    return 'MessagePart.agent(id: $id, sessionID: $sessionID, messageID: $messageID, agentName: $agentName)';
 }
 
 
@@ -999,16 +1024,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartRetry&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartRetry&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,attempt,retryError);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,attempt,retryError);
+}
 
 @override
 String toString() {
-  return 'MessagePart.retry(id: $id, sessionID: $sessionID, messageID: $messageID, attempt: $attempt, retryError: $retryError)';
+    return 'MessagePart.retry(id: $id, sessionID: $sessionID, messageID: $messageID, attempt: $attempt, retryError: $retryError)';
 }
 
 
@@ -1078,16 +1105,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID);
+}
 
 @override
 String toString() {
-  return 'MessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'MessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -1167,7 +1196,7 @@ mixin _$MessageAttachment {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachment);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachment);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1213,12 +1242,14 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentInlineImage&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentInlineImage&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,base64,filename);
+int get hashCode {
+    return Object.hash(runtimeType,mime,base64,filename);
+}
 
 
 
@@ -1286,12 +1317,14 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentRemoteUrl&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentRemoteUrl&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,url,filename);
+int get hashCode {
+    return Object.hash(runtimeType,mime,url,filename);
+}
 
 
 
@@ -1361,12 +1394,14 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentStoredImage&&(identical(other.attachmentId, attachmentId) || other.attachmentId == attachmentId)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.filename, filename) || other.filename == filename)&&(identical(other.byteLength, byteLength) || other.byteLength == byteLength));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentStoredImage&&(identical(other.attachmentId, attachmentId) || other.attachmentId == attachmentId)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.filename, filename) || other.filename == filename)&&(identical(other.byteLength, byteLength) || other.byteLength == byteLength));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,attachmentId,bridgeId,mime,filename,byteLength);
+int get hashCode {
+    return Object.hash(runtimeType,attachmentId,bridgeId,mime,filename,byteLength);
+}
 
 
 
@@ -1435,12 +1470,14 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentMetadata&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.filename, filename) || other.filename == filename));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentMetadata&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,filename);
+int get hashCode {
+    return Object.hash(runtimeType,mime,filename);
+}
 
 
 
@@ -1500,7 +1537,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentUnknown);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAttachmentUnknown);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1518,7 +1555,7 @@ int get hashCode => runtimeType.hashCode;
 /// @nodoc
 mixin _$ToolState {
 
-@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus get status; String? get title; String? get output; String? get error;@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> get attachments;
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus get status; String? get title; String? get shellCommand; String? get output; String? get error;@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> get attachments;
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1531,16 +1568,21 @@ $ToolStateCopyWith<ToolState> get copyWith => _$ToolStateCopyWithImpl<ToolState>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other.attachments, attachments));
+  final _this = this as ToolState;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ToolState&&(identical(other.status, _this.status) || other.status == _this.status)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.shellCommand, _this.shellCommand) || other.shellCommand == _this.shellCommand)&&(identical(other.output, _this.output) || other.output == _this.output)&&(identical(other.error, _this.error) || other.error == _this.error)&&const DeepCollectionEquality().equals(other.attachments, _this.attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,title,output,error,const DeepCollectionEquality().hash(attachments));
+int get hashCode {
+  final _this = this as ToolState;
+  return Object.hash(runtimeType,_this.status,_this.title,_this.shellCommand,_this.output,_this.error,const DeepCollectionEquality().hash(_this.attachments));
+}
 
 @override
 String toString() {
-  return 'ToolState(status: $status, title: $title, output: $output, error: $error, attachments: $attachments)';
+  final _this = this as ToolState;
+  return 'ToolState(status: ${_this.status}, title: ${_this.title}, shellCommand: ${_this.shellCommand}, output: ${_this.output}, error: ${_this.error}, attachments: ${_this.attachments})';
 }
 
 
@@ -1551,7 +1593,7 @@ abstract mixin class $ToolStateCopyWith<$Res>  {
   factory $ToolStateCopyWith(ToolState value, $Res Function(ToolState) _then) = _$ToolStateCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error,@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> attachments
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? shellCommand, String? output, String? error,@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> attachments
 });
 
 
@@ -1568,10 +1610,11 @@ class _$ToolStateCopyWithImpl<$Res>
 
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? shellCommand = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
   return _then(ToolState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as ToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as String?,shellCommand: freezed == shellCommand ? _self.shellCommand : shellCommand // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,attachments: null == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
@@ -1587,11 +1630,12 @@ as List<MessageAttachment>,
 @JsonSerializable()
 
 class _ToolState implements ToolState {
-  const _ToolState({@JsonKey(unknownEnumValue: ToolStatus.unknown) required this.status, required this.title, required this.output, required this.error, @JsonKey(fromJson: _messageAttachmentsFromJson)  List<MessageAttachment> attachments = const <MessageAttachment>[]}): _attachments = attachments;
+  const _ToolState({@JsonKey(unknownEnumValue: ToolStatus.unknown) required this.status, required this.title, required this.shellCommand, required this.output, required this.error, @JsonKey(fromJson: _messageAttachmentsFromJson)  List<MessageAttachment> attachments = const <MessageAttachment>[]}): _attachments = attachments;
   factory _ToolState.fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);
 
 @override@JsonKey(unknownEnumValue: ToolStatus.unknown) final  ToolStatus status;
 @override final  String? title;
+@override final  String? shellCommand;
 @override final  String? output;
 @override final  String? error;
  final  List<MessageAttachment> _attachments;
@@ -1615,16 +1659,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other._attachments, _attachments));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.shellCommand, shellCommand) || other.shellCommand == shellCommand)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other.attachments, _attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,title,output,error,const DeepCollectionEquality().hash(_attachments));
+int get hashCode {
+    return Object.hash(runtimeType,status,title,shellCommand,output,error,const DeepCollectionEquality().hash(_attachments));
+}
 
 @override
 String toString() {
-  return 'ToolState(status: $status, title: $title, output: $output, error: $error, attachments: $attachments)';
+    return 'ToolState(status: $status, title: $title, shellCommand: $shellCommand, output: $output, error: $error, attachments: $attachments)';
 }
 
 
@@ -1635,7 +1681,7 @@ abstract mixin class _$ToolStateCopyWith<$Res> implements $ToolStateCopyWith<$Re
   factory _$ToolStateCopyWith(_ToolState value, $Res Function(_ToolState) _then) = __$ToolStateCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error,@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> attachments
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? shellCommand, String? output, String? error,@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> attachments
 });
 
 
@@ -1652,10 +1698,11 @@ class __$ToolStateCopyWithImpl<$Res>
 
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? title = freezed,Object? shellCommand = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
   return _then(_ToolState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as ToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as String?,shellCommand: freezed == shellCommand ? _self.shellCommand : shellCommand // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable

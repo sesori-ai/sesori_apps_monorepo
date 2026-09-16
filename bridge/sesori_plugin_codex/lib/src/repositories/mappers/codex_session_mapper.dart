@@ -80,6 +80,7 @@ class const CodexSessionMapper() {
         taskState: PluginToolState(
           status: task.status,
           title: null,
+          shellCommand: null,
           output: null,
           error: null,
           attachments: const [],

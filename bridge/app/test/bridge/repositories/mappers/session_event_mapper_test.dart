@@ -61,6 +61,11 @@ void main() {
           expectedBackendIds: {"backend-session"},
         ),
         (
+          name: "prompt settled",
+          event: const BridgeSsePromptSettled(sessionID: "backend-session", promptID: "prompt"),
+          expectedBackendIds: {"backend-session"},
+        ),
+        (
           name: "session status",
           event: const BridgeSseSessionStatus(sessionID: "backend-session", status: PluginSessionStatus.busy()),
           expectedBackendIds: {"backend-session"},

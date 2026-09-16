@@ -235,6 +235,12 @@ void main() {
         command: "get_state",
         data: const {"isStreaming": false, "pendingMessageCount": 0},
       );
+      final confirmedState = await waitForNthCommand(process: process, type: "get_state", count: 2);
+      process.emitResponse(
+        id: confirmedState["id"]! as String,
+        command: "get_state",
+        data: const {"isStreaming": false, "pendingMessageCount": 0},
+      );
       await accepted;
 
       await expectLater(
@@ -390,6 +396,12 @@ void main() {
       final state = await waitForCommand(process: process, type: "get_state");
       process.emitResponse(
         id: state["id"]! as String,
+        command: "get_state",
+        data: const {"isStreaming": false, "pendingMessageCount": 0},
+      );
+      final confirmedState = await waitForNthCommand(process: process, type: "get_state", count: 2);
+      process.emitResponse(
+        id: confirmedState["id"]! as String,
         command: "get_state",
         data: const {"isStreaming": false, "pendingMessageCount": 0},
       );

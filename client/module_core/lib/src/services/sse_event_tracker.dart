@@ -108,6 +108,7 @@ class SseEventTracker(
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
+            SesoriSessionPromptSettled() ||
             SesoriSessionStatus() ||
             SesoriMessageUpdated() ||
             SesoriMessageRemoved() ||

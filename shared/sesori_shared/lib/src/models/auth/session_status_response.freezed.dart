@@ -59,7 +59,7 @@ mixin _$AuthSessionStatusResponse {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponse);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponse);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -68,7 +68,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AuthSessionStatusResponse()';
+    return 'AuthSessionStatusResponse()';
 }
 
 
@@ -102,7 +102,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponsePending);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponsePending);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -111,7 +111,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AuthSessionStatusResponse.pending()';
+    return 'AuthSessionStatusResponse.pending()';
 }
 
 
@@ -149,16 +149,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponseComplete&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.user, user) || other.user == user)&&(identical(other.accountStatus, accountStatus) || other.accountStatus == accountStatus));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponseComplete&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.user, user) || other.user == user)&&(identical(other.accountStatus, accountStatus) || other.accountStatus == accountStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,accessToken,refreshToken,user,accountStatus);
+int get hashCode {
+    return Object.hash(runtimeType,accessToken,refreshToken,user,accountStatus);
+}
 
 @override
 String toString() {
-  return 'AuthSessionStatusResponse.complete(accessToken: $accessToken, refreshToken: $refreshToken, user: $user, accountStatus: $accountStatus)';
+    return 'AuthSessionStatusResponse.complete(accessToken: $accessToken, refreshToken: $refreshToken, user: $user, accountStatus: $accountStatus)';
 }
 
 
@@ -229,7 +231,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponseDenied);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponseDenied);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -238,7 +240,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AuthSessionStatusResponse.denied()';
+    return 'AuthSessionStatusResponse.denied()';
 }
 
 
@@ -268,7 +270,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponseExpired);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponseExpired);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -277,7 +279,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AuthSessionStatusResponse.expired()';
+    return 'AuthSessionStatusResponse.expired()';
 }
 
 
@@ -312,16 +314,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponseError&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthSessionStatusResponseError&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode {
+    return Object.hash(runtimeType,message);
+}
 
 @override
 String toString() {
-  return 'AuthSessionStatusResponse.error(message: $message)';
+    return 'AuthSessionStatusResponse.error(message: $message)';
 }
 
 

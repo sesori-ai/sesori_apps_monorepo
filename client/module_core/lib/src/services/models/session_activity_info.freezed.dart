@@ -26,16 +26,21 @@ $SessionActivityInfoCopyWith<SessionActivityInfo> get copyWith => _$SessionActiv
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionActivityInfo&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&(identical(other.backgroundTaskCount, backgroundTaskCount) || other.backgroundTaskCount == backgroundTaskCount)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  final _this = this as SessionActivityInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionActivityInfo&&(identical(other.mainAgentRunning, _this.mainAgentRunning) || other.mainAgentRunning == _this.mainAgentRunning)&&(identical(other.awaitingInput, _this.awaitingInput) || other.awaitingInput == _this.awaitingInput)&&(identical(other.backgroundTaskCount, _this.backgroundTaskCount) || other.backgroundTaskCount == _this.backgroundTaskCount)&&(identical(other.isRetrying, _this.isRetrying) || other.isRetrying == _this.isRetrying)&&(identical(other.lastUserActivityAt, _this.lastUserActivityAt) || other.lastUserActivityAt == _this.lastUserActivityAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,mainAgentRunning,awaitingInput,backgroundTaskCount,isRetrying,lastUserActivityAt,updatedAt);
+int get hashCode {
+  final _this = this as SessionActivityInfo;
+  return Object.hash(runtimeType,_this.mainAgentRunning,_this.awaitingInput,_this.backgroundTaskCount,_this.isRetrying,_this.lastUserActivityAt,_this.updatedAt);
+}
 
 @override
 String toString() {
-  return 'SessionActivityInfo(mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, backgroundTaskCount: $backgroundTaskCount, isRetrying: $isRetrying, lastUserActivityAt: $lastUserActivityAt, updatedAt: $updatedAt)';
+  final _this = this as SessionActivityInfo;
+  return 'SessionActivityInfo(mainAgentRunning: ${_this.mainAgentRunning}, awaitingInput: ${_this.awaitingInput}, backgroundTaskCount: ${_this.backgroundTaskCount}, isRetrying: ${_this.isRetrying}, lastUserActivityAt: ${_this.lastUserActivityAt}, updatedAt: ${_this.updatedAt})';
 }
 
 
@@ -103,16 +108,18 @@ _$SessionActivityInfoCopyWith<_SessionActivityInfo> get copyWith => __$SessionAc
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionActivityInfo&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&(identical(other.backgroundTaskCount, backgroundTaskCount) || other.backgroundTaskCount == backgroundTaskCount)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionActivityInfo&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&(identical(other.backgroundTaskCount, backgroundTaskCount) || other.backgroundTaskCount == backgroundTaskCount)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,mainAgentRunning,awaitingInput,backgroundTaskCount,isRetrying,lastUserActivityAt,updatedAt);
+int get hashCode {
+    return Object.hash(runtimeType,mainAgentRunning,awaitingInput,backgroundTaskCount,isRetrying,lastUserActivityAt,updatedAt);
+}
 
 @override
 String toString() {
-  return 'SessionActivityInfo(mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, backgroundTaskCount: $backgroundTaskCount, isRetrying: $isRetrying, lastUserActivityAt: $lastUserActivityAt, updatedAt: $updatedAt)';
+    return 'SessionActivityInfo(mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, backgroundTaskCount: $backgroundTaskCount, isRetrying: $isRetrying, lastUserActivityAt: $lastUserActivityAt, updatedAt: $updatedAt)';
 }
 
 

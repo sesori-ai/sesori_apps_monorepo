@@ -21,7 +21,7 @@ mixin _$SseToastState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SseToastState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SseToastState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SseToastState()';
+    return 'SseToastState()';
 }
 
 
@@ -57,7 +57,7 @@ class SseToastIdle implements SseToastState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SseToastIdle);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SseToastIdle);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SseToastState.idle()';
+    return 'SseToastState.idle()';
 }
 
 
@@ -97,16 +97,18 @@ $SseToastShowCopyWith<SseToastShow> get copyWith => _$SseToastShowCopyWithImpl<S
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SseToastShow&&(identical(other.sequence, sequence) || other.sequence == sequence)&&(identical(other.title, title) || other.title == title)&&(identical(other.message, message) || other.message == message)&&(identical(other.variant, variant) || other.variant == variant));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SseToastShow&&(identical(other.sequence, sequence) || other.sequence == sequence)&&(identical(other.title, title) || other.title == title)&&(identical(other.message, message) || other.message == message)&&(identical(other.variant, variant) || other.variant == variant));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,sequence,title,message,variant);
+int get hashCode {
+    return Object.hash(runtimeType,sequence,title,message,variant);
+}
 
 @override
 String toString() {
-  return 'SseToastState.show(sequence: $sequence, title: $title, message: $message, variant: $variant)';
+    return 'SseToastState.show(sequence: $sequence, title: $title, message: $message, variant: $variant)';
 }
 
 

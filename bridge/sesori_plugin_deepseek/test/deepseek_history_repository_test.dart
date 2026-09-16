@@ -274,14 +274,16 @@ void main() {
     );
 
     final messages = await repository.getMessages(client: _unusedClient(), sessionId: "s1");
-    expect(messages.map((message) => message.info.id), ["s1-h0-assistant", "s1-h1-assistant"]);
+    final failedMessageId = AcpEventMapper.toolMessageId(sessionId: "s1", toolCallId: "call-failed");
+    final ordinaryMessageId = AcpEventMapper.toolMessageId(sessionId: "s1", toolCallId: "ordinary");
+    expect(messages.map((message) => message.info.id), [failedMessageId, ordinaryMessageId]);
     final tile = messages.first.parts.single as PluginMessagePartSubtask;
-    expect(tile.id, "s1-h0-assistant-tool-call-failed");
+    expect(tile.id, AcpEventMapper.toolPartId(messageId: failedMessageId));
     expect(tile.childSessionID, isNull);
     expect(tile.taskState?.status, PluginToolStatus.error);
     expect(tile.taskState?.error, "Startup failed");
     final ordinary = messages.last.parts.single as PluginMessagePartTool;
-    expect(ordinary.id, "s1-h1-assistant-tool-ordinary");
+    expect(ordinary.id, AcpEventMapper.toolPartId(messageId: ordinaryMessageId));
     expect(ordinary.state.status, PluginToolStatus.completed);
     for (final message in messages) {
       expect(message.parts.map((part) => part.messageID), everyElement(message.info.id));

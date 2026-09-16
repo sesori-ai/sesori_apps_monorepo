@@ -457,7 +457,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessAuthenticationLogIn => 'Log in';
 
   @override
-  String get harnessAuthenticationContinue => 'Continue login';
+  String get harnessAuthenticationViewProgress => 'View sign-in';
 
   @override
   String get harnessAuthenticationDescription => 'Authorize this harness from your phone.';
@@ -475,10 +475,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get harnessAuthenticationBrowserInstructions =>
-      'Only continue if you started this login. Verify the website address before signing in. If the local callback page does not load, copy its full address and paste it below.';
+      'Only continue if you started this login. Verify the provider\'s website address before signing in. Sesori will return automatically when authorization finishes.';
 
   @override
-  String get harnessAuthenticationRedirectLabel => 'Redirect URL';
+  String get harnessAuthenticationPreparing => 'Preparing sign-in…';
+
+  @override
+  String get harnessAuthenticationPreparingDescription =>
+      'The provider page will open after the bridge prepares this sign-in.';
+
+  @override
+  String get harnessAuthenticationOpening => 'Opening the secure provider page…';
+
+  @override
+  String get harnessAuthenticationWaitingForBrowser =>
+      'Complete sign-in in the provider page. Sesori will return automatically.';
+
+  @override
+  String get harnessAuthenticationFinalizing => 'Finishing sign-in with the bridge…';
+
+  @override
+  String get harnessAuthenticationSucceeded => 'Sign-in completed successfully.';
+
+  @override
+  String get harnessAuthenticationCancelled => 'Sign-in was cancelled. No account was connected.';
+
+  @override
+  String get harnessAuthenticationRetry => 'Try again';
+
+  @override
+  String get harnessAuthenticationDone => 'Done';
+
+  @override
+  String get harnessAuthenticationClose => 'Close';
 
   @override
   String get harnessAuthenticationCodeLabel => 'One-time code';
@@ -531,9 +560,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get harnessAuthenticationInvalidChallenge =>
       'The bridge returned an invalid login website. Check the bridge logs for details.';
-
-  @override
-  String get harnessAuthenticationInvalidRedirect => 'Paste the full redirect URL from the local callback page.';
 
   @override
   String get harnessAuthenticationBrowserFailed => 'The secure website could not be opened. Try again.';
@@ -819,6 +845,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListUntitled => 'Untitled session';
 
   @override
+  String get sessionListUnknownDate => 'Unknown date';
+
+  @override
   String get sessionListRefreshSuccess => 'Sessions updated';
 
   @override
@@ -941,6 +970,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailAbort => 'Stop';
+
+  @override
+  String get sessionDetailStopNotAcceptedTitle => 'Session not stopped';
+
+  @override
+  String get sessionDetailStopNotAcceptedBackgroundMessage =>
+      'Sesori couldn’t verify whether background work finished, so it didn’t stop this session. Restart the harness, then try again.';
+
+  @override
+  String get sessionDetailStopNotAcceptedGenericMessage =>
+      'Sesori couldn’t safely stop this session. Restart the harness, then try again.';
 
   @override
   String get sessionDetailStopScopeTitle => 'Sub-agents are running';
@@ -1956,32 +1996,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanPullCaption => 'Keep pulling to find new sessions';
 
   @override
-  String get catalogScanRunningTitle => 'Scanning all harnesses';
+  String catalogScanRunningTitle(int finished, int total) {
+    return 'Scanning · $finished of $total finished';
+  }
 
   @override
   String catalogScanPreparingOneDetail(String harness) {
     return 'Preparing $harness scan…';
-  }
-
-  @override
-  String catalogScanPreparingManyDetail(String harnesses) {
-    return 'Preparing $harnesses scans…';
-  }
-
-  @override
-  String catalogScanTwoHarnesses(String first, String second) {
-    return '$first and $second';
-  }
-
-  @override
-  String catalogScanHarnessesWithOthers(String first, String second, int others) {
-    String _temp0 = intl.Intl.pluralLogic(
-      others,
-      locale: localeName,
-      other: '$others others',
-      one: '1 other',
-    );
-    return '$first, $second, and $_temp0';
   }
 
   @override
@@ -2011,8 +2032,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String catalogScanWaitingTitle(String harness) {
-    return 'Waiting for $harness';
+  String catalogScanWaitingTitle(String harness, int finished, int total) {
+    return 'Waiting for $harness · $finished of $total finished';
   }
 
   @override

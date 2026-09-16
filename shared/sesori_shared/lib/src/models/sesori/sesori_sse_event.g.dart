@@ -191,6 +191,21 @@ Map<String, dynamic> _$SesoriSessionCompactedToJson(
   SesoriSessionCompacted instance,
 ) => <String, dynamic>{'sessionID': instance.sessionID, 'type': instance.$type};
 
+SesoriSessionPromptSettled _$SesoriSessionPromptSettledFromJson(Map json) =>
+    SesoriSessionPromptSettled(
+      sessionID: json['sessionID'] as String,
+      promptID: json['promptID'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$SesoriSessionPromptSettledToJson(
+  SesoriSessionPromptSettled instance,
+) => <String, dynamic>{
+  'sessionID': instance.sessionID,
+  'promptID': instance.promptID,
+  'type': instance.$type,
+};
+
 SesoriSessionPromptDefaultsChanged _$SesoriSessionPromptDefaultsChangedFromJson(
   Map json,
 ) => SesoriSessionPromptDefaultsChanged(

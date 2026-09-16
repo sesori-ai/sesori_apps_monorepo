@@ -26,16 +26,21 @@ $CatalogHydrationDtoCopyWith<CatalogHydrationDto> get copyWith => _$CatalogHydra
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogHydrationDto&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectionVersion, projectionVersion) || other.projectionVersion == projectionVersion)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt));
+  final _this = this as CatalogHydrationDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogHydrationDto&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&(identical(other.projectionVersion, _this.projectionVersion) || other.projectionVersion == _this.projectionVersion)&&(identical(other.completedAt, _this.completedAt) || other.completedAt == _this.completedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,projectionVersion,completedAt);
+int get hashCode {
+  final _this = this as CatalogHydrationDto;
+  return Object.hash(runtimeType,_this.pluginId,_this.projectionVersion,_this.completedAt);
+}
 
 @override
 String toString() {
-  return 'CatalogHydrationDto(pluginId: $pluginId, projectionVersion: $projectionVersion, completedAt: $completedAt)';
+  final _this = this as CatalogHydrationDto;
+  return 'CatalogHydrationDto(pluginId: ${_this.pluginId}, projectionVersion: ${_this.projectionVersion}, completedAt: ${_this.completedAt})';
 }
 
 
@@ -97,16 +102,18 @@ _$CatalogHydrationDtoCopyWith<_CatalogHydrationDto> get copyWith => __$CatalogHy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CatalogHydrationDto&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectionVersion, projectionVersion) || other.projectionVersion == projectionVersion)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CatalogHydrationDto&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectionVersion, projectionVersion) || other.projectionVersion == projectionVersion)&&(identical(other.completedAt, completedAt) || other.completedAt == completedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,projectionVersion,completedAt);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,projectionVersion,completedAt);
+}
 
 @override
 String toString() {
-  return 'CatalogHydrationDto(pluginId: $pluginId, projectionVersion: $projectionVersion, completedAt: $completedAt)';
+    return 'CatalogHydrationDto(pluginId: $pluginId, projectionVersion: $projectionVersion, completedAt: $completedAt)';
 }
 
 

@@ -27,16 +27,21 @@ $BridgesListResponseCopyWith<BridgesListResponse> get copyWith => _$BridgesListR
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgesListResponse&&const DeepCollectionEquality().equals(other.bridges, bridges));
+  final _this = this as BridgesListResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgesListResponse&&const DeepCollectionEquality().equals(other.bridges, _this.bridges));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(bridges));
+int get hashCode {
+  final _this = this as BridgesListResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.bridges));
+}
 
 @override
 String toString() {
-  return 'BridgesListResponse(bridges: $bridges)';
+  final _this = this as BridgesListResponse;
+  return 'BridgesListResponse(bridges: ${_this.bridges})';
 }
 
 
@@ -100,16 +105,18 @@ _$BridgesListResponseCopyWith<_BridgesListResponse> get copyWith => __$BridgesLi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgesListResponse&&const DeepCollectionEquality().equals(other._bridges, _bridges));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgesListResponse&&const DeepCollectionEquality().equals(other.bridges, _bridges));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_bridges));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_bridges));
+}
 
 @override
 String toString() {
-  return 'BridgesListResponse(bridges: $bridges)';
+    return 'BridgesListResponse(bridges: $bridges)';
 }
 
 

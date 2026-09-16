@@ -270,6 +270,11 @@ class CodexSessionService({
 
   bool isActiveTrackedChild({required String sessionId}) => _subAgentTracker.isChildActive(sessionId: sessionId);
 
+  /// Every persisted or live descendant currently known below [sessionId].
+  Set<String> scopedDescendantSessionIds({required String sessionId}) => Set.unmodifiable(
+    _subAgentTracker.descendantsOf(parentId: sessionId).map((child) => child.id),
+  );
+
   void markSessionsDeleted({required Iterable<String> sessionIds}) {
     _deletedSubAgentThreadIds.addAll(sessionIds);
   }

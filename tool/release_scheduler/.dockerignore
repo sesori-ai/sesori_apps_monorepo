@@ -1,0 +1,7 @@
+node_modules
+npm-debug.log
+*.pem
+**/*.pem
+README.md
+test
+tsconfig.json

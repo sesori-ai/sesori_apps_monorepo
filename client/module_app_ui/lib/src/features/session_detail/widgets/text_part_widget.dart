@@ -30,7 +30,7 @@ class const TextPartWidget({
           uri: uri,
           semanticLabel: alt,
         ),
-        styleSheet: buildSessionMarkdownStyleSheet(prego: context.prego),
+        styleSheet: buildChatMessageMarkdownStyleSheet(prego: context.prego),
         blockSyntaxes: sessionMarkdownBlockSyntaxes,
         builders: buildSessionMarkdownBuilders(
           highlightEnabled: !isStreaming,

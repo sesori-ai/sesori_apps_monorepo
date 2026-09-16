@@ -48,7 +48,112 @@ Widget _buildApp({required List<AgentInfo> agents, required void Function(String
   );
 }
 
+const _variants = [
+  SessionVariant(id: "max"),
+  SessionVariant(id: "xhigh"),
+  SessionVariant(id: "high"),
+  SessionVariant(id: "medium"),
+  SessionVariant(id: "low"),
+  SessionVariant(id: "minimal"),
+];
+
+Widget _buildVariantApp({required ValueChanged<SessionVariant> onVariantSelected}) {
+  return MaterialApp(
+    theme: ThemeData(extensions: [PregoDesignSystem.light]),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          AgentModelButtons(
+            surfaceStyle: PregoComposerSurfaceStyle.subtle,
+            agents: const [],
+            selectedAgent: null,
+            onAgentSelected: (_) {},
+            providers: const [],
+            // The menu opens at the strongest end even if a low effort is selected.
+            selectedAgentModel: const AgentModel(providerID: "example", modelID: "model", variant: "minimal"),
+            onModelSelected: ({required providerID, required modelID}) {},
+            availableVariants: _variants,
+            onVariantSelected: onVariantSelected,
+          ),
+          // The prompt field sits below the picker row in the chat composer.
+          const SizedBox(height: 120),
+        ],
+      ),
+    ),
+  );
+}
+
 void main() {
+  group("Variant picker", () {
+    const platforms = TargetPlatformVariant({TargetPlatform.iOS, TargetPlatform.android, TargetPlatform.macOS});
+
+    testWidgets("lists efforts lowest to highest with the heading at the top", (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final selected = <SessionVariant>[];
+      await tester.pumpWidget(_buildVariantApp(onVariantSelected: selected.add));
+      await tester.tap(find.widgetWithText(PregoPickerButton, "minimal"));
+      await tester.pumpAndSettle();
+
+      final displayOrder = _variants.reversed.toList();
+      for (var index = 1; index < displayOrder.length; index++) {
+        expect(
+          tester.getTopLeft(_menuItem(displayOrder[index - 1].id)).dy,
+          lessThan(tester.getTopLeft(_menuItem(displayOrder[index].id)).dy),
+        );
+      }
+      final loc = AppLocalizations.of(tester.element(find.byType(AgentModelButtons)))!;
+      expect(
+        tester.getBottomLeft(find.text(loc.sessionDetailPickerVariant.toUpperCase())).dy,
+        lessThanOrEqualTo(tester.getTopLeft(_menuItem("minimal")).dy),
+      );
+      expect(tester.state<ScrollableState>(find.byType(Scrollable)).position.maxScrollExtent, 0);
+      expect(find.descendant(of: _menuItem("minimal"), matching: find.byIcon(Icons.check)), findsOneWidget);
+
+      await tester.tap(_menuItem("xhigh"));
+      await tester.pumpAndSettle();
+      expect(selected, [const SessionVariant(id: "xhigh")]);
+      expect(_menuItem("max"), findsNothing);
+    }, variant: platforms);
+
+    testWidgets("opens cramped menus at max and scrolls toward the lowest efforts", (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      tester.view.viewInsets = const FakeViewPadding(bottom: 216);
+      addTearDown(tester.view.reset);
+      final selected = <SessionVariant>[];
+      await tester.pumpWidget(_buildVariantApp(onVariantSelected: selected.add));
+      await tester.tap(find.widgetWithText(PregoPickerButton, "minimal"));
+      await tester.pumpAndSettle();
+
+      final scrollView = find.byType(SingleChildScrollView);
+      final position = tester.state<ScrollableState>(find.byType(Scrollable)).position;
+      expect(position.maxScrollExtent, greaterThan(0));
+      expect(_menuItem("max").hitTestable(), findsOneWidget);
+      expect(_menuItem("xhigh").hitTestable(), findsOneWidget);
+      expect(_menuItem("minimal").hitTestable(), findsNothing);
+      expect(tester.getRect(_menuItem("max")).bottom, tester.getRect(scrollView).bottom);
+
+      await tester.drag(scrollView, const Offset(0, 500));
+      await tester.pumpAndSettle();
+      expect(_menuItem("minimal").hitTestable(), findsOneWidget);
+      await tester.tap(_menuItem("minimal"));
+      await tester.pumpAndSettle();
+      expect(selected, [const SessionVariant(id: "minimal")]);
+      expect(_menuItem("max"), findsNothing);
+
+      // Scrolling a previous opening does not hide the strongest end next time.
+      await tester.tap(find.widgetWithText(PregoPickerButton, "minimal"));
+      await tester.pumpAndSettle();
+      expect(_menuItem("max").hitTestable(), findsOneWidget);
+      expect(_menuItem("minimal").hitTestable(), findsNothing);
+    }, variant: platforms);
+  });
+
   group("Agent picker", () {
     testWidgets("shows every agent, with none clipped out of reach", (tester) async {
       await tester.pumpWidget(_buildApp(agents: _agents, onAgentSelected: (_) {}));

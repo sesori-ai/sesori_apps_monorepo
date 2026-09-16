@@ -22,6 +22,7 @@ import "../../platform/notification_canceller.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/models/plugin_management_result.dart";
+import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
@@ -29,6 +30,7 @@ import "../../repositories/session_repository.dart";
 import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
+import "../../services/session_abort_service.dart";
 import "../../services/session_detail_load_service.dart";
 import "../../services/session_interaction_calculator.dart";
 import "../../services/session_selection_calculator.dart";
@@ -81,6 +83,7 @@ class SessionDetailCubit(
   required final SessionDetailLoadService _loadService,
   required final PluginManagementService _pluginManagementService,
   required final SessionInteractionCalculator _interactionCalculator,
+  required final SessionAbortService _sessionAbortService,
   required SessionRepository promptDispatcher,
   required final PermissionRepository _permissionRepository,
   required final SessionViewingService _sessionViewingService,
@@ -150,6 +153,7 @@ class SessionDetailCubit(
   bool _wasConnected = false;
   bool _stalePromptOptionsRefreshInFlight = false;
   bool _backgroundOptionsRefreshInFlight = false;
+  bool _abortRequestInFlight = false;
 
   /// Route visibility is separate from app lifecycle visibility. Desktop can
   /// cover the nested session navigator with a root-level settings route while
@@ -737,13 +741,14 @@ class SessionDetailCubit(
     // An older page still in flight describes the transcript this refresh is
     // about to replace, so it must not join the refreshed one.
     _transcriptGeneration++;
+    final queue = _queueView(bridgePrompts: current.bridgeQueuedPrompts);
     emit(
       current.copyWith(
         isRefreshing: true,
         isLoadingOlderMessages: false,
-        queuedMessages: _promptQueue.items,
-        awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
-        sendingSubmission: _promptQueue.active,
+        queuedMessages: queue.queuedMessages,
+        awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+        sendingSubmission: queue.sendingSubmission,
       ),
     );
 
@@ -932,12 +937,13 @@ class SessionDetailCubit(
   void _emitRefreshEnded() {
     final latest = state;
     if (latest is! SessionDetailLoaded) return;
+    final queue = _queueView(bridgePrompts: latest.bridgeQueuedPrompts);
     emit(
       latest.copyWith(
         isRefreshing: false,
-        queuedMessages: _promptQueue.items,
-        awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
-        sendingSubmission: _promptQueue.active,
+        queuedMessages: queue.queuedMessages,
+        awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+        sendingSubmission: queue.sendingSubmission,
       ),
     );
   }
@@ -1056,6 +1062,8 @@ class SessionDetailCubit(
           _onPromptDefaultsChanged(promptDefaults);
         case SesoriSessionQueuedPrompts(:final prompts):
           _onBridgeQueueUpdated(prompts);
+        case SesoriSessionPromptSettled(:final promptID):
+          _settlePromptRepresentation(promptId: promptID);
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -1154,6 +1162,7 @@ class SessionDetailCubit(
       SesoriSessionDiff() ||
       SesoriSessionError() ||
       SesoriSessionCompacted() ||
+      SesoriSessionPromptSettled() ||
       SesoriCommandExecuted() ||
       SesoriMessageUpdated() ||
       SesoriMessageRemoved() ||
@@ -1214,6 +1223,7 @@ class SessionDetailCubit(
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
+            SesoriSessionPromptSettled() ||
             SesoriServerConnected() ||
             SesoriServerHeartbeat() ||
             SesoriServerInstanceDisposed() ||
@@ -1433,8 +1443,18 @@ class SessionDetailCubit(
     // echo carries none — and a wrong match would discard a send the user
     // still owns. Harness echoes reach the client with an id because each
     // plugin stamps the echo of its own dispatch; a harness that publishes no
-    // user echo leaves the staged prompt to snapshot reconciliation.
+    // user echo leaves the staged prompt to snapshot reconciliation or an
+    // explicit prompt-settled event from a silent harness action.
     if (promptId == null) return;
+    _settlePromptRepresentation(promptId: promptId);
+  }
+
+  /// Drops every local and bridge-owned representation of a prompt the bridge
+  /// has terminally accounted for, then resumes staged FIFO delivery.
+  void _settlePromptRepresentation({required String promptId}) {
+    if (isClosed) return;
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
     _promptQueue.removeByPromptId(promptId);
     final bridgePrompts = [
       for (final prompt in current.bridgeQueuedPrompts)
@@ -1449,8 +1469,8 @@ class SessionDetailCubit(
         sendingSubmission: queue.sendingSubmission,
       ),
     );
-    // The delivered prompt's own send may have stopped the drain on a lost
-    // response; anything staged behind it must not stay parked.
+    // A settlement can outrun the send response. Keep the single-flight slot
+    // until that response lands, then its completion path drains again.
     _tryDrainQueue();
   }
 
@@ -1944,7 +1964,7 @@ class SessionDetailCubit(
   }
 
   Future<void> _drainQueuedMessages() async {
-    if (_promptQueue.isSending || _stalePromptOptionsRefreshInFlight) return;
+    if (_promptQueue.isSending || _stalePromptOptionsRefreshInFlight || _abortRequestInFlight) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
     if (!_isConnected) return;
@@ -2611,56 +2631,36 @@ class SessionDetailCubit(
 
   /// Stops the session with the given sub-agent scope.
   ///
-  /// Stop means "run nothing further": for `keep` and `stop` the local prompt
-  /// queue is cleared before the request so a staged send cannot drain while
-  /// it is in flight (the bridge clears its own queue). A `confirm` probe may
-  /// be refused, so it clears the queue only once the bridge accepted it.
-  /// Under `stop` every busy child session is aborted too — plugins whose
-  /// children are real sessions keep today's stop-everything behavior.
+  /// Queue draining pauses for the request lifetime. Only exact non-mutating
+  /// rejection/refusal outcomes retain local queue and stale-option state;
+  /// accepted or ambiguous outcomes clear them.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
     // A scope dialog can outlive an archive event from another surface.
     if (_refuseWhenArchived(action: "stop the session") || _refuseWhenInteractionBlocked(action: "stop the session")) {
       return const SessionAbortOutcome.failed();
     }
+    _abortRequestInFlight = true;
     try {
-      final requestChildStatuses = switch (state) {
-        SessionDetailLoaded(:final childStatuses) => Map<String, SessionStatus>.of(childStatuses),
-        SessionDetailLoading() ||
-        SessionDetailHarnessUnavailable() ||
-        SessionDetailFailed() => const <String, SessionStatus>{},
-      };
-      if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
-      final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
-      final subAgentsHandled = switch (root) {
-        SuccessResponse(:final data) => data,
-        ErrorResponse(:final error) => throw error,
-      };
+      await _sessionAbortService.abortSession(sessionId: _sessionId, subAgents: subAgents);
       _clearLocalPromptQueue();
-
-      // Prefer post-stop status truth, but retain the request snapshot when an
-      // concurrent reload temporarily replaces the loaded detail state.
-      final current = state;
-      final childStatuses = current is SessionDetailLoaded ? current.childStatuses : requestChildStatuses;
-      if (subAgents != SessionAbortSubAgentPolicy.keep && !subAgentsHandled) {
-        final results = await Future.wait([
-          for (final MapEntry(key: childId, value: status) in childStatuses.entries)
-            if (status is SessionStatusBusy || status is SessionStatusRetry)
-              _sessionRepository.abortSession(sessionId: childId, subAgents: SessionAbortSubAgentPolicy.stop),
-        ]);
-        for (final result in results) {
-          if (result case ErrorResponse(:final error)) throw error;
-        }
-      }
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
       return const SessionAbortOutcome.aborted();
-    } on SessionAbortRejectedException catch (e) {
-      return SessionAbortOutcome.rejected(rejection: e.rejection);
-    } on Object catch (e, st) {
-      // The bridge may have accepted a probe whose response was lost; only the
-      // typed rejection proves nothing happened, so the queue is cleared here too.
+    } on SessionAbortRejectedException catch (error) {
+      return SessionAbortOutcome.rejected(rejection: error.rejection);
+    } on SessionAbortNotAcceptedException catch (error) {
+      return SessionAbortOutcome.notAccepted(refusal: error.refusal);
+    } on SessionAbortDescendantFailureException catch (error) {
       _clearLocalPromptQueue();
-      loge("Failed to abort session(s)", e, st);
+      loge("Failed to abort session descendants", error.cause, error.causeStackTrace);
       return const SessionAbortOutcome.failed();
+    } on Object catch (error, stackTrace) {
+      // Response loss and partial bridge failures may follow a mutating stop.
+      _clearLocalPromptQueue();
+      loge("Failed to abort session(s)", error, stackTrace);
+      return const SessionAbortOutcome.failed();
+    } finally {
+      _abortRequestInFlight = false;
+      if (_isConnected) unawaited(_drainQueuedMessages());
     }
   }
 

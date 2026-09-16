@@ -31,8 +31,13 @@ state.
   while a navigated directory loads or reports an access failure. Hiding delists
   without destroying sessions or history. A catalog import lists newly inserted
   projects immediately and preserves the stored visibility of every existing
-  project; it does not infer why an existing row is hidden. Import is explicit,
-  per plugin, atomic, non-destructive, cancellable, and attributes progress.
+  project; it does not infer why an existing row is hidden. A new project found
+  by automatic hydration starts hidden when the first directory entry below the
+  resolved user home starts with `.`: both `~/.tool` and its descendants qualify.
+  Explicit catalog imports and manual project opens remain visible by default,
+  while a dot directory nested below a visible home entry does not qualify. No
+  existing project is backfilled or reclassified. Import is explicit, per plugin,
+  atomic, non-destructive, cancellable, and attributes progress.
 - A completed import reports both the totals it published and, separately, how
   much of that was new. The two are not interchangeable: a re-import of an
   unchanged catalog still publishes every row, so the totals stay at the full
@@ -74,28 +79,37 @@ state.
   non-overridden OpenCode installs use the public-channel `opencode.db`; an explicit
   custom binary does not guess that default or a channel-specific filename. OpenCode
   attach/no-auto-start mode always retains its existing server path.
-- One scan is one row above the list, however many harnesses take part. It names
-  only unfinished harnesses while preparing, distinguishes confirmed harness
-  startup from catalog reading, reports found-session counts during enumeration,
-  and says when results are being saved. Startup wording is driven only by a
-  fresh management snapshot for the same bridge; unknown or older metadata does
-  not infer it. After the same harness remains confirmed as starting for three
-  seconds, the row explains that scanning is waiting for startup and that the
-  user can keep browsing. This one-shot presentation timer resets on any phase
-  or harness change and never polls or changes bridge work. It offers to cancel
-  throughout live work. Every live phase shares the same Deep Scan loading-card
-  treatment, and the row scrolls with the list rather than pinning. The entrance
-  animation plays once when a pull first reveals the row; later updates do not
-  replay it, and the scan indicator keeps animating until a terminal outcome
-  replaces it. Android Remove Animations and iOS Reduce Motion both hold the
-  intentional first frame without the entrance bounce, and the pull-caption
-  invitation keeps only its gentle opacity transition. Finished outcomes use the
-  shared PREGO result-card geometry, expanding rather than clipping at
-  accessibility text sizes: a success, warning, or error glow rises from the
-  lower edge and the matching tinted Dismiss action remains available until the
-  result clears. Loading and every result state use a vertically centered 20px
-  leading mark with identical edge inset and icon-to-text gap. Titles do not
-  shift horizontally between states; at standard text size, icon and title
+- One scan is one row above the list, however many harnesses take part. The
+  service chooses the first unfinished harness in the operation's fixed
+  membership order, including members with no progress event yet, and keeps
+  later harness progress in stored state without letting it steal focus. Focus
+  advances only when the selected harness completes, fails, is cancelled, or
+  is removed by an unavailable/not-found start outcome. The row names that
+  harness while preparing, distinguishes confirmed harness startup from
+  catalog reading, reports found-session counts during enumeration, and says
+  when results are being saved. Every live phase also reports finished
+  harnesses out of the current membership; completed, failed, and cancelled
+  members count as finished, while unavailable/not-found members removed from
+  membership do not. Startup
+  wording is driven only by a fresh management snapshot for the same bridge;
+  unknown or older metadata does not infer it. After the same harness remains
+  confirmed as starting for three seconds, the row explains that scanning is
+  waiting for startup and that the user can keep browsing. This one-shot
+  presentation timer resets on any phase or harness change and never polls or
+  changes bridge work. It offers to cancel throughout live work. Every live
+  phase shares the same Deep Scan loading-card treatment, and the row scrolls
+  with the list rather than pinning. The entrance animation plays once when a
+  pull first reveals the row; later updates do not replay it, and the scan
+  indicator keeps animating until a terminal outcome replaces it. Android
+  Remove Animations and iOS Reduce Motion both hold the intentional first
+  frame without the entrance bounce, and the pull-caption invitation keeps
+  only its gentle opacity transition. Finished outcomes use the shared PREGO
+  result-card geometry, expanding rather than clipping at accessibility text
+  sizes: a success, warning, or error glow rises from the lower edge and the
+  matching tinted Dismiss action remains available until the result clears.
+  Loading and every result state use a vertically centered 20px leading mark
+  with identical edge inset and icon-to-text gap. Titles do not shift
+  horizontally between states; at standard text size, icon and title
   positions stay fixed vertically too. Enlarged text may grow the card without
   changing those horizontal insets.
 - A scan the pull started is reported by that row alone: the pull raises no
@@ -188,6 +202,15 @@ state.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
+- Regular and archived session rows omit the subtitle line and its spacing
+  when no branch, pull request, or status label is shown. Title-only rows are
+  48px at standard text size; a populated subtitle retains the 70px row height.
+  Running and unread sparkles alone do not reserve a subtitle. Both layouts
+  grow with accessibility text rather than clipping. Regular rows show a
+  Running section first, then idle rows grouped by updated-time date buckets;
+  archived rows retain archive-time date buckets. Awaiting-input-only rows stay
+  in their updated-time bucket, and missing timestamps use an Unknown date
+  heading rather than an invented epoch.
 - Session activity stays relative for 30 days. Older rows use a compact numeric
   date whose field order and separators follow the user's full device locale;
   dates from the current year omit the year, while earlier years remain explicit.
@@ -276,7 +299,17 @@ state.
   Malformed summaries and unreadable files remain visible failures; an isolated
   malformed update line is logged and skipped. Import remains
   non-destructive, never reads credentials or configuration, and never resumes a
-  listed session merely to catalog it.
+  listed session merely to catalog it. Corrected production-composition QA after
+  PR #1429 verified an exact persisted root/child catalog link. Phone QA on
+  2026-09-12 opened the owned project and root from cold history,
+  preserved cancelled/completed child tiles, and navigated the exact completed
+  child read-only. The child-owned initial row stayed single, but its
+  assistant/tool/final sequence appeared twice under stable distinct rows.
+  Fixed build `0187bb2b10` reduced this to one tool row while both adjacent
+  assistant rows remained duplicated because live final text was an empty
+  snapshot. Final owned-phone QA on build `493bab1483` showed exactly one
+  completed child tile and one initial plus assistant/tool/assistant transcript
+  on two cold opens, so the bounded child-history presentation gate passes.
 - Running root sessions remain ahead of inactive roots and order by the latest
   durable user-side activity marker, descending, then session ID. Projects with
   running roots likewise remain ahead of inactive projects and order by the
@@ -309,7 +342,7 @@ state.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
-| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new and lists its newly inserted projects, while preserving an existing project's stored visibility; a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. An automatic hydration request with a current marker does not enumerate or publish progress. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused shared-presentation and shell tests cover project/session empty and row states, split-pane behavior, mobile CLI recovery, both desktop disconnected variants using supervised Start without CLI copy, and desktop list-to-detail plus child-session routing with unsupported detail controls omitted. Focused client coverage also proves the deeper pull starts one scan however far it travels, that a pull which fired it runs no ordinary refresh and raises no confirmation while an ordinary pull still does, that the row keeps one height from starting through running to its result, that its loader and beam follow the coordinated timeline and reduced-motion rest frame, that terminal tones, platform corners, localized count branches, and Cancel/Dismiss semantics remain exact, and that a scan started from harness settings is announced there while one started elsewhere is not. |
+| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new and lists its newly inserted projects, while preserving an existing project's stored visibility. Focused import coverage proves automatic hydration hides new projects at and below a top-level home dot directory, leaves a dot directory below a visible home entry visible, and lets an explicit import—including one joining an in-flight automatic write—remain visible; a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. An automatic hydration request with a current marker does not enumerate or publish progress. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused shared-presentation and shell tests cover project/session empty and row states, split-pane behavior, mobile CLI recovery, both desktop disconnected variants using supervised Start without CLI copy, and desktop list-to-detail plus child-session routing with unsupported detail controls omitted. Focused client coverage also proves the deeper pull starts one scan however far it travels, that a pull which fired it runs no ordinary refresh and raises no confirmation while an ordinary pull still does, that the row keeps one height from starting through running to its result, that its loader and beam follow the coordinated timeline and reduced-motion rest frame, that terminal tones, platform corners, localized count branches, and Cancel/Dismiss semantics remain exact, and that a scan started from harness settings is announced there while one started elsewhere is not. |
 | L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; Copilot exhausts a multi-page standard ACP catalog and exposes one newly imported session without a second manual refresh; Grok explicitly imports a persisted session with `grok` attribution, then an unchanged re-import leaves the committed catalog intact; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. A catalog scan started by the deeper pull renders its row through starting, running, and its result on one mobile platform and in the wide split-view pane, which drives its pull through a different scroll owner; two *routable* harnesses at once, so the fan-out has two members and a partial failure is reachable at all — enabled is not enough, since a blocked or failed harness is enabled and still left out; one native-ownership and one bridge-derived harness, which count new projects differently; and one run that genuinely imports a new session, visible in the list without a second manual refresh. |
 | L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or first-page failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. Copilot later-page failure commits gathered pages as a non-destructive fail-soft partial observation. Scanning against older and interrupted peers: a bridge that omits its new-item delta falls back to totals rather than reporting nothing new; a supported bridge with no import route at all reports that it cannot scan, and so does one that has the import route but not the management route the app needs to learn its harnesses — two different bridge versions reaching the same state by different paths; a bridge holding terminal import statuses is reconnected to without announcing a stale success; a disconnect mid-scan reconnects and settles without claiming a summary; and a bridge whose harnesses are all blocked reports that there is nothing to scan. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
@@ -332,10 +365,18 @@ disposable sessions and projects and restore hidden-state changes afterwards.
 For activity order, vary REST versus live delivery, null versus populated
 markers, ties, awaiting-only versus running state, and assistant/tool updates
 after a marker has been established.
+For session-row sizing and grouping, compare regular and archived title-only
+rows against branch-only, PR-only, and status-only subtitles. Toggle subtitle
+content and check compact spacing, preserved swipe/menu actions, and enlarged
+text. Verify regular Running-first ordering, awaiting-only date grouping,
+updated-time versus archive-time buckets, and missing-timestamp headings.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
 10% edge buffer.
-For catalog scanning, use the mobile component playbook to compare every scan
+For catalog scanning, vary automatic hydration against explicit import and
+compare a direct home dot directory, its descendants, a dot directory nested
+below a visible home entry, and an existing project whose stored visibility must
+remain unchanged. Use the mobile component playbook to compare every scan
 row state and meaningful count variant in light/dark themes, iPhone/Android
 viewports, and reduced motion. Then vary the number of enabled harnesses,
 whether any is blocked or failed, and which surface starts the run — each of
@@ -376,7 +417,10 @@ leave the surface that started one. Restore harness eligibility afterwards.
   or later backend update moves the completed session's timestamp backward; or
   completion changes its read/unread state or last user-message marker.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
-- Hiding destroys sessions, or a cancelled import destroys the committed catalog.
+- Hiding destroys sessions, a cancelled import destroys the committed catalog,
+  automatic hydration exposes a newly discovered project below a top-level home
+  dot directory, or explicit import or an existing visibility choice is silently
+  hidden.
 - Desktop wide navigation recreates the session inventory on each selected
   detail/diff route, loses selection, or narrow navigation renders both panes.
 - Antigravity import parses SQLite/brain/token content, writes Google files, scans during an ordinary catalog read,
@@ -401,6 +445,11 @@ leave the surface that started one. Restore harness eligibility afterwards.
   navigation loses project/session/read-only identity, the New task or root
   file-changes action cannot reach its typed route, or desktop renders dead
   voice/attachment controls instead of honoring declared capabilities.
+- A title-only session row reserves an empty subtitle line, or a populated
+  subtitle is clipped or loses its spacing in regular or archived lists.
+- Regular session rows lose their Running-first section, promote awaiting-only
+  rows into it, use archive time instead of updated time, or render an epoch
+  date when a timestamp is missing.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its
@@ -431,6 +480,10 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Live client end-to-end catalog coverage remains phone-only. Desktop session
   creation and diffs have automated shared-view and typed-route coverage but
   still need a live desktop release exercise.
+- DeepSeek phone scoped-stop QA addressed an existing child independently and
+  observed its running grandchild for stop scope, but did not exercise catalog
+  import, parent/child list presentation, cold reload, or read-only child
+  navigation. Those cases are not client E2E coverage from this gate.
 - Derived lists are bounded by backend enumeration; a directory-scoped backend
   only rediscovers sessions in directories the bridge already knows.
 - Only plugins registered in the build under test count.

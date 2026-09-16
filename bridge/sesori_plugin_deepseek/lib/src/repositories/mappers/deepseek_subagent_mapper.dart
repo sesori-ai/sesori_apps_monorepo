@@ -23,6 +23,7 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
       DeepSeekSubagentStopReason.completed => PluginToolState(
         status: PluginToolStatus.completed,
         title: null,
+        shellCommand: null,
         output: boundedSummary,
         error: null,
         attachments: const [],
@@ -30,6 +31,7 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
       DeepSeekSubagentStopReason.aborted => const PluginToolState(
         status: PluginToolStatus.cancelled,
         title: null,
+        shellCommand: null,
         output: null,
         error: null,
         attachments: [],
@@ -39,6 +41,7 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
       DeepSeekSubagentStopReason.refusal => PluginToolState(
         status: PluginToolStatus.error,
         title: null,
+        shellCommand: null,
         output: null,
         error: boundedSummary ?? _errorFor(stopReason: stopReason),
         attachments: const [],
@@ -64,6 +67,7 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
         null => const PluginToolState(
           status: PluginToolStatus.running,
           title: null,
+          shellCommand: null,
           output: null,
           error: null,
           attachments: [],

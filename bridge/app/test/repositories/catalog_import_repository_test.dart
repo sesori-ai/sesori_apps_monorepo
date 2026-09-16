@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -10,7 +11,8 @@ import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show normalizeProjectDirectory, resolveUserHomeDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -217,10 +219,10 @@ void main() {
       expect(await repository.getHydrationCompletion(pluginId: "snapshot"), isNotNull);
     });
 
-    test("native import shows new projects while preserving existing visibility", () async {
+    test("explicit native import shows new projects while preserving existing visibility", () async {
       final visiblePath = "${directory.path}/visible";
       final hiddenPath = "${directory.path}/hidden";
-      final importedPath = "${directory.path}/imported";
+      final importedPath = p.join(_userHomeDirectory(), ".sesori-test-explicit-import", "project");
       await database.projectsDao.upsertProjectRows(
         rows: [
           _projectRow(id: "visible-project", path: visiblePath),
@@ -285,6 +287,71 @@ void main() {
           .drain<void>();
 
       expect((await database.projectsDao.getProject(projectId: "automatic-project"))?.hidden, isFalse);
+    });
+
+    test("automatic native hydration hides only new projects below top-level home dot directories", () async {
+      final homeDirectory = _userHomeDirectory();
+      final directHiddenPath = p.join(homeDirectory, ".sesori-test-direct-project");
+      final nestedHiddenPath = p.join(homeDirectory, ".sesori-test-catalog", "nested", "project");
+      final nestedDotPath = p.join(homeDirectory, "sesori-test-projects", ".nested", "project");
+      final existingPath = p.join(homeDirectory, ".sesori-test-existing", "project");
+      await database.projectsDao.upsertProjectRows(
+        rows: [_projectRow(id: "existing-project", path: existingPath)],
+      );
+      final plugin = _NativeImportPlugin(
+        projects: [
+          PluginProject(id: "direct-hidden-project", directory: directHiddenPath),
+          PluginProject(id: "nested-hidden-project", directory: nestedHiddenPath),
+          PluginProject(id: "nested-dot-project", directory: nestedDotPath),
+          PluginProject(id: "existing-project", directory: existingPath),
+        ],
+        rootsByProject: const {},
+        childrenByParent: const {},
+      );
+
+      await _repository(database: database, plugin: plugin)
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: false,
+              hydrationMarkerRequested: true,
+            ),
+          )
+          .drain<void>();
+
+      expect((await database.projectsDao.getProject(projectId: "direct-hidden-project"))?.hidden, isTrue);
+      expect((await database.projectsDao.getProject(projectId: "nested-hidden-project"))?.hidden, isTrue);
+      expect((await database.projectsDao.getProject(projectId: "nested-dot-project"))?.hidden, isFalse);
+      expect((await database.projectsDao.getProject(projectId: "existing-project"))?.hidden, isFalse);
+    });
+
+    test("an explicit import joining an automatic project write keeps the new project visible", () async {
+      final projectPath = p.join(_userHomeDirectory(), ".sesori-test-joined-explicit", "project");
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "joined-explicit-project", directory: projectPath)],
+        rootsByProject: const {},
+        childrenByParent: const {},
+      );
+      final projectsDao = _BlockingProjectWriteDao(database: database);
+      final repository = CatalogImportRepository(
+        runtime: createTestPluginRuntime(plugins: [plugin]),
+        projectsDao: projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
+      final control = CatalogImportControl(
+        explicitImportRequested: false,
+        hydrationMarkerRequested: true,
+      );
+      final publication = repository.importCatalog(pluginId: plugin.id, control: control).drain<void>();
+      await projectsDao.firstWriteStarted.future;
+
+      control.explicitImportRequested = true;
+      projectsDao.releaseFirstWrite();
+      await publication;
+
+      expect((await database.projectsDao.getProject(projectId: "joined-explicit-project"))?.hidden, isFalse);
     });
 
     test("native import gives an exact project id precedence during a move", () async {
@@ -1163,6 +1230,26 @@ class _BlockingProjectsDao({required AppDatabase database}) extends ProjectsDao 
   }
 }
 
+class _BlockingProjectWriteDao({required AppDatabase database}) extends ProjectsDao {
+  this : super(database);
+
+  final Completer<void> firstWriteStarted = Completer<void>();
+  final Completer<void> _firstWriteGate = Completer<void>();
+  var _firstWriteReleased = false;
+
+  void releaseFirstWrite() => _firstWriteGate.complete();
+
+  @override
+  Future<void> upsertProjectRows({required List<ProjectDto> rows}) async {
+    if (!_firstWriteReleased) {
+      _firstWriteReleased = true;
+      firstWriteStarted.complete();
+      await _firstWriteGate.future;
+    }
+    await super.upsertProjectRows(rows: rows);
+  }
+}
+
 class _RecordingSessionDao({
   required AppDatabase database,
   required final int? failOnWriteCall,
@@ -1245,6 +1332,10 @@ Future<CatalogImportCompleted> _importCompletion({
       .toList();
   return statuses.whereType<CatalogImportCompleted>().single;
 }
+
+String _userHomeDirectory() =>
+    resolveUserHomeDirectory(environment: Platform.environment) ??
+    (throw StateError("Unable to resolve user home directory for catalog import test"));
 
 CatalogImportRepository _repository({required AppDatabase database, required BridgePluginApi plugin}) {
   return singlePluginCatalogImportRepository(

@@ -46,7 +46,7 @@ mixin _$AcpToolContentDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpToolContentDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpToolContentDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -55,7 +55,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AcpToolContentDto()';
+    return 'AcpToolContentDto()';
 }
 
 
@@ -91,16 +91,18 @@ $AcpStandardToolContentDtoCopyWith<AcpStandardToolContentDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpStandardToolContentDto&&(identical(other.content, content) || other.content == content));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpStandardToolContentDto&&(identical(other.content, content) || other.content == content));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,content);
+int get hashCode {
+    return Object.hash(runtimeType,content);
+}
 
 @override
 String toString() {
-  return 'AcpToolContentDto.content(content: $content)';
+    return 'AcpToolContentDto.content(content: $content)';
 }
 
 
@@ -172,16 +174,18 @@ $AcpDiffToolContentDtoCopyWith<AcpDiffToolContentDto> get copyWith => _$AcpDiffT
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpDiffToolContentDto&&(identical(other.path, path) || other.path == path)&&(identical(other.oldText, oldText) || other.oldText == oldText)&&(identical(other.newText, newText) || other.newText == newText));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpDiffToolContentDto&&(identical(other.path, path) || other.path == path)&&(identical(other.oldText, oldText) || other.oldText == oldText)&&(identical(other.newText, newText) || other.newText == newText));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path,oldText,newText);
+int get hashCode {
+    return Object.hash(runtimeType,path,oldText,newText);
+}
 
 @override
 String toString() {
-  return 'AcpToolContentDto.diff(path: $path, oldText: $oldText, newText: $newText)';
+    return 'AcpToolContentDto.diff(path: $path, oldText: $oldText, newText: $newText)';
 }
 
 
@@ -244,16 +248,18 @@ $AcpTerminalToolContentDtoCopyWith<AcpTerminalToolContentDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpTerminalToolContentDto&&(identical(other.terminalId, terminalId) || other.terminalId == terminalId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpTerminalToolContentDto&&(identical(other.terminalId, terminalId) || other.terminalId == terminalId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,terminalId);
+int get hashCode {
+    return Object.hash(runtimeType,terminalId);
+}
 
 @override
 String toString() {
-  return 'AcpToolContentDto.terminal(terminalId: $terminalId)';
+    return 'AcpToolContentDto.terminal(terminalId: $terminalId)';
 }
 
 
@@ -309,7 +315,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpUnknownToolContentDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpUnknownToolContentDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -318,7 +324,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AcpToolContentDto.unknown()';
+    return 'AcpToolContentDto.unknown()';
 }
 
 

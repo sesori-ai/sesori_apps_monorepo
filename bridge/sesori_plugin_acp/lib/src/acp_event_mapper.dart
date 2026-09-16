@@ -10,6 +10,9 @@ import "repositories/trackers/acp_child_session_tracker.dart";
 import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
 
+/// Adapter-owned command extraction shared by live mapping and history replay.
+typedef AcpShellCommandResolver = String? Function({required Map<String, dynamic> update});
+
 /// Pure envelope normalization shared by live mapping and history replay.
 typedef AcpSessionUpdateNormalizer = Map<String, dynamic> Function({required Map<String, dynamic> params});
 
@@ -90,6 +93,10 @@ class AcpEventMapper({
   /// Identity for standard ACP. Harness overrides delegate to their Layer-2 mapper.
   /// Replay invokes the same hook before retaining any tool content.
   Map<String, dynamic> normalizeSessionUpdate({required Map<String, dynamic> params}) => params;
+
+  /// Adapter-authoritative command from an already-normalized tool update.
+  /// Standard ACP titles, execute kinds and arbitrary inputs are not authority.
+  String? shellCommandForToolUpdate({required Map<String, dynamic> update}) => null;
 
   /// Backend extension time for a message-bearing ACP notification.
   PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) => null;
@@ -284,6 +291,21 @@ class AcpEventMapper({
     _spawnToolCalls.remove(sessionId);
   }
 
+  /// Maps an authoritative prompt result before the owning turn settles.
+  /// Harnesses may use it to settle presentation state that has no separate
+  /// terminal lifecycle frame. Base ACP has no such state.
+  List<BridgeSseEvent> mapPromptResult({
+    required String sessionId,
+    required AcpStopReason stopReason,
+  }) => const [];
+
+  /// Maps harness presentation state after a prompt lifecycle failure and
+  /// before the owning turn settles. Base ACP has no such state.
+  List<BridgeSseEvent> mapPromptLifecycleFailure({
+    required String sessionId,
+    required String failureMessage,
+  }) => const [];
+
   /// Maps a rejected `session/prompt` into a durable inline error. A session
   /// error event carries no diagnostic text, so emitting only that event would
   /// make an accepted prompt appear to finish silently.
@@ -332,6 +354,18 @@ class AcpEventMapper({
   String _fallbackTurnMessageId(String sessionId) => _turnMessageIds[sessionId] ?? "$sessionId-t${_turn(sessionId)}";
 
   static String initialUserMessageId(String sessionId) => "$sessionId-initial-user";
+
+  /// Deterministic identity for a standalone tool envelope.
+  ///
+  /// ACP v1 defines `ToolCallId` as unique within its session:
+  /// https://agentclientprotocol.com/protocol/v1/tool-calls. Per-turn live
+  /// state cleanup bounds memory; it does not narrow that protocol identity.
+  /// Live mapping and replay both own the typed opaque [toolCallId] here, so
+  /// they can agree without parsing identities after persistence.
+  static String toolMessageId({required String sessionId, required String toolCallId}) => "$sessionId-tool-$toolCallId";
+
+  /// Deterministic identity for the sole tool part in [messageId].
+  static String toolPartId({required String messageId}) => "$messageId-call";
 
   /// Maps the user-authored portion of a creation prompt with an identity that
   /// the same-process history replay can reuse. Matching message and part ids
@@ -1020,7 +1054,7 @@ class AcpEventMapper({
       (_spawnToolCalls[sessionId] ??= {}).add(toolCallId);
       return boundaryEvents;
     }
-    final messageId = "$sessionId-tool-$toolCallId";
+    final messageId = toolMessageId(sessionId: sessionId, toolCallId: toolCallId);
     final contentMutation = _contentMapper.toolContent(update: update);
     final contentTracker = prior?.contentTracker ?? AcpToolContentTracker();
     contentTracker.applyInitial(mutation: contentMutation);
@@ -1034,6 +1068,7 @@ class AcpEventMapper({
       // throwing and aborting the notification.
       tool: useCallTool ? _contentMapper.toolName(update: update) : prior.tool,
       title: prior?.title ?? (update["title"] is String ? update["title"] as String? : null),
+      shellCommand: prior?.shellCommand ?? shellCommandForToolUpdate(update: update),
       status: prior?.hasExplicitStatus ?? false ? prior!.status : mappedStatus ?? PluginToolStatus.pending,
       contentTracker: contentTracker,
       isFileMutation:
@@ -1079,7 +1114,7 @@ class AcpEventMapper({
       (_spawnToolCalls[sessionId] ??= {}).add(toolCallId);
       return boundaryEvents;
     }
-    final messageId = "$sessionId-tool-$toolCallId";
+    final messageId = toolMessageId(sessionId: sessionId, toolCallId: toolCallId);
     // A `tool_call_update` is a PARTIAL update: an agent may send only the
     // changed fields (e.g. `{status: completed}`). Merge onto the tool's prior
     // state so omitted name/title/content/status fields aren't reset to defaults,
@@ -1107,6 +1142,7 @@ class AcpEventMapper({
           ? _contentMapper.toolName(update: update)
           : (prior?.tool ?? _contentMapper.toolName(update: update)),
       title: update.containsKey("title") && update["title"] is String ? update["title"] as String? : prior?.title,
+      shellCommand: shellCommandForToolUpdate(update: update) ?? prior?.shellCommand,
       status: mappedStatus ?? prior?.status ?? PluginToolStatus.pending,
       contentTracker: contentTracker,
       isFileMutation:
@@ -1193,13 +1229,14 @@ class AcpEventMapper({
     final content = state.contentTracker.snapshot;
     return BridgeSseMessagePartUpdated(
       part: _toolPart(
-        partId: "$messageId-call",
+        partId: toolPartId(messageId: messageId),
         messageId: messageId,
         sessionId: sessionId,
         tool: state.tool,
         state: PluginToolState(
           status: state.status,
           title: state.title,
+          shellCommand: state.shellCommand,
           output: content.output,
           error: state.status == PluginToolStatus.error ? content.output : null,
           attachments: content.attachments,
@@ -1393,6 +1430,7 @@ class _TextPartAccumulator({
 /// The last-rendered state of one live tool call, so a partial
 /// `tool_call_update` merges onto it instead of replacing it.
 class _LiveTool({
+  required final String? shellCommand,
   required final String tool,
   required final String? title,
   required final PluginToolStatus status,

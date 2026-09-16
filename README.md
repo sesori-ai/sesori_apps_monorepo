@@ -184,8 +184,9 @@ Every integration ships enabled by default — pick your assistant when you star
 - **Setup:** choose Install in Antigravity's harness detail after reviewing its guidance, or provide the official matching
   server/harness siblings locally. `--antigravity-bin <path>` is authoritative and disables managed installation.
 - **Login:** personal Google OAuth from a current mobile/desktop client, separate from Sesori account login.
-  For a remote bridge, paste the browser's final loopback return URL into the active Sesori authentication sheet.
-  There is no CLI login fallback; credentials live in an isolated bridge-side profile.
+  Sesori captures the issued loopback callback automatically; mobile returns through a nonce-only native app callback.
+  The bridge validates and exchanges the captured callback. There is no copy/paste or CLI login fallback; credentials
+  live in an isolated bridge-side profile.
 - **Sessions:** supervised `default` mode only, no persistent approvals. Before a real session supplies model choices,
   a new session in a fresh process uses the account default. Local deletion does not erase Google's retained history.
 - **Evidence:** macOS arm64 initialize-only/managed installation is verified; real OAuth, authenticated sessions and

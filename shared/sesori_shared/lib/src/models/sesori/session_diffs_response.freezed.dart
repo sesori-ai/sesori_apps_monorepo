@@ -29,16 +29,21 @@ $SessionDiffsResponseCopyWith<SessionDiffsResponse> get copyWith => _$SessionDif
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDiffsResponse&&const DeepCollectionEquality().equals(other.diffs, diffs));
+  final _this = this as SessionDiffsResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDiffsResponse&&const DeepCollectionEquality().equals(other.diffs, _this.diffs));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(diffs));
+int get hashCode {
+  final _this = this as SessionDiffsResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.diffs));
+}
 
 @override
 String toString() {
-  return 'SessionDiffsResponse(diffs: $diffs)';
+  final _this = this as SessionDiffsResponse;
+  return 'SessionDiffsResponse(diffs: ${_this.diffs})';
 }
 
 
@@ -105,16 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionDiffsResponse&&const DeepCollectionEquality().equals(other._diffs, _diffs));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionDiffsResponse&&const DeepCollectionEquality().equals(other.diffs, _diffs));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_diffs));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_diffs));
+}
 
 @override
 String toString() {
-  return 'SessionDiffsResponse(diffs: $diffs)';
+    return 'SessionDiffsResponse(diffs: $diffs)';
 }
 
 

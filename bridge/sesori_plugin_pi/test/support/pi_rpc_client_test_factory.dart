@@ -45,15 +45,21 @@ Future<Map<String, Object?>> waitForCommand({
   required FakePiProcess process,
   required String type,
   int attempts = 50,
+}) => waitForNthCommand(process: process, type: type, count: 1, attempts: attempts);
+
+Future<Map<String, Object?>> waitForNthCommand({
+  required FakePiProcess process,
+  required String type,
+  required int count,
+  int attempts = 50,
 }) async {
   for (var i = 0; i < attempts; i++) {
-    for (final frame in process.written) {
-      if (frame["type"] == type) return frame;
-    }
+    final matches = process.written.where((frame) => frame["type"] == type).toList();
+    if (matches.length >= count) return matches[count - 1];
     await pump();
   }
   throw StateError(
-    "no '$type' command written after $attempts attempts; saw: "
+    "fewer than $count '$type' commands written after $attempts attempts; saw: "
     "${process.written.map((frame) => frame["type"]).toList()}",
   );
 }

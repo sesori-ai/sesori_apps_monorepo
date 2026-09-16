@@ -91,7 +91,7 @@ mixin _$RelayMessage {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayMessage);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayMessage);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -100,7 +100,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'RelayMessage()';
+    return 'RelayMessage()';
 }
 
 
@@ -149,16 +149,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.method, method) || other.method == method)&&(identical(other.path, path) || other.path == path)&&const DeepCollectionEquality().equals(other._headers, _headers)&&(identical(other.body, body) || other.body == body));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.method, method) || other.method == method)&&(identical(other.path, path) || other.path == path)&&const DeepCollectionEquality().equals(other.headers, _headers)&&(identical(other.body, body) || other.body == body));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,method,path,const DeepCollectionEquality().hash(_headers),body);
+int get hashCode {
+    return Object.hash(runtimeType,id,method,path,const DeepCollectionEquality().hash(_headers),body);
+}
 
 @override
 String toString() {
-  return 'RelayMessage.request(id: $id, method: $method, path: $path, headers: $headers, body: $body)';
+    return 'RelayMessage.request(id: $id, method: $method, path: $path, headers: $headers, body: $body)';
 }
 
 
@@ -235,16 +237,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._headers, _headers)&&(identical(other.body, body) || other.body == body));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.headers, _headers)&&(identical(other.body, body) || other.body == body));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,status,const DeepCollectionEquality().hash(_headers),body);
+int get hashCode {
+    return Object.hash(runtimeType,id,status,const DeepCollectionEquality().hash(_headers),body);
+}
 
 @override
 String toString() {
-  return 'RelayMessage.response(id: $id, status: $status, headers: $headers, body: $body)';
+    return 'RelayMessage.response(id: $id, status: $status, headers: $headers, body: $body)';
 }
 
 
@@ -311,16 +315,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySseEvent&&(identical(other.data, data) || other.data == data));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySseEvent&&(identical(other.data, data) || other.data == data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,data);
+int get hashCode {
+    return Object.hash(runtimeType,data);
+}
 
 @override
 String toString() {
-  return 'RelayMessage.sseEvent(data: $data)';
+    return 'RelayMessage.sseEvent(data: $data)';
 }
 
 
@@ -385,16 +391,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySseSubscribe&&(identical(other.path, path) || other.path == path)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySseSubscribe&&(identical(other.path, path) || other.path == path)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path,attachmentDelivery);
+int get hashCode {
+    return Object.hash(runtimeType,path,attachmentDelivery);
+}
 
 @override
 String toString() {
-  return 'RelayMessage.sseSubscribe(path: $path, attachmentDelivery: $attachmentDelivery)';
+    return 'RelayMessage.sseSubscribe(path: $path, attachmentDelivery: $attachmentDelivery)';
 }
 
 
@@ -454,7 +462,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySseUnsubscribe);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySseUnsubscribe);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -463,7 +471,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'RelayMessage.sseUnsubscribe()';
+    return 'RelayMessage.sseUnsubscribe()';
 }
 
 
@@ -498,16 +506,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySessionView&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySessionView&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId);
+}
 
 @override
 String toString() {
-  return 'RelayMessage.sessionView(sessionId: $sessionId)';
+    return 'RelayMessage.sessionView(sessionId: $sessionId)';
 }
 
 
@@ -571,16 +581,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayProjectView&&(identical(other.projectId, projectId) || other.projectId == projectId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayProjectView&&(identical(other.projectId, projectId) || other.projectId == projectId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId);
+int get hashCode {
+    return Object.hash(runtimeType,projectId);
+}
 
 @override
 String toString() {
-  return 'RelayMessage.projectView(projectId: $projectId)';
+    return 'RelayMessage.projectView(projectId: $projectId)';
 }
 
 
@@ -644,16 +656,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayKeyExchange&&(identical(other.publicKey, publicKey) || other.publicKey == publicKey));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayKeyExchange&&(identical(other.publicKey, publicKey) || other.publicKey == publicKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,publicKey);
+int get hashCode {
+    return Object.hash(runtimeType,publicKey);
+}
 
 @override
 String toString() {
-  return 'RelayMessage.keyExchange(publicKey: $publicKey)';
+    return 'RelayMessage.keyExchange(publicKey: $publicKey)';
 }
 
 
@@ -718,16 +732,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayReady&&(identical(other.publicKey, publicKey) || other.publicKey == publicKey)&&(identical(other.roomKey, roomKey) || other.roomKey == roomKey));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayReady&&(identical(other.publicKey, publicKey) || other.publicKey == publicKey)&&(identical(other.roomKey, roomKey) || other.roomKey == roomKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,publicKey,roomKey);
+int get hashCode {
+    return Object.hash(runtimeType,publicKey,roomKey);
+}
 
 @override
 String toString() {
-  return 'RelayMessage.ready(publicKey: $publicKey, roomKey: $roomKey)';
+    return 'RelayMessage.ready(publicKey: $publicKey, roomKey: $roomKey)';
 }
 
 
@@ -787,7 +803,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayResume);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayResume);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -796,7 +812,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'RelayMessage.resume()';
+    return 'RelayMessage.resume()';
 }
 
 
@@ -826,7 +842,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayResumeAck);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayResumeAck);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -835,7 +851,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'RelayMessage.resumeAck()';
+    return 'RelayMessage.resumeAck()';
 }
 
 
@@ -865,7 +881,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayRekeyRequired);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayRekeyRequired);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -874,7 +890,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'RelayMessage.rekeyRequired()';
+    return 'RelayMessage.rekeyRequired()';
 }
 
 
@@ -911,16 +927,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthRelayMessage&&(identical(other.token, token) || other.token == token)&&(identical(other.role, role) || other.role == role)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthRelayMessage&&(identical(other.token, token) || other.token == token)&&(identical(other.role, role) || other.role == role)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,token,role,bridgeId);
+int get hashCode {
+    return Object.hash(runtimeType,token,role,bridgeId);
+}
 
 @override
 String toString() {
-  return 'RelayMessage.auth(token: $token, role: $role, bridgeId: $bridgeId)';
+    return 'RelayMessage.auth(token: $token, role: $role, bridgeId: $bridgeId)';
 }
 
 

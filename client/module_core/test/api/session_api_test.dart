@@ -23,6 +23,16 @@ void main() {
   });
 
   group("SessionApi", () {
+    void stubAbortError(NonSuccessCodeError error) {
+      when(
+        () => client.post<SessionAbortResponse>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(error));
+    }
+
     const options = SessionOptionsResponse(
       agents: Agents(agents: <AgentInfo>[]),
       providers: ProviderListResponse(items: <ProviderInfo>[], connectedOnly: false),
@@ -506,6 +516,41 @@ storedOnly: false,);
       )..called(1);
       final request = verification.captured.single as SessionMessagesRequest;
       expect(request.toJson()["attachmentDelivery"], "storedReference");
+    });
+
+    test("abort trusts recognized not-performed kind with a future reason", () async {
+      final transportError = NonSuccessCodeError(
+        errorCode: 409,
+        rawErrorString: jsonEncode(const <String, Object?>{"kind": "notPerformed", "reason": "future"}),
+      );
+      stubAbortError(transportError);
+
+      await expectLater(
+        api.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.confirm),
+        throwsA(
+          isA<SessionAbortApiNotAcceptedException>()
+              .having((error) => error.innerError, "cause", same(transportError))
+              .having((error) => error.refusal.reason, "reason", SessionAbortRefusalReason.unknownEnumValue),
+        ),
+      );
+    });
+
+    test("abort leaves malformed, missing, and unknown-kind 409s ambiguous", () async {
+      for (final body in [
+        "not-json",
+        jsonEncode(const <String, Object?>{"kind": "notPerformed"}),
+        jsonEncode(const {"kind": "future", "reason": "residentWorkCompletionUnknown"}),
+        jsonEncode(const {"kind": "future", "reason": "future", "runningSubAgentCount": 1, "mainAgentRunning": true}),
+      ]) {
+        final transportError = NonSuccessCodeError(errorCode: 409, rawErrorString: body);
+        stubAbortError(transportError);
+
+        final result = await api.abortSession(
+          sessionId: "session-1",
+          subAgents: SessionAbortSubAgentPolicy.confirm,
+        );
+        expect((result as ErrorResponse<SessionAbortResponse>).error, same(transportError));
+      }
     });
 
     test("getSessionDiffs posts the session id request", () async {

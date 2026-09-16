@@ -57,7 +57,7 @@ class InternalReleaseGateTest(unittest.TestCase):
         )
 
     def run_gate(
-        self, *, event: str = "schedule", ref: str = "refs/heads/main", succeeds: bool = True
+        self, *, automatic: str = "true", ref: str = "refs/heads/main", succeeds: bool = True
     ) -> tuple[str, str]:
         # Model checkout@v6 fetch-depth: 0, refreshing the moving remote tag.
         self.git(args=["fetch", "origin", "+refs/tags/*:refs/tags/*"])
@@ -68,7 +68,8 @@ class InternalReleaseGateTest(unittest.TestCase):
             cwd=self.repo,
             env={
                 **os.environ,
-                "GITHUB_EVENT_NAME": event,
+                "GITHUB_EVENT_NAME": "workflow_dispatch",
+                "RELEASE_AUTOMATIC": automatic,
                 "GITHUB_REF": ref,
                 "GITHUB_SHA": self.git(args=["rev-parse", "HEAD"]),
                 "GITHUB_OUTPUT": str(self.output),
@@ -175,21 +176,26 @@ class InternalReleaseGateTest(unittest.TestCase):
 
     def test_manual_run_retries_an_attempted_commit(self) -> None:
         self.run_gate()
-        output, _ = self.run_gate(event="workflow_dispatch")
+        output, _ = self.run_gate(automatic="false")
         self.assertEqual(output, "should_release=true\n")
 
     def test_manual_run_can_rebuild_a_tagged_commit(self) -> None:
         self.tag(name="v1.2.3-internal.42", annotated=True)
-        output, _ = self.run_gate(event="workflow_dispatch")
+        output, _ = self.run_gate(automatic="false")
         self.assertEqual(output, "should_release=true\n")
 
     def test_manual_branch_run_does_not_change_main_checkpoint(self) -> None:
         self.run_gate()
         main_attempt = self.attempt_sha()
         self.commit(path="client/app/lib/app.dart")
-        output, _ = self.run_gate(event="workflow_dispatch", ref="refs/heads/feature")
+        output, _ = self.run_gate(automatic="false", ref="refs/heads/feature")
         self.assertEqual(output, "should_release=true\n")
         self.assertEqual(self.attempt_sha(), main_attempt)
+
+    def test_invalid_automatic_value_fails_without_recording_attempt(self) -> None:
+        output, _ = self.run_gate(automatic="yes", succeeds=False)
+        self.assertNotIn("should_release=true", output)
+        self.assertEqual(self.attempt_sha(), "")
 
     def test_marker_push_failure_prevents_building(self) -> None:
         self.git(args=["remote", "set-url", "--push", "origin", str(self.fixture / "missing.git")])

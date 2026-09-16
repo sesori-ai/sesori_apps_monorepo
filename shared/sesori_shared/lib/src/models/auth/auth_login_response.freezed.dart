@@ -27,16 +27,21 @@ $AuthLoginResponseCopyWith<AuthLoginResponse> get copyWith => _$AuthLoginRespons
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthLoginResponse&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.user, user) || other.user == user)&&(identical(other.accountStatus, accountStatus) || other.accountStatus == accountStatus));
+  final _this = this as AuthLoginResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthLoginResponse&&(identical(other.accessToken, _this.accessToken) || other.accessToken == _this.accessToken)&&(identical(other.refreshToken, _this.refreshToken) || other.refreshToken == _this.refreshToken)&&(identical(other.user, _this.user) || other.user == _this.user)&&(identical(other.accountStatus, _this.accountStatus) || other.accountStatus == _this.accountStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,accessToken,refreshToken,user,accountStatus);
+int get hashCode {
+  final _this = this as AuthLoginResponse;
+  return Object.hash(runtimeType,_this.accessToken,_this.refreshToken,_this.user,_this.accountStatus);
+}
 
 @override
 String toString() {
-  return 'AuthLoginResponse(accessToken: $accessToken, refreshToken: $refreshToken, user: $user, accountStatus: $accountStatus)';
+  final _this = this as AuthLoginResponse;
+  return 'AuthLoginResponse(accessToken: ${_this.accessToken}, refreshToken: ${_this.refreshToken}, user: ${_this.user}, accountStatus: ${_this.accountStatus})';
 }
 
 
@@ -109,16 +114,18 @@ _$AuthLoginResponseCopyWith<_AuthLoginResponse> get copyWith => __$AuthLoginResp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthLoginResponse&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.user, user) || other.user == user)&&(identical(other.accountStatus, accountStatus) || other.accountStatus == accountStatus));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthLoginResponse&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.user, user) || other.user == user)&&(identical(other.accountStatus, accountStatus) || other.accountStatus == accountStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,accessToken,refreshToken,user,accountStatus);
+int get hashCode {
+    return Object.hash(runtimeType,accessToken,refreshToken,user,accountStatus);
+}
 
 @override
 String toString() {
-  return 'AuthLoginResponse(accessToken: $accessToken, refreshToken: $refreshToken, user: $user, accountStatus: $accountStatus)';
+    return 'AuthLoginResponse(accessToken: $accessToken, refreshToken: $refreshToken, user: $user, accountStatus: $accountStatus)';
 }
 
 

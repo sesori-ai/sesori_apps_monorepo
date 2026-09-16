@@ -61,8 +61,12 @@ sealed class PluginMessageWithParts with _$PluginMessageWithParts {
 @Freezed(unionKey: "type")
 sealed class const PluginMessagePart._() with _$PluginMessagePart {
   @FreezedUnionValue("text")
-  const factory text({required String id, required String sessionID, required String messageID, @JsonKey(includeToJson: true) required String text}) =
-      PluginMessagePartText;
+  const factory text({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    @JsonKey(includeToJson: true) required String text,
+  }) = PluginMessagePartText;
 
   @FreezedUnionValue("reasoning")
   const factory reasoning({
@@ -307,6 +311,7 @@ sealed class PluginToolState with _$PluginToolState {
   const factory({
     required PluginToolStatus status,
     required String? title,
+    required String? shellCommand,
     required String? output,
     required String? error,
     required List<PluginMessageAttachment> attachments,
@@ -318,7 +323,11 @@ sealed class PluginToolState with _$PluginToolState {
 /// [unknown] lets a plugin preserve uncertain attribution without presenting
 /// the message as agent-authored.
 @JsonEnum()
-enum PluginMessageSender() { agent, system, unknown }
+enum PluginMessageSender() {
+  agent,
+  system,
+  unknown,
+}
 
 /// Sealed class representing a plugin-level message.
 ///

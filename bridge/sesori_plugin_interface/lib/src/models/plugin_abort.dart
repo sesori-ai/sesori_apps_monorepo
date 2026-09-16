@@ -11,6 +11,11 @@ enum PluginAbortSubAgentPolicy() {
   stop,
 }
 
+/// Why a plugin could not safely perform a requested stop.
+enum PluginAbortRefusalReason() {
+  residentWorkCompletionUnknown,
+}
+
 sealed class const PluginAbortResult();
 
 /// The stop was performed. [workKept] is true only when resident work (running
@@ -29,4 +34,9 @@ final class const PluginAbortRejectedSubAgentsRunning({
   /// Whether the plugin can interrupt a running main agent while leaving its
   /// sub-agents alive (`keep`). Claude cannot: its interrupt stops both.
   required final bool mainAgentOnlySupported,
+}) extends PluginAbortResult;
+
+/// The stop was not attempted because the plugin cannot prove it is safe.
+final class const PluginAbortNotPerformed({
+  required final PluginAbortRefusalReason reason,
 }) extends PluginAbortResult;

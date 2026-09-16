@@ -14,6 +14,7 @@ class const CodexRolloutToolCall({
   required final String? turnId,
   required final String tool,
   required final String? title,
+  required final String? shellCommand,
   required final CodexToolPresentation presentation,
 });
 
@@ -364,6 +365,11 @@ class const CodexRolloutToolMapper({
       turnId: _usefulText(turnId),
       tool: fileChangePatch == null ? normalizeToolName(usefulName) : "edit",
       title: fileChangePatch == null ? toolCallTitle(input) : _fileChangeTitle(patch: fileChangePatch),
+      shellCommand: switch (usefulName.toLowerCase()) {
+        "exec_command" => _commandArgument(input: input),
+        "exec" => _embeddedExecCommand(source: input),
+        _ => null,
+      },
       presentation: const CodexOrdinaryToolPresentation(),
     );
   }
@@ -624,36 +630,63 @@ class const CodexRolloutToolMapper({
     }
   }
 
+  String? _commandArgument({required String input}) {
+    final arguments = _tryDecodeToolArguments(raw: input);
+    final command = arguments?.cmd ?? arguments?.command;
+    return command is String ? _usefulText(command) : null;
+  }
+
   String? _embeddedExecCommand({required String source}) {
-    const marker = "tools.exec_command(";
-    final markerIndex = source.indexOf(marker);
-    if (markerIndex < 0) return null;
-
-    final argumentsStart = markerIndex + marker.length;
-    final commandMatch = RegExp(
-      r'(?:^|[,{]\s*)(?:"cmd"|cmd)\s*:\s*',
-    ).firstMatch(source.substring(argumentsStart));
-    if (commandMatch == null) return null;
-    final valueStart = argumentsStart + commandMatch.end;
-    if (valueStart >= source.length || source.codeUnitAt(valueStart) != 0x22) {
-      return null;
-    }
-
-    var escaped = false;
-    for (var index = valueStart + 1; index < source.length; index++) {
-      final codeUnit = source.codeUnitAt(index);
-      if (escaped) {
-        escaped = false;
-      } else if (codeUnit == 0x5C) {
-        escaped = true;
-      } else if (codeUnit == 0x22) {
-        try {
-          final decoded = jsonDecode(source.substring(valueStart, index + 1));
-          return decoded is String ? decoded : null;
-        } on FormatException {
-          return null;
+    // Reuse the correlation scanner: never extract an invocation from a string
+    // or comment, or guess which command a multi-command script represents.
+    if (!_hasSingleCodeModeCommandInvocation(source)) return null;
+    final lexical = _JsLexicalState();
+    for (var index = 0; index < source.length; index++) {
+      final skipped = lexical.skipNonCode(
+        current: source.codeUnitAt(index),
+        next: index + 1 < source.length ? source.codeUnitAt(index + 1) : null,
+      );
+      if (skipped != null) {
+        index += skipped;
+        continue;
+      }
+      final invocation = _codeModeCommandInvocationPrefixPattern.matchAsPrefix(source, index);
+      if (invocation == null) continue;
+      final invocationEnd = _matchingInvocationEnd(source: source, openParenthesisIndex: invocation.end - 1);
+      if (invocationEnd == null) return null;
+      final jsonCommand = _commandArgument(input: source.substring(invocation.end, invocationEnd - 1));
+      if (jsonCommand != null) return jsonCommand;
+      // Beyond JSON objects, only a literal first cmd property is established.
+      // Expressions and other JS forms rely on correlated commandExecution.
+      final property = RegExp(r"""^\s*\{\s*(?:cmd|"cmd"|'cmd')\s*:\s*""").firstMatch(source.substring(invocation.end));
+      if (property == null) return null;
+      final start = invocation.end + property.end;
+      if (start >= source.length) return null;
+      final quote = source.codeUnitAt(start);
+      if (quote != 0x22 && quote != 0x27) return null;
+      var escaped = false;
+      for (var end = start + 1; end < source.length; end++) {
+        final unit = source.codeUnitAt(end);
+        if (escaped) {
+          escaped = false;
+        } else if (unit == 0x5c) {
+          escaped = true;
+        } else if (unit == quote) {
+          // Reject concatenation/interpolation rather than forward a partial command.
+          if (!RegExp(r"^\s*[,}]").hasMatch(source.substring(end + 1))) return null;
+          var literal = source.substring(start, end + 1);
+          if (quote == 0x27) {
+            final body = literal.substring(1, literal.length - 1).replaceAll(r"\'", "'").replaceAll('"', r'\"');
+            literal = '"$body"';
+          }
+          try {
+            return _usefulText(jsonDecode(literal) as String);
+          } on FormatException {
+            return null;
+          }
         }
       }
+      return null;
     }
     return null;
   }

@@ -21,7 +21,7 @@ mixin _$ConnectionStatus {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionStatus);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionStatus);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ConnectionStatus()';
+    return 'ConnectionStatus()';
 }
 
 
@@ -57,7 +57,7 @@ class ConnectionDisconnected implements ConnectionStatus {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionDisconnected);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionDisconnected);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ConnectionStatus.disconnected()';
+    return 'ConnectionStatus.disconnected()';
 }
 
 
@@ -95,16 +95,18 @@ $ConnectionConnectedCopyWith<ConnectionConnected> get copyWith => _$ConnectionCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionConnected&&(identical(other.config, config) || other.config == config)&&(identical(other.health, health) || other.health == health));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionConnected&&(identical(other.config, config) || other.config == config)&&(identical(other.health, health) || other.health == health));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,config,health);
+int get hashCode {
+    return Object.hash(runtimeType,config,health);
+}
 
 @override
 String toString() {
-  return 'ConnectionStatus.connected(config: $config, health: $health)';
+    return 'ConnectionStatus.connected(config: $config, health: $health)';
 }
 
 
@@ -180,16 +182,18 @@ $ConnectionReconnectingCopyWith<ConnectionReconnecting> get copyWith => _$Connec
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionReconnecting&&(identical(other.config, config) || other.config == config));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionReconnecting&&(identical(other.config, config) || other.config == config));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,config);
+int get hashCode {
+    return Object.hash(runtimeType,config);
+}
 
 @override
 String toString() {
-  return 'ConnectionStatus.reconnecting(config: $config)';
+    return 'ConnectionStatus.reconnecting(config: $config)';
 }
 
 
@@ -255,16 +259,18 @@ $ConnectionLostCopyWith<ConnectionLost> get copyWith => _$ConnectionLostCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionLost&&(identical(other.config, config) || other.config == config));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionLost&&(identical(other.config, config) || other.config == config));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,config);
+int get hashCode {
+    return Object.hash(runtimeType,config);
+}
 
 @override
 String toString() {
-  return 'ConnectionStatus.connectionLost(config: $config)';
+    return 'ConnectionStatus.connectionLost(config: $config)';
 }
 
 
@@ -331,16 +337,18 @@ $ConnectionBridgeOfflineCopyWith<ConnectionBridgeOffline> get copyWith => _$Conn
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionBridgeOffline&&(identical(other.config, config) || other.config == config)&&(identical(other.health, health) || other.health == health));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionBridgeOffline&&(identical(other.config, config) || other.config == config)&&(identical(other.health, health) || other.health == health));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,config,health);
+int get hashCode {
+    return Object.hash(runtimeType,config,health);
+}
 
 @override
 String toString() {
-  return 'ConnectionStatus.bridgeOffline(config: $config, health: $health)';
+    return 'ConnectionStatus.bridgeOffline(config: $config, health: $health)';
 }
 
 

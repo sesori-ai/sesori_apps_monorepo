@@ -36,7 +36,7 @@ void main() {
     });
 
     test("asks for an upgrade when a superseded version is installed", () {
-      installedVersion("0.1.3");
+      installedVersion("0.1.4");
 
       expect(
         const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
@@ -48,7 +48,7 @@ void main() {
     });
 
     test("declines with an explicit binary override", () {
-      installedVersion("0.1.3");
+      installedVersion("0.1.4");
 
       expect(
         const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
@@ -156,7 +156,7 @@ void main() {
       probes: [
         _ProbeProcess(
           pid: 1,
-          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.3 deepseek-harness/0.1.1-rc.2 acp/1\n"),
+          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.4 deepseek-harness/0.1.1-rc.2 acp/1\n"),
           stderrBytes: const [],
           exitCodeValue: 0,
         ),
@@ -198,7 +198,7 @@ void main() {
       probes: [
         _ProbeProcess(
           pid: 1,
-          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.3 deepseek-harness/0.1.1-rc.2 acp/1\n"),
+          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.4 deepseek-harness/0.1.1-rc.2 acp/1\n"),
           stderrBytes: const [],
           exitCodeValue: 0,
         ),
@@ -422,7 +422,7 @@ class _AcpProcess({@override required final int pid, required final bool omitIni
             "sesori.ai/deepseek": {
               "extensionProtocolVersion": 2,
               "adapterVersion": DeepSeekPluginDescriptor.targetVersion,
-              "harnessVersion": "0.1.1-rc.2",
+              "harnessVersion": "0.1.5-rc.2",
               "persistenceOwner": "sesori",
             },
           },
