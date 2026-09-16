@@ -94,6 +94,7 @@ sealed class _PiTurn({
   required final String? userVisibleText,
 }) {
   PiSessionConnection? connection;
+  PiSessionSelection? effectiveSelection;
   bool promptDispatched = false;
   bool userMessageEmitted = false;
   bool responseSucceeded = false;
@@ -499,21 +500,12 @@ final class PiSessionService({
   }
 
   bool _changesSelection({required List<_PiTurn> inFlight, required _PiTurn next}) {
-    ({String providerID, String modelID})? effectiveModel;
-    String? effectiveVariant;
-    for (final turn in inFlight) {
-      final requestedModel = turn.model;
-      if (requestedModel != null && requestedModel != effectiveModel) {
-        effectiveModel = requestedModel;
-        effectiveVariant = null;
-      }
-      final requestedVariant = turn.variant?.id;
-      if (requestedVariant != null) effectiveVariant = requestedVariant;
-    }
+    final effectiveSelection = inFlight.last.effectiveSelection;
+    if (effectiveSelection == null) return next.model != null || next.variant != null;
     final nextModel = next.model;
-    if (nextModel != null && nextModel != effectiveModel) return true;
+    if (nextModel != null && nextModel != effectiveSelection.model) return true;
     final nextVariant = next.variant?.id;
-    return nextVariant != null && nextVariant != effectiveVariant;
+    return nextVariant != null && nextVariant != effectiveSelection.variant;
   }
 
   Future<void> _runTurn({
@@ -539,8 +531,7 @@ final class PiSessionService({
       }
       state.residentGeneration = connection.generation;
       turn.connection = connection;
-      await _processes.applySelection(
-        sessionId: sessionId,
+      turn.effectiveSelection = await _processes.applySelection(
         connection: connection,
         model: turn.model,
         variant: turn.variant,

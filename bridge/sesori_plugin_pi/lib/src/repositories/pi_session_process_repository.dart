@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart"
     show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
 
 import "../api/models/pi_rpc_frame.dart";
+import "../api/models/pi_rpc_state_dto.dart";
 import "../api/models/pi_session_history_dto.dart";
 import "../api/pi_launch_spec.dart";
 import "../api/pi_process_factory.dart";
@@ -72,10 +73,19 @@ final class const PiSessionAbortProcessExited({
 final class const PiPromptPayload({required final String message, required final List<Map<String, Object?>> images});
 
 enum _PiPromptStreamingBehavior(final String wireValue) {
-  steer("steer");
+  steer("steer"),
 }
 
-final class const PiAgentState({required final bool streaming, required final int pendingMessageCount});
+final class const PiSessionSelection({
+  required final ({String providerID, String modelID}) model,
+  required final String variant,
+});
+
+final class const PiAgentState({
+  required final bool streaming,
+  required final int pendingMessageCount,
+  required final PiSessionSelection? selection,
+});
 
 final class const PiUnsupportedPromptAttachmentException({required final String variant}) implements Exception {
   @override
@@ -359,31 +369,40 @@ final class PiSessionProcessRepository({
     }
   }
 
-  Future<void> applySelection({
-    required String sessionId,
+  Future<PiSessionSelection> applySelection({
     required PiSessionConnection connection,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
   }) async {
     final resident = _requiredResident(connection);
-    if (model != null && resident.model != model) {
+    var effectiveModel = resident.selection?.model;
+    var effectiveVariant = resident.selection?.variant;
+    if (model != null && effectiveModel != model) {
       await resident.client.send(
         command: PiRpcCommand.setModel,
         arguments: {"provider": model.providerID, "modelId": model.modelID},
         timeout: _historyRpcTimeout,
       );
-      resident.model = model;
-      resident.variant = null;
+      effectiveModel = model;
+      effectiveVariant = null;
     }
     final variantId = variant?.id;
-    if (variantId != null && resident.variant != variantId) {
+    if (variantId != null && effectiveVariant != variantId) {
       await resident.client.send(
         command: PiRpcCommand.setThinkingLevel,
         arguments: {"level": variantId},
         timeout: _historyRpcTimeout,
       );
-      resident.variant = variantId;
+      effectiveVariant = variantId;
     }
+    final selection = effectiveModel == null || effectiveVariant == null
+        ? (await _readState(resident)).selection
+        : PiSessionSelection(model: effectiveModel, variant: effectiveVariant);
+    if (selection == null) {
+      throw const FormatException("Pi get_state response omitted the active model or thinking level");
+    }
+    resident.selection = selection;
+    return selection;
   }
 
   Future<void> dispatchPrompt({
@@ -414,17 +433,30 @@ final class PiSessionProcessRepository({
   }
 
   Future<PiAgentState> getState({required PiSessionConnection connection}) async {
-    final data = (await _requiredResident(connection).client.send(
+    final resident = _requiredResident(connection);
+    final state = await _readState(resident);
+    if (state.selection case final selection?) resident.selection = selection;
+    return state;
+  }
+
+  Future<PiAgentState> _readState(_ResidentClient resident) async {
+    final response = await resident.client.send(
       command: PiRpcCommand.getState,
       arguments: const {},
       timeout: _historyRpcTimeout,
-    )).data;
+    );
+    final dto = PiRpcStateDto.fromJson(response.data.cast<String, dynamic>());
+    final model = dto.model;
+    final thinkingLevel = dto.thinkingLevel;
     return PiAgentState(
-      streaming: data["isStreaming"] == true,
-      pendingMessageCount: switch (data["pendingMessageCount"]) {
-        final int value when value >= 0 => value,
-        _ => 0,
-      },
+      streaming: dto.isStreaming,
+      pendingMessageCount: dto.pendingMessageCount < 0 ? 0 : dto.pendingMessageCount,
+      selection: model == null || thinkingLevel == null
+          ? null
+          : PiSessionSelection(
+              model: (providerID: model.provider, modelID: model.id),
+              variant: thinkingLevel,
+            ),
     );
   }
 
@@ -1068,8 +1100,7 @@ final class _ResidentClient({
   required bool initialPendingPersistence,
 }) {
   StreamSubscription<PiRpcFrame>? frameSubscription;
-  ({String providerID, String modelID})? model;
-  String? variant;
+  PiSessionSelection? selection;
   bool pendingPersistence = initialPendingPersistence;
   Future<void> cancelFrames() async {
     await frameSubscription?.cancel();
