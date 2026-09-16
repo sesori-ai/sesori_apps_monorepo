@@ -42,7 +42,9 @@ a local login would. Sesori never sees, stores, refreshes, or exchanges tokens.
   matrix.
 - No authorization URL, pasted code, token, email, or organization value
   appears in bridge logs, client logs, error messages, analytics, SSE replay,
-  or persistence.
+  or persistence for well-formed responses. The one exception, a malformed
+  successful challenge body from a defective bridge retained in a local client
+  parsing error, is the accepted risk recorded under Security And Privacy.
 - Older apps against a new bridge fail closed with the existing
   "update required" guidance; new apps against an older bridge show no Claude
   login control.
@@ -80,8 +82,10 @@ a local login would. Sesori never sees, stores, refreshes, or exchanges tokens.
 
 - Sesori-managed Claude Code runtime installation or updates (separate plan
   when requested).
-- Any change to how sessions are launched, to `ClaudeLaunchSpec`, or to setup
-  inspection beyond the `actionHint` copy.
+- Any change to session launch behavior or to setup inspection beyond the
+  `actionHint` copy. The process factory's spawn signature generalizes to a
+  neutral launch value, but session arguments, environment, and working
+  directory stay identical and remain covered by the existing tests.
 - A generic form or free-text challenge framework. The new variant carries
   exactly what this flow needs.
 - Detecting mid-turn logout from session errors. The current 401/403 turn
@@ -256,22 +260,28 @@ ClaudeLoginEnvironment (foundation, constant)
   "no browser"; no platform branch, no filesystem probe. The service passes
   it to the API, which only executes
 
-ClaudeAuthLoginApi (api)
-  spawn({binaryPath, environment, workingDirectory}) -> ClaudeProcessHandle
-  arguments fixed to `auth login --claudeai`; includeParentEnvironment = true
-  and runInShell on Windows exactly as HostClaudeProcessFactory does; returns
-  the existing narrow ClaudeProcessHandle (stdout, stderr, stdin, exitCode,
-  kill) whose host-backed implementation is shared with the session factory
+HostClaudeProcessFactory (api, existing)
+  spawn takes a neutral ClaudeProcessLaunch {binaryPath, arguments,
+  workingDirectory, environment overrides} that carries the HOME guard;
+  ClaudeLaunchSpec exposes its launch, so session behavior is unchanged and
+  the login spawns `auth login --claudeai` through the same environment
+  merge, Windows shell decision, handle, and signaling. No second wrapper.
+  The descriptor composes a dedicated factory instance for the login so its
+  spawn outcome stays out of the session health stream
 
 ClaudeLoginOutputParser (repositories/parsers)
-  strips ANSI CSI and OSC sequences from a stdout line and returns the first
-  absolute https URL, bounded to 16384 characters, or null
+  strips ANSI CSI and OSC sequences from a stdout line and returns a sealed
+  outcome: none (no https token), found(uri), or invalid (an https token that
+  is oversized beyond 16384 characters or does not parse to an absolute URL
+  with a host)
 
 ClaudeAuthenticationRepository (repositories)
   owns one ClaudeProcessHandle; decodes stdout and stderr as UTF-8 lines
-  start(): spawn and return the authorization URL future, which fails if the
-  process exits first or the first URL is invalid; the service bounds the wait
-  submitCode(code): one-shot; writes "<code>\n" and flushes
+  start(): spawn and return the authorization URL future: found resolves it,
+  invalid fails it immediately, none keeps reading; process exit before a URL
+  fails it; the service bounds the wait
+  submitCode(code): writes "<code>\n" and flushes; the runtime already
+  enforces one submission per operation, so no second flag here
   waitForExit(): exit code
   dispose(): kill (graceful, forced after a short grace) and await exit;
   idempotent
@@ -335,12 +345,13 @@ Extend the existing layers without new owners:
   `codeSubmitting` and `codeSubmitted` (awaiting terminal progress).
   `alreadySubmitted` maps to `codeSubmitted`; `noActive` and stale results map
   to the existing failure presentation and trigger a management refresh.
-- The cubit applies the same neutral rule as the bridge handler (trim,
-  non-empty, no inner whitespace or control characters, bounded length) and
-  keeps the field editable with a hint when it fails, so the app never sends a
-  request the handler would reject with 400. It knows nothing about the
-  `code#state` shape; a code the plugin rejects arrives as ordinary terminal
-  failure.
+- `PluginManagementService.submitAuthenticationCode` applies the same neutral
+  rule as the bridge handler (trim, non-empty, no inner whitespace or control
+  characters, bounded length) and returns a typed `invalidInput` outcome
+  without sending, so the app never issues a request the handler would reject
+  with 400. The cubit only translates that outcome into the editable field
+  with a hint. Nothing in the client knows the `code#state` shape; a code the
+  plugin rejects arrives as ordinary terminal failure.
 
 ### 6. Presentation (mobile and desktop)
 
@@ -383,7 +394,8 @@ advertises a login it cannot route.
 | Failure | User outcome | Local observability |
 |---|---|---|
 | CLI exits before printing a URL (policy block, broken binary) | Sanitized failure; login remains required. | Exit code and scrubbed stderr tail stay in bridge logs. |
-| URL missing, not HTTPS, or oversized | Failure; nothing is presented. | Typed mapper failure with line length, never the line. |
+| No HTTPS URL in stdout | No challenge; the operation ends on process exit or the budget. | Exit code or budget expiry. |
+| HTTPS token oversized or unparsable | Immediate typed failure; nothing is presented. | Typed parser outcome with line length, never the line. |
 | Pasted text fails the neutral rule (empty, inner whitespace, oversized) | The app keeps the field editable with a hint; the bridge handler answers 400 only to clients that bypass the app. | Request rejection only. |
 | Code passes the neutral rule but the plugin rejects its shape | The plugin kills its CLI; the operation ends with the generic failure text; the user starts a new login. | Local log names the shape rejection without the code. |
 | Well-formed but wrong code | CLI exchange fails: generic failure on exit, or the ten-minute budget ends it. User starts a new login. | Exit code, budget expiry, scrubbed stderr. |
@@ -440,9 +452,10 @@ arise.
 - Bridge core: the existing per-operation continuation flag, renamed and
   shared by both continuation kinds. No new registry, timer, or queue.
 - Claude plugin, per operation and disposed in `finally`: one process handle,
-  one completer for the authorization URL, one one-shot submitted flag, one
-  budget timer, one disposed flag. A rejected code shape reuses the exit race
-  by disposing the process; no rejection completer or state.
+  one completer for the authorization URL, one budget timer, one disposed
+  flag. The one-shot rule stays with the runtime gate; the repository holds no
+  second flag. A rejected code shape reuses the exit race by disposing the
+  process; no rejection completer or state.
   `ClaudeLoginEnvironment` is a constant; `ClaudePastedCode` is pure.
 - Client: two immutable presentation states and one text controller inside
   the sheet.
@@ -570,9 +583,10 @@ it, a new sheet variant, and localization.
   by display name, and regenerated localizations.
 - Tests: shared wire JSON contract including the `unknown` fallback for the
   new type; API contract including that start conflicts still decode their
-  409 bodies; service orchestration (fencing, continuation results);
-  cubit transitions (launch, neutral input rule keeps the field editable,
-  submit, conflicts, terminal); phone and desktop settings widget tests (open
+  409 bodies; service orchestration (fencing, neutral input rule returns
+  `invalidInput` without a request, continuation results); cubit transitions
+  (launch, invalid input keeps the field editable, submit, conflicts,
+  terminal); phone and desktop settings widget tests (open
   on explicit tap only, submit enabled by valid text, waiting state, cancel,
   update-required unchanged).
 
@@ -620,16 +634,18 @@ cancellation.
 ### Scope
 
 - `bridge/sesori_plugin_claude`: `ClaudePastedCode`,
-  `ClaudeLoginEnvironment`, `ClaudeLoginOutputParser`, `ClaudeAuthLoginApi`
-  (sharing the host-backed `ClaudeProcessHandle` implementation with the
-  session factory), `ClaudeAuthenticationRepository`,
-  `ClaudeAuthenticationService`, descriptor composition, capability, and the
-  `actionHint` copy.
+  `ClaudeLoginEnvironment`, `ClaudeLoginOutputParser`, the neutral
+  `ClaudeProcessLaunch` consumed by the existing `HostClaudeProcessFactory`
+  (with `ClaudeLaunchSpec` exposing its launch and session behavior
+  unchanged), `ClaudeAuthenticationRepository`, `ClaudeAuthenticationService`,
+  descriptor composition, capability, and the `actionHint` copy.
 - Tests with the existing fake `HostProcessService` and scripted
   `SpawnedProcess` pattern: OSC 8 and fragmented URL lines; exit before URL;
-  non-HTTPS or oversized URL; exit 0 after code; non-zero exit; budget expiry;
-  abort during wait and during submit; one-shot submit; code shape rejection
-  kills the process, returns normally, and the stream emits `Failed`;
+  parser outcomes none, found, and invalid (oversized or unparsable https
+  token fails immediately); session launch arguments unchanged through the
+  generalized factory; exit 0 after code; non-zero exit; budget expiry; abort
+  during wait and during submit; code shape rejection kills the process,
+  returns normally, and the stream emits `Failed`;
   `BROWSER=true` present in the spawned environment; `HOME` untouched; stdin
   receives exactly `code\n`; log capture proves no URL or code is logged.
 - Manual check on the developer machine with an isolated `CLAUDE_CONFIG_DIR`
@@ -752,3 +768,22 @@ both applied:
   Windows stays documented as unverified. A bridge-owned no-op like
   Antigravity's was rejected because the bridge invocation is multi-word in
   source mode and the CLI does not split words.
+
+2026-09-16, PR #1508 third automated review wave (cubic, Codex): six
+findings, all applied:
+
+- The tracker still recorded the fixed-path browser no-op; it now matches
+  `BROWSER=true`.
+- Neutral code validation moved from the cubit to
+  `PluginManagementService`, which returns a typed `invalidInput` outcome
+  the cubit only presents.
+- The no-logging success criterion now carries the accepted malformed-body
+  exception instead of contradicting it.
+- The separate `ClaudeAuthLoginApi` was dropped. The existing
+  `HostClaudeProcessFactory` takes a neutral `ClaudeProcessLaunch` so session
+  and login share one spawn path; session behavior is unchanged.
+- The output parser returns a sealed none, found, or invalid outcome so an
+  oversized or unparsable HTTPS token fails immediately while ordinary lines
+  keep the wait going.
+- The repository's second one-shot flag was removed; the runtime gate is the
+  single owner of the one-submission rule.
