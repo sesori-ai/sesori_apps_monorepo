@@ -1,6 +1,6 @@
 # Step 5 — Manual macOS Updates Through Safe Application Quit
 
-Status: **implemented — verification and implementation review in progress**.
+Status: **implemented — focused verification and architecture review passed**.
 PR ordinal **7/14**; follows merged #1503 (accepted
 `49694775e5d364a1316b767b66642531bf002e3a`, squash
 `d1813409e3c0a8e053c3a28068d574e24fb70730`).
@@ -137,3 +137,30 @@ infrastructure change in this step.
 Manual signed N→N+1 install/relaunch and shared-data preservation remain a native
 CI/host qualification task, not evidence supplied by a link widget. Real accounts,
 minimum OS, interactive permissions and public-release prerequisites stay pending.
+
+## Implementation evidence
+
+Measured commit `69789cd200ab59f56c6676ed75d4b4eff4ed2741`, tree
+`e1ab30313629be4a054edc1dff8747dbf1c7735b`. Each command below ran from the named
+cwd beneath `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`,
+using the pinned Flutter-owned SDK. No local GUI/helper was launched or stopped.
+
+| Cwd | Command | Result |
+|---|---|---|
+| `client/module_desktop_core` | `dart test test/foundation/desktop_update_destination_test.dart --reporter json` | Exit 0; 13 non-hidden cases passed |
+| `client/desktop` | `flutter test test/features/settings/desktop_settings_screens_test.dart test/tool/stage_desktop_bundle_test.dart --reporter json` | Exit 0; 18 non-hidden cases passed |
+| `client/module_desktop_core` | `dart analyze --fatal-infos` | Exit 0; No issues found! |
+| `client/desktop` | `dart analyze --fatal-infos` | Exit 0; No issues found! |
+
+All eight channel/OS/CPU fragments match index headings, each explicitly unshipped.
+Local receipt: `build/desktop-manual-updates-evidence/verification-69789cd.json`;
+individual logs are beside it. These tests establish destination selection, staging
+metadata and UI dispatch, not native replacement or public download availability.
+
+Architecture implementation review `dafc020c-8950-4761-b46f-806bef34448b` approved
+all 17 paths at exact `69789cd` versus parent `d1813409e3c0a8e053c3a28068d574e24fb70730`,
+B-Client only, no findings. Output: `reviews/desktop-distribution-step-05-implementation.md`.
+Fixed scope from `git diff --numstat d1813409e3c0a8e053c3a28068d574e24fb70730 69789cd200ab59f56c6676ed75d4b4eff4ed2741`:
+573 additions + 172 deletions = **745 authored lines**, zero generated, including
+this step file at that revision and removal of obsolete Sparkle design details.
+Later evidence text is not retroactively included in that count.
