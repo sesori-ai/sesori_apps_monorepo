@@ -96,6 +96,21 @@ The main pane hosts one full-width routed page.
   disable mutations, not diagnostics; Settings dismisses before opening.
   Outside click and Escape dismiss without an action. App Quit and startup
   preferences belong to application controls, not local bridge controls.
+- Settings is a root modal, preserving the current route, session element and
+  live composer. Sidebar/⌘, (Ctrl+, elsewhere) open General; the Bridge popover
+  opens Bridge; session setup opens Harnesses. All tabs and Close remain usable
+  at 560 × 480, with independently scrollable tabs/content at large text scales. Escape/outside dismiss;
+  active text editing and owned sheets retain their closer dismissal order.
+- General contains appearance, default input, launch-at-login and support/legal
+  information. Bridge distinguishes connected-bridge configuration from local
+  status/logs. Notifications exposes desktop attention, not mobile push options.
+  Account owns supervised logout; failed logout stays open, and delayed success
+  cannot pop the opener. External auth rejection also dismisses the root modal.
+- One harness controller spans its modal overview/detail navigator. Back stays
+  inside that flow; Close removes its sheets without cancelling upstream auth.
+  Only harness detail has Back; Account's title and Close do not duplicate it.
+  Modal blur/dim respects Prego accessibility/quality policy; macOS uses dim
+  rather than sampling native indicators. Reduced motion removes the fade.
 - Missing layout uses defaults. Failed reads/writes are logged; unavailable
   storage does not prevent navigation or in-memory layout changes.
 
@@ -107,8 +122,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 | Level | Boundary / scope | Added checks |
 |---|---|---|
 | L1 | Client end to end; desktop; representative bridge | Sidebar renders; a project opens; Bridge and Settings remain reachable. |
-| L2 | Automated; no plugin | Root-popup activity visibility across nested navigators; notification popup dismissal, same-page/Back preservation, different-session replacement, readiness and logged-failure ordering; popover scope/contextual actions, locks/live updates, explicit Stop intent, expanded/compact anchoring, outside/Escape dismissal, preserved main pane; connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics, sidebar recovery/actions/locks; flat typed route registration, no-back all-sessions presentation, archived read-only navigation, new-session replacement, diff/direct-entry back, home states, package-font resolution; recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal, project-collapse persistence, shared menu/route callbacks; width clamp, drag-end-only persistence, reset, intermediate collapse/expand frames, both reduced-motion signals, temporary narrow-window mode, running/unread updates in both widths, Unicode initials, JSON round-trip, storage failure fallback. |
-| L3 | Client end to end; macOS; representative live bridge | Popover Start/Stop/Retry, Take Over versus Stop, logs and Settings; relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows, keyboard focus, compact tooltips, relaunch persistence, light/dark appearance, recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping through the tree and menus. |
+| L2 | Automated; no plugin | Modal tab/entry selection, keyboard entry, route/element/draft preservation, nested Back/Close, text-edit/sheet Escape order, logout failure/late completion/auth rejection, minimum size/large text; root-popup activity visibility across nested navigators; notification popup dismissal, same-page/Back preservation, different-session replacement, readiness and logged-failure ordering; popover scope/contextual actions, locks/live updates, explicit Stop intent, expanded/compact anchoring, outside/Escape dismissal, preserved main pane; connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics, sidebar recovery/actions/locks; flat typed route registration, no-back all-sessions presentation, archived read-only navigation, new-session replacement, diff/direct-entry back, home states, package-font resolution; recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal, project-collapse persistence, shared menu/route callbacks; width clamp, drag-end-only persistence, reset, intermediate collapse/expand frames, both reduced-motion signals, temporary narrow-window mode, running/unread updates in both widths, Unicode initials, JSON round-trip, storage failure fallback. |
+| L3 | Client end to end; macOS; representative live bridge | Settings entries/tabs, native startup preference, dialog keyboard/backdrop/accessibility and retained composer; popover Start/Stop/Retry, Take Over versus Stop, logs and Settings; relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows, keyboard focus, compact tooltips, relaunch persistence, light/dark appearance, recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping through the tree and menus. |
 | L4 | Client end to end; Windows/Linux | Resize/collapse, native-window size changes, and saved-layout restore. |
 | L5 | No additional coverage | Lower levels still apply. |
 
@@ -133,6 +148,8 @@ bridge during UI-only checks.
 - `client/desktop/lib/core/platform/desktop_route_dispatcher.dart`
 - `client/module_app_ui/lib/src/features/session_detail/session_detail_activity_owner.dart`
 - `client/desktop/lib/features/home/desktop_home_pane.dart`
+- `client/desktop/lib/features/settings/desktop_settings_modal.dart`
+- `client/desktop/test/features/settings/desktop_settings_screens_test.dart`
 - `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`
 - `client/module_core/lib/src/cubits/recent_sessions/`
 - `client/module_core/lib/src/cubits/session_list/session_list_mode.dart`

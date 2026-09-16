@@ -6,7 +6,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
 
-/// Desktop-only attention preference rendered inside the shared settings view.
+/// Desktop-only attention preference, without mobile push settings.
 class const DesktopAttentionPreferenceSection({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -16,8 +16,7 @@ class const DesktopAttentionPreferenceSection({super.key}) extends StatelessWidg
       unawaited(context.read<DesktopAttentionPreferenceCubit>().setEnabled(enabled: enabled));
     }
 
-    return SettingsSection(
-      title: context.loc.settingsNotificationsTitle,
+    return MergeSemantics(
       child: PregoGroupedRows(
         children: [
           PregoGroupedRow(

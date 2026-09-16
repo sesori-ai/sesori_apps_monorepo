@@ -22,6 +22,8 @@ const double _contentTopPadding = 10.0;
 class const ProfileView({
   super.key,
   required final AuthUser? account,
+  required final String title,
+  required final bool automaticallyImplyLeading,
   required final Widget? connectionBanner,
   required final VoidCallback onClose,
   required final Future<bool> Function() logout,
@@ -66,8 +68,9 @@ class _ProfileViewState() extends State<ProfileView> {
     final account = widget.account;
 
     return PregoGlassScaffold(
-      title: loc.settingsProfileTitle,
+      title: widget.title,
       titleMode: PregoTopNavigationTitleMode.inline,
+      automaticallyImplyLeading: widget.automaticallyImplyLeading,
       banner: widget.connectionBanner,
       actions: [
         PregoButtonsIconGlass(

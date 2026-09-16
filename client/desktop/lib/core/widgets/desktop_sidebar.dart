@@ -19,18 +19,11 @@ typedef SidebarSessionOpenedCallback = void Function({
   required Session session,
 });
 
-/// Current top-level route; project detail routes also select their project row.
-enum DesktopCockpitDestination() {
-  projects,
-  settings,
-}
-
 /// Desktop navigation frame. Its project inventory is shared with the main pane.
 class const DesktopSidebar({
   super.key,
   required final double expansion,
   required final bool autoCollapsed,
-  required final DesktopCockpitDestination destination,
   required final String? selectedProjectId,
   required final String? selectedSessionId,
   required final SidebarSessionOpenedCallback onOpenSession,
@@ -94,8 +87,7 @@ class const DesktopSidebar({
                                 label: loc.projectListTitle,
                                 onTap: onOpenProjects,
                                 excludeSemantics: true,
-                                selected:
-                                    destination == DesktopCockpitDestination.projects && selectedProjectId == null,
+                                selected: selectedProjectId == null,
                                 child: TextButton(
                                   onPressed: onOpenProjects,
                                   style: TextButton.styleFrom(
@@ -184,7 +176,7 @@ class const DesktopSidebar({
                       label: loc.projectListTitle,
                       icon: const Icon(TablerRegular.folders, size: 20),
                       expansion: 0,
-                      selected: destination == DesktopCockpitDestination.projects && selectedProjectId == null,
+                      selected: selectedProjectId == null,
                       status: null,
                       onPressed: onOpenProjects,
                     ),
@@ -269,7 +261,7 @@ class const DesktopSidebar({
                     label: loc.settingsTitle,
                     icon: const Icon(TablerRegular.settings, size: 20),
                     expansion: expansion,
-                    selected: destination == DesktopCockpitDestination.settings,
+                    selected: false,
                     status: null,
                     onPressed: onOpenSettings,
                   ),

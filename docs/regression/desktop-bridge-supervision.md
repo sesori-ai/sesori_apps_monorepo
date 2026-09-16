@@ -137,9 +137,11 @@ and keep native close/quit behavior safe.
   active text editing and otherwise dismisses only popup routes. Transcript and
   diff source text retain native selection/context-menu behavior while
   navigation, file-header, line-number, and prefix chrome stays outside copied
-  diff source. Profile and Harnesses pop back to Settings when pushed. The analytics service starts before the app, while authenticated
-  preference reconciliation is scheduled after the first rendered frame, so a
-  slow server cannot leave the window blank; Profile reflects synchronization
+  diff source. Settings overlays the current pane; harness Back stays within
+  its modal, while Close restores the opener. The analytics service starts
+  before the app, while authenticated preference reconciliation is scheduled
+  after the first rendered frame, so a slow server cannot leave the window
+  blank; Account reflects synchronization
   progress until that bounded operation settles. One desktop connection pill
   overlays the main pane without moving routed content; local Off suppresses
   bridge-offline copy while relay recovery remains available.
@@ -257,7 +259,7 @@ verify the actual relocated helper, not merely the presence of its binary.
   desktop exposes a dead mobile push-preference surface or registers a push
   token instead of using relay-derived local attention, a pushed settings
   child closes to Home, a standalone child cannot close, startup reconciliation
-  leaves the window blank, Profile leaves usage analytics stuck on Loading, or
+  leaves the window blank, Account leaves usage analytics stuck on Loading, or
   logout clears auth before analytics preparation and fails to resume analytics
   when token clearing fails. A desktop session row cannot reach its typed detail
   route, Back cannot return to the session list, a child-session link loses its
