@@ -1,8 +1,11 @@
 import "dart:async";
+import "dart:io";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:sesori_desktop_core/src/api/app_log_storage.dart";
+import "package:sesori_desktop_core/src/api/rotating_file_storage.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -58,6 +61,7 @@ void main() {
     });
 
     tearDown(() async {
+      setLogSink(sink: const StdoutLogSink());
       await cubit.close();
       await processService.disposeFake();
       await statusTracker.dispose();
@@ -643,12 +647,59 @@ void main() {
       expect(applicationTerminator.exitCodes, <int>[0]);
     });
 
+    test("Quit waits for final cleanup diagnostics before terminating", () async {
+      final sink = _PendingLogSink();
+      setLogSink(sink: sink);
+      windowHost.disposeError = StateError("window cleanup /tmp/context");
+      await cubit.initialize();
+      final quitting = cubit.quit();
+      await sink.started.future;
+      expect(windowHost.disposeCalls, 1);
+      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(sink.records.last.message, "Failed to dispose the desktop window host during quit");
+      expect(sink.records.last.diagnosticError, contains("window cleanup /tmp/context"));
+      sink.pending.complete();
+      await quitting;
+      expect(applicationTerminator.exitCodes, [0]);
+    });
+
+    test("Quit persists the final cleanup record before the termination callback", () async {
+      final root = Directory.systemTemp.createTempSync("sesori_quit_logs_");
+      addTearDown(() {
+        setLogSink(sink: const StdoutLogSink());
+        root.deleteSync(recursive: true);
+      });
+      setLogSink(
+        sink: AppLogStorage.forTesting(
+          applicationSupportDirectory: _LogDirectory(root: root),
+          storage: RotatingFileStorage.forTesting(
+            fileName: "app.log",
+            maxFileBytes: 8192,
+            isWindows: true,
+            setPermissions: ({required path, required mode}) async {},
+          ),
+          reportFailure: fail,
+        ),
+      );
+      windowHost.disposeError = StateError("final cleanup /tmp/context");
+      applicationTerminator.beforeTerminate = () {
+        final persisted = File("${root.path}/logs/app.log").readAsStringSync();
+        expect(persisted, contains("Failed to dispose the desktop window host during quit"));
+        expect(persisted, contains("final cleanup /tmp/context"));
+      };
+      await cubit.initialize();
+      await cubit.quit();
+      expect(applicationTerminator.exitCodes, [0]);
+    });
+
     test("Quit leaves the app alive when expected bridge stop fails", () async {
       processService.emit(
         state: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
       );
       processService.stopError = StateError("bridge remained alive");
+      final sink = _PendingLogSink();
+      setLogSink(sink: sink);
       await cubit.initialize();
 
       systemTray.emit(command: SystemTrayCommand.quit);
@@ -656,6 +707,7 @@ void main() {
 
       expect(applicationTerminator.exitCodes, isEmpty);
       expect(systemTray.disposeCalls, 0);
+      expect(sink.started.isCompleted, isFalse);
       expect(cubit.state.activity, BridgeControlActivity.idle);
     });
   });
@@ -772,6 +824,7 @@ class _FakeWindowHost() implements WindowHost {
   int showCalls = 0;
   int hideCalls = 0;
   int disposeCalls = 0;
+  Object? disposeError;
 
   @override
   Stream<WindowHostEvent> get events => _events.stream;
@@ -811,6 +864,7 @@ class _FakeWindowHost() implements WindowHost {
   @override
   Future<void> dispose() async {
     disposeCalls++;
+    if (disposeError case final error?) throw error;
   }
 
   void emit({required WindowHostEvent event}) {
@@ -921,11 +975,31 @@ class _FakeUrlLauncher() implements UrlLauncher {
   }
 }
 
+class _PendingLogSink() implements LogSink {
+  final records = <LogRecord>[];
+  final started = Completer<void>();
+  final pending = Completer<void>();
+  @override
+  void write({required LogRecord record}) => records.add(record);
+  @override
+  Future<void> flush() {
+    started.complete();
+    return pending.future;
+  }
+}
+
+class _LogDirectory({required final Directory root}) implements DesktopApplicationSupportDirectory {
+  @override
+  Future<Directory> resolve() async => root;
+}
+
 class _FakeDesktopApplicationTerminator() implements DesktopApplicationTerminator {
   final List<int> exitCodes = <int>[];
+  void Function()? beforeTerminate;
 
   @override
   void terminate({required int exitCode}) {
+    beforeTerminate?.call();
     exitCodes.add(exitCode);
   }
 }

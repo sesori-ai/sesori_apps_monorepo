@@ -376,10 +376,10 @@ class BridgeControlCubit._create({
       final Uri uri = await _logRepository.logDirectoryUri;
       final bool opened = await _urlLauncher.launch(uri);
       if (!opened) {
-        logw("The desktop could not open the supervised bridge log file");
+        logw("The desktop could not open the logs directory");
       }
     } on Object catch (error, stackTrace) {
-      logw("Failed to open the supervised bridge log file", error, stackTrace);
+      logw("Failed to open the logs directory", error, stackTrace);
     }
   }
 
@@ -416,6 +416,7 @@ class BridgeControlCubit._create({
     } on Object catch (error, stackTrace) {
       logw("Failed to dispose the desktop window host during quit", error, stackTrace);
     }
+    await flushLogs(timeout: const Duration(seconds: 2));
     _applicationTerminator.terminate(exitCode: 0);
   }
 

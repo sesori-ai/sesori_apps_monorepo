@@ -1740,6 +1740,218 @@ as PluginAuthenticationChallenge,
 /// @nodoc
 
 
+class PluginAuthenticationPresentationCodeRetry implements PluginAuthenticationPresentationState {
+  const PluginAuthenticationPresentationCodeRetry({required this.pluginId, required this.challenge, required this.reason});
+  
+
+ final  String pluginId;
+ final  PluginAuthenticationPastedCodeChallenge challenge;
+ final  PluginAuthenticationCodeRetryReason reason;
+
+/// Create a copy of PluginAuthenticationPresentationState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginAuthenticationPresentationCodeRetryCopyWith<PluginAuthenticationPresentationCodeRetry> get copyWith => _$PluginAuthenticationPresentationCodeRetryCopyWithImpl<PluginAuthenticationPresentationCodeRetry>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationCodeRetry&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge)&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,challenge,reason);
+}
+
+@override
+String toString() {
+    return 'PluginAuthenticationPresentationState.codeRetry(pluginId: $pluginId, challenge: $challenge, reason: $reason)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginAuthenticationPresentationCodeRetryCopyWith<$Res> implements $PluginAuthenticationPresentationStateCopyWith<$Res> {
+  factory $PluginAuthenticationPresentationCodeRetryCopyWith(PluginAuthenticationPresentationCodeRetry value, $Res Function(PluginAuthenticationPresentationCodeRetry) _then) = _$PluginAuthenticationPresentationCodeRetryCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId, PluginAuthenticationPastedCodeChallenge challenge, PluginAuthenticationCodeRetryReason reason
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginAuthenticationPresentationCodeRetryCopyWithImpl<$Res>
+    implements $PluginAuthenticationPresentationCodeRetryCopyWith<$Res> {
+  _$PluginAuthenticationPresentationCodeRetryCopyWithImpl(this._self, this._then);
+
+  final PluginAuthenticationPresentationCodeRetry _self;
+  final $Res Function(PluginAuthenticationPresentationCodeRetry) _then;
+
+/// Create a copy of PluginAuthenticationPresentationState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? challenge = null,Object? reason = null,}) {
+  return _then(PluginAuthenticationPresentationCodeRetry(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,challenge: null == challenge ? _self.challenge : challenge // ignore: cast_nullable_to_non_nullable
+as PluginAuthenticationPastedCodeChallenge,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as PluginAuthenticationCodeRetryReason,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class PluginAuthenticationPresentationCodeSubmitting implements PluginAuthenticationPresentationState {
+  const PluginAuthenticationPresentationCodeSubmitting({required this.pluginId, required this.challenge});
+  
+
+ final  String pluginId;
+ final  PluginAuthenticationPastedCodeChallenge challenge;
+
+/// Create a copy of PluginAuthenticationPresentationState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginAuthenticationPresentationCodeSubmittingCopyWith<PluginAuthenticationPresentationCodeSubmitting> get copyWith => _$PluginAuthenticationPresentationCodeSubmittingCopyWithImpl<PluginAuthenticationPresentationCodeSubmitting>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationCodeSubmitting&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,challenge);
+}
+
+@override
+String toString() {
+    return 'PluginAuthenticationPresentationState.codeSubmitting(pluginId: $pluginId, challenge: $challenge)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginAuthenticationPresentationCodeSubmittingCopyWith<$Res> implements $PluginAuthenticationPresentationStateCopyWith<$Res> {
+  factory $PluginAuthenticationPresentationCodeSubmittingCopyWith(PluginAuthenticationPresentationCodeSubmitting value, $Res Function(PluginAuthenticationPresentationCodeSubmitting) _then) = _$PluginAuthenticationPresentationCodeSubmittingCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId, PluginAuthenticationPastedCodeChallenge challenge
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginAuthenticationPresentationCodeSubmittingCopyWithImpl<$Res>
+    implements $PluginAuthenticationPresentationCodeSubmittingCopyWith<$Res> {
+  _$PluginAuthenticationPresentationCodeSubmittingCopyWithImpl(this._self, this._then);
+
+  final PluginAuthenticationPresentationCodeSubmitting _self;
+  final $Res Function(PluginAuthenticationPresentationCodeSubmitting) _then;
+
+/// Create a copy of PluginAuthenticationPresentationState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? challenge = null,}) {
+  return _then(PluginAuthenticationPresentationCodeSubmitting(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,challenge: null == challenge ? _self.challenge : challenge // ignore: cast_nullable_to_non_nullable
+as PluginAuthenticationPastedCodeChallenge,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class PluginAuthenticationPresentationCodeSubmitted implements PluginAuthenticationPresentationState {
+  const PluginAuthenticationPresentationCodeSubmitted({required this.pluginId, required this.challenge});
+  
+
+ final  String pluginId;
+ final  PluginAuthenticationPastedCodeChallenge challenge;
+
+/// Create a copy of PluginAuthenticationPresentationState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginAuthenticationPresentationCodeSubmittedCopyWith<PluginAuthenticationPresentationCodeSubmitted> get copyWith => _$PluginAuthenticationPresentationCodeSubmittedCopyWithImpl<PluginAuthenticationPresentationCodeSubmitted>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationCodeSubmitted&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,challenge);
+}
+
+@override
+String toString() {
+    return 'PluginAuthenticationPresentationState.codeSubmitted(pluginId: $pluginId, challenge: $challenge)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginAuthenticationPresentationCodeSubmittedCopyWith<$Res> implements $PluginAuthenticationPresentationStateCopyWith<$Res> {
+  factory $PluginAuthenticationPresentationCodeSubmittedCopyWith(PluginAuthenticationPresentationCodeSubmitted value, $Res Function(PluginAuthenticationPresentationCodeSubmitted) _then) = _$PluginAuthenticationPresentationCodeSubmittedCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId, PluginAuthenticationPastedCodeChallenge challenge
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginAuthenticationPresentationCodeSubmittedCopyWithImpl<$Res>
+    implements $PluginAuthenticationPresentationCodeSubmittedCopyWith<$Res> {
+  _$PluginAuthenticationPresentationCodeSubmittedCopyWithImpl(this._self, this._then);
+
+  final PluginAuthenticationPresentationCodeSubmitted _self;
+  final $Res Function(PluginAuthenticationPresentationCodeSubmitted) _then;
+
+/// Create a copy of PluginAuthenticationPresentationState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? challenge = null,}) {
+  return _then(PluginAuthenticationPresentationCodeSubmitted(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,challenge: null == challenge ? _self.challenge : challenge // ignore: cast_nullable_to_non_nullable
+as PluginAuthenticationPastedCodeChallenge,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
 class PluginAuthenticationPresentationCancelling implements PluginAuthenticationPresentationState {
   const PluginAuthenticationPresentationCancelling({required this.pluginId, required this.challenge});
   

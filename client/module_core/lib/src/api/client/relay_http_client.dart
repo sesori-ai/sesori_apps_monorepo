@@ -209,13 +209,12 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
         final json = jsonDecodeMap(responseBody);
         return ApiResponse.success(fromJson(json));
       } catch (error, stackTrace) {
-        // Response source may contain session content even outside credential APIs.
-        loge(
-          "Failed to parse relay response JSON (${error.runtimeType.toString()}: ${_sourceFreeErrorMessage(error)})",
-          null,
-          stackTrace,
+        final failure = ApiError.jsonParsing(
+          jsonString: sensitiveResponse ? _sensitiveParsingErrorMarker : responseBody,
+          innerError: error,
         );
-        return ApiResponse.error(ApiError.jsonParsing(sensitiveResponse ? _sensitiveParsingErrorMarker : responseBody));
+        loge("Failed to parse relay response JSON", failure, stackTrace);
+        return ApiResponse.error(failure);
       }
     } on TimeoutException catch (error) {
       // The request may have been dispatched before the response was lost;
@@ -232,12 +231,5 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
 
   ApiResponse<T> _relayDisconnectedResponse<T>() {
     return ApiResponse.error(ApiError.dartHttpClient(Exception("Relay is not connected")));
-  }
-
-  String _sourceFreeErrorMessage(Object error) {
-    if (error case FormatException(:final offset)) {
-      return "Invalid JSON syntax or shape; offset=${offset?.toString() ?? 'unknown'}";
-    }
-    return "Response DTO conversion failed";
   }
 }

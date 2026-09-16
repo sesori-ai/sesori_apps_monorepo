@@ -12,11 +12,14 @@ void main() {
     final service = _FakePluginLifecycleService();
     final start = PostPluginAuthenticationHandler(lifecycleService: service);
     final redirect = PostPluginAuthenticationRedirectHandler(lifecycleService: service);
+    final code = PostPluginAuthenticationCodeHandler(lifecycleService: service);
     final cancel = DeletePluginAuthenticationHandler(lifecycleService: service);
 
     expect(start.canHandle(makeRequest("POST", "/plugin/codex/authentication")), isTrue);
     expect(start.canHandle(makeRequest("DELETE", "/plugin/codex/authentication")), isFalse);
     expect(redirect.canHandle(makeRequest("POST", "/plugin/codex/authentication/redirect")), isTrue);
+    expect(code.canHandle(makeRequest("POST", "/plugin/codex/authentication/code")), isTrue);
+    expect(code.canHandle(makeRequest("POST", "/plugin/codex/authentication/redirect")), isFalse);
     expect(cancel.canHandle(makeRequest("DELETE", "/plugin/codex/authentication")), isTrue);
     expect(cancel.canHandle(makeRequest("POST", "/plugin/codex/authentication")), isFalse);
   });
@@ -91,6 +94,46 @@ void main() {
     );
   });
 
+  test("code POST normalizes pasted codes and maps typed failures", () async {
+    final service = _FakePluginLifecycleService();
+    final handler = PostPluginAuthenticationCodeHandler(lifecycleService: service);
+    Future<RelayResponse> send({required String? body}) => handler.routeForTest(
+      makeRequest("POST", "/plugin/codex/authentication/code", body: body),
+    );
+    String codeBody({required String code}) => jsonEncode(PluginAuthenticationCodeRequest(code: code).toJson());
+
+    final accepted = await send(body: codeBody(code: "  opaque#state\n"));
+    expect((accepted.status, service.codePluginId, service.submittedCode), (200, "codex", "opaque#state"));
+    final oversizedCode = List.filled(PluginAuthenticationCodeRequest.maxCodeLength + 1, "x").join();
+    for (final body in [
+      null,
+      "{}",
+      codeBody(code: " "),
+      codeBody(code: "opaque state"),
+      codeBody(code: oversizedCode),
+    ]) {
+      expect((await send(body: body)).status, 400, reason: "body: $body");
+    }
+    expect(service.submittedCode, "opaque#state");
+
+    service.codeError = const PluginManagementPluginNotFoundException("codex");
+    expect((await send(body: codeBody(code: "opaque"))).status, 404);
+    service.codeError = const PluginAuthenticationContinuationConflictException(
+      reason: PluginAuthenticationContinuationConflictReason.alreadySubmitted,
+      conflict: _continuationConflict,
+    );
+    final conflict = await send(body: codeBody(code: "opaque"));
+    expect(conflict.status, 409);
+    expect(
+      conflict.body,
+      isA<String>().having(
+        (body) => PluginAuthenticationConflict.fromJson(jsonDecodeMap(body)),
+        "conflict",
+        _continuationConflict,
+      ),
+    );
+  });
+
   test("DELETE maps typed unsupported conflicts", () async {
     final service = _FakePluginLifecycleService()..cancelError = const PluginAuthenticationConflictException(_conflict);
     final response = await DeletePluginAuthenticationHandler(lifecycleService: service).routeForTest(
@@ -136,9 +179,12 @@ class _FakePluginLifecycleService() implements PluginLifecycleService {
   String? cancelledPluginId;
   String? redirectPluginId;
   Uri? submittedRedirect;
+  String? codePluginId;
+  String? submittedCode;
   Object? error;
   Object? cancelError;
   Object? redirectError;
+  Object? codeError;
 
   @override
   Future<PluginAuthenticationChallengeResponse> authenticate({required String pluginId}) async {
@@ -157,6 +203,13 @@ class _FakePluginLifecycleService() implements PluginLifecycleService {
     submittedRedirect = redirectUri;
     final currentError = redirectError;
     if (currentError != null) throw currentError;
+  }
+
+  @override
+  Future<void> submitAuthenticationCode({required String pluginId, required String code}) async {
+    codePluginId = pluginId;
+    submittedCode = code;
+    if (codeError case final currentError?) throw currentError;
   }
 
   @override

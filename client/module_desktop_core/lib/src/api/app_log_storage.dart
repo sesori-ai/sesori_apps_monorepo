@@ -31,13 +31,14 @@ class AppLogStorage.forTesting({
   @override
   void write({required LogRecord record}) {
     const StdoutLogSink().write(record: record);
-    _lastWrite = _append(record: record);
+    _lastWrite = _lastWrite.then((_) => _append(record: record));
   }
 
   Future<void> _append({required LogRecord record}) async {
     try {
       final root = await _applicationSupportDirectory.resolve();
       await _storage.appendLine(directory: Directory(path.join(root.path, "logs")), line: record.formatted);
+      _failureReported = false;
     } on Object catch (error, stackTrace) {
       if (!_failureReported) {
         _failureReported = true;
@@ -48,7 +49,6 @@ class AppLogStorage.forTesting({
     }
   }
 
-  /// Waits for admitted writes in tests; abrupt application exit remains best-effort.
-  @visibleForTesting
-  Future<void> drain() => _lastWrite;
+  @override
+  Future<void> flush() => _lastWrite;
 }

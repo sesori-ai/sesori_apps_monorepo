@@ -181,6 +181,43 @@ void main() {
     expect(progress[3].toJson(), {"type": "unknown"});
   });
 
+  test("pasted-code challenge and code request round-trip", () {
+    const challenge = PluginAuthenticationChallengeResponse.pastedCode(
+      authorizationUrl: "https://auth.example/authorize?code=true",
+    );
+    const request = PluginAuthenticationCodeRequest(code: "opaque#state");
+
+    expect(challenge.toJson(), {
+      "type": "pastedCode",
+      "authorizationUrl": "https://auth.example/authorize?code=true",
+    });
+    expect(PluginAuthenticationChallengeResponse.fromJson(challenge.toJson()).toJson(), challenge.toJson());
+    expect(request.toJson(), {"code": "opaque#state"});
+    expect(PluginAuthenticationCodeRequest.fromJson(request.toJson()).code, "opaque#state");
+  });
+
+  test("pasted codes follow the backend-neutral rule", () {
+    final longest = List.filled(PluginAuthenticationCodeRequest.maxCodeLength, "x").join();
+    final rejected = [
+      "",
+      "  ",
+      "opaque state",
+      "opaque${String.fromCharCode(0x09)}state",
+      "opaque${String.fromCharCode(0x00)}state",
+      "opaque${String.fromCharCode(0xa0)}state",
+      "${longest}x",
+    ];
+
+    expect(
+      PluginAuthenticationCodeRequest.normalizeCode(code: " opaque#state${String.fromCharCode(0x0a)}"),
+      "opaque#state",
+    );
+    expect(PluginAuthenticationCodeRequest.normalizeCode(code: longest), longest);
+    for (final code in rejected) {
+      expect(PluginAuthenticationCodeRequest.normalizeCode(code: code), isNull, reason: code.codeUnits.toString());
+    }
+  });
+
   test("authentication variants require their exact fields", () {
     expect(
       () => PluginAuthenticationChallengeResponse.fromJson({
@@ -196,6 +233,7 @@ void main() {
       }),
       throwsA(isA<FormatException>()),
     );
+    expect(() => PluginAuthenticationChallengeResponse.fromJson({"type": "pastedCode"}), throwsA(anything));
     expect(
       PluginAuthenticationChallengeResponse.fromJson({"type": "future"}),
       isA<PluginAuthenticationUnknownChallengeResponse>(),

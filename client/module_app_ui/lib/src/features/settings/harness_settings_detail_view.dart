@@ -130,6 +130,9 @@ class const _HarnessControlCard({
       PluginAuthenticationPresentationBrowserWaiting(pluginId: final targetPluginId) ||
       PluginAuthenticationPresentationBrowserFinalizing(pluginId: final targetPluginId) ||
       PluginAuthenticationPresentationBrowserLaunchFailedState(pluginId: final targetPluginId) ||
+      PluginAuthenticationPresentationCodeRetry(pluginId: final targetPluginId) ||
+      PluginAuthenticationPresentationCodeSubmitting(pluginId: final targetPluginId) ||
+      PluginAuthenticationPresentationCodeSubmitted(pluginId: final targetPluginId) ||
       PluginAuthenticationPresentationCancelling(pluginId: final targetPluginId) ||
       PluginAuthenticationPresentationCancellingUncertain(pluginId: final targetPluginId) => targetPluginId == pluginId,
       PluginAuthenticationPresentationIdle() ||
@@ -145,6 +148,9 @@ class const _HarnessControlCard({
       PluginAuthenticationPresentationBrowserWaiting() ||
       PluginAuthenticationPresentationBrowserFinalizing() ||
       PluginAuthenticationPresentationBrowserLaunchFailedState() ||
+      PluginAuthenticationPresentationCodeRetry() ||
+      PluginAuthenticationPresentationCodeSubmitting() ||
+      PluginAuthenticationPresentationCodeSubmitted() ||
       PluginAuthenticationPresentationCancelling() ||
       PluginAuthenticationPresentationCancellingUncertain() ||
       PluginAuthenticationPresentationSucceeded() ||
@@ -162,6 +168,9 @@ class const _HarnessControlCard({
       PluginAuthenticationPresentationBrowserWaiting() ||
       PluginAuthenticationPresentationBrowserFinalizing() ||
       PluginAuthenticationPresentationBrowserLaunchFailedState() ||
+      PluginAuthenticationPresentationCodeRetry() ||
+      PluginAuthenticationPresentationCodeSubmitting() ||
+      PluginAuthenticationPresentationCodeSubmitted() ||
       PluginAuthenticationPresentationCancelling() ||
       PluginAuthenticationPresentationCancellingUncertain() => true,
     };

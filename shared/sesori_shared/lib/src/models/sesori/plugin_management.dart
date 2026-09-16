@@ -109,6 +109,13 @@ sealed class PluginAuthenticationChallengeResponse with _$PluginAuthenticationCh
     required String expectedCallbackUrl,
   }) = PluginAuthenticationBrowserChallengeResponse;
 
+  /// The user opens [authorizationUrl], approves access, and pastes the code
+  /// the provider shows afterwards through [PluginAuthenticationCodeRequest].
+  @FreezedUnionValue("pastedCode")
+  const factory pastedCode({
+    required String authorizationUrl,
+  }) = PluginAuthenticationPastedCodeChallengeResponse;
+
   const factory unknown() = PluginAuthenticationUnknownChallengeResponse;
 
   factory fromJson(Map<String, dynamic> json) {
@@ -126,6 +133,27 @@ sealed class PluginAuthenticationRedirectRequest with _$PluginAuthenticationRedi
   const factory({required String redirectUrl}) = _PluginAuthenticationRedirectRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$PluginAuthenticationRedirectRequestFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: true, copyWith: false, equal: false, toStringOverride: false)
+sealed class PluginAuthenticationCodeRequest with _$PluginAuthenticationCodeRequest {
+  static const maxCodeLength = 512;
+
+  static final _codeSeparators = RegExp(r"[\s\p{Cc}]", unicode: true);
+
+  const factory({required String code}) = _PluginAuthenticationCodeRequest;
+
+  factory fromJson(Map<String, dynamic> json) => _$PluginAuthenticationCodeRequestFromJson(json);
+
+  /// The backend-neutral rule the app and the bridge both apply to pasted
+  /// text: the trimmed code, or null when it is empty, longer than
+  /// [maxCodeLength], or contains whitespace or control characters. The
+  /// plugin validates its own code shape.
+  static String? normalizeCode({required String code}) {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty || trimmed.length > maxCodeLength || _codeSeparators.hasMatch(trimmed)) return null;
+    return trimmed;
+  }
 }
 
 @Freezed(

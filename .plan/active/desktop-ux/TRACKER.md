@@ -4,33 +4,35 @@ Status values: `pending` / `in-progress` / `done` / `blocked`. Evidence for a
 finished step lives in `steps/step-NN.md` (created when the step executes);
 this table records state only and never mirrors PR review status.
 
-There are 17 PRs across 12 logical steps. Step 2.a/2.b map to ordinals 2/3;
+There are 18 PRs across 12 logical steps. Step 2.a/2.b map to ordinals 2/3;
 original 3–6 to 4–7; 7.a/7.b/7.c to 8/9/10; step 8 to 11.
-Logging remains ordinal 12 as 9.a; sidebar follow-ups 9.b/9.c are 13/14;
-original steps 10–12 are 15–17. Earlier evidence filenames stay unchanged;
-logging and its follow-ups use `step-09a.md`, `step-09b.md`, `step-09c.md`.
+Logging prerequisite/file output 9.a.1/9.a.2 are 12/13; sidebar 9.b/9.c are 14/15;
+original steps 10–12 are 16–18. Earlier evidence filenames stay unchanged.
+Logging uses `step-09a1.md` (prerequisite) and `step-09a.md` (preserved continuation);
+sidebar follow-ups use `step-09b.md` and `step-09c.md`.
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---|---|
-| [x] | 1 | `desktop-release-plan` | `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/17]` | ≤ 900 | done |
-| [x] | 2.a | `desktop-ux/sidebar-frame` | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/17]` | ≤ 1,400 | done |
-| [x] | 2.b | `desktop-ux/sidebar-polish` | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/17]` | ≤ 900 | done |
-| [x] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/17]` | ≤ 1,200 | done |
-| [x] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/17]` | ≤ 1,400 | done |
-| [x] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/17]` | ≤ 700 | done |
-| [x] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/17]` | ≤ 1,500 | done |
-| [x] | 7.a | `desktop-ux/settings-composition` | `🌿 [desktop-ux] Prepare shared settings composition [step 8/17]` | ≤ 500 | done |
-| [x] | 7.b | `desktop-ux/overlay-navigation` | `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/17]` | ≤ 700 | done |
-| [x] | 7.c | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 10/17]` | ≤ 1,750 | done |
-| [x] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/17]` | ≤ 1,000 | done |
-| [ ] | 9.a | `desktop-ux/app-logs` | `⚙️ [desktop-ux] Write app logs to rotating files [step 12/17]` | ≤ 1,450 | in-progress |
-| [ ] | 9.b | `desktop-ux/sidebar-interactions` | `🌿 [desktop-ux] Fix sidebar resizing and project hit targets [step 13/17]` | ≤ 500 | pending |
-| [ ] | 9.c | `desktop-ux/sidebar-activity-controls` | `⚙️ [desktop-ux] Prioritize sidebar activity and simplify controls [step 14/17]` | ≤ 1,200 | pending |
-| [ ] | 10 | `desktop-ux/shortcuts-title-bar` | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 15/17]` | ≤ 600 | pending |
-| [ ] | 11 | `desktop-ux/regression-docs` | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 16/17]` | ≤ 600 | pending |
-| [ ] | 12 | `desktop-ux/coverage-retire` | `🌿 [desktop-ux] Run coverage and retire the plan [step 17/17]` | ≤ 300 | pending |
+| [x] | 1 | `desktop-release-plan` | `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/18]` | ≤ 900 | done |
+| [x] | 2.a | `desktop-ux/sidebar-frame` | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/18]` | ≤ 1,400 | done |
+| [x] | 2.b | `desktop-ux/sidebar-polish` | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/18]` | ≤ 900 | done |
+| [x] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/18]` | ≤ 1,200 | done |
+| [x] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/18]` | ≤ 1,400 | done |
+| [x] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/18]` | ≤ 700 | done |
+| [x] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/18]` | ≤ 1,500 | done |
+| [x] | 7.a | `desktop-ux/settings-composition` | `🌿 [desktop-ux] Prepare shared settings composition [step 8/18]` | ≤ 500 | done |
+| [x] | 7.b | `desktop-ux/overlay-navigation` | `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/18]` | ≤ 700 | done |
+| [x] | 7.c | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 10/18]` | ≤ 1,750 | done |
+| [x] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/18]` | ≤ 1,000 | done |
+| [ ] | 9.a.1 | `desktop-ux/logging-foundation` | `⚙️ [desktop-ux] Prepare safe diagnostics and bounded quit flushing [step 12/18]` | ≤ 1,300 | in-progress |
+| [ ] | 9.a.2 | `desktop-ux/app-logs` | `⚙️ [desktop-ux] Write app logs to rotating files [step 13/18]` | ≤ 1,300 | pending |
+| [ ] | 9.b | `desktop-ux/sidebar-interactions` | `🌿 [desktop-ux] Fix sidebar resizing and project hit targets [step 14/18]` | ≤ 500 | pending |
+| [ ] | 9.c | `desktop-ux/sidebar-activity-controls` | `⚙️ [desktop-ux] Prioritize sidebar activity and simplify controls [step 15/18]` | ≤ 1,200 | pending |
+| [ ] | 10 | `desktop-ux/shortcuts-title-bar` | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 16/18]` | ≤ 600 | pending |
+| [ ] | 11 | `desktop-ux/regression-docs` | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 17/18]` | ≤ 600 | pending |
+| [ ] | 12 | `desktop-ux/coverage-retire` | `🌿 [desktop-ux] Run coverage and retire the plan [step 18/18]` | ≤ 300 | pending |
 
-Next: 9.a → 9.b → 9.c → 10 → 11 → 12. The sidebar additions implement the
+Next: 9.a.1 → 9.a.2 → 9.b → 9.c → 10 → 11 → 12. The sidebar additions implement the
 user's drag/hit-target, priority activity, footer/wording, refresh, animation and
 tooltip feedback. Only one PR is open; one local successor may be prepared.
 
@@ -50,6 +52,14 @@ tooltip feedback. Only one PR is open; one local successor may be prepared.
 - Step 7.c: [PR #1501](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1501),
   merged after #1502's forward integration, preserving published history without force-pushing.
 - Step 8: [PR #1505](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1505).
+- Step 9.a.2: [PR #1509](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1509),
+  temporarily closed, not merged. Preserve published `dc1074117b42ad06c268e2d6068a309411d9e3c2`;
+  after 9.a.1 merges, merge main forward and reopen without rewriting history.
+
+- Standalone user-requested sidebar correction:
+  [PR #1513](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1513) merged.
+  Selected-session pinning now uses the non-archived projection, including live archive updates.
+  Seven focused cases and core analysis passed; separate from the 18-PR series.
 
 ## Unattended execution
 
@@ -120,7 +130,11 @@ or waive shipping qualification.
   three owning analyzers and four inspected synthetic renders. Follow-up scoped
   architecture review approved; no native permission, login registration or production
   bridge work ran. See [step 8 evidence](steps/step-08.md).
-- Step 9.a: 91 distinct retained cases, five owning analyzers and frozen-scope
-  implementation architecture review pass. Tests use fakes/temporary directories, not production
-  startup or native folder opening. See [logging evidence](steps/step-09a.md).
-  New sidebar work is planned only, not included in this implementation.
+- Step 9.a.1: 138 distinct retained cases across 14 suites; five owning analyzers
+  are clean at documented checkpoints. Review fixes add real-adapter URI coverage and
+  long-error console chunking. Full auth generation retains unrelated outputs.
+  Scoped architecture plan/implementation reviews approved. See [prerequisite evidence](steps/step-09a1.md).
+  No file sinks, production DI or native work.
+- Step 9.a.2: the original 91-case/five-analyzer evidence remains on preserved #1509,
+  not evidence for its unimplemented review fixes. File completion/recovery warnings and
+  directory copy follow 9.a.1. Remaining sidebar follow-ups are still planned.

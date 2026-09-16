@@ -255,23 +255,15 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
       final json = jsonDecode(response.body);
       return ApiResponse.success(fromJson(json));
     } on Object catch (error, stackTrace) {
+      final failure = ApiError.jsonParsing(jsonString: response.body, innerError: error);
       developer.log(
         "Failed to parse $operation JSON",
         name: "sesori_auth",
-        error: _JsonResponseParsingException(
-          message: "Invalid $operation JSON",
-          innerError: error,
-        ),
+        error: failure,
         stackTrace: stackTrace,
         level: 1000,
       );
-      return ApiResponse.error(ApiError.jsonParsing(response.body));
+      return ApiResponse.error(failure);
     }
   }
-}
-
-final class const _JsonResponseParsingException({required final String message, required final Object innerError})
-    implements Exception {
-  @override
-  String toString() => "$message (innerError: ${innerError.runtimeType.toString()})";
 }

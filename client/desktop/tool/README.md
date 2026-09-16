@@ -10,8 +10,15 @@ building. From `client/desktop`:
 ```bash
 dart run tool/stage_desktop_bundle.dart \
   --build-number 1 \
+  --channel stable \
   --output ../../build/desktop-bundle-1
 ```
+
+`--channel` accepts only `stable` (default) or `internal`. It writes the separate
+`SESORI_DESKTOP_RELEASE_CHANNEL` compile define, selecting the official Settings
+download-index section without changing GUI/helper identity or its manifest.
+An internal publisher must explicitly pass `--channel internal`. This selects a
+channel, not a published-release guarantee; unshipped sections have no artifacts.
 
 The output must not already exist. Failed output is retained for diagnosis; retry
 with a new output path rather than automatically deleting or replacing artifacts.

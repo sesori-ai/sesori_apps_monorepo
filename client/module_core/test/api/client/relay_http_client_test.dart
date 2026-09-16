@@ -170,7 +170,8 @@ void main() {
           expect(error.jsonString, body);
           expect(error.toString(), isNot(contains(secret)));
           expect(logs.join("\n"), isNot(contains(secret)));
-          expect(logs.join("\n"), contains(malformedJson ? "offset=" : "DTO conversion failed"));
+          expect(error.innerError, malformedJson ? isA<FormatException>() : isA<TypeError>());
+          expect(logs.join("\n"), contains(malformedJson ? "offset=" : "not a subtype"));
           expect(logs.join("\n"), contains("relay_http_client.dart"));
         });
       }
@@ -210,6 +211,7 @@ void main() {
 
         final error = (result as ErrorResponse<SessionAttachmentResponse>).error as JsonParsingError;
         expect(error.jsonString, "Sensitive response omitted");
+        expect(error.innerError, isA<TypeError>());
         expect(error.jsonString, isNot(contains(secret)));
         expect(logs.join("\n"), isNot(contains(secret)));
         expect(error.toString(), isNot(contains(secret)));

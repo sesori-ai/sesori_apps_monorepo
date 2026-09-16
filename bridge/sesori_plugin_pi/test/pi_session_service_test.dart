@@ -754,13 +754,13 @@ void main() {
     process.emitResponse(
       id: settledState["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
     process.emitResponse(
       id: confirmedState["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     await _waitForIdle(service: service, sessionId: "session");
     expect(events.whereType<BridgeSsePromptSettled>(), isEmpty);
@@ -946,7 +946,7 @@ void main() {
     process.emitResponse(
       id: stateCommand["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": true, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: true),
     );
     await pump();
 
@@ -998,6 +998,17 @@ void main() {
     final secondModel = await _waitForNthCommand(process: process, type: "set_model", count: 2);
     expect(secondModel["modelId"], "second-model");
     process.emitResponse(id: secondModel["id"]! as String, command: "set_model");
+    final secondState = await waitForCommand(process: process, type: "get_state");
+    process.emitResponse(
+      id: secondState["id"]! as String,
+      command: "get_state",
+      data: const {
+        "model": {"provider": "provider", "id": "second-model"},
+        "thinkingLevel": "high",
+        "isStreaming": true,
+        "pendingMessageCount": 0,
+      },
+    );
     final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
     process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
@@ -1061,6 +1072,577 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
+  test("explicit matching selection steers a run that began with inherited selection", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "high");
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "inherited-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: null,
+    );
+
+    await _answerEntries(process, answerInitialSelection: false);
+    final initialState = await waitForCommand(process: process, type: "get_state");
+    expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
+    process.emitResponse(
+      id: initialState["id"]! as String,
+      command: "get_state",
+      data: const {
+        "model": {"provider": "provider", "id": "model"},
+        "thinkingLevel": "high",
+        "isStreaming": false,
+        "pendingMessageCount": 0,
+      },
+    );
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "matching-explicit",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "steer")],
+      userVisibleText: "steer",
+      variant: variant,
+      model: model,
+    );
+
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    expect(steeringPrompt["message"], "steer");
+    expect(steeringPrompt["streamingBehavior"], "steer");
+    expect(process.written.where((frame) => frame["type"] == "set_model"), isEmpty);
+    expect(process.written.where((frame) => frame["type"] == "set_thinking_level"), isEmpty);
+
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  test("late selection changes requeue an admitted steering turn before setters", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "high");
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "race-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: variant,
+      model: model,
+    );
+    await _answerEntries(process);
+    final initialModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+    final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
+    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+
+    final history = fixture.repository.loadHistory(sessionId: "session", knownDirectories: const {"/project"});
+    final historyCommand = await _waitForNthCommand(process: process, type: "get_entries", count: 2);
+    final admitted = service.sendPrompt(
+      sessionId: "session",
+      promptId: "race-second",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "second")],
+      userVisibleText: "second",
+      variant: variant,
+      model: model,
+    );
+    process.emit(frame: {"type": "thinking_level_changed", "level": "low"});
+    await pump();
+    process.emitResponse(
+      id: historyCommand["id"]! as String,
+      command: "get_entries",
+      data: const {"entries": <Object?>[], "leafId": null},
+    );
+    await history;
+    await admitted;
+    await pump();
+
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+    expect(process.written.where((frame) => frame["type"] == "set_thinking_level"), hasLength(1));
+    process.emit(frame: {"type": "agent_settled"});
+
+    final restoredThinking = await _waitForNthCommand(process: process, type: "set_thinking_level", count: 2);
+    process.emitResponse(id: restoredThinking["id"]! as String, command: "set_thinking_level");
+    final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  for (final runtimeState in [
+    (name: "a missing model", model: null, thinkingLevel: "high"),
+    (
+      name: "an unknown thinking level",
+      model: const <String, Object?>{"provider": "provider", "id": "model"},
+      thinkingLevel: "future-level",
+    ),
+  ]) {
+    test("an inherited prompt tolerates ${runtimeState.name} and keeps explicit selection at the boundary", () async {
+      final process = FakePiProcess();
+      final fixture = _Fixture(processes: [process]);
+      addTearDown(fixture.dispose);
+      final service = fixture.service();
+      const model = (providerID: "provider", modelID: "model");
+      const variant = PluginSessionVariant(id: "high");
+
+      await service.sendPrompt(
+        sessionId: "session",
+        promptId: "unknown-first",
+        directory: "/project",
+        parts: [const PluginPromptPart.text(text: "first")],
+        userVisibleText: "first",
+        variant: null,
+        model: null,
+      );
+
+      await _answerEntries(process, answerInitialSelection: false);
+      final initialState = await waitForCommand(process: process, type: "get_state");
+      process.emitResponse(
+        id: initialState["id"]! as String,
+        command: "get_state",
+        data: {
+          "model": runtimeState.model,
+          "thinkingLevel": runtimeState.thinkingLevel,
+          "isStreaming": false,
+          "pendingMessageCount": 0,
+        },
+      );
+      final firstPrompt = await waitForCommand(process: process, type: "prompt");
+      process.emit(frame: {"type": "agent_start"});
+      process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+
+      await service.sendPrompt(
+        sessionId: "session",
+        promptId: "known-second",
+        directory: "/project",
+        parts: [const PluginPromptPart.text(text: "second")],
+        userVisibleText: "second",
+        variant: variant,
+        model: model,
+      );
+      await pump();
+
+      expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+      expect(process.written.where((frame) => frame["type"] == "set_model"), isEmpty);
+      process.emit(frame: {"type": "agent_settled"});
+
+      final setModel = await waitForCommand(process: process, type: "set_model");
+      process.emitResponse(id: setModel["id"]! as String, command: "set_model");
+      final setThinking = await waitForCommand(process: process, type: "set_thinking_level");
+      process.emitResponse(id: setThinking["id"]! as String, command: "set_thinking_level");
+      final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+      process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+      process.emit(frame: {"type": "agent_settled"});
+      await _waitForIdle(service: service, sessionId: "session");
+    });
+  }
+
+  test("runtime thinking changes update the active selection boundary", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "high");
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "runtime-change-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: variant,
+      model: model,
+    );
+
+    await _answerEntries(process);
+    final initialModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+    final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
+    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "thinking_level_changed", "level": "low"});
+    await pump();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "runtime-change-second",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "second")],
+      userVisibleText: "second",
+      variant: variant,
+      model: model,
+    );
+    await pump();
+
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+    expect(process.written.where((frame) => frame["type"] == "set_thinking_level"), hasLength(1));
+    process.emit(frame: {"type": "agent_settled"});
+
+    final restoredThinking = await _waitForNthCommand(process: process, type: "set_thinking_level", count: 2);
+    expect(restoredThinking["level"], "high");
+    process.emitResponse(id: restoredThinking["id"]! as String, command: "set_thinking_level");
+    final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  test("unknown runtime thinking changes invalidate the active selection", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "high");
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "unknown-runtime-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: variant,
+      model: model,
+    );
+
+    await _answerEntries(process);
+    final initialModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+    final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
+    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "thinking_level_changed", "level": "future-level"});
+    await pump();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "unknown-runtime-second",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "second")],
+      userVisibleText: "second",
+      variant: variant,
+      model: model,
+    );
+    await pump();
+
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+    expect(process.written.where((frame) => frame["type"] == "set_model"), hasLength(1));
+    process.emit(frame: {"type": "agent_settled"});
+
+    final restoredModel = await _waitForNthCommand(process: process, type: "set_model", count: 2);
+    process.emitResponse(id: restoredModel["id"]! as String, command: "set_model");
+    final restoredThinking = await _waitForNthCommand(process: process, type: "set_thinking_level", count: 2);
+    process.emitResponse(id: restoredThinking["id"]! as String, command: "set_thinking_level");
+    final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  for (final failModelUpdate in [true, false]) {
+    test(
+      "a failed ${failModelUpdate ? "model" : "post-model"} operation cannot leave stale cached selection",
+      () async {
+        final process = FakePiProcess();
+        final fixture = _Fixture(processes: [process]);
+        addTearDown(fixture.dispose);
+        final service = fixture.service();
+        const originalModel = (providerID: "provider", modelID: "original-model");
+        const changedModel = (providerID: "provider", modelID: "changed-model");
+        const variant = PluginSessionVariant(id: "high");
+
+        await service.sendPrompt(
+          sessionId: "session",
+          promptId: "cache-first",
+          directory: "/project",
+          parts: [const PluginPromptPart.text(text: "first")],
+          userVisibleText: "first",
+          variant: variant,
+          model: originalModel,
+        );
+        await _answerEntries(process);
+        final initialModel = await waitForCommand(process: process, type: "set_model");
+        process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+        final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
+        process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+        final firstPrompt = await waitForCommand(process: process, type: "prompt");
+        process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+        process.emit(frame: {"type": "agent_settled"});
+        await _waitForIdle(service: service, sessionId: "session");
+
+        await service.sendPrompt(
+          sessionId: "session",
+          promptId: "cache-failing-change",
+          directory: "/project",
+          parts: [const PluginPromptPart.text(text: "change")],
+          userVisibleText: "change",
+          variant: variant,
+          model: changedModel,
+        );
+        final changedModelCommand = await _waitForNthCommand(process: process, type: "set_model", count: 2);
+        if (failModelUpdate) {
+          process.emitFailure(id: changedModelCommand["id"]! as String, command: "set_model", error: "rejected");
+        } else {
+          process.emitResponse(id: changedModelCommand["id"]! as String, command: "set_model");
+          final failedThinking = await _waitForNthCommand(process: process, type: "set_thinking_level", count: 2);
+          process.emitFailure(id: failedThinking["id"]! as String, command: "set_thinking_level", error: "rejected");
+        }
+        await _waitForIdle(service: service, sessionId: "session");
+
+        await service.sendPrompt(
+          sessionId: "session",
+          promptId: "cache-restore",
+          directory: "/project",
+          parts: [const PluginPromptPart.text(text: "restore")],
+          userVisibleText: "restore",
+          variant: variant,
+          model: originalModel,
+        );
+
+        final restoredModel = await _waitForNthCommand(process: process, type: "set_model", count: 3);
+        expect(restoredModel["modelId"], "original-model");
+        process.emitResponse(id: restoredModel["id"]! as String, command: "set_model");
+        final restoredThinking = await _waitForNthCommand(
+          process: process,
+          type: "set_thinking_level",
+          count: failModelUpdate ? 2 : 3,
+        );
+        process.emitResponse(id: restoredThinking["id"]! as String, command: "set_thinking_level");
+        final restoredPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+        process.emitResponse(id: restoredPrompt["id"]! as String, command: "prompt");
+        process.emit(frame: {"type": "agent_settled"});
+        await _waitForIdle(service: service, sessionId: "session");
+      },
+    );
+  }
+
+  for (final stateRefreshFails in [false, true]) {
+    test(
+      "post-command ${stateRefreshFails ? "refresh failures retain" : "model changes update"} the active selection boundary",
+      () async {
+        final process = FakePiProcess();
+        final fixture = _Fixture(processes: [process]);
+        addTearDown(fixture.dispose);
+        final service = fixture.service();
+        const originalModel = (providerID: "provider", modelID: "original-model");
+        const variant = PluginSessionVariant(id: "high");
+
+        final accepted = service.sendCommand(
+          sessionId: "session",
+          promptId: "model-command",
+          directory: "/project",
+          command: "change-model",
+          arguments: "",
+          userVisibleArguments: null,
+          variant: variant,
+          model: originalModel,
+        );
+
+        await _answerEntries(process);
+        final initialModel = await waitForCommand(process: process, type: "set_model");
+        process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+        final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
+        process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+        final commandPrompt = await waitForCommand(process: process, type: "prompt");
+        process.emit(frame: {"type": "agent_start"});
+        process.emitResponse(id: commandPrompt["id"]! as String, command: "prompt");
+        final commandState = await waitForCommand(process: process, type: "get_state");
+        if (stateRefreshFails) {
+          process.emitFailure(id: commandState["id"]! as String, command: "get_state", error: "unavailable");
+        } else {
+          process.emitResponse(
+            id: commandState["id"]! as String,
+            command: "get_state",
+            data: const {
+              "model": {"provider": "provider", "id": "changed-model"},
+              "thinkingLevel": "high",
+              "isStreaming": true,
+              "pendingMessageCount": 0,
+            },
+          );
+        }
+        await accepted;
+        await pump();
+
+        await service.sendPrompt(
+          sessionId: "session",
+          promptId: "restore-original",
+          directory: "/project",
+          parts: [const PluginPromptPart.text(text: "second")],
+          userVisibleText: "second",
+          variant: variant,
+          model: originalModel,
+        );
+        await pump();
+
+        expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+        expect(process.written.where((frame) => frame["type"] == "set_model"), hasLength(1));
+        process.emit(frame: {"type": "agent_settled"});
+
+        final restoredModel = await _waitForNthCommand(process: process, type: "set_model", count: 2);
+        expect(restoredModel["modelId"], "original-model");
+        process.emitResponse(id: restoredModel["id"]! as String, command: "set_model");
+        final restoredThinking = await _waitForNthCommand(process: process, type: "set_thinking_level", count: 2);
+        process.emitResponse(id: restoredThinking["id"]! as String, command: "set_thinking_level");
+        final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+        process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+        process.emit(frame: {"type": "agent_settled"});
+        await _waitForIdle(service: service, sessionId: "session");
+      },
+    );
+  }
+
+  for (final failSecondBarrier in [false, true]) {
+    test(
+      "pre-start command ${failSecondBarrier ? "second-barrier " : ""}refresh failures replace the resident",
+      () async {
+        final process = FakePiProcess();
+        final replacement = FakePiProcess();
+        final fixture = _Fixture(processes: [process, replacement]);
+        addTearDown(fixture.dispose);
+        final service = fixture.service();
+        const model = (providerID: "provider", modelID: "model");
+        const variant = PluginSessionVariant(id: "high");
+
+        final accepted = service.sendCommand(
+          sessionId: "session",
+          promptId: "pre-start-command",
+          directory: "/project",
+          command: "maybe-start-agent",
+          arguments: "",
+          userVisibleArguments: null,
+          variant: variant,
+          model: model,
+        );
+        await _answerEntries(process);
+        final initialModel = await waitForCommand(process: process, type: "set_model");
+        process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+        final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
+        process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+        final commandPrompt = await waitForCommand(process: process, type: "prompt");
+        process.emitResponse(id: commandPrompt["id"]! as String, command: "prompt");
+        final commandState = await waitForCommand(process: process, type: "get_state");
+        var failedState = commandState;
+        if (failSecondBarrier) {
+          process.emitResponse(
+            id: commandState["id"]! as String,
+            command: "get_state",
+            data: _stateData(process: process, streaming: false),
+          );
+          failedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
+        }
+        await accepted;
+
+        await service.sendPrompt(
+          sessionId: "session",
+          promptId: "after-pre-start-failure",
+          directory: "/project",
+          parts: [const PluginPromptPart.text(text: "next")],
+          userVisibleText: "next",
+          variant: variant,
+          model: model,
+        );
+        process.emitFailure(id: failedState["id"]! as String, command: "get_state", error: "unavailable");
+
+        await _answerEntries(replacement);
+        expect(process.killed, isTrue);
+        expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+        final replacementModel = await waitForCommand(process: replacement, type: "set_model");
+        replacement.emitResponse(id: replacementModel["id"]! as String, command: "set_model");
+        final replacementThinking = await waitForCommand(process: replacement, type: "set_thinking_level");
+        replacement.emitResponse(id: replacementThinking["id"]! as String, command: "set_thinking_level");
+        final nextPrompt = await waitForCommand(process: replacement, type: "prompt");
+        replacement.emitResponse(id: nextPrompt["id"]! as String, command: "prompt");
+        replacement.emit(frame: {"type": "agent_settled"});
+        await _waitForIdle(service: service, sessionId: "session");
+      },
+    );
+  }
+
+  test("command refresh transport failures tear down instead of hanging in flight", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "high");
+
+    final accepted = service.sendCommand(
+      sessionId: "session",
+      promptId: "transport-command",
+      directory: "/project",
+      command: "start-agent",
+      arguments: "",
+      userVisibleArguments: null,
+      variant: variant,
+      model: model,
+    );
+    await _answerEntries(process);
+    final initialModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+    final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
+    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+    final commandPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: commandPrompt["id"]! as String, command: "prompt");
+    await waitForCommand(process: process, type: "get_state");
+    await accepted;
+
+    process.failStdout(error: const SocketException("broken stdout"));
+
+    await _waitForIdle(service: service, sessionId: "session");
+    expect(process.killed, isTrue);
+  });
+
+  test("pre-dispatch state transport failures tear down the resident", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "inherited-transport-failure",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "prompt")],
+      userVisibleText: "prompt",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process, answerInitialSelection: false);
+    await waitForCommand(process: process, type: "get_state");
+
+    process.failStdout(error: const SocketException("broken stdout"));
+
+    await _waitForIdle(service: service, sessionId: "session");
+    expect(process.killed, isTrue);
+    expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
+  });
+
   test("queued work resets a terminal retry status before dispatch", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -1105,6 +1687,17 @@ void main() {
     expect(events.whereType<BridgeSseSessionStatus>().last.status, const PluginSessionStatus.busy());
 
     process.emitResponse(id: nextModel["id"]! as String, command: "set_model");
+    final nextState = await waitForCommand(process: process, type: "get_state");
+    process.emitResponse(
+      id: nextState["id"]! as String,
+      command: "get_state",
+      data: const {
+        "model": {"provider": "provider", "id": "next-model"},
+        "thinkingLevel": "high",
+        "isStreaming": false,
+        "pendingMessageCount": 0,
+      },
+    );
     final nextPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
     process.emitResponse(id: nextPrompt["id"]! as String, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
@@ -1196,7 +1789,7 @@ void main() {
     process.emitResponse(
       id: state["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     await accepted;
     await _waitForIdle(service: service, sessionId: "session");
@@ -1383,13 +1976,13 @@ void main() {
     process.emitResponse(
       id: state["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
     process.emitResponse(
       id: confirmedState["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     await idle;
     await _waitForIdle(service: service, sessionId: "session");
@@ -1435,13 +2028,13 @@ void main() {
     process.emitResponse(
       id: state["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
     process.emitResponse(
       id: confirmedState["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     await _waitForEvent<BridgeSsePromptSettled>(events: events);
     await _waitForIdle(service: service, sessionId: "session");
@@ -1489,14 +2082,14 @@ void main() {
     process.emitResponse(
       id: firstState["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
     process.emit(frame: {"type": "agent_start"});
     process.emitResponse(
       id: confirmedState["id"]! as String,
       command: "get_state",
-      data: {"isStreaming": false, "pendingMessageCount": 0},
+      data: _stateData(process: process, streaming: false),
     );
     await pump();
 
@@ -2540,7 +3133,45 @@ final class _BufferingStdout() implements Stdout {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-Future<void> _answerEntries(FakePiProcess process) => _answerNthEntries(process, count: 1);
+Future<void> _answerEntries(FakePiProcess process, {bool answerInitialSelection = true}) async {
+  await _answerNthEntries(process, count: 1);
+  if (answerInitialSelection) unawaited(_answerInitialSelectionState(process));
+}
+
+Future<void> _answerInitialSelectionState(FakePiProcess process) async {
+  for (var attempt = 0; attempt < 100; attempt++) {
+    if (process.written.any((frame) => frame["type"] == "prompt")) return;
+    final state = process.written.where((frame) => frame["type"] == "get_state").firstOrNull;
+    if (state != null) {
+      process.emitResponse(
+        id: state["id"]! as String,
+        command: "get_state",
+        data: _stateData(process: process, streaming: false),
+      );
+      process.written.remove(state);
+      return;
+    }
+    await pump();
+  }
+}
+
+Map<String, Object?> _stateData({
+  required FakePiProcess process,
+  required bool streaming,
+  int pendingMessageCount = 0,
+}) {
+  final selectedModel = process.written.where((frame) => frame["type"] == "set_model").lastOrNull;
+  final selectedVariant = process.written.where((frame) => frame["type"] == "set_thinking_level").lastOrNull;
+  return {
+    "model": {
+      "provider": selectedModel?["provider"] ?? "provider",
+      "id": selectedModel?["modelId"] ?? "model",
+    },
+    "thinkingLevel": selectedVariant?["level"] ?? "high",
+    "isStreaming": streaming,
+    "pendingMessageCount": pendingMessageCount,
+  };
+}
 
 Future<void> _answerNthEntries(FakePiProcess process, {required int count}) async {
   final command = await _waitForNthCommand(process: process, type: "get_entries", count: count);

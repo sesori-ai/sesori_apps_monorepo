@@ -12,9 +12,9 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 3.a | 3 | Bind desktop builds to bundled bridge identity | done |
 | 3.b | 4 | Surface packaged helper repair guidance | done |
 | 4.a | 5 | Package and notarize native macOS builds | done |
-| 4.b | 6 | Keep desktop startup independent of native notifications | in-progress |
-| 5 | 7 | Apply macOS updates through safe application quit | pending |
-| 6 | 8 | Publish isolated desktop channels and macOS downloads | pending |
+| 4.b | 6 | Keep desktop startup independent of native notifications | done |
+| 5 | 7 | Offer manual macOS updates through official downloads | done |
+| 6 | 8 | Publish isolated desktop channels and macOS downloads | in-progress |
 | 7 | 9 | Package signed per-user Windows installers | pending |
 | 8 | 10 | Deliver manual Windows updates and winget discovery | pending |
 | 9 | 11 | Publish signed native DEB and RPM repositories | pending |
@@ -25,6 +25,19 @@ its completed step; this table tracks implementation, not transient PR reviews.
 Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
 Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
+
+Step 4.b merged as #1503: accepted `49694775e5d364a1316b767b66642531bf002e3a`,
+squash `d1813409e3c0a8e053c3a28068d574e24fb70730`. All 11 checks settled at
+acceptance (two skipped); all seven feedback threads resolved and Cubic approved.
+Step 5 merged as #1506: accepted `3e890050bb1a55ee4d7e5c388afda67d0ae4384a`,
+squash `256565719e0804a62e467c01368e6dab5254544c` at 2026-09-16T08:20:58Z.
+All 19 checks passed at acceptance; Cubic approved and all threads were resolved.
+The subsequent merged report showed an additional twentieth check running; it is
+not included in the acceptance claim. Step 5 uses D6 manual updates and the
+user-selected `https://sesori.com/desktop/` (not yet live). Details in
+[step-05](steps/step-05.md). Step 6 continues in the same worktree on
+`desktop-distribution-release-channels`; publication remains gated.
+The current scope is private preparation only; see [step-06](steps/step-06.md).
 
 ## Alignment — 2026-09-15
 
@@ -103,7 +116,9 @@ accepting `9f286805514a26cf5e641ab96ee16e79c3bcc7f5`, as squash
 Cubic approved without findings and the owner-controlled secret migration remains
 an explicit public-release prerequisite. Final unsigned six-target qualification
 run 35036003267 measured merge checkout `e4aa30f017cf876a1f61f2a6881f1282f013dba1`.
-Step 4.b continues in the same worktree on `desktop-distribution-attention-startup`.
+Steps 4.b and 5 subsequently merged in PRs #1503 and #1506. Step 6 is now active;
+see the delivery records above for their exact acceptance and squash revisions.
+The following step-4.a evidence is historical; step-4.b evidence is recorded below.
 Existing trusted CI credentials produce private Developer-ID-signed, notarized
 and stapled packages on both native Macs. The reviewed manifest correction keeps
 JSON in Resources and the complete helper in Helpers. Latest run 35019880379 at
@@ -137,10 +152,10 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update path | API/typecheck passed; runtime ordering pending | Sparkle 2.10.0 has both native slices; supported quit-install API compiles. Prove AppKit termination after helper stop before adopting automatic behavior. |
+| macOS update path | Manual D6 fallback selected | Step 5 preserves safe Quit and opens a channel/CPU index. No Sparkle integration or updater keys/feed. Native manual N→N+1 replacement remains a release gate. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Private macOS signed/notarized payloads and synthetic platform probes verified on both CPUs | Rendered GUI/account restoration, interactive TCC/OS-login, updater/Windows/Linux keys, GCS access and owner-approved protected-environment migration of shared repository signing secrets before public publication. |
-| macOS public gate | Pending | Both CPUs, parent prerequisite, actual signed N→N+1 upgrade, quit semantics, downloads/feed, complete platform coverage from PLAN.md. |
+| macOS public gate | Pending | Both CPUs, parent prerequisite, actual signed N→N+1 upgrade, quit semantics, downloads, complete platform coverage from PLAN.md. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
 | Linux public gate | Pending | Both CPUs in DEB/RPM, nominated native distro rows, signed repository install/update/remove and desktop-environment coverage. |
 | Retirement | Pending | Step 11 docs plus complete recorded matrix; partial, blocked or missing targets keep plan active. |
@@ -152,7 +167,13 @@ Performed 2026-09-15 by the `medium-intelligence-fast` subagent using
 
 The initial draft was **rejected** for update policy in the cubit, ambiguous update
 trigger ownership, unnamed DI phases, and unnamed bundle-manifest boundaries.
-Applied the actionable corrections directly:
+Historical automatic-updater architecture below is superseded by step 5's approved
+manual fallback. It records the original review disposition, not current implementation
+guidance: no update service, updater adapter, SwiftPM dependency or update lifecycle
+subscription is now required. Step 5's explicit plan and implementation reviews own
+the current architecture.
+
+Applied the original actionable corrections directly:
 
 - `DesktopUpdateService` owns preparation/state/handoff policy over the update
   repository. All update triggers flow through it. No second stop or restore owner.

@@ -57,6 +57,17 @@ class PluginApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<SuccessEmptyResponse>> submitAuthenticationCode({
+    required String pluginId,
+    required PluginAuthenticationCodeRequest request,
+  }) {
+    return _client.post(
+      "/plugin/${Uri.encodeComponent(pluginId)}/authentication/code",
+      body: request.toJson(),
+      fromJson: SuccessEmptyResponse.fromJson,
+    );
+  }
+
   Future<ApiResponse<SuccessEmptyResponse>> cancelAuthentication({required String pluginId}) {
     return _client.delete(
       "/plugin/${Uri.encodeComponent(pluginId)}/authentication",

@@ -3,7 +3,9 @@
 ## Status
 
 Planned 2026-09-15; logical steps 1–8 have landed (see `TRACKER.md`).
-Logging is step 9.a; new user-requested sidebar corrections are steps 9.b–9.c.
+Logging is split into prerequisite 9.a.1 and file output 9.a.2; user-requested
+sidebar corrections remain steps 9.b–9.c. #1509 is temporarily closed with its
+published history preserved while the prerequisite lands.
 Native qualification remains outstanding, not waived by implementation delivery.
 This is phase 1 of the desktop UX work: the changes that
 remove the release-blocking UX problems with client-only work. Later phases
@@ -424,28 +426,39 @@ the modal.
 
 ### Log files (D10)
 
-- Pure `module_core` `LogSink.write({required LogRecord record})` and
-  `setLogSink({required LogSink sink})`, defaulting to `StdoutLogSink`.
+- Prerequisite 9.a.1 supplies pure `module_core` `LogRecord`, `LogSink.write`/`flush`,
+  `setLogSink` and bounded `flushLogs`, defaulting to stdout without file/DI activation.
   Records carry level, UTC timestamp, message, nullable diagnostic error text
   prepared before sinks and stack. Existing level gates remain (release: info+).
-- Desktop `AppLogStorage` is a lazy phase-4 `LogSink` binding. The package-internal
+  The existing desktop Quit owner flushes after cleanup with a two-second deadline,
+  then terminates; a failed helper stop still refuses Quit without flushing.
+- Desktop `AppLogStorage` is a lazy DI phase-4 `LogSink` binding, delivered in 9.a.2. The package-internal
   API-layer `RotatingFileStorage` receives resolved directories/file-local options;
   app and bridge facades retain separate state and application-support ownership.
   Each file is capped at 5 MiB with one predecessor, UTF-8-safe truncation and
   POSIX 0700 directories/0600 files. Existing bridge drains remain unchanged.
-- Mobile `IoAppLogSink` is a lazy phase-1 binding using the existing
+- Mobile `IoAppLogSink` is a lazy DI phase-1 binding using the existing
   `ApplicationSupportDirectoryClient`, with the same cap/retention in its sandbox;
   no chmod subprocesses, core IO or desktop-core dependency.
 - Both writers preserve console output, serialize finite asynchronous appends,
-  and directly report the first persistence failure without logger recursion.
-  Later writes can recover; abrupt exit can lose queued diagnostics. No retained
-  file handles, shutdown coordinator, retry timers, telemetry or log upload.
+  and directly report the first failure of each persistence episode without recursion.
+  Successful append resets the existing failure bit. Their completion methods wait for
+  admitted writes; abrupt exit or an expired Quit deadline can still lose diagnostics.
+  File-size limits do not bound pending memory. No new queue/drop/batching machinery,
+  retained file handles, shutdown coordinator, retry timers, telemetry or log upload.
 - Desktop installs only after primary-instance admission; a secondary does not
   resolve the sink. Mobile installs in the production DI callback, not fake bootstrap.
-- `ApiError` selectively omits JSON parsing bodies from diagnostic presentation;
-  relay parsing logs use source-free type/offset diagnostics and the original stack.
-  Typed payload/JSON representation, sensitive-response markers and outcomes stay intact.
-- `BridgeControlCubit.openLogs` uses the repository's prepared directory URI.
+- `ApiError.jsonParsing` has required named `jsonString` and nullable `innerError`;
+  HTTP, relay and plugin parsing retain the caught object. Diagnostic presentation
+  omits response excerpts while retaining syntax offset, DTO class/key/inner type or
+  native conversion context plus the original stack. Decoded errors may have no cause.
+  Typed bodies, sensitive-response markers and outcomes stay intact; useful non-success
+  server diagnostic bodies are not blanket-suppressed.
+- Both shells use the shared URL capability's origin metadata and typed launch failure.
+  The known URI is selectively replaced in error presentation; unrelated context and
+  the original cause/stack survive. User-info/path/query/fragment are omitted.
+- Continuation 9.a.2 installs the file writers above and makes `openLogs` use the
+  repository's prepared directory URI, with directory-specific failure wording.
 
 ## Failure Semantics
 
@@ -540,10 +553,10 @@ Deferred: none. No obsolete wire or database artifacts result from this plan.
 
 ## Delivery Plan
 
-Series slug `desktop-ux`: 12 logical steps, 17 PRs. Steps 2.a/2.b map to
+Series slug `desktop-ux`: 12 logical steps, 18 PRs. Steps 2.a/2.b map to
 ordinals 2/3; original 3–6 to 4–7; 7.a/7.b/7.c to 8/9/10; step 8 to 11.
-Step 9.a retains logging at ordinal 12; user-requested sidebar interactions and
-activity/controls are 9.b/9.c at 13/14. Steps 10–12 map to 15–17.
+Logging prerequisite/file output 9.a.1/9.a.2 are 12/13; sidebar interactions and
+activity/controls 9.b/9.c are 14/15. Steps 10–12 map to 16–18.
 Targets include additions plus deletions across every path against the merge base.
 
 On 2026-09-15 the user explicitly requested keeping additional styling out of
@@ -557,23 +570,24 @@ remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 
 | Step | PR title | Target | Scope |
 |---|---|---|---|
-| 1 | `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/17]` | ≤ 900 | This plan, tracker, cross-references in `desktop-app/TRACKER.md` and `docs/ROADMAP.md`. |
-| 2.a | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/17]` | ≤ 1,400 | `DesktopSidebarCubit` + `sidebar-layout` storage/repository methods; `DesktopSidebar` frame (header, resize handle, compact rail, bottom Settings/Bridge rows navigating to today's routes); `ProjectListCubit` hoisted to the shell; project rows with `PregoAvatarInitials`; replace the `NavigationRail`. Main pane untouched. |
-| 2.b | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/17]` | ≤ 900 | Presentation-only follow-up: clear header/actions/footer, Prego typography and surfaces, running/unread project indicators from `ProjectListCubit`, animated expand/collapse with reduced motion and immediate drag resizing. |
-| 3 | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/17]` | ≤ 1,200 | `RecentSessionsCubit` + provider composition, delegating to `SessionListService.visibleSessions`/`upsertSession`/`applySessionUpdatedEvent`/`removeSession`; session rows, "All sessions · N", per-project "+", collapsed project ids, right-click menus reusing tile action builders, hover states, selection from the route. |
-| 4 | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/17]` | ≤ 1,400 | Flatten the desktop router; `DesktopHomePane` (recovery view moved in, connected empty state) served at the desktop `projects` path in place of `DesktopProjectListScreen` (sidebar Projects header navigates there); all-sessions route keeps `DesktopSessionListCubitProvider` + the shared `SessionListScaffold`, minus the back button and the split-pane composition; delete the nested `ShellRoute`; explicit nullable detail Back callback based on the owning page's poppability; route-selected project/New session callbacks retained for step 10. `/splash` still renders `DesktopHome` until step 6. |
-| 5 | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/17]` | ≤ 700 | Remove the root banner mount; `DesktopConnectionPill` overlay in `client/desktop` (Prego surface, fade; combines overlay state with `BridgeControlCubit` state); Bridge row status dot; supervision states as the sidebar bottom card; delete `DesktopSupervisionNotice`. |
-| 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/17]` | ≤ 1,500 | Bridge popover (`PregoPopover`) with local status, contextual Start/Stop/Retry/Take Over, secondary logs/configuration and no app-scoped options; delete `DesktopHome`; `/splash` redirects to the canonical `/projects` home pane, preserving notification stacks and inventory return-refresh. |
-| 7.a | `🌿 [desktop-ux] Prepare shared settings composition [step 8/17]` | ≤ 500 | Reusable app-information/support/legal sections and picker exports, connected-bridge title input and desktop copy; native preference refresh/explicit-set methods on the existing control owner, with fake-backed tests. No changed settings navigation or visible controls yet. |
-| 7.b | `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/17]` | ≤ 700 | Containing-route visibility for the existing session activity owner; root-popup dismissal through both existing route adapters, ordered before desktop notification same-session detection/replacement. No new state owner, persisted fields or Settings presentation. |
-| 7.c | `⚙️ [desktop-ux] Present settings as a modal [step 10/17]` | ≤ 1,750 | `showDesktopSettingsModal` with blurred/dimmed backdrop, tab column, nested `Navigator`; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
-| 8 | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/17]` | ≤ 1,000 | Nullable `readBridgeDesiredState` through storage/repository with `off` applied by callers; `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (auth-driven) composed beside root bridge controls after dispatcher readiness; `FileAccessPermission` capability + `IoFileAccessPermission`; `FileAccessCubit`; home-pane card with the agent explanation; Settings → Bridge status row; focus re-check. |
-| 9.a | `⚙️ [desktop-ux] Write app logs to rotating files [step 12/17]` | ≤ 1,450 | Pure log seam, independent desktop/mobile rotating files and lazy primary-only wiring; prepared logs folder; narrowly source-free parsing diagnostics. Includes generated output, tests, evidence and the approved sidebar follow-up plan. |
-| 9.b | `🌿 [desktop-ux] Fix sidebar resizing and project hit targets [step 13/17]` | ≤ 500 | Drag-start displacement/clamping, scrollbar gutter, focused interaction regressions. |
-| 9.c | `⚙️ [desktop-ux] Prioritize sidebar activity and simplify controls [step 14/17]` | ≤ 1,200 | Upfront running/unread sessions, purposeful header/compact footer/plain-language local controls, subtle refresh, Prego list transitions and useful-only tooltips. |
-| 10 | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 15/17]` | ≤ 600 | ⌘N, ⌘, , ⌘B (toggle sidebar) via `CallbackShortcuts` at the cockpit root; tooltips with shortcut hints; macOS hidden title bar + drag region behind a single switch in `FlutterWindowHost.initialize` (D12 kill switch). |
-| 11 | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 16/17]` | ≤ 600 | Final control-content audit (labels, grouping, scope, redundancy and state-specific actions) plus regression reconciliation listed below. |
-| 12 | `🌿 [desktop-ux] Run coverage and retire the plan [step 17/17]` | ≤ 300 | Run the recorded matrix, record results, note the phase-2 handoff, move the plan to `.plan/completed/desktop-ux/`. |
+| 1 | `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/18]` | ≤ 900 | This plan, tracker, cross-references in `desktop-app/TRACKER.md` and `docs/ROADMAP.md`. |
+| 2.a | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/18]` | ≤ 1,400 | `DesktopSidebarCubit` + `sidebar-layout` storage/repository methods; `DesktopSidebar` frame (header, resize handle, compact rail, bottom Settings/Bridge rows navigating to today's routes); `ProjectListCubit` hoisted to the shell; project rows with `PregoAvatarInitials`; replace the `NavigationRail`. Main pane untouched. |
+| 2.b | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/18]` | ≤ 900 | Presentation-only follow-up: clear header/actions/footer, Prego typography and surfaces, running/unread project indicators from `ProjectListCubit`, animated expand/collapse with reduced motion and immediate drag resizing. |
+| 3 | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/18]` | ≤ 1,200 | `RecentSessionsCubit` + provider composition, delegating to `SessionListService.visibleSessions`/`upsertSession`/`applySessionUpdatedEvent`/`removeSession`; session rows, "All sessions · N", per-project "+", collapsed project ids, right-click menus reusing tile action builders, hover states, selection from the route. |
+| 4 | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/18]` | ≤ 1,400 | Flatten the desktop router; `DesktopHomePane` (recovery view moved in, connected empty state) served at the desktop `projects` path in place of `DesktopProjectListScreen` (sidebar Projects header navigates there); all-sessions route keeps `DesktopSessionListCubitProvider` + the shared `SessionListScaffold`, minus the back button and the split-pane composition; delete the nested `ShellRoute`; explicit nullable detail Back callback based on the owning page's poppability; route-selected project/New session callbacks retained for step 10. `/splash` still renders `DesktopHome` until step 6. |
+| 5 | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/18]` | ≤ 700 | Remove the root banner mount; `DesktopConnectionPill` overlay in `client/desktop` (Prego surface, fade; combines overlay state with `BridgeControlCubit` state); Bridge row status dot; supervision states as the sidebar bottom card; delete `DesktopSupervisionNotice`. |
+| 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/18]` | ≤ 1,500 | Bridge popover (`PregoPopover`) with local status, contextual Start/Stop/Retry/Take Over, secondary logs/configuration and no app-scoped options; delete `DesktopHome`; `/splash` redirects to the canonical `/projects` home pane, preserving notification stacks and inventory return-refresh. |
+| 7.a | `🌿 [desktop-ux] Prepare shared settings composition [step 8/18]` | ≤ 500 | Reusable app-information/support/legal sections and picker exports, connected-bridge title input and desktop copy; native preference refresh/explicit-set methods on the existing control owner, with fake-backed tests. No changed settings navigation or visible controls yet. |
+| 7.b | `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/18]` | ≤ 700 | Containing-route visibility for the existing session activity owner; root-popup dismissal through both existing route adapters, ordered before desktop notification same-session detection/replacement. No new state owner, persisted fields or Settings presentation. |
+| 7.c | `⚙️ [desktop-ux] Present settings as a modal [step 10/18]` | ≤ 1,750 | `showDesktopSettingsModal` with blurred/dimmed backdrop, scrollable tab column, declarative harness flow; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
+| 8 | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/18]` | ≤ 1,000 | Nullable `readBridgeDesiredState` through storage/repository with `off` applied by callers; `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (auth-driven) composed beside root bridge controls after dispatcher readiness; `FileAccessPermission` capability + `IoFileAccessPermission`; `FileAccessCubit`; home-pane card with the agent explanation; Settings → Bridge status row; focus re-check. |
+| 9.a.1 | `⚙️ [desktop-ux] Prepare safe diagnostics and bounded quit flushing [step 12/18]` | ≤ 1,300 | Pure stdout/sink seam, typed parsing causes, selective shared URI diagnostics and bounded final Quit completion; all internal consumers together. No file writers or DI/main activation. |
+| 9.a.2 | `⚙️ [desktop-ux] Write app logs to rotating files [step 13/18]` | ≤ 1,300 | Preserve #1509, merge main forward, implement admitted-write completion and per-episode failure warnings; independent rotating app files, lazy primary-only wiring and prepared logs-directory opening. |
+| 9.b | `🌿 [desktop-ux] Fix sidebar resizing and project hit targets [step 14/18]` | ≤ 500 | Drag-start displacement/clamping, scrollbar gutter, focused interaction regressions. |
+| 9.c | `⚙️ [desktop-ux] Prioritize sidebar activity and simplify controls [step 15/18]` | ≤ 1,200 | Upfront running/unread sessions, purposeful header/compact footer/plain-language local controls, subtle refresh, Prego list transitions and useful-only tooltips. |
+| 10 | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 16/18]` | ≤ 600 | ⌘N, ⌘, , ⌘B (toggle sidebar) via `CallbackShortcuts` at the cockpit root; tooltips with shortcut hints; macOS hidden title bar + drag region behind a single switch in `FlutterWindowHost.initialize` (D12 kill switch). |
+| 11 | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 17/18]` | ≤ 600 | Final control-content audit (labels, grouping, scope, redundancy and state-specific actions) plus regression reconciliation listed below. |
+| 12 | `🌿 [desktop-ux] Run coverage and retire the plan [step 18/18]` | ≤ 300 | Run the recorded matrix, record results, note the phase-2 handoff, move the plan to `.plan/completed/desktop-ux/`. |
 
 Shared composition, copy and native preference commands landed separately in 7.a;
 its historical measurements are in [the preparation evidence](steps/step-07a.md).
@@ -603,8 +617,9 @@ constant to match the bundled package name and removed redundant sidebar font
 overrides. This small shared typography fix adds no state or renderer changes;
 mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 
-Finish 9.a logging, then 9.b interactions, 9.c sidebar activity/controls and 10
-shortcuts/title bar. Steps 11 and 12 remain the final audit and qualification.
+Land 9.a.1 first, then merge main forward into preserved `desktop-ux/app-logs`
+and reopen #1509 as 9.a.2; never rewrite its published history. Finish 9.b
+interactions, 9.c sidebar activity/controls and 10 shortcuts/title bar next. Steps 11 and 12 remain the final audit and qualification.
 Step 8 must land after
 step 7.c (General startup preferences and Bridge/FDA settings). Step 7.a follows
 step 6; step 7.b follows 7.a; step 7.c follows 7.b and replaces the existing
@@ -663,10 +678,14 @@ later slices against the repository's actual-change rule.
   a fresh install: sign in, bridge starts, login item appears in System
   Settings, General's startup preference shows it on; deny/grant FDA and watch the card and
   status row; Windows/Linux smoke: no card, status row reads unsupported.
-- **Step 9.a:** focused core/auth/desktop/mobile tests for levels, diagnostic
-  privacy, lazy wiring, rotation/restart/UTF-8, POSIX permissions, failure recovery,
-  independent files and folder launch; owning analyzers. Use temporary paths and
-  fake bootstrap only. Native folder opening and iOS collection remain final coverage.
+- **Step 9.a.1:** focused logger/HTTP/relay/plugin and both shell-link tests for
+  filtering, typed parsing causes, selective URI privacy and diagnostic context;
+  completion success/error/timeout plus final Quit ordering/refused-stop tests.
+  Full owning auth generation; inspect all generated differences. Owning analyzers.
+- **Step 9.a.2:** lazy wiring, rotation/restart/UTF-8, permissions, independent files,
+  admitted-write completion, failure→recovery→failure and directory dispatch;
+  owning analyzers. Temporary paths/fake bootstrap only. Native folder opening,
+  real orderly termination and iOS collection remain required final coverage.
 - **Step 9.b:** pointer overshoot/reversal at both width bounds, one committed
   persistence write, edge-button hit testing with a scrollbar and usable scrolling.
 - **Step 9.c:** all running/unread rows (including collapsed/offscreen projects),
@@ -754,10 +773,14 @@ pane uses the `projects` path (kept permanently after the step-6 route audit).
 
 The code-informed D10 plan review rejected underspecified helper ownership,
 DI timing and diagnostic representation. Those findings were applied directly,
-not re-reviewed as a plan. Implementation review approved the frozen production
-range recorded in [step 9.a evidence](steps/step-09a.md); future sidebar work was excluded.
-Its 1,450-line target replaces 700 to cover actual rotation reuse, privacy, both
-shells, tests/generated output, evidence and the newly requested follow-up plan.
+not re-reviewed as a plan. The preserved #1509 implementation was approved at
+`f37931dd4ab9b0c6dceb38a18a9907d5fed0c1ed`; that verdict does not cover review fixes.
+Publication measurements remain owned by [preserved PR #1509](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1509).
+Review then identified concrete URI/cause/ordinary-Quit gaps. Rather than expand
+that review loop, extract 9.a.1 and retain file output as 9.a.2. A fresh architecture
+plan review (`e973a005-01ab-43fe-aaf8-eb43ebc854f6`) approved the two-slice ownership;
+see [prerequisite evidence](steps/step-09a1.md). Sidebar 9.c still needs its own
+concrete projection/refresh architecture plan review.
 
 ## Relation To Other Plans
 

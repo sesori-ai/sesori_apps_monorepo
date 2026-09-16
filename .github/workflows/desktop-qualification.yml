@@ -13,6 +13,11 @@ on:
         type: choice
         options: [native-builds, macos-signing-preflight, macos-packaging, macos-gui-probe]
         default: native-builds
+      channel:
+        description: 'Compiled download channel (macos-packaging only)'
+        type: choice
+        options: [stable, internal]
+        default: stable
       packaging_run:
         description: 'Successful trusted packaging run to inspect (macos-gui-probe only)'
         type: string
@@ -91,7 +96,8 @@ jobs:
           (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
           (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
           (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
-            --build-number '${{ github.run_number }}' --output '${{ github.workspace }}/build/desktop-bundle') \
+            --build-number '${{ github.run_number }}' --channel '${{ inputs.channel }}' \
+            --output '${{ github.workspace }}/build/desktop-bundle') \
             2>&1 | tee build/desktop-qualification/bundle-build.log
           if [[ -s build/desktop-bundle/build-source-changes.patch ]]; then
             echo 'Commit build-generated source changes before signing; see build-source-changes.patch.' >&2
@@ -183,6 +189,7 @@ jobs:
             build/desktop-qualification/*.json
             build/desktop-qualification/*.log
             build/desktop-bundle/build-source-changes.patch
+            build/desktop-bundle/dart-defines.env
             build/desktop-macos-packaging/*.json
             build/desktop-macos-packaging/*.log
             build/desktop-macos-packaging/supervised-e2e/

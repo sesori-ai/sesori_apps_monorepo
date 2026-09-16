@@ -11,14 +11,17 @@ import "package:package_info_plus/package_info_plus.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_desktop/core/desktop_update_configuration.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
 import "package:sesori_desktop/core/widgets/desktop_escape_dismissal.dart";
 import "package:sesori_desktop/features/auth_gate/auth_gate.dart";
 import "package:sesori_desktop/features/settings/desktop_settings_modal.dart";
+import "package:sesori_desktop/features/settings/desktop_update_section.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
@@ -287,6 +290,70 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Widget app({required Widget child}) => MaterialApp(
+    theme: buildPregoThemeData(brightness: Brightness.light),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: child,
+  );
+
+  test("update configuration rejects malformed present values without guessing a link", () {
+    expect(
+      resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "stable"),
+      isA<DesktopDevelopmentUpdate>(),
+    );
+    expect(
+      () => resolveDesktopUpdateDestination(encodedIdentity: "not-json", encodedChannel: "stable"),
+      throwsA(isA<Object>()),
+    );
+    expect(
+      () => resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "preview"),
+      throwsArgumentError,
+    );
+  });
+
+  testWidgets("manual update opens its channel and CPU index without claiming a release", (tester) async {
+    const identity = DesktopBundleIdentity(
+      version: "1.8.4",
+      buildNumber: 24,
+      sourceSha: "source",
+      os: DesktopBundleOs.macos,
+      architecture: DesktopBundleArchitecture.arm64,
+    );
+    final destination = resolveDesktopUpdateDestination(encodedIdentity: identity.encode(), encodedChannel: "internal");
+    final uri = (destination as DesktopManualDownload).uri;
+    final launcher = getIt<UrlLauncher>();
+    when(() => launcher.launch(uri, mode: UrlLaunchMode.externalApp)).thenAnswer((_) async => true);
+    await tester.pumpWidget(
+      app(
+        child: Scaffold(body: DesktopUpdateSection(destination: destination)),
+      ),
+    );
+    expect(find.textContaining("Closing the window is not Quit"), findsOneWidget);
+    expect(uri.fragment, "internal-macos-arm64");
+    await tester.tap(find.text("View downloads"));
+    await tester.pump();
+    verify(() => launcher.launch(uri, mode: UrlLaunchMode.externalApp)).called(1);
+  });
+
+  for (final destination in <DesktopUpdateDestination>[
+    const DesktopDevelopmentUpdate(),
+    const DesktopPackageManagerUpdate(),
+  ]) {
+    testWidgets("$destination renders guidance without a download action", (tester) async {
+      await tester.pumpWidget(
+        app(
+          child: Scaffold(body: DesktopUpdateSection(destination: destination)),
+        ),
+      );
+      expect(find.text("View downloads"), findsNothing);
+      expect(
+        find.text(destination is DesktopDevelopmentUpdate ? "Development build" : "Package-managed updates"),
+        findsOneWidget,
+      );
+    });
+  }
+
   for (final status in FileAccessStatus.values) {
     testWidgets("Bridge shows local permission $status even after home dismissal", (tester) async {
       whenListen(
@@ -334,6 +401,8 @@ void main() {
 
   testWidgets("Bridge distinguishes connected configuration from local diagnostics", (tester) async {
     await open(tester: tester, tab: DesktopSettingsTab.bridge);
+    expect(find.text("Desktop updates"), findsOneWidget);
+    expect(find.text("Development build"), findsOneWidget);
     expect(find.text("Connected bridge"), findsOneWidget);
     expect(find.text("This computer"), findsOneWidget);
     expect(find.text("Local bridge"), findsOneWidget);
@@ -342,11 +411,13 @@ void main() {
     expect(find.text("Launch Sesori at login"), findsNothing);
     expect(find.text("Quit Sesori"), findsNothing);
     await tester.ensureVisible(find.text("Open Logs"));
+    await tester.pumpAndSettle();
     await tester.tap(find.text("Open Logs"));
     verify(bridgeControl.openLogs).called(1);
     verifyNever(bridgeControl.refreshLaunchAtLogin);
     final interval = find.byKey(const Key("pull_request_refresh_interval"));
     await tester.ensureVisible(interval);
+    await tester.pumpAndSettle();
     await tester.tap(interval);
     await tester.pumpAndSettle();
     final input = find.byType(EditableText);
@@ -528,5 +599,60 @@ void main() {
     expect(find.text("open"), findsOneWidget);
     expect(pluginSnapshots.hasListener, isFalse);
     verifyNever(() => pluginService.cancelAuthentication(pluginId: "opencode"));
+  });
+
+  testWidgets("pasted-code sheet defers opening and reaches the waiting state once applied", (tester) async {
+    final challenge = PluginAuthenticationPastedCodeChallenge(
+      authorizationUri: Uri.parse("https://auth.example/authorize"),
+    );
+    when(() => pluginService.startAuthentication(pluginId: "opencode")).thenAnswer((_) async {
+      authenticationChallenges.add({"opencode": challenge});
+      return PluginAuthenticationStartResult.challenge(challenge: challenge);
+    });
+    when(
+      () => pluginService.submitAuthenticationCode(pluginId: "opencode", code: "PASTE-CODE-123"),
+    ).thenAnswer((_) async => const PluginAuthenticationContinuationResult.applied());
+    pluginSnapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _pluginResponse.copyWith(
+          plugins: [
+            _plugin.copyWith(
+              setup: _plugin.setup.copyWith(state: PluginSetupState.authenticationRequired),
+              managementCapabilities: {PluginManagementCapability.authentication},
+            ),
+          ],
+        ),
+        refreshError: null,
+      ),
+    );
+    await open(tester: tester, tab: DesktopSettingsTab.harnesses);
+    await tester.tap(find.text("OpenCode"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("harness_authentication_opencode")));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    verifyNever(
+      () => getIt<UrlLauncher>().launch(Uri.parse("https://auth.example/authorize"), mode: UrlLaunchMode.externalApp),
+    );
+
+    final codeField = find.descendant(
+      of: find.byKey(const Key("harness_authentication_code_input")),
+      matching: find.byType(TextFormField),
+    );
+    final submitButton = find.byKey(const Key("harness_authentication_submit_code"));
+    expect(tester.widget<PregoButtonsSolid>(submitButton).onPressed, isNull);
+
+    await tester.enterText(codeField, "PASTE-CODE-123");
+    await tester.pump();
+    expect(tester.widget<PregoButtonsSolid>(submitButton).onPressed, isNotNull);
+
+    await tester.tap(submitButton);
+    await tester.pump();
+    verify(() => pluginService.submitAuthenticationCode(pluginId: "opencode", code: "PASTE-CODE-123")).called(1);
+
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const Key("harness_authentication_activity")), findsOneWidget);
+    expect(find.byKey(const Key("harness_authentication_code_input")), findsNothing);
   });
 }

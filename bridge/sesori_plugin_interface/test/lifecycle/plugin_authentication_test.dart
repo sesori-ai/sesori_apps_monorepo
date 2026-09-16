@@ -68,5 +68,26 @@ void main() {
       ),
       isA<PluginAuthenticationDeviceCodeOperation>(),
     );
+
+    String? submittedCode;
+    final pastedCode = PluginAuthenticationOperation.pastedCode(
+      events: Stream<PluginAuthenticationPastedCodeEvent>.fromIterable([
+        PluginAuthenticationPastedCodeChallenge(authorizationUri: Uri.https("accounts.example", "/oauth")),
+        const PluginAuthenticationFailed(message: "Sanitized failure"),
+      ]),
+      submitCode: ({required code}) async => submittedCode = code,
+    );
+
+    await (pastedCode as PluginAuthenticationPastedCodeOperation).submitCode(code: "opaque#state");
+
+    expect(submittedCode, "opaque#state");
+    expect(await pastedCode.events.toList(), [
+      isA<PluginAuthenticationPastedCodeChallenge>().having(
+        (event) => event.authorizationUri,
+        "authorizationUri",
+        Uri.https("accounts.example", "/oauth"),
+      ),
+      isA<PluginAuthenticationFailed>(),
+    ]);
   });
 }

@@ -76,7 +76,7 @@ void main() {
     expect(loaded().visibleSessions.map((session) => session.id), ["4", "3", "2", "1"]);
     expect(loaded().rows(selectedSessionId: "1").map((session) => session.id), ["4", "3", "2", "1"]);
     expect(loaded().rows(selectedSessionId: "4").length, 3);
-    expect(loaded().rows(selectedSessionId: "archived").last.id, "archived");
+    expect(loaded().rows(selectedSessionId: "archived").map((session) => session.id), ["4", "3", "2"]);
     expect(() => loaded().sourceSessions.clear(), throwsUnsupportedError);
     expect(() => loaded().visibleSessions.clear(), throwsUnsupportedError);
     expect(() => loaded().activityBySessionId.clear(), throwsUnsupportedError);
@@ -137,6 +137,7 @@ void main() {
       ),
     );
     expect(loaded().visibleSessions, isEmpty);
+    expect(loaded().rows(selectedSessionId: "created"), isEmpty);
     expect(loaded().sourceSessions, hasLength(1));
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: session)));
     expect(loaded().sourceSessions, isEmpty);

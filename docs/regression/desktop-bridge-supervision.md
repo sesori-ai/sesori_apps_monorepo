@@ -177,11 +177,18 @@ and keep native close/quit behavior safe.
 - Main-isolate core logging preserves console output alongside asynchronous
   file writes; release defaults to info and above. The mobile shell independently
   writes under its application-support sandbox, without desktop-core or chmod.
-  Known JSON parsing bodies are omitted from diagnostics while typed payloads,
-  error outcomes, useful paths/type/offset and original stacks remain available.
-  No automatic upload or raw transcript capture is added. The first persistence
-  failure reports directly to stderr; later writes can recover without recursive
-  logging. Abrupt termination may lose pending records; this is not a crash journal.
+  The first persistence failure in each episode reports directly to stderr;
+  a successful append resets that warning suppression for later failures.
+  No automatic upload or raw transcript capture is added, and file-size caps
+  do not imply a bounded pending-write queue.
+- HTTP/relay parsing errors retain typed causes but omit JSON excerpts from
+  presentation. Both shell link helpers and the desktop adapter omit outbound-link
+  user-info/path/query/fragment and selectively replace the known URI in thrown-error
+  diagnostics, preserving unrelated useful context and original stacks.
+- Final desktop Quit awaits admitted log output for at most two seconds after cleanup;
+  flush failure/timeout reports directly to stdout and does not prevent exit.
+  A failed helper stop still refuses Quit before flushing. Abrupt termination or
+  an expired deadline may lose pending records; these files are not a crash journal.
 - Device-local sign-out locks every bridge lifecycle surface, asks the live
   helper to `unregister_and_exit`, waits for that command's expected exit
   without sending a competing shutdown, and independently deletes the GUI's

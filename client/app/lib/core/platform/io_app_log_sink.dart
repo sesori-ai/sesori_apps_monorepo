@@ -56,6 +56,7 @@ class IoAppLogSink.forTesting({
         }
       }
       await file.writeAsBytes(bytes, mode: FileMode.append, flush: true);
+      _failureReported = false;
     } on Object catch (error, stackTrace) {
       if (!_failureReported) {
         _failureReported = true;
@@ -66,6 +67,6 @@ class IoAppLogSink.forTesting({
     }
   }
 
-  @visibleForTesting
-  Future<void> drain() => _writeTail;
+  @override
+  Future<void> flush() => _writeTail;
 }

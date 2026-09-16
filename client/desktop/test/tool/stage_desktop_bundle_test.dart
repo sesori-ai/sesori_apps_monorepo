@@ -4,7 +4,13 @@ import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
-import "../../tool/stage_desktop_bundle.dart" show stageDesktopBundle, validateDesktopBundleSource;
+import "../../tool/stage_desktop_bundle.dart"
+    show
+        desktopBundleArgumentParser,
+        desktopBundleDefines,
+        parseDesktopReleaseChannel,
+        stageDesktopBundle,
+        validateDesktopBundleSource;
 
 void main() {
   late Directory temporary;
@@ -12,6 +18,32 @@ void main() {
   tearDown(() async {
     await temporary.delete(recursive: true);
   });
+
+  test("staging defaults to stable and rejects unknown channels before building", () {
+    final parser = desktopBundleArgumentParser();
+    expect(parser.parse([]).option("channel"), "stable");
+    expect(parser.parse(["--channel", "internal"]).option("channel"), "internal");
+    expect(() => parser.parse(["--channel", "preview"]), throwsFormatException);
+    expect(() => parseDesktopReleaseChannel(value: "preview"), throwsArgumentError);
+  });
+
+  for (final channel in DesktopReleaseChannel.values) {
+    test("${channel.name} define remains separate from the unchanged bundle identity", () {
+      const identity = DesktopBundleIdentity(
+        version: "1.8.4",
+        buildNumber: 24,
+        sourceSha: "source",
+        os: DesktopBundleOs.macos,
+        architecture: DesktopBundleArchitecture.arm64,
+      );
+      expect(parseDesktopReleaseChannel(value: channel.name), channel);
+      expect(
+        desktopBundleDefines(identity: identity, channel: channel),
+        "${DesktopBundleIdentity.defineName}=${identity.encode()}\n${DesktopReleaseChannel.defineName}=${channel.name}\n",
+      );
+      expect(identity.toJson().containsKey("channel"), isFalse);
+    });
+  }
 
   test("accepts unchanged LF source regenerated after an autocrlf checkout", () async {
     final File source = await _committedSource(root: temporary);

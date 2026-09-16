@@ -45,7 +45,7 @@ void main() {
             stackTrace: StackTrace.fromString("stack"),
           ),
         );
-        await sink.drain();
+        await sink.flush();
       },
       zoneSpecification: ZoneSpecification(print: (_, _, _, line) => lines.add(line)),
     );
@@ -63,12 +63,12 @@ void main() {
     for (final message in ["first", "second", "third"]) {
       sink.write(record: _record(message: message));
     }
-    await sink.drain();
+    await sink.flush();
     expect(File("${root.path}/logs/app.log").readAsStringSync(), endsWith("third\n"));
     expect(File("${root.path}/logs/app.log.1").readAsStringSync(), endsWith("second\n"));
     final restarted = createSink(cap: 64);
     restarted.write(record: _record(message: "fourth"));
-    await restarted.drain();
+    await restarted.flush();
     expect(File("${root.path}/logs/app.log.1").readAsStringSync(), endsWith("third\n"));
     expect(File("${root.path}/logs/app.log").lengthSync(), lessThanOrEqualTo(64));
     expect(Directory("${root.path}/logs").listSync(), hasLength(2));
@@ -78,22 +78,46 @@ void main() {
   test("caps oversized records without cutting a UTF-8 scalar", () async {
     final sink = createSink(cap: 8);
     sink.write(record: _record(message: "prefix🙂🙂"));
-    await sink.drain();
+    await sink.flush();
     expect(File("${root.path}/logs/app.log").readAsStringSync(), "🙂\n");
   });
 
-  test("file failures remain visible once and later appends recover", () async {
+  test("file failures report once per episode and resume after recovery", () async {
     final blocker = File("${root.path}/logs")..writeAsStringSync("blocked");
     final sink = createSink(cap: 1024);
     sink.write(record: _record(message: "first"));
     sink.write(record: _record(message: "second"));
-    await sink.drain();
+    await sink.flush();
     expect(failures, hasLength(1));
     expect(failures.single, contains(root.path));
     blocker.deleteSync();
     sink.write(record: _record(message: "recovered"));
-    await sink.drain();
+    await sink.flush();
     expect(File("${root.path}/logs/app.log").readAsStringSync(), endsWith("recovered\n"));
+    Directory(blocker.path).deleteSync(recursive: true);
+    blocker.writeAsStringSync("blocked again");
+    sink.write(record: _record(message: "later failure"));
+    sink.write(record: _record(message: "same episode"));
+    await sink.flush();
+    expect(failures, hasLength(2));
+  });
+
+  test("flush waits for admitted records through pending directory resolution", () async {
+    final pending = Completer<Directory>();
+    directory = ApplicationSupportDirectoryClient.forTesting(load: () => pending.future);
+    final sink = createSink(cap: 1024);
+    final records = [_record(message: "earlier"), _record(message: "final cleanup")];
+    for (final record in records) {
+      sink.write(record: record);
+    }
+    var completed = false;
+    final flushing = sink.flush().then((_) => completed = true);
+    await Future<void>.value();
+    expect(completed, isFalse);
+    pending.complete(root);
+    await flushing;
+    expect(File("${root.path}/logs/app.log").readAsLinesSync(), records.map((record) => record.formatted));
+    expect(failures, isEmpty);
   });
 
   test("path-provider failure never escapes logging callers", () async {
@@ -102,7 +126,7 @@ void main() {
     );
     final sink = createSink(cap: 1024);
     expect(() => sink.write(record: _record(message: "original")), returnsNormally);
-    await sink.drain();
+    await sink.flush();
     expect(failures.single, contains("lookup unavailable"));
   });
 }

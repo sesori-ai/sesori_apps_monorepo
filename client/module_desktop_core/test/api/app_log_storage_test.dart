@@ -38,7 +38,7 @@ void main() {
         sink.write(
           record: _record(message: "context", error: "disk /tmp/repo", stack: StackTrace.fromString("stack")),
         );
-        await sink.drain();
+        await sink.flush();
       },
       zoneSpecification: ZoneSpecification(print: (_, _, _, line) => console.add(line)),
     );
@@ -59,12 +59,12 @@ void main() {
     for (final message in ["first", "second", "third"]) {
       sink.write(record: _record(message: message, error: null, stack: null));
     }
-    await sink.drain();
+    await sink.flush();
     expect(File("${root.path}/logs/app.log").readAsStringSync(), endsWith("third\n"));
     expect(File("${root.path}/logs/app.log.1").readAsStringSync(), endsWith("second\n"));
     final restarted = createSink(cap: 64);
     restarted.write(record: _record(message: "fourth", error: null, stack: null));
-    await restarted.drain();
+    await restarted.flush();
     expect(File("${root.path}/logs/app.log.1").readAsStringSync(), endsWith("third\n"));
     expect(File("${root.path}/logs/app.log").lengthSync(), lessThanOrEqualTo(64));
     expect(File(await bridge.logFilePath).readAsStringSync(), "helper\n");
@@ -73,29 +73,56 @@ void main() {
   test("oversized records retain complete UTF-8 scalars within the cap", () async {
     final sink = createSink(cap: 8);
     sink.write(record: _record(message: "prefix🙂🙂", error: null, stack: null));
-    await sink.drain();
+    await sink.flush();
     expect(File("${root.path}/logs/app.log").readAsStringSync(), "🙂\n");
   });
 
-  test("file failures report once without poisoning subsequent writes", () async {
+  test("file failures report once per episode and resume after recovery", () async {
     final blocker = File("${root.path}/logs")..writeAsStringSync("blocked");
     final sink = createSink(cap: 1024);
     sink.write(record: _record(message: "first", error: null, stack: null));
     sink.write(record: _record(message: "second", error: null, stack: null));
-    await sink.drain();
+    await sink.flush();
     expect(failures, hasLength(1));
     expect(failures.single, contains(root.path));
     blocker.deleteSync();
     sink.write(record: _record(message: "recovered", error: null, stack: null));
-    await sink.drain();
+    await sink.flush();
     expect(File("${root.path}/logs/app.log").readAsStringSync(), endsWith("recovered\n"));
+    Directory(blocker.path).deleteSync(recursive: true);
+    blocker.writeAsStringSync("blocked again");
+    sink.write(record: _record(message: "later failure", error: null, stack: null));
+    sink.write(record: _record(message: "same episode", error: null, stack: null));
+    await sink.flush();
+    expect(failures, hasLength(2));
+  });
+
+  test("flush waits for admitted records through pending directory resolution", () async {
+    final pending = Completer<Directory>();
+    directory.pending = pending.future;
+    final sink = createSink(cap: 1024);
+    final records = [
+      _record(message: "earlier", error: null, stack: null),
+      _record(message: "final cleanup", error: null, stack: null),
+    ];
+    for (final record in records) {
+      sink.write(record: record);
+    }
+    var completed = false;
+    final flushing = sink.flush().then((_) => completed = true);
+    await Future<void>.value();
+    expect(completed, isFalse);
+    pending.complete(root);
+    await flushing;
+    expect(File("${root.path}/logs/app.log").readAsLinesSync(), records.map((record) => record.formatted));
+    expect(failures, isEmpty);
   });
 
   test("directory lookup failures use the same non-recursive fallback", () async {
     directory.failure = const FileSystemException("lookup");
     final sink = createSink(cap: 1024);
     sink.write(record: _record(message: "still visible", error: null, stack: null));
-    await sink.drain();
+    await sink.flush();
     expect(failures.single, contains("lookup"));
     expect(Directory("${root.path}/logs").existsSync(), isFalse);
   });
@@ -112,10 +139,12 @@ LogRecord _record({required String message, required String? error, required Sta
 class _DirectorySource({required final Directory root}) implements DesktopApplicationSupportDirectory {
   int calls = 0;
   FileSystemException? failure;
+  Future<Directory>? pending;
   @override
   Future<Directory> resolve() async {
     calls++;
     if (failure case final error?) throw error;
+    if (pending case final waiting?) return await waiting;
     return root;
   }
 }

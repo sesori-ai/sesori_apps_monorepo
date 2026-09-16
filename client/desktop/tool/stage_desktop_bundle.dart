@@ -6,12 +6,20 @@ import "package:args/args.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
+DesktopReleaseChannel parseDesktopReleaseChannel({required String value}) => DesktopReleaseChannel.values.byName(value);
+
+String desktopBundleDefines({required DesktopBundleIdentity identity, required DesktopReleaseChannel channel}) =>
+    "${DesktopBundleIdentity.defineName}=${identity.encode()}\n${DesktopReleaseChannel.defineName}=${channel.name}\n";
+
+ArgParser desktopBundleArgumentParser() => ArgParser()
+  ..addOption("build-number", help: "Required positive desktop build number.")
+  ..addOption("channel", allowed: DesktopReleaseChannel.values.map((channel) => channel.name), defaultsTo: "stable")
+  ..addOption("output", help: "Required new output directory; existing directories are never replaced.");
+
 /// Builds both components from this checkout and stages an unsigned native
 /// desktop bundle. Signing/installers remain platform-specific subsequent steps.
 Future<void> main(List<String> arguments) async {
-  final ArgParser parser = ArgParser()
-    ..addOption("build-number", help: "Required positive desktop build number.")
-    ..addOption("output", help: "Required new output directory; existing directories are never replaced.");
+  final ArgParser parser = desktopBundleArgumentParser();
   try {
     final ArgResults options = parser.parse(arguments);
     final String? numberOption = options.option("build-number");
@@ -19,6 +27,9 @@ Future<void> main(List<String> arguments) async {
     if (numberOption == null || outputOption == null) {
       throw ArgumentError("Both --build-number and --output are required");
     }
+    final DesktopReleaseChannel channel = parseDesktopReleaseChannel(
+      value: options.option("channel") ?? DesktopReleaseChannel.stable.name,
+    );
     final int buildNumber = int.parse(numberOption);
     if (buildNumber < 1) {
       throw ArgumentError.value(buildNumber, "build-number", "Must be positive");
@@ -46,7 +57,10 @@ Future<void> main(List<String> arguments) async {
     // A dotenv file avoids shell-dependent escaping of JSON in Flutter's command
     // line, especially through flutter.bat on Windows. Values come from the model.
     final File defines = File(path.join(output.path, "dart-defines.env"));
-    await defines.writeAsString("${DesktopBundleIdentity.defineName}=${identity.encode()}\n", encoding: utf8);
+    await defines.writeAsString(
+      desktopBundleDefines(identity: identity, channel: channel),
+      encoding: utf8,
+    );
     // Use the Flutter SDK that supplied this Dart VM, not a second SDK on PATH.
     final String flutter = path.join(
       File(Platform.resolvedExecutable).parent.parent.parent.parent.path,

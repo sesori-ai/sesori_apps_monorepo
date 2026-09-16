@@ -1297,6 +1297,42 @@ abstract class AppLocalizations {
   /// **'Check your connection and try again.'**
   String get harnessAuthenticationRequestFailed;
 
+  /// No description provided for @harnessAuthenticationPastedCodeInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Only continue if you started this login. Sesori will sign {harnessName} on the connected computer into your account. Open the sign-in page, verify its address, approve access, then paste the code shown after approval.'**
+  String harnessAuthenticationPastedCodeInstructions(String harnessName);
+
+  /// No description provided for @harnessAuthenticationOpenSignInPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Open sign-in page'**
+  String get harnessAuthenticationOpenSignInPage;
+
+  /// No description provided for @harnessAuthenticationPastedCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Code from the sign-in page'**
+  String get harnessAuthenticationPastedCodeLabel;
+
+  /// No description provided for @harnessAuthenticationSubmitCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit code'**
+  String get harnessAuthenticationSubmitCode;
+
+  /// No description provided for @harnessAuthenticationPastedCodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the complete code shown after approval, without spaces.'**
+  String get harnessAuthenticationPastedCodeInvalid;
+
+  /// No description provided for @harnessAuthenticationPastedCodeNotConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'The code could not be confirmed. Submit it again.'**
+  String get harnessAuthenticationPastedCodeNotConfirmed;
+
   /// No description provided for @harnessesRegisteredSection.
   ///
   /// In en, this message translates to:
@@ -3991,7 +4027,19 @@ abstract class AppLocalizations {
   /// **'Update the bridge to scan from here'**
   String get catalogScanUnsupportedDetail;
 
-  /// Title of the scan row when no harness could be scanned: none is connected and ready, or the bridge has not reported its harnesses yet.
+  /// Title of the scan row when a deep pull cannot start because there is no live bridge connection.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge not connected'**
+  String get catalogScanNotConnectedTitle;
+
+  /// Supporting line on the not-connected scan row, naming what the user must do before scanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a bridge to scan'**
+  String get catalogScanNotConnectedDetail;
+
+  /// Title of the scan row when the connected bridge has no harness ready to scan, or has not reported its harnesses yet.
   ///
   /// In en, this message translates to:
   /// **'No harness to scan'**

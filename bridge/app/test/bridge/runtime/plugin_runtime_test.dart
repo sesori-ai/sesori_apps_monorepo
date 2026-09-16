@@ -356,6 +356,51 @@ void main() {
     await thirdDone;
   });
 
+  test("pasted codes use the one-shot continuation gate", () async {
+    final events = StreamController<PluginAuthenticationPastedCodeEvent>();
+    final submitted = <String>[];
+    final submitGate = Completer<void>();
+    final descriptor = _AuthenticationDescriptor(
+      authenticate: ({required aborted}) => PluginAuthenticationOperation.pastedCode(
+        events: events.stream,
+        submitCode: ({required code}) async {
+          submitted.add(code);
+          await submitGate.future;
+        },
+      ),
+      recordStore: ({required store}) {},
+    );
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: descriptor,
+    );
+    addTearDown(runtime.dispose);
+    final operation = runtime.authenticate(pluginId: "one");
+    final done = operation.events.drain<void>();
+    Future<PluginRuntimeAuthenticationContinuationResult> submitCode() =>
+        runtime.submitAuthenticationCode(pluginId: "one", generation: operation.generation, code: "opaque#state");
+    Matcher conflict(PluginRuntimeAuthenticationContinuationConflictReason reason) =>
+        isA<PluginRuntimeAuthenticationContinuationConflict>().having((result) => result.reason, "reason", reason);
+
+    expect(
+      await runtime.submitAuthenticationRedirect(
+        pluginId: "one",
+        generation: operation.generation,
+        redirectUri: Uri.parse("http://127.0.0.1/callback?code=code"),
+      ),
+      conflict(PluginRuntimeAuthenticationContinuationConflictReason.wrongKind),
+    );
+    final applied = submitCode();
+    expect(await submitCode(), conflict(PluginRuntimeAuthenticationContinuationConflictReason.alreadySubmitted));
+    submitGate.complete();
+    expect(await applied, isA<PluginRuntimeAuthenticationContinuationApplied>());
+    expect(submitted, ["opaque#state"]);
+
+    await events.close();
+    await done;
+    expect(await submitCode(), conflict(PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration));
+  });
+
   test("authenticate rejects descriptors without the optional capability", () {
     final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
     addTearDown(runtime.dispose);

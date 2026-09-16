@@ -57,6 +57,45 @@ void main() {
     expect(lines.last, "stack");
   });
 
+  test("stdout chunks long error-bearing messages without discarding context", () {
+    final lines = <String>[];
+    final message = "context" * 150;
+    final error = StateError("diagnostic" * 100);
+    runZoned(
+      () => loge(message, error),
+      zoneSpecification: ZoneSpecification(print: (_, _, _, line) => lines.add(line)),
+    );
+    expect(lines.every((line) => line.length <= 800), isTrue);
+    expect(lines.join(), "$message: ${error.toString()}");
+  });
+
+  test("flush awaits admitted output", () async {
+    final sink = _PendingSink();
+    setLogSink(sink: sink);
+    var completed = false;
+    final flushing = flushLogs(timeout: const Duration(seconds: 1)).then((_) => completed = true);
+    await Future<void>.value();
+    expect(completed, isFalse);
+    sink.pending.complete();
+    await flushing;
+    expect(completed, isTrue);
+  });
+
+  for (final timeout in [false, true]) {
+    test("flush failure stays bounded and bypasses the sink (timeout=$timeout)", () async {
+      final pending = _PendingSink();
+      setLogSink(sink: timeout ? pending : _ThrowingSink());
+      final lines = <String>[];
+      await runZoned(
+        () => flushLogs(timeout: const Duration(milliseconds: 1)),
+        zoneSpecification: ZoneSpecification(print: (_, _, _, line) => lines.add(line)),
+      );
+      pending.pending.complete();
+      expect(lines.join("\n"), contains("Log sink flush failed; pending diagnostics may be lost"));
+      expect(lines.join("\n"), contains(timeout ? "TimeoutException" : "Bad state: flush"));
+    });
+  }
+
   test("a throwing sink cannot throw into the caller or suppress the record", () {
     final lines = <String>[];
     setLogLevel(LogLevel.info);
@@ -74,11 +113,21 @@ class _RecordingSink() implements LogSink {
   final records = <LogRecord>[];
   @override
   void write({required LogRecord record}) => records.add(record);
+  @override
+  Future<void> flush() => Future<void>.value();
+}
+
+class _PendingSink() extends _RecordingSink {
+  final pending = Completer<void>();
+  @override
+  Future<void> flush() => pending.future;
 }
 
 class _ThrowingSink() implements LogSink {
   @override
   void write({required LogRecord record}) => throw StateError("sink");
+  @override
+  Future<void> flush() => Future<void>.error(StateError("flush"));
 }
 
 class _DiagnosticError() implements Exception {
