@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `claude-code-login`
-- **Series state:** Steps 1–4/6 merged; Step 5/6 in review
-- **Current branch:** `claude-code-login-step-5`
-- **Next action:** merge Step 5 (documentation only); Step 6 needs the user's real L3 logins from the iOS and macOS desktop apps
+- **Series state:** Steps 1–5/6 merged; Step 6/6 records the skipped L3 check and retires the plan
+- **Current branch:** `claude-code-login-step-6`
+- **Next action:** none for the series once Step 6 merges. The user runs the L3 logins later, using the L3 row of `docs/regression/claude-code-authentication.md`
 
 ## Locked Product Decisions
 
@@ -38,10 +38,30 @@
 | 2/6 | 🚧 Add pasted-code login to the wire contract and apps | Merged | #1516 | Shared, `module_core`, `module_app_ui`, `client/app`, and `client/desktop` analyze and targeted tests pass; divergences (a `codeRetry` state, shared `normalizeCode`, `invalidRedirect` renamed `invalidInput`, no monospace field) recorded in `PLAN.md`; architecture implementation review approved. PR automated review: one wave, 2 findings fixed (a `notFound` submission releases the retained login; Retry clears the previous code), 5 declined |
 | 3/6 | 🚧 Route pasted-code login through the bridge | Merged | #1517 | `sesori_plugin_interface` and `bridge/app` analyze clean; interface, runtime gate, lifecycle service, and handler tests pass; architecture implementation review approved, its optional finding (document the code guarantee and error privacy for plugins) applied. PR automated review: one wave, 1 finding fixed (the contract also keeps the code out of plugin failure messages), 1 declined (slot revalidation after an awaited submission, unchanged from `main`) |
 | 4/6 | 🚧 Drive Claude CLI login from the bridge | Merged | #1518 | `sesori_plugin_claude` analyze clean; 324 tests pass. Manual check on macOS arm64 with Claude Code 2.1.273 and an isolated `CLAUDE_CONFIG_DIR`, through the descriptor and service over a `dart:io` host process service rather than the bridge routes: challenge, abort, rejected shape, and a well-formed wrong code (CLI exit 1) each ended with no CLI left and no URL, state, or code in logs. It found budget timers outliving the login, fixed with per-wait timeouts, and was rerun after each review fix. Divergences recorded in `PLAN.md`. Architecture implementation review approved; its optional parser-default finding applied. PR automated review: four waves, 6 findings fixed (exit counted once both pipes close with both subscriptions released, rejected shape failed from the shape check, no signal to an exited CLI, raw exit read separately from pipe closure, named decoder parameter, HOME guard reporting only the key), 6 declined (bounded wait after a forced stop, spawn-stall cleanup, wrapped stdin errors, settling on a stdin write failure, tracker wording, iOS-only L3) |
-| 5/6 | 🌱 Reconcile Claude login documentation | In review | — | Documentation review only. `plugin-setup-and-lifecycle.md` covers the pasted-code challenge, the neutral code rule, the shared continuation gate, sheet behavior, coverage, and failure signals; `claude-code-authentication.md` adds failure signals from Step 4's checks and review (budget timers outliving the login, wrong-shape or wrong-code operations left open, a stderr tail missing the CLI's last line) |
-| 6/6 | 🌱 Verify and retire the plan | Not started | — | — |
+| 5/6 | 🌱 Reconcile Claude login documentation | Merged | #1519 | Documentation review only; `plugin-setup-and-lifecycle.md` covers the pasted-code challenge, the neutral code rule, the shared continuation gate, sheet behavior, coverage, and failure signals; `claude-code-authentication.md` adds failure signals from Step 4's checks and review. Squash-merged directly as a documentation-only PR |
+| 6/6 | 🌱 Verify and retire the plan | Merged | #1520 | L1 and L2 pass on `main` at `05a43e2ff4` (see Retirement Evidence); L3 `Not run`, skipped by the user's decision on 2026-09-16 and accepted in `PLAN.md`; L4 and L5 `Not run`. Plan moved to `.plan/completed/`. Squash-merged directly as a documentation-only PR |
 
 ## Retirement Evidence
 
-Recorded at Step 6: level, matrix, plugins, platforms, builds, versions,
-privacy-safe evidence, and any user-accepted reduction.
+- **Required level:** L3 across {iOS app, macOS desktop app} x {macOS arm64
+  bridge with the real `claude` CLI and a real claude.ai account}. Plugin:
+  Claude.
+- **L1 and L2, automated:** pass on `main` at `05a43e2ff4` (macOS arm64,
+  Flutter 3.47.4), 2026-09-16: `sesori_shared` plugin management contract (20
+  tests), `sesori_plugin_interface` authentication (2),
+  `sesori_plugin_claude` authentication service and descriptor (32),
+  `bridge/app` code route, runtime gate, and lifecycle service (147),
+  `module_core` plugin API, repository, service, and cubit (180), phone
+  harness settings screen (62), and desktop settings screens (23).
+- **L2 CLI probe:** the plugin's minimum (2.1.221) and target (2.1.269)
+  versions did not change in this series. The probe passed on 2.1.221,
+  2.1.269, 2.1.272, and 2.1.273. The service-level check with the real CLI
+  passed on 2.1.273 (Step 4) for the challenge, a wrong code, a rejected
+  shape, and an abort.
+- **L3:** `Not run`. On 2026-09-16 the user skipped the real claude.ai logins
+  from the iOS app and the macOS desktop app for now and will run them later.
+  Their acceptance of retiring the plan without L3 is recorded in `PLAN.md`.
+  No L3 evidence exists yet.
+- **L4 and L5:** `Not run`.
+- **Result:** `Partial`. L1 and L2 pass; L3 was skipped by the user's
+  decision, so the plan retires by accepted limitation, not by a full pass.

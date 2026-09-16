@@ -4,7 +4,7 @@
 
 - **Plan slug:** `claude-code-login`
 - **Created:** 2026-09-16
-- **State:** Steps 1–4/6 merged (#1508, #1516, #1517, #1518); Step 5/6 in review
+- **State:** Retired. Steps 1–5/6 merged (#1508, #1516, #1517, #1518, #1519); Step 6/6 records the skipped L3 check and retires the plan
 - **Series:** six PRs, titles fixed under "Fixed PR Series"
 
 ## Goal
@@ -563,6 +563,14 @@ Coverage levels for the new document:
 Evidence stays privacy safe (no URLs, codes, emails, or tokens). Any reduction
 requires explicit user acceptance recorded here.
 
+### User acceptance — 2026-09-16
+
+The user chose not to run the L3 logins now and accepted retiring the plan
+without them. They will run the L3 checks themselves later. L3 is recorded as
+`Not run`, not as a pass, so the overall result is `Partial`: L1 and L2 pass,
+with evidence in `TRACKER.md`. L4 and L5 stay `Not run`, as Step 6 already
+allows.
+
 ## Delivery Rules
 
 - Six PRs, titles fixed below under slug `claude-code-login`; merge in order.
@@ -738,7 +746,8 @@ and are reported honestly as `Not run` otherwise.
 
 Every L1 through L3 entry passes across the matrix with privacy-safe evidence
 recorded in `TRACKER.md`; then move the directory to
-`.plan/completed/claude-code-login/`.
+`.plan/completed/claude-code-login/`. On 2026-09-16 the user accepted
+retirement with L3 not run; see the user acceptance under Regression Coverage.
 
 ## Material Risks
 
