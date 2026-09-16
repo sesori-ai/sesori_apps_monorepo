@@ -750,6 +750,13 @@ void main() {
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
         ..queueAuthenticationStart(firstStart.future)
+        ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge))
+        ..queueAuthenticationContinuation(
+          const PluginAuthenticationContinuationResult.rejected(
+            reason: PluginAuthenticationContinuationRejection.noActive,
+          ),
+        )
+        ..queueLoad(_supported(_response(token: "settled")))
         ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge));
       final connection = _FakeConnectionService(initialStatus: _connected);
       final service = _pluginManagementService(
@@ -783,6 +790,17 @@ void main() {
       expect(service.authenticationChallenges.value["claude"], same(challenge));
       expect(await service.startAuthentication(pluginId: "claude"), refused);
       expect(repository.authenticationStartCalls, 2);
+
+      final terminals = <PluginAuthenticationTerminalUpdate>[];
+      service.authenticationTerminal.listen(terminals.add);
+      expect(
+        await service.submitAuthenticationCode(pluginId: "claude", code: "opaque#state"),
+        isA<PluginAuthenticationContinuationRejected>(),
+      );
+      expect(service.authenticationChallenges.value, isEmpty);
+      expect(terminals.single.progress, const PluginAuthenticationProgress.unknown());
+      await _waitFor(() => repository.loadCalls == 2);
+      expect(await service.startAuthentication(pluginId: "claude"), isA<PluginAuthenticationStartChallenge>());
     });
 
     test("long-background same-bridge reconnect holds and forwards one captured callback", () async {

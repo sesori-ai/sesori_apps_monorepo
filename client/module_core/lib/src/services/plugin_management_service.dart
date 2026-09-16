@@ -557,6 +557,13 @@ class PluginManagementService({
     if (!_continuationFenceHolds(pluginId: pluginId, fence: fence)) {
       return const PluginAuthenticationContinuationResult.uncertain();
     }
+    // The bridge no longer runs this login, so its retained challenge is stale.
+    if (result case PluginAuthenticationContinuationRejected(
+      reason: PluginAuthenticationContinuationRejection.noActive || PluginAuthenticationContinuationRejection.wrongKind,
+    )) {
+      _markStale();
+      _settleAuthentication(pluginId: pluginId, progress: const PluginAuthenticationProgress.unknown());
+    }
     return result;
   }
 

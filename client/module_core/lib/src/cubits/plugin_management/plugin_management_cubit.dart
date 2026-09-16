@@ -182,10 +182,9 @@ class PluginManagementCubit({
         );
       case PluginAuthenticationContinuationNotFound():
         _setAuthenticationFailure(pluginId: pluginId, error: const PluginAuthenticationPresentationError.notFound());
-      // The bridge no longer runs this login, so the retained challenge is stale.
+      // The service settles a login the bridge no longer runs.
       case PluginAuthenticationContinuationRejected():
         _setAuthenticationFailure(pluginId: pluginId, error: const PluginAuthenticationPresentationError.uncertain());
-        await _service.refresh();
     }
   }
 

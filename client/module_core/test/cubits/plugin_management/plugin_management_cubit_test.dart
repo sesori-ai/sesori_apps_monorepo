@@ -483,6 +483,15 @@ void main() {
           error: PluginAuthenticationPresentationError.notFound(),
         ),
       ),
+      (
+        const PluginAuthenticationContinuationResult.rejected(
+          reason: PluginAuthenticationContinuationRejection.noActive,
+        ),
+        const PluginAuthenticationPresentationState.failed(
+          pluginId: "codex",
+          error: PluginAuthenticationPresentationError.uncertain(),
+        ),
+      ),
     ]) {
       test("maps a ${result.runtimeType} submission", () async {
         when(
@@ -512,27 +521,6 @@ void main() {
       await cubit.submitAuthenticationCode(code: "opaque#state");
 
       expect(authentication(), isA<PluginAuthenticationPresentationCodeSubmitted>());
-    });
-
-    test("a login the bridge no longer runs fails uncertain and refreshes", () async {
-      when(
-        () => service.submitAuthenticationCode(pluginId: "codex", code: "opaque#state"),
-      ).thenAnswer(
-        (_) async => const PluginAuthenticationContinuationResult.rejected(
-          reason: PluginAuthenticationContinuationRejection.noActive,
-        ),
-      );
-
-      await cubit.submitAuthenticationCode(code: "opaque#state");
-
-      expect(
-        authentication(),
-        const PluginAuthenticationPresentationState.failed(
-          pluginId: "codex",
-          error: PluginAuthenticationPresentationError.uncertain(),
-        ),
-      );
-      verify(() => service.refresh()).called(1);
     });
 
     test("a late submission response cannot overwrite terminal settlement", () async {

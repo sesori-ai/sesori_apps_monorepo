@@ -369,8 +369,9 @@ Extend the existing layers without new owners:
   the field editable. `alreadySubmitted` maps to `codeSubmitted`;
   `invalidInput` maps to `codeRetry(invalidCode)`; an uncertain or failed
   request maps to `codeRetry(notConfirmed)`, so a resubmission either lands or
-  reports `alreadySubmitted`; `noActive` and `wrongKind` map to the existing
-  uncertain failure presentation and trigger a management refresh.
+  reports `alreadySubmitted`; on a bridge `noActive` or `wrongKind` the
+  service settles the retained login as unknown and marks management stale,
+  which the cubit presents as the existing uncertain failure.
 - `PluginManagementService.submitAuthenticationCode` applies the same neutral
   rule as the bridge handler (trim, non-empty, no inner whitespace or control
   characters, bounded length) and returns a typed `invalidInput` outcome
