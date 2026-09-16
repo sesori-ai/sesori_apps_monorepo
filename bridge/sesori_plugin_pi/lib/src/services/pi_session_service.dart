@@ -94,6 +94,7 @@ sealed class _PiTurn({
   required final String? userVisibleText,
 }) {
   PiSessionConnection? connection;
+  PiSessionSelection? effectiveSelection;
   bool promptDispatched = false;
   bool userMessageEmitted = false;
   bool responseSucceeded = false;
@@ -499,21 +500,12 @@ final class PiSessionService({
   }
 
   bool _changesSelection({required List<_PiTurn> inFlight, required _PiTurn next}) {
-    ({String providerID, String modelID})? effectiveModel;
-    String? effectiveVariant;
-    for (final turn in inFlight) {
-      final requestedModel = turn.model;
-      if (requestedModel != null && requestedModel != effectiveModel) {
-        effectiveModel = requestedModel;
-        effectiveVariant = null;
-      }
-      final requestedVariant = turn.variant?.id;
-      if (requestedVariant != null) effectiveVariant = requestedVariant;
-    }
+    final effectiveSelection = inFlight.last.effectiveSelection;
+    if (effectiveSelection == null) return next.model != null || next.variant != null;
     final nextModel = next.model;
-    if (nextModel != null && nextModel != effectiveModel) return true;
+    if (nextModel != null && nextModel != effectiveSelection.model) return true;
     final nextVariant = next.variant?.id;
-    return nextVariant != null && nextVariant != effectiveVariant;
+    return nextVariant != null && nextVariant != effectiveSelection.variant.wireValue;
   }
 
   Future<void> _runTurn({
@@ -539,8 +531,13 @@ final class PiSessionService({
       }
       state.residentGeneration = connection.generation;
       turn.connection = connection;
-      await _processes.applySelection(
-        sessionId: sessionId,
+      if (state.inFlight.isNotEmpty && _changesSelection(inFlight: state.inFlight, next: turn)) {
+        state.active = null;
+        turn.connection = null;
+        state.queue.insert(0, turn);
+        return;
+      }
+      turn.effectiveSelection = await _processes.applySelection(
         connection: connection,
         model: turn.model,
         variant: turn.variant,
@@ -575,12 +572,20 @@ final class PiSessionService({
       }
       await Future<void>.delayed(Duration.zero);
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
+      PiAgentState? observedAgentState;
+      if (turn is _PiCommandTurn) {
+        observedAgentState = await _processes.getState(connection: connection);
+        turn.effectiveSelection = observedAgentState.selection;
+        await Future<void>.delayed(Duration.zero);
+        if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
+      }
       if (turn.agentSettled) {
         _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
         return;
       }
       if (turn.settlementObservedBeforeAcceptance || !turn.agentStarted) {
-        var agentState = await _processes.getState(connection: connection);
+        var agentState = observedAgentState ?? await _processes.getState(connection: connection);
+        turn.effectiveSelection = agentState.selection;
         await Future<void>.delayed(Duration.zero);
         if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
         if (turn.agentSettled) {
@@ -598,6 +603,7 @@ final class PiSessionService({
           // barrier so a lifecycle frame delayed behind the first idle snapshot
           // wins over silent-command settlement.
           agentState = await _processes.getState(connection: connection);
+          turn.effectiveSelection = agentState.selection;
           await Future<void>.delayed(Duration.zero);
           if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
           if (turn.agentSettled) {
@@ -627,7 +633,9 @@ final class PiSessionService({
         _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
       }
     } on Object catch (error, stack) {
-      if (error is PiRpcProcessExitException) {
+      final disposition = _processes.classifyFailure(error: error);
+      final acceptedCommandStateFailure = turn is _PiCommandTurn && turn.responseSucceeded && turn.connection != null;
+      if (disposition == PiSessionProcessFailureDisposition.connectionExited || acceptedCommandStateFailure) {
         await Future<void>.delayed(Duration.zero);
       }
       if (!_ownsTurn(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
@@ -636,15 +644,40 @@ final class PiSessionService({
         return;
       }
       final connection = turn.connection;
+      var commandRefreshRequiresTeardown = false;
+      if (acceptedCommandStateFailure && connection != null) {
+        if (disposition != PiSessionProcessFailureDisposition.connectionExited) {
+          _processes.invalidateSelection(connection: connection);
+        }
+        turn.effectiveSelection = null;
+        if (disposition == PiSessionProcessFailureDisposition.request) {
+          if (turn.agentSettled) {
+            Log.w("[pi] failed to refresh settled command state for session id=$sessionId", error, stack);
+            _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
+            return;
+          }
+          if (turn.agentStarted) {
+            Log.w("[pi] failed to refresh accepted command state for session id=$sessionId", error, stack);
+            _moveInFlight(sessionId: sessionId, state: state, turn: turn);
+            return;
+          }
+          commandRefreshRequiresTeardown = true;
+        }
+      }
       final connectionFailed =
-          turn.promptDispatched && (error is TimeoutException || error is PiRpcProcessExitException);
-      if (connectionFailed && connection != null) {
+          connection != null &&
+          (commandRefreshRequiresTeardown || disposition != PiSessionProcessFailureDisposition.request);
+      if (connectionFailed) {
         _extensionUi.cancelForOwner(
           sessionId: sessionId,
           processGeneration: connection.generation,
         );
-        if (error is TimeoutException) {
-          await _processes.teardownConnection(connection: connection);
+        if (disposition != PiSessionProcessFailureDisposition.connectionExited) {
+          try {
+            await _processes.teardownConnection(connection: connection);
+          } on Object catch (teardownError, teardownStack) {
+            Log.w("[pi] failed to tear down unusable resident for session id=$sessionId", teardownError, teardownStack);
+          }
           if (!_ownsTurn(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
         }
       }
@@ -664,7 +697,7 @@ final class PiSessionService({
           ),
         );
       }
-      if (connectionFailed && connection != null) {
+      if (connectionFailed) {
         _finishConnectionTurns(
           sessionId: sessionId,
           state: state,
@@ -706,6 +739,11 @@ final class PiSessionService({
       for (final turn in state.turns)
         if (turn.connection?.generation == processFrame.generation) turn,
     ];
+    if (processFrame.selectionUpdate case PiSessionSelectionChanged(:final selection)) {
+      for (final turn in generationTurns) {
+        turn.effectiveSelection = selection;
+      }
+    }
     switch (processFrame.frame) {
       case PiEventFrame(:final event):
         final wasAgentRunning = state.agentRunning;
