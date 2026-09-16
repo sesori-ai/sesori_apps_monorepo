@@ -35,7 +35,7 @@ No local app, running bridge or installed package may be disturbed.
    bundle identity to select the official channel/OS/CPU anchor. No parsing of backend data and no wire or
    persisted contract. Missing compiled bundle identity means a development build,
    not a guessed download architecture.
-2. Use a desktop-owned repository Markdown download index with stable/internal
+2. Use the user-selected `https://sesori.com/desktop/` page with stable/internal
    macOS and Windows CPU sections. Every unshipped section explicitly says no
    public download is available. No placeholder artifact URLs or latest-release
    inference. Step 6 replaces only qualified Mac sections with verified links;
@@ -79,8 +79,9 @@ No local app, running bridge or installed package may be disturbed.
   identity becomes null using `bool.hasEnvironment`, not an empty-string sentinel.
   `_DesktopBridgeSettingsPage` in `desktop_settings_modal.dart` supplies compile-time
   values here before composing UI.
-- Canonical index: `docs/desktop/downloads.md`, public URI
-  `https://github.com/sesori-ai/sesori_apps_monorepo/blob/main/docs/desktop/downloads.md`.
+- Canonical user-facing URI: `https://sesori.com/desktop/`, explicitly selected by
+  the user while not yet live. `docs/desktop/downloads.md` is the publication
+  content/anchor specification, not the destination opened by the app.
   The shell configuration function owns that constant and constructs fragments
   `<channel>-<os>-<architecture>` using closed enum names, for example
   `stable-macos-arm64` or `internal-windows-x64`. Each of the eight matching Markdown
@@ -205,3 +206,9 @@ Earlier review results remain historical. Second scoped implementation review
 `5d1129d4-0dc8-4f61-982b-7581ea9fc8a5` approved exact `7a4b9cb` against merge base
 `69d6803daba48c9bf3a8a9e48e00c2d862f7aca0`, B-Client only, no findings.
 Output: `reviews/desktop-distribution-step-05-implementation-followup.md`.
+
+
+User decision: use `https://sesori.com/desktop/` despite the page not yet being live,
+and return PR #1506 to non-draft. Channel/OS/CPU fragments remain hints for the
+future page; until its anchors exist a browser still opens `/desktop/`. Website
+availability and published installers remain release gates, not claimed passes.

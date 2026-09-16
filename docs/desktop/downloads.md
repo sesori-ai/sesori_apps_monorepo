@@ -1,5 +1,10 @@
 # Sesori desktop downloads
 
+Publication content specification for **https://sesori.com/desktop/** (not yet live).
+The app opens that website, not this repository document. Preserve the channel/OS/CPU
+heading anchors below when publishing the page; missing fragments do not prevent
+opening the page itself.
+
 Desktop packages are undergoing private qualification. **No public desktop release
 is available yet.** Private CI artifacts are not supported public downloads. This
 index lists only verified public artifacts after the relevant release gate passes;

@@ -249,7 +249,9 @@ and the documented publisher must be verified; do not call a web link an in-app
 signature-verifying updater. winget remains a separate package-manager update path.
 
 **macOS manual path (D6 fallback selected in step 5):** Settings opens the official
-channel/CPU download index through the existing external-link seam. The user Quits
+channel/CPU download page at `https://sesori.com/desktop/` through the existing
+external-link seam. The user selected this URL while not yet live; publication
+availability remains a release gate. The user Quits
 normally, verifies the signed/notarized published package, replaces the complete
 app and reopens it manually. Close-to-tray is not Quit; failed helper stop refuses
 Quit and users must not replace the running installation. No automatic checks,

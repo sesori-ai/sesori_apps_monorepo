@@ -3,11 +3,14 @@
 ## Supported behavior
 
 Desktop Settings includes update guidance. Packaged macOS/Windows builds expose
-**View downloads**, opening the official repository index at the compiled build's
+**View downloads**, opening `https://sesori.com/desktop/` with the compiled build's
 stable/internal channel, OS and CPU section. This does not claim an available
 update or published installer. Unshipped sections explicitly contain no public
 download; they never link private CI artifacts or infer desktop assets from Latest.
-Source builds show development guidance; Linux shows package-manager guidance.
+The website is not live yet; the user explicitly selected this destination anyway.
+The repository download document is a content/anchor specification, not an alternate
+user-facing destination. Source builds show development guidance; Linux shows
+package-manager guidance.
 
 Staging accepts `--channel stable|internal` (default stable) and emits
 `SESORI_DESKTOP_RELEASE_CHANNEL` beside the compiled bundle identity. Channel is

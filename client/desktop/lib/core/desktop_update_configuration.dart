@@ -12,8 +12,8 @@ DesktopUpdateDestination resolveDesktopUpdateDestination({
   return DesktopManualDownload(
     uri: Uri(
       scheme: "https",
-      host: "github.com",
-      path: "/sesori-ai/sesori_apps_monorepo/blob/main/docs/desktop/downloads.md",
+      host: "sesori.com",
+      path: "/desktop/",
       fragment: "${channel.name}-${identity.os.name}-${identity.architecture.name}",
     ),
   );

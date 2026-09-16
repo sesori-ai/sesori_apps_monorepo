@@ -29,8 +29,8 @@ void main() {
             expect(destination, isA<DesktopManualDownload>());
             final uri = (destination as DesktopManualDownload).uri;
             expect(uri.scheme, "https");
-            expect(uri.host, "github.com");
-            expect(uri.path, "/sesori-ai/sesori_apps_monorepo/blob/main/docs/desktop/downloads.md");
+            expect(uri.host, "sesori.com");
+            expect(uri.path, "/desktop/");
             expect(uri.fragment, "${channel.name}-${os.name}-${architecture.name}");
           }
         });
