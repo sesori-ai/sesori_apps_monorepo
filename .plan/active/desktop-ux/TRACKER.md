@@ -114,6 +114,7 @@ or waive shipping qualification.
 - Step 7.c: 61 revision-scoped desktop cases, clean analysis and three fresh inspected fixtures.
   Earlier mobile/shared-UI evidence is retained, not rerun; see [step 7.c evidence](steps/step-07c.md).
   The 250% shared-header overflow remains for step 11; native qualification is not waived.
-- Step 8: 81 distinct revision-scoped cases, three owning analyzers, four inspected
-  synthetic renders and scoped architecture review pass. No native permission,
-  login registration or production bridge work ran; see [step 8 evidence](steps/step-08.md).
+- Step 8 (#1505): 150 distinct retained revision-scoped cases (96 rerun for review fixes),
+  three owning analyzers and four inspected synthetic renders. Follow-up scoped
+  architecture review approved; no native permission, login registration or production
+  bridge work ran. See [step 8 evidence](steps/step-08.md).

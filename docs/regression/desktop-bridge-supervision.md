@@ -31,9 +31,11 @@ and keep native close/quit behavior safe.
   After authentication, a missing preference initializes On, admits helper start
   and best-effort enables launch at login. Existing On/Off (including invalid
   contents treated as Off) is never overwritten. The existing write queue and
-  restore generation make newer explicit Off/logout win pending initialization.
-  Native enable failure leaves On intact and logs the error; General reads the
-  actual OS registration when opened. No helper starts before dispatcher readiness.
+  restore generation preserve explicit Off/logout even after its disk write fails.
+  Auth lost during initialization leaves admitted On login-required until sign-in,
+  not stranded Off. Native enable failure leaves On intact and logs the error;
+  success refreshes existing General/tray state after initial loading. Opening
+  General also reads OS registration. No helper starts before dispatcher readiness.
   Startup restores last-On through the process service after the dispatcher is
   ready; signed-out restore reaches login-required without spawning a helper.
   Launch at login is an idempotent per-user registration that starts the app
