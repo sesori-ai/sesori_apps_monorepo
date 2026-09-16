@@ -56,8 +56,9 @@ final class const PluginAuthenticationBrowserOperation({
 /// the operation through [events] with [PluginAuthenticationFailed].
 ///
 /// The bridge passes a trimmed, non-empty code of at most 512 characters with
-/// no whitespace or control characters. It logs errors thrown by [submitCode],
-/// so they must not contain the code.
+/// no whitespace or control characters. It logs errors thrown by [submitCode]
+/// and every [PluginAuthenticationFailed.message], so neither may contain the
+/// code.
 final class const PluginAuthenticationPastedCodeOperation({
   @override required final Stream<PluginAuthenticationPastedCodeEvent> events,
   required final Future<void> Function({required String code}) submitCode,
