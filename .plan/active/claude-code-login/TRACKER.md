@@ -35,8 +35,8 @@
 | Step | Title | Status | PR | Evidence |
 |---|---|---|---|---|
 | 1/6 | 🌱 Publish the plan | Merged | #1508 | Architecture plan review 2026-09-16: rejected with 4 must-fix and 2 optional findings; all applied, not re-reviewed per repository rules. PR automated review: five waves, 20 findings applied (one superseded by the second wave); CLI login flow verified on 2.1.221, 2.1.269, 2.1.272, and 2.1.273 |
-| 2/6 | 🚧 Add pasted-code login to the wire contract and apps | In review | — | Shared, `module_core`, `module_app_ui`, `client/app`, and `client/desktop` analyze and targeted tests pass; divergences (a `codeRetry` state, shared `normalizeCode`, `invalidRedirect` renamed `invalidInput`, no monospace field) recorded in `PLAN.md` |
-| 3/6 | 🚧 Route pasted-code login through the bridge | Not started | — | — |
+| 2/6 | 🚧 Add pasted-code login to the wire contract and apps | In review | #1516 | Shared, `module_core`, `module_app_ui`, `client/app`, and `client/desktop` analyze and targeted tests pass; divergences (a `codeRetry` state, shared `normalizeCode`, `invalidRedirect` renamed `invalidInput`, no monospace field) recorded in `PLAN.md` |
+| 3/6 | 🚧 Route pasted-code login through the bridge | In progress | — | `sesori_plugin_interface` and `bridge/app` analyze clean; interface, runtime gate, lifecycle service, and handler tests pass |
 | 4/6 | 🚧 Drive Claude CLI login from the bridge | Not started | — | — |
 | 5/6 | 🌱 Reconcile Claude login documentation | Not started | — | — |
 | 6/6 | 🌱 Verify and retire the plan | Not started | — | — |

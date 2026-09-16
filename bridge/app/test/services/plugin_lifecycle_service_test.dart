@@ -175,6 +175,42 @@ void main() {
     expect(repository.startCalls, 1);
   });
 
+  test("pasted-code authentication publishes its challenge and forwards the code", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.authentication},
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+    );
+    final terminal = service.authenticationProgress.first;
+    final challenge = service.authenticate(pluginId: "one");
+    repository.authenticationEvents.add(
+      PluginAuthenticationPastedCodeChallenge(authorizationUri: Uri.parse("https://auth.example/oauth?state=opaque")),
+    );
+
+    expect(
+      (await challenge).toJson(),
+      const PluginAuthenticationChallengeResponse.pastedCode(
+        authorizationUrl: "https://auth.example/oauth?state=opaque",
+      ).toJson(),
+    );
+    await service.submitAuthenticationCode(pluginId: "one", code: "opaque#state");
+    expect(repository.authenticationCodes, [(pluginId: "one", generation: 1, code: "opaque#state")]);
+    repository.authenticationEvents.add(const PluginAuthenticationCompleted());
+    await repository.authenticationEvents.close();
+    expect((await terminal).progress, const PluginAuthenticationProgress.completed());
+    expect(repository.startCalls, 1);
+  });
+
   test("authentication continuation maps active-generation outcomes and terminal cleanup", () async {
     final repository =
         _CommandLifecycleRepository(
@@ -3239,6 +3275,7 @@ class _CommandLifecycleRepository({
   PluginRuntimeAuthenticationContinuationResult authenticationContinuationResult =
       const PluginRuntimeAuthenticationContinuationApplied();
   final List<({String pluginId, int generation, Uri redirectUri})> authenticationRedirects = [];
+  final List<({String pluginId, int generation, String code})> authenticationCodes = [];
   Object? inspectionError;
 
   @override
@@ -3263,6 +3300,16 @@ class _CommandLifecycleRepository({
     required Uri redirectUri,
   }) async {
     authenticationRedirects.add((pluginId: pluginId, generation: generation, redirectUri: redirectUri));
+    return authenticationContinuationResult;
+  }
+
+  @override
+  Future<PluginRuntimeAuthenticationContinuationResult> submitAuthenticationCode({
+    required String pluginId,
+    required int generation,
+    required String code,
+  }) async {
+    authenticationCodes.add((pluginId: pluginId, generation: generation, code: code));
     return authenticationContinuationResult;
   }
 

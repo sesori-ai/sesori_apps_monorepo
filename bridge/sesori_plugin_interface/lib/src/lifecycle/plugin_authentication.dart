@@ -31,6 +31,11 @@ sealed class const PluginAuthenticationOperation() {
     required Future<void> Function({required Uri redirectUri}) submitRedirect,
   }) = PluginAuthenticationBrowserOperation;
 
+  const factory pastedCode({
+    required Stream<PluginAuthenticationPastedCodeEvent> events,
+    required Future<void> Function({required String code}) submitCode,
+  }) = PluginAuthenticationPastedCodeOperation;
+
   Stream<PluginAuthenticationEvent> get events;
 }
 
@@ -45,11 +50,22 @@ final class const PluginAuthenticationBrowserOperation({
   required final Future<void> Function({required Uri redirectUri}) submitRedirect,
 }) extends PluginAuthenticationOperation;
 
+/// Pasted-code login accepts one code the user copies from the provider's page
+/// after approving access. The bridge calls [submitCode] at most once; it
+/// returns once the plugin has the code. A code shape the plugin rejects ends
+/// the operation through [events] with [PluginAuthenticationFailed].
+final class const PluginAuthenticationPastedCodeOperation({
+  @override required final Stream<PluginAuthenticationPastedCodeEvent> events,
+  required final Future<void> Function({required String code}) submitCode,
+}) extends PluginAuthenticationOperation;
+
 sealed class const PluginAuthenticationEvent();
 
 sealed class const PluginAuthenticationDeviceCodeEvent() implements PluginAuthenticationEvent;
 
 sealed class const PluginAuthenticationBrowserEvent() implements PluginAuthenticationEvent;
+
+sealed class const PluginAuthenticationPastedCodeEvent() implements PluginAuthenticationEvent;
 
 final class const PluginAuthenticationDeviceCodeChallenge({
   required final Uri verificationUri,
@@ -61,8 +77,21 @@ final class const PluginAuthenticationBrowserChallenge({
   required final Uri expectedCallbackUri,
 }) extends PluginAuthenticationEvent implements PluginAuthenticationBrowserEvent;
 
-final class const PluginAuthenticationCompleted() extends PluginAuthenticationEvent
-    implements PluginAuthenticationDeviceCodeEvent, PluginAuthenticationBrowserEvent;
+/// [authorizationUri] is an absolute HTTPS sign-in page the user opens.
+final class const PluginAuthenticationPastedCodeChallenge({required final Uri authorizationUri})
+    extends PluginAuthenticationEvent
+    implements PluginAuthenticationPastedCodeEvent;
 
-final class const PluginAuthenticationFailed({required final String message}) extends PluginAuthenticationEvent
-    implements PluginAuthenticationDeviceCodeEvent, PluginAuthenticationBrowserEvent;
+final class const PluginAuthenticationCompleted()
+    extends PluginAuthenticationEvent
+    implements
+        PluginAuthenticationDeviceCodeEvent,
+        PluginAuthenticationBrowserEvent,
+        PluginAuthenticationPastedCodeEvent;
+
+final class const PluginAuthenticationFailed({required final String message})
+    extends PluginAuthenticationEvent
+    implements
+        PluginAuthenticationDeviceCodeEvent,
+        PluginAuthenticationBrowserEvent,
+        PluginAuthenticationPastedCodeEvent;
