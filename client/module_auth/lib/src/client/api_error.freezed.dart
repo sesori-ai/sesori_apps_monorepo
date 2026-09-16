@@ -68,10 +68,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-    return 'ApiError()';
-}
 
 
 }
@@ -87,10 +83,11 @@ $ApiErrorCopyWith(ApiError _, $Res Function(ApiError) __);
 @JsonSerializable(createToJson: false)
 
 class JsonParsingError extends ApiError {
-   JsonParsingError(this.jsonString, { String? $type}): $type = $type ?? 'jsonParsing',super._();
+   JsonParsingError({required this.jsonString, required this.innerError,  String? $type}): $type = $type ?? 'jsonParsing',super._();
   factory JsonParsingError.fromJson(Map<String, dynamic> json) => _$JsonParsingErrorFromJson(json);
 
  final  String jsonString;
+ final  Object? innerError;
 
 @JsonKey(name: 'runtimeType')
 final String $type;
@@ -106,19 +103,15 @@ $JsonParsingErrorCopyWith<JsonParsingError> get copyWith => _$JsonParsingErrorCo
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is JsonParsingError&&(identical(other.jsonString, jsonString) || other.jsonString == jsonString));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is JsonParsingError&&(identical(other.jsonString, jsonString) || other.jsonString == jsonString)&&const DeepCollectionEquality().equals(other.innerError, innerError));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,jsonString);
+    return Object.hash(runtimeType,jsonString,const DeepCollectionEquality().hash(innerError));
 }
 
-@override
-String toString() {
-    return 'ApiError.jsonParsing(jsonString: $jsonString)';
-}
 
 
 }
@@ -128,7 +121,7 @@ abstract mixin class $JsonParsingErrorCopyWith<$Res> implements $ApiErrorCopyWit
   factory $JsonParsingErrorCopyWith(JsonParsingError value, $Res Function(JsonParsingError) _then) = _$JsonParsingErrorCopyWithImpl;
 @useResult
 $Res call({
- String jsonString
+ String jsonString, Object? innerError
 });
 
 
@@ -145,10 +138,10 @@ class _$JsonParsingErrorCopyWithImpl<$Res>
 
 /// Create a copy of ApiError
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? jsonString = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? jsonString = null,Object? innerError = freezed,}) {
   return _then(JsonParsingError(
-null == jsonString ? _self.jsonString : jsonString // ignore: cast_nullable_to_non_nullable
-as String,
+jsonString: null == jsonString ? _self.jsonString : jsonString // ignore: cast_nullable_to_non_nullable
+as String,innerError: freezed == innerError ? _self.innerError : innerError ,
   ));
 }
 
@@ -187,10 +180,6 @@ int get hashCode {
     return Object.hash(runtimeType,const DeepCollectionEquality().hash(innerError));
 }
 
-@override
-String toString() {
-    return 'ApiError.dartHttpClient(innerError: $innerError)';
-}
 
 
 }
@@ -251,10 +240,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-    return 'ApiError.generic()';
-}
 
 
 }
@@ -287,10 +272,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-    return 'ApiError.notAuthenticated()';
-}
 
 
 }
@@ -331,10 +312,6 @@ int get hashCode {
     return Object.hash(runtimeType,errorCode,rawErrorString);
 }
 
-@override
-String toString() {
-    return 'ApiError.nonSuccessCode(errorCode: $errorCode, rawErrorString: $rawErrorString)';
-}
 
 
 }
@@ -397,10 +374,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-    return 'ApiError.emptyResponse()';
-}
 
 
 }

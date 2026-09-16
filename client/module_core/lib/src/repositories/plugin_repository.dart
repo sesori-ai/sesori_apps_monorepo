@@ -175,8 +175,8 @@ class PluginRepository({required final PluginApi _api}) {
       ErrorResponse(
         error: final error &&
             (JsonParsingError() ||
-            EmptyResponseError() ||
-            DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException())),
+                EmptyResponseError() ||
+                DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException())),
       ) =>
         CatalogImportMutationResult.uncertain(error: error),
       ErrorResponse(:final error) => CatalogImportMutationResult.failure(error: error),
@@ -230,8 +230,10 @@ class PluginRepository({required final PluginApi _api}) {
       return _AuthenticationConflictParsed(
         conflict: PluginAuthenticationConflict.fromJson(jsonDecodeMap(body)),
       );
-    } on Object {
-      return _AuthenticationConflictParseFailure(error: ApiError.jsonParsing(body));
+    } on Object catch (error) {
+      return _AuthenticationConflictParseFailure(
+        error: ApiError.jsonParsing(jsonString: body, innerError: error),
+      );
     }
   }
 

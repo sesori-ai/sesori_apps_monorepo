@@ -151,6 +151,31 @@ void main() {
         );
       });
 
+      for (final malformedJson in [true, false]) {
+        test("ordinary parsing diagnostics omit session content (syntax=$malformedJson)", () async {
+          const secret = "private-conversation-text";
+          final body = malformedJson ? '{"value":"$secret", !}' : '{"value":"$secret"}';
+          final logs = <String>[];
+          when(
+            () => mockRelayClient.sendRequest(
+              request: any(named: "request"),
+              timeout: any(named: "timeout"),
+            ),
+          ).thenAnswer((_) async => RelayResponse(id: "req", status: 200, headers: const {}, body: body));
+          final result = await runZoned(
+            () => client.get<int>("/session/messages", fromJson: (json) => json["value"] as int),
+            zoneSpecification: ZoneSpecification(print: (_, _, _, line) => logs.add(line)),
+          );
+          final error = (result as ErrorResponse<int>).error as JsonParsingError;
+          expect(error.jsonString, body);
+          expect(error.toString(), isNot(contains(secret)));
+          expect(logs.join("\n"), isNot(contains(secret)));
+          expect(error.innerError, malformedJson ? isA<FormatException>() : isA<TypeError>());
+          expect(logs.join("\n"), contains(malformedJson ? "offset=" : "not a subtype"));
+          expect(logs.join("\n"), contains("relay_http_client.dart"));
+        });
+      }
+
       test("malformed attachment response redacts decrypted content", () async {
         const secret = "secret-attachment-base64";
         final logs = <String>[];
@@ -186,6 +211,7 @@ void main() {
 
         final error = (result as ErrorResponse<SessionAttachmentResponse>).error as JsonParsingError;
         expect(error.jsonString, "Sensitive response omitted");
+        expect(error.innerError, isA<TypeError>());
         expect(error.jsonString, isNot(contains(secret)));
         expect(logs.join("\n"), isNot(contains(secret)));
         expect(error.toString(), isNot(contains(secret)));

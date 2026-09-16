@@ -261,7 +261,7 @@ void main() {
           fields: any(named: "fields"),
           timeout: any(named: "timeout"),
         ),
-      ).thenAnswer((_) async => ApiResponse.error(ApiError.jsonParsing("not json")));
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.jsonParsing(jsonString: "not json", innerError: null)));
 
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
@@ -272,7 +272,7 @@ void main() {
       expect(
         result,
         isA<VoiceTranscriptionApiFailure>()
-            .having((failure) => failure.error, "error", ApiError.jsonParsing("not json"))
+            .having((failure) => failure.error, "error", ApiError.jsonParsing(jsonString: "not json", innerError: null))
             .having((failure) => failure.retryable, "retryable", isNull),
       );
     });
