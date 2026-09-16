@@ -76,8 +76,8 @@ marker, bounded Inno script, manifest/native-inventory packager, offline tests a
 manual private x64/ARM64 workflow. Inno's official `is-7_1_0` x64 asset digest is
 `0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f` and is checked
 before CI executes it. Local offline desktop tooling tests and actionlint pass.
-Native compiler, install/upgrade/uninstall, mutex refusal and payload checks remain
-pending until the workflow is manually dispatched on isolated Windows runners.
+At this local checkpoint, native execution was pending. The isolated Windows
+qualification below subsequently supplied compiler/fixture evidence.
 Signing, publication and interactive product claims remain blocked.
 
 Sources: `stage_desktop_bundle.dart` stages Windows `runner/Release` into `bundle`;
@@ -105,5 +105,37 @@ At exact `a5f5f46e9929ec81c1e1b777a2795e45467864a4`, tree
 - `actionlint .github/workflows/desktop-qualification.yml`: exit 0.
 
 Logs: `build/desktop-windows-packaging-evidence/parent-tests.log` and
-`parent-actionlint.log`. Native CI is still required; these checks do not establish
-installer compilation or Windows execution.
+`parent-actionlint.log`. These local checks alone do not establish installer
+compilation or Windows execution.
+
+## Native private qualification
+
+Run **35097548359** succeeded on exact source
+`a36896d051b35786b100318c390af98442f0a19b`, tree
+`c82a1f85f6c8b8594282cecfe153e4f3d5200118`, version **1.8.4/build 35**.
+
+- ARM64 job `104799113168`: package artifact `10446962454`, evidence `10446793103`.
+  Installer SHA-256: `a02169a37e5cce82dd2335ffbced0c1266fb1e7a745132b81892a6808e5c3bdc`.
+- x64 job `104799113485`: package artifact `10446709408`, evidence `10447321500`.
+  Installer SHA-256: `8c23a0084acb50a956cb4bb54bf691cd8dae533122d690f785d32980e8464280`.
+
+Downloaded both package/evidence pairs with `gh run download 35097548359 --repo
+sesori-ai/sesori_apps_monorepo --pattern 'desktop-windows-*' --dir
+build/desktop-windows-packaging-evidence/native-a36896d`. Local SHA-256 checks match
+packaging reports; installed identity and full 15-binary inventory equal the staged
+report on both CPUs. Both source-change patches are empty. Both silent fixtures
+report install success, same-version reinstall success, setup/uninstall mutex
+refusal (exit 1), login-intent preservation, owned login-value cleanup and shared
+sentinel preservation. No product GUI/helper was launched by the installer probe.
+
+The initial private run 35092987496 stalled in compiler acquisition on both CPUs
+and was cancelled. Switching Inno acquisition from Git Bash to PowerShell removed
+MSYS switch rewriting as a possible cause and added a timeout/log. The successful
+retry verifies the revised path; no stronger root-cause diagnosis is claimed.
+An unrelated PR macOS x64 job was cancelled during staging without an available
+log; a retry was requested. Current PR checks subsequently passed.
+
+These unsigned, silent runner fixtures are **not** a signed N→N+1 upgrade, real
+account/GUI lifecycle, interactive ARM64, SmartScreen or public-release proof.
+GitHub artifacts require authorization and have 14-day retention. Later docs-only
+commits do not change the measured native source above.
