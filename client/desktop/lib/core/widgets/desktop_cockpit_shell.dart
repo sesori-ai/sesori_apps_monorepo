@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/gestures.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -105,22 +106,7 @@ class const DesktopCockpitShell({
                   width: 1 + 5 * expansion,
                   child: collapsed
                       ? VerticalDivider(width: 1, color: context.prego.colors.borderSecondary)
-                      : MouseRegion(
-                          cursor: SystemMouseCursors.resizeLeftRight,
-                          child: Tooltip(
-                            message: context.loc.desktopSidebarResize,
-                            child: GestureDetector(
-                              key: const Key("desktop-sidebar-resize"),
-                              behavior: HitTestBehavior.opaque,
-                              onHorizontalDragUpdate: (details) =>
-                                  sidebar.resize(width: sidebar.state.width + details.delta.dx),
-                              onHorizontalDragEnd: (_) => unawaited(sidebar.saveLayout()),
-                              onHorizontalDragCancel: () => unawaited(sidebar.saveLayout()),
-                              onDoubleTap: () => unawaited(sidebar.resetWidth()),
-                              child: VerticalDivider(width: 1, color: context.prego.colors.borderSecondary),
-                            ),
-                          ),
-                        ),
+                      : _SidebarResizeHandle(sidebar: sidebar),
                 ),
                 Expanded(child: content),
               ],
@@ -130,4 +116,44 @@ class const DesktopCockpitShell({
       },
     );
   }
+}
+
+class const _SidebarResizeHandle({required final DesktopSidebarCubit sidebar}) extends StatefulWidget {
+  @override
+  State<_SidebarResizeHandle> createState() => _SidebarResizeHandleState();
+}
+
+class _SidebarResizeHandleState() extends State<_SidebarResizeHandle> {
+  ({double width, double pointerX})? _dragOrigin;
+
+  void _finishDrag() {
+    // A tap or double-click also cancels the drag recognizer, without starting a drag.
+    if (_dragOrigin == null) return;
+    _dragOrigin = null;
+    unawaited(widget.sidebar.saveLayout());
+  }
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    cursor: SystemMouseCursors.resizeLeftRight,
+    child: Tooltip(
+      message: context.loc.desktopSidebarResize,
+      child: GestureDetector(
+        key: const Key("desktop-sidebar-resize"),
+        behavior: HitTestBehavior.opaque,
+        dragStartBehavior: DragStartBehavior.down,
+        onHorizontalDragStart: (details) =>
+            _dragOrigin = (width: widget.sidebar.state.width, pointerX: details.globalPosition.dx),
+        onHorizontalDragUpdate: (details) {
+          if (_dragOrigin case final origin?) {
+            widget.sidebar.resize(width: origin.width + details.globalPosition.dx - origin.pointerX);
+          }
+        },
+        onHorizontalDragEnd: (_) => _finishDrag(),
+        onHorizontalDragCancel: _finishDrag,
+        onDoubleTap: () => unawaited(widget.sidebar.resetWidth()),
+        child: VerticalDivider(width: 1, color: context.prego.colors.borderSecondary),
+      ),
+    ),
+  );
 }
