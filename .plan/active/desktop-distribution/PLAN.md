@@ -387,8 +387,10 @@ history and keeps lifecycle changes out of the package-signing review.
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
 Private-package reconciliation can proceed after step 9 while step 10 is blocked.
-Complete final public-link/onboarding and release-runbook reconciliation only after
-step 10. Keep this step in progress until both portions are complete. Low risk;
+Carry the remaining public-link/onboarding and release-runbook documentation in
+step 10's existing ordinal 12/14 PR, alongside the genuine shipped-download changes.
+That PR also closes the deferred portion of step 11; no second ordinal 13 PR is planned.
+Keep this step in progress until both portions are complete. Low risk;
 no runtime or database change.
 
 **Step 12 PR:**

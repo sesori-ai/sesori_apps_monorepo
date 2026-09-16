@@ -88,8 +88,9 @@ history, not unsupported product behavior or regression tombstones.
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
 private-package documentation portion can proceed independently, so its dependency
 is narrowed without reordering stable IDs or the 14-PR series. Its public-link and
-onboarding closeout remains dependent on step 10; step 11 is not complete. Shipping
-order and uncompleted publication prerequisites are unchanged.
+onboarding closeout is assigned to step 10's existing ordinal 12/14 PR, together with
+its genuine shipped-link changes; no second ordinal 13 PR is required. Step 11 is not
+complete. Shipping order and uncompleted publication prerequisites are unchanged.
 
 ## Alignment — 2026-09-15
 

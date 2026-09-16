@@ -4,8 +4,10 @@ Ordinal 13/14. Planned PR title:
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
 This step remains in progress. Its independently executable private-package portion
 follows merged step 9; final public-link, onboarding and release-runbook reconciliation
-still depends on step 10 and genuine shipped releases. Stable step IDs and the 14-PR
-total do not change.
+still depends on step 10 and genuine shipped releases. That remaining documentation
+is explicitly assigned to step 10's existing ordinal 12/14 PR, alongside its shipped
+onboarding links, rather than a second ordinal 13 PR. Stable IDs and the 14-PR total
+do not change.
 
 ## Reconciled private behavior
 
@@ -14,8 +16,10 @@ Current source and private evidence support these narrow claims:
 - macOS x64 and arm64 staging produces private signed/notarized/stapled DMGs and
   ZIPs containing the Developer ID signed, notarized/stapled app. The ZIP itself is
   neither signed nor stapled. Nested code, complete helper payload, Gatekeeper assessment,
-  extracted inventories and helper execution are qualified. The GUI is manually
-  replaced only after normal Quit; no updater service or automatic relaunch exists.
+  extracted inventories and helper execution are qualified. User guidance requires
+  normal Quit before manual replacement; this is not enforced by the downloads action
+  and signed N→N+1 safe-Quit qualification remains open. No updater service or automatic
+  relaunch exists.
 - Windows x64 and arm64 staging produces private unsigned per-user Inno Setup
   packages. Installer fixtures verify complete native payloads, current-user mutex
   refusal, bounded uninstall and shared-state preservation without launching Sesori.

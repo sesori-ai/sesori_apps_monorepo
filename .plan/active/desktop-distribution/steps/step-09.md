@@ -98,6 +98,8 @@ command list that could drift:
 
 ```bash
 source=07bdd730e6451d221ebb86821a38c4252e4e0abc
+# Recover the producer object even in a fresh post-squash checkout.
+git fetch origin refs/pull/1522/head
 git show "$source:.github/workflows/desktop-qualification.yml"
 # Expanded commands and measured job environment:
 gh run view 35122448200 --repo sesori-ai/sesori_apps_monorepo --job 104883363575 --log
