@@ -5,6 +5,10 @@ The PR body owns the complete publication range and inclusive size, including do
 The source-free diagnostic foundation is delivered separately by #1514; its
 [revision-scoped evidence](step-09a1.md) is not added to this step's test count.
 
+Merged #1509 at accepted head `81dd4c7931b748de5dc3a133331aa0586f44a52e`;
+landed squash `23ed67ca38e85894d6c1ef7c91bbc0b95a667f8d` has tree
+`0054c1ee6429664b6787a1573f7b6443a487c685`. Native qualification remains outstanding.
+
 ## Delivered boundary
 
 - Desktop/mobile independently persist console-fanned log records in `app.log`

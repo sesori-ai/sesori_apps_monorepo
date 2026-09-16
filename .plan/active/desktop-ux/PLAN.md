@@ -2,9 +2,9 @@
 
 ## Status
 
-Planned 2026-09-15; logical steps 1–8 and logging prerequisite 9.a.1 have landed
-(see `TRACKER.md`). File output 9.a.2 continues on #1509's preserved branch after
-forward integration; user-requested sidebar corrections remain steps 9.b–9.c.
+Planned 2026-09-15; logical steps 1–8 and logging 9.a.1–9.a.2 have landed
+(see `TRACKER.md`). User-requested sidebar corrections continue in 9.b–9.c;
+anchored resizing and scrollbar hit targets are the current 9.b slice.
 Native qualification remains outstanding, not waived by implementation delivery.
 This is phase 1 of the desktop UX work: the changes that
 remove the release-blocking UX problems with client-only work. Later phases
@@ -618,10 +618,9 @@ constant to match the bundled package name and removed redundant sidebar font
 overrides. This small shared typography fix adds no state or renderer changes;
 mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 
-The merged 9.a.1 prerequisite is forward-integrated into preserved `desktop-ux/app-logs`.
-Finish #1509 as 9.a.2 without rewriting its published history, then 9.b
-interactions, 9.c sidebar activity/controls and 10 shortcuts/title bar. Steps 11 and 12
-remain the final audit and qualification.
+Logging 9.a.1–9.a.2 is merged, preserving #1509's published history through forward integration.
+Continue with 9.b interactions, 9.c sidebar activity/controls and 10 shortcuts/title bar.
+Steps 11 and 12 remain the final audit and qualification.
 Step 8 must land after
 step 7.c (General startup preferences and Bridge/FDA settings). Step 7.a follows
 step 6; step 7.b follows 7.a; step 7.c follows 7.b and replaces the existing
