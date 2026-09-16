@@ -9,16 +9,16 @@ enum BridgeShutdownPhase() {
   drain,
   pluginDispose,
   lifecycle,
+  runtimeDispose,
   shared,
 }
 
 class BridgeShutdownCoordinator({
-    required final StartAbortSignal _startAbortSignal,
-    int Function()? backstopExitCode,
-    void Function(int code)? exitProcess,
-    final Future<void> Function()? _emergencyDisposal,
-  }) {
-
+  required final StartAbortSignal _startAbortSignal,
+  int Function()? backstopExitCode,
+  void Function(int code)? exitProcess,
+  final Future<void> Function()? _emergencyDisposal,
+}) {
   static int _alwaysZero() => 0;
   static const Duration _backstopSlack = Duration(seconds: 10);
 

@@ -133,6 +133,198 @@ abstract class AppLocalizations {
   /// **'Connection failed — check your network and try again.'**
   String get apiErrorNetworkDown;
 
+  /// macOS protected-file access for this computer, not a remote bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Disk Access'**
+  String get desktopFileAccessTitle;
+
+  /// Explains the optional broader permission and the agent benefit before opening macOS settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori runs coding agents on your behalf. macOS folder prompts can pause them while you\'re away. Full Disk Access lets Sesori and its agents access protected files without those prompts. This is optional; restart the local bridge after granting access.'**
+  String get desktopFileAccessDescription;
+
+  /// No description provided for @desktopFileAccessOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open System Settings'**
+  String get desktopFileAccessOpenSettings;
+
+  /// No description provided for @desktopFileAccessNotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get desktopFileAccessNotNow;
+
+  /// No description provided for @desktopFileAccessGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Protected files are accessible'**
+  String get desktopFileAccessGranted;
+
+  /// No description provided for @desktopFileAccessDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Not granted — folder prompts may pause agents'**
+  String get desktopFileAccessDenied;
+
+  /// No description provided for @desktopFileAccessUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Access could not be confirmed'**
+  String get desktopFileAccessUnknown;
+
+  /// Desktop home guidance when projects are available but no session is open.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a session from the sidebar to get started.'**
+  String get desktopHomePickSession;
+
+  /// Label for the prominent desktop sidebar action that opens the add-project dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'New project'**
+  String get desktopSidebarNewProject;
+
+  /// Sidebar link to a project's full session list, with its active visible session count.
+  ///
+  /// In en, this message translates to:
+  /// **'All sessions · {count}'**
+  String desktopSidebarAllSessions(int count);
+
+  /// Tooltip for the sidebar project's new-session button, revealed on hover or keyboard focus.
+  ///
+  /// In en, this message translates to:
+  /// **'New session in {projectName}'**
+  String desktopSidebarNewSession(String projectName);
+
+  /// Tooltip for hiding a project's recent-session rows in the desktop sidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse {projectName}'**
+  String desktopSidebarCollapseProject(String projectName);
+
+  /// Tooltip for showing a project's recent-session rows in the desktop sidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand {projectName}'**
+  String desktopSidebarExpandProject(String projectName);
+
+  /// Tooltip for switching desktop navigation to the compact project rail.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse sidebar'**
+  String get desktopSidebarCollapse;
+
+  /// Tooltip for restoring the expanded desktop navigation sidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand sidebar'**
+  String get desktopSidebarExpand;
+
+  /// Tooltip on the expanded desktop sidebar's drag handle.
+  ///
+  /// In en, this message translates to:
+  /// **'Resize sidebar; double-click to reset'**
+  String get desktopSidebarResize;
+
+  /// Sidebar recovery notice when bridge ownership can be reclaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'Another bridge currently owns this account connection.'**
+  String get desktopBridgeTakenOver;
+
+  /// Action to reclaim local or relay bridge ownership.
+  ///
+  /// In en, this message translates to:
+  /// **'Take Over'**
+  String get desktopBridgeTakeOver;
+
+  /// Sidebar notice for supervised bridge authentication recovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Sesori account is required before the local bridge can start.'**
+  String get desktopBridgeLoginRequired;
+
+  /// Action to recover authentication and start the local bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Bridge'**
+  String get desktopBridgeStart;
+
+  /// Sidebar notice when automatic bridge crash recovery stops.
+  ///
+  /// In en, this message translates to:
+  /// **'The local bridge stopped after repeated crashes.'**
+  String get desktopBridgeCrashGiveUp;
+
+  /// Action to open the local bridge's diagnostic logs.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Logs'**
+  String get desktopBridgeOpenLogs;
+
+  /// Heading for controls of the bridge supervised on this computer, not the desktop relay client.
+  ///
+  /// In en, this message translates to:
+  /// **'Local bridge'**
+  String get desktopLocalBridgeTitle;
+
+  /// Action that turns off the supervised local bridge without quitting Sesori.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop Bridge'**
+  String get desktopBridgeStop;
+
+  /// Secondary popover action opening bridge configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge settings…'**
+  String get desktopBridgeSettings;
+
+  /// Desktop settings tab for app-wide preferences.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get desktopSettingsGeneral;
+
+  /// Native login-item switch in desktop General settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch Sesori at login'**
+  String get desktopSettingsLaunchAtLogin;
+
+  /// Explains native app startup, not a connected bridge's configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Sesori in the background when you sign in to this computer.'**
+  String get desktopSettingsLaunchAtLoginDescription;
+
+  /// Settings owned by the connected bridge, which may be on another computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected bridge'**
+  String get desktopSettingsConnectedBridge;
+
+  /// Scope explanation above connected-bridge configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'These settings apply to the bridge you\'re connected to, including one on another computer.'**
+  String get desktopSettingsConnectedBridgeDescription;
+
+  /// Separates local supervised-bridge status and diagnostics from connected-bridge settings.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer'**
+  String get desktopSettingsThisComputer;
+
+  /// Label of the pinned desktop navigation entry for local bridge controls.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge'**
+  String get desktopBridgeTitle;
+
   /// No description provided for @projectListTitle.
   ///
   /// In en, this message translates to:
@@ -1105,6 +1297,42 @@ abstract class AppLocalizations {
   /// **'Check your connection and try again.'**
   String get harnessAuthenticationRequestFailed;
 
+  /// No description provided for @harnessAuthenticationPastedCodeInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Only continue if you started this login. Sesori will sign {harnessName} on the connected computer into your account. Open the sign-in page, verify its address, approve access, then paste the code shown after approval.'**
+  String harnessAuthenticationPastedCodeInstructions(String harnessName);
+
+  /// No description provided for @harnessAuthenticationOpenSignInPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Open sign-in page'**
+  String get harnessAuthenticationOpenSignInPage;
+
+  /// No description provided for @harnessAuthenticationPastedCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Code from the sign-in page'**
+  String get harnessAuthenticationPastedCodeLabel;
+
+  /// No description provided for @harnessAuthenticationSubmitCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit code'**
+  String get harnessAuthenticationSubmitCode;
+
+  /// No description provided for @harnessAuthenticationPastedCodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the complete code shown after approval, without spaces.'**
+  String get harnessAuthenticationPastedCodeInvalid;
+
+  /// No description provided for @harnessAuthenticationPastedCodeNotConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'The code could not be confirmed. Submit it again.'**
+  String get harnessAuthenticationPastedCodeNotConfirmed;
+
   /// No description provided for @harnessesRegisteredSection.
   ///
   /// In en, this message translates to:
@@ -1858,8 +2086,14 @@ abstract class AppLocalizations {
   /// No description provided for @sessionDetailCommandSearch.
   ///
   /// In en, this message translates to:
-  /// **'Search commands...'**
+  /// **'Search commands'**
   String get sessionDetailCommandSearch;
+
+  /// Placeholder describing the searchable fields in the slash-command picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Name, description, or arguments'**
+  String get sessionDetailCommandSearchHint;
 
   /// No description provided for @sessionDetailNoCommands.
   ///
@@ -2232,6 +2466,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Command unavailable'**
   String get sessionDetailUnavailableCommand;
+
+  /// No description provided for @sessionDetailQueueCancellationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancellation was not confirmed. The message may already have been sent.'**
+  String get sessionDetailQueueCancellationFailed;
 
   /// No description provided for @sessionDetailSendingMessage.
   ///
@@ -3328,25 +3568,25 @@ abstract class AppLocalizations {
   /// No description provided for @diffPermissionRequestTitle.
   ///
   /// In en, this message translates to:
-  /// **'Permission Request'**
+  /// **'Allow this action?'**
   String get diffPermissionRequestTitle;
 
   /// No description provided for @diffPermissionReject.
   ///
   /// In en, this message translates to:
-  /// **'Reject'**
+  /// **'Don’t allow'**
   String get diffPermissionReject;
 
   /// No description provided for @diffPermissionOnce.
   ///
   /// In en, this message translates to:
-  /// **'Once'**
+  /// **'Allow'**
   String get diffPermissionOnce;
 
   /// No description provided for @diffPermissionAlwaysAllow.
   ///
   /// In en, this message translates to:
-  /// **'Always Allow'**
+  /// **'Always approve'**
   String get diffPermissionAlwaysAllow;
 
   /// No description provided for @diffFileChangesTitle.
@@ -3787,7 +4027,19 @@ abstract class AppLocalizations {
   /// **'Update the bridge to scan from here'**
   String get catalogScanUnsupportedDetail;
 
-  /// Title of the scan row when no harness could be scanned: none is connected and ready, or the bridge has not reported its harnesses yet.
+  /// Title of the scan row when a deep pull cannot start because there is no live bridge connection.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge not connected'**
+  String get catalogScanNotConnectedTitle;
+
+  /// Supporting line on the not-connected scan row, naming what the user must do before scanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a bridge to scan'**
+  String get catalogScanNotConnectedDetail;
+
+  /// Title of the scan row when the connected bridge has no harness ready to scan, or has not reported its harnesses yet.
   ///
   /// In en, this message translates to:
   /// **'No harness to scan'**

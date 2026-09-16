@@ -1,73 +1,116 @@
 import "dart:async";
 
+import "package:flutter/gestures.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
+
+import "../di/injection.dart";
+import "desktop_connection_pill.dart";
+import "desktop_sidebar.dart";
+
+/// Shared project/recent inventories and one layout owner per signed-in cockpit.
+class const DesktopCockpitCubitProvider({super.key, required final Widget child}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => MultiBlocProvider(
+    providers: [
+      BlocProvider(create: (_) => createProjectListCubit(locator: getIt)),
+      BlocProvider(
+        create: (_) => RecentSessionsCubit(
+          sessionListService: getIt<SessionListService>(),
+          connectionService: getIt<ConnectionService>(),
+          sseEventTracker: getIt<SseEventTracker>(),
+          sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+          catalogRescanService: getIt<CatalogRescanService>(),
+        ),
+      ),
+      BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
+    ],
+    child: child,
+  );
+}
 
 /// Product-shell navigation and supervision chrome around the desktop cockpit.
 class const DesktopCockpitShell({
   super.key,
-  required final DesktopCockpitDestination destination,
-  required final VoidCallback onOpenBridge,
+  required final String? selectedProjectId,
+  required final String? selectedSessionId,
+  required final SidebarSessionOpenedCallback onOpenSession,
+  required final ProjectOpenedCallback onNewSession,
+  required final SessionListActionDispatcher sessionActions,
+  required final ProjectOpenedCallback onOpenProject,
+  required final VoidCallback onOpenBridgeSettings,
   required final VoidCallback onOpenProjects,
   required final VoidCallback onOpenSettings,
   required final Widget child,
 }) extends StatelessWidget {
-  static const double _extendedBreakpoint = 1120;
-  static const String _bridgeLabel = "Bridge";
-  static const String _projectsLabel = "Projects";
-  static const String _settingsLabel = "Settings";
+  static const double compactWidth = 56;
+  static const double autoCollapseBreakpoint = 760;
 
   @override
   Widget build(BuildContext context) {
+    final layout = context.watch<DesktopSidebarCubit>().state;
+    final sidebar = context.read<DesktopSidebarCubit>();
+    final content = Stack(
+      fit: StackFit.expand,
+      children: [
+        child,
+        const PositionedDirectional(
+          top: PregoSpacing.lg,
+          start: PregoSpacing.lg,
+          end: PregoSpacing.lg,
+          child: Align(alignment: Alignment.topCenter, child: DesktopConnectionPill()),
+        ),
+      ],
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
-        final extended = constraints.maxWidth >= _extendedBreakpoint;
+        final autoCollapsed = constraints.maxWidth < autoCollapseBreakpoint;
+        final collapsed = layout.collapsed || autoCollapsed;
         return Scaffold(
-          body: Row(
-            children: [
-              NavigationRail(
-                key: const Key("desktop-cockpit-sidebar"),
-                extended: extended,
-                selectedIndex: destination.index,
-                onDestinationSelected: (index) => switch (DesktopCockpitDestination.values[index]) {
-                  DesktopCockpitDestination.bridge => onOpenBridge(),
-                  DesktopCockpitDestination.projects => onOpenProjects(),
-                  DesktopCockpitDestination.settings => onOpenSettings(),
-                },
-                leading: Padding(
-                  padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
-                  child: Semantics(
-                    label: "Sesori",
-                    child: const Icon(TablerRegular.code, size: 28),
+          body: TweenAnimationBuilder<double>(
+            tween: Tween(begin: collapsed ? 0 : 1, end: collapsed ? 0 : 1),
+            duration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            builder: (context, expansion, _) => Row(
+              children: [
+                SizedBox(
+                  key: const Key("desktop-cockpit-sidebar"),
+                  width: compactWidth + (layout.width - compactWidth) * expansion,
+                  child: DesktopSidebar(
+                    expansion: expansion,
+                    autoCollapsed: autoCollapsed,
+                    selectedProjectId: selectedProjectId,
+                    selectedSessionId: selectedSessionId,
+                    onOpenSession: onOpenSession,
+                    onNewSession: onNewSession,
+                    sessionActions: sessionActions,
+                    onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
+                    onOpenProjects: onOpenProjects,
+                    onAddProject: () => unawaited(
+                      showAddProjectDialog(
+                        context: context,
+                        cubit: context.read<ProjectListCubit>(),
+                        connectionService: getIt<ConnectionService>(),
+                      ),
+                    ),
+                    onOpenProject: onOpenProject,
+                    onOpenBridgeSettings: onOpenBridgeSettings,
+                    onOpenSettings: onOpenSettings,
                   ),
                 ),
-                destinations: const [
-                  NavigationRailDestination(
-                    icon: Icon(TablerRegular.server),
-                    label: Text(_bridgeLabel),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(TablerRegular.folders),
-                    label: Text(_projectsLabel),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(TablerRegular.settings),
-                    label: Text(_settingsLabel),
-                  ),
-                ],
-              ),
-              const VerticalDivider(width: 1),
-              Expanded(
-                child: Column(
-                  children: [
-                    const DesktopSupervisionNotice(),
-                    Expanded(child: child),
-                  ],
+                SizedBox(
+                  width: 1 + 5 * expansion,
+                  child: collapsed
+                      ? VerticalDivider(width: 1, color: context.prego.colors.borderSecondary)
+                      : _SidebarResizeHandle(sidebar: sidebar),
                 ),
-              ),
-            ],
+                Expanded(child: content),
+              ],
+            ),
           ),
         );
       },
@@ -75,103 +118,42 @@ class const DesktopCockpitShell({
   }
 }
 
-/// Stable destinations owned by the desktop shell rather than GoRouter strings.
-enum DesktopCockpitDestination() {
-  bridge,
-  projects,
-  settings,
-}
-
-/// Exceptional bridge states shown above every cockpit destination.
-class const DesktopSupervisionNotice({super.key}) extends StatelessWidget {
+class const _SidebarResizeHandle({required final DesktopSidebarCubit sidebar}) extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    final state = context.watch<BridgeControlCubit>().state;
-    final controls = context.read<BridgeControlCubit>();
-    final locked = state.activity.locksCommands;
-
-    final _DesktopSupervisionNoticeData? notice;
-    if (state.canTakeOver) {
-      notice = _DesktopSupervisionNoticeData(
-        icon: TablerRegular.arrows_exchange,
-        message: "Another bridge currently owns this account connection.",
-        primaryLabel: "Take Over",
-        onPrimary: locked ? null : () => unawaited(controls.takeOver()),
-        secondaryLabel: null,
-        onSecondary: null,
-        isError: false,
-      );
-    } else {
-      notice = switch (state.processState) {
-        BridgeProcessLoginRequired() => _DesktopSupervisionNoticeData(
-          icon: TablerRegular.user_exclamation,
-          message: "Your Sesori account is required before the local bridge can start.",
-          primaryLabel: "Start Bridge",
-          onPrimary: locked ? null : () => unawaited(controls.recoverConnection()),
-          secondaryLabel: null,
-          onSecondary: null,
-          isError: false,
-        ),
-        BridgeProcessCrashGiveUp() => _DesktopSupervisionNoticeData(
-          icon: TablerRegular.alert_triangle,
-          message: "The local bridge stopped after repeated crashes.",
-          primaryLabel: "Retry",
-          onPrimary: locked ? null : () => unawaited(controls.recoverConnection()),
-          secondaryLabel: "Open Logs",
-          onSecondary: () => unawaited(controls.openLogs()),
-          isError: true,
-        ),
-        BridgeProcessContention() => null,
-        BridgeProcessStopped() ||
-        BridgeProcessStarting() ||
-        BridgeProcessRunning() ||
-        BridgeProcessStopping() ||
-        BridgeProcessCrashRetryScheduled() => null,
-      };
-    }
-    if (notice == null) {
-      return const SizedBox.shrink();
-    }
-
-    final background = notice.isError ? context.prego.colors.bgErrorSecondary : context.prego.colors.bgWarningSecondary;
-    final foreground = notice.isError ? context.prego.colors.textErrorPrimary : context.prego.colors.textWarningPrimary;
-    return ColoredBox(
-      key: const Key("desktop-supervision-notice"),
-      color: background,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl, vertical: PregoSpacing.sm),
-        child: Row(
-          children: [
-            Icon(notice.icon, color: foreground, size: 20),
-            const SizedBox(width: PregoSpacing.sm),
-            Expanded(
-              child: Text(
-                notice.message,
-                style: context.prego.textTheme.textSm.medium.copyWith(color: foreground),
-              ),
-            ),
-            if (notice.secondaryLabel case final label?)
-              TextButton(
-                onPressed: notice.onSecondary,
-                child: Text(label),
-              ),
-            TextButton(
-              onPressed: notice.onPrimary,
-              child: Text(notice.primaryLabel),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  State<_SidebarResizeHandle> createState() => _SidebarResizeHandleState();
 }
 
-class const _DesktopSupervisionNoticeData({
-  required final IconData icon,
-  required final String message,
-  required final String primaryLabel,
-  required final VoidCallback? onPrimary,
-  required final String? secondaryLabel,
-  required final VoidCallback? onSecondary,
-  required final bool isError,
-});
+class _SidebarResizeHandleState() extends State<_SidebarResizeHandle> {
+  ({double width, double pointerX})? _dragOrigin;
+
+  void _finishDrag() {
+    // A tap or double-click also cancels the drag recognizer, without starting a drag.
+    if (_dragOrigin == null) return;
+    _dragOrigin = null;
+    unawaited(widget.sidebar.saveLayout());
+  }
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    cursor: SystemMouseCursors.resizeLeftRight,
+    child: Tooltip(
+      message: context.loc.desktopSidebarResize,
+      child: GestureDetector(
+        key: const Key("desktop-sidebar-resize"),
+        behavior: HitTestBehavior.opaque,
+        dragStartBehavior: DragStartBehavior.down,
+        onHorizontalDragStart: (details) =>
+            _dragOrigin = (width: widget.sidebar.state.width, pointerX: details.globalPosition.dx),
+        onHorizontalDragUpdate: (details) {
+          if (_dragOrigin case final origin?) {
+            widget.sidebar.resize(width: origin.width + details.globalPosition.dx - origin.pointerX);
+          }
+        },
+        onHorizontalDragEnd: (_) => _finishDrag(),
+        onHorizontalDragCancel: _finishDrag,
+        onDoubleTap: () => unawaited(widget.sidebar.resetWidth()),
+        child: VerticalDivider(width: 1, color: context.prego.colors.borderSecondary),
+      ),
+    ),
+  );
+}

@@ -202,6 +202,13 @@ variant, and worktree mode, and creating the session with its first input.
   local-only Git projects can create dedicated worktrees without a fetch warning.
   A configured origin that cannot be fetched still logs the failure and uses
   existing refs.
+- The shared slash-command picker uses the Prego labelled input, rounded command
+  rows, and source tags in both themes. Long names and tags wrap within narrow
+  layouts, descriptions and argument hints remain readable, and large catalogs
+  stay lazy. Search matches names, descriptions, and hints, including a query
+  entered during loading; clearing it restores the catalog. Selecting a row
+  returns that exact command, with the last row reachable above the keyboard
+  and home indicator.
 - Prompt and slash-command starts are exclusive; only user-authored text is
   user-visible, and attachments appear only where declared. The session keys on
   the stable project identifier and carries title, defaults, and worktree facts.
@@ -239,6 +246,12 @@ variant, and worktree mode, and creating the session with its first input.
 - Graceful shutdown fences new create routes, aborts and drains accepted metadata
   work, drains session operations and local mutations, then closes normalized
   event delivery and its remaining tails.
+- Hermes discovers its model catalog through a disposable ACP session and settles
+  that process before deleting any persisted discovery row. An empty session may
+  never be persisted: the CLI's exact not-found response for that session completes
+  cleanup with a local diagnostic. Other CLI/database errors retain both output
+  streams and follow the existing failed-discovery/fallback policy rather than
+  being misclassified as harmless absence.
 - OMP discovers modes, commands, every advertised provider/model, and model-specific
   thinking levels in a project-scoped scratch session. Large catalogs from multiple
   logged-in providers remain complete so they can replace an older complete cache.
@@ -264,7 +277,7 @@ variant, and worktree mode, and creating the session with its first input.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
-| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
+| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. |
 | L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; refreshing on the New Session screen updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render. Scoped authentication-required discovery keeps Refresh available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
@@ -293,6 +306,9 @@ For composer effort pickers, vary full-height and small/keyboard-constrained
 viewports, a selected low effort, and reopening after scrolling: the strongest
 options start visible at the bottom, the lowest remain reachable above, and
 selection still dispatches the exact variant that was tapped.
+For the command picker, vary light/dark mode, narrow widths, large text, long
+command names, every source label, missing descriptions/hints, empty/no-match
+results, and scrolling a large catalog with the keyboard open.
 
 ## Failure Signals
 
@@ -301,9 +317,14 @@ selection still dispatches the exact variant that was tapped.
   cache, Create remains enabled, Refresh becomes unavailable, the plugin runtime
   becomes globally blocked, or Pi reports no models without local `/login` guidance.
 - Options are stale where a discovery failure should be an explicit error.
+- Hermes model discovery falls back solely because an empty, unpersisted scratch
+  session cannot be deleted, deletes before the scratch process exits, or hides
+  a real CLI/database failure as benign absence.
 - An effort popup puts the strongest levels at the top, opens with them hidden
   below the fold, makes the lowest levels unreachable by scrolling toward the
   top, or selects a different level from the tapped row.
+- Command rows overflow at larger text sizes, source tags disappear, search
+  loses an early query, or the last command cannot be selected above the keyboard.
 - A model the backend reports unavailable is selectable or offers variants on
   one surface but not another, an agent's declared model is adopted without
   being checked against the catalog, or a screen's variant list describes a

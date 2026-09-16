@@ -1,6 +1,9 @@
 ---
 name: sesori-plan-maker
-description: Create or update practical, code-informed plans and trackers. Use ONLY when the user explicitly asks to make or change a plan or tracker. It may also self-invoke while planning a new feature, larger refactor, or other large effort that would benefit from multiple steps or PR splits. Do not self-invoke for routine implementation, small fixes, or ordinary single-step work.
+description: >-
+  Create or update practical, code-informed plans and trackers. Use before every
+  substantial change as required by AGENTS.md, including work that fits one step
+  and one PR; planning output may be ephemeral or durable.
 ---
 
 # Plan Maker
@@ -9,21 +12,28 @@ When this skill is loaded, turn a user's goal into a practical implementation
 plan grounded in the current codebase. Keep the process proportional to the
 work. Prefer a short useful plan over a large planning system.
 
+## Required Use And Plan Durability
+
+- `AGENTS.md` is the source of truth for when substantial-change planning is
+  required and which targeted changes may skip it. Do not redefine that threshold
+  in this skill.
+- When this skill is required for single-step work, make a concise ephemeral
+  plan in chat or a temporary file outside the repository, then continue with
+  one normal PR. Do
+  not commit the plan or add plan-only, regression-doc, and retirement PR steps
+  merely because this skill was used.
+- Create a durable plan under `.plan/active/<slug>/` when implementation needs
+  multiple tracked steps or PRs, durable decisions, handoff, or ongoing status,
+  or when the user explicitly requests committed planning artifacts.
+
 ## User Direction
 
-The user has final authority. Do not reject a request merely because it is not
-planning work or is outside this skill's usual duty.
-
-If a request is clearly outside planning and the user has not already
-acknowledged that, say so briefly and ask once whether they want you to proceed.
-If they confirm, or if they already explicitly told you to proceed despite the
-planning context, do the work without questioning the choice again. This
-includes implementation, tests, configuration, Git tasks, and plan updates when
-permitted by the active environment.
-
-Follow the user's latest explicit instruction when it conflicts with an older
-plan or process preference. Explain concrete risks when useful, but do not use
-the role, a plan, or a reviewer as a reason to overrule a confirmed decision.
+The user has final authority. When this skill is self-invoked for substantial
+implementation, do not ask whether planning is wanted: plan proportionally and
+continue the requested work unless the user asked for a plan only. Follow the
+user's latest explicit instruction when it conflicts with an older plan or
+process preference. Explain concrete risks when useful, but do not use the role,
+a plan, or a reviewer as a reason to overrule a confirmed decision.
 
 ## Planning
 
@@ -33,8 +43,9 @@ the role, a plan, or a reviewer as a reason to overrule a confirmed decision.
   from available context. Avoid exhaustive interviews and arbitrary checklists.
 - Make scope, current behavior, proposed changes, ownership/data flow, important
   compatibility concerns, and verification concrete enough to implement.
-- Scale detail to the task. A small change may need only a concise plan in chat;
-  a multi-step effort may benefit from durable files under `.plan/active/<slug>/`.
+- Scale detail to the task. Substantial single-step work may need only a concise
+  ephemeral plan; multi-step work may benefit from durable files under
+  `.plan/active/<slug>/`.
 - When updating an existing plan, preserve its useful structure rather than
   forcing a new schema. Keep its tracker or execution state in sync when needed.
 - Do not invent stages, waves, PR boundaries, worktrees, or process artifacts
@@ -44,20 +55,24 @@ the role, a plan, or a reviewer as a reason to overrule a confirmed decision.
   `<emoji> [<slug>] <description> [step <x>/<y>]`. For durable planned
   work, `<slug>` is exactly the plan directory name under `.plan`; do not invent
   a separate series slug. Without a durable plan, choose one stable, lowercase
-  kebab-case slug. Fix the step order/total for the whole series, including each
-  step's complexity emoji, and do not apply the slug/step wrapper to a single-PR
-  task.
-- Target no more than 1,500 changed lines per PR as a soft cap, counting
-  additions plus deletions, generated code, and tests. Prefer a coherent split
-  before exceeding it; when a smaller independently valid PR is not practical,
-  record the reason for the expected overage in the plan.
+  kebab-case slug. Keep one current step order/total for the whole series,
+  including each PR's complexity emoji, and do not apply the slug/step wrapper
+  to a single-PR task. When scope or estimates change, split steps into substeps
+  such as `3.a` / `3.b`, map them to PR ordinals, and synchronize dependencies,
+  tracker and series titles/totals. Clean splits of approved work never need
+  permission; substantive scope expansion still does.
+- Follow the repository-wide `PR Sizing And Review Convergence` policy in
+  `AGENTS.md` when estimating PR boundaries. Record significant expected
+  exceptions in durable plans; execution-specific substep bookkeeping remains
+  in the plan worker skill.
 - For durable planned work, the first PR step always raises the plan under
   `.plan/active/<slug>/` before implementation begins. The penultimate step
   reconciles and completes the affected feature documents under
   `docs/regression/`. The final step runs the level and matrix already recorded
   in `PLAN.md`, records the result, and retires the plan by moving it to
   `.plan/completed/<slug>/` only after that coverage passes.
-  Include all three lifecycle steps in the fixed step total.
+  Include all three lifecycle steps in the current series total, including after
+  a split.
 
 For a new durable plan, `PLAN.md` should normally capture the goal, scope,
 relevant current behavior, concrete implementation steps, verification, and
@@ -155,7 +170,7 @@ rate every PR in a series identically by default.
 For a single-PR task, prefix the normal title with `<emoji>`. For a multi-PR
 task, place the emoji first:
 `<emoji> [<slug>] <description> [step <x>/<y>]`. Treat the emoji as part of
-the fixed exact title. If implementation evidence changes the estimate before
+the planned exact title. If implementation evidence changes the estimate before
 the PR opens, update the plan/tracker title rather than knowingly publishing a
 stale rating.
 

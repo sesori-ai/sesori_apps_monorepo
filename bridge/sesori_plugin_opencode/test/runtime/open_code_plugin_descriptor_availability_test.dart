@@ -52,14 +52,14 @@ void main() {
       final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: automaticConfig,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const <String, String>{"PATH": "/definitely/missing"},
         stateDirectory: stateDirectory,
       );
 
       expect(result, isA<PluginSetupRuntimeMissing>());
     });
 
-    test("reports missing when PATH and the existing managed runtime are unusable", () async {
+    test("keeps a broken PATH runtime authoritative over the managed copy", () async {
       final processes = _ProbeProcessService(
         spawnOutcomes: [
           _ProbeProcess(
@@ -78,7 +78,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupRuntimeMissing>());
+      expect(result, isA<PluginSetupUnknown>());
       expect(result.actionHint, isNot(contains("broken PATH shim output")));
     });
 
@@ -102,7 +102,7 @@ void main() {
       final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: automaticConfig,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const <String, String>{"PATH": "/definitely/missing"},
         stateDirectory: stateDirectory,
       );
 
@@ -137,10 +137,7 @@ void main() {
       expect(result, isA<PluginSetupRuntimeMissing>());
     });
 
-    test("a too-old default runtime stays in an installable state with the install capability", () async {
-      // Pins the phone gate invariant: while the install capability is
-      // advertised (default binary), a too-old runtime maps to runtimeMissing
-      // (installable), never to unavailable.
+    test("a too-old default PATH runtime remains authoritative", () async {
       final processes = _ProbeProcessService(
         spawnOutcomes: [
           _ProbeProcess(
@@ -160,11 +157,13 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupRuntimeMissing>());
+      expect(result, isA<PluginSetupRuntimeOutdated>());
+      expect(result.runtimeVersion, "0.0.1");
       expect(
         descriptor.managementCapabilities(config: automaticConfig),
-        contains(PluginControlCapability.install),
+        contains(PluginControlCapability.runtimeUpdate),
       );
+      expect(processes.spawnedExecutables, ["opencode"]);
     });
 
     test("a too-old explicit binary is unavailable and never advertises install", () async {
@@ -217,7 +216,7 @@ void main() {
       final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: automaticConfig,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const <String, String>{"PATH": "/definitely/missing"},
         stateDirectory: tempState.path,
       );
 
@@ -238,7 +237,7 @@ void main() {
       final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: automaticConfig,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const <String, String>{"PATH": "/definitely/missing"},
         stateDirectory: tempState.path,
       );
 

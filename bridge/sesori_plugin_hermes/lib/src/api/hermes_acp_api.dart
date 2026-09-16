@@ -2,7 +2,7 @@ import "dart:async";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show CommandExecutor;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginOperationException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginOperationException;
 
 import "../hermes_binary.dart";
 
@@ -85,9 +85,17 @@ class HermesAcpApi({
       timeout: timeout,
     );
     if (result.exitCode == 0) return;
+    // Empty ACP discovery sessions may never be persisted by Hermes.
+    if (result.exitCode == 1 &&
+        result.stdout.trim() == "Session '$sessionId' not found." &&
+        result.stderr.trim().isEmpty) {
+      Log.d("[hermes] Discovery session $sessionId is already absent; persisted cleanup is complete");
+      return;
+    }
+    final diagnostics = "${result.stderr.trim()}\n${result.stdout.trim()}".trim();
     throw PluginOperationException(
       "hermes sessions delete",
-      message: "Hermes exited with code ${result.exitCode}: ${result.stderr.trim()}",
+      message: "Hermes exited with code ${result.exitCode}: $diagnostics",
     );
   }
 

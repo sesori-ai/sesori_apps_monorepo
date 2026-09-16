@@ -46,12 +46,12 @@ void main() {
       )!;
       expect(
         manifest.downloadUrlFor(asset: asset),
-        equals("https://github.com/anomalyco/opencode/releases/download/v1.18.19/opencode-darwin-arm64.zip"),
+        equals("https://github.com/anomalyco/opencode/releases/download/v1.18.30/opencode-darwin-arm64.zip"),
       );
     });
 
     test("bundled version is at least the minimum supported version", () {
-      expect(OpenCodeRuntimeManifest.targetVersion, "1.18.19");
+      expect(OpenCodeRuntimeManifest.targetVersion, "1.18.30");
       expect(manifest.bundledVersion.toString(), OpenCodeRuntimeManifest.targetVersion);
       expect(manifest.minPathVersion.toString(), "1.14.0");
       expect(

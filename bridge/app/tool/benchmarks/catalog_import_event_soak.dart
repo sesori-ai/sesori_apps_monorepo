@@ -196,7 +196,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: false,
+              rescanRequested: false,
               hydrationMarkerRequested: true,
             ),
           )

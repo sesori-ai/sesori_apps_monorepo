@@ -4,9 +4,11 @@ import "dart:io";
 import "package:injectable/injectable.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../foundation/bridge_process_desired_state.dart";
 import "../foundation/desktop_attention_preference.dart";
+import "../foundation/desktop_sidebar_layout.dart";
 import "../foundation/platform/desktop_application_support_directory.dart";
 import "../foundation/platform/window_host.dart";
 
@@ -23,11 +25,11 @@ class DesktopInstanceStorage._create({
   static const String _windowBoundsFileName = "window-bounds";
   static const String _attentionPreferenceFileName = "attention-notifications";
 
-  Future<BridgeProcessDesiredState> readBridgeDesiredState() async {
+  Future<BridgeProcessDesiredState?> readBridgeDesiredState() async {
     final File file = await _desiredStateFile();
     // ignore: avoid_slow_async_io, one startup read must not block the UI isolate
     if (!await file.exists()) {
-      return BridgeProcessDesiredState.off;
+      return null;
     }
     final String value = (await file.readAsString()).trim();
     for (final BridgeProcessDesiredState state in BridgeProcessDesiredState.values) {
@@ -96,6 +98,19 @@ class DesktopInstanceStorage._create({
     final File file = await _fileNamed(fileName: _attentionPreferenceFileName);
     await file.parent.create(recursive: true);
     await file.writeAsString(preference.name, flush: true);
+  }
+
+  Future<DesktopSidebarLayout> readSidebarLayout() async {
+    final file = await _fileNamed(fileName: "sidebar-layout");
+    // ignore: avoid_slow_async_io, one startup read must not block the UI isolate
+    if (!await file.exists()) return const DesktopSidebarLayout();
+    return DesktopSidebarLayout.fromJson(jsonDecodeMap(await file.readAsString()));
+  }
+
+  Future<void> writeSidebarLayout({required DesktopSidebarLayout layout}) async {
+    final file = await _fileNamed(fileName: "sidebar-layout");
+    await file.parent.create(recursive: true);
+    await file.writeAsString(jsonEncode(layout.toJson()), flush: true);
   }
 
   Future<File> _desiredStateFile() => _fileNamed(fileName: _desiredStateFileName);

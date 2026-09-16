@@ -6,11 +6,18 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../../foundation/csv_parser.dart";
 import "../../foundation/process_runner.dart";
 
+typedef InheritingStdioProcessRunner = Future<int> Function({
+  required String executable,
+  required List<String> arguments,
+  required Map<String, String>? environment,
+});
+
 class SystemProcessApi({
   required final ProcessRunner _processRunner,
   required final ServerClock _clock,
   required final bool _isWindows,
   required final String _platform,
+  required final InheritingStdioProcessRunner _inheritingStdioProcessRunner,
 }) {
   /// Spawns [executable] detached (inheriting stdio), returning its pid without
   /// waiting. Used to launch a successor bridge during a restart.
@@ -20,6 +27,33 @@ class SystemProcessApi({
     Map<String, String>? environment,
   }) {
     return _processRunner.startDetached(executable: executable, arguments: arguments, environment: environment);
+  }
+
+  Future<int> runInheritingStdio({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+  }) {
+    return _inheritingStdioProcessRunner(
+      executable: executable,
+      arguments: arguments,
+      environment: environment,
+    );
+  }
+
+  static Future<int> ioInheritingStdioProcessRunner({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+  }) async {
+    final process = await Process.start(
+      executable,
+      arguments,
+      environment: environment,
+      includeParentEnvironment: true,
+      mode: ProcessStartMode.inheritStdio,
+    );
+    return await process.exitCode;
   }
 
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
@@ -36,17 +70,70 @@ class SystemProcessApi({
     return await _inspectPosixProcess(pid: pid);
   }
 
-  Future<SignalResult> sendGracefulSignal({required int pid}) => _sendSignal(
-    pid: pid,
-    requestedSignal: .graceful,
-    deliveredSignal: _isWindows ? .sigkill : .sigterm,
-  );
+  Future<SignalResult> sendGracefulSignal({required int pid}) => _isWindows
+      ? _sendWindowsTreeSignal(pid: pid, requestedSignal: .graceful, force: false)
+      : _sendSignal(pid: pid, requestedSignal: .graceful, deliveredSignal: .sigterm);
 
-  Future<SignalResult> sendForceSignal({required int pid}) => _sendSignal(
-    pid: pid,
-    requestedSignal: .force,
-    deliveredSignal: .sigkill,
-  );
+  Future<SignalResult> sendForceSignal({required int pid}) => _isWindows
+      ? _sendWindowsTreeSignal(pid: pid, requestedSignal: .force, force: true)
+      : _sendSignal(pid: pid, requestedSignal: .force, deliveredSignal: .sigkill);
+
+  Future<SignalResult> _sendWindowsTreeSignal({
+    required int pid,
+    required ShutdownSignal requestedSignal,
+    required bool force,
+  }) async {
+    final attemptedAt = _clock.now();
+    // SignalResult has POSIX-shaped vocabulary. `sigterm` represents the
+    // non-forced taskkill request; `/F` is the hard-kill escalation.
+    final deliveredSignal = force ? ProcessSignal.sigkill : ProcessSignal.sigterm;
+    if (pid <= 0) {
+      return SignalResult(
+        pid: pid,
+        requestedSignal: requestedSignal,
+        deliveredSignal: deliveredSignal,
+        wasRequested: false,
+        attemptedAt: attemptedAt,
+      );
+    }
+    // Check absence before signalling. After a failed `/T` request, inspecting
+    // only the root cannot prove the descendants were terminated: taskkill may
+    // have killed the root before failing on one of its children.
+    try {
+      if (await _inspectWindowsProcess(pid: pid) == null) {
+        return SignalResult(
+          pid: pid,
+          requestedSignal: requestedSignal,
+          deliveredSignal: deliveredSignal,
+          wasRequested: false,
+          attemptedAt: attemptedAt,
+        );
+      }
+    } on Object catch (error, stackTrace) {
+      // An unavailable inspection must not suppress the best-effort signal.
+      // A non-zero taskkill result below remains a diagnostic failure.
+      Log.w("Could not inspect Windows process $pid before signalling; attempting taskkill", error, stackTrace);
+    }
+    final arguments = <String>["/PID", "$pid", "/T", if (force) "/F"];
+    final result = await _processRunner.run("taskkill", arguments);
+    if (result.exitCode != 0) {
+      final stdout = result.stdout.toString().trim();
+      final stderr = result.stderr.toString().trim();
+      final details = [
+        if (stdout.isNotEmpty) "stdout: $stdout",
+        if (stderr.isNotEmpty) "stderr: $stderr",
+        if (stdout.isEmpty && stderr.isEmpty) "taskkill exited ${result.exitCode} for pid $pid",
+      ].join("\n");
+      throw ProcessException("taskkill", arguments, details, result.exitCode);
+    }
+    return SignalResult(
+      pid: pid,
+      requestedSignal: requestedSignal,
+      deliveredSignal: deliveredSignal,
+      wasRequested: true,
+      attemptedAt: attemptedAt,
+    );
+  }
 
   Future<SignalResult> _sendSignal({
     required int pid,

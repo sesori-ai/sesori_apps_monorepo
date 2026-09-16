@@ -13,6 +13,15 @@ class StrictFakeProcessRepository() implements ProcessRepository {
   }
 
   @override
+  Future<int> runInheritingStdio({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<ProcessIdentity?> inspectProcess({required int pid}) {
     throw UnimplementedError();
   }

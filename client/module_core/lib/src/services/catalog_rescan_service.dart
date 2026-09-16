@@ -109,6 +109,13 @@ class CatalogRescanService({
   /// Rescans every harness this bridge can import from.
   Future<void> startAll() async {
     if (_disposed) return;
+    // Management snapshots can outlive the connection that produced them.
+    // Check connectivity first so stale or cleared metadata cannot masquerade
+    // as a connected bridge with no harnesses.
+    if (_connectionService.currentStatus is! ConnectionConnected) {
+      if (_members.isEmpty) _publish(const CatalogRescanState.notConnected());
+      return;
+    }
     // CatalogRescanService is lazy and can first exist at the pull gesture.
     // Bootstrap one authoritative management read before deciding there is no
     // harness; PluginManagementService fences this refresh to its connection
@@ -118,6 +125,11 @@ class CatalogRescanService({
         case PluginManagementLoadResultLoading() || PluginManagementLoadResultFailure() || null) {
       await _managementService.refresh();
       if (_disposed) return;
+      // The connection can drop while the authoritative refresh is in flight.
+      if (_connectionService.currentStatus is! ConnectionConnected) {
+        if (_members.isEmpty) _publish(const CatalogRescanState.notConnected());
+        return;
+      }
     }
     switch (_managementService.snapshots.valueOrNull) {
       // Without a management snapshot there are no harness ids to fan out to,

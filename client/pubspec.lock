@@ -732,26 +732,26 @@ packages:
     dependency: transitive
     description:
       name: flutter_secure_storage
-      sha256: "4540927d8b37e6cc47aaa2d17b6035a2d49049e2797cb19d2bdd299bff602c67"
+      sha256: d87713a152ee2f255117bdbbf43da1dea1797e0551e499e0334f0c9dcfafddd2
       url: "https://pub.dev"
     source: hosted
-    version: "11.1.0"
+    version: "11.1.1"
   flutter_secure_storage_darwin:
     dependency: transitive
     description:
       name: flutter_secure_storage_darwin
-      sha256: d1021ca4c890194ec73f409387003f331b23a06199295a2317971de434b2cabc
+      sha256: d0b136b1e21fd4081170fc394e64197046ce889e8f63f2370a13e41b832cc044
       url: "https://pub.dev"
     source: hosted
-    version: "0.4.1"
+    version: "0.4.2"
   flutter_secure_storage_linux:
     dependency: transitive
     description:
       name: flutter_secure_storage_linux
-      sha256: "76fa9c841b3b1619fc5b5bc36efc7d158fa2356f223b6caeb1d0c80a54168546"
+      sha256: caa75bd78f017422912e3a904933113b2428eb79f981ac37acd2dd2a700458ea
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.2"
+    version: "3.0.3"
   flutter_secure_storage_platform_interface:
     dependency: transitive
     description:
@@ -1136,10 +1136,10 @@ packages:
     dependency: transitive
     description:
       name: liquid_glass_widgets
-      sha256: bd767b4b7886350ff84262159572b8dceb91ad588c290e3c43592d160b0eb0dc
+      sha256: be2aab0c0e138713a50a481c5141c3bee8f16ddaf0533823f1e0936ad13b9549
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.3"
+    version: "1.5.0"
   logging:
     dependency: transitive
     description:
@@ -1488,18 +1488,18 @@ packages:
     dependency: transitive
     description:
       name: record_web
-      sha256: f53d3da48de3618a331868aec73261d5a75eddd9c09409afd9ec6d66b25db532
+      sha256: "7f6950be87abacb05cf77eb6ca200b60f2c2a6af5d50236b5f4baf53f92e755e"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.2"
+    version: "2.1.3"
   record_windows:
     dependency: transitive
     description:
       name: record_windows
-      sha256: e6884f91be4370f122111aca3c04291ae5fe6d8fd045f87afa967635a02dbbac
+      sha256: "8195489a47b5e8246985d6213ff65aae1b14e32a0ca45dc5f680e8d503296e1b"
       url: "https://pub.dev"
     source: hosted
-    version: "2.2.3"
+    version: "2.3.0"
   resizable_widget:
     dependency: transitive
     description:
@@ -2074,4 +2074,4 @@ packages:
     version: "2.2.4"
 sdks:
   dart: ">=3.13.3 <4.0.0"
-  flutter: ">=3.47.3 <3.48.0"
+  flutter: ">=3.47.4 <3.48.0"

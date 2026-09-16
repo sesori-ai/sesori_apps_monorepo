@@ -395,6 +395,153 @@ void main() {
     );
   });
 
+  group("pasted-code authentication", () {
+    final challenge = PluginAuthenticationPastedCodeChallenge(
+      authorizationUri: Uri.parse("https://accounts.example/oauth/authorize?state=opaque"),
+    );
+    PluginAuthenticationPresentationState authentication() => (cubit.state as PluginManagementReady).authentication;
+
+    setUp(() async {
+      when(
+        () => service.startAuthentication(pluginId: "codex"),
+      ).thenAnswer((_) async => PluginAuthenticationStartResult.challenge(challenge: challenge));
+      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+      authenticationChallenges.add({"codex": challenge});
+      await _settle();
+      await cubit.startAuthentication(pluginId: "codex");
+    });
+
+    test("opens the sign-in page and waits for terminal progress after the bridge accepts a code", () async {
+      final submission = Completer<PluginAuthenticationContinuationResult>();
+      when(
+        () => service.submitAuthenticationCode(pluginId: "codex", code: "opaque#state"),
+      ).thenAnswer((_) => submission.future);
+      expect(
+        authentication(),
+        isA<PluginAuthenticationPresentationChallenge>().having(
+          (state) => state.challenge,
+          "challenge",
+          isA<PluginAuthenticationPastedCodePresentation>().having((it) => it.challenge, "challenge", same(challenge)),
+        ),
+      );
+
+      await cubit.launchAuthenticationBrowser();
+      verify(() => urlLauncher.launch(challenge.authorizationUri, mode: any(named: "mode"))).called(1);
+
+      final submitting = cubit.submitAuthenticationCode(code: "opaque#state");
+      expect(
+        authentication(),
+        PluginAuthenticationPresentationState.codeSubmitting(pluginId: "codex", challenge: challenge),
+      );
+      submission.complete(const PluginAuthenticationContinuationResult.applied());
+      await submitting;
+      expect(
+        authentication(),
+        PluginAuthenticationPresentationState.codeSubmitted(pluginId: "codex", challenge: challenge),
+      );
+
+      authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.completed()));
+      await _settle();
+      expect(authentication(), const PluginAuthenticationPresentationState.succeeded(pluginId: "codex"));
+    });
+
+    for (final (result, expected) in [
+      (
+        const PluginAuthenticationContinuationResult.rejected(
+          reason: PluginAuthenticationContinuationRejection.alreadySubmitted,
+        ),
+        PluginAuthenticationPresentationState.codeSubmitted(pluginId: "codex", challenge: challenge),
+      ),
+      (
+        const PluginAuthenticationContinuationResult.invalidInput(),
+        PluginAuthenticationPresentationState.codeRetry(
+          pluginId: "codex",
+          challenge: challenge,
+          reason: PluginAuthenticationCodeRetryReason.invalidCode,
+        ),
+      ),
+      (
+        const PluginAuthenticationContinuationResult.uncertain(),
+        PluginAuthenticationPresentationState.codeRetry(
+          pluginId: "codex",
+          challenge: challenge,
+          reason: PluginAuthenticationCodeRetryReason.notConfirmed,
+        ),
+      ),
+      (
+        PluginAuthenticationContinuationResult.request(error: ApiError.generic()),
+        PluginAuthenticationPresentationState.codeRetry(
+          pluginId: "codex",
+          challenge: challenge,
+          reason: PluginAuthenticationCodeRetryReason.notConfirmed,
+        ),
+      ),
+      (
+        const PluginAuthenticationContinuationResult.notFound(),
+        const PluginAuthenticationPresentationState.failed(
+          pluginId: "codex",
+          error: PluginAuthenticationPresentationError.notFound(),
+        ),
+      ),
+      (
+        const PluginAuthenticationContinuationResult.rejected(
+          reason: PluginAuthenticationContinuationRejection.noActive,
+        ),
+        const PluginAuthenticationPresentationState.failed(
+          pluginId: "codex",
+          error: PluginAuthenticationPresentationError.uncertain(),
+        ),
+      ),
+    ]) {
+      test("maps a ${result.runtimeType} submission", () async {
+        when(
+          () => service.submitAuthenticationCode(pluginId: "codex", code: "opaque#state"),
+        ).thenAnswer((_) async => result);
+
+        await cubit.submitAuthenticationCode(code: "opaque#state");
+
+        expect(authentication(), expected);
+        verifyNever(() => service.refresh());
+      });
+    }
+
+    test("a retry state accepts another code", () async {
+      final results = [
+        const PluginAuthenticationContinuationResult.invalidInput(),
+        const PluginAuthenticationContinuationResult.applied(),
+      ];
+      when(
+        () => service.submitAuthenticationCode(
+          pluginId: "codex",
+          code: any(named: "code"),
+        ),
+      ).thenAnswer((_) async => results.removeAt(0));
+
+      await cubit.submitAuthenticationCode(code: "opaque state");
+      await cubit.submitAuthenticationCode(code: "opaque#state");
+
+      expect(authentication(), isA<PluginAuthenticationPresentationCodeSubmitted>());
+    });
+
+    test("a late submission response cannot overwrite terminal settlement", () async {
+      final submission = Completer<PluginAuthenticationContinuationResult>();
+      when(
+        () => service.submitAuthenticationCode(pluginId: "codex", code: "opaque#state"),
+      ).thenAnswer((_) => submission.future);
+
+      final submitting = cubit.submitAuthenticationCode(code: "opaque#state");
+      authenticationTerminal.add((
+        pluginId: "codex",
+        progress: const PluginAuthenticationProgress.failed(message: "Provider rejected authentication"),
+      ));
+      await _settle();
+      submission.complete(const PluginAuthenticationContinuationResult.uncertain());
+      await submitting;
+
+      expect(authentication(), isA<PluginAuthenticationPresentationFailed>());
+    });
+  });
+
   test("a stale browser failure cannot overwrite terminal settlement", () async {
     final launch = Completer<bool>();
     when(

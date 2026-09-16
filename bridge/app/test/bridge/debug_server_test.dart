@@ -51,6 +51,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
   final effectiveRestartService = restartService ?? buildTestRestartService();
   final testChatHistory = createTestChatHistory();
   final composition = Orchestrator(
+    connectionNotificationPolicies: const Stream.empty(),
     config: BridgeConfig(
       relayURL: relayUrl,
       authBackendURL: "https://api.sesori.test",
@@ -994,6 +995,7 @@ BridgeRestartService _spawnableRestartService({
         clock: const ServerClock(),
         isWindows: false,
         platform: "linux",
+        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       ),
       currentUser: null,
     ),
@@ -1002,6 +1004,7 @@ BridgeRestartService _spawnableRestartService({
     cliArgs: const <String>[],
     currentPid: 4321,
     isSupervised: false,
+    isWindows: false,
     onSupervisedRestartRequested: () {},
   );
 }

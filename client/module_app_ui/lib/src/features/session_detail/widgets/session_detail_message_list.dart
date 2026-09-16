@@ -480,9 +480,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               isCommand: prompt.command != null,
               attachmentCount: prompt.attachmentCount,
               localAttachments: const [],
-              presentation: onCancel == null
-                  ? const QueuedMessageBubblePresentation.pendingReadOnly()
-                  : QueuedMessageBubblePresentation.pending(onCancel: () => onCancel(prompt.id)),
+              presentation: switch (prompt.dispatchState) {
+                QueuedPromptDispatchState.dispatched => const QueuedMessageBubblePresentation.sending(),
+                QueuedPromptDispatchState.queued || QueuedPromptDispatchState.unknown =>
+                  onCancel == null
+                      ? const QueuedMessageBubblePresentation.pendingReadOnly()
+                      : QueuedMessageBubblePresentation.pending(onCancel: () => onCancel(prompt.id)),
+              },
             ),
           ),
         );

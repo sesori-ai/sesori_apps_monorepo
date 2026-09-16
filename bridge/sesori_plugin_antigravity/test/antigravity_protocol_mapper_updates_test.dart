@@ -469,7 +469,7 @@ void main() {
     );
     expect(protocol.normalizeSessionUpdate(params: params), same(params));
     final state = _parity(params: params);
-    expect(state.title, "Fallback");
+    expect(state.title, isNull, reason: "the title already names the tool when kind is malformed");
     expect(state.output, "standard output");
     expect(state.status, PluginToolStatus.completed);
   });

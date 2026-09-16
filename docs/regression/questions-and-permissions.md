@@ -36,11 +36,38 @@ reaches the backend so the turn continues.
   must never appear as ordinary plain-text input.
 - Allow once, allow always, and reject each reach the backend with the meaning
   the user chose. Once is never escalated to a broader grant.
+- Permission dialogs use the shared floating Prego action sheet in both themes:
+  a generic action heading, the complete backend tool label and selectable,
+  copyable Markdown description, then full-width stacked **Allow**, optional
+  **Always approve**, and **Don’t allow** actions. **Allow** means once only.
+  Long details normally scroll above visible actions. When the viewport is
+  cramped relative to the text scale, the whole sheet scrolls so every decision
+  remains reachable; enlarged text can cause this breakpoint to be crossed.
+  Keyboard and safe-area insets keep the floating surface clear of system UI.
+  Scrim/swipe dismissal leaves the request pending; external settlement closes
+  it without a reply.
 - A plugin advertising ACP form elicitation maps supported string, string-enum,
-  and boolean properties to questions and returns typed content under the
-  backend's original property keys. Reject returns `decline`; abort, process
-  exit, and disposal return `cancel`; unsupported schemas are declined without
-  exposing prompt/default content in diagnostics.
+  boolean, and finite string-choice array properties to questions and returns
+  typed content under the backend's original property keys. An array whose
+  `items.anyOf` entries carry string `const` values becomes an options-only
+  checkbox question; selected display labels encode back to an array of those
+  values. Duplicate titles remain distinguishable. Unsupported array shapes,
+  including unconstrained, nested, and non-string choices, are declined without
+  exposing labels or defaults in diagnostics.
+- Every ACP schema property remains a separate question in property order. A
+  separate string property is its own custom-text question, even when the text
+  equals a selected option label. OMP's `qN` and `qN__other` remain distinct;
+  shared mapping never interprets that naming convention or combines their
+  answer lists. The existing shared question/reply contract carries these slots
+  without new wire fields.
+- In a multi-question form, declining an optional question submits an empty
+  answer slot and omits only that property. Each property's required flag is
+  enforced independently: omitting a required property declines the form.
+  A single-question decline still rejects the whole request. Reject returns
+  `decline`; abort, process exit, and disposal return `cancel`.
+- OMP advertises form support only on its live plugin connection. Its catalog
+  and cleanup scratch connections keep form elicitation disabled. Supporting
+  arrays in the shared mapper does not enable another plugin's advertisement.
 - Pi extension `select`, `confirm`, `input`, and `editor` dialogs map to one
   single-select, Yes/No, or custom-answer question and return the exact Pi value,
   confirmation, or cancellation shape. For select, input, and editor dialogs,
@@ -158,10 +185,20 @@ reaches the backend so the turn continues.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated shared presentation and desktop shell coverage: question and permission modals render through the shared session-detail owner, and a pending desktop question opens over its session. A blocked fixture exposes no pending banner/dialog; changing a loaded state to blocked closes an open dialog without a response. Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
-| L2 Routine | Automated client: blocked question-answer and permission-reply entry points return refusal without remote dispatch. Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Codex coverage: structured multi-question choices, explicit secret-input refusal, async answers during a turn and after completion, retry after failed submission, child routing, teardown, and async acknowledgement omission from history. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, old-input → cancel → later-input ordering with reused question IDs and held prompt writes, abort, late reply, and disposal. |
+| L2 Routine | Automated client: blocked question-answer and permission-reply entry points return refusal without remote dispatch. Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar and finite string-choice array forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Codex coverage: structured multi-question choices, explicit secret-input refusal, async answers during a turn and after completion, retry after failed submission, child routing, teardown, and async acknowledgement omission from history. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, old-input → cancel → later-input ordering with reused question IDs and held prompt writes, abort, late reply, and disposal. |
 | L3 Release | Client end to end on each release-target client surface that exposes session detail, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. Grok covers a real ask-mode tool request, Once and Reject plus every advertised scope, exact session/tool correlation, abort cleanup, and no implicit auto-approval. |
 | L4 Extended | Client end to end on both product surfaces: disable/restart or invalidate authentication from the other surface while a question or permission dialog is open; no answer is sent, both surfaces converge on read-only, and refreshed pending state returns only after recovery. Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
 | L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older bridge not declaring "always". Every supporting production plugin where applicable. |
+
+### OMP ACP multi-select focus
+
+For L2, exercise a live OMP `askDialog` through at least one supported client:
+select two options, answer the separate custom-text question with text identical
+to an option, and confirm the original keys retain the array and string. Also
+exercise optional omission, required-field omission/rejection, cancellation,
+and unchanged single-choice behavior. Mapper, fake-ACP plugin, bridge shared
+mapping/serialization, and widget tests cover the constituent paths; they do
+not replace this live roundtrip.
 
 ## Exploration Guidance
 
@@ -203,8 +240,15 @@ the prompt write is held, proving cancellation does not remove the later request
   pending after that writing turn was aborted.
 - An answer does not reach the backend, arrives with a different scope than the
   user chose, or leaves the turn blocked.
+- A permission dialog clips request details, makes decision actions unreachable
+  on a small screen or with enlarged text, offers Always when unavailable, or
+  treats a passive dismissal as approval/rejection.
 - An ACP form answer changes scalar type, uses a display label instead of the
   backend value, reaches the wrong session, or remains pending after abort.
+- An ACP array form loses a selected value, encodes only the first selection,
+  merges identical custom/option text, changes property order, inserts an
+  unanswered optional field, or accepts omission of a required property.
+  An OMP scratch connection advertises interactive forms.
 - A Pi select, input, or editor dialog leaves its user-facing prompt only in the
   ellipsized sheet heading, or any Pi dialog loses its confirm message, input
   hint, multiline input, or editor guidance; silently retains truncated editor
@@ -242,6 +286,10 @@ the prompt write is held, proving cancellation does not remove the later request
 - "Always" scope is backend defined; some backends persist it only for the
   current session, and some expose it only when the backend offers it.
 - No bridge policy auto-answers questions; only permissions can be auto-approved.
+- OMP multi-select has automated mapper/plugin/bridge/widget coverage, but no
+  live `18.1.19` `askDialog`/ACP/client roundtrip has been run. That check remains
+  required before claiming complete L2 coverage; it does not hold delivery of
+  the implemented mapping.
 - Plugin scope follows currently registered plugins and their declared
   capabilities, not a fixed list. A plugin that does not expose a request kind
   is not a failure.
@@ -273,5 +321,11 @@ the prompt write is held, proving cancellation does not remove the later request
   and the shared ACP pending registry.
 - `bridge/sesori_plugin_copilot/lib/src/copilot_plugin_impl.dart`,
   `bridge/sesori_plugin_grok/`, and the shared ACP approval registry.
+- ACP array ownership and focused tests:
+  `bridge/sesori_plugin_acp/lib/src/repositories/mappers/acp_elicitation_mapper.dart`,
+  `bridge/sesori_plugin_acp/test/acp_elicitation_test.dart`,
+  `bridge/sesori_plugin_omp/test/omp_plugin_test.dart`,
+  `bridge/app/test/bridge/repositories/question_repository_test.dart`, and
+  `client/module_app_ui/test/features/session_detail/widgets/question_modal_test.dart`.
 - Owning tests for pending interaction, reply routes, and pending state without
   a started backend.

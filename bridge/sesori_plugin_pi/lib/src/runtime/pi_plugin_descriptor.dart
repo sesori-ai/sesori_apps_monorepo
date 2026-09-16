@@ -121,7 +121,18 @@ final class const PiPluginDescriptor({
   Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) => {
     ...super.managementCapabilities(config: config),
     if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
+    if (_explicitBin(config) == null) PluginControlCapability.runtimeUpdate,
   };
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (_explicitBin(config) != null) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: "pi",
+      arguments: ["update", "--self", "--no-approve"],
+      timeout: Duration(minutes: 10),
+    );
+  }
 
   bool _supportsManagedInstall({required PluginConfig config}) {
     if (_explicitBin(config) != null) return false;
@@ -134,11 +145,20 @@ final class const PiPluginDescriptor({
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
-    return const ManagedRuntimeInventory(
-      manifest: PiRuntimeManifest(),
-    ).hasSupersededVersion(stateDirectory: stateDirectory);
+    const manifest = PiRuntimeManifest();
+    return await const ManagedRuntimeComposition()
+        .createUpgradeService(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: processes),
+        )
+        .shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
   }
 
   @override
@@ -170,13 +190,18 @@ final class const PiPluginDescriptor({
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: 64 * 1024,
     );
+    final versionValidator = _versionValidator(processes: processes);
     final httpClient = http.Client();
     try {
       final service = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        candidateValidator: _versionValidator(processes: processes),
+        candidateValidator: versionValidator,
+        pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
+          manifest: manifest,
+          versionValidator: versionValidator,
+        ),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* service.install(
@@ -220,6 +245,17 @@ final class const PiPluginDescriptor({
       );
     }
     final notSelected = selection as ManagedRuntimeNotSelected;
+    if (notSelected is ManagedRuntimePathNotSelected) {
+      return switch (notSelected.primaryRejection) {
+        ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+          actionHint: "Update the global Pi installation to ${manifest.minPathVersion.raw} or newer.",
+          runtimeVersion: version.raw,
+        ),
+        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+          actionHint: "The global Pi installation could not be verified. Check it locally and retry setup detection.",
+        ),
+      };
+    }
     if (explicitBin != null) {
       return switch (notSelected.primaryRejection) {
         ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
@@ -311,6 +347,7 @@ final class const PiPluginDescriptor({
     ),
     manifest: const PiRuntimeManifest(),
     probeTimeout: _versionProbeTimeout,
+    executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
   );
 
   @override

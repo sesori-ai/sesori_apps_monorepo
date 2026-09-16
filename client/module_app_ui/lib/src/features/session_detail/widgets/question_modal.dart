@@ -904,17 +904,16 @@ class const _CustomAnswerTile({
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onTap: onTap,
       child: Row(
-        crossAxisAlignment: .start,
+        // The indicator stays level with the first answer line rather than the
+        // whole field, so a wrapped answer never drags it down the tile.
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
+          Icon(
             key: const Key("custom-answer-toggle"),
-            padding: const EdgeInsetsDirectional.only(top: 10),
-            child: Icon(
-              isMultiple
-                  ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
-                  : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
-              color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
-            ),
+            isMultiple
+                ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
+                : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+            color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -926,8 +925,10 @@ class const _CustomAnswerTile({
               decoration: InputDecoration(
                 hintText: loc.questionModalCustomHint,
                 border: InputBorder.none,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                // Collapsed rather than dense: a dense field centres its text
+                // inside a decoration box sized by the platform's visual
+                // density, which left the indicator below the typed answer.
+                isCollapsed: true,
               ),
             ),
           ),

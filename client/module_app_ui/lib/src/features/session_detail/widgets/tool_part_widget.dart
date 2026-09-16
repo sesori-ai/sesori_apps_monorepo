@@ -15,8 +15,10 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
     final prego = context.prego;
     final loc = context.loc;
     final state = part.state;
-    final toolName =
-        state.shellCommand ?? state.title ?? (part.tool.isEmpty ? loc.sessionDetailToolUnknown : part.tool);
+    final toolName = part.tool.isEmpty ? loc.sessionDetailToolUnknown : part.tool;
+    // The action stays visible; the command or title (file path, pattern,
+    // skill) follows it in a lighter style.
+    final detail = state.shellCommand ?? state.title;
     final status = state.status;
     final output = status == ToolStatus.completed ? state.output : null;
     final errorText = status == ToolStatus.error ? state.error : null;
@@ -39,8 +41,19 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
                   _statusIcon(status: status, prego: prego),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      toolName,
+                    child: Text.rich(
+                      TextSpan(
+                        text: toolName,
+                        children: [
+                          if (detail != null)
+                            TextSpan(
+                              text: " $detail",
+                              style: prego.textTheme.textSm.regular.copyWith(
+                                color: prego.colors.textSecondary,
+                              ),
+                            ),
+                        ],
+                      ),
                       style: prego.textTheme.textSm.regular.copyWith(
                         fontWeight: FontWeight.w500,
                       ),

@@ -551,6 +551,7 @@ class _RegistrationHarness._({
 
     final testChatHistory = createTestChatHistory();
     final orchestrator = Orchestrator(
+      connectionNotificationPolicies: const Stream.empty(),
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         authBackendURL: "http://127.0.0.1:8080",

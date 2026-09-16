@@ -19,10 +19,10 @@ Future<bool> openExternalLink({
 }) async {
   try {
     final launched = await getIt<UrlLauncher>().launch(url, mode: mode);
-    if (!launched) logw("Could not open external link: ${url.toString()}");
+    if (!launched) logw("Could not open external link (${url.diagnosticOrigin})");
     return launched;
   } on Object catch (error, stackTrace) {
-    logw("Failed to open external link", error, stackTrace);
+    logw("Failed to open external link", ExternalLinkLaunchFailure(url: url, innerError: error), stackTrace);
     return false;
   }
 }

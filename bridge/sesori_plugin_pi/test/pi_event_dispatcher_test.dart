@@ -549,6 +549,44 @@ void main() {
     expect(state.output, " M file.dart");
   });
 
+  test("streamed read carries its path as the title once arguments arrive", () {
+    const path = ".agents/skills/sesori-plan-worker/SKILL.md";
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_start", {"message": _assistant(content: const [], timestamp: 101)}),
+    );
+    final started = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {"type": "toolcall_start", "contentIndex": 0, "id": "call-1", "toolName": "read"},
+      }),
+    );
+    expect(started.whereType<BridgeSseMessagePartUpdated>().single.part.state.title, isNull);
+
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {
+          "type": "toolcall_end",
+          "contentIndex": 0,
+          "toolCall": {
+            "id": "call-1",
+            "name": "read",
+            "arguments": {"path": path},
+          },
+        },
+      }),
+    );
+    final running = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("tool_execution_start", {"toolCallId": "call-1", "toolName": "read"}),
+    );
+    final runningState = running.whereType<BridgeSseMessagePartUpdated>().single.part.state;
+    expect(runningState.status, PluginToolStatus.running);
+    expect(runningState.title, path);
+    expect(runningState.shellCommand, isNull);
+  });
+
   test("malformed tool results are omitted without ending the turn", () {
     final message = _assistant(
       content: [
@@ -784,13 +822,14 @@ void main() {
     expect(runningMessage.info.id, "pi:session:compaction:compaction:1");
     final runningPart = compacting.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(runningPart.state.status, PluginToolStatus.running);
-    expect(runningPart.state.title, "Compacting context");
+    expect(runningPart.tool, "compact");
+    expect(runningPart.state.title, isNull);
     expect(compacted.whereType<BridgeSseSessionCompacted>(), hasLength(1));
     expect(compacted.whereType<BridgeSseMessageUpdated>().single.info.id, runningMessage.info.id);
     final completedPart = compacted.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(completedPart.id, runningPart.id);
     expect(completedPart.state.status, PluginToolStatus.completed);
-    expect(completedPart.state.title, "Context compacted");
+    expect(completedPart.state.title, isNull);
     expect(settled.whereType<BridgeSseSessionIdle>(), hasLength(1));
   });
 

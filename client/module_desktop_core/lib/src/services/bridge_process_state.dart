@@ -1,7 +1,5 @@
 import "dart:async";
 
-import "../trackers/bridge_process_log_tracker.dart";
-
 /// Lifecycle state published by `BridgeProcessService`.
 sealed class const BridgeProcessState();
 
@@ -13,6 +11,9 @@ final class const BridgeProcessLoginRequired() extends BridgeProcessState;
 
 /// The per-spawn control channel and child process are being created.
 final class const BridgeProcessStarting() extends BridgeProcessState;
+
+/// No helper could start because executable resolution requires user repair.
+final class const BridgeProcessStartFailed({required final String message}) extends BridgeProcessState;
 
 /// A supervised helper is currently running.
 final class const BridgeProcessRunning({required final int pid}) extends BridgeProcessState;
@@ -34,13 +35,10 @@ final class const BridgeProcessCrashRetryScheduled({
 }) extends BridgeProcessState;
 
 /// The bounded crash budget is exhausted and automatic retries have stopped.
-final class BridgeProcessCrashGiveUp({
+final class const BridgeProcessCrashGiveUp({
   required final int? exitCode,
   required final int crashCount,
-  required List<BridgeProcessLogEntry> recentLogs,
-}) extends BridgeProcessState {
-  final List<BridgeProcessLogEntry> recentLogs = List<BridgeProcessLogEntry>.unmodifiable(recentLogs);
-}
+}) extends BridgeProcessState;
 
 /// The child exited after spawn but before startup could complete.
 final class const BridgeProcessExitedDuringStartException({

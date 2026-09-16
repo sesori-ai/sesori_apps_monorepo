@@ -20,7 +20,22 @@ void main() {
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
-      expect(ClaudePluginDescriptor.targetVersion, "2.1.237");
+      expect(ClaudePluginDescriptor.targetVersion, "2.1.269");
+      expect(
+        descriptor.managementCapabilities(config: config),
+        containsAll([PluginControlCapability.runtimeUpdate, PluginControlCapability.authentication]),
+      );
+      final update = descriptor.runtimeUpdateSpec(config: config);
+      expect(update?.executable, "claude");
+      expect(update?.arguments, const ["update"]);
+      expect(update?.timeout, const Duration(minutes: 10));
+      const explicit = PluginConfig(values: {ClaudePluginDescriptor.binOption: "/custom/claude"});
+      expect(
+        descriptor.managementCapabilities(config: explicit),
+        isNot(contains(PluginControlCapability.runtimeUpdate)),
+      );
+      expect(descriptor.managementCapabilities(config: explicit), contains(PluginControlCapability.authentication));
+      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
     });
 
     test("reports ready after ordered version and typed auth probes", () async {
@@ -54,20 +69,65 @@ void main() {
       ]);
     });
 
-    test("reports runtime missing when the version process cannot spawn", () async {
+    test("reports runtime missing when the PATH command cannot spawn", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("claude-missing-path");
+      addTearDown(() async {
+        await pathDirectory.delete(recursive: true);
+      });
       final status = await const ClaudePluginDescriptor().inspectSetup(
         config: config,
         processes: _ProcessService([
           const ProcessException("claude", ["--version"], "missing", 2),
         ]),
-        environment: const {},
+        environment: {"PATH": pathDirectory.path},
         stateDirectory: "/state",
       );
 
       _expectNonReady<PluginSetupRuntimeMissing>(status);
     });
 
-    test("reports unavailable and skips auth for an outdated runtime", () async {
+    test("uses PATH presence rather than shell text to classify failures", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("claude-shell-path");
+      addTearDown(() async {
+        await pathDirectory.delete(recursive: true);
+      });
+      final missing = await const ClaudePluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProcessService([
+          _ProbeProcess(stdoutText: "localized command error\n", exitCode: Future.value(1)),
+        ]),
+        environment: {"PATH": pathDirectory.path},
+        stateDirectory: "/state",
+      );
+      File("${pathDirectory.path}${Platform.pathSeparator}claude").writeAsStringSync("shim");
+      File("${pathDirectory.path}${Platform.pathSeparator}claude.CMD").writeAsStringSync("shim");
+      final ambiguous = await const ClaudePluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProcessService([
+          _ProbeProcess(stdoutText: "dependency: command not found\n", exitCode: Future.value(1)),
+        ]),
+        environment: {"PATH": pathDirectory.path, "PATHEXT": ".CMD;.EXE"},
+        stateDirectory: "/state",
+      );
+
+      _expectNonReady<PluginSetupRuntimeMissing>(missing);
+      _expectNonReady<PluginSetupUnknown>(ambiguous);
+    });
+
+    test("reports an ambiguous spawn failure as unknown rather than missing", () async {
+      final status = await const ClaudePluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProcessService([
+          const ProcessException("claude", ["--version"], "permission denied", 13),
+        ]),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      _expectNonReady<PluginSetupUnknown>(status);
+    });
+
+    test("reports a PATH runtime outdated and skips auth", () async {
       final processes = _ProcessService([
         _ProbeProcess(stdoutText: "2.1.220 (Claude Code)\n", exitCode: Future.value(0)),
       ]);
@@ -79,10 +139,24 @@ void main() {
         stateDirectory: "/state",
       );
 
-      _expectNonReady<PluginSetupUnavailable>(status);
+      _expectNonReady<PluginSetupRuntimeOutdated>(status);
+      expect(status.runtimeVersion, "2.1.220");
       expect(processes.arguments, [
         const ["--version"],
       ]);
+    });
+
+    test("keeps an outdated explicit binary unavailable", () async {
+      final status = await const ClaudePluginDescriptor().inspectSetup(
+        config: const PluginConfig(values: {ClaudePluginDescriptor.binOption: "/custom/claude"}),
+        processes: _ProcessService([
+          _ProbeProcess(stdoutText: "2.1.220 (Claude Code)\n", exitCode: Future.value(0)),
+        ]),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      _expectNonReady<PluginSetupUnavailable>(status);
     });
 
     test("reports authentication required from loggedIn false only", () async {
@@ -248,6 +322,48 @@ void main() {
       expect(plugin.describe().details, {"transport": "claude-stream-json"});
     });
   });
+
+  group("ClaudePluginDescriptor.authenticate", () {
+    test("runs the configured binary's login in the state directory with the browser suppressed", () async {
+      const url = "https://claude.com/cai/oauth/authorize?state=private-state";
+      final login = _ProbeProcess(stdoutText: "visit: $url\n", exitCode: Completer<int>().future);
+      final processes = _ProcessService([login]);
+
+      final operation = const ClaudePluginDescriptor().authenticate(
+        config: const PluginConfig(values: {ClaudePluginDescriptor.binOption: "/custom/claude"}),
+        processes: processes,
+        environment: const {"HOME": "/Users/test", "BROWSER": "firefox"},
+        stateDirectory: "/state",
+        store: const _UnusedStore(),
+        aborted: StartAbortSignal.never,
+      );
+      final events = StreamIterator(operation.events);
+
+      expect(await events.moveNext(), isTrue);
+      expect(
+        events.current,
+        isA<PluginAuthenticationPastedCodeChallenge>().having(
+          (challenge) => challenge.authorizationUri,
+          "uri",
+          Uri.parse(url),
+        ),
+      );
+      login.completeExit(0);
+      expect(await events.moveNext(), isTrue);
+      expect(events.current, isA<PluginAuthenticationCompleted>());
+      expect(await events.moveNext(), isFalse);
+
+      expect(processes.executables, ["/custom/claude"]);
+      expect(processes.arguments, [
+        ["auth", "login", "--claudeai"],
+      ]);
+      expect(processes.workingDirectories, ["/state"]);
+      expect(processes.includeParentEnvironmentValues, [isTrue]);
+      expect(processes.environments, [
+        {"HOME": "/Users/test", "BROWSER": "true"},
+      ]);
+    });
+  });
 }
 
 void _expectNonReady<T extends PluginSetupStatus>(PluginSetupStatus status) {
@@ -304,8 +420,15 @@ final class _AbortOnSecondCheck() implements StartAbortSignal {
   Future<void> get whenAborted => Completer<void>().future;
 }
 
+final class const _UnusedStore() implements HostJsonStore {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 final class _ProcessService(final List<Object> _outcomes) implements HostProcessService {
+  final List<String> executables = [];
   final List<List<String>> arguments = [];
+  final List<bool> includeParentEnvironmentValues = [];
   final List<Map<String, String>?> environments = [];
   final List<bool> runInShellValues = [];
   final List<String?> workingDirectories = [];
@@ -322,7 +445,9 @@ final class _ProcessService(final List<Object> _outcomes) implements HostProcess
     required bool runInShell,
     required bool includeParentEnvironment,
   }) async {
+    executables.add(executable);
     this.arguments.add(List.unmodifiable(arguments));
+    includeParentEnvironmentValues.add(includeParentEnvironment);
     environments.add(environment == null ? null : Map.unmodifiable(environment));
     runInShellValues.add(runInShell);
     workingDirectories.add(workingDirectory);

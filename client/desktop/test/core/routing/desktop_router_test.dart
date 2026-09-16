@@ -1,22 +1,22 @@
+import "dart:async";
+
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_desktop/core/platform/desktop_route_dispatcher.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
+import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
+import "package:sesori_desktop/features/auth_gate/auth_gate.dart";
+import "package:sesori_desktop/features/home/desktop_home_pane.dart";
 import "package:sesori_desktop/features/new_session/desktop_new_session_screen.dart";
 import "package:sesori_desktop/features/session_diffs/desktop_session_diffs_screen.dart";
+import "package:sesori_desktop/features/sessions/desktop_session_detail_screen.dart";
+import "package:sesori_desktop/features/sessions/desktop_session_list_screen.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 void main() {
-  test("settings destination matching includes its child routes", () {
-    expect(isDesktopSettingsPath(path: AppRouteDef.settings.path), isTrue);
-    expect(isDesktopSettingsPath(path: AppRouteDef.settingsDefaultInput.path), isTrue);
-    expect(isDesktopSettingsPath(path: AppRouteDef.settingsProfile.path), isTrue);
-    expect(isDesktopSettingsPath(path: AppRouteDef.settingsHarnesses.path), isTrue);
-    expect(isDesktopSettingsPath(path: AppRouteDef.projects.path), isFalse);
-    expect(isDesktopSettingsPath(path: "${AppRouteDef.settings.path}ful"), isFalse);
-  });
-
   test("desktop registers typed new-session and diff routes", () {
     final paths = _routeRegistrations().map((registration) => registration.path);
 
@@ -59,21 +59,217 @@ void main() {
     );
   });
 
-  test("harness-settings route preserves modal presentation", () {
-    final route = _routeWithPath(AppRouteDef.settingsHarnesses.path);
-    final widget = route.builder!(
+  test("main-pane routes are siblings and only all-sessions creates a list owner", () {
+    final shell = buildDesktopRoutes().single as ShellRoute;
+    final pages = shell.routes.whereType<GoRoute>().toList();
+    for (final def in [
+      AppRouteDef.sessions,
+      AppRouteDef.newSession,
+      AppRouteDef.sessionDetail,
+      AppRouteDef.sessionDiffs,
+    ]) {
+      final page = pages.singleWhere((page) => page.path == def.path);
+      expect(page.routes, isEmpty);
+    }
+    expect(
+      pages.indexWhere((page) => page.path == AppRouteDef.newSession.path),
+      lessThan(pages.indexWhere((page) => page.path == AppRouteDef.sessionDetail.path)),
+    );
+    final state = _FakeGoRouterState(pathParameters: {"projectId": "p"}, queryParameters: {"name": "Sesori"});
+    final provider = _routeWithPath(AppRouteDef.sessions.path).builder!(
       _FakeBuildContext(),
-      _FakeGoRouterState(
-        queryParameters: {
-          harnessSettingsPresentationQueryParam: HarnessSettingsPresentation.modal.name,
-        },
+      state,
+    ) as DesktopSessionListCubitProvider;
+    expect(provider.projectId, "p");
+    final screen = provider.child as DesktopSessionListScreen;
+    final scaffold = screen.build(_FakeBuildContext()) as SessionListScaffold;
+    expect(scaffold.onBack, isNull);
+    expect(scaffold.projectName, "Sesori");
+    expect(scaffold.onNewSession, isNotNull);
+    expect(scaffold.onOpenArchived, isNotNull);
+    expect(scaffold.connectionBanner, isNull);
+    expect(
+      _routeWithPath(AppRouteDef.projects.path).builder!(_FakeBuildContext(), _FakeGoRouterState()),
+      isA<DesktopHomePane>(),
+    );
+  });
+
+  testWidgets("the actual cockpit boundary tracks root popups above retained nested pages", (tester) async {
+    final shell = buildDesktopRoutes().single as ShellRoute;
+    final router = GoRouter(
+      initialLocation: AppRouteDef.projects.path,
+      routes: [
+        ShellRoute(
+          builder: (context, state, child) {
+            // Retain the production visibility boundary, not production DI.
+            final gate = shell.builder!(context, state, child) as AuthGate;
+            final shortcuts = (gate.child as Builder).builder(context) as CallbackShortcuts;
+            final provider = shortcuts.child as DesktopCockpitCubitProvider;
+            return (provider.child as DesktopCockpitShell).child;
+          },
+          routes: [
+            GoRoute(
+              path: AppRouteDef.projects.path,
+              builder: (context, _) => Text("visible:${SessionDetailRouteVisibility.isVisibleOf(context: context)}"),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    final element = tester.element(find.text("visible:true"));
+    unawaited(
+      showDialog<void>(
+        context: element,
+        builder: (_) => const Dialog(child: Text("popup")),
       ),
     );
-
-    expect(widget, isA<HarnessesSettingsView>());
-    final screen = widget as HarnessesSettingsView;
-    expect(screen.presentation, HarnessSettingsPresentation.modal);
+    await tester.pumpAndSettle();
+    expect(find.text("visible:false"), findsOneWidget);
+    expect(ModalRoute.of(element)?.isCurrent, isTrue);
+    final dispatcher = DesktopRouteDispatcher(router: router, routerReady: Future<void>.value());
+    dispatcher.dismissPopups();
+    await dispatcher.flushPendingForTesting();
+    await tester.pumpAndSettle();
+    expect(find.text("popup"), findsNothing);
+    expect(tester.element(find.text("visible:true")), same(element));
   });
+
+  testWidgets("notification opens dismiss popups while preserving or replacing the canonical stack", (tester) async {
+    final router = _callbackRouter(initialRoute: const AppRoute.splash());
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, AppRouteDef.projects.path);
+    final dispatcher = DesktopRouteDispatcher(router: router, routerReady: Future<void>.value());
+    dispatcher.replaceStack(
+      stack: RouteStack(
+        paths: [
+          const AppRoute.projects(),
+          _sessions,
+          _detail(readOnly: false),
+        ].map((route) => route.buildPath()).toList(),
+      ),
+    );
+    await dispatcher.flushPendingForTesting();
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _detail(readOnly: false).buildPath());
+    final opener = tester.element(find.text("diffs"));
+    unawaited(
+      showDialog<void>(
+        context: opener,
+        builder: (_) => const Dialog(child: Text("popup")),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // Same-session reveal, then a no-popup reveal, retain the page and Back stack.
+    for (var attempt = 0; attempt < 2; attempt++) {
+      dispatcher.dismissPopups();
+      await dispatcher.flushPendingForTesting();
+      await tester.pumpAndSettle();
+      expect(find.text("popup"), findsNothing);
+      expect(tester.element(find.text("diffs")), same(opener));
+      expect(find.text("back"), findsOneWidget);
+    }
+    const other = AppRoute.sessionDetail(
+      projectId: "p",
+      projectName: null,
+      sessionId: "other",
+      sessionTitle: null,
+      readOnly: false,
+    );
+    unawaited(
+      showDialog<void>(
+        context: opener,
+        builder: (_) => const Dialog(child: Text("popup")),
+      ),
+    );
+    await tester.pumpAndSettle();
+    dispatcher.dismissPopups();
+    dispatcher.replaceStack(
+      stack: RouteStack(
+        paths: [const AppRoute.projects(), _sessions, other].map((route) => route.buildPath()).toList(),
+      ),
+    );
+    await dispatcher.flushPendingForTesting();
+    await tester.pumpAndSettle();
+    expect(find.text("popup"), findsNothing);
+    expect(router.state.uri.toString(), other.buildPath());
+    await tester.tap(find.text("back"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _sessions.buildPath());
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, AppRouteDef.projects.path);
+    expect(find.text("home"), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("all-sessions opens archived sessions read-only and deletion returns to the list", (tester) async {
+    final router = _callbackRouter(initialRoute: _sessions);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.tap(find.text("open archived"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
+    expect(find.text("back"), findsNothing);
+    await tester.tap(find.text("delete open session"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _sessions.buildPath());
+  });
+
+  testWidgets("new-session replaces its page and retains the opener", (tester) async {
+    final router = _callbackRouter(initialRoute: _sessions);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.tap(find.text("new"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, const AppRoute.newSession(projectId: "p", projectName: null).buildPath());
+    await tester.tap(find.text("created"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _detail(readOnly: false).buildPath());
+    await tester.tap(find.text("back"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _sessions.buildPath());
+  });
+
+  testWidgets("direct detail hides Back but a pushed child can return to its parent", (tester) async {
+    final router = _callbackRouter(initialRoute: _detail(readOnly: true));
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    expect(find.text("back"), findsNothing);
+    await tester.tap(find.text("open child"));
+    await tester.pumpAndSettle();
+    expect(router.state.pathParameters[sessionIdPathParam], "child");
+    await tester.tap(find.text("back"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
+    expect(find.text("back"), findsNothing);
+  });
+
+  testWidgets("diff back preserves the pushed detail including read-only state", (tester) async {
+    final router = _callbackRouter(initialRoute: _detail(readOnly: true));
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.tap(find.text("diffs"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _diffs.buildPath());
+    await tester.tap(find.text("back"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
+  });
+
+  for (final route in [const AppRoute.newSession(projectId: "p", projectName: "UI / Core"), _diffs]) {
+    testWidgets("direct ${route.def.name} back falls back to all-sessions", (tester) async {
+      final router = _callbackRouter(initialRoute: route);
+      addTearDown(router.dispose);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.tap(find.text("back"));
+      await tester.pumpAndSettle();
+      expect(router.state.uri.toString(), _sessions.buildPath());
+    });
+  }
 }
 
 Iterable<_RouteRegistration> _routeRegistrations({
@@ -108,6 +304,96 @@ class _FakeGoRouterState({
 }) extends Fake implements GoRouterState {
   @override
   final Uri uri = Uri(path: "/", queryParameters: queryParameters.isEmpty ? null : queryParameters);
+}
+
+const _sessions = AppRoute.sessions(projectId: "p", projectName: "UI / Core");
+const _diffs = AppRoute.sessionDiffs(projectId: "p", projectName: "UI / Core", sessionId: "s");
+AppRoute _detail({required bool readOnly}) => AppRoute.sessionDetail(
+  projectId: "p",
+  projectName: "UI / Core",
+  sessionId: "s",
+  sessionTitle: "A session",
+  readOnly: readOnly,
+);
+const _session = Session(
+  id: "s",
+  title: "A session",
+  projectID: "p",
+  pluginId: "fixture",
+  directory: "/fixture",
+  parentID: null,
+  branchName: null,
+  pullRequest: null,
+  promptDefaults: null,
+  lastUserActivityAt: null,
+  time: SessionTime(created: 1, updated: 2, archived: 3),
+);
+
+/// Exercise production route decoders/callbacks without constructing auth,
+/// transport, or backend-owning screen providers. Content is tested separately.
+GoRouter _callbackRouter({required AppRoute initialRoute}) {
+  final shell = buildDesktopRoutes().single as ShellRoute;
+  return GoRouter(
+    initialLocation: initialRoute.buildPath(),
+    routes: [
+      for (final page in shell.routes.whereType<GoRoute>())
+        GoRoute(
+          path: page.path,
+          redirect: page.redirect,
+          builder: (context, state) {
+            final screen = page.builder!(context, state);
+            Widget button({required String label, required VoidCallback action}) =>
+                TextButton(onPressed: action, child: Text(label));
+            return Scaffold(
+              body: Column(
+                children: switch (screen) {
+                  DesktopSessionListCubitProvider(child: final DesktopSessionListScreen list) => [
+                    button(
+                      label: "open archived",
+                      action: () => list.onSessionTap(session: _session),
+                    ),
+                    button(label: "new", action: list.onNewSession),
+                  ],
+                  DesktopNewSessionScreen() => [
+                    button(
+                      label: "created",
+                      action: () => screen.onSessionCreated(session: _session),
+                    ),
+                    button(label: "back", action: screen.onBack),
+                  ],
+                  DesktopSessionDetailScreen() => [
+                    if (screen.onBack case final onBack?) button(label: "back", action: onBack),
+                    button(
+                      label: "open child",
+                      action: () => screen.onOpenSession(
+                        projectId: "p",
+                        sessionId: "child",
+                        sessionTitle: "Child",
+                        readOnly: true,
+                      ),
+                    ),
+                    button(label: "diffs", action: screen.onShowDiffs),
+                    button(
+                      label: "delete open session",
+                      action: () {
+                        final provider = _routeWithPath(AppRouteDef.sessions.path).builder!(
+                          context,
+                          state,
+                        ) as DesktopSessionListCubitProvider;
+                        final list = provider.child as DesktopSessionListScreen;
+                        list.actionDispatcher.onSessionDeleted!(context: context, sessionId: screen.sessionId);
+                      },
+                    ),
+                  ],
+                  DesktopSessionDiffsScreen() => [button(label: "back", action: screen.onBack)],
+                  _ => [const Text("home")],
+                },
+              ),
+            );
+          },
+        ),
+    ],
+  );
 }
 
 // ignore_for_file: avoid_implementing_value_types, tests use lightweight framework fakes

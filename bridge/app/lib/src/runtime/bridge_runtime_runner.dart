@@ -36,6 +36,7 @@ import "../api/bridge_settings_api.dart";
 import "../api/control_secret_api.dart";
 import "../api/database/database.dart";
 import "../api/database/history/chat_history_database.dart";
+import "../api/macos_system_power_observer_api.dart";
 import "../api/sesori_server_api.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/auth_api.dart";
@@ -71,6 +72,7 @@ import "../repositories/app_onboarding_state_repository.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/plugin_lifecycle_repository.dart";
+import "../repositories/system_power_event_repository.dart";
 import "../server/api/process_id_lookup_api.dart";
 import "../server/api/runtime_file_api.dart";
 import "../server/api/system_process_api.dart";
@@ -89,6 +91,7 @@ import "../server/services/bridge_instance_service.dart";
 import "../server/services/bridge_restart_service.dart";
 import "../services/app_client_onboarding_service.dart";
 import "../services/bridge_startup_retry_service.dart";
+import "../services/connection_notification_policy_service.dart";
 import "../services/control_channel_token_service.dart";
 import "../services/control_prompt_service.dart";
 import "../services/control_unregister_service.dart";
@@ -229,7 +232,9 @@ class const BridgeRuntimeRunner._() {
         budget: _pluginShutdownBudget,
       )
       ..addPhase(
-        phase: BridgeShutdownPhase.lifecycle,
+        // Lifecycle disposal waits for accepted runtime provisions to finish
+        // using PluginRuntime. Dispose that lower owner only afterward.
+        phase: BridgeShutdownPhase.runtimeDispose,
         action: () => pluginRuntime?.dispose() ?? Future<void>.value(),
         budget: _pluginShutdownBudget,
       )
@@ -254,6 +259,8 @@ class const BridgeRuntimeRunner._() {
     final processRunner = ProcessRunner();
     const serverClock = ServerClock();
     final environment = io.Platform.environment;
+    final restartPredecessorPidRaw = environment[sesoriRestartPredecessorPidEnvVar];
+    final restartPredecessorPid = restartPredecessorPidRaw == null ? null : int.tryParse(restartPredecessorPidRaw);
     final currentUser = _resolveCurrentUser(environment: environment);
     if (currentUser == null) {
       Log.w("Failed to determine current user from environment");
@@ -274,6 +281,7 @@ class const BridgeRuntimeRunner._() {
       clock: serverClock,
       isWindows: io.Platform.isWindows,
       platform: io.Platform.operatingSystem,
+      inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
     );
     final processIdLookupApi = ProcessIdLookupApi.forPlatform(
       isWindows: io.Platform.isWindows,
@@ -687,11 +695,9 @@ class const BridgeRuntimeRunner._() {
       );
       // If this bridge was spawned by a restart, wait for the predecessor to
       // exit before single-live-bridge enforcement so the handoff is clean.
-      final predecessorPidRaw = environment[sesoriRestartPredecessorPidEnvVar];
-      final predecessorPid = predecessorPidRaw == null ? null : int.tryParse(predecessorPidRaw);
-      if (predecessorPid != null) {
+      if (restartPredecessorPid != null) {
         await bridgeInstanceService.awaitPredecessorBridgeExit(
-          predecessorPid: predecessorPid,
+          predecessorPid: restartPredecessorPid,
           timeout: const Duration(seconds: 30),
         );
 
@@ -731,12 +737,26 @@ class const BridgeRuntimeRunner._() {
       }
       // After ownership is settled, so no other live bridge is using this
       // machine's managed runtime directories when the obsolete sweep runs.
-      // Returns immediately; the downloads continue behind startup.
-      activePluginLifecycleService.upgradeManagedRuntimes();
+      // Await only bounded PATH checks; any admitted downloads continue behind startup.
+      await activePluginLifecycleService.upgradeManagedRuntimes();
+      if (startAbortController.isAborted) {
+        Log.i("Bridge startup aborted as requested.");
+        return 0;
+      }
       for (final pluginId in startupPolicy.eligiblePluginIds) {
         final diagnostics = activePluginRuntime.describe(pluginId: pluginId);
         if (diagnostics != null) Console.message("Target [$pluginId]: ${diagnostics.endpoint ?? pluginId}");
       }
+
+      // Power classification is advisory notification metadata only. Starting
+      // it is synchronous side work and is never awaited by relay startup.
+      final connectionNotificationPolicyService = ConnectionNotificationPolicyService(
+        powerEventRepository: SystemPowerEventRepository.forPlatform(
+          operatingSystem: io.Platform.operatingSystem,
+          macosApi: MacosSystemPowerObserverApi(),
+        ),
+      );
+      shutdownCoordinator.add(disposable: connectionNotificationPolicyService.dispose);
 
       // Constructed here (not inside BridgeRuntime.create) so supervised mode
       // can observe its connectionState stream below.
@@ -745,6 +765,7 @@ class const BridgeRuntimeRunner._() {
         accessTokenProvider: accessTokenProvider,
         bridgeIdProvider: bridgeRegistrationService,
       );
+      connectionNotificationPolicyService.start();
 
       // Supervised status pushes: the notifier owns every outbound
       // status-class send (status + registered) over the control channel,
@@ -767,6 +788,7 @@ class const BridgeRuntimeRunner._() {
         // exits with the sentinel code instead of spawning a successor (which
         // would replay --control-url with no off-argv secret and fail closed).
         isSupervised: options.isSupervised,
+        isWindows: io.Platform.isWindows,
         // Record the GUI-respawn sentinel the moment the handoff is decided —
         // before the shutdown it triggers — so the normal return, the error
         // paths, and a hung-teardown backstop all report the same code.
@@ -807,6 +829,7 @@ class const BridgeRuntimeRunner._() {
       )..ensureDirectory();
       final failureReporter = LogFailureReporter();
       final composition = Orchestrator(
+        connectionNotificationPolicies: connectionNotificationPolicyService.policies,
         config: BridgeConfig(
           relayURL: options.relayUrl,
           authBackendURL: options.authBackendUrl,

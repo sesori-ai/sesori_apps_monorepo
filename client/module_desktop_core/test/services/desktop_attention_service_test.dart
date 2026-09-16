@@ -115,6 +115,7 @@ void main() {
     );
 
     await service.start();
+    await _flushAsync();
 
     expect(service.currentPreference, DesktopAttentionPreference.disabled);
     verify(localNotificationClient.initialize).called(1);
@@ -180,42 +181,150 @@ void main() {
     ).called(1);
   });
 
-  test("captures relay attention while native initialization is pending", () async {
-    final initialization = Completer<void>();
-    when(localNotificationClient.initialize).thenAnswer((_) => initialization.future);
-    when(
-      () => sessionRepository.getSession(sessionId: "session-root"),
-    ).thenAnswer((_) async => ApiResponse<Session>.success(_session));
-    when(
-      () => localNotificationClient.show(
-        title: any(named: "title"),
-        body: any(named: "body"),
-        category: any(named: "category"),
-        sessionId: any(named: "sessionId"),
-        projectId: any(named: "projectId"),
-        sessionTitle: any(named: "sessionTitle"),
-        accountId: any(named: "accountId"),
-      ),
-    ).thenAnswer((_) async {});
+  for (final initializationFails in <bool>[false, true]) {
+    test("start returns and captures attention during native initialization (failure: $initializationFails)", () async {
+      final initialization = Completer<void>();
+      var attempts = 0;
+      when(localNotificationClient.initialize).thenAnswer((_) {
+        attempts++;
+        return attempts == 1 ? initialization.future : Future<void>.value();
+      });
+      when(
+        () => sessionRepository.getSession(sessionId: "session-root"),
+      ).thenAnswer((_) async => ApiResponse<Session>.success(_session));
+      when(
+        () => localNotificationClient.show(
+          title: any(named: "title"),
+          body: any(named: "body"),
+          category: any(named: "category"),
+          sessionId: any(named: "sessionId"),
+          projectId: any(named: "projectId"),
+          sessionTitle: any(named: "sessionTitle"),
+          accountId: any(named: "accountId"),
+        ),
+      ).thenAnswer((_) async {});
 
-    final start = service.start();
-    await _flushAsync();
+      try {
+        await service.start().timeout(const Duration(seconds: 1));
+        connectionEvents.add(_permissionAsked());
+        await _flushAsync();
+      } finally {
+        if (initializationFails) {
+          initialization.completeError(StateError("Native initialization unavailable"));
+        } else {
+          initialization.complete();
+        }
+      }
+      await pumpEventQueue(times: 20);
+
+      expect(attempts, initializationFails ? 2 : 1);
+      verify(
+        () => localNotificationClient.show(
+          title: any(named: "title"),
+          body: "Permission approval needed",
+          category: any(named: "category"),
+          sessionId: "session-root",
+          projectId: any(named: "projectId"),
+          sessionTitle: any(named: "sessionTitle"),
+          accountId: "user-1",
+        ),
+      ).called(1);
+    });
+  }
+
+  test("startup failure retries captured attention only once if native support remains unavailable", () async {
+    final initialization = Completer<void>();
+    var attempts = 0;
+    when(localNotificationClient.initialize).thenAnswer((_) {
+      attempts++;
+      if (attempts == 1) {
+        return initialization.future;
+      }
+      throw StateError("Native initialization still unavailable");
+    });
+    await service.start();
     connectionEvents.add(_permissionAsked());
-    initialization.complete();
-    await start;
+    await _flushAsync();
+    initialization.completeError(StateError("Native initialization unavailable"));
     await pumpEventQueue(times: 20);
 
-    verify(
-      () => localNotificationClient.show(
-        title: any(named: "title"),
-        body: "Permission approval needed",
-        category: any(named: "category"),
+    expect(attempts, 2);
+    verifyNever(() => sessionRepository.getSession(sessionId: any(named: "sessionId")));
+  });
+
+  for (final disposeService in <bool>[false, true]) {
+    test("cleanup excludes pending initialization (dispose: $disposeService)", () async {
+      final initialization = Completer<void>();
+      when(localNotificationClient.initialize).thenAnswer((_) => initialization.future);
+      await service.start();
+      connectionEvents.add(_permissionAsked());
+      await _flushAsync();
+      try {
+        final cleanup = disposeService ? service.dispose() : service.suspendAndClearForLogout();
+        await cleanup.timeout(const Duration(seconds: 1));
+        expect(initialization.isCompleted, isFalse);
+        if (!disposeService) {
+          verify(localNotificationClient.cancelAll).called(1);
+          service.completeSuccessfulLogout();
+        }
+      } finally {
+        initialization.complete();
+      }
+      await _flushAsync();
+
+      verifyNever(() => sessionRepository.getSession(sessionId: any(named: "sessionId")));
+    });
+  }
+
+  for (final initializationFails in <bool>[false, true]) {
+    test("late native startup (failure: $initializationFails) consumes but drops opens after disposal", () async {
+      final initialization = Completer<void>();
+      when(localNotificationClient.initialize).thenAnswer((_) => initialization.future);
+      when(localNotificationClient.getInitialNotificationOpen).thenAnswer(
+        (_) async => const NotificationOpenRequest(
+          projectId: "project-1",
+          sessionId: "session-root",
+          sessionTitle: null,
+          accountId: "user-1",
+        ),
+      );
+      final start = service.start();
+      await _flushAsync();
+      await service.dispose().timeout(const Duration(seconds: 1));
+
+      if (initializationFails) {
+        initialization.completeError(StateError("Native initialization unavailable"));
+      } else {
+        initialization.complete();
+      }
+      await start;
+      await _flushAsync();
+
+      verify(localNotificationClient.getInitialNotificationOpen).called(1);
+      verifyNever(() => windowHost.show());
+      verifyNever(() => routeDispatcher.replaceStack(stack: any(named: "stack")));
+    });
+  }
+
+  test("does not route a startup open after disposal while window focus is pending", () async {
+    final windowFocus = Completer<void>();
+    when(() => windowHost.show()).thenAnswer((_) => windowFocus.future);
+    when(localNotificationClient.getInitialNotificationOpen).thenAnswer(
+      (_) async => const NotificationOpenRequest(
+        projectId: "project-1",
         sessionId: "session-root",
-        projectId: any(named: "projectId"),
-        sessionTitle: any(named: "sessionTitle"),
+        sessionTitle: null,
         accountId: "user-1",
       ),
-    ).called(1);
+    );
+    await service.start();
+    await _flushAsync();
+    await service.dispose();
+    windowFocus.complete();
+    await _flushAsync();
+
+    verify(() => windowHost.show()).called(1);
+    verifyNever(() => routeDispatcher.replaceStack(stack: any(named: "stack")));
   });
 
   test("retries transient native initialization on a later attention event", () async {
@@ -927,7 +1036,11 @@ void main() {
     ).called(1);
   });
 
-  test("notification opens focus the window and replace the session stack", () async {
+  test("notification opens focus the window, dismiss popups, then replace the session stack", () async {
+    final operations = <String>[];
+    when(windowHost.show).thenAnswer((_) async => operations.add("focus"));
+    when(routeDispatcher.dismissPopups).thenAnswer((_) => operations.add("dismiss"));
+    when(() => routeDispatcher.replaceStack(stack: any(named: "stack"))).thenAnswer((_) => operations.add("replace"));
     await service.start();
 
     notificationOpens.add(
@@ -940,7 +1053,7 @@ void main() {
     );
     await _flushAsync();
 
-    verify(() => windowHost.show()).called(1);
+    expect(operations, ["focus", "dismiss", "replace"]);
     final captured =
         verify(
               () => routeDispatcher.replaceStack(stack: captureAny(named: "stack")),
@@ -962,6 +1075,30 @@ void main() {
     );
   });
 
+  test("a notification for the current editable session still dismisses popups without replacing its stack", () async {
+    when(() => routeSource.currentLocation).thenReturn(
+      const AppRoute.sessionDetail(
+        projectId: "project-1",
+        projectName: "Existing project title",
+        sessionId: "session-root",
+        sessionTitle: "Existing session title",
+        readOnly: false,
+      ).buildPath(),
+    );
+    await service.start();
+    notificationOpens.add(
+      const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-root",
+        sessionTitle: "Fix the build",
+        accountId: "user-1",
+      ),
+    );
+    await _flushAsync();
+    verifyInOrder([windowHost.show, routeDispatcher.dismissPopups]);
+    verifyNever(() => routeDispatcher.replaceStack(stack: any(named: "stack")));
+  });
+
   test("does not route an old-account notification after window focus awaits", () async {
     final windowFocus = Completer<void>();
     when(() => windowHost.show()).thenAnswer((_) => windowFocus.future);
@@ -981,6 +1118,7 @@ void main() {
     await _flushAsync();
 
     verify(() => windowHost.show()).called(1);
+    verifyNever(routeDispatcher.dismissPopups);
     verifyNever(() => routeDispatcher.replaceStack(stack: any(named: "stack")));
   });
 

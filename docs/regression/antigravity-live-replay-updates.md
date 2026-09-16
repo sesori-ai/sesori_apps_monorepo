@@ -26,7 +26,8 @@ credential access or history mutation.
   truncation marker. Do not classify a nonzero exit as an ACP tool/protocol failure. Genuine failed tool status stays
   failed; successful/completed status stays completed. Exit-only partial terminal updates preserve earlier tool output:
   they do not replace it with empty text or an exit note. No second output cache is introduced to append that note.
-  Live and replay must produce identical tool state.
+  Equivalent source envelopes must produce identical normalized tool state live and on replay; this does not assert that
+  the upstream runtime emits equivalent source envelopes for every native tool.
 - Deduplicate standard text only on exact equality with native output, including text split across blocks. Retain
   differing standard/native text together, reserving bounded space for both tails and the exit note. Accept direct
   map/string content as well as lists, matching existing shared ACP handling. Preserve original non-text content entries,
@@ -37,6 +38,11 @@ credential access or history mutation.
   image data/blob/data-image URI copies and formatted output identical to combined output; retain useful metadata.
   Sanitized-away fields cannot reappear from merging the original envelope. Standard content attachments remain
   governed by ACP's existing separate limits rather than the raw-payload budget.
+- Native `invoke_subagent` and its nested work remain ordinary parent-local ACP tool calls. The pinned runtime exposes
+  no child session ID, child lifecycle extension, background discriminator, or child cancellation method through ACP.
+  Its live invocation status and replayed status also disagree. Sesori therefore does not reinterpret these calls as
+  subtask parts, child sessions, descendant busy state, or scoped-stop targets. Call order, prompt-bearing raw input,
+  assistant claims, and replay completion are not lifecycle authority.
 - Malformed native aliases degrade to bounded raw data with an original error/stack log, not invented command policy.
   Generated envelope decoding failures log and retain existing ACP handling. Malformed known content blocks log and
   preserve their original entries for the shared mapper's bounded degradation, rather than aborting live/replay.
@@ -49,7 +55,9 @@ credential access or history mutation.
   failure, a genuine tool failure becoming success, or differing live/replay output is a regression. Overlapping or
   repeated/legacy text remains best-effort within the display cap; do not mistake cosmetic repetition for lost output.
 - Lost supported standard images, retained redundant raw image bytes, original fields reappearing after sanitation,
-  caller-envelope mutation, or unbounded raw metadata indicates normalization regression.
+  caller-envelope mutation, or unbounded raw metadata indicates normalization regression. So does promoting an
+  Antigravity `invoke_subagent` call into a subtask or child from generic parent-local facts without a new authoritative
+  upstream identity and lifecycle seam.
 - `antigravity_protocol_mapper_updates_test.dart`: 24 tests cover exact aliases, identity, live/replay equality,
   nonzero/empty/success/failure output with and without standard content, update-only replay, tail/note bounds, valid
   inline images and retained metadata, raw-copy removal, aggregate budgets and observable malformed-native fallback;
@@ -57,5 +65,8 @@ credential access or history mutation.
   preservation without duplication, and exit-only terminal updates retaining earlier output.
 - `acp_session_loader_test.dart`, `acp_tool_content_integration_test.dart`, and `acp_history_replay_test.dart` exercise
   standard identity behavior and production replay; DeepSeek history/time tests cover its direct collector path.
-- Owning ACP/Antigravity and changed DeepSeek analyses are the static boundary. Authenticated native sessions, real
-  Google-generated images and the full L5 integration matrix remain unverified.
+- Owning ACP/Antigravity and changed DeepSeek analyses are the static boundary. One bounded authenticated native probe
+  on 2026-09-12 verified only Antigravity's generic sub-agent wire projection and replay mismatch; it changed no
+  production runtime or code state. This documentation records the resulting support-boundary decision. Real
+  Google-generated images, ordinary end-to-end sessions, and the full L5 integration matrix remain unverified. See the
+  [privacy-safe probe record](../../.plan/completed/claude-inline-subtasks/followups/antigravity-probe.md).

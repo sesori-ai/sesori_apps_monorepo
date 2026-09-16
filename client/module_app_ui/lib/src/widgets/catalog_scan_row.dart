@@ -175,6 +175,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
       CatalogRescanPartlyFailed() ||
       CatalogRescanFailed() ||
       CatalogRescanUnsupported() ||
+      CatalogRescanNotConnected() ||
       CatalogRescanNoHarness() => null,
     };
     if (pluginName == _startupWaitPluginName && (_startupWaitTimer != null || _startupWaitElapsed)) return;
@@ -196,6 +197,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
         CatalogRescanPartlyFailed() ||
         CatalogRescanFailed() ||
         CatalogRescanUnsupported() ||
+        CatalogRescanNotConnected() ||
         CatalogRescanNoHarness() => false,
       };
       if (!stillWaitingForSameHarness) return;
@@ -359,8 +361,18 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
       actionLabel: loc.catalogScanDismiss,
       onAction: widget._onDismiss,
     ),
-    // Nothing was ever asked of the bridge, so the row says what is missing
-    // instead of leaving the pull that started it with no answer.
+    // No request was sent, so the row names the missing bridge connection
+    // instead of falsely claiming that the user's harnesses are absent.
+    CatalogRescanNotConnected() => _RowContent(
+      tone: _ScanTone.attention,
+      icon: TablerRegular.plug_connected_x,
+      title: loc.catalogScanNotConnectedTitle,
+      detail: loc.catalogScanNotConnectedDetail,
+      actionLabel: loc.catalogScanDismiss,
+      onAction: widget._onDismiss,
+    ),
+    // Nothing was ever asked of the connected bridge, so the row says what is
+    // missing instead of leaving the pull that started it with no answer.
     CatalogRescanNoHarness() => _RowContent(
       tone: _ScanTone.attention,
       icon: TablerRegular.plug_connected_x,

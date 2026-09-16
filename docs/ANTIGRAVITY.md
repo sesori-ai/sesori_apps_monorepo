@@ -9,8 +9,8 @@ before downloading or authenticating. Installing the runtime does not grant Goog
 
 | Item | Supported contract |
 |---|---|
-| ACP registry package | `1.0.0` |
-| Exact ACP runtime identity | `agy_acp_server_20260818_01_RC01` |
+| ACP registry package | `1.1.1` |
+| Exact ACP runtime identity | `agy_acp_server_1.1.1` |
 | Bridge hosts | macOS arm64; Linux x64/arm64; Windows x64/arm64 |
 | Unsupported host | macOS x64, including an explicit binary path |
 | Authentication | Personal Google OAuth (`oauth-personal`) only |
@@ -18,7 +18,9 @@ before downloading or authenticating. Installing the runtime does not grant Goog
 Business/Enterprise OAuth, Gemini API keys and Agent Platform authentication are not exposed by this integration.
 The [pinned release facts](../bridge/sesori_plugin_antigravity/lib/src/foundation/antigravity_release.dart) contain the
 five official archive URLs, checksums and file sizes. Registry package version and ACP runtime identity are different:
-managed version directories use `1.0.0`, while validation checks the exact runtime identity above.
+managed version directories use `1.1.1`, while validation checks the exact runtime identity above.
+A pair reporting the earlier `agy_acp_server_20260818_01_RC01` identity no longer passes that exact check.
+An explicit binary path remains authoritative, so replace its complete pair rather than expecting managed fallback.
 
 ## Install or supply the pair
 
@@ -86,8 +88,9 @@ needs no browser of its own, but does need a current connected client for initia
 
 - **Isolation:** login and live execution share a plugin-owned `profile/antigravity-acp` beneath Antigravity's bridge
   state. It does not import ambient Google credentials or reuse your normal Google/Antigravity profile.
-  Runtime processes receive a sanitized environment with parent inheritance disabled. Setup inspection checks only
-  sibling files and isolated token-file presence; it does not read token contents, spawn a process or validate a login.
+  Runtime processes receive a sanitized environment with parent inheritance disabled. Setup inspection checks sibling
+  files, runs the selected server once with a bounded sanitized `--version` probe, and checks isolated token-file
+  presence. It does not read token contents, initialize ACP, mutate the profile or validate a login.
 - **Supervision:** prompts use mode `default`, never `auto_edit` or `yolo`. Ordinary permissions offer only
   safe advertised once-kind choices. Persistent approvals and every warning-bearing choice are excluded independently.
   Supported single-choice questions retain the provider's options; malformed or ambiguous requests cancel, not guess.
@@ -104,7 +107,12 @@ needs no browser of its own, but does need a current connected client for initia
   over recovered fallback metadata. Sesori never parses private Google SQLite/brain content.
 - **Images and tools:** prompt and returned image content use the shared bounded attachment path. Provider-local image
   filenames are metadata only: Sesori does not open or fetch them. Model/account rejection remains visible. Tool
-  output is bounded and normalized consistently for live/replay; a nonzero exit note is not an ACP protocol failure.
+  output is bounded and normalized consistently for equivalent live/replay source envelopes; a nonzero exit note is not
+  an ACP protocol failure.
+- **Sub-agents:** Antigravity can delegate internally, but its official ACP projection exposes that work only as generic
+  parent-local tool calls. It supplies no trustworthy child identity or lifecycle, and live versus replayed invocation
+  status disagrees. Sesori therefore does not show Antigravity inline subtask tiles or child transcripts and cannot
+  offer sub-agent-scoped stop. Normal turn-wide cancellation still applies.
 - **Deletion:** the pinned runtime has no standard close/delete capability. Deleting in Sesori removes its own catalog
   and transcript data and retains a tombstone against re-import; it does not erase Google's conversation/profile files.
 - **Presentation:** shared harness settings and chooser surfaces show **Antigravity** with Google's official full-colour
@@ -113,10 +121,12 @@ needs no browser of its own, but does need a current connected client for initia
 ## Verification status and further contracts
 
 Implementation is not a claim of completed cross-platform end-to-end verification. Official archive integrity was
-checked for all five targets. Native initialize-only and managed-pipeline correctness has been exercised on macOS arm64
-in disposable state. Native Linux/Windows installation, real personal OAuth, authenticated discovery-session
-creation/resume, full session/image/history flows and the final cumulative L1–L5 matrix remain unverified.
-Missing test infrastructure is a blocked result, not a pass.
+checked for all five targets of package `1.1.1`. Native initialize-only and managed-pipeline correctness has been exercised
+on macOS arm64 in disposable state. The earlier bounded authenticated ACP probe against package `1.0.0` verified only
+the generic sub-agent projection described above; that observation was not rerun for `1.1.1`.
+Native Linux/Windows installation, real personal OAuth, authenticated discovery-session creation/resume, full
+ordinary session/image/history flows and the final cumulative L1–L5 matrix remain unverified. Missing test
+infrastructure is a blocked result, not a pass.
 
 The implementation plan was retired under the owner's
 [explicitly accepted verification reduction](../.plan/completed/antigravity-harness/PLAN.md).

@@ -97,7 +97,7 @@ void main() {
       ApiError.notAuthenticated(): VoiceTranscriptionNotAuthenticated,
       ApiError.dartHttpClient(Exception("offline")): VoiceTranscriptionNetworkFailure,
       ApiError.generic(): VoiceTranscriptionUnexpectedFailure,
-      ApiError.jsonParsing("bad json"): VoiceTranscriptionEmptyTranscript,
+      ApiError.jsonParsing(jsonString: "bad json", innerError: null): VoiceTranscriptionEmptyTranscript,
       ApiError.emptyResponse(): VoiceTranscriptionEmptyTranscript,
     };
 

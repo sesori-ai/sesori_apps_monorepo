@@ -133,7 +133,7 @@ void main() {
     File(p.join(directory.path, AntigravityRelease.harnessFileName(target: target)))
         .writeAsStringSync("synthetic sibling");
     final fixture =
-        jsonDecode(File("test/fixtures/official_initialize_1_0_0.json").readAsStringSync()) as Map<String, dynamic>;
+        jsonDecode(File("test/fixtures/synthetic_current_initialize.json").readAsStringSync()) as Map<String, dynamic>;
     final processes = _Processes(initialize: fixture);
     final store = _Store();
     final http = _Http();

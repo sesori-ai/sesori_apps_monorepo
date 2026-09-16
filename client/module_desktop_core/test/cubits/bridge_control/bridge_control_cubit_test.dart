@@ -1,8 +1,11 @@
 import "dart:async";
+import "dart:io";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:sesori_desktop_core/src/api/app_log_storage.dart";
+import "package:sesori_desktop_core/src/api/rotating_file_storage.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -58,6 +61,7 @@ void main() {
     });
 
     tearDown(() async {
+      setLogSink(sink: const StdoutLogSink());
       await cubit.close();
       await processService.disposeFake();
       await statusTracker.dispose();
@@ -79,7 +83,7 @@ void main() {
         ),
       );
       await pumpEventQueue();
-      expect(cubit.state.statusLabel, "Bridge: Starting — waiting for server (retrying every minute)");
+      expect(cubit.state.statusLabel, "Starting — waiting for server (retrying every minute)");
       statusTracker.applyStatus(
         status: const ControlStatus(
           startup: ControlStartupState.ready,
@@ -88,7 +92,7 @@ void main() {
         ),
       );
       await pumpEventQueue();
-      expect(cubit.state.statusLabel, "Bridge: Connected");
+      expect(cubit.state.statusLabel, "Connected");
     });
 
     test("a temporary desktop token failure shows an authentication wait", () async {
@@ -103,7 +107,7 @@ void main() {
         ),
       );
       await pumpEventQueue();
-      expect(cubit.state.statusLabel, "Bridge: Starting — waiting for desktop authentication (retrying every minute)");
+      expect(cubit.state.statusLabel, "Starting — waiting for desktop authentication (retrying every minute)");
     });
 
     test("initializes a typed tray menu and reacts to process/status snapshots", () async {
@@ -195,6 +199,47 @@ void main() {
       expect(cubit.state.launchAtLoginEnabled, isFalse);
     });
 
+    test("native registration refresh updates both General state and the tray", () async {
+      await cubit.initialize();
+      final activities = <BridgeControlActivity>[];
+      final subscription = cubit.stream.map((state) => state.activity).listen(activities.add);
+      addTearDown(subscription.cancel);
+      launchAtLogin.enabled = true;
+      await cubit.refreshLaunchAtLogin();
+      await pumpEventQueue();
+      expect(activities, [BridgeControlActivity.configuringLaunchAtLogin, BridgeControlActivity.idle]);
+      expect(cubit.state.launchAtLoginEnabled, isTrue);
+      expect(
+        _command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleLaunchAtLogin).label,
+        "Disable Launch at Login",
+      );
+      expect(cubit.state.activity, BridgeControlActivity.idle);
+      expect(launchAtLogin.enableCalls, 0);
+      expect(launchAtLogin.disableCalls, 0);
+    });
+
+    test("native refresh locks preference writes and releases them after a read failure", () async {
+      await cubit.initialize();
+      final read = Completer<bool>();
+      launchAtLogin.read = read;
+      final refresh = cubit.refreshLaunchAtLogin();
+      expect(cubit.state.activity, BridgeControlActivity.configuringLaunchAtLogin);
+      await cubit.setLaunchAtLogin(enabled: true);
+      expect(launchAtLogin.enableCalls, 0);
+      read.completeError(StateError("native registration unavailable"), StackTrace.current);
+      await refresh;
+      expect(cubit.state.activity, BridgeControlActivity.idle);
+      expect(cubit.state.launchAtLoginEnabled, isFalse);
+    });
+
+    test("a switch setting the same value twice does not invert its intent", () async {
+      await cubit.initialize();
+      await cubit.setLaunchAtLogin(enabled: true);
+      await cubit.setLaunchAtLogin(enabled: true);
+      expect(cubit.state.launchAtLoginEnabled, isTrue);
+      expect(launchAtLogin.disableCalls, 0);
+    });
+
     test("failed launch-at-login registration remains retryable", () async {
       launchAtLogin.enableError = StateError("login item unavailable");
       await cubit.initialize();
@@ -235,6 +280,47 @@ void main() {
 
       expect(windowHost.showCalls, 1);
       expect(hiddenCubit.state.trayAvailability, SystemTrayAvailability.unavailable);
+    });
+
+    test("hidden bundle refusal stays non-modal, offers tray guidance, and permits explicit retry", () async {
+      await cubit.close();
+      final BridgeControlCubit hiddenCubit = BridgeControlCubit(
+        processService: processService,
+        statusTracker: statusTracker,
+        systemTray: systemTray,
+        windowHost: windowHost,
+        windowBoundsService: windowBoundsService,
+        applicationTerminator: applicationTerminator,
+        logRepository: logRepository,
+        instanceService: instanceService,
+        relayConnectionService: relayConnectionService,
+        takeoverOrchestrator: takeoverOrchestrator,
+        logoutTracker: logoutTracker,
+        urlLauncher: urlLauncher,
+        launchAtLogin: launchAtLogin,
+        hiddenLaunch: true,
+      );
+      addTearDown(hiddenCubit.close);
+      await hiddenCubit.initialize();
+      processService.emit(
+        state: const BridgeProcessStartFailed(message: "Restart Sesori or reinstall the matching desktop download."),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      await pumpEventQueue();
+
+      expect(hiddenCubit.state.processState, isA<BridgeProcessStartFailed>());
+      expect(hiddenCubit.state.statusLabel, "Repair required");
+      expect(_textLabels(menu: systemTray.menus.last), contains("Bridge: ${hiddenCubit.state.statusLabel}"));
+      expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge On");
+      expect(windowHost.showCalls, 0);
+      expect(processService.startCalls, 0);
+
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue();
+
+      expect(processService.startCalls, 1);
+      expect(processService.stopCalls, 0);
+      expect(windowHost.showCalls, 0);
     });
 
     test("reports window-only fallback when no usable tray host exists", () async {
@@ -349,7 +435,7 @@ void main() {
     test("Open Logs launches the repository-owned local file URI", () async {
       await cubit.openLogs();
 
-      expect(urlLauncher.launched, <Uri>[Uri.file("/tmp/sesori/bridge.log")]);
+      expect(urlLauncher.launched, <Uri>[Uri.directory("/tmp/sesori/logs")]);
     });
 
     test("toggle commands drive desired On and Off through the process service", () async {
@@ -382,6 +468,14 @@ void main() {
       expect(processService.startCalls, 1);
       expect(processService.desiredState, BridgeProcessDesiredState.on);
       expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.on]);
+    });
+
+    test("explicit Stop persists Off even when the helper has already stopped", () async {
+      await cubit.initialize();
+      await cubit.stopBridge();
+      expect(processService.startCalls, 0);
+      expect(processService.stopCalls, 1);
+      expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.off]);
     });
 
     test("connection recovery starts the helper and reconnects the relay", () async {
@@ -553,12 +647,59 @@ void main() {
       expect(applicationTerminator.exitCodes, <int>[0]);
     });
 
+    test("Quit waits for final cleanup diagnostics before terminating", () async {
+      final sink = _PendingLogSink();
+      setLogSink(sink: sink);
+      windowHost.disposeError = StateError("window cleanup /tmp/context");
+      await cubit.initialize();
+      final quitting = cubit.quit();
+      await sink.started.future;
+      expect(windowHost.disposeCalls, 1);
+      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(sink.records.last.message, "Failed to dispose the desktop window host during quit");
+      expect(sink.records.last.diagnosticError, contains("window cleanup /tmp/context"));
+      sink.pending.complete();
+      await quitting;
+      expect(applicationTerminator.exitCodes, [0]);
+    });
+
+    test("Quit persists the final cleanup record before the termination callback", () async {
+      final root = Directory.systemTemp.createTempSync("sesori_quit_logs_");
+      addTearDown(() {
+        setLogSink(sink: const StdoutLogSink());
+        root.deleteSync(recursive: true);
+      });
+      setLogSink(
+        sink: AppLogStorage.forTesting(
+          applicationSupportDirectory: _LogDirectory(root: root),
+          storage: RotatingFileStorage.forTesting(
+            fileName: "app.log",
+            maxFileBytes: 8192,
+            isWindows: true,
+            setPermissions: ({required path, required mode}) async {},
+          ),
+          reportFailure: fail,
+        ),
+      );
+      windowHost.disposeError = StateError("final cleanup /tmp/context");
+      applicationTerminator.beforeTerminate = () {
+        final persisted = File("${root.path}/logs/app.log").readAsStringSync();
+        expect(persisted, contains("Failed to dispose the desktop window host during quit"));
+        expect(persisted, contains("final cleanup /tmp/context"));
+      };
+      await cubit.initialize();
+      await cubit.quit();
+      expect(applicationTerminator.exitCodes, [0]);
+    });
+
     test("Quit leaves the app alive when expected bridge stop fails", () async {
       processService.emit(
         state: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
       );
       processService.stopError = StateError("bridge remained alive");
+      final sink = _PendingLogSink();
+      setLogSink(sink: sink);
       await cubit.initialize();
 
       systemTray.emit(command: SystemTrayCommand.quit);
@@ -566,6 +707,7 @@ void main() {
 
       expect(applicationTerminator.exitCodes, isEmpty);
       expect(systemTray.disposeCalls, 0);
+      expect(sink.started.isCompleted, isFalse);
       expect(cubit.state.activity, BridgeControlActivity.idle);
     });
   });
@@ -682,6 +824,7 @@ class _FakeWindowHost() implements WindowHost {
   int showCalls = 0;
   int hideCalls = 0;
   int disposeCalls = 0;
+  Object? disposeError;
 
   @override
   Stream<WindowHostEvent> get events => _events.stream;
@@ -721,6 +864,7 @@ class _FakeWindowHost() implements WindowHost {
   @override
   Future<void> dispose() async {
     disposeCalls++;
+    if (disposeError case final error?) throw error;
   }
 
   void emit({required WindowHostEvent event}) {
@@ -759,7 +903,7 @@ class _RecordingDesktopInstanceRepository() implements DesktopInstanceRepository
 
 class _FakeBridgeProcessLogRepository() implements BridgeProcessLogRepository {
   @override
-  Future<Uri> get logFileUri async => Uri.file("/tmp/sesori/bridge.log");
+  Future<Uri> get logDirectoryUri async => Uri.directory("/tmp/sesori/logs");
 }
 
 class _FakeDesktopInstanceService() implements DesktopInstanceService {
@@ -831,11 +975,31 @@ class _FakeUrlLauncher() implements UrlLauncher {
   }
 }
 
+class _PendingLogSink() implements LogSink {
+  final records = <LogRecord>[];
+  final started = Completer<void>();
+  final pending = Completer<void>();
+  @override
+  void write({required LogRecord record}) => records.add(record);
+  @override
+  Future<void> flush() {
+    started.complete();
+    return pending.future;
+  }
+}
+
+class _LogDirectory({required final Directory root}) implements DesktopApplicationSupportDirectory {
+  @override
+  Future<Directory> resolve() async => root;
+}
+
 class _FakeDesktopApplicationTerminator() implements DesktopApplicationTerminator {
   final List<int> exitCodes = <int>[];
+  void Function()? beforeTerminate;
 
   @override
   void terminate({required int exitCode}) {
+    beforeTerminate?.call();
     exitCodes.add(exitCode);
   }
 }
@@ -846,9 +1010,13 @@ class _FakeLaunchAtLogin() implements LaunchAtLogin {
   int disableCalls = 0;
   Object? enableError;
   Object? disableError;
+  Completer<bool>? read;
 
   @override
-  Future<bool> isEnabled() async => enabled;
+  Future<bool> isEnabled() async {
+    final pending = read;
+    return pending == null ? enabled : await pending.future;
+  }
 
   @override
   Future<void> enable() async {

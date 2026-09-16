@@ -102,8 +102,8 @@ browsing, or another plugin.
 Antigravity support uses Google's proprietary official ACP runtime pair. Review
 [Google's terms](https://antigravity.google/terms) and
 [Antigravity documentation](https://antigravity.google/docs/) before using it.
-The pin is ACP registry package `1.0.0`, with exact runtime identity
-`agy_acp_server_20260818_01_RC01`. Sesori can install the official pair from
+The pin is ACP registry package `1.1.1`, with exact runtime identity
+`agy_acp_server_1.1.1`. Sesori can install the official pair from
 harness detail after showing download guidance, then update existing managed
 installations on bridge start. Linux requires Info-ZIP `unzip` with ZipInfo;
 installation checks it before downloading. See [INSTALL.md](INSTALL.md).
@@ -116,7 +116,8 @@ Either make the server discoverable on PATH or pass
 `--antigravity-bin <path-to-server>`. The sibling harness is mandatory; an
 explicit server path is authoritative and disables managed Install/upgrade.
 Otherwise resolution prefers a validated PATH pair, then an installed managed
-pair. Setup inspection itself remains inert and does not validate the runtime.
+pair. Setup inspection runs only a bounded, sanitized `--version` process probe;
+it does not initialize ACP, mutate the isolated profile or validate a login.
 
 Authentication supports personal Google OAuth only and must be started from a
 current Sesori mobile or desktop app; there is no bridge-CLI fallback. For a

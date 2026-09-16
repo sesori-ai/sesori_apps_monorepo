@@ -59,7 +59,6 @@ class BridgeProcessService.forTesting({
   required final BridgeExecutablePathResolver _executablePathResolver,
   required final List<Duration> _crashBackoffDelays,
   required final Duration _stableRuntime,
-  required final int _recentLogCount,
   required final DateTime Function() _now,
   required final BridgeProcessWarningReporter _reportWarning,
 }) {
@@ -79,7 +78,6 @@ class BridgeProcessService.forTesting({
          executablePathResolver: executablePathResolver,
          crashBackoffDelays: defaultCrashBackoffDelays,
          stableRuntime: defaultStableRuntime,
-         recentLogCount: defaultRecentLogCount,
          now: DateTime.now,
          reportWarning: _logWarning,
        );
@@ -87,7 +85,6 @@ class BridgeProcessService.forTesting({
   @visibleForTesting
   this
     : assert(!_stableRuntime.isNegative, "stableRuntime must not be negative"),
-      assert(_recentLogCount > 0, "recentLogCount must be positive"),
       assert(
         !_crashBackoffDelays.any((delay) => delay.isNegative),
         "crashBackoffDelays must not contain negative durations",
@@ -115,7 +112,6 @@ class BridgeProcessService.forTesting({
     Duration(seconds: 16),
   ];
   static const Duration defaultStableRuntime = Duration(minutes: 5);
-  static const int defaultRecentLogCount = 20;
 
   final BehaviorSubject<BridgeProcessState> _states = BehaviorSubject<BridgeProcessState>.seeded(
     const BridgeProcessStopped(),
@@ -329,7 +325,12 @@ class BridgeProcessService.forTesting({
           innerCause: AsyncError(error, stackTrace),
         );
       }
-      _publish(_stateAfterStartCleanup());
+      final BridgeProcessState cleanupState = _stateAfterStartCleanup();
+      _publish(
+        cleanupState is BridgeProcessStopped && error is BridgeExecutableResolutionException
+            ? BridgeProcessStartFailed(message: error.userMessage)
+            : cleanupState,
+      );
       rethrow;
     }
   }
@@ -587,13 +588,10 @@ class BridgeProcessService.forTesting({
     }
     _crashCount++;
     if (_crashCount > _crashBackoffDelays.length) {
-      final List<BridgeProcessLogEntry> snapshot = _logTracker.snapshot;
-      final int firstRecentIndex = snapshot.length > _recentLogCount ? snapshot.length - _recentLogCount : 0;
       _publish(
         BridgeProcessCrashGiveUp(
           exitCode: exitCode,
           crashCount: _crashCount,
-          recentLogs: snapshot.sublist(firstRecentIndex),
         ),
       );
       return;
@@ -683,7 +681,8 @@ class BridgeProcessService.forTesting({
       return;
     } on Object catch (error, stackTrace) {
       _reportWarning(message: context, error: error, stackTrace: stackTrace);
-      if (!_repository.isRunning && _activePid == null) {
+      // Executable repair guidance must not be replaced by crash backoff.
+      if (error is! BridgeExecutableResolutionException && !_repository.isRunning && _activePid == null) {
         _scheduleCrashRetry(
           exitCode: null,
           generation: generation,

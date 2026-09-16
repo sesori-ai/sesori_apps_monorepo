@@ -84,6 +84,7 @@ import 'package:sesori_mobile/core/platform/go_router_route_dispatcher.dart'
     as _i610;
 import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
     as _i597;
+import 'package:sesori_mobile/core/platform/io_app_log_sink.dart' as _i130;
 import 'package:sesori_mobile/core/platform/mobile_active_bridge_locality.dart'
     as _i877;
 import 'package:sesori_mobile/core/platform/package_info_client.dart' as _i1024;
@@ -149,6 +150,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1019.SharePlusClient>(() => _i1019.SharePlusClient());
     gh.lazySingleton<_i776.SingularStaticAdapter>(
       () => _i776.SingularStaticAdapter(),
+    );
+    gh.lazySingleton<_i948.LogSink>(
+      () => _i130.IoAppLogSink(
+        directoryClient: gh<_i948.TemporaryDirectoryClient>(),
+      ),
     );
     gh.lazySingleton<_i948.OAuthDeviceDescriptorProvider>(
       () => _i363.FlutterOAuthDeviceDescriptorProvider(

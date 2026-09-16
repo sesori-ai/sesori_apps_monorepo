@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 mixin _$PluginQueuedPrompt {
 
 /// The prompt id handed to `sendPrompt`/`sendCommand`.
- String get id;/// User-visible prompt text. Null for an attachment-only prompt — never
+ String get id; PluginQueuedPromptDispatchState get dispatchState;/// User-visible prompt text. Null for an attachment-only prompt — never
 /// an empty string.
  String? get text;/// Bare slash-command name for a command send, without the leading `/`.
 /// Null for a plain prompt.
@@ -36,20 +36,20 @@ $PluginQueuedPromptCopyWith<PluginQueuedPrompt> get copyWith => _$PluginQueuedPr
 @override
 bool operator ==(Object other) {
   final _this = this as PluginQueuedPrompt;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginQueuedPrompt&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.text, _this.text) || other.text == _this.text)&&(identical(other.command, _this.command) || other.command == _this.command)&&(identical(other.attachmentCount, _this.attachmentCount) || other.attachmentCount == _this.attachmentCount)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginQueuedPrompt&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.dispatchState, _this.dispatchState) || other.dispatchState == _this.dispatchState)&&(identical(other.text, _this.text) || other.text == _this.text)&&(identical(other.command, _this.command) || other.command == _this.command)&&(identical(other.attachmentCount, _this.attachmentCount) || other.attachmentCount == _this.attachmentCount)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as PluginQueuedPrompt;
-  return Object.hash(runtimeType,_this.id,_this.text,_this.command,_this.attachmentCount,_this.createdAt);
+  return Object.hash(runtimeType,_this.id,_this.dispatchState,_this.text,_this.command,_this.attachmentCount,_this.createdAt);
 }
 
 @override
 String toString() {
   final _this = this as PluginQueuedPrompt;
-  return 'PluginQueuedPrompt(id: ${_this.id}, text: ${_this.text}, command: ${_this.command}, attachmentCount: ${_this.attachmentCount}, createdAt: ${_this.createdAt})';
+  return 'PluginQueuedPrompt(id: ${_this.id}, dispatchState: ${_this.dispatchState}, text: ${_this.text}, command: ${_this.command}, attachmentCount: ${_this.attachmentCount}, createdAt: ${_this.createdAt})';
 }
 
 
@@ -60,7 +60,7 @@ abstract mixin class $PluginQueuedPromptCopyWith<$Res>  {
   factory $PluginQueuedPromptCopyWith(PluginQueuedPrompt value, $Res Function(PluginQueuedPrompt) _then) = _$PluginQueuedPromptCopyWithImpl;
 @useResult
 $Res call({
- String id, String? text, String? command, int attachmentCount, int createdAt
+ String id, PluginQueuedPromptDispatchState dispatchState, String? text, String? command, int attachmentCount, int createdAt
 });
 
 
@@ -77,10 +77,11 @@ class _$PluginQueuedPromptCopyWithImpl<$Res>
 
 /// Create a copy of PluginQueuedPrompt
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? text = freezed,Object? command = freezed,Object? attachmentCount = null,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? dispatchState = null,Object? text = freezed,Object? command = freezed,Object? attachmentCount = null,Object? createdAt = null,}) {
   return _then(PluginQueuedPrompt(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,dispatchState: null == dispatchState ? _self.dispatchState : dispatchState // ignore: cast_nullable_to_non_nullable
+as PluginQueuedPromptDispatchState,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
 as String?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
 as String?,attachmentCount: null == attachmentCount ? _self.attachmentCount : attachmentCount // ignore: cast_nullable_to_non_nullable
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
@@ -96,11 +97,12 @@ as int,
 @JsonSerializable(createFactory: false)
 
 class _PluginQueuedPrompt implements PluginQueuedPrompt {
-  const _PluginQueuedPrompt({required this.id, required this.text, required this.command, required this.attachmentCount, required this.createdAt});
+  const _PluginQueuedPrompt({required this.id, required this.dispatchState, required this.text, required this.command, required this.attachmentCount, required this.createdAt});
   
 
 /// The prompt id handed to `sendPrompt`/`sendCommand`.
 @override final  String id;
+@override final  PluginQueuedPromptDispatchState dispatchState;
 /// User-visible prompt text. Null for an attachment-only prompt — never
 /// an empty string.
 @override final  String? text;
@@ -125,18 +127,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginQueuedPrompt&&(identical(other.id, id) || other.id == id)&&(identical(other.text, text) || other.text == text)&&(identical(other.command, command) || other.command == command)&&(identical(other.attachmentCount, attachmentCount) || other.attachmentCount == attachmentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginQueuedPrompt&&(identical(other.id, id) || other.id == id)&&(identical(other.dispatchState, dispatchState) || other.dispatchState == dispatchState)&&(identical(other.text, text) || other.text == text)&&(identical(other.command, command) || other.command == command)&&(identical(other.attachmentCount, attachmentCount) || other.attachmentCount == attachmentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,text,command,attachmentCount,createdAt);
+    return Object.hash(runtimeType,id,dispatchState,text,command,attachmentCount,createdAt);
 }
 
 @override
 String toString() {
-    return 'PluginQueuedPrompt(id: $id, text: $text, command: $command, attachmentCount: $attachmentCount, createdAt: $createdAt)';
+    return 'PluginQueuedPrompt(id: $id, dispatchState: $dispatchState, text: $text, command: $command, attachmentCount: $attachmentCount, createdAt: $createdAt)';
 }
 
 
@@ -147,7 +149,7 @@ abstract mixin class _$PluginQueuedPromptCopyWith<$Res> implements $PluginQueued
   factory _$PluginQueuedPromptCopyWith(_PluginQueuedPrompt value, $Res Function(_PluginQueuedPrompt) _then) = __$PluginQueuedPromptCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? text, String? command, int attachmentCount, int createdAt
+ String id, PluginQueuedPromptDispatchState dispatchState, String? text, String? command, int attachmentCount, int createdAt
 });
 
 
@@ -164,10 +166,11 @@ class __$PluginQueuedPromptCopyWithImpl<$Res>
 
 /// Create a copy of PluginQueuedPrompt
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? text = freezed,Object? command = freezed,Object? attachmentCount = null,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? dispatchState = null,Object? text = freezed,Object? command = freezed,Object? attachmentCount = null,Object? createdAt = null,}) {
   return _then(_PluginQueuedPrompt(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,dispatchState: null == dispatchState ? _self.dispatchState : dispatchState // ignore: cast_nullable_to_non_nullable
+as PluginQueuedPromptDispatchState,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
 as String?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
 as String?,attachmentCount: null == attachmentCount ? _self.attachmentCount : attachmentCount // ignore: cast_nullable_to_non_nullable
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable

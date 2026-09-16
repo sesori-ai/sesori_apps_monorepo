@@ -22,6 +22,8 @@ import 'package:sesori_dart_core/src/api/bridge_api.dart' as _i384;
 import 'package:sesori_dart_core/src/api/bridge_settings_api.dart' as _i415;
 import 'package:sesori_dart_core/src/api/client/relay_http_client.dart'
     as _i857;
+import 'package:sesori_dart_core/src/api/connection_notification_observation_api.dart'
+    as _i479;
 import 'package:sesori_dart_core/src/api/filesystem_api.dart' as _i1068;
 import 'package:sesori_dart_core/src/api/installed_app_build_api.dart' as _i258;
 import 'package:sesori_dart_core/src/api/legal_api.dart' as _i835;
@@ -101,6 +103,8 @@ import 'package:sesori_dart_core/src/repositories/chat_input_mode_store.dart'
     as _i901;
 import 'package:sesori_dart_core/src/repositories/composer_draft_repository.dart'
     as _i198;
+import 'package:sesori_dart_core/src/repositories/connection_notification_observation_repository.dart'
+    as _i678;
 import 'package:sesori_dart_core/src/repositories/installed_app_build_repository.dart'
     as _i507;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
@@ -141,6 +145,8 @@ import 'package:sesori_dart_core/src/services/catalog_rescan_service.dart'
     as _i572;
 import 'package:sesori_dart_core/src/services/composer_attachment_dispatcher.dart'
     as _i705;
+import 'package:sesori_dart_core/src/services/connection_notification_observation_service.dart'
+    as _i959;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
@@ -368,6 +374,11 @@ extension GetItInjectableX on _i174.GetIt {
         claimStorage: gh<_i275.AttributionClaimStorage>(),
       ),
     );
+    gh.lazySingleton<_i479.ConnectionNotificationObservationApi>(
+      () => _i479.ConnectionNotificationObservationApi(
+        connectionService: gh<_i369.ConnectionService>(),
+      ),
+    );
     gh.lazySingleton<_i37.ViewDeclarationApi>(
       () => _i37.ViewDeclarationApi(
         connectionService: gh<_i369.ConnectionService>(),
@@ -421,6 +432,12 @@ extension GetItInjectableX on _i174.GetIt {
         failureReporter: gh<_i553.FailureReporter>(),
       ),
     );
+    gh.lazySingleton<_i678.ConnectionNotificationObservationRepository>(
+      () => _i678.ConnectionNotificationObservationRepository(
+        api: gh<_i479.ConnectionNotificationObservationApi>(),
+        deviceIdStorage: gh<_i407.NotificationPreferencesDeviceIdStorage>(),
+      ),
+    );
     gh.lazySingleton<_i857.RelayHttpApiClient>(
       () => _i857.RelayHttpApiClient(gh<_i369.ConnectionService>()),
     );
@@ -429,6 +446,12 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i442.AuthSession>(),
         releaseCutoffRepository: gh<_i672.AnalyticsReleaseCutoffRepository>(),
         installedAppBuildRepository: gh<_i507.InstalledAppBuildRepository>(),
+      ),
+    );
+    gh.lazySingleton<_i959.ConnectionNotificationObservationService>(
+      () => _i959.ConnectionNotificationObservationService(
+        connectionService: gh<_i369.ConnectionService>(),
+        repository: gh<_i678.ConnectionNotificationObservationRepository>(),
       ),
     );
     gh.lazySingleton<_i415.BridgeSettingsApi>(

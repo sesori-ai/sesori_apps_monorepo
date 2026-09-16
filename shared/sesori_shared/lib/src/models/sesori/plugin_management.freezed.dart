@@ -210,6 +210,10 @@ PluginAuthenticationChallengeResponse _$PluginAuthenticationChallengeResponseFro
           return PluginAuthenticationBrowserChallengeResponse.fromJson(
             json
           );
+                case 'pastedCode':
+          return PluginAuthenticationPastedCodeChallengeResponse.fromJson(
+            json
+          );
         
           default:
             return PluginAuthenticationUnknownChallengeResponse.fromJson(
@@ -299,6 +303,34 @@ Map<String, dynamic> toJson() {
 /// @nodoc
 @JsonSerializable()
 
+class PluginAuthenticationPastedCodeChallengeResponse implements PluginAuthenticationChallengeResponse {
+  const PluginAuthenticationPastedCodeChallengeResponse({required this.authorizationUrl,  String? $type}): $type = $type ?? 'pastedCode';
+  factory PluginAuthenticationPastedCodeChallengeResponse.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationPastedCodeChallengeResponseFromJson(json);
+
+ final  String authorizationUrl;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginAuthenticationPastedCodeChallengeResponseToJson(this, );
+}
+
+
+
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
 class PluginAuthenticationUnknownChallengeResponse implements PluginAuthenticationChallengeResponse {
   const PluginAuthenticationUnknownChallengeResponse({ String? $type}): $type = $type ?? 'unknown';
   factory PluginAuthenticationUnknownChallengeResponse.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationUnknownChallengeResponseFromJson(json);
@@ -357,6 +389,50 @@ class _PluginAuthenticationRedirectRequest implements PluginAuthenticationRedire
 @override
 Map<String, dynamic> toJson() {
   return _$PluginAuthenticationRedirectRequestToJson(this, );
+}
+
+
+
+
+
+}
+
+
+
+
+
+/// @nodoc
+mixin _$PluginAuthenticationCodeRequest {
+
+ String get code;
+
+  /// Serializes this PluginAuthenticationCodeRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+
+
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _PluginAuthenticationCodeRequest implements PluginAuthenticationCodeRequest {
+  const _PluginAuthenticationCodeRequest({required this.code});
+  factory _PluginAuthenticationCodeRequest.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationCodeRequestFromJson(json);
+
+@override final  String code;
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginAuthenticationCodeRequestToJson(this, );
 }
 
 

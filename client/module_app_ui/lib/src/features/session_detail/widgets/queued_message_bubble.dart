@@ -155,15 +155,18 @@ class const QueuedMessageBubble({
           // Cross-fade the status rail between sending/queued so the swap
           // reads as one row changing state; the enclosing prompt row eases
           // the height difference. Reduced motion swaps instantly.
-          child: reducedMotion
-              ? status
-              : AnimatedSwitcher(
-                  duration: duration,
-                  child: KeyedSubtree(
-                    key: ValueKey(presentation.runtimeType),
-                    child: status,
+          // Cancelling a queued prompt must not dismiss an in-progress draft.
+          child: TextFieldTapRegion(
+            child: reducedMotion
+                ? status
+                : AnimatedSwitcher(
+                    duration: duration,
+                    child: KeyedSubtree(
+                      key: ValueKey(presentation.runtimeType),
+                      child: status,
+                    ),
                   ),
-                ),
+          ),
         ),
       ],
     );

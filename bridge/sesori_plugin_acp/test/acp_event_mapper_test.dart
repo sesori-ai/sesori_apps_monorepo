@@ -644,10 +644,9 @@ void main() {
           "status": "pending",
         }),
       );
-      expect(
-        emptyKind.whereType<BridgeSseMessagePartUpdated>().single.part.tool,
-        "Search files",
-      );
+      final emptyKindPart = emptyKind.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(emptyKindPart.tool, "Search files");
+      expect(emptyKindPart.state.title, isNull, reason: "a title that became the tool name is not repeated");
 
       final nonStringKind = mapper.map(
         update({

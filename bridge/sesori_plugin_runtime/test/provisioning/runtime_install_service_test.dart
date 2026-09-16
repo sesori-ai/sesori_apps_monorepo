@@ -172,6 +172,8 @@ void main() {
 
   String versionDir() => p.join(managedDir.path, "1.17.9");
 
+  Future<void> permitManagedMutation() async {}
+
   Stream<RuntimeProvisionProgress> install(RuntimeInstallService service, {StartAbortSignal? abort}) {
     return service.install(
       managedDir: managedDir.path,
@@ -180,6 +182,7 @@ void main() {
       downloadUrl: "https://example.test/opencode-test.zip",
       asset: _asset,
       environment: const {"PATH": "/runtime-test"},
+      revalidateManagedMutation: permitManagedMutation,
       startAborted: abort ?? StartAbortSignal.never,
     );
   }
@@ -223,6 +226,7 @@ void main() {
           downloadUrl: "https://example.test/cursor-test.tar.gz",
           asset: _packageAsset,
           environment: const {},
+          revalidateManagedMutation: permitManagedMutation,
           startAborted: StartAbortSignal.never,
         )
         .drain<void>();
@@ -249,6 +253,7 @@ void main() {
           downloadUrl: "https://example.test/codex-package-test.tar.gz",
           asset: _rootPackageAsset,
           environment: const {},
+          revalidateManagedMutation: permitManagedMutation,
           startAborted: StartAbortSignal.never,
         )
         .drain<void>();
@@ -276,6 +281,7 @@ void main() {
           downloadUrl: "https://example.test/omp-test",
           asset: _directAsset,
           environment: const {},
+          revalidateManagedMutation: permitManagedMutation,
           startAborted: StartAbortSignal.never,
         )
         .toList();
@@ -297,6 +303,7 @@ void main() {
           downloadUrl: "https://example.test/omp-test.exe",
           asset: _directAsset,
           environment: const {},
+          revalidateManagedMutation: permitManagedMutation,
           startAborted: StartAbortSignal.never,
         )
         .drain<void>();
@@ -314,6 +321,7 @@ void main() {
             downloadUrl: "https://example.test/omp-test",
             asset: _directAsset,
             environment: const {},
+            revalidateManagedMutation: permitManagedMutation,
             startAborted: StartAbortSignal.never,
           )
           .drain<void>(),
@@ -335,6 +343,7 @@ void main() {
             downloadUrl: "https://example.test/omp-test",
             asset: _directAsset,
             environment: const {},
+            revalidateManagedMutation: permitManagedMutation,
             startAborted: controller.signal,
           )
           .drain<void>(),

@@ -8,12 +8,12 @@ import "package:test/test.dart";
 void main() {
   const manifest = OmpRuntimeManifest();
 
-  test("keeps the PATH floor and targets v17.3.8", () {
+  test("keeps the PATH floor and targets v18.1.19", () {
     expect(manifest.runtimeId, "omp");
     expect(manifest.pathExecutableName, "omp");
     expect(manifest.binaryFileName, Platform.isWindows ? "omp.exe" : "omp");
     expect(manifest.minPathVersion.raw, "17.2.13");
-    expect(OmpRuntimeManifest.targetVersion, "17.3.8");
+    expect(OmpRuntimeManifest.targetVersion, "18.1.19");
     expect(manifest.bundledVersion.raw, OmpRuntimeManifest.targetVersion);
     expect(manifest.parseVersion(value: "omp/17.3.8")?.raw, "17.3.8");
     expect(manifest.parseVersion(value: "17.3.8"), isNull);
@@ -27,7 +27,7 @@ void main() {
     expect(manifest.parseInstalledVersion(value: ".sesori-runtime-staging"), isNull);
   });
 
-  test("maps all seven official direct binary assets", () {
+  test("maps all eight official direct binary assets", () {
     final assets = <RuntimeAsset>[
       manifest.assetFor(
         target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
@@ -39,6 +39,9 @@ void main() {
       manifest.assetForLinux(arch: PlatformArch.x64, libc: OmpLinuxLibc.glibc)!,
       manifest.assetForLinux(arch: PlatformArch.arm64, libc: OmpLinuxLibc.musl)!,
       manifest.assetForLinux(arch: PlatformArch.x64, libc: OmpLinuxLibc.musl)!,
+      manifest.assetFor(
+        target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.arm64),
+      )!,
       manifest.assetFor(
         target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64),
       )!,
@@ -52,18 +55,24 @@ void main() {
       "omp-linux-x64",
       "omp-linux-musl-arm64",
       "omp-linux-musl-x64",
+      "omp-windows-arm64.exe",
       "omp-windows-x64.exe",
     });
-    expect(assets.map((asset) => asset.sha256).toSet(), hasLength(7));
+    expect(assets.map((asset) => asset.sha256).toSet(), hasLength(8));
     expect(assets, everyElement(predicate<RuntimeAsset>((asset) => RegExp(r"^[0-9a-f]{64}$").hasMatch(asset.sha256))));
   });
 
-  test("does not claim a Windows arm64 asset", () {
+  test("advertises the official Windows arm64 direct binary", () {
+    const target = PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.arm64);
+    final asset = manifest.assetFor(target: target)!;
+
+    expect(manifest.supportsManagedInstallOn(target: target), isTrue);
+    expect(asset, isA<DirectBinaryRuntimeAsset>());
+    expect(asset.assetName, "omp-windows-arm64.exe");
+    expect(asset.sha256, "4a5e90e1f1b85a263862b190860caaff76da6890863bbdbaaf29600a0eb54afb");
     expect(
-      manifest.assetFor(
-        target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.arm64),
-      ),
-      isNull,
+      manifest.downloadUrlFor(asset: asset),
+      "https://github.com/can1357/oh-my-pi/releases/download/v18.1.19/omp-windows-arm64.exe",
     );
   });
 
@@ -73,7 +82,7 @@ void main() {
     )!;
     expect(
       manifest.downloadUrlFor(asset: asset),
-      "https://github.com/can1357/oh-my-pi/releases/download/v17.3.8/omp-darwin-arm64",
+      "https://github.com/can1357/oh-my-pi/releases/download/v18.1.19/omp-darwin-arm64",
     );
   });
 }

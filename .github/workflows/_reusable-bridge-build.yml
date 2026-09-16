@@ -192,16 +192,22 @@ jobs:
           fi
         working-directory: bridge/app
 
-      - name: Sign binary
+      - name: Sign macOS bundle
         if: runner.os == 'macOS'
         env:
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
         run: |
-          codesign -s "Developer ID Application: DigitalBlock Labs LTD ($APPLE_TEAM_ID)" \
+          identity="Developer ID Application: DigitalBlock Labs LTD ($APPLE_TEAM_ID)"
+          for library in build/cli/bundle/lib/*.dylib; do
+            codesign -s "$identity" --timestamp --force --verbose "$library"
+            codesign --verify --strict --verbose=2 "$library"
+          done
+          codesign -s "$identity" \
             --timestamp \
             --force \
             --verbose \
             build/cli/bundle/bin/sesori-bridge
+          codesign --verify --strict --verbose=2 build/cli/bundle/bin/sesori-bridge
           codesign -dv --verbose=4 build/cli/bundle/bin/sesori-bridge
         working-directory: bridge/app
 
@@ -209,6 +215,18 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: tar -czf ${{ matrix.asset_name }}.tar.gz -C build/cli/bundle .
+        working-directory: bridge/app
+
+      - name: Verify signed macOS archive
+        if: runner.os == 'macOS'
+        run: |
+          verification_dir="$(mktemp -d)"
+          trap 'rm -rf "$verification_dir"' EXIT
+          tar -xzf "${{ matrix.asset_name }}.tar.gz" -C "$verification_dir"
+          for library in "$verification_dir"/lib/*.dylib; do
+            codesign --verify --strict --verbose=2 "$library"
+          done
+          codesign --verify --strict --verbose=2 "$verification_dir/bin/sesori-bridge"
         working-directory: bridge/app
 
       - name: Create archive (Windows)

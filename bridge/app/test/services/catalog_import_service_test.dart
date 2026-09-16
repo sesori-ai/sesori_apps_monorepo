@@ -36,7 +36,7 @@ void main() {
       );
 
       expect(
-        () => service.start(pluginId: "other", trigger: CatalogImportTrigger.explicit),
+        () => service.start(pluginId: "other", trigger: CatalogImportTrigger.rescan),
         throwsA(isA<CatalogImportPluginNotEnabledException>()),
       );
       expect(() => service.cancel(pluginId: "other"), throwsA(isA<CatalogImportPluginNotEnabledException>()));
@@ -76,7 +76,7 @@ void main() {
       expect(service.latestStatuses, isEmpty);
     });
 
-    test("overlapping automatic and explicit starts join and combine control", () async {
+    test("overlapping automatic and rescan starts join and combine control", () async {
       final hydrationGate = Completer<CatalogHydrationDto?>();
       final releaseImport = Completer<void>();
       final repository = _FakeCatalogImportRepository(
@@ -95,7 +95,7 @@ void main() {
       final completed = service.progress.firstWhere((status) => status is CatalogImportCompleted);
 
       service.start(pluginId: "selected", trigger: CatalogImportTrigger.automatic);
-      service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
+      service.start(pluginId: "selected", trigger: CatalogImportTrigger.rescan);
       hydrationGate.complete(
         const CatalogHydrationDto(
           pluginId: "selected",
@@ -106,7 +106,7 @@ void main() {
       await repository.importStarted.future;
 
       expect(repository.importCalls, 1);
-      expect(repository.lastControl?.explicitImportRequested, isTrue);
+      expect(repository.lastControl?.rescanRequested, isTrue);
       expect(repository.lastControl?.hydrationMarkerRequested, isTrue);
       releaseImport.complete();
       await completed;
@@ -129,7 +129,7 @@ void main() {
       addTearDown(service.dispose);
       final cancelled = service.progress.firstWhere((status) => status is CatalogImportCancelled);
 
-      service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
+      service.start(pluginId: "selected", trigger: CatalogImportTrigger.rescan);
       await repository.importStarted.future;
       service.cancel(pluginId: "selected");
       releaseImport.complete();
@@ -155,7 +155,7 @@ void main() {
         policy: CatalogEmptyHydrationPolicy.complete,
       );
       final cancelled = service.progress.firstWhere((status) => status is CatalogImportCancelled);
-      service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
+      service.start(pluginId: "selected", trigger: CatalogImportTrigger.rescan);
       await repository.importStarted.future;
 
       eligiblePluginIds.remove("selected");
@@ -191,7 +191,7 @@ void main() {
       final subscription = service.progress.listen(statuses.add);
       addTearDown(subscription.cancel);
 
-      service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
+      service.start(pluginId: "selected", trigger: CatalogImportTrigger.rescan);
       await service.progress.firstWhere((status) => status is CatalogImportFailed);
 
       expect(statuses.whereType<CatalogImportFailed>(), hasLength(1));
@@ -268,7 +268,7 @@ void main() {
         repository: repository,
         policy: CatalogEmptyHydrationPolicy.complete,
       );
-      service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
+      service.start(pluginId: "selected", trigger: CatalogImportTrigger.rescan);
       await repository.importStarted.future;
 
       final first = service.dispose();

@@ -283,7 +283,7 @@ void main() {
       final compact = messages.last.parts.single;
       expect(compact.tool, "compact");
       expect(compact.state.status, PluginToolStatus.completed);
-      expect(compact.state.title, "Context compacted");
+      expect(compact.state.title, isNull);
       expect(compact.state.output, isNull);
       expect(messages.toString(), isNot(contains(privateSummary)));
     });

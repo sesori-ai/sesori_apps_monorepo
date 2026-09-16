@@ -157,7 +157,7 @@ class PluginRuntime({
   bool _shuttingDown = false;
   Future<void>? _shutdownStartedPluginsFuture;
   Future<void>? _disposeFuture;
-  final Set<StartAbortController> _installAbortControllers = <StartAbortController>{};
+  final Set<_RuntimeMutation> _runtimeMutations = <_RuntimeMutation>{};
   final Set<StartAbortController> _authenticationAbortControllers = <StartAbortController>{};
 
   Stream<List<PluginRuntimeSnapshot>> get snapshots => _snapshotsSubject.stream;
@@ -262,31 +262,34 @@ class PluginRuntime({
       yield const ProvisionFailed(message: "The bridge is shutting down.");
       return;
     }
-    final abortController = StartAbortController();
-    _installAbortControllers.add(abortController);
+    final mutation = _RuntimeMutation();
+    _runtimeMutations.add(mutation);
     try {
       yield* slot.registration.descriptor.installRuntime(
         config: slot.registration.config,
         processes: _setupProcesses,
         environment: _environment,
         stateDirectory: slot.registration.stateDirectory,
-        startAborted: abortController.signal,
+        startAborted: mutation.abortController.signal,
         runtimeInUse: _SlotRuntimeInUseSignal(slot: slot),
       );
     } finally {
-      _installAbortControllers.remove(abortController);
+      _runtimeMutations.remove(mutation);
+      mutation.settled.complete();
     }
   }
 
   /// Whether a bridge start should install this plugin's pinned managed runtime
   /// in the background because Sesori already manages an older one.
   ///
-  /// The descriptor owns the decision and answers from configuration and its
-  /// state directory alone — no probing, no process spawning, no network.
-  bool needsManagedRuntimeUpgrade({required String pluginId}) {
+  /// The descriptor owns the decision and may run a bounded inert PATH probe;
+  /// it must not mutate a runtime or use the network.
+  Future<bool> needsManagedRuntimeUpgrade({required String pluginId}) async {
     final slot = _requireSlot(pluginId);
-    return slot.registration.descriptor.needsManagedRuntimeUpgrade(
+    return await slot.registration.descriptor.needsManagedRuntimeUpgrade(
       config: slot.registration.config,
+      processes: _setupProcesses,
+      environment: _environment,
       stateDirectory: slot.registration.stateDirectory,
     );
   }
@@ -341,36 +344,72 @@ class PluginRuntime({
     required int generation,
     required Uri redirectUri,
   }) async {
-    final slot = _requireSlot(pluginId);
-    final authentication = slot.authentication;
+    final authentication = _continuableAuthentication(pluginId: pluginId, generation: generation);
+    if (authentication == null) return _staleContinuation;
+    switch (authentication.operation) {
+      case PluginAuthenticationDeviceCodeOperation() || PluginAuthenticationPastedCodeOperation():
+        return _wrongKindContinuation;
+      case PluginAuthenticationBrowserOperation(:final submitRedirect):
+        return await _submitContinuation(
+          authentication: authentication,
+          submit: () => submitRedirect(redirectUri: redirectUri),
+        );
+    }
+  }
+
+  Future<PluginRuntimeAuthenticationContinuationResult> submitAuthenticationCode({
+    required String pluginId,
+    required int generation,
+    required String code,
+  }) async {
+    final authentication = _continuableAuthentication(pluginId: pluginId, generation: generation);
+    if (authentication == null) return _staleContinuation;
+    switch (authentication.operation) {
+      case PluginAuthenticationDeviceCodeOperation() || PluginAuthenticationBrowserOperation():
+        return _wrongKindContinuation;
+      case PluginAuthenticationPastedCodeOperation(:final submitCode):
+        return await _submitContinuation(
+          authentication: authentication,
+          submit: () => submitCode(code: code),
+        );
+    }
+  }
+
+  static const _staleContinuation = PluginRuntimeAuthenticationContinuationConflict(
+    reason: PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+  );
+
+  static const _wrongKindContinuation = PluginRuntimeAuthenticationContinuationConflict(
+    reason: PluginRuntimeAuthenticationContinuationConflictReason.wrongKind,
+  );
+
+  /// The active authentication [generation] names, or null once it is stale.
+  _PluginRuntimeAuthentication? _continuableAuthentication({required String pluginId, required int generation}) {
+    final authentication = _requireSlot(pluginId).authentication;
     if (_shuttingDown ||
         authentication == null ||
         authentication.generation != generation ||
         !authentication.acceptingContinuations) {
+      return null;
+    }
+    return authentication;
+  }
+
+  /// Hands the operation its one continuation. The flag is set before the
+  /// plugin call, so any later submission is `alreadySubmitted`.
+  Future<PluginRuntimeAuthenticationContinuationResult> _submitContinuation({
+    required _PluginRuntimeAuthentication authentication,
+    required Future<void> Function() submit,
+  }) async {
+    if (authentication.continuationSubmitted) {
       return const PluginRuntimeAuthenticationContinuationConflict(
-        reason: PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+        reason: PluginRuntimeAuthenticationContinuationConflictReason.alreadySubmitted,
       );
     }
-    switch (authentication.operation) {
-      case PluginAuthenticationDeviceCodeOperation():
-        return const PluginRuntimeAuthenticationContinuationConflict(
-          reason: PluginRuntimeAuthenticationContinuationConflictReason.wrongKind,
-        );
-      case PluginAuthenticationBrowserOperation(:final submitRedirect):
-        if (authentication.redirectSubmitted) {
-          return const PluginRuntimeAuthenticationContinuationConflict(
-            reason: PluginRuntimeAuthenticationContinuationConflictReason.alreadySubmitted,
-          );
-        }
-        authentication.redirectSubmitted = true;
-        await submitRedirect(redirectUri: redirectUri);
-        if (_shuttingDown || authentication.aborted) {
-          return const PluginRuntimeAuthenticationContinuationConflict(
-            reason: PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
-          );
-        }
-        return const PluginRuntimeAuthenticationContinuationApplied();
-    }
+    authentication.continuationSubmitted = true;
+    await submit();
+    if (_shuttingDown || authentication.aborted) return _staleContinuation;
+    return const PluginRuntimeAuthenticationContinuationApplied();
   }
 
   void _abortAuthentication({
@@ -1158,8 +1197,8 @@ class PluginRuntime({
   void beginShutdown() {
     if (_shuttingDown) return;
     _shuttingDown = true;
-    for (final controller in _installAbortControllers) {
-      controller.abort();
+    for (final mutation in _runtimeMutations) {
+      mutation.abortController.abort();
     }
     for (final controller in _authenticationAbortControllers) {
       controller.abort();
@@ -1256,6 +1295,12 @@ class PluginRuntime({
   Future<void> _dispose() async {
     beginShutdown();
     final errors = <({Object error, StackTrace stackTrace})>[];
+    // Do not let disposal overtake code still using this runtime's subjects and
+    // slots. The bridge shutdown coordinator owns the process-level backstop;
+    // direct callers may bound their wait without releasing mutation ownership.
+    await Future.wait([
+      for (final mutation in _runtimeMutations.toList(growable: false)) mutation.settled.future,
+    ]);
     await Future.wait([
       for (final slot in _slots.values)
         () async {
@@ -2112,6 +2157,11 @@ class PluginRuntime({
 
 typedef _CommandTransition = ({Object owner, Completer<void> completer});
 
+class _RuntimeMutation() {
+  final StartAbortController abortController = StartAbortController();
+  final Completer<void> settled = Completer<void>();
+}
+
 class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}) {
   PluginSetupStatus setup = const PluginSetupUnknown(actionHint: null);
   PluginRuntimeAccessGate accessGate = PluginRuntimeAccessGate.disabled;
@@ -2161,7 +2211,7 @@ class _PluginRuntimeAuthentication({
   required final PluginAuthenticationOperation operation,
 }) {
   bool acceptingContinuations = true;
-  bool redirectSubmitted = false;
+  bool continuationSubmitted = false;
   bool aborted = false;
 }
 

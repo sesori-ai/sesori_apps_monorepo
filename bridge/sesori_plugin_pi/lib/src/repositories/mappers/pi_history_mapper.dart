@@ -86,6 +86,19 @@ final class PiHistoryMapper({
     return command is String && command.isNotEmpty ? _clip(command) : null;
   }
 
+  /// The primary argument shown as the card title: the search pattern of
+  /// grep/find-style tools, otherwise the path of read/write/edit/ls. Skills
+  /// load through `read` on their SKILL.md, so the path names the skill too.
+  String? titleForToolCall({required PiToolCallContentDto toolCall}) {
+    final arguments = toolCall.arguments;
+    if (arguments is! Map) return null;
+    for (final key in const ["pattern", "path"]) {
+      final value = arguments[key];
+      if (value is String && value.isNotEmpty) return _clip(value);
+    }
+    return null;
+  }
+
   PluginMessageWithParts mapAssistantMessage({
     required String sessionId,
     required String messageId,
@@ -178,7 +191,7 @@ final class PiHistoryMapper({
               tool: toolCall.name,
               state: PluginToolState(
                 status: PluginToolStatus.pending,
-                title: null,
+                title: titleForToolCall(toolCall: toolCall),
                 shellCommand: shellCommandForToolCall(toolCall: toolCall),
                 output: null,
                 error: null,
@@ -250,21 +263,18 @@ final class PiHistoryMapper({
   PluginMessageWithParts mapRunningCompaction({required String sessionId, required String messageId}) => _mapCompaction(
     sessionId: sessionId,
     messageId: messageId,
-    title: "Compacting context",
     status: PluginToolStatus.running,
   );
 
   PluginMessageWithParts mapCompaction({required String sessionId, required String messageId}) => _mapCompaction(
     sessionId: sessionId,
     messageId: messageId,
-    title: "Context compacted",
     status: PluginToolStatus.completed,
   );
 
   PluginMessageWithParts _mapCompaction({
     required String sessionId,
     required String messageId,
-    required String title,
     required PluginToolStatus status,
   }) {
     final draft = _toolMessage(
@@ -272,7 +282,8 @@ final class PiHistoryMapper({
       messageId: messageId,
       timestamp: null,
       tool: "compact",
-      title: title,
+      // Status already conveys progress; compaction has no additional detail.
+      title: null,
       shellCommand: null,
       output: null,
       error: null,

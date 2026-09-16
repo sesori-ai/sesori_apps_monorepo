@@ -4,6 +4,7 @@ import "../api/desktop_instance_api.dart";
 import "../api/desktop_instance_storage.dart";
 import "../foundation/bridge_process_desired_state.dart";
 import "../foundation/desktop_attention_preference.dart";
+import "../foundation/desktop_sidebar_layout.dart";
 import "../foundation/platform/window_host.dart";
 
 /// Layer-2 aggregate over instance coordination and persisted desktop state.
@@ -21,10 +22,15 @@ class DesktopInstanceRepository._create({
 
   Future<bool> signalPrimary() => _api.signalPrimary();
 
-  Future<BridgeProcessDesiredState> readBridgeDesiredState() => _storage.readBridgeDesiredState();
+  Future<BridgeProcessDesiredState?> readBridgeDesiredState() => _storage.readBridgeDesiredState();
 
   Future<void> writeBridgeDesiredState({required BridgeProcessDesiredState state}) =>
       _storage.writeBridgeDesiredState(state: state);
+
+  Future<DesktopSidebarLayout> readSidebarLayout() => _storage.readSidebarLayout();
+
+  Future<void> writeSidebarLayout({required DesktopSidebarLayout layout}) =>
+      _storage.writeSidebarLayout(layout: layout);
 
   Future<WindowBounds?> readWindowBounds() => _storage.readWindowBounds();
 

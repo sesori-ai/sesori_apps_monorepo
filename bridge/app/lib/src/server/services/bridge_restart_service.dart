@@ -34,6 +34,7 @@ class BridgeRestartService({
   required final List<String> _cliArgs,
   required final int _currentPid,
   required final bool _isSupervised,
+  required final bool _isWindows,
 
   /// Invoked the moment a supervised restart handoff is decided, before the
   /// shutdown it triggers, so the composition root can record the GUI-respawn
@@ -98,16 +99,34 @@ class BridgeRestartService({
 
   /// Spawns the successor bridge detached (inheriting this terminal). Returns
   /// `true` on success; `false` if the process could not be started.
+  ///
+  /// On Windows, waits for the one-shot launcher to exit successfully. That
+  /// exit acknowledges that it created the real successor and broke the live
+  /// ancestry chain before this method permits predecessor shutdown.
   Future<bool> spawnSuccessor() async {
     final BridgeRestartCommand command = _commandBuilder.build(binaryPath: _binaryPath, cliArgs: _cliArgs);
+    final environment = <String, String>{
+      sesoriRestartPredecessorPidEnvVar: '$_currentPid',
+      if (_isWindows) sesoriRestartLauncherEnvVar: sesoriRestartLauncherEnvValue,
+    };
     try {
-      await _processRepository.startDetached(
-        executable: command.executable,
-        arguments: command.arguments,
-        environment: <String, String>{
-          sesoriRestartPredecessorPidEnvVar: '$_currentPid',
-        },
-      );
+      if (_isWindows) {
+        final exitCode = await _processRepository.runInheritingStdio(
+          executable: command.executable,
+          arguments: command.arguments,
+          environment: environment,
+        );
+        if (exitCode != 0) {
+          Log.e('Windows restart launcher exited with code $exitCode before acknowledging the successor');
+          return false;
+        }
+      } else {
+        await _processRepository.startDetached(
+          executable: command.executable,
+          arguments: command.arguments,
+          environment: environment,
+        );
+      }
       return true;
     } on Object catch (error, stackTrace) {
       Log.e('Failed to spawn successor bridge for restart: $error', error, stackTrace);

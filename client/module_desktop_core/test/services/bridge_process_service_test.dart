@@ -43,7 +43,6 @@ void main() {
         executablePathResolver: executablePathResolver,
         crashBackoffDelays: const <Duration>[Duration(hours: 1)],
         stableRuntime: const Duration(minutes: 5),
-        recentLogCount: 20,
         now: () => now,
         reportWarning: ({required String message, required Object error, required StackTrace stackTrace}) {
           warnings.add(message);
@@ -54,7 +53,6 @@ void main() {
     Future<void> rebuildService({
       required List<Duration> crashBackoffDelays,
       required Duration stableRuntime,
-      required int recentLogCount,
     }) async {
       await service.dispose();
       repository.stopCalls = 0;
@@ -68,7 +66,6 @@ void main() {
         executablePathResolver: executablePathResolver,
         crashBackoffDelays: crashBackoffDelays,
         stableRuntime: stableRuntime,
-        recentLogCount: recentLogCount,
         now: () => now,
         reportWarning: ({required String message, required Object error, required StackTrace stackTrace}) {
           warnings.add(message);
@@ -85,12 +82,18 @@ void main() {
       await statusTracker.dispose();
     });
 
-    test("signed-out start enters login-required without starting infrastructure", () async {
+    test("signed-out On waits without infrastructure and resumes after sign-in", () async {
       await service.start();
 
+      expect(service.desiredState, BridgeProcessDesiredState.on);
       expect(service.state, isA<BridgeProcessLoginRequired>());
       expect(controlServer.startCalls, 0);
       expect(repository.spawnCalls, 0);
+      final running = service.states.firstWhere((state) => state is BridgeProcessRunning);
+      authSession.state = _authenticatedState;
+      await running;
+      expect(controlServer.startCalls, 1);
+      expect(repository.spawnCalls, 1);
     });
 
     test("authenticated start creates the channel, spawns, attaches, and sends the secret off argv", () async {
@@ -244,6 +247,44 @@ void main() {
       controlServer.startError = null;
       await service.start();
       expect(service.state, isA<BridgeProcessRunning>());
+    });
+
+    test("bundle refusal cleans up without spawning and retains repair guidance until a valid retry", () async {
+      authSession.state = _authenticatedState;
+      const failure = _BundleRefusal();
+      executablePathResolver.refusal = failure;
+
+      await expectLater(service.start(), throwsA(same(failure)));
+
+      expect(repository.spawnCalls, 0);
+      expect(repository.stopCalls, 0);
+      expect(controlServer.stopCalls, 1);
+      expect(service.desiredState, BridgeProcessDesiredState.on);
+      expect(
+        service.state,
+        isA<BridgeProcessStartFailed>().having((state) => state.message, "repair guidance", failure.userMessage),
+      );
+      expect(await service.states.first, same(service.state));
+
+      executablePathResolver.refusal = null;
+      await service.start();
+
+      expect(controlServer.startCalls, 2);
+      expect(repository.spawnCalls, 1);
+      expect(service.state, isA<BridgeProcessRunning>());
+    });
+
+    test("bundle refusal during automatic restart retains guidance instead of spending the crash budget", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+      executablePathResolver.refusal = const _BundleRefusal();
+
+      repository.emitExit(exitCode: 86, expected: false);
+      await pumpEventQueue();
+
+      expect(repository.spawnCalls, 1);
+      expect(service.state, isA<BridgeProcessStartFailed>());
+      expect(warnings, isNotEmpty);
     });
 
     test("spawn failure rolls back the channel, surfaces the original error, and permits retry", () async {
@@ -578,30 +619,12 @@ void main() {
       expect(service.desiredState, BridgeProcessDesiredState.on);
     });
 
-    test("rapid crashes exhaust the bounded budget and surface only recent log lines", () async {
+    test("rapid crashes exhaust the bounded budget and surface the final exit", () async {
       await rebuildService(
         crashBackoffDelays: const <Duration>[Duration.zero, Duration.zero],
         stableRuntime: const Duration(minutes: 5),
-        recentLogCount: 2,
       );
       authSession.state = _authenticatedState;
-      logTracker.entries = <BridgeProcessLogEntry>[
-        BridgeProcessLogEntry(
-          timestamp: now,
-          source: BridgeProcessLogSource.stdout,
-          message: "old",
-        ),
-        BridgeProcessLogEntry(
-          timestamp: now,
-          source: BridgeProcessLogSource.stderr,
-          message: "recent-1",
-        ),
-        BridgeProcessLogEntry(
-          timestamp: now,
-          source: BridgeProcessLogSource.stdout,
-          message: "recent-2",
-        ),
-      ];
       await service.start();
 
       repository.emitExit(exitCode: 11, expected: false);
@@ -617,12 +640,7 @@ void main() {
         service.state,
         isA<BridgeProcessCrashGiveUp>()
             .having((state) => state.exitCode, "exitCode", 13)
-            .having((state) => state.crashCount, "crashCount", 3)
-            .having(
-              (state) => state.recentLogs.map((entry) => entry.message),
-              "recent logs",
-              <String>["recent-1", "recent-2"],
-            ),
+            .having((state) => state.crashCount, "crashCount", 3),
       );
       await pumpEventQueue();
       expect(repository.spawnCalls, 3);
@@ -632,7 +650,6 @@ void main() {
       await rebuildService(
         crashBackoffDelays: const <Duration>[Duration.zero, Duration(hours: 1)],
         stableRuntime: const Duration(minutes: 5),
-        recentLogCount: 20,
       );
       authSession.state = _authenticatedState;
       await service.start();
@@ -660,7 +677,6 @@ void main() {
       await rebuildService(
         crashBackoffDelays: const <Duration>[Duration.zero, Duration(hours: 1)],
         stableRuntime: const Duration(minutes: 5),
-        recentLogCount: 20,
       );
       authSession.state = _authenticatedState;
       await service.start();
@@ -695,7 +711,6 @@ void main() {
       await rebuildService(
         crashBackoffDelays: const <Duration>[Duration(milliseconds: 25)],
         stableRuntime: const Duration(minutes: 5),
-        recentLogCount: 20,
       );
       authSession.state = _authenticatedState;
       await service.start();
@@ -714,7 +729,6 @@ void main() {
       await rebuildService(
         crashBackoffDelays: const <Duration>[Duration(milliseconds: 25)],
         stableRuntime: const Duration(minutes: 5),
-        recentLogCount: 20,
       );
       authSession.state = _authenticatedState;
       await service.start();
@@ -756,7 +770,6 @@ void main() {
       executablePathResolver: _FakeBridgeExecutablePathResolver(path: "/repo/bridge"),
       crashBackoffDelays: const <Duration>[Duration(hours: 1)],
       stableRuntime: const Duration(minutes: 5),
-      recentLogCount: 20,
       now: DateTime.now,
       reportWarning: ({required String message, required Object error, required StackTrace stackTrace}) {},
     );
@@ -960,14 +973,10 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
 
 class _FakeBridgeProcessLogTracker() implements BridgeProcessLogTracker {
   int attachCalls = 0;
-  List<BridgeProcessLogEntry> entries = <BridgeProcessLogEntry>[];
   Stream<List<int>>? attachedStdout;
   Stream<List<int>>? attachedStderr;
   Object? attachError;
   void Function()? onAttach;
-
-  @override
-  List<BridgeProcessLogEntry> get snapshot => List<BridgeProcessLogEntry>.unmodifiable(entries);
 
   @override
   Future<void> attach({required Stream<List<int>> stdout, required Stream<List<int>> stderr}) async {
@@ -1051,8 +1060,22 @@ class _FakeAuthSession({required AuthState initialState}) implements AuthSession
 }
 
 class _FakeBridgeExecutablePathResolver({required final String path}) implements BridgeExecutablePathResolver {
+  BridgeExecutableResolutionException? refusal;
+
   @override
-  String resolve() => path;
+  String resolve() {
+    final failure = refusal;
+    if (failure != null) {
+      throw failure;
+    }
+    return path;
+  }
+}
+
+class const _BundleRefusal() implements BridgeExecutableResolutionException {
+  @override
+  String get userMessage =>
+      "Restart Sesori after an update. If this persists, reinstall the matching desktop download.";
 }
 
 class _FakeAuthTokenProvider() implements AuthTokenProvider {

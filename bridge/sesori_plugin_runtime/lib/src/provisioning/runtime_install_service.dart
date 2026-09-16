@@ -47,7 +47,10 @@ class const RuntimeInstallException(
 /// is written last — so any residual race self-heals on the next attempt.
 /// Staging paths are fixed and self-healing. The plugin may be running from an
 /// older managed version directory throughout; placement only ever touches the
-/// pinned version directory and this runtime's staging paths.
+/// pinned version directory and this runtime's staging paths. The caller's
+/// mutation-revalidation fence runs before managed-directory/download setup,
+/// scratch preparation, candidate validation, and the synchronous
+/// placement-plus-sentinel activation.
 class RuntimeInstallService({
   required final BinaryDownloadClient _downloadClient,
   required final ChecksumValidator _checksumValidator,
@@ -119,8 +122,11 @@ class RuntimeInstallService({
     required String downloadUrl,
     required RuntimeAsset asset,
     required Map<String, String> environment,
+    required Future<void> Function() revalidateManagedMutation,
     required StartAbortSignal startAborted,
   }) async* {
+    await revalidateManagedMutation();
+    _throwIfAborted(startAborted);
     Directory(managedDir).createSync(recursive: true);
     // The on-disk extension must match the archive format: Windows extraction
     // shells out to PowerShell `Expand-Archive`, which rejects any source path
@@ -147,6 +153,8 @@ class RuntimeInstallService({
       }
       _throwIfAborted(startAborted);
 
+      await revalidateManagedMutation();
+      _throwIfAborted(startAborted);
       await _preparePrivateStaging(stagingPath: stagingPath);
       final String candidatePath = p.join(stagingPath, _candidateDirName);
       final File binaryInStaging;
@@ -179,6 +187,8 @@ class RuntimeInstallService({
 
       await _makeExecutable(binaryPath: binaryInStaging.path, assetName: asset.assetName);
       _throwIfAborted(startAborted);
+      await revalidateManagedMutation();
+      _throwIfAborted(startAborted);
       final bool candidateValid = await _validateCandidate(
         executablePath: binaryInStaging.path,
         stagingPath: stagingPath,
@@ -193,6 +203,8 @@ class RuntimeInstallService({
         );
       }
 
+      await revalidateManagedMutation();
+      _throwIfAborted(startAborted);
       switch (asset) {
         case ArchiveRuntimeAsset(layout: RuntimeArchiveLayout.packageDirectory):
           _placePackage(

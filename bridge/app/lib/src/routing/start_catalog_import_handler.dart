@@ -18,7 +18,7 @@ class StartCatalogImportHandler({required final CatalogImportService _service})
     required CatalogImportRequest body,
   }) async {
     try {
-      _service.start(pluginId: body.pluginId, trigger: CatalogImportTrigger.explicit);
+      _service.start(pluginId: body.pluginId, trigger: CatalogImportTrigger.rescan);
     } on CatalogImportPluginUnknownException {
       throw buildErrorResponse(request, 404, "plugin not found");
     } on CatalogImportPluginNotEnabledException {

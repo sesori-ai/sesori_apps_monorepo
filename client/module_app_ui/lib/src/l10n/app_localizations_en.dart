@@ -31,6 +31,113 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiErrorNetworkDown => 'Connection failed — check your network and try again.';
 
   @override
+  String get desktopFileAccessTitle => 'Full Disk Access';
+
+  @override
+  String get desktopFileAccessDescription =>
+      'Sesori runs coding agents on your behalf. macOS folder prompts can pause them while you\'re away. Full Disk Access lets Sesori and its agents access protected files without those prompts. This is optional; restart the local bridge after granting access.';
+
+  @override
+  String get desktopFileAccessOpenSettings => 'Open System Settings';
+
+  @override
+  String get desktopFileAccessNotNow => 'Not now';
+
+  @override
+  String get desktopFileAccessGranted => 'Protected files are accessible';
+
+  @override
+  String get desktopFileAccessDenied => 'Not granted — folder prompts may pause agents';
+
+  @override
+  String get desktopFileAccessUnknown => 'Access could not be confirmed';
+
+  @override
+  String get desktopHomePickSession => 'Pick a session from the sidebar to get started.';
+
+  @override
+  String get desktopSidebarNewProject => 'New project';
+
+  @override
+  String desktopSidebarAllSessions(int count) {
+    return 'All sessions · $count';
+  }
+
+  @override
+  String desktopSidebarNewSession(String projectName) {
+    return 'New session in $projectName';
+  }
+
+  @override
+  String desktopSidebarCollapseProject(String projectName) {
+    return 'Collapse $projectName';
+  }
+
+  @override
+  String desktopSidebarExpandProject(String projectName) {
+    return 'Expand $projectName';
+  }
+
+  @override
+  String get desktopSidebarCollapse => 'Collapse sidebar';
+
+  @override
+  String get desktopSidebarExpand => 'Expand sidebar';
+
+  @override
+  String get desktopSidebarResize => 'Resize sidebar; double-click to reset';
+
+  @override
+  String get desktopBridgeTakenOver => 'Another bridge currently owns this account connection.';
+
+  @override
+  String get desktopBridgeTakeOver => 'Take Over';
+
+  @override
+  String get desktopBridgeLoginRequired => 'Your Sesori account is required before the local bridge can start.';
+
+  @override
+  String get desktopBridgeStart => 'Start Bridge';
+
+  @override
+  String get desktopBridgeCrashGiveUp => 'The local bridge stopped after repeated crashes.';
+
+  @override
+  String get desktopBridgeOpenLogs => 'Open Logs';
+
+  @override
+  String get desktopLocalBridgeTitle => 'Local bridge';
+
+  @override
+  String get desktopBridgeStop => 'Stop Bridge';
+
+  @override
+  String get desktopBridgeSettings => 'Bridge settings…';
+
+  @override
+  String get desktopSettingsGeneral => 'General';
+
+  @override
+  String get desktopSettingsLaunchAtLogin => 'Launch Sesori at login';
+
+  @override
+  String get desktopSettingsLaunchAtLoginDescription =>
+      'Start Sesori in the background when you sign in to this computer.';
+
+  @override
+  String get desktopSettingsConnectedBridge => 'Connected bridge';
+
+  @override
+  String get desktopSettingsConnectedBridgeDescription =>
+      'These settings apply to the bridge you\'re connected to, including one on another computer.';
+
+  @override
+  String get desktopSettingsThisComputer => 'This computer';
+
+  @override
+  String get desktopBridgeTitle => 'Bridge';
+
+  @override
   String get projectListTitle => 'Projects';
 
   @override
@@ -568,6 +675,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessAuthenticationRequestFailed => 'Check your connection and try again.';
 
   @override
+  String harnessAuthenticationPastedCodeInstructions(String harnessName) {
+    return 'Only continue if you started this login. Sesori will sign $harnessName on the connected computer into your account. Open the sign-in page, verify its address, approve access, then paste the code shown after approval.';
+  }
+
+  @override
+  String get harnessAuthenticationOpenSignInPage => 'Open sign-in page';
+
+  @override
+  String get harnessAuthenticationPastedCodeLabel => 'Code from the sign-in page';
+
+  @override
+  String get harnessAuthenticationSubmitCode => 'Submit code';
+
+  @override
+  String get harnessAuthenticationPastedCodeInvalid => 'Paste the complete code shown after approval, without spaces.';
+
+  @override
+  String get harnessAuthenticationPastedCodeNotConfirmed => 'The code could not be confirmed. Submit it again.';
+
+  @override
   String get harnessesRegisteredSection => 'Registered Harnesses';
 
   @override
@@ -960,7 +1087,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailCommandPickerTitle => 'Slash commands';
 
   @override
-  String get sessionDetailCommandSearch => 'Search commands...';
+  String get sessionDetailCommandSearch => 'Search commands';
+
+  @override
+  String get sessionDetailCommandSearchHint => 'Name, description, or arguments';
 
   @override
   String get sessionDetailNoCommands => 'No slash commands are available for this project.';
@@ -1188,6 +1318,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailUnavailableCommand => 'Command unavailable';
+
+  @override
+  String get sessionDetailQueueCancellationFailed =>
+      'Cancellation was not confirmed. The message may already have been sent.';
 
   @override
   String get sessionDetailSendingMessage => 'Sending';
@@ -1805,16 +1939,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prConflicting => 'Has merge conflicts';
 
   @override
-  String get diffPermissionRequestTitle => 'Permission Request';
+  String get diffPermissionRequestTitle => 'Allow this action?';
 
   @override
-  String get diffPermissionReject => 'Reject';
+  String get diffPermissionReject => 'Don’t allow';
 
   @override
-  String get diffPermissionOnce => 'Once';
+  String get diffPermissionOnce => 'Allow';
 
   @override
-  String get diffPermissionAlwaysAllow => 'Always Allow';
+  String get diffPermissionAlwaysAllow => 'Always approve';
 
   @override
   String get diffFileChangesTitle => 'File Changes';
@@ -2118,6 +2252,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get catalogScanUnsupportedDetail => 'Update the bridge to scan from here';
+
+  @override
+  String get catalogScanNotConnectedTitle => 'Bridge not connected';
+
+  @override
+  String get catalogScanNotConnectedDetail => 'Connect to a bridge to scan';
 
   @override
   String get catalogScanNoHarnessTitle => 'No harness to scan';

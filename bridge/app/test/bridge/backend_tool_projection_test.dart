@@ -63,7 +63,7 @@ void main() {
     for (final shell in [false, true]) {
       test("Claude backend content live tracker/history projection shell=$shell failed=$failed", () {
         final name = shell ? "Bash" : "Read";
-        final input = {"command": "pwd"};
+        final input = {"command": "pwd", "file_path": "lib/main.dart"};
         final content = {"type": "tool_use", "id": "c", "name": name, "input": input};
         final blocks = const ClaudeContentMapper().map(content: content);
         final block = blocks.single as ClaudeMappedToolUseContentBlock;
@@ -145,6 +145,7 @@ void main() {
         final state = _state(part: live);
         expect(state, _state(part: history));
         expect(state.shellCommand, shell ? "pwd" : null);
+        expect(state.title, shell ? "pwd" : "lib/main.dart");
         expect(state.output, shell && !failed ? "result" : null);
         expect(state.error, shell && failed ? "result" : null);
         expect(state.status, failed ? ToolStatus.error : ToolStatus.completed);
@@ -163,7 +164,7 @@ void main() {
               "type": "toolCall",
               "id": "c",
               "name": name,
-              "arguments": {"command": "pwd"},
+              "arguments": {"command": "pwd", "path": "lib/main.dart"},
             },
           ],
         };
@@ -232,6 +233,7 @@ void main() {
         final state = _state(part: live);
         expect(state, _state(part: replay));
         expect(state.shellCommand, shell ? "pwd" : null);
+        expect(state.title, shell ? "pwd" : "lib/main.dart");
         expect(state.output, shell && !failed ? "result" : null);
         expect(state.error, shell && failed ? "result" : null);
         expect(state.status, failed ? ToolStatus.error : ToolStatus.completed);
@@ -257,7 +259,16 @@ void main() {
         // Both SSE and REST use the owning generated ToolPart and MessagePartMapper.
         final state = _state(part: const MessagePartMapper().mapPart(ToolPart.fromJson(raw)));
         expect(state.shellCommand, shell ? "pwd" : null);
-        expect(state.title, shell ? "pwd" : null);
+        // OpenCode's own title is display data; only the command is authority.
+        // Its error state carries no title, so a failed ordinary tool has none.
+        expect(
+          state.title,
+          shell
+              ? "pwd"
+              : failed
+              ? null
+              : "not authority",
+        );
         expect(state.output, shell && !failed ? "result" : null);
         expect(state.error, shell && failed ? "result" : null);
         expect(state.status, failed ? ToolStatus.error : ToolStatus.completed);

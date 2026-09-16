@@ -314,6 +314,7 @@ class _LiveAttachmentHarness({
     final relayServer = await TestRelayServer.start();
     final relayUrl = "ws://127.0.0.1:${relayServer.port}";
     final composition = Orchestrator(
+      connectionNotificationPolicies: const Stream.empty(),
       config: BridgeConfig(
         relayURL: relayUrl,
         authBackendURL: "https://api.sesori.test",

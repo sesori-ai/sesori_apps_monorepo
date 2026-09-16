@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
+import "package:sesori_dart_core/src/cubits/session_list/session_list_mode.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
 import "package:sesori_dart_core/src/repositories/models/repo_provider.dart";
 import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejection.dart" as domain;
@@ -89,7 +90,7 @@ void main() {
 
     /// Convenience factory — stubs must be set up before calling this.
     SessionListCubit buildCubit({SessionListFilter filter = SessionListFilter.active}) => SessionListCubit(
-      initialFilter: filter,
+      mode: SessionListMode.view(filter: filter),
       sessionRepository: mockSessionService,
       sessionListService: sessionListService,
       projectRepository: mockProjectRepository,
@@ -102,6 +103,66 @@ void main() {
       failureReporter: mockFailureReporter,
       catalogRescanService: fakeCatalogRescanService,
     );
+
+    test("sidebar action scope skips initial fetch/view claims and retains rename refresh", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projects);
+      final session = testSession(title: "Original");
+      when(() => mockSessionService.renameSession(sessionId: session.id, title: "Renamed"))
+          .thenAnswer((_) async => ApiResponse.success(session.copyWith(title: "Renamed")));
+      final cubit = SessionListCubit(
+        mode: SessionListMode.actions(sessions: [session]),
+        sessionRepository: mockSessionService,
+        sessionListService: sessionListService,
+        projectRepository: mockProjectRepository,
+        connectionService: mockConnectionService,
+        sseEventTracker: mockSseEventTracker,
+        sessionUnseenTracker: fakeSessionUnseenTracker,
+        projectViewingService: mockProjectViewingService,
+        routeSource: mockRouteSource,
+        projectId: projectId,
+        failureReporter: mockFailureReporter,
+        catalogRescanService: fakeCatalogRescanService,
+      );
+      expect((cubit.state as SessionListLoaded).sessions.single.id, session.id);
+      verifyNever(
+        () => mockProjectRepository.listSessions(
+          projectId: any(named: "projectId"),
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      );
+      when(
+        () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session.copyWith(title: "Renamed")])));
+      expect(await cubit.renameSession(sessionId: session.id, title: "Renamed"), isTrue);
+      expect((cubit.state as SessionListLoaded).sessions.single.title, "Renamed");
+      // A later successful sidebar retry can discover a row this scope never
+      // received. Refresh only that menu target, preserving the other row.
+      final later = testSession(id: "later-session", title: "Discovered later");
+      cubit.updateActionSession(session: later);
+      expect(
+        (cubit.state as SessionListLoaded).sessions.map((session) => session.id),
+        containsAll([session.id, later.id]),
+      );
+      when(() => mockSessionService.renameSession(sessionId: later.id, title: "Later renamed"))
+          .thenAnswer((_) async => ApiResponse.success(later.copyWith(title: "Later renamed")));
+      when(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(
+            items: [
+              session.copyWith(title: "Renamed"),
+              later.copyWith(title: "Later renamed"),
+            ],
+          ),
+        ),
+      );
+      expect(await cubit.renameSession(sessionId: later.id, title: "Later renamed"), isTrue);
+      mockRouteSource.emitRoute(AppRouteDef.sessions);
+      await Future<void>.delayed(Duration.zero);
+      await cubit.close();
+      verifyNever(() => mockProjectViewingService.beginListClaim(projectId: any(named: "projectId")));
+      verifyNever(() => mockProjectViewingService.releaseClaim(claim: any(named: "claim")));
+      verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).called(2);
+    });
 
     test("archive inventory never acquires or releases the live opener claim", () async {
       mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.archivedSessions);
@@ -1553,7 +1614,7 @@ void main() {
           (_) async => ApiResponse.success(const SessionListResponse(items: sessions)),
         );
         return SessionListCubit(
-          initialFilter: SessionListFilter.active,
+          mode: const SessionListMode.view(filter: SessionListFilter.active),
           sessionRepository: mockSessionService,
           sessionListService: sessionListService,
           projectRepository: mockProjectRepository,

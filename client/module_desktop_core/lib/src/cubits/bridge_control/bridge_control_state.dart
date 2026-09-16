@@ -19,6 +19,8 @@ enum BridgeControlActivity({required final bool locksCommands}) {
 class const BridgeControlState({
   required final SystemTrayAvailability trayAvailability,
   required final BridgeControlActivity activity,
+
+  /// Status detail without an entity prefix; surfaces provide the heading.
   required final String statusLabel,
   required final BridgeProcessState processState,
   required final BridgeProcessDesiredState desiredState,
@@ -40,7 +42,7 @@ class const BridgeControlState({
         enabled: true,
       ),
       const SystemTraySeparator(),
-      SystemTrayTextItem(label: statusLabel),
+      SystemTrayTextItem(label: "Bridge: $statusLabel"),
       SystemTrayTextItem(label: "Active sessions: ${controlStatus.activeSessionCount}"),
       const SystemTraySeparator(),
       if (canTakeOver) ...<SystemTrayMenuEntry>[

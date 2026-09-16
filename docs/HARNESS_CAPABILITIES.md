@@ -7,8 +7,8 @@ capability lands for some harnesses but not others, or a harness limitation is
 verified or lifted.
 
 Capability tables include registered plugins where the relevant integration behavior has been verified. Antigravity is
-included below for local runtime, options, setup, login, and permission behavior; its upstream sub-agent behavior has
-not been verified, so the sub-agent table makes no claim about it.
+included below, including the bounded authenticated sub-agent assessment completed on 2026-09-12. Its sub-agent cells
+describe what Sesori can expose through the official ACP seam, not whether the native runtime delegates internally.
 
 ## Legend
 
@@ -18,12 +18,33 @@ not been verified, so the sub-agent table makes no claim about it.
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Individual queued-prompt cancellation
+
+| Harness / boundary | Status |
+|---|---|
+| Pi and Claude, still bridge-pending | ✅ Implemented before dispatch; successful cancellation prevents backend submission. |
+| Pi and Claude, already dispatched and awaiting user echo | 🚫 Individual cancellation is not supported through the driven seam; retained rows show Sending without trash. Immediate steering remains enabled. |
+| ACP adapters, including OMP, before prompt-frame writing | ✅ Implemented; a cancelled pending entry never writes its prompt. Once writing starts, cancellation is refused and the row reports Sending until the user-message projection arrives. |
+| OpenCode and Codex | No retained queue entries through this API; this does not claim a native per-item cancellation capability. |
+
+Pi's installed 0.85.1 RPC `clear_queue` clears **all** steering/follow-up work,
+including extension-owned input, and carries no Sesori prompt IDs. It cannot
+safely implement deletion of one row; Sesori does not clear/replay that native
+queue. This limit is verified from installed native source. Dispatch-state and
+cancellation evidence is synthetic plugin/bridge/core/widget coverage, not a new
+live authenticated run. Older public bridge payloads without dispatch ownership
+remain explicitly unknown and retain best-effort cancellation. Only a reported
+dispatched state suppresses trash. A late cancellation refusal is not success:
+the client reports it without hiding still-live input; existing queue events and
+reconnect snapshots keep the displayed state authoritative.
+
 ## Explicit shell-command presentation
 
-Ordinary tools retain name, status and attachments; only adapter-verified shell
-commands retain command/output/error. Subtask outcome/error summaries are separate
-and remain available. All retained tool text is rune-bounded at live/history wire
-projection; the released title alias remains available to older clients.
+Ordinary tools retain name, bounded title, status and attachments; only
+adapter-verified shell commands retain command/output/error. Subtask outcome/error
+summaries are separate and remain available. All retained tool text is
+rune-bounded at live/history wire projection; the released title alias remains
+available to older clients.
 
 | Harness | Status and established command source |
 |---|---|
@@ -44,12 +65,28 @@ whitespace accepted). Expressions, multiple commands and other JavaScript forms
 need trustworthy correlated command-execution evidence; raw scripts never become
 commands. No general JavaScript parser or runtime execution is involved.
 
+## Ordinary tool titles
+
+Non-shell tool cards show a bounded title naming what the tool touched (file
+path, search pattern, skill, URL) instead of only the tool name; output and
+errors stay stripped. Skills load through a file read of their `SKILL.md` on
+harnesses without a dedicated skill tool, so the read path is the skill signal.
+
+| Harness | Status and title source |
+|---|---|
+| Claude | ✅ Tool input `skill`, `file_path`, `notebook_path`, `pattern`, `path`, `url`, or `query`, first present; live tracker and transcript replay. |
+| Pi | ✅ Tool-call arguments `pattern`, then `path`; live from `toolcall_end`/`message_end` and replay. `toolcall_start` carries no arguments, so the title first appears with the running or terminal update. |
+| OpenCode | ✅ Native tool part `title`. |
+| Codex | ✅ Argument-derived title (`cmd`, `command`, `path`, `filePath`, `query`, else bounded raw arguments). |
+| Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ Agent-supplied ACP `tool_call` title, when the agent sends one; Sesori does not derive titles from ACP inputs. A call without `kind` uses its title as the tool name and drops the title, so the card does not say it twice. |
+
 ## Managed runtime
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Sesori-managed runtime installed on request | 🚫 | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
 | Superseded managed runtime upgraded automatically on bridge start | 🚫 | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
+| Outdated PATH runtime has safe self-updater metadata | ✅ | ✅ | 🚫 | ✅ | 🚫 | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ |
 
 Antigravity can explicitly download Google's proprietary official runtime pair directly from `dl.google.com`. Before
 choosing Install, review [Google's terms](https://antigravity.google/terms) and
@@ -64,13 +101,14 @@ The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual s
 retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.
 
 Claude, Hermes, and Grok have no Sesori-managed runtime at all: they resolve a
-user-installed CLI from PATH or an explicit binary option, so there is nothing
-for Sesori to install or upgrade. The upgrade follows the install capability
-exactly — a harness configured with an explicit binary override, running on a
-platform with no pinned asset, or attached to an externally managed server
-(`--opencode-no-auto-start`) advertises neither.
+user-installed CLI from PATH or an explicit binary option, so the managed
+install and startup-upgrade rows do not apply. Separately, standard descriptors
+can identify an outdated default PATH runtime and retain metadata for a verified
+non-interactive harness-owned updater. This metadata is not yet executable
+through the management API. Copilot, DeepSeek, and Antigravity remain manual,
+as do all explicit binary overrides and OpenCode attach mode.
 
-The upgrade only replaces a runtime Sesori already manages. A machine with no
+The managed startup upgrade only replaces a runtime Sesori already manages. A machine with no
 managed version directory keeps the explicit Install action; it never downloads
 a runtime the user has not asked for.
 
@@ -84,7 +122,7 @@ They do not claim that a harness's native CLI could never implement an equivalen
 |---|---|
 | Client-controlled automatic-update preference | 🚫 Not supported: no preference or command; existing bridge-start managed upgrades are unchanged. |
 | Pause/stop/cancel a managed installation | 🚫 Not supported: no command or stopped outcome; these UI controls remain hidden. |
-| Distinct update-required setup status | 🚫 Not supported: unavailable is broader and cannot truthfully be relabelled update-required. |
+| Distinct update-required setup status | ✅ `runtimeOutdated` with optional sanitized version; no update action yet. |
 | Enabled preference when runtime is unknown | 🚫 Not supported: unknown does not prove disabled; clients omit the switch. |
 | Overall installation percentage or active-session count | 🚫 Not supported: only optional download percentage and idle/busy/unknown work state are reported. |
 | Replay a failed installation observed by this client within the connection | ✅ Implemented for every harness advertising installation; memory only, not cross-device history. |
@@ -118,6 +156,21 @@ Exact account IDs ending in `-high`, `-medium`, or `-low` become strongest-first
 variants only when labels carry the matching suffix. Its pre-chat catalog uses
 one retained hidden no-prompt native session because the pinned runtime exposes
 models only from new/resume responses and has no deletion capability.
+
+## ACP multi-select form questions
+
+| Harness | Sesori implementation | Verification boundary |
+|---|---|---|
+| OMP | ✅ Live ACP `items.anyOf` string-choice arrays render as checkbox questions; separate string properties render as separate custom-text questions | Mapper, synthetic ACP plugin, shared bridge contract, and widget tests pass; live `18.1.19` `askDialog`/ACP/client roundtrip not run |
+
+Property keys, order, independent required flags, and option/custom provenance
+are retained, including identical submitted text in separate questions.
+Optional omission uses the existing per-question decline in multi-question
+forms; single-question decline still rejects the request. Catalog/cleanup
+scratch connections do not advertise form support. Other plugins keep their
+existing question channels and capability policy; this change makes no new
+upstream-support claim for them. See [question regression coverage](regression/questions-and-permissions.md)
+for the supported array shape and remaining live check.
 
 ## Codex question input
 
@@ -155,6 +208,17 @@ The marks above cover setup inspection only. A plugin that raises
 `authenticationRequired` and blocks further starts; the ⬜ plugins do not do
 that either.
 
+## Managed runtime platform coverage
+
+| Capability | Harness | Sesori implementation | Native verification |
+|---|---|---|---|
+| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `18.1.19`; install/version/ACP/teardown still needs a native ARM64 host |
+
+OMP's eight mappings retain separate Linux glibc/musl binaries and macOS/Windows
+architecture selection. This implementation status is not a native verification
+claim. See [runtime installation regression coverage](regression/plugin-runtime-installation.md)
+for the platform checks and existing PATH/explicit-binary policy.
+
 ## Login initiation
 
 Login is separate from detecting a logged-out backend or installing its runtime.
@@ -164,7 +228,7 @@ it does not claim an unprobed upstream ACP/RPC login API is supported or unsuppo
 
 | Harness | Login initiated from Sesori | Current local alternative/setup |
 |---|---|---|
-| Claude | Not implemented | `claude auth login` on the bridge machine. |
+| Claude | Implemented: claude.ai pasted-code login on mobile and desktop | `claude auth login` on the bridge machine remains an alternative. |
 | OpenCode | Not implemented | Local `opencode auth login` or provider configuration. |
 | Codex | Implemented: ChatGPT device-code login | Local Codex login/configuration remains an alternative. |
 | Copilot | Not implemented | `copilot login` on the bridge machine. |
@@ -176,7 +240,11 @@ it does not claim an unprobed upstream ACP/RPC login API is supported or unsuppo
 | Grok | Not implemented | `grok login` on the bridge machine. |
 | Antigravity | Implemented: automatic personal Google browser OAuth on mobile and desktop | No copy/paste fallback; current client required. |
 
-Codex and Antigravity implement `InteractivePluginAuthenticationDescriptor.authenticate`.
+Claude, Codex, and Antigravity implement `InteractivePluginAuthenticationDescriptor.authenticate`.
+Claude drives `claude auth login --claudeai` on the bridge: the user opens the sign-in page from the app and pastes the
+code it shows, for claude.ai subscription accounts only. The login sets `BROWSER=true` to keep the host browser closed,
+which is verified on macOS but not on Windows, where the host may still open a sign-in tab. See
+[Claude Code authentication](regression/claude-code-authentication.md).
 Codex uses the existing Sesori device-code UI; Antigravity implements automatic browser return. Current iOS/Android
 clients use a system authentication browser and nonce-only app return; remote desktop uses exact loopback capture and
 a static return page, while desktop connected to its exact supervised bridge lets the bridge receive callback directly.
@@ -228,13 +296,13 @@ reconciliation when connected to an older bridge.
 
 ## Sub-agents
 
-| Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ✅⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅ (snapshot)³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
-| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
+| Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | ✅⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | 🚫¹⁹ | ✅ (snapshot)³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
+| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | 🚫¹⁹ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
 ACP plugins declare one closed scoped-stop capability: `unsupported`, `rootSessionCancel` (Cursor),
 `perChildSnapshot` (Grok), or `completeNativeAtomic` (DeepSeek). Plugins that report a scoped-stop rejection declare
@@ -341,8 +409,8 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.1.5 over dsh 0.1.5-rc.2 is the managed target
-and minimum accepted runtime. ACP uses native subtree stop for the named scope
+⁹ DeepSeek's published adapter 0.1.7 over dsh 0.1.5-rc.2 is the managed target;
+adapter 0.1.5 remains the minimum accepted runtime. ACP uses native subtree stop for the named scope
 and every independently resident descendant root, while ordered input cancel,
 exact-child authority, lifecycle, tiles, and child catalogs remain native-backed.
 Released clients retain their own child fanout. Phone QA on unchanged published
@@ -355,7 +423,13 @@ and surviving root-owned shell jobs do not imply failed descendant cancellation 
 broader process-stop support. Cold tile/history reload, read-only child navigation,
 push delivery, restart/reconnect, multiple clients, alternate mobile platforms,
 and macOS desktop remain unexecuted in this gate; desktop was deferred by explicit
-user choice. This 0.1.4 evidence does not requalify the current 0.1.5 managed target.
+user choice. This 0.1.4 evidence does not requalify the current 0.1.7 managed target.
+Adapter 0.1.7 loads explicitly installed local plugins from only the application-owned
+`$DSH_HOME/profiles/sesori` profile on startup, including after `dsh --profile sesori`
+rewrites the profile root, then reapplies Sesori's mandatory
+runtime constraints; profile changes require restart and profile failure falls back
+to the pinned in-memory graph. These plugins are trusted local in-process code, not a
+trust grant for future cloud or otherwise managed-trust runtimes.
 The native model catalog includes `deepseek-flash` (DeepSeek V4.1 Flash) with
 image input and reasoning controls. Refresh rereads the installed harness's
 configured catalog; it does not upgrade that harness or fetch a live provider catalog.
@@ -391,6 +465,26 @@ history, and exact read-only child navigation. Final fixed-build QA showed one
 stable child-owned initial row plus one assistant/tool/assistant sequence on two
 opens. Background completion delivery was attempted, but no OS notification was
 observed; notification and push delivery remain unclaimed.
+
+¹⁹ Antigravity's official managed ACP pair (package 1.0.0, runtime
+`agy_acp_server_20260818_01_RC01`, probed 2026-09-12) can invoke native internal
+sub-agents. Two authenticated default-mode turns returned the expected bounded
+reasoning result after `invoke_subagent` activity and one warning-free
+`allow_once` decision each. The official ACP projection does not expose a
+trustworthy Sesori subtask seam, however: every update carried only the parent
+session id; no child session, child id, child lifecycle extension, background
+fact, or child-cancel method appeared. Live `invoke_subagent` calls moved from
+`pending` to `failed` even though the root reported the delegated result, while
+`session/load` replayed those same calls as `completed`, string-encoded their
+structured input, and supplied blank raw output. Nested work appeared only as
+additional generic parent-local tool calls without correlation to the invocation.
+Sesori therefore keeps these calls generic and does not infer tiles, child
+history, descendant busy state, or scoped stop from call order, prompt text, or
+replay's contradictory status. Standard turn-wide `session/cancel` remains
+available, but it cannot implement any sub-agent-specific stop row above. This
+is a limitation of the ACP projection Sesori drives, not a claim that native
+Antigravity lacks delegation. Details:
+[completed probe record](../.plan/completed/claude-inline-subtasks/followups/antigravity-probe.md).
 
 ¹¹ Pi (0.84.4, probed 2026-09-05) reports it from `pi --list-models`, which
 prints one row per usable model and otherwise prints the

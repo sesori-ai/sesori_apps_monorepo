@@ -18,7 +18,10 @@ void main() {
         ApiError.dartHttpClient(Exception("offline")),
         RemoteFailureReason.networkDown,
       ),
-      "jsonParsing → badResponse": (ApiError.jsonParsing("{not json"), RemoteFailureReason.badResponse),
+      "jsonParsing → badResponse": (
+        ApiError.jsonParsing(jsonString: "{not json", innerError: null),
+        RemoteFailureReason.badResponse,
+      ),
       "emptyResponse → badResponse": (ApiError.emptyResponse(), RemoteFailureReason.badResponse),
       "generic → unknown": (ApiError.generic(), RemoteFailureReason.unknown),
     };

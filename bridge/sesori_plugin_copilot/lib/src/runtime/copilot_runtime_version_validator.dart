@@ -5,6 +5,7 @@ import "copilot_runtime_manifest.dart";
 class CopilotRuntimeVersionValidator({
   required super.commandExecutor,
   required super.probeTimeout,
+  required super.executableLocator,
 }) extends RuntimeVersionValidator {
   this : super(manifest: const CopilotRuntimeManifest());
   static final RegExp _versionLine = RegExp(

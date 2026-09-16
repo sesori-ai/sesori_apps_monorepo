@@ -61,6 +61,7 @@ void main() {
     );
     final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
+      connectionNotificationPolicies: const Stream.empty(),
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         authBackendURL: "http://127.0.0.1:8080",
@@ -141,6 +142,7 @@ void main() {
     );
     final testChatHistory = createTestChatHistory();
     final session = Orchestrator(
+      connectionNotificationPolicies: const Stream.empty(),
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${rawServer.port}",
         authBackendURL: "http://127.0.0.1:8080",
@@ -200,6 +202,7 @@ void main() {
       final httpClient = http.Client();
       final testChatHistory = createTestChatHistory();
       final orchestrator = Orchestrator(
+        connectionNotificationPolicies: const Stream.empty(),
         config: const BridgeConfig(
           relayURL: "ws://127.0.0.1:9999",
           authBackendURL: "http://127.0.0.1:8080",
@@ -324,6 +327,7 @@ class _TestHarness._({
     final httpClient = http.Client();
     final testChatHistory = createTestChatHistory();
     final orchestrator = Orchestrator(
+      connectionNotificationPolicies: const Stream.empty(),
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         authBackendURL: "http://127.0.0.1:8080",

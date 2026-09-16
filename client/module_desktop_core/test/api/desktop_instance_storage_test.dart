@@ -21,7 +21,9 @@ void main() {
     }
   });
 
-  test("missing state defaults to desired Off", () async {
+  test("missing state is distinct from an explicit desired Off", () async {
+    expect(await storage.readBridgeDesiredState(), isNull);
+    await storage.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
     expect(await storage.readBridgeDesiredState(), BridgeProcessDesiredState.off);
   });
 
@@ -41,6 +43,24 @@ void main() {
     file.writeAsStringSync("not-a-state");
 
     expect(await storage.readBridgeDesiredState(), BridgeProcessDesiredState.off);
+  });
+
+  test("missing sidebar layout uses defaults", () async {
+    expect(await storage.readSidebarLayout(), const DesktopSidebarLayout());
+  });
+
+  test("sidebar layout round-trips as a typed JSON file", () async {
+    const layout = DesktopSidebarLayout(width: 315, collapsed: true, collapsedProjectIds: {"project-1", "project-2"});
+    await storage.writeSidebarLayout(layout: layout);
+    expect(await storage.readSidebarLayout(), layout);
+    expect(File(path.join(root.path, "desktop-instance", "sidebar-layout")).existsSync(), isTrue);
+  });
+
+  test("malformed sidebar JSON surfaces to the cubit's fallback", () async {
+    final file = File(path.join(root.path, "desktop-instance", "sidebar-layout"));
+    file.createSync(recursive: true);
+    file.writeAsStringSync("not-json");
+    await expectLater(storage.readSidebarLayout(), throwsFormatException);
   });
 
   test("missing window bounds have no restored value", () async {

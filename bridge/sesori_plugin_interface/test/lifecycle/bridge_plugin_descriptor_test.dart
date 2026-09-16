@@ -67,13 +67,19 @@ void main() {
       expect((events.single as ProvisionFailed).message, contains('does not support installing'));
     });
 
-    test('the default descriptor never asks for a managed runtime upgrade', () {
+    test('the default descriptor never asks for a managed runtime upgrade', () async {
       const descriptor = _MinimalDescriptor();
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(config: const PluginConfig.empty(), stateDirectory: '/state'),
+        await descriptor.needsManagedRuntimeUpgrade(
+          config: const PluginConfig.empty(),
+          processes: const _UnusedProcessService(),
+          environment: const {},
+          stateDirectory: '/state',
+        ),
         isFalse,
       );
+      expect(descriptor.runtimeUpdateSpec(config: const PluginConfig.empty()), isNull);
     });
 
     test('a descriptor can reject configuration with PluginConfigException', () {
@@ -114,6 +120,23 @@ void main() {
           runtimeVersion: "3.4.5",
         ).runtimeVersion,
         "3.4.5",
+      );
+      expect(
+        const PluginSetupRuntimeOutdated(
+          actionHint: "Update the runtime.",
+          runtimeVersion: "4.5.6",
+        ),
+        const PluginSetupRuntimeOutdated(
+          actionHint: "Update the runtime.",
+          runtimeVersion: "4.5.6",
+        ),
+      );
+      expect(
+        const PluginSetupRuntimeOutdated(
+          actionHint: "Update for ACP support.",
+          runtimeVersion: null,
+        ).runtimeVersion,
+        isNull,
       );
       expect(const PluginSetupReady().runtimeVersion, isNull);
       expect(const PluginSetupRuntimeMissing(actionHint: null).runtimeVersion, isNull);

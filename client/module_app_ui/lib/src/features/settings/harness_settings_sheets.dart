@@ -307,6 +307,19 @@ class const _AuthenticationSheet() extends StatefulWidget {
 }
 
 class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
+  final _codeController = TextEditingController();
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  void _submitCode() {
+    if (_codeController.text.trim().isEmpty) return;
+    unawaited(context.read<PluginManagementCubit>().submitAuthenticationCode(code: _codeController.text));
+  }
+
   Future<void> _copyCode({required BuildContext context, required String code}) async {
     if (!await copyTextToClipboard(text: code, operation: "authentication code") || !context.mounted) return;
     PregoPopupAlertPresenter.of(context).show(
@@ -375,6 +388,9 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
           PluginAuthenticationPresentationBrowserWaiting() ||
           PluginAuthenticationPresentationBrowserFinalizing() ||
           PluginAuthenticationPresentationBrowserLaunchFailedState() ||
+          PluginAuthenticationPresentationCodeRetry() ||
+          PluginAuthenticationPresentationCodeSubmitting() ||
+          PluginAuthenticationPresentationCodeSubmitted() ||
           PluginAuthenticationPresentationCancelling() ||
           PluginAuthenticationPresentationCancellingUncertain():
         return _activeContent(context: context, presentation: presentation);
@@ -391,12 +407,18 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
       PluginAuthenticationPresentationBrowserLaunchFailedState(:final challenge) ||
       PluginAuthenticationPresentationCancelling(:final challenge) ||
       PluginAuthenticationPresentationCancellingUncertain(:final challenge) => challenge,
+      PluginAuthenticationPresentationCodeRetry(:final challenge) ||
+      PluginAuthenticationPresentationCodeSubmitting(:final challenge) ||
+      PluginAuthenticationPresentationCodeSubmitted(:final challenge) => challenge,
       PluginAuthenticationPresentationIdle() ||
       PluginAuthenticationPresentationStarting() ||
       PluginAuthenticationPresentationSucceeded() ||
       PluginAuthenticationPresentationCancelled() ||
       PluginAuthenticationPresentationFailed() => throw StateError("Expected active authentication"),
     };
+    if (challenge is PluginAuthenticationPastedCodeChallenge) {
+      return _pastedCodeContent(context: context, presentation: presentation);
+    }
     final status = switch (presentation) {
       PluginAuthenticationPresentationBrowserOpening() => loc.harnessAuthenticationOpening,
       PluginAuthenticationPresentationBrowserWaiting() => loc.harnessAuthenticationWaitingForBrowser,
@@ -405,6 +427,9 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
       PluginAuthenticationPresentationCancellingUncertain() => loc.harnessAuthenticationCancellingUncertain,
       PluginAuthenticationPresentationCancelling() => loc.harnessAuthenticationCancelling,
       PluginAuthenticationPresentationChallenge() => loc.harnessAuthenticationWaiting,
+      PluginAuthenticationPresentationCodeRetry() ||
+      PluginAuthenticationPresentationCodeSubmitting() ||
+      PluginAuthenticationPresentationCodeSubmitted() => throw StateError("Expected a non-pasted-code challenge"),
       PluginAuthenticationPresentationIdle() ||
       PluginAuthenticationPresentationStarting() ||
       PluginAuthenticationPresentationSucceeded() ||
@@ -490,22 +515,153 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
             ),
           ],
           const SizedBox(height: PregoSpacing.md),
-          PregoButtonsSolid(
-            key: const Key("harness_authentication_cancel"),
-            label: presentation is PluginAuthenticationPresentationCancelling
-                ? loc.harnessAuthenticationCancelling
-                : loc.harnessAuthenticationCancel,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.lg,
-            type: PregoButtonsSolidType.destructive,
-            fullWidth: true,
-            isLoading: presentation is PluginAuthenticationPresentationCancelling,
-            onPressed: presentation is PluginAuthenticationPresentationCancelling
-                ? null
-                : context.read<PluginManagementCubit>().cancelAuthentication,
-          ),
+          _cancelButton(context: context, presentation: presentation),
         ],
       ),
+    );
+  }
+
+  Widget _pastedCodeContent({
+    required BuildContext context,
+    required PluginAuthenticationPresentationState presentation,
+  }) {
+    final loc = context.loc;
+    final (pluginId, status, statusIsError) = switch (presentation) {
+      PluginAuthenticationPresentationChallenge(:final pluginId) ||
+      PluginAuthenticationPresentationCodeSubmitting(:final pluginId) => (pluginId, null, false),
+      PluginAuthenticationPresentationCodeRetry(
+        :final pluginId,
+        reason: PluginAuthenticationCodeRetryReason.invalidCode,
+      ) =>
+        (pluginId, loc.harnessAuthenticationPastedCodeInvalid, true),
+      PluginAuthenticationPresentationCodeRetry(
+        :final pluginId,
+        reason: PluginAuthenticationCodeRetryReason.notConfirmed,
+      ) =>
+        (pluginId, loc.harnessAuthenticationPastedCodeNotConfirmed, true),
+      PluginAuthenticationPresentationBrowserLaunchFailedState(:final pluginId) => (
+        pluginId,
+        loc.harnessAuthenticationBrowserFailed,
+        true,
+      ),
+      PluginAuthenticationPresentationCodeSubmitted(:final pluginId) => (
+        pluginId,
+        loc.harnessAuthenticationFinalizing,
+        false,
+      ),
+      PluginAuthenticationPresentationCancelling(:final pluginId) => (
+        pluginId,
+        loc.harnessAuthenticationCancelling,
+        false,
+      ),
+      PluginAuthenticationPresentationCancellingUncertain(:final pluginId) => (
+        pluginId,
+        loc.harnessAuthenticationCancellingUncertain,
+        false,
+      ),
+      PluginAuthenticationPresentationIdle() ||
+      PluginAuthenticationPresentationStarting() ||
+      PluginAuthenticationPresentationBrowserOpening() ||
+      PluginAuthenticationPresentationBrowserWaiting() ||
+      PluginAuthenticationPresentationBrowserFinalizing() ||
+      PluginAuthenticationPresentationSucceeded() ||
+      PluginAuthenticationPresentationCancelled() ||
+      PluginAuthenticationPresentationFailed() => throw StateError("Expected an active pasted-code login"),
+    };
+    final harnessName = switch (context.read<PluginManagementCubit>().state) {
+      PluginManagementReady(:final response) =>
+        response.plugins.where((plugin) => plugin.setup.id == pluginId).firstOrNull?.setup.displayName ?? pluginId,
+      PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => pluginId,
+    };
+    final acceptsCode =
+        presentation is PluginAuthenticationPresentationChallenge ||
+        presentation is PluginAuthenticationPresentationCodeRetry ||
+        presentation is PluginAuthenticationPresentationCodeSubmitting ||
+        presentation is PluginAuthenticationPresentationBrowserLaunchFailedState;
+    final submitting = presentation is PluginAuthenticationPresentationCodeSubmitting;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            loc.harnessAuthenticationPastedCodeInstructions(harnessName),
+            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+          ),
+          if (acceptsCode) ...[
+            const SizedBox(height: PregoSpacing.xl),
+            PregoButtonsSolid(
+              key: const Key("harness_authentication_open_browser"),
+              label: presentation is PluginAuthenticationPresentationBrowserLaunchFailedState
+                  ? loc.harnessAuthenticationRetry
+                  : loc.harnessAuthenticationOpenSignInPage,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: context.read<PluginManagementCubit>().launchAuthenticationBrowser,
+            ),
+            const SizedBox(height: PregoSpacing.xl),
+            PregoInputField(
+              key: const Key("harness_authentication_code_input"),
+              controller: _codeController,
+              label: loc.harnessAuthenticationPastedCodeLabel,
+              enabled: !submitting,
+              autocorrect: false,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submitCode(),
+            ),
+          ],
+          if (presentation is PluginAuthenticationPresentationCodeSubmitted) ...[
+            const SizedBox(height: PregoSpacing.xl),
+            const RepaintBoundary(
+              key: Key("harness_authentication_activity"),
+              child: Center(child: PregoActivityIndicator(color: null)),
+            ),
+          ],
+          if (status != null) ...[
+            const SizedBox(height: PregoSpacing.md),
+            Text(
+              status,
+              textAlign: TextAlign.center,
+              style: context.prego.textTheme.textSm.regular.copyWith(
+                color: statusIsError ? context.prego.colors.textErrorPrimary : context.prego.colors.textSecondary,
+              ),
+            ),
+          ],
+          if (acceptsCode) ...[
+            const SizedBox(height: PregoSpacing.x2l),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _codeController,
+              builder: (context, value, _) => PregoButtonsSolid(
+                key: const Key("harness_authentication_submit_code"),
+                label: loc.harnessAuthenticationSubmitCode,
+                hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                isLoading: submitting,
+                onPressed: submitting || value.text.trim().isEmpty ? null : _submitCode,
+              ),
+            ),
+          ],
+          const SizedBox(height: PregoSpacing.md),
+          _cancelButton(context: context, presentation: presentation),
+        ],
+      ),
+    );
+  }
+
+  Widget _cancelButton({required BuildContext context, required PluginAuthenticationPresentationState presentation}) {
+    final cancelling = presentation is PluginAuthenticationPresentationCancelling;
+    return PregoButtonsSolid(
+      key: const Key("harness_authentication_cancel"),
+      label: cancelling ? context.loc.harnessAuthenticationCancelling : context.loc.harnessAuthenticationCancel,
+      hierarchy: PregoButtonsSolidHierarchy.secondary,
+      size: PregoButtonsSolidSize.lg,
+      type: PregoButtonsSolidType.destructive,
+      fullWidth: true,
+      isLoading: cancelling,
+      onPressed: cancelling ? null : context.read<PluginManagementCubit>().cancelAuthentication,
     );
   }
 
@@ -565,7 +721,11 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
                 hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
                 size: PregoButtonsSolidSize.lg,
                 fullWidth: true,
-                onPressed: () => context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId),
+                onPressed: () {
+                  // A new login needs a new code.
+                  _codeController.clear();
+                  unawaited(context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId));
+                },
               ),
             ],
             const SizedBox(height: PregoSpacing.md),
@@ -612,6 +772,8 @@ String _setupStatus({required BuildContext context, required PluginSetupState st
   PluginSetupState.notInspected => context.loc.harnessesSetupNotInspected,
   PluginSetupState.ready => context.loc.harnessesSetupReady,
   PluginSetupState.runtimeMissing => context.loc.harnessesSetupRuntimeMissing,
+  // Runtime updates remain non-actionable until their command contract lands.
+  PluginSetupState.runtimeOutdated => context.loc.harnessesSetupUnavailable,
   PluginSetupState.authenticationRequired => context.loc.harnessesSetupAuthenticationRequired,
   PluginSetupState.unavailable => context.loc.harnessesSetupUnavailable,
   PluginSetupState.unknown => context.loc.harnessesStatusUnknown,

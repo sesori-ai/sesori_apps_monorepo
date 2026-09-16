@@ -36,7 +36,7 @@ class PluginLifecycleRepository({required final PluginRuntime _runtime}) {
   Stream<RuntimeProvisionProgress> installRuntime({required String pluginId}) =>
       _runtime.installRuntime(pluginId: pluginId);
 
-  bool needsManagedRuntimeUpgrade({required String pluginId}) =>
+  Future<bool> needsManagedRuntimeUpgrade({required String pluginId}) =>
       _runtime.needsManagedRuntimeUpgrade(pluginId: pluginId);
 
   PluginRuntimeAuthenticationOperation authenticate({required String pluginId}) =>
@@ -51,6 +51,12 @@ class PluginLifecycleRepository({required final PluginRuntime _runtime}) {
     generation: generation,
     redirectUri: redirectUri,
   );
+
+  Future<PluginRuntimeAuthenticationContinuationResult> submitAuthenticationCode({
+    required String pluginId,
+    required int generation,
+    required String code,
+  }) => _runtime.submitAuthenticationCode(pluginId: pluginId, generation: generation, code: code);
 
   Future<PluginRuntimeCommandResult> prepareDisable({
     required String pluginId,

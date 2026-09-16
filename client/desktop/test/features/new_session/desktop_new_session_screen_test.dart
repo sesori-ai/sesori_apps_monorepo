@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -12,10 +10,12 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/features/new_session/desktop_new_session_screen.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockNewSessionCubit() extends MockCubit<NewSessionState> implements NewSessionCubit;
+class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
 
 class _MockChatInputModeCubit() extends MockCubit<ChatInputMode> implements ChatInputModeCubit;
 
@@ -90,6 +90,19 @@ void main() {
       registerFallbackValue(ComposerDraft.typed(text: ""));
       final newSessionCubit = _MockNewSessionCubit();
       final inputModeCubit = _MockChatInputModeCubit();
+      final authGateCubit = _MockAuthGateCubit();
+      whenListen(
+        authGateCubit,
+        const Stream<AuthGateState>.empty(),
+        initialState: const AuthGateState.signedIn(
+          user: AuthUser(
+            id: "user",
+            provider: AuthProvider.github,
+            providerUserId: "user",
+            providerUsername: "developer",
+          ),
+        ),
+      );
       whenListen(newSessionCubit, const Stream<NewSessionState>.empty(), initialState: _state);
       when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
       when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
@@ -139,18 +152,22 @@ void main() {
         initialLocation: "/projects/p/sessions/new",
         routes: [
           GoRoute(
-            path: "/projects/p/sessions/new",
-            builder: (context, _) => DesktopNewSessionView(
-              projectId: "p",
-              projectName: "Project",
-              onBack: () {},
-              onOpenHarnessSettings: () => context.push<void>(
-                const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal).buildPath(),
-              ),
-              onSessionCreated: ({required session}) {},
-            ),
+            path: AppRouteDef.newSession.path,
+            builder: (context, state) {
+              final shell = buildDesktopRoutes().single as ShellRoute;
+              final route = shell.routes.whereType<GoRoute>().singleWhere(
+                (route) => route.path == AppRouteDef.newSession.path,
+              );
+              final screen = route.builder!(context, state) as DesktopNewSessionScreen;
+              return DesktopNewSessionView(
+                projectId: "p",
+                projectName: "Project",
+                onBack: () {},
+                onOpenHarnessSettings: screen.onOpenHarnessSettings,
+                onSessionCreated: ({required session}) {},
+              );
+            },
           ),
-          buildDesktopHarnessSettingsRoute(),
         ],
       );
       addTearDown(router.dispose);
@@ -159,6 +176,7 @@ void main() {
           providers: [
             BlocProvider<NewSessionCubit>.value(value: newSessionCubit),
             BlocProvider<ChatInputModeCubit>.value(value: inputModeCubit),
+            BlocProvider<AuthGateCubit>.value(value: authGateCubit),
           ],
           child: MaterialApp.router(
             routerConfig: router,
@@ -177,17 +195,11 @@ void main() {
       final composer = tester.element(find.byType(PromptInput));
       tester.widget<DesktopNewSessionView>(find.byType(DesktopNewSessionView)).onOpenHarnessSettings();
       await tester.pumpAndSettle();
+      expect(router.state.uri.path, "/projects/p/sessions/new");
       final overview = tester.element(find.byType(HarnessesSettingsView));
       final harnessCubit = overview.read<PluginManagementCubit>();
       if (closeFromDetail) {
-        unawaited(
-          GoRouter.of(overview).push<void>(
-            const AppRoute.settingsHarnessDetail(
-              pluginId: "removed",
-              presentation: HarnessSettingsPresentation.modal,
-            ).buildPath(),
-          ),
-        );
+        tester.widget<HarnessesSettingsView>(find.byType(HarnessesSettingsView)).onOpenHarness(pluginId: "removed");
         await tester.pumpAndSettle();
       }
       await tester.tap(find.bySemanticsLabel("Close settings"));

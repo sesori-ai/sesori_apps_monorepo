@@ -517,6 +517,16 @@ void main() {
         reason: "the dispatched running turn is governed by abort, not cancel",
       );
       expect(
+        harness.service.queuedPrompts(sessionId: testSessionId).single.dispatchState,
+        PluginQueuedPromptDispatchState.dispatched,
+      );
+      await pump();
+      expect(
+        harness.events.whereType<BridgeSseQueuedPromptsUpdated>().last.prompts.single.dispatchState,
+        PluginQueuedPromptDispatchState.dispatched,
+      );
+
+      expect(
         harness.service.queuedPrompts(sessionId: testSessionId).map((prompt) => prompt.id),
         ["prompt-first"],
       );

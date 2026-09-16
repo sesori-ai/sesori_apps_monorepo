@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/routing/deep_link_service.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -57,16 +58,21 @@ void main() {
       expect(true, isTrue);
     });
 
-    test("ignores URI with wrong scheme", () async {
-      // given
-      service.init();
-
-      // when
-      controller.add(Uri.parse("https://example.com/auth/callback"));
-      await Future<void>.delayed(Duration.zero);
-
-      // then — no crash
-      expect(true, isTrue);
+    test("ignores unhandled links without logging their payload", () async {
+      final previousLevel = logLevel;
+      addTearDown(() => setLogLevel(previousLevel));
+      setLogLevel(LogLevel.debug);
+      final logs = <String>[];
+      await runZoned(
+        () async {
+          service.init();
+          controller.add(Uri.parse("https://sesori.com/link/private-path?token=private-token#private-fragment"));
+          await controller.close();
+        },
+        zoneSpecification: ZoneSpecification(print: (_, _, _, message) => logs.add(message)),
+      );
+      expect(logs, ["Unhandled deep link: scheme=https, host=sesori.com"]);
+      expect(logs.single, isNot(contains("private-")));
     });
 
     test("double init is no-op", () async {

@@ -282,7 +282,18 @@ class const OpenCodePluginDescriptor({
     return {
       ...super.managementCapabilities(config: config),
       if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
+      if (_explicitBin(config) == null) PluginControlCapability.runtimeUpdate,
     };
+  }
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (config.flag(_OpenCodeConfigKey.noAutoStart) || _explicitBin(config) != null) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: "opencode",
+      arguments: ["upgrade"],
+      timeout: Duration(minutes: 10),
+    );
   }
 
   String? _explicitBin(PluginConfig config) {
@@ -306,11 +317,31 @@ class const OpenCodePluginDescriptor({
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
-    return const ManagedRuntimeInventory(
-      manifest: OpenCodeRuntimeManifest(),
-    ).hasSupersededVersion(stateDirectory: stateDirectory);
+    const manifest = OpenCodeRuntimeManifest();
+    final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
+      processes: processes,
+      runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+    );
+    return await const ManagedRuntimeComposition()
+        .createUpgradeService(
+          manifest: manifest,
+          versionValidator: RuntimeVersionValidator(
+            commandExecutor: executor,
+            manifest: manifest,
+            probeTimeout: _versionProbeTimeout,
+            executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
+          ),
+        )
+        .shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
   }
 
   @override
@@ -329,6 +360,17 @@ class const OpenCodePluginDescriptor({
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,
     );
+    final pathVersionValidator = RuntimeVersionValidator(
+      commandExecutor: HostProcessCommandExecutor(
+        includeParentEnvironment: true,
+        processes: processes,
+        runInShell: io.Platform.isWindows,
+        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+      ),
+      manifest: manifest,
+      probeTimeout: _versionProbeTimeout,
+      executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
+    );
     final httpClient = http.Client();
     try {
       final installService = const ManagedRuntimeComposition().createInstaller(
@@ -339,6 +381,11 @@ class const OpenCodePluginDescriptor({
           commandExecutor: commandExecutor,
           manifest: manifest,
           probeTimeout: _versionProbeTimeout,
+          executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
+        ),
+        pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
+          manifest: manifest,
+          versionValidator: pathVersionValidator,
         ),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
@@ -378,7 +425,7 @@ class const OpenCodePluginDescriptor({
     /// needs a first install.
     String missingRuntimeHint() {
       const inventory = ManagedRuntimeInventory(manifest: manifest);
-      return inventory.hasSupersededVersion(stateDirectory: stateDirectory)
+      return inventory.hasOutdatedVersion(stateDirectory: stateDirectory)
           ? "This bridge needs a newer OpenCode. Install it from Sesori to update the managed runtime."
           : "Install OpenCode from Sesori, or install it locally and retry setup detection.";
     }
@@ -390,6 +437,7 @@ class const OpenCodePluginDescriptor({
             commandExecutor: executor,
             manifest: manifest,
             probeTimeout: _versionProbeTimeout,
+            executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
           ),
           inventory: const ManagedRuntimeInventory(manifest: manifest),
         ).select(
@@ -403,6 +451,18 @@ class const OpenCodePluginDescriptor({
       return PluginSetupReady.versioned(runtimeVersion: version.raw);
     }
     final rejection = (selection as ManagedRuntimeNotSelected).primaryRejection;
+    if (selection is ManagedRuntimePathNotSelected) {
+      return switch (rejection) {
+        ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+          actionHint: "Update the global OpenCode installation to ${manifest.minPathVersion.raw} or newer.",
+          runtimeVersion: version.raw,
+        ),
+        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+          actionHint:
+              "The global OpenCode installation could not be verified. Check it locally and retry setup detection.",
+        ),
+      };
+    }
     return switch (rejection) {
       ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => PluginSetupRuntimeMissing(
         actionHint: explicitBin == null
@@ -488,6 +548,7 @@ class const OpenCodePluginDescriptor({
         commandExecutor: commandExecutor,
         manifest: manifest,
         probeTimeout: _versionProbeTimeout,
+        executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
       ),
       // OpenCode has no desktop app bundling a CLI.
       fallbackExecutableCandidates: const [],

@@ -64,7 +64,7 @@ void main() {
 
       expect(messages, hasLength(1));
       expect(messages.single.parts.single.state.status, PluginToolStatus.running);
-      expect(messages.single.parts.single.state.title, "Compacting context");
+      expect(messages.single.parts.single.state.title, isNull);
     });
 
     test("buffers created before busy when the first turn starts", () async {
@@ -743,12 +743,21 @@ Future<void> _answerProcess({
             command: type,
             data: const {"entries": <Object?>[], "leafId": null},
           );
-        case "get_state" when spec.launch is PiNoSession:
+        case "get_state":
+          final selectedModel = spec.model;
           process.emitResponse(
             id: id,
             command: type,
-            data: const {
-              "model": {"provider": "provider", "id": "model", "name": "Model", "reasoning": true},
+            data: {
+              "model": {
+                "provider": selectedModel?.providerID ?? "provider",
+                "id": selectedModel?.modelID ?? "model",
+                "name": "Model",
+                "reasoning": true,
+              },
+              "thinkingLevel": spec.thinkingLevel ?? "high",
+              "isStreaming": false,
+              "pendingMessageCount": 0,
             },
           );
         case "get_available_models":

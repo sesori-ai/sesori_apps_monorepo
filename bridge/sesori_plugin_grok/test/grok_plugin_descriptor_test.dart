@@ -22,16 +22,27 @@ void main() {
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
       expect(descriptor.supportsPromptAttachments, isFalse);
       expect(GrokPluginDescriptor.minVersion, "1.0.5");
-      expect(GrokPluginDescriptor.targetVersion, "1.0.5");
+      expect(GrokPluginDescriptor.targetVersion, "1.0.30");
       expect(descriptor.options.single.name, GrokPluginDescriptor.binOption);
       expect(
         descriptor.managementCapabilities(config: config),
         isNot(contains(PluginControlCapability.install)),
         reason: "Grok owns its installer and update lifecycle",
       );
+      expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.runtimeUpdate));
+      final update = descriptor.runtimeUpdateSpec(config: config);
+      expect(update?.executable, "grok");
+      expect(update?.arguments, const ["update"]);
+      expect(update?.timeout, const Duration(minutes: 10));
+      const explicit = PluginConfig(values: {GrokPluginDescriptor.binOption: "/custom/grok"});
+      expect(
+        descriptor.managementCapabilities(config: explicit),
+        isNot(contains(PluginControlCapability.runtimeUpdate)),
+      );
+      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
     });
 
-    test("reports a current PATH runtime and its sanitized version", () async {
+    test("accepts the supported PATH floor and reports its sanitized version", () async {
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
@@ -154,6 +165,10 @@ void main() {
     });
 
     test("reports missing, malformed, and outdated runtimes distinctly", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("grok-missing-path");
+      addTearDown(() async {
+        await pathDirectory.delete(recursive: true);
+      });
       final missing = await const GrokPluginDescriptor().inspectSetup(
         config: config,
         processes: _ProbeProcessService(
@@ -161,7 +176,7 @@ void main() {
           processSequence: const [],
           servesHeadlessAcp: false,
         ),
-        environment: const {},
+        environment: {"PATH": pathDirectory.path},
         stateDirectory: stateDirectory,
       );
       final malformed = await const GrokPluginDescriptor().inspectSetup(
@@ -201,7 +216,54 @@ void main() {
 
       expect(missing, isA<PluginSetupRuntimeMissing>());
       expect(malformed, isA<PluginSetupUnknown>());
-      expect(outdated, isA<PluginSetupUnavailable>());
+      expect(outdated, isA<PluginSetupRuntimeOutdated>());
+      expect(outdated.runtimeVersion, "1.0.4");
+    });
+
+    test("uses PATH presence rather than shell output to classify failures", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("grok-shell-path");
+      addTearDown(() async {
+        await pathDirectory.delete(recursive: true);
+      });
+      final missing = await const GrokPluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProbeProcessService(
+          spawnError: null,
+          processSequence: [
+            _ProbeProcess.completed(
+              pid: 4,
+              stdoutBytes: const [],
+              stderrBytes: utf8.encode("localized command error\n"),
+              resultCode: 1,
+            ),
+          ],
+          servesHeadlessAcp: false,
+        ),
+        environment: {"PATH": pathDirectory.path},
+        stateDirectory: stateDirectory,
+      );
+      File("${pathDirectory.path}${Platform.pathSeparator}grok").writeAsStringSync("shim");
+      File("${pathDirectory.path}${Platform.pathSeparator}grok.CMD").writeAsStringSync("shim");
+      final ambiguous = await const GrokPluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProbeProcessService(
+          spawnError: null,
+          processSequence: [
+            _ProbeProcess.completed(
+              pid: 5,
+              stdoutBytes: const [],
+              stderrBytes: utf8.encode("dependency: command not found\n"),
+              resultCode: 1,
+            ),
+          ],
+          servesHeadlessAcp: false,
+        ),
+        environment: {"PATH": pathDirectory.path, "PATHEXT": ".CMD;.EXE"},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(missing, isA<PluginSetupRuntimeMissing>());
+      expect(ambiguous, isA<PluginSetupUnknown>());
     });
 
     test("the explicit binary is authoritative for inspection and provisioning", () async {

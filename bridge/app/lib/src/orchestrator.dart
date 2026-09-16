@@ -201,6 +201,7 @@ typedef OrchestratorComposition = ({
 /// Factory that creates [OrchestratorSession] instances with all runtime
 /// dependencies (room key, SSE manager) properly initialized.
 class Orchestrator({
+  required final Stream<BridgeConnectionNotificationPolicy> _connectionNotificationPolicies,
   required final BridgeConfig config,
   required final RelayClient _client,
   required final PluginLifecycleRepository _pluginLifecycleRepository,
@@ -608,6 +609,7 @@ class Orchestrator({
         GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
         PostPluginAuthenticationHandler(lifecycleService: _pluginLifecycleService),
         PostPluginAuthenticationRedirectHandler(lifecycleService: _pluginLifecycleService),
+        PostPluginAuthenticationCodeHandler(lifecycleService: _pluginLifecycleService),
         DeletePluginAuthenticationHandler(lifecycleService: _pluginLifecycleService),
         PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
         GetBridgeSettingsHandler(settingsRepository: _bridgeSettingsRepository),
@@ -695,6 +697,7 @@ class Orchestrator({
       sessionOptionsChangedRefreshListener: sessionOptionsChangedRefreshListener,
       sessionOptionsService: sessionOptionsService,
       sessionEventDispatcher: sessionEventDispatcher,
+      connectionNotificationPolicies: _connectionNotificationPolicies,
       pluginRuntime: _pluginRuntime,
       completionListener: completionListener,
       maintenanceListener: maintenanceListener,
@@ -792,6 +795,7 @@ enum OrchestratorSessionStartResult() {
 /// Created by [Orchestrator.create]. Call [start] once, capture
 /// [waitUntilStopped] immediately, and use [cancel] to shut down gracefully.
 class OrchestratorSession._({
+  required Stream<BridgeConnectionNotificationPolicy> connectionNotificationPolicies,
   required final BridgeConfig config,
   required final RelayClient _client,
   required final Stream<NormalizedSourcedBridgeEvent> _pluginEvents,
@@ -877,6 +881,9 @@ class OrchestratorSession._({
   final Completer<void> _firstPhoneConnectedCompleter = Completer<void>();
 
   this {
+    connectionNotificationPolicies
+        .listen((policy) => _client.updateConnectionNotificationPolicy(policy: policy))
+        .addTo(_subscriptions);
     _restartDispatcher.shutdownRequests
         .listen((request) {
           switch (request) {

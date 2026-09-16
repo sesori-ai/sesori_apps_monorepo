@@ -51,9 +51,8 @@ void _configureFirebaseSdk({
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Pre-warm the liquid-glass shaders so the frosted top nav / glass buttons
-  // render without a first-frame compile hitch. No-ops on Skia/web.
-  await LiquidGlassWidgets.initialize();
+  // Initialize standard shaders, but do not preload the unused premium tier.
+  await LiquidGlassWidgets.initialize(warmUpMode: GlassWarmUpMode.never);
   // The native splash runs in fullscreen, which leaves the status/nav bars
   // hidden on iOS until the engine is told otherwise. Restore them and let
   // content draw behind them so the background image still reaches the edges.
@@ -79,6 +78,7 @@ void main() async {
           crawlGateService: crawlGateService,
         ),
       );
+      setLogSink(sink: getIt<LogSink>());
       _configureFirebaseSdk(
         supportsCrashlytics: supportsFirebaseCrashlytics,
       );
@@ -96,6 +96,7 @@ void main() async {
       notificationRegistrationService: getIt<NotificationRegistrationService>(),
       foregroundNotificationDispatcher: getIt<ForegroundNotificationDispatcher>(),
       notificationOpenDispatcher: getIt<NotificationOpenDispatcher>(),
+      connectionNotificationObservationService: getIt<ConnectionNotificationObservationService>(),
     ),
     readAppearanceFn: () => getIt<AppearanceStore>().read(),
     readChatInputModeFn: () => getIt<ChatInputModeStore>().read(),
@@ -155,7 +156,7 @@ Future<void> bootstrapSesoriApp({
         minQuality: .minimal,
         initialQuality: .standard,
         maxQuality: .standard,
-        allowStepUp: false,
+        allowStepUp: true,
         onQualityChanged: (oldQuality, newQuality) {
           logd("Quality changed for liquid glass: ${oldQuality.name} -> ${newQuality.name}");
         },
@@ -260,12 +261,14 @@ Future<void> startNotificationStartup({
   required NotificationRegistrationService notificationRegistrationService,
   required ForegroundNotificationDispatcher foregroundNotificationDispatcher,
   required NotificationOpenDispatcher notificationOpenDispatcher,
+  required ConnectionNotificationObservationService connectionNotificationObservationService,
 }) async {
   await _runNotificationStartupStep(() => localNotificationClient.initialize());
   await _runNotificationStartupStep(() => pushMessagingSource.initialize());
   await _runNotificationStartupStep(() => notificationRegistrationService.start());
   await _runNotificationStartupStep(() => foregroundNotificationDispatcher.start());
   await _runNotificationStartupStep(() => notificationOpenDispatcher.start());
+  await _runNotificationStartupStep(() => connectionNotificationObservationService.start());
 }
 
 Future<void> _runNotificationStartupStep(Future<void> Function() step) async {

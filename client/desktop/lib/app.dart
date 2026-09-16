@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -23,22 +24,35 @@ class const SesoriDesktopApp({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: <BlocProvider<dynamic>>[
-        BlocProvider<AppearanceCubit>(
-          create: (_) => AppearanceCubit(
-            store: getIt<AppearanceStore>(),
-            initialMode: initialAppearance,
+    return LiquidGlassWidgets.wrap(
+      brightnessResolver: Theme.maybeBrightnessOf,
+      adaptiveQuality: true,
+      adaptiveConfig: GlassAdaptiveScopeConfig(
+        minQuality: .minimal,
+        initialQuality: .standard,
+        maxQuality: .standard,
+        allowStepUp: true,
+        onQualityChanged: (oldQuality, newQuality) {
+          logd("Quality changed for liquid glass: ${oldQuality.name} -> ${newQuality.name}");
+        },
+      ),
+      child: MultiBlocProvider(
+        providers: <BlocProvider<dynamic>>[
+          BlocProvider<AppearanceCubit>(
+            create: (_) => AppearanceCubit(
+              store: getIt<AppearanceStore>(),
+              initialMode: initialAppearance,
+            ),
           ),
-        ),
-        BlocProvider<ChatInputModeCubit>(
-          create: (_) => ChatInputModeCubit(
-            store: getIt<ChatInputModeStore>(),
-            initialMode: initialChatInputMode,
+          BlocProvider<ChatInputModeCubit>(
+            create: (_) => ChatInputModeCubit(
+              store: getIt<ChatInputModeStore>(),
+              initialMode: initialChatInputMode,
+            ),
           ),
-        ),
-      ],
-      child: _DesktopAppShell(hiddenLaunch: hiddenLaunch),
+        ],
+        child: _DesktopAppShell(hiddenLaunch: hiddenLaunch),
+      ),
     );
   }
 }
@@ -54,6 +68,10 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
 
     return MultiBlocProvider(
       providers: <BlocProvider<dynamic>>[
+        BlocProvider<FileAccessCubit>(
+          lazy: false,
+          create: (_) => FileAccessCubit(permission: getIt<FileAccessPermission>(), windowHost: getIt<WindowHost>()),
+        ),
         BlocProvider<ConnectionOverlayCubit>(
           lazy: false,
           create: (_) => ConnectionOverlayCubit(
@@ -87,7 +105,16 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
               launchAtLogin: getIt(),
               hiddenLaunch: hiddenLaunch,
             );
-            unawaited(cubit.initialize());
+            final initialized = cubit.initialize();
+            unawaited(initialized);
+            unawaited(
+              getIt<DesktopStartupOrchestrator>().applyFirstRunBridgeDefaults(
+                onLaunchAtLoginChanged: () async {
+                  await initialized;
+                  await cubit.refreshLaunchAtLogin();
+                },
+              ),
+            );
             return cubit;
           },
         ),
@@ -120,12 +147,7 @@ class const _DesktopRootEffects({required final Widget child, required final Glo
     return DesktopEscapeDismissal(
       child: SseToastListener(
         navigatorKey: navigatorKey,
-        child: Column(
-          children: <Widget>[
-            ConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
-            Expanded(child: child),
-          ],
-        ),
+        child: child,
       ),
     );
   }

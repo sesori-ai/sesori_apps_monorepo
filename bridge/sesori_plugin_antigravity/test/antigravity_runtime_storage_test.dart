@@ -96,6 +96,29 @@ void main() {
     );
   });
 
+  test("normalizes Windows PATH entries and scans the working directory first", () {
+    if (!Platform.isWindows) return;
+    final paths = writePair(temporaryDirectory);
+
+    final result = storage.findOnPath(
+      environment: {"Path": '  "${temporaryDirectory.path}"  '},
+      target: target,
+    ) as AntigravityRuntimePairFound;
+
+    expect(result.pair.serverPath, File(paths.server).resolveSymbolicLinksSync());
+
+    final missingDirectory = Directory.systemTemp.createTempSync("antigravity-missing-path-");
+    try {
+      final fromWorkingDirectory = IOOverrides.runZoned(
+        () => storage.findOnPath(environment: {"Path": missingDirectory.path}, target: target),
+        getCurrentDirectory: () => temporaryDirectory,
+      ) as AntigravityRuntimePairFound;
+      expect(fromWorkingDirectory.pair.serverPath, File(paths.server).resolveSymbolicLinksSync());
+    } finally {
+      missingDirectory.deleteSync();
+    }
+  });
+
   test("rejects wrong resolved names and identical members", () {
     if (Platform.isWindows) return;
     final realDirectory = Directory(p.join(temporaryDirectory.path, "real"))..createSync();
@@ -168,18 +191,12 @@ void main() {
 
   test("an empty POSIX PATH component searches the current directory", () {
     if (Platform.isWindows) return;
-    final originalDirectory = Directory.current;
     final paths = writePair(temporaryDirectory);
-    Directory.current = temporaryDirectory;
-    try {
-      final result = storage.findOnPath(
-        environment: const {"PATH": ":/missing"},
-        target: target,
-      ) as AntigravityRuntimePairFound;
-      expect(result.pair.serverPath, File(paths.server).resolveSymbolicLinksSync());
-    } finally {
-      Directory.current = originalDirectory;
-    }
+    final result = IOOverrides.runZoned(
+      () => storage.findOnPath(environment: const {"PATH": ":/missing"}, target: target),
+      getCurrentDirectory: () => temporaryDirectory,
+    ) as AntigravityRuntimePairFound;
+    expect(result.pair.serverPath, File(paths.server).resolveSymbolicLinksSync());
   });
 
   test("PATH uses the first server hit and requires its sibling", () {
@@ -204,6 +221,34 @@ void main() {
       target: target,
     );
     expect(shadowed, isA<AntigravityRuntimePairMissing>());
-    expect(storage.findOnPath(environment: const {}, target: target), isA<AntigravityRuntimePairMissing>());
+
+    final harnessOnlyDirectory = Directory(p.join(temporaryDirectory.path, "harness-only"))..createSync();
+    File(
+      p.join(harnessOnlyDirectory.path, AntigravityRelease.harnessFileName(target: target)),
+    ).writeAsStringSync("harness");
+    final afterHarnessOnly = storage.findOnPath(
+      environment: {
+        "PATH": [harnessOnlyDirectory.path, pairDirectory.path].join(separator),
+      },
+      target: target,
+    ) as AntigravityRuntimePairFound;
+    expect(afterHarnessOnly.pair.serverPath, File(paths.server).resolveSymbolicLinksSync());
+    final harnessOnly = storage.findOnPath(
+      environment: {"PATH": harnessOnlyDirectory.path},
+      target: target,
+    ) as AntigravityRuntimePairInvalid;
+    expect(harnessOnly.reason, AntigravityRuntimePairInvalidReason.notSiblings);
+
+    expect(
+      IOOverrides.runZoned(
+        () => storage.findOnPath(environment: const {}, target: target),
+        getCurrentDirectory: () => pairDirectory,
+      ),
+      isA<AntigravityRuntimePairMissing>(),
+    );
+    expect(
+      storage.inspectPathServerPresence(environment: const {}, target: target),
+      HostExecutablePresence.unknown,
+    );
   });
 }

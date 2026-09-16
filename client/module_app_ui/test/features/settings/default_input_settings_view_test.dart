@@ -3,7 +3,6 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
-import "package:sesori_app_ui/src/features/settings/widgets/chat_input_mode_picker.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 

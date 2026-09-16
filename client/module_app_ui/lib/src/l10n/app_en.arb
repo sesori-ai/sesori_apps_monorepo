@@ -7,6 +7,77 @@
   "apiErrorNotAuthenticated": "Not authenticated — check your connection",
   "apiErrorServerRejected": "The server returned an error. Please try again.",
   "apiErrorNetworkDown": "Connection failed — check your network and try again.",
+  "desktopFileAccessTitle": "Full Disk Access",
+  "@desktopFileAccessTitle": {"description": "macOS protected-file access for this computer, not a remote bridge."},
+  "desktopFileAccessDescription": "Sesori runs coding agents on your behalf. macOS folder prompts can pause them while you're away. Full Disk Access lets Sesori and its agents access protected files without those prompts. This is optional; restart the local bridge after granting access.",
+  "@desktopFileAccessDescription": {"description": "Explains the optional broader permission and the agent benefit before opening macOS settings."},
+  "desktopFileAccessOpenSettings": "Open System Settings",
+  "desktopFileAccessNotNow": "Not now",
+  "desktopFileAccessGranted": "Protected files are accessible",
+  "desktopFileAccessDenied": "Not granted — folder prompts may pause agents",
+  "desktopFileAccessUnknown": "Access could not be confirmed",
+  "desktopHomePickSession": "Pick a session from the sidebar to get started.",
+  "@desktopHomePickSession": {"description": "Desktop home guidance when projects are available but no session is open."},
+  "desktopSidebarNewProject": "New project",
+  "@desktopSidebarNewProject": {"description": "Label for the prominent desktop sidebar action that opens the add-project dialog."},
+  "desktopSidebarAllSessions": "All sessions · {count}",
+  "@desktopSidebarAllSessions": {
+    "description": "Sidebar link to a project's full session list, with its active visible session count.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "desktopSidebarNewSession": "New session in {projectName}",
+  "@desktopSidebarNewSession": {
+    "description": "Tooltip for the sidebar project's new-session button, revealed on hover or keyboard focus.",
+    "placeholders": {"projectName": {"type": "String"}}
+  },
+  "desktopSidebarCollapseProject": "Collapse {projectName}",
+  "@desktopSidebarCollapseProject": {
+    "description": "Tooltip for hiding a project's recent-session rows in the desktop sidebar.",
+    "placeholders": {"projectName": {"type": "String"}}
+  },
+  "desktopSidebarExpandProject": "Expand {projectName}",
+  "@desktopSidebarExpandProject": {
+    "description": "Tooltip for showing a project's recent-session rows in the desktop sidebar.",
+    "placeholders": {"projectName": {"type": "String"}}
+  },
+  "desktopSidebarCollapse": "Collapse sidebar",
+  "@desktopSidebarCollapse": {"description": "Tooltip for switching desktop navigation to the compact project rail."},
+  "desktopSidebarExpand": "Expand sidebar",
+  "@desktopSidebarExpand": {"description": "Tooltip for restoring the expanded desktop navigation sidebar."},
+  "desktopSidebarResize": "Resize sidebar; double-click to reset",
+  "@desktopSidebarResize": {"description": "Tooltip on the expanded desktop sidebar's drag handle."},
+  "desktopBridgeTakenOver": "Another bridge currently owns this account connection.",
+  "@desktopBridgeTakenOver": {"description": "Sidebar recovery notice when bridge ownership can be reclaimed."},
+  "desktopBridgeTakeOver": "Take Over",
+  "@desktopBridgeTakeOver": {"description": "Action to reclaim local or relay bridge ownership."},
+  "desktopBridgeLoginRequired": "Your Sesori account is required before the local bridge can start.",
+  "@desktopBridgeLoginRequired": {"description": "Sidebar notice for supervised bridge authentication recovery."},
+  "desktopBridgeStart": "Start Bridge",
+  "@desktopBridgeStart": {"description": "Action to recover authentication and start the local bridge."},
+  "desktopBridgeCrashGiveUp": "The local bridge stopped after repeated crashes.",
+  "@desktopBridgeCrashGiveUp": {"description": "Sidebar notice when automatic bridge crash recovery stops."},
+  "desktopBridgeOpenLogs": "Open Logs",
+  "@desktopBridgeOpenLogs": {"description": "Action to open the local bridge's diagnostic logs."},
+  "desktopLocalBridgeTitle": "Local bridge",
+  "@desktopLocalBridgeTitle": {"description": "Heading for controls of the bridge supervised on this computer, not the desktop relay client."},
+  "desktopBridgeStop": "Stop Bridge",
+  "@desktopBridgeStop": {"description": "Action that turns off the supervised local bridge without quitting Sesori."},
+  "desktopBridgeSettings": "Bridge settings…",
+  "@desktopBridgeSettings": {"description": "Secondary popover action opening bridge configuration."},
+  "desktopSettingsGeneral": "General",
+  "@desktopSettingsGeneral": {"description": "Desktop settings tab for app-wide preferences."},
+  "desktopSettingsLaunchAtLogin": "Launch Sesori at login",
+  "@desktopSettingsLaunchAtLogin": {"description": "Native login-item switch in desktop General settings."},
+  "desktopSettingsLaunchAtLoginDescription": "Start Sesori in the background when you sign in to this computer.",
+  "@desktopSettingsLaunchAtLoginDescription": {"description": "Explains native app startup, not a connected bridge's configuration."},
+  "desktopSettingsConnectedBridge": "Connected bridge",
+  "@desktopSettingsConnectedBridge": {"description": "Settings owned by the connected bridge, which may be on another computer."},
+  "desktopSettingsConnectedBridgeDescription": "These settings apply to the bridge you're connected to, including one on another computer.",
+  "@desktopSettingsConnectedBridgeDescription": {"description": "Scope explanation above connected-bridge configuration."},
+  "desktopSettingsThisComputer": "This computer",
+  "@desktopSettingsThisComputer": {"description": "Separates local supervised-bridge status and diagnostics from connected-bridge settings."},
+  "desktopBridgeTitle": "Bridge",
+  "@desktopBridgeTitle": {"description": "Label of the pinned desktop navigation entry for local bridge controls."},
   "projectListTitle": "Projects",
   "projectListLoadingSemantics": "Loading projects",
   "projectListDefaultName": "Default Project",
@@ -311,6 +382,19 @@
   "harnessAuthenticationInvalidChallenge": "The bridge returned an invalid login website. Check the bridge logs for details.",
   "harnessAuthenticationBrowserFailed": "The secure website could not be opened. Try again.",
   "harnessAuthenticationRequestFailed": "Check your connection and try again.",
+  "harnessAuthenticationPastedCodeInstructions": "Only continue if you started this login. Sesori will sign {harnessName} on the connected computer into your account. Open the sign-in page, verify its address, approve access, then paste the code shown after approval.",
+  "@harnessAuthenticationPastedCodeInstructions": {
+    "placeholders": {
+      "harnessName": {
+        "type": "String"
+      }
+    }
+  },
+  "harnessAuthenticationOpenSignInPage": "Open sign-in page",
+  "harnessAuthenticationPastedCodeLabel": "Code from the sign-in page",
+  "harnessAuthenticationSubmitCode": "Submit code",
+  "harnessAuthenticationPastedCodeInvalid": "Paste the complete code shown after approval, without spaces.",
+  "harnessAuthenticationPastedCodeNotConfirmed": "The code could not be confirmed. Submit it again.",
   "harnessesRegisteredSection": "Registered Harnesses",
   "harnessesEmptyTitle": "No harnesses registered",
   "harnessesEmptyDescription": "The connected bridge hasn't registered any coding harnesses.",
@@ -566,7 +650,11 @@
   },
   "sessionDetailCommandArgumentsHint": "Optional arguments",
   "sessionDetailCommandPickerTitle": "Slash commands",
-  "sessionDetailCommandSearch": "Search commands...",
+  "sessionDetailCommandSearch": "Search commands",
+  "sessionDetailCommandSearchHint": "Name, description, or arguments",
+  "@sessionDetailCommandSearchHint": {
+    "description": "Placeholder describing the searchable fields in the slash-command picker."
+  },
   "sessionDetailNoCommands": "No slash commands are available for this project.",
   "sessionDetailSend": "Send",
   "sessionDetailAbort": "Stop",
@@ -696,6 +784,7 @@
   "sessionDetailQueuedMessage": "Queued",
   "sessionDetailQueuedCommand": "Queued command",
   "sessionDetailUnavailableCommand": "Command unavailable",
+  "sessionDetailQueueCancellationFailed": "Cancellation was not confirmed. The message may already have been sent.",
   "sessionDetailSendingMessage": "Sending",
   "sessionDetailPromptOptionsUpdated": "Prompt options changed. Updated settings and retrying your message.",
   "sessionDetailPromptOptionsRecoveryFailed": "Couldn’t apply updated prompt options. Your message remains queued.",
@@ -998,10 +1087,10 @@
   "prChecksPending": "Checks pending",
   "prMergeable": "Ready to merge",
   "prConflicting": "Has merge conflicts",
-  "diffPermissionRequestTitle": "Permission Request",
-  "diffPermissionReject": "Reject",
-  "diffPermissionOnce": "Once",
-  "diffPermissionAlwaysAllow": "Always Allow",
+  "diffPermissionRequestTitle": "Allow this action?",
+  "diffPermissionReject": "Don’t allow",
+  "diffPermissionOnce": "Allow",
+  "diffPermissionAlwaysAllow": "Always approve",
   "diffFileChangesTitle": "File Changes",
   "diffFilesChangedCount": "{count} file{count, plural, =1{} other{s}} changed  +{additions} -{deletions}",
   "@diffFilesChangedCount": {
@@ -1354,9 +1443,17 @@
   "@catalogScanUnsupportedDetail": {
     "description": "Supporting line on the unsupported scan row, naming what would make scanning available."
   },
+  "catalogScanNotConnectedTitle": "Bridge not connected",
+  "@catalogScanNotConnectedTitle": {
+    "description": "Title of the scan row when a deep pull cannot start because there is no live bridge connection."
+  },
+  "catalogScanNotConnectedDetail": "Connect to a bridge to scan",
+  "@catalogScanNotConnectedDetail": {
+    "description": "Supporting line on the not-connected scan row, naming what the user must do before scanning."
+  },
   "catalogScanNoHarnessTitle": "No harness to scan",
   "@catalogScanNoHarnessTitle": {
-    "description": "Title of the scan row when no harness could be scanned: none is connected and ready, or the bridge has not reported its harnesses yet."
+    "description": "Title of the scan row when the connected bridge has no harness ready to scan, or has not reported its harnesses yet."
   },
   "catalogScanNoHarnessDetail": "Check your harnesses in Settings",
   "@catalogScanNoHarnessDetail": {

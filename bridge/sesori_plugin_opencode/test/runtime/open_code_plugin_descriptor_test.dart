@@ -37,38 +37,41 @@ void main() {
       Directory(p.join(stateDir.path, const OpenCodeRuntimeManifest().runtimeId, version)).createSync(recursive: true);
     }
 
-    test("declines without a superseded managed runtime", () {
+    Future<bool> needsUpgrade({required PluginConfig candidateConfig}) => descriptor.needsManagedRuntimeUpgrade(
+      config: candidateConfig,
+      processes: const _MissingHostProcessService(),
+      environment: const {"PATH": "/definitely/missing"},
+      stateDirectory: stateDir.path,
+    );
+
+    test("repairs an incomplete pinned directory", () async {
       installedVersion(const OpenCodeRuntimeManifest().bundledVersion.raw);
 
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
+      expect(await needsUpgrade(candidateConfig: config), isTrue);
     });
 
-    test("asks for an upgrade when a superseded version is installed", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("1.17.9");
 
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isTrue);
+      expect(await needsUpgrade(candidateConfig: config), isTrue);
     });
 
-    test("declines with an explicit binary override", () {
+    test("declines with an explicit binary override", () async {
       installedVersion("1.17.9");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
-          config: const PluginConfig(values: {"no-auto-start": false, "bin": "/custom/opencode"}),
-          stateDirectory: stateDir.path,
+        await needsUpgrade(
+          candidateConfig: const PluginConfig(values: {"no-auto-start": false, "bin": "/custom/opencode"}),
         ),
         isFalse,
       );
     });
 
-    test("declines in attach mode, where Sesori does not own the runtime", () {
+    test("declines in attach mode, where Sesori does not own the runtime", () async {
       installedVersion("1.17.9");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
-          config: const PluginConfig(values: {"no-auto-start": true, "bin": null}),
-          stateDirectory: stateDir.path,
-        ),
+        await needsUpgrade(candidateConfig: const PluginConfig(values: {"no-auto-start": true, "bin": null})),
         isFalse,
       );
     });
@@ -120,12 +123,12 @@ void main() {
     });
 
     test("allows only setup refresh in --no-auto-start mode", () {
+      const config = PluginConfig(values: {"no-auto-start": true});
       expect(
-        descriptor.managementCapabilities(
-          config: const PluginConfig(values: {"no-auto-start": true}),
-        ),
+        descriptor.managementCapabilities(config: config),
         const {PluginControlCapability.setupRefresh},
       );
+      expect(descriptor.runtimeUpdateSpec(config: config), isNull);
     });
 
     test("allows every management capability plus install in managed mode", () {
@@ -140,8 +143,15 @@ void main() {
           PluginControlCapability.setupRefresh,
           PluginControlCapability.idleTimeout,
           PluginControlCapability.install,
+          PluginControlCapability.runtimeUpdate,
         },
       );
+      final update = descriptor.runtimeUpdateSpec(
+        config: const PluginConfig(values: {"no-auto-start": false, "bin": null}),
+      );
+      expect(update?.executable, "opencode");
+      expect(update?.arguments, const ["upgrade"]);
+      expect(update?.timeout, const Duration(minutes: 10));
     });
 
     test("does not advertise install with an explicit binary override", () {
@@ -154,6 +164,12 @@ void main() {
           PluginControlCapability.setupRefresh,
           PluginControlCapability.idleTimeout,
         },
+      );
+      expect(
+        descriptor.runtimeUpdateSpec(
+          config: const PluginConfig(values: {"no-auto-start": false, "bin": "/usr/local/bin/opencode"}),
+        ),
+        isNull,
       );
     });
 
@@ -1143,6 +1159,23 @@ class _FakePortService() implements HostPortService {
 
   @override
   Future<bool> isBindable({required String host, required int port}) async => byPort[port] ?? defaultBindable;
+}
+
+class const _MissingHostProcessService() implements HostProcessService {
+  @override
+  Future<SpawnedProcess> spawn({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+    required bool runInShell,
+    required bool includeParentEnvironment,
+  }) {
+    throw ProcessException(executable, arguments, "missing", 2);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeHostProcessService() implements HostProcessService {

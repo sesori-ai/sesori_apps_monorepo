@@ -581,7 +581,7 @@ class CodexMessageRepository({
                 time: _messageTimeFrom(timestamp),
               ),
               tool: "compact",
-              title: "Context compacted",
+              title: null,
               status: PluginToolStatus.completed,
               output: null,
               attachments: const [],

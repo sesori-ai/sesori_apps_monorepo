@@ -302,6 +302,9 @@ class RecordingNotificationRepository({required final List<String> operations}) 
   bool failNextUnregisterToken = false;
 
   @override
+  Future<String?> readDeviceId() async => null;
+
+  @override
   Future<void> registerToken({required String token, required DevicePlatform platform}) async {
     if (failNextRegisterToken) {
       failNextRegisterToken = false;

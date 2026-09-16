@@ -114,20 +114,19 @@ void main() {
       expect(arguments, containsAllInOrder(["--allowedTools", "Write", "Bash(git status:*)"]));
     });
 
-    test("rejects a HOME override", () {
-      expect(
-        () => ClaudeLaunchSpec(
-          binaryPath: "claude",
-          workingDirectory: "/tmp/project",
-          launch: ClaudeNewSession(sessionId: _newSessionId),
-          model: null,
-          effort: null,
-          permissionMode: null,
-          allowedTools: const [],
-          environment: const {"HOME": "/tmp/test-home"},
-        ),
-        throwsA(isA<ArgumentError>()),
+    test("rejects a HOME override when describing its child process", () {
+      final spec = ClaudeLaunchSpec(
+        binaryPath: "claude",
+        workingDirectory: "/tmp/project",
+        launch: ClaudeNewSession(sessionId: _newSessionId),
+        model: null,
+        effort: null,
+        permissionMode: null,
+        allowedTools: const [],
+        environment: const {"HOME": "/tmp/test-home"},
       );
+
+      expect(() => spec.processLaunch, throwsA(isA<ArgumentError>()));
     });
 
     test("keeps environment overrides immutable", () {

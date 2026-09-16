@@ -87,6 +87,59 @@ SesoriQuestionAsked _questionAsked({required List<QuestionInfo> questions}) {
 }
 
 void main() {
+  for (final omitCustom in [false, true]) {
+    testWidgets("checkbox and separate text questions preserve ${omitCustom ? 'omission' : 'identical values'}", (
+      tester,
+    ) async {
+      final capture = _ReplyCapture();
+      final router = _createRouter(
+        question: _questionAsked(
+          questions: const [
+            QuestionInfo(
+              question: "Choose deployment targets",
+              header: "Targets",
+              multiple: true,
+              custom: false,
+              options: [
+                QuestionOption(label: "iOS", description: "iPhone"),
+                QuestionOption(label: "Android", description: "Android phone"),
+              ],
+            ),
+            QuestionInfo(question: "Add another target", header: "Other", custom: true, options: []),
+          ],
+        ),
+        capture: capture,
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_buildApp(router: router));
+      await _openQuestionModal(tester);
+      expect(find.byType(TextField), findsNothing);
+      await tester.tap(find.text("iOS"));
+      await tester.pump();
+      await tester.tap(find.text("Android"));
+      await tester.pump();
+      expect(capture.answers, isNull);
+      await tester.tap(find.byKey(const Key("question-primary-action")));
+      await tester.pumpAndSettle();
+
+      if (omitCustom) {
+        await tester.tap(find.byKey(const Key("decline-current-question")));
+      } else {
+        await tester.enterText(find.byType(TextField), "iOS");
+      }
+      await tester.pump();
+      await tester.tap(find.byKey(const Key("question-primary-action")));
+      await tester.pumpAndSettle();
+
+      expect(capture.answers, [
+        const ReplyAnswer(values: ["iOS", "Android"]),
+        ReplyAnswer(values: omitCustom ? const [] : const ["iOS"]),
+      ]);
+      expect(capture.rejectedRequestId, isNull);
+    });
+  }
+
   testWidgets("multi-select questions submit selected options and custom text together", (tester) async {
     final capture = _ReplyCapture();
     final router = _createRouter(
@@ -904,5 +957,43 @@ void main() {
 
     expect(capture.rejectedRequestId, "question-1");
     expect(find.byType(PregoBottomSheet), findsNothing);
+  });
+
+  testWidgets("custom answer keeps its indicator level with the first answer line", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Split the work across worktrees?",
+            header: "Worktrees",
+            custom: true,
+            options: [],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    double indicatorTop() => tester.getTopLeft(find.byKey(const Key("custom-answer-toggle"))).dy;
+    double answerTop() => tester.getTopLeft(find.byType(TextField)).dy;
+
+    await tester.enterText(find.byType(TextField), "For the server");
+    await tester.pump();
+    expect(indicatorTop(), moreOrLessEquals(answerTop(), epsilon: 1));
+
+    // A wrapped answer must keep the indicator on its first line instead of
+    // centring it against the whole field.
+    await tester.enterText(
+      find.byType(TextField),
+      "Create the relay worktree first, then the auth-server one, and keep the bridge worktree untouched.",
+    );
+    await tester.pump();
+    expect(tester.getSize(find.byType(TextField)).height, greaterThan(20));
+    expect(indicatorTop(), moreOrLessEquals(answerTop(), epsilon: 1));
   });
 }

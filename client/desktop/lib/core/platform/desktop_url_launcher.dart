@@ -18,8 +18,12 @@ class DesktopUrlLauncher() implements UrlLauncher {
       // launchUrl throws (rather than returning false) when no default
       // application is configured, e.g. a Linux box without xdg-open. Callers
       // only see the boolean, so log the cause before degrading.
-      // Scheme only — OAuth URLs carry one-time state in their query.
-      logw("Failed to open a desktop resource (${url.scheme})", error, stackTrace);
+      // The error itself may contain an OAuth or transcript-derived URL.
+      logw(
+        "Failed to open a desktop resource (${url.diagnosticOrigin})",
+        ExternalLinkLaunchFailure(url: url, innerError: error),
+        stackTrace,
+      );
       return false;
     }
   }

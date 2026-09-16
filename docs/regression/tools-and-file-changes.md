@@ -10,10 +10,22 @@ sub-agent parts, plus the signal that a tool changed files.
 
 - Every plugin normalizes backend tool activity into the shared tool part
   contract: stable identity, tool name, lifecycle status (pending, running,
-  completed, error, plus a forward-compatible unknown), and attachments. Shell
-  tools additionally carry the explicit command and its bounded output or error.
-  Ordinary non-shell tool titles, output snippets, and errors stop at the bridge remapping
-  boundary and never enter chat history or live client events.
+  completed, error, plus a forward-compatible unknown), a bounded title naming
+  what the tool touched, and attachments. Shell tools additionally carry the
+  explicit command and its bounded output or error. Ordinary non-shell tool
+  output snippets and errors stop at the bridge remapping boundary and never
+  enter chat history or live client events.
+- The title is the tool's primary argument: Claude reads it from the tool input
+  (`skill`, `file_path`, `notebook_path`, `pattern`, `path`, `url`, `query`), Pi from the
+  tool-call arguments (`pattern`, then `path`), Codex from its argument-derived
+  title, and OpenCode and ACP harnesses pass the harness-supplied title through.
+  An ACP call without `kind` uses its title as the tool name and drops the
+  title, so the card never repeats it.
+  Skills that load through a file read of `SKILL.md` are visible by that path.
+  Pi learns the title at `toolcall_end`, so a card announced by `toolcall_start`
+  shows it from the running or terminal update onward, live and after replay.
+  The client card header shows the tool name followed by the title, or by the
+  shell command for shell tools, so the action and its target are both visible.
 - Plugin and shared message parts are sealed variants, so text, tool, subtask,
   file, agent, and retry data cannot be combined with unrelated part types. The
   shared variants retain the released `type` values and normalize known payloads
@@ -118,6 +130,9 @@ sub-agent parts, plus the signal that a tool changed files.
   shared ACP live or replay mapper retains tool state. Raw provider payloads and canonical output are independently
   bounded; local image paths remain metadata and are never read. Exact duplicate text is removed, differing standard
   and provider text is retained within the shared display cap, and a nonzero exit note never changes ACP tool status.
+  Native `invoke_subagent` activity remains generic: the official ACP seam supplies no child identity or authoritative
+  lifecycle, and its live terminal status conflicts with replay. Sesori does not manufacture a tile, child transcript,
+  descendant busy state, or scoped-stop target from prompt-bearing input, call order, or assistant output.
 - GitHub Copilot uses the same standard ACP tool lifecycle. Permission linkage
   must be exact while the request is live. Call identity, terminal state, and
   diff content then converge after `session/load`; permission
@@ -169,7 +184,9 @@ guarantee.
 ## Failure Signals
 
 - Shell output exceeds the bound, truncates mid-character, or differs between
-  live streaming and replay; or non-shell snippets reach the client.
+  live streaming and replay; non-shell snippets reach the client; or a
+  completed read/edit/skill card shows only the tool name without its path,
+  pattern, or skill, or only the path without the tool name.
 - A tool stays running after the backend finished, or an error renders as a
   completion.
 - Backend naming or payload shape reaches the client unnormalized, or a local
@@ -186,8 +203,9 @@ guarantee.
   generic Task running; live/replay tagged sub-agent shapes are conflated; or
   either exact known shape fails replacement.
 - Antigravity changes ACP status from an exit code, loses an exit note to truncation, leaks an image path as a fetched
-  attachment, retains unbounded/redundant raw fields, drops differing text, or
-  produces different live/replay tool state.
+  attachment, retains unbounded/redundant raw fields, drops differing text, or produces different normalized state from
+  equivalent live/replay source envelopes. Its upstream `invoke_subagent` status mismatch is retained as generic data;
+  promoting that call into a child or subtask without a new authoritative seam is also a regression.
 - A Copilot tool loses permission correlation while live, or its call identity,
   terminal status, or diff changes when reopened through ACP history.
 - A Grok tool loses live permission correlation, changes call identity or status
@@ -227,8 +245,10 @@ guarantee.
 - ACP permission decisions and pending requests are process-local interaction
   state. Cold replay restores the resulting tool lifecycle and diff, not the
   earlier decision or its linkage event.
-- Real Antigravity tool execution and generated-image output remain unverified; synthetic normalization
-  establishes the boundary contract only.
+- Real Antigravity file/shell execution and generated-image output remain unverified; synthetic normalization
+  establishes those boundary contracts only. A bounded authenticated 2026-09-12 probe verified native internal
+  delegation but found only contradictory generic parent-local ACP tool records, so Antigravity inline subtasks and
+  child sessions remain unsupported in Sesori.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.
 - An older client does not tolerate an unknown message-part `type` from a newer

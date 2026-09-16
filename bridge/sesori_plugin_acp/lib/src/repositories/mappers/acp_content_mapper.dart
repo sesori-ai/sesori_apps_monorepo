@@ -104,6 +104,10 @@ final class const AcpContentMapper() {
     return "tool";
   }
 
+  /// The agent's display title, or null when [toolName] fell back to that same
+  /// title (no `kind`): the card would otherwise read `Read file Read file`.
+  String? toolTitle({required String tool, required String? title}) => title == tool ? null : title;
+
   PluginToolStatus? toolStatus({required Object? status}) {
     return switch (status) {
       "pending" => PluginToolStatus.pending,

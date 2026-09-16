@@ -1,4 +1,7 @@
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
+import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/app.dart";
 import "package:sesori_desktop/core/di/injection.dart";
@@ -47,7 +50,7 @@ void main() {
     await tester.pumpWidget(
       const SesoriDesktopApp(
         hiddenLaunch: false,
-        initialAppearance: AppearanceMode.system,
+        initialAppearance: AppearanceMode.dark,
         initialChatInputMode: ChatInputMode.voiceFirst,
       ),
     );
@@ -57,8 +60,27 @@ void main() {
 
     expect(find.text("Continue with GitHub"), findsOneWidget);
     expect(find.text("Continue with Google"), findsOneWidget);
-    expect(getIt<RouteSource>().currentRoute, AppRouteDef.splash);
+    expect(getIt<RouteSource>().currentRoute, AppRouteDef.projects);
     expect(systemTray.initializeCalls, 1);
+
+    final scope = tester.widget<GlassAdaptiveScope>(find.byType(GlassAdaptiveScope));
+    expect(scope.minQuality, GlassQuality.minimal);
+    expect(scope.initialQuality, GlassQuality.standard);
+    expect(scope.maxQuality, GlassQuality.standard);
+    expect(scope.allowStepUp, isTrue);
+    expect(scope.targetFrameMs, 16);
+    expect(scope.onQualityChanged, isNotNull);
+
+    final loginContext = tester.element(find.text("Continue with GitHub"));
+    expect(MediaQuery.platformBrightnessOf(loginContext), Brightness.light);
+    expect(GlassTheme.brightnessOf(loginContext), Brightness.dark);
+
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    await loginContext.read<AppearanceCubit>().select(mode: AppearanceMode.light);
+    await tester.pumpAndSettle();
+    expect(GlassTheme.brightnessOf(loginContext), Brightness.light);
+    expect(MediaQuery.platformBrightnessOf(loginContext), Brightness.dark);
   });
 }
 

@@ -18,7 +18,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_composer_controls.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
-import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../helpers/test_helpers.dart";
@@ -841,23 +840,34 @@ void main() {
     refreshError: null,
   );
   testWidgets("unavailable harness has no input and opens settings", (tester) async {
-    final state = _loadedState(
-      pendingQuestions: const [_question],
-      pendingPermissions: const [_permission],
-      messages: [testMessageWithParts()],
-    ).copyWith(
-      interaction: authRequired,
-      queuedMessages: const [
-        QueuedSessionSubmission.text(
-          promptId: "local",
-          text: "Local queued prompt",
-          inputMode: ComposerInputMode.typed,
-          attachments: [],
-          agent: null,
-          agentModel: null,
-        ),
-      ],
-    );
+    final state =
+        _loadedState(
+          pendingQuestions: const [_question],
+          pendingPermissions: const [_permission],
+          messages: [testMessageWithParts()],
+        ).copyWith(
+          interaction: authRequired,
+          bridgeQueuedPrompts: const [
+            QueuedSessionPrompt(
+              dispatchState: QueuedPromptDispatchState.queued,
+              id: "remote",
+              text: "Remote queued prompt",
+              command: null,
+              attachmentCount: 0,
+              createdAt: 1,
+            ),
+          ],
+          queuedMessages: const [
+            QueuedSessionSubmission.text(
+              promptId: "local",
+              text: "Local queued prompt",
+              inputMode: ComposerInputMode.typed,
+              attachments: [],
+              agent: null,
+              agentModel: null,
+            ),
+          ],
+        );
     when(() => cubit.state).thenReturn(state);
     var settingsOpened = 0;
     await tester.pumpWidget(_buildApp(cubit: cubit, onOpenHarnessSettings: () => settingsOpened++));
@@ -1108,6 +1118,18 @@ void main() {
     expect(find.text("Authenticate locally, then retry."), findsOneWidget);
   });
 
+  testWidgets("explains that refused cancellation was not confirmed", (tester) async {
+    final notices = StreamController<SessionDetailNotice>.broadcast();
+    addTearDown(notices.close);
+    when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    notices.add(const SessionDetailQueueCancellationFailed());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text("Cancellation was not confirmed. The message may already have been sent."), findsOneWidget);
+  });
+
   testWidgets("explains when a queued command is no longer available", (tester) async {
     final notices = StreamController<SessionDetailNotice>.broadcast();
     addTearDown(notices.close);
@@ -1190,7 +1212,7 @@ void main() {
     state = state.copyWith(pendingPermissions: const []);
     states.add(state);
     await tester.pump();
-    await tester.tap(find.text("Once"), warnIfMissed: false);
+    await tester.tap(find.text("Allow"), warnIfMissed: false);
     await tester.pumpAndSettle();
     expect(find.text("write_release_notes"), findsNothing);
     verifyNever(
@@ -1277,7 +1299,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Choose a release channel"), findsNothing);
 
-    await tester.tap(find.text("Once"));
+    await tester.tap(find.text("Allow"));
     await tester.pump(const Duration(milliseconds: 250));
     await tester.pumpAndSettle();
 
@@ -2913,7 +2935,7 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.tap(find.byTooltip("Attach image"));
     await tester.pumpAndSettle();
 
     // The staged image switches the composer to the typing layout so the
@@ -2923,11 +2945,10 @@ void main() {
     expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
     expect(composerFocus(tester).hasFocus, isFalse);
 
-    final removeButton = find.descendant(
-      of: find.byTooltip("Remove attachment"),
-      matching: find.byType(PregoTappable),
-    );
-    tester.widget<PregoTappable>(removeButton).onTap!.call();
+    expect(tester.getSize(find.byType(PregoImageAttachmentPreview)), const Size(52, 52));
+    final removeButton = semanticsWithLabel("Remove attachment");
+    expect(tester.getSize(removeButton), const Size(44, 44));
+    await tester.tap(removeButton);
     await tester.pumpAndSettle();
     expect(semanticsWithLabel("screenshot.png"), findsNothing);
     // Nothing left to show: the composer collapses back to its resting pill.
@@ -3181,7 +3202,7 @@ void main() {
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(TablerRegular.photo), findsNothing);
+    expect(find.byTooltip("Attach image"), findsNothing);
     // The accordion still opens for its other action.
     expect(find.byIcon(TablerRegular.slash), findsOneWidget);
   });
@@ -3211,7 +3232,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.tap(find.byTooltip("Attach image"));
     await tester.pumpAndSettle();
 
     states.add(supported.copyWith(supportsPromptAttachments: null));
@@ -3250,7 +3271,7 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.tap(find.byTooltip("Attach image"));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(EditableText), "with image");
@@ -3287,7 +3308,7 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.tap(find.byTooltip("Attach image"));
     await tester.pumpAndSettle();
 
     expect(semanticsWithLabel("Attached image"), findsOneWidget);
@@ -3321,13 +3342,13 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.tap(find.byTooltip("Attach image"));
     await tester.pumpAndSettle();
     expect(semanticsWithLabel("small.png"), findsOneWidget);
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.tap(find.byTooltip("Attach image"));
     await tester.pumpAndSettle();
 
     expect(find.text("Attached images are limited to 50 MB per message."), findsOneWidget);
@@ -3344,7 +3365,7 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.tap(find.byTooltip("Attach image"));
     await tester.pumpAndSettle();
 
     expect(find.text("That image is too large to attach."), findsOneWidget);
@@ -3376,7 +3397,7 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(TablerRegular.photo));
+    await tester.tap(find.byTooltip("Attach image"));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(TablerRegular.arrow_up));
@@ -3394,6 +3415,176 @@ void main() {
         attachments: any(named: "attachments"),
       ),
     );
+  });
+
+  testWidgets("queued and legacy rows offer cancellation; dispatched rows remain read-only", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      bridgeQueuedPrompts: [
+        for (final dispatchState in QueuedPromptDispatchState.values)
+          QueuedSessionPrompt(
+            id: dispatchState.name,
+            text: dispatchState.name,
+            command: null,
+            createdAt: 1,
+            dispatchState: dispatchState,
+          ),
+      ],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    when(() => cubit.cancelBridgeQueuedPrompt(promptId: "queued")).thenAnswer((_) async {});
+    when(() => cubit.cancelBridgeQueuedPrompt(promptId: "unknown")).thenAnswer((_) async {});
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(QueuedMessageBubble), findsNWidgets(3));
+    expect(find.text("Cancel"), findsNWidgets(2));
+    expect(find.text("Queued"), findsNWidgets(2));
+    expect(find.text("Sending"), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey("session-detail-prompt-dispatched")),
+        matching: find.byType(PregoActivityIndicator),
+      ),
+      findsOneWidget,
+    );
+    for (final id in ["queued", "unknown"]) {
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(ValueKey("session-detail-prompt-$id")),
+          matching: find.text("Cancel"),
+        ),
+      );
+      verify(() => cubit.cancelBridgeQueuedPrompt(promptId: id)).called(1);
+    }
+    verifyNever(() => cubit.cancelBridgeQueuedPrompt(promptId: "dispatched"));
+  });
+
+  for (final inputMode in ChatInputMode.values) {
+    testWidgets("queue stays in transcript for $inputMode and cancellation preserves draft focus", (tester) async {
+      final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+        bridgeQueuedPrompts: const [
+          QueuedSessionPrompt(
+            dispatchState: QueuedPromptDispatchState.queued,
+            id: "remote",
+            text: "One line\nthen another",
+            command: "review",
+            attachmentCount: 1,
+            createdAt: 1,
+          ),
+        ],
+      );
+      when(() => cubit.state).thenReturn(state);
+      whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+      when(() => cubit.cancelBridgeQueuedPrompt(promptId: "remote")).thenAnswer((_) async {});
+      await tester.pumpWidget(_buildApp(cubit: cubit, chatInputMode: inputMode));
+      await tester.pumpAndSettle();
+      expect(find.byType(QueuedMessageBubble), findsOneWidget);
+      expect(
+        find.descendant(of: find.byType(PromptInput), matching: find.byType(QueuedMessageBubble)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: find.byType(SessionDetailMessageList), matching: find.byType(QueuedMessageBubble)),
+        findsOneWidget,
+      );
+      if (inputMode == ChatInputMode.voiceFirst) {
+        await tester.tap(find.byIcon(TablerRegular.keyboard));
+      } else {
+        await tester.tap(find.text("Follow up..."));
+      }
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), "Keep my draft");
+      await tester.pumpAndSettle();
+      expect(find.byType(QueuedMessageBubble), findsOneWidget);
+      expect(
+        tester.widget<QueuedMessageBubble>(find.byType(QueuedMessageBubble)).displayText,
+        "/review One line\nthen another",
+      );
+      expect(find.text("1 image"), findsOneWidget);
+      await tester.tap(find.text("Cancel"));
+      await tester.pumpAndSettle();
+      verify(() => cubit.cancelBridgeQueuedPrompt(promptId: "remote")).called(1);
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller!.text, "Keep my draft");
+      expect(field.focusNode!.hasFocus, isTrue);
+    });
+  }
+
+  testWidgets("acceptance handoff is read-only, deduplicated, and replaced by delivered content", (tester) async {
+    const submission = QueuedSessionSubmission.text(
+      promptId: "handoff",
+      text: "Follow-up prompt",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: null,
+      agentModel: null,
+    );
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      awaitingBridgeSubmissions: const [submission],
+    );
+    final states = StreamController<SessionDetailState>.broadcast();
+    addTearDown(states.close);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.stream).thenAnswer((_) => states.stream);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.text("Follow-up prompt"), findsOneWidget);
+    expect(find.text("Cancel"), findsNothing);
+    state = state.copyWith(
+      bridgeQueuedPrompts: const [
+        QueuedSessionPrompt(
+          dispatchState: QueuedPromptDispatchState.queued,
+          id: "handoff",
+          text: "Follow-up prompt",
+          command: null,
+          attachmentCount: 0,
+          createdAt: 1,
+        ),
+      ],
+    );
+    states.add(state);
+    await tester.pumpAndSettle();
+    expect(find.text("Follow-up prompt"), findsOneWidget);
+    expect(find.text("Cancel"), findsOneWidget);
+    state = state.copyWith(
+      messages: const [
+        MessageWithParts(
+          info: Message.user(id: "delivered", sessionID: "session-1", promptId: "handoff", agent: null, time: null),
+          parts: [
+            MessagePart.text(id: "part", sessionID: "session-1", messageID: "delivered", text: "Follow-up prompt"),
+          ],
+        ),
+      ],
+    );
+    states.add(state);
+    await tester.idle();
+    await tester.pump();
+    expect(find.byType(QueuedMessageBubble), findsNothing);
+    expect(find.text("Follow-up prompt"), findsOneWidget);
+    expect(find.byType(UserMessageCard), findsOneWidget);
+  });
+
+  testWidgets("unavailable queued commands keep arguments and expose a warning and removal", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      queuedMessages: const [
+        QueuedSessionSubmission.unavailableCommand(
+          promptId: "unavailable",
+          text: "src",
+          command: "review",
+          agent: null,
+          agentModel: null,
+        ),
+      ],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.text("/review src"), findsOneWidget);
+    expect(find.text("Command unavailable"), findsOneWidget);
+    expect(find.text("Remove"), findsOneWidget);
+    await tester.tap(find.text("Remove"));
+    verify(() => cubit.cancelQueuedMessage(0)).called(1);
   });
 
   testWidgets("a queued attachment-only submission shows its thumbnail and image count", (tester) async {

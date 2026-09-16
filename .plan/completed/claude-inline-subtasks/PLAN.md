@@ -31,17 +31,23 @@
   count/copy and dismissal, full stop, same-session/runtime reuse, cold root
   reload, read-only child controls, and normal one-time permission handling.
   Cold child history stably duplicated its assistant/tool/final sequence under
-  distinct rows. Push was attempted while backgrounded but not delivered. A
+  distinct rows. Push delivery was attempted while backgrounded but not observed and remains unclaimed. A
   fixed-build rerun at `0187bb2b10` deduplicated the exact tool anchor, but two
   assistant rows remained on each side because live retained an empty final text
   snapshot. The anchored predicate now accepts that exact empty-prefix case.
   Final QA at `493bab1483` passed exact cold convergence twice and two private
   backfills. Grok phone coverage now passes its bounded matrix and the plan is
-  retired.
-- **Plan date:** 2026-08-22
+  retired. A post-completion 2026-09-12 audit added newly registered Antigravity:
+  its official runtime delegated internally, but the ACP seam exposed only
+  contradictory generic parent-local tool records without child identity,
+  lifecycle, child history, background state, or sub-agent-scoped cancellation.
+  Standard root replay and turn-wide cancellation remain available. Antigravity's
+  inline-subtask rows are therefore explicitly unsupported rather than an open
+  implementation task; details are in `followups/antigravity-probe.md`.
+- **Plan date:** 2026-08-22; Antigravity disposition added 2026-09-12
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Historical original implementation base:** `main` at `ba725ec84`
-- **Current Cursor series base after Step 1 merge:** `main` at `b83b64901c`
+- **Historical Cursor series base after Step 1 merge:** `main` at `b83b64901c`
 - **Plan branch:** `inline-subtask-plan`
 - **Plan PR:** [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027)
 - **Delivery:** eight PRs: plan, contract + client tile, Claude lifecycle,
@@ -65,7 +71,10 @@
   Status section above and `followups/grok-probe.md`; no duplicate matrix is
   maintained here. DeepSeek's final documentation reconciles the passed phone
   stop/input scope and user-deferred desktop matrix without changing adapter
-  0.1.4 evidence. Grok and Cursor follow-ups are complete; the plan is retired.
+  0.1.4 evidence. Grok and Cursor follow-ups are complete. Antigravity was added
+  after retirement and now has a completed bounded seam assessment with an
+  explicit unsupported disposition; no production follow-up is justified by
+  the observed ACP facts. The plan remains retired.
 
 ## Goal
 

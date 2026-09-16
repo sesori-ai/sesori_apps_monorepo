@@ -179,10 +179,15 @@ void main() {
         redirectUrl: "http://127.0.0.1/callback?code=opaque",
       ),
     );
+    final coded = await api.submitAuthenticationCode(
+      pluginId: "codex/dev",
+      request: const PluginAuthenticationCodeRequest(code: "opaque#state"),
+    );
     final cancelled = await api.cancelAuthentication(pluginId: "codex/dev");
 
     expect(started, isA<SuccessResponse<PluginAuthenticationChallengeResponse>>());
     expect(redirected, isA<SuccessResponse<SuccessEmptyResponse>>());
+    expect(coded, isA<SuccessResponse<SuccessEmptyResponse>>());
     expect(cancelled, isA<SuccessResponse<SuccessEmptyResponse>>());
     final start = verify(
       () => client.post<PluginAuthenticationChallengeResponse>(
@@ -194,16 +199,18 @@ void main() {
     ).captured;
     expect(start[0], "/plugin/codex%2Fdev/authentication");
     expect(start[1], const SuccessEmptyResponse().toJson());
-    final redirect = verify(
+    final continuations = verify(
       () => client.post<SuccessEmptyResponse>(
         captureAny(),
         body: captureAny(named: "body"),
         fromJson: any(named: "fromJson"),
       ),
     ).captured;
-    expect(redirect, [
+    expect(continuations, [
       "/plugin/codex%2Fdev/authentication/redirect",
       const PluginAuthenticationRedirectRequest(redirectUrl: "http://127.0.0.1/callback?code=opaque").toJson(),
+      "/plugin/codex%2Fdev/authentication/code",
+      {"code": "opaque#state"},
     ]);
     verify(
       () => client.delete<SuccessEmptyResponse>(

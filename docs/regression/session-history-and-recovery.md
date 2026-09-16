@@ -378,8 +378,9 @@ rules where supported.
   discovery can also still start a stopped backend.
 - Client session-detail refresh triggers are still under diagnosis; only the
   diagnostic logging is in place and any refresh correction is unfinished.
-- Antigravity's native personal-authenticated history, cold bridge restart, retained-history import/tombstone behavior,
-  and cross-target pairs remain unverified.
+- Antigravity's native personal-authenticated history beyond the bounded 2026-09-12 ACP sub-agent replay probe, cold
+  bridge restart, retained-history import/tombstone behavior, and cross-target pairs remain unverified. That probe found
+  contradictory generic live/replay invocation status and no child history seam; it is not bridge-history coverage.
 - The final DeepSeek phone gate did not cold-reload a root or child, open a
   read-only child transcript, restart the bridge/plugin, or test reconnect
   convergence. Existing package tests remain the evidence for replay identity

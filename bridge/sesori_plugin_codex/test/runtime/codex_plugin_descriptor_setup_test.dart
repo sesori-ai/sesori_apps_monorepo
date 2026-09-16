@@ -26,30 +26,34 @@ void main() {
       Directory(p.join(stateDir.path, const CodexRuntimeManifest().runtimeId, version)).createSync(recursive: true);
     }
 
-    test("declines without any managed runtime on disk", () {
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
+    Future<bool> needsUpgrade({required PluginConfig candidateConfig}) => descriptor.needsManagedRuntimeUpgrade(
+      config: candidateConfig,
+      processes: _ProbeProcessService(spawnError: const ProcessException("codex", ["--version"], "missing", 2)),
+      environment: const {"PATH": "/definitely/missing"},
+      stateDirectory: stateDir.path,
+    );
+
+    test("declines without any managed runtime on disk", () async {
+      expect(await needsUpgrade(candidateConfig: config), isFalse);
     });
 
-    test("declines when only the pinned version is installed", () {
+    test("repairs an incomplete pinned directory", () async {
       installedVersion(const CodexRuntimeManifest().bundledVersion.raw);
 
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
+      expect(await needsUpgrade(candidateConfig: config), isTrue);
     });
 
-    test("asks for an upgrade when a superseded version is installed", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("0.140.0");
 
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isTrue);
+      expect(await needsUpgrade(candidateConfig: config), isTrue);
     });
 
-    test("declines with an explicit binary override", () {
+    test("declines with an explicit binary override", () async {
       installedVersion("0.140.0");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
-          config: const PluginConfig(values: {"port": null, "bin": "/opt/codex/bin/codex"}),
-          stateDirectory: stateDir.path,
-        ),
+        await needsUpgrade(candidateConfig: const PluginConfig(values: {"port": null, "bin": "/opt/codex/bin/codex"})),
         isFalse,
       );
     });
@@ -82,8 +86,13 @@ void main() {
           PluginControlCapability.idleTimeout,
           PluginControlCapability.authentication,
           PluginControlCapability.install,
+          PluginControlCapability.runtimeUpdate,
         },
       );
+      final update = descriptor.runtimeUpdateSpec(config: config);
+      expect(update?.executable, "codex");
+      expect(update?.arguments, const ["update"]);
+      expect(update?.timeout, const Duration(minutes: 10));
     });
 
     test("does not advertise install with an explicit binary override", () {
@@ -97,6 +106,12 @@ void main() {
           PluginControlCapability.idleTimeout,
           PluginControlCapability.authentication,
         },
+      );
+      expect(
+        descriptor.runtimeUpdateSpec(
+          config: const PluginConfig(values: {"port": null, "bin": "/opt/codex/bin/codex"}),
+        ),
+        isNull,
       );
     });
 
@@ -139,11 +154,34 @@ void main() {
       final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: stateDirectory,
       );
 
       expect(result, isA<PluginSetupRuntimeMissing>());
+    });
+
+    test("reports an outdated PATH runtime without probing managed copies", () async {
+      final processes = _ProbeProcessService(
+        processSequence: [
+          _ProbeProcess(
+            pid: 7,
+            stdoutBytes: utf8.encode("codex-cli 0.100.0\n"),
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+      );
+
+      final result = await descriptor.inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupRuntimeOutdated>());
+      expect(result.runtimeVersion, "0.100.0");
+      expect(processes.spawnedExecutables, ["codex"]);
     });
 
     test("recognizes a superseded but still supported managed runtime", () async {
@@ -180,7 +218,7 @@ void main() {
       final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: stateDir.path,
       );
 
@@ -202,7 +240,7 @@ void main() {
       final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: stateDir.path,
       );
 
@@ -239,7 +277,7 @@ void main() {
       final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: stateDirectory,
       );
 
@@ -274,7 +312,7 @@ void main() {
           ).inspectSetup(
             config: config,
             processes: processes,
-            environment: const <String, String>{},
+            environment: const {"PATH": "/definitely/missing"},
             stateDirectory: stateDirectory,
           );
 
@@ -307,7 +345,7 @@ void main() {
           ).inspectSetup(
             config: config,
             processes: processes,
-            environment: const <String, String>{},
+            environment: const {"PATH": "/definitely/missing"},
             stateDirectory: stateDirectory,
           );
 
@@ -381,7 +419,7 @@ void main() {
           ).inspectSetup(
             config: config,
             processes: processes,
-            environment: const <String, String>{},
+            environment: const {"PATH": "/definitely/missing"},
             stateDirectory: stateDirectory,
           );
 

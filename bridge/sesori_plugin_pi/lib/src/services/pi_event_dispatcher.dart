@@ -263,6 +263,7 @@ final class PiEventDispatcher({
         messageId: messageId,
         toolId: part.id,
         name: part.tool ?? "tool",
+        title: part.state.title,
         shellCommand: part.state.shellCommand,
       );
       if (tracked == null) {
@@ -482,6 +483,7 @@ final class PiEventDispatcher({
       contentIndex: contentIndex,
       toolId: toolId,
       toolName: toolName,
+      title: null,
       shellCommand: null,
     );
   }
@@ -502,6 +504,7 @@ final class PiEventDispatcher({
       contentIndex: contentIndex,
       toolId: decoded.id,
       toolName: decoded.name,
+      title: _historyMapper.titleForToolCall(toolCall: decoded),
       shellCommand: _historyMapper.shellCommandForToolCall(toolCall: decoded),
     );
   }
@@ -512,6 +515,7 @@ final class PiEventDispatcher({
     required int contentIndex,
     required String toolId,
     required String toolName,
+    required String? title,
     required String? shellCommand,
   }) {
     final messageId = state.messageId;
@@ -521,6 +525,7 @@ final class PiEventDispatcher({
       messageId: messageId,
       toolId: toolId,
       name: toolName,
+      title: title,
       shellCommand: shellCommand,
     );
     // The content index identifies the streamed block. Prefer it over the

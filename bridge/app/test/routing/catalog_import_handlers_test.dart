@@ -26,7 +26,7 @@ void main() {
   }
 
   group("catalog import handlers", () {
-    test("POST starts the selected import and GET returns its latest status", () async {
+    test("POST rescans despite a hydration marker and GET returns its latest status", () async {
       final repository = _HandlerCatalogImportRepository();
       final service = createService(repository);
       addTearDown(service.dispose);
@@ -49,6 +49,8 @@ void main() {
       final decoded = CatalogImportStatusesResponse.fromJson(jsonDecodeMap(getResponse.body!));
       expect(decoded.statuses.single, isA<CatalogImportCompleted>());
       expect(repository.importCalls, 1);
+      expect(repository.control?.rescanRequested, isTrue);
+      expect(repository.control?.hydrationMarkerRequested, isFalse);
     });
 
     test("POST and DELETE map an unselected plugin to 404", () async {
@@ -73,7 +75,7 @@ void main() {
       final service = createService(repository);
       addTearDown(service.dispose);
       final cancelled = service.progress.firstWhere((status) => status is CatalogImportCancelled);
-      service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
+      service.start(pluginId: "selected", trigger: CatalogImportTrigger.rescan);
       await repository.started.future;
 
       final response = await CancelCatalogImportHandler(service: service).routeForTest(
@@ -110,7 +112,11 @@ class _HandlerCatalogImportRepository({final Completer<void>? release}) implemen
   Set<String> get importEligiblePluginIds => const {"selected"};
 
   @override
-  Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) async => null;
+  Future<CatalogHydrationDto?> getHydrationCompletion({required String pluginId}) async => CatalogHydrationDto(
+    pluginId: pluginId,
+    projectionVersion: CatalogImportRepository.projectionVersion,
+    completedAt: 1,
+  );
 
   @override
   Stream<CatalogImportProgress> importCatalog({

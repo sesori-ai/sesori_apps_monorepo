@@ -1204,11 +1204,23 @@ class _PromptInputState() extends State<PromptInput> {
       );
     }
 
+    if (prefersReducedMotion(context)) return child;
     return AnimatedSize(
       duration: _morphDuration,
       curve: _morphCurve,
       alignment: Alignment.bottomCenter,
-      child: AnimatedSwitcher(duration: _morphDuration, child: child),
+      child: AnimatedSwitcher(
+        duration: _morphDuration,
+        transitionBuilder: (transitionChild, animation) {
+          // Only the staged chip bears glass. Picker/voice/retry content keeps
+          // its ordinary fade, including while the outgoing chip dematerializes.
+          if (transitionChild.key == const ValueKey("staged-command")) {
+            return GlassMaterializeTransition(animation: animation, child: transitionChild);
+          }
+          return AnimatedSwitcher.defaultTransitionBuilder(transitionChild, animation);
+        },
+        child: child,
+      ),
     );
   }
 
@@ -1595,70 +1607,25 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// The staged attachments' thumbnails, scrollable when they outgrow the
-  /// row, each with a remove badge.
   Widget _buildAttachmentStrip(BuildContext context) {
-    return SizedBox(
-      height: _attachmentThumbnailSize,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xs),
-        child: Row(
-          spacing: PregoSpacing.sm,
-          children: [
-            for (var index = 0; index < _attachments.length; index++) _buildAttachmentThumbnail(context, index: index),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static const double _attachmentThumbnailSize = 56;
-
-  Widget _buildAttachmentThumbnail(BuildContext context, {required int index}) {
-    final prego = context.prego;
     final loc = context.loc;
-    final attachment = _attachments[index];
-
-    return Stack(
+    return PregoImageAttachmentStrip(
       children: [
-        Semantics(
-          image: true,
-          label: attachment.filename ?? loc.sessionDetailAttachedImage,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(PregoRadius.md),
-            child: Image.memory(
-              attachment.bytes,
-              width: _attachmentThumbnailSize,
-              height: _attachmentThumbnailSize,
-              // Decode at thumbnail scale — a full-resolution decode of a
-              // 2048px pick would hold ~16MB of raster per thumbnail.
-              cacheWidth: (_attachmentThumbnailSize * MediaQuery.devicePixelRatioOf(context)).round(),
+        for (var index = 0; index < _attachments.length; index++)
+          PregoImageAttachmentPreview(
+            key: ObjectKey(_attachments[index]),
+            imageLabel: _attachments[index].filename ?? loc.sessionDetailAttachedImage,
+            removeLabel: loc.sessionDetailRemoveAttachment,
+            onRemove: () => setState(() => _attachments.removeAt(index)),
+            image: Image.memory(
+              _attachments[index].bytes,
+              // Decode at thumbnail scale rather than retaining full-resolution
+              // rasters for every staged image. Original bytes still get sent.
+              cacheWidth: (PregoImageAttachmentPreview.size * MediaQuery.devicePixelRatioOf(context)).round(),
               fit: BoxFit.cover,
               gaplessPlayback: true,
             ),
           ),
-        ),
-        PositionedDirectional(
-          top: PregoSpacing.xxs,
-          end: PregoSpacing.xxs,
-          child: Tooltip(
-            message: loc.sessionDetailRemoveAttachment,
-            child: PregoTappable(
-              onTap: () => setState(() => _attachments.removeAt(index)),
-              borderRadius: BorderRadius.circular(PregoRadius.full),
-              containerBuilder: (Widget child) => DecoratedBox(
-                decoration: BoxDecoration(
-                  color: prego.colors.bgSurface4,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: prego.colors.borderPrimary),
-                ),
-                child: SizedBox.square(dimension: 20, child: child),
-              ),
-              child: Icon(TablerRegular.x, size: 12, color: prego.colors.textPrimary),
-            ),
-          ),
-        ),
       ],
     );
   }

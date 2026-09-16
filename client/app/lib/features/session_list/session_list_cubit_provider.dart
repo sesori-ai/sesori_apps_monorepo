@@ -13,7 +13,11 @@ class const SessionListCubitProvider({
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createSessionListCubit(initialFilter: filter, locator: getIt, projectId: projectId),
+      create: (_) => createSessionListCubit(
+        mode: SessionListMode.view(filter: filter),
+        locator: getIt,
+        projectId: projectId,
+      ),
       child: child,
     );
   }

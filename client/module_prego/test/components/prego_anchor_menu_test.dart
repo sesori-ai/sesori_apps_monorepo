@@ -234,6 +234,69 @@ void main() {
   });
 
   group("Apple (glass) path", () {
+    testWidgets("nested overlays anchor glass locally and custom entries still dismiss", (tester) async {
+      Offset? baselineDelta;
+      for (final inset in [Offset.zero, const Offset(120, 80)]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            key: ValueKey(inset),
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            home: Scaffold(
+              body: Padding(
+                padding: EdgeInsets.only(left: inset.dx, top: inset.dy),
+                child: Overlay(
+                  initialEntries: [
+                    OverlayEntry(
+                      builder: (context) => Stack(
+                        children: [
+                          Positioned(
+                            left: 40,
+                            top: 60,
+                            child: PregoAnchorMenu(
+                              menuMaxHeight: 120,
+                              entriesBuilder: () => [
+                                PregoMenuCustom(
+                                  height: 48,
+                                  builder: (context, close) => TextButton(
+                                    onPressed: close,
+                                    child: const Text("Close custom"),
+                                  ),
+                                ),
+                                ..._agentEntries(["Alpha", "Beta", "Gamma"]),
+                              ],
+                              triggerBuilder: (context, toggle) => ElevatedButton(
+                                onPressed: toggle,
+                                child: const Text("Open"),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        final triggerOrigin = tester.getTopLeft(find.byType(ElevatedButton));
+        final menu = tester.widget<GlassMenu>(find.byType(GlassMenu));
+        expect(menu.glowOnTapOnly, isTrue);
+        await tester.tap(find.text("Open"));
+        await tester.pumpAndSettle();
+
+        final delta = tester.getTopLeft(find.byType(SingleChildScrollView)) - triggerOrigin;
+        baselineDelta ??= delta;
+        expect(delta.dx, closeTo(baselineDelta.dx, 0.01));
+        expect(delta.dy, closeTo(baselineDelta.dy, 0.01));
+        expect(_popupScroll(tester).maxScrollExtent, greaterThan(0));
+
+        await tester.tap(find.text("Close custom"));
+        await tester.pumpAndSettle();
+        expect(find.text("Close custom"), findsNothing);
+      }
+    }, variant: const TargetPlatformVariant({TargetPlatform.iOS, TargetPlatform.macOS}));
+
     testWidgets("renders a GlassMenu and routes item taps", (tester) async {
       var taps = 0;
       await tester.pumpWidget(
@@ -501,7 +564,7 @@ void main() {
       expect(find.byType(AnchoredSpotlightBackdrop), findsNothing);
     });
 
-    testWidgets("blurs the page on Apple platforms", (tester) async {
+    testWidgets("blurs the page on iOS", (tester) async {
       await tester.pumpWidget(_harness(entries, flat: true, spotlight: spotlight));
 
       expect(find.byType(BackdropFilter), findsNothing);
@@ -511,6 +574,26 @@ void main() {
 
       expect(find.byType(BackdropFilter), findsOneWidget);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets("darkens without blurring on macOS because AppKitViews cannot join the Flutter backdrop", (
+      tester,
+    ) async {
+      await tester.pumpWidget(_harness(entries, flat: true, spotlight: spotlight));
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AnchoredSpotlightBackdrop), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
+
+      final scrim = tester.widget<ColoredBox>(
+        find.descendant(
+          of: find.byType(AnchoredSpotlightBackdrop),
+          matching: find.byType(ColoredBox),
+        ),
+      );
+      expect(scrim.color.a, closeTo(0.6, 0.001));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
     testWidgets("spotlights without blurring on Android, where a full-screen BackdropFilter janks", (
       tester,

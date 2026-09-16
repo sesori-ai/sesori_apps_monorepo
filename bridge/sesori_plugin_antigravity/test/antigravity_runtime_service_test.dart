@@ -34,8 +34,10 @@ AntigravityInitializeDto initializeResult({required String agentVersion}) => Ant
 class _FakeStorage({
   required final Map<String, AntigravityRuntimePairReadResult> pairResults,
   required final AntigravityRuntimePairReadResult pathResult,
+  final HostExecutablePresence pathServerPresence = HostExecutablePresence.absent,
 }) extends AntigravityRuntimeStorage {
   int pathInspections = 0;
+  int pathPresenceInspections = 0;
   final List<String> inspectedPaths = [];
 
   @override
@@ -52,14 +54,29 @@ class _FakeStorage({
     pathInspections++;
     return pathResult;
   }
+
+  @override
+  HostExecutablePresence inspectPathServerPresence({
+    required Map<String, String> environment,
+    required PlatformTarget target,
+  }) {
+    pathPresenceInspections++;
+    return pathServerPresence;
+  }
 }
 
 Future<AcpProcessHandle> _unimplementedFactory(AcpLaunchSpec spec) => throw UnimplementedError();
+
+class const _UnusedCommands() implements CommandExecutor {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 class _FakeAcpApi({required final List<Future<AntigravityInitializeDto> Function()> outcomes})
     extends AntigravityAcpApi {
   this
     : super(
+        commands: const _UnusedCommands(),
         processFactory: _unimplementedFactory,
         stderrInterceptor: AcpOutputInterceptor(
           maxLineBytes: 65536,
@@ -87,6 +104,7 @@ AntigravityRuntimeService _service({required _FakeStorage storage, required _Fak
         acpApi: api,
         launchSpecBuilder: const AntigravityLaunchSpecBuilder(),
       ),
+      pathAuthorityCalculator: const AntigravityRuntimePathAuthorityCalculator(),
     );
 
 Future<AntigravityRuntimeResolution> _resolve({
@@ -105,7 +123,7 @@ Future<AntigravityRuntimeResolution> _resolve({
 );
 
 void main() {
-  test("static inspection logs a recovered PATH storage failure before managed fallback", () {
+  test("static inspection keeps a PATH storage failure authoritative", () {
     final failure = StateError("synthetic PATH storage failure");
     final stackTrace = StackTrace.fromString("synthetic-path-storage-stack");
     final storage = _FakeStorage(
@@ -123,15 +141,15 @@ void main() {
       ),
     );
 
-    expect(result, isA<AntigravityRuntimeCandidateFound>());
-    expect(storage.inspectedPaths, [managedPair.serverPath]);
+    expect(result, isA<AntigravityRuntimeCandidateStorageFailed>());
+    expect(storage.inspectedPaths, isEmpty);
     expect(api.launches, isEmpty);
     expect(logs, contains("[antigravity] PATH runtime inspection failed"));
     expect(logs, contains("synthetic PATH storage failure"));
     expect(logs, contains("synthetic-path-storage-stack"));
   });
 
-  test("static inspection keeps ordinary PATH pair rejection as non-error fallback", () {
+  test("static inspection keeps ordinary PATH pair rejection authoritative without error logging", () {
     final storage = _FakeStorage(
       pairResults: const {
         "/managed/agy_acp_server.par": AntigravityRuntimePairMissing(
@@ -143,8 +161,9 @@ void main() {
         reason: AntigravityRuntimePairInvalidReason.notSiblings,
       ),
     );
+    late AntigravityRuntimeCandidateResult result;
     final logs = _captureWarningLog(
-      action: () =>
+      action: () => result =
           _service(
             storage: storage,
             api: _FakeAcpApi(outcomes: []),
@@ -156,8 +175,40 @@ void main() {
           ),
     );
 
+    expect(result, isA<AntigravityRuntimeCandidateRejected>());
     expect(logs, isEmpty);
-    expect(storage.inspectedPaths, [managedPair.serverPath]);
+    expect(storage.inspectedPaths, isEmpty);
+  });
+
+  test("managed fallback requires physical absence of the missing PATH server", () {
+    for (final presence in HostExecutablePresence.values) {
+      final storage = _FakeStorage(
+        pairResults: const {"/managed/agy_acp_server.par": AntigravityRuntimePairFound(pair: managedPair)},
+        pathResult: const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server),
+        pathServerPresence: presence,
+      );
+
+      final result =
+          _service(
+            storage: storage,
+            api: _FakeAcpApi(outcomes: []),
+          ).inspect(
+            explicitServerPath: null,
+            managedServerPath: managedPair.serverPath,
+            pathEnvironment: const {"PATH": "/path"},
+            target: target,
+          );
+
+      expect(
+        result,
+        presence == HostExecutablePresence.absent
+            ? isA<AntigravityRuntimeCandidateFound>()
+            : isA<AntigravityRuntimeCandidateMissing>(),
+        reason: presence.name,
+      );
+      expect(storage.inspectedPaths, presence == HostExecutablePresence.absent ? [managedPair.serverPath] : isEmpty);
+      expect(storage.pathPresenceInspections, 1);
+    }
   });
 
   test("an explicit path is authoritative and maps its storage failure", () async {
@@ -235,7 +286,7 @@ void main() {
     });
   });
 
-  test("falls back to managed after a PATH contract rejection", () async {
+  test("a PATH contract rejection blocks managed fallback", () async {
     final storage = _FakeStorage(
       pairResults: const {"/managed/agy_acp_server.par": AntigravityRuntimePairFound(pair: managedPair)},
       pathResult: const AntigravityRuntimePairFound(pair: pathPair),
@@ -251,13 +302,14 @@ void main() {
       explicitServerPath: null,
       managedServerPath: managedPair.serverPath,
       abortSignal: StartAbortSignal.never,
-    ) as AntigravityRuntimeSelected;
+    ) as AntigravityRuntimeContractRejected;
 
-    expect((result.source, result.pair), (AntigravityRuntimeSource.managed, managedPair));
-    expect(api.launches.map((launch) => launch.command), [pathPair.serverPath, managedPair.serverPath]);
+    expect(result.source, AntigravityRuntimeSource.path);
+    expect(api.launches.map((launch) => launch.command), [pathPair.serverPath]);
+    expect(storage.inspectedPaths, isEmpty);
   });
 
-  test("falls back to managed after observable PATH boundary failures", () async {
+  test("observable PATH boundary failures block managed fallback", () async {
     final storageFailure = StateError("PATH storage failed");
     final storage = _FakeStorage(
       pairResults: const {"/managed/agy_acp_server.par": AntigravityRuntimePairFound(pair: managedPair)},
@@ -266,41 +318,43 @@ void main() {
         stackTrace: StackTrace.current,
       ),
     );
-    final storageFallbackApi = _FakeAcpApi(
+    final storageApi = _FakeAcpApi(
       outcomes: [() async => initializeResult(agentVersion: AntigravityRelease.agentVersion)],
     );
-    final storageFallback = await _resolve(
-      service: _service(storage: storage, api: storageFallbackApi),
+    final storageResult = await _resolve(
+      service: _service(storage: storage, api: storageApi),
       explicitServerPath: null,
       managedServerPath: managedPair.serverPath,
       abortSignal: StartAbortSignal.never,
-    ) as AntigravityRuntimeSelected;
-    expect(storageFallback.source, AntigravityRuntimeSource.managed);
+    ) as AntigravityRuntimeStorageFailed;
+    expect(storageResult.source, AntigravityRuntimeSource.path);
+    expect(storageApi.launches, isEmpty);
+    expect(storage.inspectedPaths, isEmpty);
 
     final probeFailure = StateError("PATH probe failed");
-    final probeFallbackApi = _FakeAcpApi(
+    final probeApi = _FakeAcpApi(
       outcomes: [
         () async => throw probeFailure,
         () async => initializeResult(agentVersion: AntigravityRelease.agentVersion),
       ],
     );
-    final probeFallback = await _resolve(
+    final probeResult = await _resolve(
       service: _service(
         storage: _FakeStorage(
           pairResults: const {"/managed/agy_acp_server.par": AntigravityRuntimePairFound(pair: managedPair)},
           pathResult: const AntigravityRuntimePairFound(pair: pathPair),
         ),
-        api: probeFallbackApi,
+        api: probeApi,
       ),
       explicitServerPath: null,
       managedServerPath: managedPair.serverPath,
       abortSignal: StartAbortSignal.never,
-    ) as AntigravityRuntimeSelected;
-    expect(probeFallback.source, AntigravityRuntimeSource.managed);
-    expect(probeFallbackApi.launches.map((launch) => launch.command), [pathPair.serverPath, managedPair.serverPath]);
+    ) as AntigravityRuntimeProbeFailed;
+    expect(probeResult.source, AntigravityRuntimeSource.path);
+    expect(probeApi.launches.map((launch) => launch.command), [pathPair.serverPath]);
   });
 
-  test("shares one timeout budget across PATH and managed probes", () async {
+  test("enforces the timeout budget on the authoritative PATH probe", () async {
     final storage = _FakeStorage(
       pairResults: const {"/managed/agy_acp_server.par": AntigravityRuntimePairFound(pair: managedPair)},
       pathResult: const AntigravityRuntimePairFound(pair: pathPair),
