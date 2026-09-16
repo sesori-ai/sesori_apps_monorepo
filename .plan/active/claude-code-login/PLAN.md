@@ -1,0 +1,670 @@
+# Claude Code Login
+
+## Status
+
+- **Plan slug:** `claude-code-login`
+- **Created:** 2026-09-16
+- **State:** Step 1/6 (plan) in review; implementation not started
+- **Series:** six PRs, titles fixed under "Fixed PR Series"
+
+## Goal
+
+Let a Sesori user sign the bridge machine's Claude Code CLI into their
+claude.ai account from the phone or desktop app, without touching the bridge
+machine. Claude Code is the harness that most often drops its login (observed
+after IP or network changes), so today every drop forces the user back to a
+terminal on the bridge host to run `claude auth login`.
+
+The bridge drives the official `claude auth login` command. The user opens the
+sign-in page from the app, approves access in the browser, copies the code that
+Claude shows afterwards, and pastes it into the app. Sesori relays the code to
+the CLI, which performs the token exchange and stores the credential exactly as
+a local login would. Sesori never sees, stores, refreshes, or exchanges tokens.
+
+## Success Criteria
+
+- A Claude harness whose setup reports `authenticationRequired` shows the
+  existing `Log in` control on mobile and desktop.
+- Starting login returns, within the existing start timeout, a challenge that
+  carries the Claude authorization URL; the sheet shows an explicit
+  "open sign-in page" action and a code field.
+- Submitting the pasted code completes the login; the refreshed setup reports
+  `ready` and a Claude session can start from Sesori without any action on the
+  bridge host.
+- Cancellation, timeout, a rejected code, a CLI exit, and bridge shutdown all
+  end the operation with a terminal progress event and a fresh setup
+  inspection. Remote failure text is the bridge's existing generic string;
+  plugin-authored detail stays in local logs. No CLI process outlives its
+  operation.
+- The bridge host never opens a browser during a Sesori-initiated login.
+- No authorization URL, pasted code, token, email, or organization value
+  appears in bridge logs, client logs, error messages, analytics, SSE replay,
+  or persistence.
+- Older apps against a new bridge fail closed with the existing
+  "update required" guidance; new apps against an older bridge show no Claude
+  login control.
+
+## Locked Product Decisions
+
+- Login is offered only while setup reports authentication required, matching
+  Codex. Re-login while ready, account switching, and logout are excluded.
+- The bridge drives the official `claude auth login --claudeai` command over
+  plain piped stdio. Sesori does not implement the OAuth exchange, does not use
+  Claude Code's client id, and never reads or writes the credential store.
+- Only the claude.ai subscription login is offered. Console (API billing), SSO
+  forcing, API-key entry, `claude setup-token`, and `CLAUDE_CODE_OAUTH_TOKEN`
+  handling are excluded.
+- The flow is the CLI's documented paste-code path on every platform: the app
+  opens the authorization URL in the external browser only after an explicit
+  tap, and the user pastes the code shown by Claude after approval. No loopback
+  capture, no automatic same-host completion, no embedded web view.
+- The bridge suppresses the host browser by setting `BROWSER` to a no-op
+  executable on macOS and Linux. Windows keeps the CLI's default browser
+  behavior; a stray sign-in tab on the bridge host is an accepted limitation
+  recorded in the capability matrix.
+- One pasted code per operation. A rejected or wrong code ends the operation
+  with a sanitized failure; the user starts a new login. No retry loop.
+- One overall ten-minute budget bounds the operation from spawn to exit.
+- Dismissing the sheet does not cancel login. Cancellation is explicit.
+- One active operation per plugin; repeated start requests join it (existing
+  bridge behavior).
+- Operation state is ephemeral and never persisted.
+- No new analytics event.
+
+## Explicitly Excluded
+
+- Sesori-managed Claude Code runtime installation or updates (separate plan
+  when requested).
+- Any change to how sessions are launched, to `ClaudeLaunchSpec`, or to setup
+  inspection beyond the `actionHint` copy.
+- A generic form or free-text challenge framework. The new variant carries
+  exactly what this flow needs.
+- Detecting mid-turn logout from session errors. The current 401/403 turn
+  error mapping is unchanged.
+- Pseudo-terminal support in the bridge. The CLI's login runs without a TTY.
+
+## Research And Current Behavior
+
+### Claude CLI login behavior (verified 2026-09-16, Claude Code 2.1.273)
+
+Verified against the native binary and Anthropic's authentication docs:
+
+- `claude auth login --claudeai` runs without a TTY. With piped stdio it writes
+  to stdout, in order: `Opening browser to sign in…`, then
+  `If the browser didn't open, visit: <url>`, then the prompt
+  `Paste code here if prompted > ` (no trailing newline). The URL is wrapped in
+  an OSC 8 terminal hyperlink (`ESC ] 8 ; ; url BEL url ESC ] 8 ; ; BEL`), so
+  the visible URL text appears twice on one line.
+- The URL is the manual-return variant: `https://claude.com/cai/oauth/authorize`
+  with `code=true`, PKCE `code_challenge`, `state`, and
+  `redirect_uri=https://platform.claude.com/oauth/code/callback`. After
+  approval that page displays a code for the user to paste. Anthropic documents
+  this prompt as the supported path when the browser cannot reach the CLI's
+  local callback (SSH, containers, WSL2).
+- The CLI reads stdin line by line. A line is trimmed and split on `#` into
+  `code#state`; a line without both parts prints
+  `Invalid code. Please make sure the full code was copied.` on stderr and the
+  CLI keeps listening. A well-formed line triggers the token exchange; success
+  prints `Login successful.` and the process exits.
+- The process does not exit on stdin EOF or after an invalid code. It must be
+  killed to abandon a login.
+- The CLI honors the `BROWSER` environment variable: with `BROWSER` set to an
+  executable, that executable is invoked with the URL and no system browser
+  opens.
+- Credentials are stored by the CLI under the active config directory
+  (`CLAUDE_CONFIG_DIR`, else `~/.claude`): macOS Keychain with an automatic
+  fallback to `.credentials.json` (mode 0600) when the Keychain rejects the
+  write, and the JSON file on Linux and Windows. Sesori sessions already read
+  the same store through the same environment.
+- `claude auth status` reports `loggedIn` as JSON; the plugin already uses it.
+- The `auth` subcommands exist since roughly Claude Code 2.1.40; the plugin's
+  minimum is `2.1.221`, so no version gate changes.
+- Unverified without a real account: whether a well-formed but wrong code makes
+  the CLI exit non-zero or keep listening. The overall budget covers both.
+
+### Current Sesori seams
+
+- Plugin contract: `bridge/sesori_plugin_interface/lib/src/lifecycle/plugin_authentication.dart`
+  defines `InteractivePluginAuthenticationDescriptor.authenticate(...)` and the
+  sealed `PluginAuthenticationOperation` with exactly two variants:
+  `deviceCode(events)` (no continuation) and
+  `browser(events, submitRedirect)` (URI continuation). Events are the sealed
+  device-code and browser challenges plus shared `Completed` and
+  `Failed(message)`.
+- Bridge core: `PluginRuntime.authenticate` wraps the operation with a
+  generation and abort; `submitAuthenticationRedirect` gates continuations
+  (stale generation, wrong kind, already submitted). `PluginLifecycleService`
+  owns one operation per plugin, completes the challenge from the first event,
+  publishes sealed terminal progress, and re-inspects setup.
+  `plugin_authentication_handlers.dart` registers
+  `POST /plugin/:id/authentication`, `POST /plugin/:id/authentication/redirect`
+  and `DELETE /plugin/:id/authentication`. Terminal progress rides the existing
+  `plugin.authentication.progress` SSE event.
+- Wire: `shared/sesori_shared/lib/src/models/sesori/plugin_management.dart`
+  has `PluginAuthenticationChallengeResponse` (`deviceCode`, `browser`,
+  `unknown` fallback), `PluginAuthenticationRedirectRequest`, sealed progress,
+  and typed conflicts.
+- Client: `PluginApi -> PluginRepository -> PluginManagementService ->
+  PluginManagementCubit -> harness settings sheet` in `client/module_core` and
+  `client/module_app_ui`. The sheet renders device codes with copy and an
+  explicit external-browser action; browser challenges are auto-driven. There
+  is no free-text input anywhere in the stack.
+- Claude plugin: `ClaudePluginDescriptor` (`bridge/sesori_plugin_claude`) does
+  not implement the authentication interface. Setup inspection runs
+  `--version` and `auth status` and reports `authenticationRequired` with the
+  hint to run `claude auth login` on the machine. Processes are spawned only
+  through `HostProcessService` with `includeParentEnvironment: true`; `HOME`
+  must never be overridden because it breaks Keychain lookup.
+- Capability advertisement is explicit: descriptors that implement the
+  interface also list `PluginControlCapability.authentication` in
+  `managementCapabilities` (Codex, Antigravity).
+
+## Architecture
+
+### 1. Plugin interface: pasted-code operation
+
+Add a third sealed variant to `PluginAuthenticationOperation` in
+`sesori_plugin_interface`:
+
+```text
+PluginAuthenticationOperation.pastedCode
+  events: Stream<PluginAuthenticationPastedCodeEvent>
+  submitCode: Future<void> Function({required String code})
+
+PluginAuthenticationPastedCodeChallenge
+  authorizationUri: Uri           // absolute https
+
+PluginAuthenticationCompleted / PluginAuthenticationFailed
+  also implement PluginAuthenticationPastedCodeEvent
+```
+
+Semantics: the user opens `authorizationUri` in a browser, approves, and
+relays the code the provider displays. `submitCode` is called at most once per
+operation by the bridge and returns normally once the code has been handed to
+the plugin. The plugin validates the backend-specific code shape itself; a
+shape it rejects ends the plugin's own operation through its event stream
+(`PluginAuthenticationFailed`) rather than through a typed rejection result, so
+no rejection type crosses the plugin boundary and the bridge's one-shot gate is
+consumed either way. The plugin owns its process lifetime; cancellation arrives
+through the existing `StartAbortSignal`.
+
+### 2. Shared wire contract
+
+Backend-neutral additions in `sesori_shared`:
+
+```text
+PluginAuthenticationChallengeResponse.pastedCode
+  type: "pastedCode"
+  authorizationUrl: String
+
+PluginAuthenticationCodeRequest
+  code: String                     // maxCodeLength = 512
+```
+
+Unchanged: `PluginAuthenticationProgress`, `PluginAuthenticationState`,
+`PluginManagementCapability.authentication`, conflict reasons (`noActive`,
+`wrongKind`, `alreadySubmitted` are reused), SSE events, and relay framing.
+Older clients decode the new challenge as the existing `unknown` fallback, so
+no compatibility default or dated marker is needed.
+
+### 3. Bridge runtime, service, and routes
+
+- `PluginRuntime.submitAuthenticationCode({pluginId, generation, code})`
+  mirrors `submitAuthenticationRedirect`: stale generation, wrong kind, and
+  one-shot checks, with the flag set before the plugin call exactly as the
+  redirect path does today. Rename the existing `redirectSubmitted` flag to
+  `continuationSubmitted` and share the gate between both continuations so the
+  one-shot rule lives in one place. A submission the runtime accepts reports
+  success to the client even when the plugin afterwards fails the operation;
+  the outcome always arrives as terminal progress.
+- The lifecycle repository seam and `PluginLifecycleService` gain the matching
+  `submitAuthenticationCode`. `_executeAuthentication` maps
+  `PluginAuthenticationPastedCodeChallenge` to
+  `PluginAuthenticationChallengeResponse.pastedCode`.
+- New handler `PostPluginAuthenticationCodeHandler` for
+  `POST /plugin/:id/authentication/code`. Backend-neutral validation before
+  the runtime is touched: trim, non-empty, at most 512 characters, no
+  whitespace or control characters; otherwise 400. Unknown plugin 404; typed
+  409 conflicts with current management metadata, as the redirect route does.
+- No new SSE event. Terminal progress, the existing generic remote failure
+  text in `PluginLifecycleService` ("Authentication failed. Check the bridge
+  logs for details."), and setup refresh are unchanged for every plugin.
+
+### 4. Claude plugin authentication layers
+
+All Claude-specific behavior stays in `bridge/sesori_plugin_claude`, following
+`Foundation -> API -> Repository -> Service -> Consumer`:
+
+```text
+ClaudePastedCode (models)
+  parse(raw) -> value or typed format failure; exactly one "#", both parts
+  non-empty, no whitespace, bounded length
+
+ClaudeLoginEnvironment (foundation, pure)
+  resolve({isWindows, fileExists}) -> environment overrides: {BROWSER: first
+  existing of /usr/bin/true, /bin/true} on macOS and Linux; empty on Windows
+  or when neither file exists. The descriptor composition supplies
+  Platform.isWindows and File.existsSync, so the decision is testable and the
+  API layer only executes
+
+ClaudeAuthLoginApi (api)
+  spawn({binaryPath, environment, workingDirectory}) -> ClaudeProcessHandle
+  arguments fixed to `auth login --claudeai`; includeParentEnvironment = true
+  and runInShell on Windows exactly as HostClaudeProcessFactory does; returns
+  the existing narrow ClaudeProcessHandle (stdout, stderr, stdin, exitCode,
+  kill) whose host-backed implementation is shared with the session factory
+
+ClaudeLoginOutputParser (repositories/parsers)
+  strips ANSI CSI and OSC sequences from a stdout line and returns the first
+  absolute https URL, bounded to 16384 characters, or null
+
+ClaudeAuthenticationRepository (repositories)
+  owns one ClaudeProcessHandle; decodes stdout and stderr as UTF-8 lines
+  start(): spawn and resolve the authorization URL from stdout, failing if the
+  process exits first or no valid URL appears
+  submitCode(code): one-shot; writes "<code>\n" and flushes
+  waitForExit(): exit code
+  dispose(): kill (graceful, forced after a short grace) and await exit;
+  idempotent
+
+ClaudeAuthenticationService (services)
+  authenticate() -> PluginAuthenticationOperation.pastedCode
+  event stream: start -> yield challenge -> race(exit, abort, ten-minute
+  budget) -> Completed on exit 0, otherwise Failed; abort disposes and throws
+  PluginStartAbortedException (mapped to cancelled by the bridge); finally
+  always disposes
+  submitCode: runs ClaudePastedCode.parse first; a valid code goes to the
+  repository; a rejected shape is logged locally (without the code) and the
+  repository is disposed, so the running exit race observes the killed process
+  and emits Failed; submitCode itself returns normally
+
+ClaudePluginDescriptor (runtime)
+  implements InteractivePluginAuthenticationDescriptor; composes the layers
+  from config (binary), processes, environment, stateDirectory, aborted;
+  lists PluginControlCapability.authentication unconditionally (login is a
+  CLI action, valid with an explicit bin override too)
+```
+
+Failure messages authored by the plugin (login could not be completed, login
+timed out, pasted code rejected) are local-log-only: `PluginLifecycleService`
+already logs the plugin message and sends the existing generic remote text to
+the client, exactly as for Codex and Antigravity. Local logs also keep the exit
+code, operation context, and a scrubbed stderr tail with `https://` tokens
+removed; stdin content is never logged.
+
+Setup inspection is unchanged except the `actionHint`, which becomes
+"Log in from Sesori, or run `claude auth login` on this machine." so older
+clients still get a working instruction.
+
+### 5. Client orchestration
+
+Extend the existing layers without new owners:
+
+- `PluginApi.submitAuthenticationCode` posts to
+  `/plugin/:id/authentication/code`.
+- `PluginRepository.submitAuthenticationCode` returns the existing
+  `PluginAuthenticationContinuationResult`. The repository challenge model
+  gains `pastedCode(authorizationUri)`, validated as absolute HTTPS in the
+  repository's challenge mapping like the device-code URL; an invalid URL maps
+  to the existing request failure (`PluginAuthenticationFailure.request`),
+  not to the cubit-level `invalidChallenge`, which stays reserved for a
+  missing challenge.
+- `PluginManagementService.submitAuthenticationCode` is fenced by connection
+  epoch and bridge identity like the redirect submission. Pasted-code
+  challenges are retained like device codes and never auto-driven.
+- `PluginManagementCubit` gains `submitAuthenticationCode(code)` and handles
+  `launchAuthenticationBrowser` for pasted-code challenges through the existing
+  `UrlLauncher`. Presentation adds
+  `PluginAuthenticationChallengePresentation.pastedCode` and two states,
+  `codeSubmitting` and `codeSubmitted` (awaiting terminal progress).
+  `alreadySubmitted` maps to `codeSubmitted`; `noActive` and stale results map
+  to the existing failure presentation and trigger a management refresh.
+- The cubit applies the same neutral rule as the bridge handler (trim,
+  non-empty, no inner whitespace or control characters, bounded length) and
+  keeps the field editable with a hint when it fails, so the app never sends a
+  request the handler would reject with 400. It knows nothing about the
+  `code#state` shape; a code the plugin rejects arrives as ordinary terminal
+  failure.
+
+### 6. Presentation (mobile and desktop)
+
+The shared harness authentication sheet in `client/module_app_ui` gains a
+pasted-code branch:
+
+- Explains, in harness-neutral wording parameterized by the plugin display
+  name, that the user is signing the harness on the connected computer into
+  their account and must only continue if they started this login. No
+  `Claude` or `claude.ai` literal appears in `module_app_ui` or
+  `module_core`; backend identity comes from `setup.displayName` as the
+  existing sheet strings do.
+- "Open sign-in page" opens the external browser on explicit tap only.
+- A single-line code field (autocorrect off, monospace, paste friendly) with a
+  "Submit code" action enabled when the trimmed text is non-empty.
+- A waiting state after submission; terminal progress closes the sheet and the
+  refreshed snapshot removes the login control, exactly as for device codes.
+- Cancel remains explicit; dismissal keeps the operation and the challenge
+  retrievable from the harness row (`Continue login`).
+- Strings live in `client/module_app_ui/lib/src/l10n/app_en.arb` and are
+  regenerated; both phone and desktop shells consume the shared sheet.
+
+## Compatibility Matrix
+
+| App | Bridge | Result |
+|---|---|---|
+| Old | Old | Unchanged: Claude shows authentication required with the local instruction. |
+| Old | New | Claude advertises login; the challenge decodes as `unknown` and the existing update-required presentation fails closed. |
+| New | Old | No authentication capability for Claude, so no login control. |
+| New | New | Pasted-code login, cancel, timeout, and setup refresh work end to end. |
+
+Ordering protects users: the client step merges before the plugin step, so an
+app release can never precede the bridge behavior it renders, while a bridge
+released before the app update fails closed with guidance.
+
+## Failure And Recovery Contract
+
+| Failure | User outcome | Local observability |
+|---|---|---|
+| CLI exits before printing a URL (policy block, broken binary) | Sanitized failure; login remains required. | Exit code and scrubbed stderr tail stay in bridge logs. |
+| URL missing, not HTTPS, or oversized | Failure; nothing is presented. | Typed mapper failure with line length, never the line. |
+| Pasted text fails the neutral rule (empty, inner whitespace, oversized) | The app keeps the field editable with a hint; the bridge handler answers 400 only to clients that bypass the app. | Request rejection only. |
+| Code passes the neutral rule but the plugin rejects its shape | The plugin kills its CLI; the operation ends with the generic failure text; the user starts a new login. | Local log names the shape rejection without the code. |
+| Well-formed but wrong code | CLI exchange fails: generic failure on exit, or the ten-minute budget ends it. User starts a new login. | Exit code, budget expiry, scrubbed stderr. |
+| App loses the start response | Existing uncertain-start handling; the next tap joins the active operation and shows the same URL and code field. | Existing relay diagnostics. |
+| App loses the code response | Retry reports `alreadySubmitted`, shown as waiting. | Existing conflict logging. |
+| App backgrounds or is killed while in the browser | Bridge operation continues for its budget; reopening joins it and accepts the code. | Existing management refresh. |
+| User cancels | CLI is killed; cancelled progress; setup re-inspected. | Cancel request and settlement stay local. |
+| Bridge shuts down or restarts | Abort kills the child before disposal; after restart the operation is gone and setup truth is re-inspected. | Shutdown context stays local. |
+| Login exits 0 but setup still reports authentication required (for example a config-directory mismatch) | App does not claim success; refreshed setup guidance shows. | Exit code plus reinspection result stay local. |
+| macOS Keychain locked for the bridge process | CLI stores the credential in its file fallback, which sessions read too. | CLI stderr, scrubbed. |
+
+## Security And Privacy
+
+- The authorization URL (client id, PKCE challenge, state) and the pasted
+  code (a one-time authorization code plus state) are the only login data
+  crossing the relay, over the existing authenticated end-to-end channel. They
+  are never logged, persisted, included in errors, replayed over SSE, or sent
+  to analytics.
+- Sesori never performs the token exchange, never reads or writes Claude's
+  credential store, and never sets `CLAUDE_CODE_OAUTH_TOKEN` or
+  `ANTHROPIC_API_KEY`.
+- The login process inherits the bridge environment unchanged except
+  `BROWSER`; `HOME` is never overridden, so the credential lands where sessions
+  already look.
+- Both bridge and client require an absolute HTTPS authorization URL. No host
+  allowlist is added, matching the Codex decision: the URL originates from the
+  user-trusted local CLI binary and Anthropic has already moved domains once.
+- The code is bounded, whitespace-free, written to the CLI's stdin as one line,
+  and never echoed.
+- The sheet keeps the anti-phishing framing: continue only if you started this
+  login from Sesori.
+- Remote failures carry only the bridge's existing generic text. Local logs
+  retain plugin-authored messages, exit codes, operation context, and scrubbed
+  diagnostics.
+
+## Analytics
+
+No new event. This matches the Codex and Antigravity login decisions; a
+harness-login outcome event can be proposed separately if adoption questions
+arise.
+
+## Complexity Budget
+
+### New or changed mutable parts
+
+- Bridge core: the existing per-operation continuation flag, renamed and
+  shared by both continuation kinds. No new registry, timer, or queue.
+- Claude plugin, per operation and disposed in `finally`: one process handle,
+  one completer for the authorization URL, one one-shot submitted flag, one
+  budget timer, one disposed flag. A rejected code shape reuses the exit race
+  by disposing the process; no rejection completer or state.
+  `ClaudeLoginEnvironment` and `ClaudePastedCode` are pure.
+- Client: two immutable presentation states and one text controller inside
+  the sheet.
+
+### Deliberately not added
+
+- Pseudo-terminal support; stderr-driven control flow; a retry loop after a
+  rejected code; a per-submission timer beyond the single budget.
+- Same-host automatic completion through the CLI's localhost callback.
+- Console, SSO, API-key, or long-lived token modes; logout; login while ready.
+- Persistence of the operation or challenge; reconnect reconciliation beyond
+  the existing epoch fencing.
+- A generic form challenge framework.
+
+## Cleanup Assessment
+
+- The Claude `actionHint` copy changes with the plugin step (older clients
+  still receive a valid instruction).
+- `docs/HARNESS_CAPABILITIES.md` Claude login row moves from "Not implemented"
+  to implemented with the Windows host-browser limitation.
+- No obsolete code, fields, routes, or tests were found.
+
+## Proportionality And Accepted Risk
+
+| Decision | Evidence level | If omitted | Chosen response |
+|---|---|---|---|
+| Drive the official CLI | Verified CLI behavior without a TTY on 2.1.273 | Sesori would own tokens, Keychain writes, and third-party use of Claude Code's client id | Pipe the CLI; treat exit code as authoritative and setup reinspection as truth |
+| Paste-code flow everywhere | Anthropic documents it as the remote path; the phone can never reach the host's localhost callback | Mobile login impossible; desktop would need loopback machinery | One flow, one sheet variant |
+| Suppress host browser | Antigravity precedent; unattended host would show a sign-in page | Confusing or unattended sign-in tab on the bridge host | `BROWSER` no-op on macOS/Linux; Windows limitation accepted |
+| Single ten-minute budget | Ordinary flow: phones background, users paste wrong codes, CLI never exits on its own | A CLI could wait forever after a failed exchange | One timer; no per-step timeouts |
+| Terminal failure on rejected code | Restarting costs a few taps; the CLI's own shape check is mirrored; the provider page's copy action yields the full code | A typed rejection would need a new interface result, a wire conflict reason, and client state | Plugin disposes its CLI and the existing exit race reports failure; no retry loop |
+| Generic remote failure text | Existing lifecycle behavior for Codex and Antigravity; plugin detail stays in local logs | Distinguishing timeout from rejection remotely needs a lifecycle change for every plugin | Accept; no lifecycle change |
+| Login only when authentication required | Parity with Codex | Re-login while ready | Excluded |
+| No persistence | Credentials are durable in the CLI; setup inspection recovers truth | Bridge restart loses only the challenge | Accept |
+| No stderr parsing | Wording changes across versions; exit code is stable | Slightly less specific messages | Accept |
+
+## Regression Coverage
+
+Affected feature documents:
+
+- New `docs/regression/claude-code-authentication.md` (this capability).
+- `docs/regression/plugin-setup-and-lifecycle.md` (shared sheet gains the
+  pasted-code variant; unknown challenges still fail closed).
+- `docs/HARNESS_CAPABILITIES.md` login row for Claude.
+
+Coverage levels for the new document:
+
+| Level | Coverage added |
+|---|---|
+| L1 | Automated: Claude descriptor advertises authentication; contract and mapper unit tests. |
+| L2 | Automated: fake CLI through `PluginLifecycleService` and route handlers (challenge, code, exit paths); sheet widget tests on phone and desktop. |
+| L3 | Real login from the iOS app and from the macOS desktop app against a macOS arm64 bridge running the real `claude` CLI with a real claude.ai account; `claude auth status` reports logged in afterwards and a Claude session starts from Sesori; explicit cancel mid-flow. |
+| L4 | Linux headless bridge (credentials-file path); wrong code; timeout; older app against new bridge (update required); bridge restart mid-login; explicit `bin` override; supervised desktop bridge Keychain write. |
+| L5 | Windows bridge (accepted host-browser tab) and Android app. |
+
+**Highest required level before retirement:** L3 with the matrix
+{iOS app, macOS desktop app} x {macOS arm64 bridge, real claude.ai account}.
+Evidence stays privacy safe (no URLs, codes, emails, or tokens). Any reduction
+requires explicit user acceptance recorded here.
+
+## Delivery Rules
+
+- Six PRs, titles fixed below under slug `claude-code-login`; merge in order.
+- Step 1 raises this plan and tracker. Step 5 reconciles regression documents.
+  Step 6 runs the recorded level and matrix, records evidence in the tracker,
+  and moves this directory to `.plan/completed/claude-code-login/`.
+- Soft cap 1,500 changed lines per PR including generated output and tests;
+  split before opening a step that cannot fit.
+- Generated Freezed, JSON, and localization output changes only through the
+  generators.
+- Claude-specific commands, output parsing, code shape, budget, environment,
+  and error wording stay inside `sesori_plugin_claude`.
+- Architecture implementation review for Steps 2, 3, and 4. Steps 5 and 6 are
+  documentation and verification only.
+- Later phases: none. Managed Claude runtime installation is out of scope and
+  gets its own plan if requested.
+
+## Fixed PR Series
+
+| Step | Title |
+|---|---|
+| 1/6 | `🌱 [claude-code-login] Publish the plan [step 1/6]` |
+| 2/6 | `🚧 [claude-code-login] Add the pasted-code authentication contract [step 2/6]` |
+| 3/6 | `⚙️ [claude-code-login] Present pasted-code login in the apps [step 3/6]` |
+| 4/6 | `🚧 [claude-code-login] Drive Claude CLI login from the bridge [step 4/6]` |
+| 5/6 | `🌱 [claude-code-login] Document Claude login coverage [step 5/6]` |
+| 6/6 | `🌱 [claude-code-login] Verify and retire the plan [step 6/6]` |
+
+## Step 1/6 — Publish The Plan
+
+### Scope
+
+`PLAN.md` and `TRACKER.md` under `.plan/active/claude-code-login/`.
+
+### Verification
+
+Architecture plan review through a sub-agent; findings applied directly.
+
+## Step 2/6 — Add The Pasted-Code Authentication Contract
+
+Complexity 🚧: cross-layer wire contract with compatibility and continuation
+gating.
+
+### Scope
+
+- `bridge/sesori_plugin_interface/lib/src/lifecycle/plugin_authentication.dart`:
+  `pastedCode` operation, event interface, challenge event.
+- `shared/sesori_shared/lib/src/models/sesori/plugin_management.dart`:
+  `pastedCode` challenge variant and `PluginAuthenticationCodeRequest` with
+  regenerated output.
+- `bridge/app/lib/src/runtime/plugin_runtime.dart`, the lifecycle repository
+  seam, `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
+  `bridge/app/lib/src/routing/plugin_authentication_handlers.dart` and route
+  registration: `submitAuthenticationCode`, shared one-shot gate, challenge
+  mapping, new POST handler with neutral validation.
+- Tests: interface contract, shared wire JSON contract, runtime gate matrix
+  (stale, wrong kind, already submitted, aborted), lifecycle service mapping
+  and terminal progress with a fake pasted-code descriptor, handler status
+  matrix (200/204, 400, 404, 409).
+
+### Verification
+
+`dart analyze` and targeted `dart test` in `sesori_plugin_interface`,
+`sesori_shared`, and `bridge/app`; codegen clean. No user-visible change until
+a plugin produces the variant.
+
+## Step 3/6 — Present Pasted-Code Login In The Apps
+
+Complexity ⚙️: several client layers and a new sheet variant over established
+ownership.
+
+### Scope
+
+- `client/module_core`: `plugin_api.dart`, `plugin_repository.dart`,
+  `repositories/models/plugin_management_result.dart`,
+  `services/plugin_management_service.dart`,
+  `cubits/plugin_management/plugin_management_cubit.dart` and state.
+- `client/module_app_ui`: `features/settings/harness_settings_sheets.dart`
+  pasted-code branch, `l10n/app_en.arb` harness-neutral strings parameterized
+  by display name, and regenerated localizations.
+- Tests: API contract, service orchestration (fencing, continuation results),
+  cubit transitions (launch, neutral input rule keeps the field editable,
+  submit, conflicts, terminal), phone and desktop settings widget tests (open
+  on explicit tap only, submit enabled by valid text, waiting state, cancel,
+  update-required unchanged).
+
+### Verification
+
+`flutter analyze` and targeted tests in `module_core`, `module_app_ui`,
+`client/app`, and `client/desktop`. No user-visible change until a bridge
+produces the variant; older bridges remain unaffected.
+
+## Step 4/6 — Drive Claude CLI Login From The Bridge
+
+Complexity 🚧: process lifecycle, security-sensitive output handling, and
+cancellation.
+
+### Scope
+
+- `bridge/sesori_plugin_claude`: `ClaudePastedCode`,
+  `ClaudeLoginEnvironment`, `ClaudeLoginOutputParser`, `ClaudeAuthLoginApi`
+  (sharing the host-backed `ClaudeProcessHandle` implementation with the
+  session factory), `ClaudeAuthenticationRepository`,
+  `ClaudeAuthenticationService`, descriptor composition, capability, and the
+  `actionHint` copy.
+- Tests with the existing fake `HostProcessService` and scripted
+  `SpawnedProcess` pattern: OSC 8 and fragmented URL lines; exit before URL;
+  non-HTTPS or oversized URL; exit 0 after code; non-zero exit; budget expiry;
+  abort during wait and during submit; one-shot submit; code shape rejection
+  kills the process, returns normally, and the stream emits `Failed`;
+  `ClaudeLoginEnvironment` table (macOS and Linux with and without a no-op
+  binary, Windows); `HOME` untouched; stdin receives exactly `code\n`; log
+  capture proves no URL or code is logged.
+- Manual check on the developer machine with an isolated `CLAUDE_CONFIG_DIR`
+  through the bridge routes.
+
+### Verification
+
+`dart analyze` and `dart test` in `sesori_plugin_claude`; targeted bridge app
+tests if composition changes. User-visible result: Claude shows `Log in` when
+authentication is required and completes login from the app.
+
+## Step 5/6 — Document Claude Login Coverage
+
+### Scope
+
+Create `docs/regression/claude-code-authentication.md`; update
+`docs/regression/plugin-setup-and-lifecycle.md` and
+`docs/HARNESS_CAPABILITIES.md`.
+
+### Verification
+
+Documentation review only.
+
+## Step 6/6 — Verify And Retire
+
+### Highest required level
+
+L3.
+
+### Required matrix
+
+{iOS app, macOS desktop app} x {macOS arm64 bridge with real `claude` CLI and
+a real claude.ai account}. L4 and L5 rows run when infrastructure is available
+and are reported honestly as `Not run` otherwise.
+
+### Acceptance
+
+Every L1 through L3 entry passes across the matrix with privacy-safe evidence
+recorded in `TRACKER.md`; then move the directory to
+`.plan/completed/claude-code-login/`.
+
+## Material Risks
+
+- CLI output may change across versions. The parser keys on the first
+  absolute HTTPS URL in stdout, not on prose, and the exit code is
+  authoritative; a missing URL fails within the budget. The verified version
+  is recorded so upgrades re-run the L2 fake and one L3 login.
+- The wrong-code exit behavior is unverified; the budget bounds it and the L4
+  wrong-code check settles it.
+- Keychain writes from a supervised or launchd-started bridge on macOS rely on
+  the CLI's file fallback when the Keychain is locked; the L4 supervised
+  desktop check covers it.
+- Organization policies (`forceLoginMethod`, org restrictions) can reject the
+  login; the CLI exits non-zero and the failure stays sanitized.
+
+## Plan Review Record
+
+2026-09-16: `architecture-plan-review` (sub-agent) rejected the first draft
+with four must-fix findings and two optional ones. All six were applied in the
+same step and, per repository rules, the fixes were not re-reviewed:
+
+- Undefined outcome for a plugin-rejected code shape: the plugin now ends its
+  own operation through its event stream by disposing the CLI; the one-shot
+  gate is consumed; no rejection type crosses the plugin boundary.
+- Backend identity in shared UI copy: sheet strings are harness-neutral and
+  parameterized by display name.
+- Platform and filesystem decisions in the API layer: moved to the pure
+  `ClaudeLoginEnvironment` resolved by the descriptor composition; the API only
+  executes.
+- Plugin failure wording that never crosses the wire: plugin messages are
+  local-log-only; the existing generic remote text is unchanged.
+- Optional: `ClaudeLoginOutputMapper` renamed `ClaudeLoginOutputParser`; the
+  invalid-URL path is named as the repository request failure rather than the
+  cubit's `invalidChallenge`.
+
+Considered by the reviewer and declined on proportionality: unifying both
+continuation methods behind a sealed payload, a separate per-operation class
+as in Antigravity, a URL host allowlist, persistence, reconnect
+reconciliation, a retry loop, and a guard for an orphaned login under an old
+app (bounded by the budget and abort).
