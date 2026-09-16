@@ -166,6 +166,14 @@ and keep native close/quit behavior safe.
   frame, provided above the router, and persisted through the same shared
   cubits as mobile. Changing appearance in Settings re-themes the whole window
   immediately rather than only the current route.
+- Shared client logging defaults to stdout, preserving level filtering, diagnostic
+  context and stacks. HTTP/relay parsing errors retain typed causes but omit JSON
+  excerpts from presentation; both shells omit outbound-link user-info/path/query/fragment
+  and selectively replace the known URI in thrown-error diagnostics. Unrelated
+  useful error context remains. Final desktop Quit awaits admitted log output for
+  at most two seconds after cleanup; flush failure/timeout reports directly to stdout
+  and does not prevent exit. A failed helper stop still refuses Quit before flushing.
+  File sinks and actual native termination are not qualified by these fake-backed checks.
 - Open Logs prepares the owner-only active log through Layer-1 storage, then
   resolves it through the desktop log repository and delegates it to the system
   default application, including before the helper emits its first line. Both
