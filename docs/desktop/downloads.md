@@ -24,7 +24,10 @@ Gatekeeper acceptance. Copy the complete Sesori app from the DMG into Applicatio
 do not replace just the helper or run daily use from the mounted DMG. Never bypass
 Gatekeeper or delete Keychain items to make an update work. Shared CLI credentials,
 harness runtimes, databases, session history and projects are not update cleanup.
-Windows publisher and installation instructions will accompany its qualified release.
+Windows publisher and installation instructions will accompany a signed public
+release. Private unsigned per-user installers have passed isolated native package
+fixtures, but they are not downloads and do not establish SmartScreen, interactive
+GUI/account behavior or a signed N→N+1 update.
 
 Internal is an explicit test channel, not an automatic promotion to stable. The
 sections below do not imply a release exists. Do not use GitHub's generic Latest
@@ -64,7 +67,10 @@ No public download is available.
 
 ## Linux package managers
 
-Signed APT and RPM repositories are not published yet. Linux updates will be owned
-by the package manager, not an app-managed updater. Quit Sesori before upgrading.
-Repository keys, supported distributions, CPU-specific install commands and signature
-verification instructions will appear here only after qualification and publication.
+Signed APT and RPM repositories are not published yet. Private unsigned x64/arm64
+DEB and RPM packages have passed native Ubuntu 24.04, Debian 13 and Fedora 44 package
+fixtures; they are not supported downloads and same-version reinstall is not N→N+1
+upgrade proof. Linux updates will be owned by the package manager, not an app-managed
+updater. Quit Sesori before upgrading. Repository keys, supported distributions,
+CPU-specific install commands and signature verification instructions will appear
+here only after qualification and publication.

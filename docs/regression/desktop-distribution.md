@@ -84,6 +84,23 @@ packages, creates tags/releases, edits website links, or triggers CLI/mobile rel
 work. These are evidence-consistency checks, not independent signature verification
 or permission to ship. Public release and native upgrade gates remain outstanding.
 
+## Current evidence boundary
+
+Private package mechanics are qualified for both native CPUs on all three desktop
+platforms: signed/notarized/stapled DMGs and ZIPs containing the signed/notarized/stapled
+app on macOS (the ZIP itself is not signed or stapled), unsigned per-user EXE
+construction and isolated fixtures on Windows, and unsigned DEB/RPM construction plus
+six native package-manager fixtures on Linux. This is repository-shipped preparation,
+not public release support. Exact accepted sources, runs, hashes and proof limits stay
+in the active distribution plan's [macOS](../../.plan/active/desktop-distribution/steps/step-04.md),
+[Windows](../../.plan/active/desktop-distribution/steps/step-07.md), and
+[Linux](../../.plan/active/desktop-distribution/steps/step-09.md) evidence.
+
+Still unproved: public retrieval and trust, real-account restoration, declared minimum
+OS, interactive GUI/keyring/tray/login behavior, signed macOS/Windows N→N+1 manual
+replacement, and signed-repository Linux N→N+1 updates. A private build, silent fixture
+or same-version reinstall cannot close those gates.
+
 ## Coverage
 
 - **L1:** Destination tests cover both channels and CPUs, Linux and source guidance;

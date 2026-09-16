@@ -4,10 +4,12 @@
 
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
-- **Status:** Active — steps 1–5 and private step-6/7 preparation merged.
-  Public macOS/Windows publication and step-8 winget assets remain gated. Next
-  executable work is private Linux packaging; shipping order remains macOS,
-  Windows, Linux. No blocked publication step is claimed completed.
+- **Status:** Active — steps 1–5 and the private portions of steps 6, 7 and 9
+  merged. Public macOS/Windows/Linux publication and step-8 winget assets remain
+  gated. Step 10 onboarding waits for genuine shipped releases. The independently
+  executable private portion of step 11 is in progress; its public-release
+  reconciliation and final plan retirement remain blocked. Shipping order remains
+  macOS, Windows, Linux. No blocked publication step is claimed completed.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -379,8 +381,25 @@ history and keeps lifecycle changes out of the package-signing review.
 | 8 | ⚙️ [desktop-distribution] Deliver manual Windows updates and winget discovery [step 10/14] | After 6 and 7. Settings download action, signed N→N+1 manual replacement, channel-specific downloads, winget manifests and Windows ship gate. Medium integration risk; no embedded updater, forced helper shutdown or automatic restart. No database change. |
 | 9 | ⚙️ [desktop-distribution] Qualify private native DEB and RPM packages [step 11/14] | Independent private preparation after native bundle qualification. Four unsigned native packages, generated dependency manifests, desktop integration and isolated package-manager fixtures. Signing, public APT/RPM repositories and shipping remain blocked behind prior platform gates. No updater, home cleanup or database change. |
 | 10 | 🌿 [desktop-distribution] Offer shipped desktop downloads during onboarding [step 12/14] | After all platform gates. Shared mobile installation guidance and published links, preserve CLI alternative and truthful platform/CPU choices. Low/medium onboarding regression risk; focused UI/link tests and existing analytics assessment. New installation choice, no database change. |
-| 11 | 🌿 [desktop-distribution] Reconcile distribution regression coverage [step 13/14] | After 10. Complete affected feature documents and installation/release runbooks, remove superseded dev-only guidance where behavior changed. Low risk; no runtime or database change. |
-| 12 | ⚙️ [desktop-distribution] Verify six-target releases and retire distribution plan [step 14/14] | After 11. Run/assemble the complete recorded release matrix through packaged/external boundaries, record exact artifacts and evidence, resolve failures, then move this directory to `.plan/completed/desktop-distribution/` and repoint live links. No runtime/database change except independently reviewed required fixes. Never retire partial/blocked coverage. |
+| 11 | 🌿 Private regression reconciliation (13/14) | Scope and exact PR title below. |
+| 12 | ⚙️ Release verification and retirement (14/14) | Scope and exact PR title below. |
+
+**Step 11 PR:**
+`🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
+Private-package reconciliation can proceed after step 9 while step 10 is blocked.
+Carry the remaining public-link/onboarding and release-runbook documentation in
+step 10's existing ordinal 12/14 PR, alongside the genuine shipped-download changes.
+That PR also closes the deferred portion of step 11; no second ordinal 13 PR is planned.
+Keep this step in progress until both portions are complete. Low risk;
+no runtime or database change.
+
+**Step 12 PR:**
+`⚙️ [desktop-distribution] Verify six-target releases and retire distribution plan [step 14/14]`.
+After completed steps 10 and 11, run/assemble the complete recorded release matrix
+through packaged/external boundaries, record exact artifacts and evidence, resolve
+failures, then move this directory to `.plan/completed/desktop-distribution/` and
+repoint live links. No runtime/database change except independently reviewed required
+fixes. Never retire partial/blocked coverage.
 
 Step 2's platform qualification results may be gathered independently; there is no
 requirement to keep one expensive test machine idle until another OS finishes. PRs
@@ -464,9 +483,14 @@ ships, include it as the upgrade baseline. Same-version metadata corruption does
 justify silently replacing immutable public artifacts.
 
 Per-platform ship gates can release ready platforms while later ones remain blocked.
-Final retirement requires all recorded targets and package variants. Missing Windows/
-Linux hosts, credentials, store/package approvals, or toolchains are **Blocked**, not
-an accepted reduction. Any reduction requires explicit user acceptance in this file.
+Private qualification now covers signed/notarized macOS packages and unsigned Windows
+and Linux packages on both native CPUs; exact run/source/artifact evidence stays in
+[steps 4.a](steps/step-04.md), [4.b](steps/step-04b.md),
+[7](steps/step-07.md), and [9](steps/step-09.md). This does not close any public ship
+gate. Final retirement requires all recorded targets and package variants. Missing
+Windows/Linux hosts, credentials, store/package approvals, or toolchains are
+**Blocked**, not an accepted reduction. Any reduction requires explicit user
+acceptance in this file.
 Record privacy-safe artifact IDs/digests, build SHA, actual OS/CPU, package/updater
 versions, outcomes, and cleanup; keep raw account/project/log content out of Git.
 

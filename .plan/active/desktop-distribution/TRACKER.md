@@ -17,10 +17,10 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 6 | 8 | Private release preparation merged; macOS publication gated | blocked |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
-| 9 | 11 | Prepare private native DEB/RPM packages; publication gated | in-progress |
-| 10 | 12 | Offer shipped desktop downloads during onboarding | pending |
-| 11 | 13 | Reconcile distribution regression coverage | pending |
-| 12 | 14 | Verify six-target releases and retire distribution plan | pending |
+| 9 | 11 | Private native DEB/RPM packages merged; signing/publication gated | blocked |
+| 10 | 12 | Shipped-download onboarding requires genuine public releases | blocked |
+| 11 | 13 | Reconcile private distribution coverage; public closeout remains gated | in-progress |
+| 12 | 14 | Verify six-target releases and retire distribution plan | blocked |
 
 Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
 Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
@@ -69,9 +69,28 @@ its one-off summary command was not retained, so it is historical attribution ra
 than a reproducible local tooling check. Signing and public Windows release remain
 blocked. Step 8's download UI already
 exists from step 5; winget manifests must wait for real signed public assets.
-Rather than invent placeholder manifests, continue the next independently executable
-step: private Linux packaging on `desktop-distribution-linux-packaging`. Shipping
-order and uncompleted publication prerequisites are unchanged.
+Rather than invent placeholder manifests, the series continued with private Linux
+packaging on `desktop-distribution-linux-packaging`.
+
+Private Linux qualification merged in #1522, accepting
+`07bdd730e6451d221ebb86821a38c4252e4e0abc`, as squash
+`9f9081f71995397edf39690efc212aa0920c6175` at 2026-09-16T17:05:04Z. Final private
+run [35122448200](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35122448200)
+passed native x64 and ARM64 jobs at the accepted source. Its four DEB/RPM hashes,
+73-file/13-ELF inventories, empty source patches and six Ubuntu 24.04, Debian 13 and
+Fedora 44 fixtures were independently checked in
+`build/desktop-linux-packaging-evidence/native-07bdd73/verified-summary.json`; exact
+package hashes and proof limits live in [step 9](steps/step-09.md). At merge, all
+reported required checks passed and the skipped platform-distribution jobs were
+inapplicable to this Linux-only private run. Earlier failing attempts remain run
+history, not unsupported product behavior or regression tombstones.
+
+Step 10 remains blocked until genuine platform releases and links exist. Step 11's
+private-package documentation portion can proceed independently, so its dependency
+is narrowed without reordering stable IDs or the 14-PR series. Its public-link and
+onboarding closeout is assigned to step 10's existing ordinal 12/14 PR, together with
+its genuine shipped-link changes; no second ordinal 13 PR is required. Step 11 is not
+complete. Shipping order and uncompleted publication prerequisites are unchanged.
 
 ## Alignment — 2026-09-15
 
@@ -191,8 +210,13 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Signing and static hosting | Private macOS signed/notarized payloads and synthetic platform probes verified on both CPUs | Rendered GUI/account restoration, interactive TCC/OS-login, updater/Windows/Linux keys, GCS access and owner-approved protected-environment migration of shared repository signing secrets before public publication. |
 | macOS public gate | Pending | Both CPUs, parent prerequisite, actual signed N→N+1 upgrade, quit semantics, downloads, complete platform coverage from PLAN.md. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
-| Linux public gate | Pending | Both CPUs in DEB/RPM, nominated native distro rows, signed repository install/update/remove and desktop-environment coverage. |
-| Retirement | Pending | Step 11 docs plus complete recorded matrix; partial, blocked or missing targets keep plan active. |
+| Linux public gate | Pending; private mechanics passed on both CPUs | Public and interactive checks below. |
+| Retirement | Blocked | Steps 10/11 closeout and the complete recorded matrix remain required. |
+
+Linux public coverage still requires signed repository install/N→N+1 update/remove,
+desktop-environment coverage, real account/keyring/tray/login behavior and declared
+minimum OS. Retirement requires completed step 10 and the public portion of step 11,
+then the complete recorded matrix. Partial, blocked or missing targets keep the plan active.
 
 ## Architecture plan review
 

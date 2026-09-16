@@ -84,19 +84,56 @@ and Debian 13 at
 Each pull is checked against its digest and native CPU. `apt`/`dnf` repositories remain
 rolling; base-image pins do not make later package dependency resolution bit-reproducible.
 
-Native run [35119939925](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35119939925)
-passed at exact source `ee6aad6dafc9621bd4d00660a6fb60400fad6b1d`, tree
-`1492738f064ee24591ee463639c0e9009891726c`, from the GitHub Actions repository
-checkout. Both CPU jobs built DEB/RPM packages and passed Ubuntu 24.04, Debian 13 and
-Fedora 44 install, same-version reinstall and removal fixtures. From this worktree root,
-the parent downloaded that run with `gh run download 35119939925 --repo
-sesori-ai/sesori_apps_monorepo --pattern 'desktop-linux-*' --dir
-build/desktop-linux-packaging-evidence/native-ee6aad6`. Downloaded package hashes,
-73-file/13-binary inventories, six installed/reinstalled fixture inventories and both
-empty source patches were inspected; the retained summary is
-`build/desktop-linux-packaging-evidence/native-ee6aad6/verified-summary.json`.
-The one-off summary-generation command was not retained, so this local artifact is
-attributed historical evidence, not a reproducible tooling check. Review fixes after
-`ee6aad6` require focused local tests and fresh native qualification; none is claimed
-here. No checkpoint makes a signing, publication, N→N+1, GUI, Secret Service, tray or
-account claim.
+PR #1522 merged this private qualification, accepting
+`07bdd730e6451d221ebb86821a38c4252e4e0abc` as squash
+`9f9081f71995397edf39690efc212aa0920c6175` on 2026-09-16. Accepted source tree:
+`3e869292f7f11eeb6356cfd56a938c3c20976239`. The accepted PR source, not the squash
+commit, is the artifact-producing revision.
+
+Both native jobs used checkout cwd
+`/home/runner/work/sesori_apps_monorepo/sesori_apps_monorepo`.
+The exact build, dependency-generation, container and fixture commands are the
+`linux-distribution` job at this immutable workflow revision, rather than a duplicated
+command list that could drift:
+
+```bash
+source=07bdd730e6451d221ebb86821a38c4252e4e0abc
+# Recover the producer object even in a fresh post-squash checkout.
+git fetch origin refs/pull/1522/head
+git show "$source:.github/workflows/desktop-qualification.yml"
+# Expanded commands and measured job environment:
+gh run view 35122448200 --repo sesori-ai/sesori_apps_monorepo --job 104883363575 --log
+gh run view 35122448200 --repo sesori-ai/sesori_apps_monorepo --job 104883363460 --log
+```
+
+Both jobs passed. This identifies the executed instructions, not a promise of
+bit-identical rebuilding against rolling package repositories.
+
+Final native run [35122448200](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35122448200)
+passed native x64 and ARM64 jobs at that accepted source. Both jobs built DEB and RPM
+packages and passed Ubuntu 24.04, Debian 13 and Fedora 44 install, same-version
+reinstall and removal fixtures. The independently checked package SHA-256 values are:
+
+| CPU | Format | SHA-256 |
+|---|---|---|
+| x64 | DEB | `6367ea24acf2eb2660493f0ee97a1dc23c46bd0688e67625c023f044a23105fa` |
+| x64 | RPM | `c76b188d6c3df6536ed25beabe861e348a036517e43144e95739af320454afe2` |
+| arm64 | DEB | `12bfcd3d35921f90422ea43dc77cbc8ecede8e069f39faef85618fe209d6ab2f` |
+| arm64 | RPM | `1d2eff7f973d65d16c3136867c3fca97fb03d513e073d510b1ebee56ce713cd3` |
+
+From this worktree root, artifacts were retrieved with `gh run download 35122448200
+--repo sesori-ai/sesori_apps_monorepo --pattern 'desktop-linux-*' --dir
+build/desktop-linux-packaging-evidence/native-07bdd73`. All four packages contain the
+same expected 73 package payload files and 13 native ELF files for their CPU. Both
+source patches are empty. Six native fixture results verify strict generated DEB
+dependencies, Fedora-generated RPM ELF requirements, bounded package paths, absence
+of DEB maintainer scripts/RPM scriptlets, pre-install shared-data sentinels, exact
+root-owned installed payloads, same-version reinstall, removal of package-owned paths
+and sentinel preservation. The retained independent summary is
+`build/desktop-linux-packaging-evidence/native-07bdd73/verified-summary.json`.
+
+Earlier failing attempts are historical CI evidence, not current unsupported-feature
+markers and not regression assertions. This final run still does not establish
+signing, publication, real N→N+1 update, GUI/session startup, account restoration,
+Secret Service/keyring, tray, login launch, interactive desktop behavior or minimum-OS
+support. No package or local GUI/helper was installed or launched on this Mac.
