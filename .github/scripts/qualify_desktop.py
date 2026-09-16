@@ -59,11 +59,15 @@ def native_arch(*, path: Path) -> tuple[str, list[str]] | None:
     return None
 
 
-def inventory(*, root: Path, target_os: str, arch: str) -> list[dict]:
+def inventory(*, root: Path, target_os: str, arch: str,
+              ignored_paths: frozenset[str] = frozenset()) -> list[dict]:
     platform_format = {"macos": "Mach-O", "windows": "PE", "linux": "ELF"}[target_os]
     entries = []
     for path in sorted(root.rglob("*")):
         if not path.is_file() or path.is_symlink():
+            continue
+        relative_path = path.relative_to(root).as_posix()
+        if relative_path in ignored_paths:
             continue
         native = native_arch(path=path)
         if native is None:
@@ -71,7 +75,6 @@ def inventory(*, root: Path, target_os: str, arch: str) -> list[dict]:
                 raise ValueError(f"Unrecognized native library/executable: {path}")
             continue
         binary_format, arches = native
-        relative_path = path.relative_to(root).as_posix()
         # Flutter loads this Dart AOT snapshot as ELF even on Windows; DLLs/EXEs remain PE.
         expected_format = "ELF" if target_os == "windows" and relative_path == "data/app.so" else platform_format
         if binary_format != expected_format or arch not in arches:

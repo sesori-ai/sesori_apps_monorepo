@@ -23,6 +23,28 @@ Failed helper stop retains the existing refusal to Quit. Nothing in the download
 action stops a helper, installs, changes bridge intent or automatically relaunches.
 Linux upgrades remain package-manager-owned. Shared CLI data is not update cleanup.
 
+## Private Windows installer qualification
+
+Manual `windows-packaging` qualification builds unsigned x64 and ARM64 per-user
+Inno Setup packages from exact native staged bundles. Install defaults to
+`%LOCALAPPDATA%\Programs\Sesori`; shortcuts launch `sesori_desktop.exe`. Setup and
+uninstall refuse while `Global\com.sesori.desktop.running.<current-user-SID>` exists.
+This per-user marker spans Windows sessions, stays owned by GUI process until OS
+termination, and does not reject another GUI instance.
+Installer never starts Sesori, enables login launch, closes/restarts processes, or
+removes unrecorded files. Uninstall additionally removes only existing `Sesori`
+login value; shared credentials, runtimes, databases, history and projects remain.
+
+The Inno Setup 7.1.0 x64 acquisition installer is checksum-verified before it
+installs the compiler. Compiler and installer launcher may run under Windows ARM64
+emulation; GUI, helper and shipped libraries
+must match target CPU. Isolated runner probes use per-user global mutex fixtures and
+compare every staged relative file path and SHA-256 with the installed payload; only
+Inno's generated uninstaller files are excluded from the installed extra-file set.
+They do not start the product and prove silent fixture behavior only. Output remains private, unsigned CI evidence:
+it does not establish publisher trust, SmartScreen reputation, interactive behavior,
+account restoration, upgrades, or release readiness.
+
 ## Private release preparation
 
 The manual Desktop Release Preparation workflow consumes both native macOS package
@@ -43,6 +65,8 @@ or permission to ship. Public release and native upgrade gates remain outstandin
   widget tests exercise external-link dispatch without claiming release availability.
 - **L2:** Offline preparation fixtures cover both CPUs, channel/source mismatches,
   altered payload/evidence, missing packages, deterministic output and no overwrite.
+  Windows fixtures cover identity/CPU refusal, complete native inventory, pinned
+  compiler arguments, bounded installer directives and no-overwrite diagnostics.
   Staging parser/default/invalid-channel and exact dotenv tests; Settings
   composition retains attention controls. Generated fragments match specification headings.
 - **L3:** Real Settings navigation and external-browser dispatch on a packaged native
@@ -63,5 +87,8 @@ and [download instructions](../desktop/downloads.md).
 Wrong channel/CPU fragment, guessed architecture for source builds, private or
 unshipped artifact links, a dead Linux/self-update button, raw release-version
 inference, losing attention settings, startup network waits, or a download action
-that stops/restarts the app or helper. Manual replacement must never delete shared
-credentials, harness runtimes, databases, history or projects.
+that stops/restarts the app or helper. Windows setup/uninstall proceeding while GUI
+mutex exists, changing login intent during install, launching the app, forced close/
+restart, wrong-CPU payloads, or broad uninstall cleanup are failures. Manual
+replacement must never delete shared credentials, harness runtimes, databases,
+history or projects.
