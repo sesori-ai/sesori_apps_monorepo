@@ -85,6 +85,7 @@ restart the bridge mid-login, and use an explicit `bin` override.
 - A bridge that cannot exit promptly after a login ended, for example because a budget timer outlived the operation.
 - A code of the wrong shape leaving the sheet waiting instead of ending in failure, or an operation that stays open
   after the CLI rejected a wrong code and exited.
+- A failure log whose stderr tail lacks the CLI's last line, such as `Login failed: …` after a wrong code.
 
 ## Known Limitations
 
