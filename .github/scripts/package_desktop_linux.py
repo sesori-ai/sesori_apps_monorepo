@@ -182,6 +182,9 @@ def build_rpm(*, root: Path, work: Path, output: Path, arch: str, identity: dict
     rpm_arch = {"x64": "x86_64", "arm64": "aarch64"}[arch]
     spec = top / "SPECS/sesori-desktop.spec"
     spec.write_text(
+        # Package already-built, identity-verified binaries without stripping them.
+        # Keep Fedora's RUNPATH validation and automatic dependency generation.
+        "%global __strip /bin/true\n%global debug_package %{nil}\n"
         f"Name: {PACKAGE_NAME}\nVersion: {identity['version']}\nRelease: {identity['buildNumber']}%{{?dist}}\n"
         "Summary: Sesori desktop cockpit\nLicense: Proprietary\n"
         f"BuildArch: {rpm_arch}\nAutoReqProv: yes\n\n%description\nSesori desktop cockpit\n\n"

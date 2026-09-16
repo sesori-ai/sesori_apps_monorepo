@@ -196,6 +196,9 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertIn(f"Version: {self.version}", spec)
         self.assertIn("Release: 42%{?dist}", spec)
         self.assertIn("AutoReqProv: yes", spec)
+        self.assertIn("%global __strip /bin/true", spec)
+        self.assertIn("%global debug_package %{nil}", spec)
+        self.assertNotIn("__os_install_post", spec)
         self.assertNotRegex(spec, r"(?m)^%(pre|post|preun|postun)\b")
         self.assertEqual(evidence["dependencies"], ["libc.so.6()(64bit)"])
 
