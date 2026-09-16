@@ -63,13 +63,18 @@ and older-completion/newer-read ownership. Existing initial deduplication, activ
 retry/invalidation, sibling isolation and disposal cases remain.
 The desktop suite covers the existing consumer; it is not a real bridge/native lifecycle test.
 
-Red source index `d44c215307aa4fb6140f28bfc1648dad6a0c9519` ran the same core test file with:
+Red measured index tree: `d44c215307aa4fb6140f28bfc1648dad6a0c9519` (a retained local tree, not a published commit).
+Only the core test file differed from the frozen base; production code was still unchanged.
+Cwd: `client/module_core`, relative to the repository root. Complete command with the pinned executable:
 
 ```sh
---name 'pending .* refresh|refresh failure|lifecycle events during refresh|superseded refresh completion'
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart test --reporter json \
+  test/cubits/recent_sessions/recent_sessions_cubit_test.dart \
+  --name 'pending .* refresh|refresh failure|lifecycle events during refresh|superseded refresh completion'
 ```
 
-All six failed first: four saw loading instead of useful loaded data; two failures replaced it with failed state.
+Exit **1**: **six non-hidden cases, all six failed, zero skipped**.
+Four saw loading instead of useful loaded data; two failures replaced it with failed state.
 The first post-fix run exposed two fixture assumptions about source ordering, not product defects: the service owns
 ordering, so membership assertions became unordered while visible-order assertions stayed intact. The test enum also
 needed its primary constructor. The final rerun replaces these intermediate results; none are added to the 46 total.

@@ -591,7 +591,7 @@ Completed implementation specifics live in the linked evidence; this matrix summ
 | 9.a.1 | 12/19 | ≤ 1,300 | [Safe diagnostics and bounded Quit completion](steps/step-09a1.md). |
 | 9.a.2 | 13/19 | ≤ 1,300 | [Rotating app files and prepared logs directory](steps/step-09a.md). |
 | 9.b | 14/19 | ≤ 500 | [Anchored resizing and scrollbar hit targets](steps/step-09b.md). |
-| 9.c.1 | 15/19 | ≤ 650 | Loaded/live inventory during refresh; existing request ownership. |
+| 9.c.1 | 15/19 | ≤ 650 | [Loaded/live inventory and request ownership](steps/step-09c1.md). |
 | 9.c.2 | 16/19 | ≤ 1,200 | Priority activity, purposeful controls, refresh, Prego transitions and useful hints. |
 | 10 | 17/19 | ≤ 600 | Keyboard shortcuts and macOS title-bar/drag integration. |
 | 11 | 18/19 | ≤ 600 | Control-content audit and regression reconciliation. |

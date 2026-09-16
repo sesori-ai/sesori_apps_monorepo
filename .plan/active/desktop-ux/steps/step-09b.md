@@ -4,7 +4,16 @@ Delivery 14/19 after the 9.c split; originally published as 14/18.
 Branch `desktop-ux/sidebar-interactions`.
 Merged #1524 at accepted head `bf273d272e0ffff4191f870919760e686fb80446`;
 squash `ed09171665995b98d1e010b9b5bd340c3c50a605`, tree `53e40902232a807cd91f83beaec669f95c084b9f`.
-Final publication was 344 changed lines (307 additions + 37 deletions), including 202 docs lines.
+Final publication was **344 changed lines** (307 additions + 37 deletions) across **eight paths**.
+The 202 documentation lines are included in that total, not additional to it; generated churn is zero.
+From the repository root, reproduce the full base-to-accepted-head publication without path filters:
+
+```sh
+git diff --numstat \
+  23ed67ca38e85894d6c1ef7c91bbc0b95a667f8d \
+  bf273d272e0ffff4191f870919760e686fb80446
+```
+
 Source/test content remained identical to A below; native qualification is unchanged.
 Base: `23ed67ca38e85894d6c1ef7c91bbc0b95a667f8d` (merged #1509).
 Implementation A: `8a0cfcce3e30404b136d8a80529f7b097d67aae6`;
