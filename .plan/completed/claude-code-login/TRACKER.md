@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `claude-code-login`
-- **Series state:** Steps 1–5/6 merged; Step 6/6 awaits the user's L3 runs
+- **Series state:** Steps 1–5/6 merged; Step 6/6 records the skipped L3 check and retires the plan
 - **Current branch:** `claude-code-login-step-6`
-- **Next action:** the user runs the L3 login from the iOS app and the macOS desktop app; then record the evidence, retire the plan, and raise Step 6
+- **Next action:** none for the series once Step 6 merges. The user runs the L3 logins later, using the L3 row of `docs/regression/claude-code-authentication.md`
 
 ## Locked Product Decisions
 
@@ -39,7 +39,7 @@
 | 3/6 | 🚧 Route pasted-code login through the bridge | Merged | #1517 | `sesori_plugin_interface` and `bridge/app` analyze clean; interface, runtime gate, lifecycle service, and handler tests pass; architecture implementation review approved, its optional finding (document the code guarantee and error privacy for plugins) applied. PR automated review: one wave, 1 finding fixed (the contract also keeps the code out of plugin failure messages), 1 declined (slot revalidation after an awaited submission, unchanged from `main`) |
 | 4/6 | 🚧 Drive Claude CLI login from the bridge | Merged | #1518 | `sesori_plugin_claude` analyze clean; 324 tests pass. Manual check on macOS arm64 with Claude Code 2.1.273 and an isolated `CLAUDE_CONFIG_DIR`, through the descriptor and service over a `dart:io` host process service rather than the bridge routes: challenge, abort, rejected shape, and a well-formed wrong code (CLI exit 1) each ended with no CLI left and no URL, state, or code in logs. It found budget timers outliving the login, fixed with per-wait timeouts, and was rerun after each review fix. Divergences recorded in `PLAN.md`. Architecture implementation review approved; its optional parser-default finding applied. PR automated review: four waves, 6 findings fixed (exit counted once both pipes close with both subscriptions released, rejected shape failed from the shape check, no signal to an exited CLI, raw exit read separately from pipe closure, named decoder parameter, HOME guard reporting only the key), 6 declined (bounded wait after a forced stop, spawn-stall cleanup, wrapped stdin errors, settling on a stdin write failure, tracker wording, iOS-only L3) |
 | 5/6 | 🌱 Reconcile Claude login documentation | Merged | #1519 | Documentation review only; `plugin-setup-and-lifecycle.md` covers the pasted-code challenge, the neutral code rule, the shared continuation gate, sheet behavior, coverage, and failure signals; `claude-code-authentication.md` adds failure signals from Step 4's checks and review. Squash-merged directly as a documentation-only PR |
-| 6/6 | 🌱 Verify and retire the plan | In progress | — | L1 and L2 automated coverage passes on `main` at `05a43e2ff4`; L3 awaits the user (see Retirement Evidence) |
+| 6/6 | 🌱 Verify and retire the plan | Merged | #1520 | L1 and L2 pass on `main` at `05a43e2ff4` (see Retirement Evidence); L3 `Not run`, skipped by the user's decision on 2026-09-16 and accepted in `PLAN.md`; L4 and L5 `Not run`. Plan moved to `.plan/completed/`. Squash-merged directly as a documentation-only PR |
 
 ## Retirement Evidence
 
@@ -58,6 +58,10 @@
   2.1.269, 2.1.272, and 2.1.273. The service-level check with the real CLI
   passed on 2.1.273 (Step 4) for the challenge, a wrong code, a rejected
   shape, and an abort.
-- **L3:** not run yet. It needs the user's real claude.ai login from the iOS
-  app and from the macOS desktop app. The plan stays active until both pass.
-- **L4 and L5:** not run.
+- **L3:** `Not run`. On 2026-09-16 the user skipped the real claude.ai logins
+  from the iOS app and the macOS desktop app for now and will run them later.
+  Their acceptance of retiring the plan without L3 is recorded in `PLAN.md`.
+  No L3 evidence exists yet.
+- **L4 and L5:** `Not run`.
+- **Result:** `Partial`. L1 and L2 pass; L3 was skipped by the user's
+  decision, so the plan retires by accepted limitation, not by a full pass.

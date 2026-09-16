@@ -111,4 +111,4 @@ restart the bridge mid-login, and use an explicit `bin` override.
   `bridge/app/test/bridge/routing/plugin_authentication_handlers_test.dart`,
   `shared/sesori_shared/test/models/plugin_management_contract_test.dart`, the `client/module_core` plugin API,
   repository, service, and cubit suites, and the phone and desktop harness settings screen tests
-- Plan: `.plan/active/claude-code-login/PLAN.md`
+- Plan: `.plan/completed/claude-code-login/PLAN.md`
