@@ -1,5 +1,6 @@
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
+import "claude_process_launch.dart";
 
 /// Whether a launch starts a brand-new session or continues an existing one.
 ///
@@ -66,21 +67,8 @@ class ClaudeLaunchSpec({
   required List<String> allowedTools,
   Map<String, String> environment = const {},
 }) {
-  this {
-    if (this.environment.containsKey("HOME")) {
-      throw ArgumentError.value(
-        this.environment,
-        "environment",
-        "must not override HOME; use CLAUDE_CONFIG_DIR for isolation",
-      );
-    }
-  }
-
   /// Extra environment entries merged over the bridge's own environment.
-  ///
-  /// `HOME` must never appear here. Overriding it breaks macOS keychain lookup
-  /// and makes a logged-in user look logged out. Test isolation uses
-  /// `CLAUDE_CONFIG_DIR` instead.
+  /// [ClaudeProcessLaunch] rejects a `HOME` override.
   final Map<String, String> environment = Map.unmodifiable(environment);
 
   /// Session-scoped rules granted by the user and restored after idle respawn.
@@ -97,6 +85,14 @@ class ClaudeLaunchSpec({
   /// `permission_denials` array. A plugin missing this flag looks healthy while
   /// every write, edit, and command fails.
   static const List<String> permissionPromptToolArguments = ["--permission-prompt-tool", "stdio"];
+
+  /// The child process this spec starts.
+  ClaudeProcessLaunch get processLaunch => ClaudeProcessLaunch(
+    binaryPath: binaryPath,
+    arguments: arguments,
+    workingDirectory: workingDirectory,
+    environment: environment,
+  );
 
   /// The full argument vector, excluding the executable itself.
   List<String> get arguments => [

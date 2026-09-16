@@ -4,6 +4,7 @@ import "dart:io" as io;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "claude_launch_spec.dart";
+import "claude_process_launch.dart";
 
 /// The slice of `dart:io`'s [io.Process] the Claude transport actually uses.
 ///
@@ -32,14 +33,14 @@ final class HostClaudeProcessFactory({
 
   Stream<ProcessSpawnOutcome> get events => _events.stream;
 
-  Future<ClaudeProcessHandle> spawn(ClaudeLaunchSpec spec) async {
+  Future<ClaudeProcessHandle> spawn(ClaudeProcessLaunch launch) async {
     try {
       final process = await _processes.spawn(
         includeParentEnvironment: true,
-        executable: spec.binaryPath,
-        arguments: spec.arguments,
-        environment: {..._environment, ...spec.environment},
-        workingDirectory: spec.workingDirectory,
+        executable: launch.binaryPath,
+        arguments: launch.arguments,
+        environment: {..._environment, ...launch.environment},
+        workingDirectory: launch.workingDirectory,
         runInShell: io.Platform.isWindows,
       );
       if (!_events.isClosed) _events.add(ProcessSpawnOutcome.succeeded);

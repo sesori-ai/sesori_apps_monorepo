@@ -21,7 +21,10 @@ void main() {
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
       expect(ClaudePluginDescriptor.targetVersion, "2.1.269");
-      expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.runtimeUpdate));
+      expect(
+        descriptor.managementCapabilities(config: config),
+        containsAll([PluginControlCapability.runtimeUpdate, PluginControlCapability.authentication]),
+      );
       final update = descriptor.runtimeUpdateSpec(config: config);
       expect(update?.executable, "claude");
       expect(update?.arguments, const ["update"]);
@@ -31,6 +34,7 @@ void main() {
         descriptor.managementCapabilities(config: explicit),
         isNot(contains(PluginControlCapability.runtimeUpdate)),
       );
+      expect(descriptor.managementCapabilities(config: explicit), contains(PluginControlCapability.authentication));
       expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
     });
 
@@ -318,6 +322,48 @@ void main() {
       expect(plugin.describe().details, {"transport": "claude-stream-json"});
     });
   });
+
+  group("ClaudePluginDescriptor.authenticate", () {
+    test("runs the configured binary's login in the state directory with the browser suppressed", () async {
+      const url = "https://claude.com/cai/oauth/authorize?state=private-state";
+      final login = _ProbeProcess(stdoutText: "visit: $url\n", exitCode: Completer<int>().future, keepStdoutOpen: true);
+      final processes = _ProcessService([login]);
+
+      final operation = const ClaudePluginDescriptor().authenticate(
+        config: const PluginConfig(values: {ClaudePluginDescriptor.binOption: "/custom/claude"}),
+        processes: processes,
+        environment: const {"HOME": "/Users/test", "BROWSER": "firefox"},
+        stateDirectory: "/state",
+        store: const _UnusedStore(),
+        aborted: StartAbortSignal.never,
+      );
+      final events = StreamIterator(operation.events);
+
+      expect(await events.moveNext(), isTrue);
+      expect(
+        events.current,
+        isA<PluginAuthenticationPastedCodeChallenge>().having(
+          (challenge) => challenge.authorizationUri,
+          "uri",
+          Uri.parse(url),
+        ),
+      );
+      login.completeExit(0);
+      expect(await events.moveNext(), isTrue);
+      expect(events.current, isA<PluginAuthenticationCompleted>());
+      expect(await events.moveNext(), isFalse);
+
+      expect(processes.executables, ["/custom/claude"]);
+      expect(processes.arguments, [
+        ["auth", "login", "--claudeai"],
+      ]);
+      expect(processes.workingDirectories, ["/state"]);
+      expect(processes.includeParentEnvironmentValues, [isTrue]);
+      expect(processes.environments, [
+        {"HOME": "/Users/test", "BROWSER": "true"},
+      ]);
+    });
+  });
 }
 
 void _expectNonReady<T extends PluginSetupStatus>(PluginSetupStatus status) {
@@ -374,8 +420,15 @@ final class _AbortOnSecondCheck() implements StartAbortSignal {
   Future<void> get whenAborted => Completer<void>().future;
 }
 
+final class const _UnusedStore() implements HostJsonStore {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 final class _ProcessService(final List<Object> _outcomes) implements HostProcessService {
+  final List<String> executables = [];
   final List<List<String>> arguments = [];
+  final List<bool> includeParentEnvironmentValues = [];
   final List<Map<String, String>?> environments = [];
   final List<bool> runInShellValues = [];
   final List<String?> workingDirectories = [];
@@ -392,7 +445,9 @@ final class _ProcessService(final List<Object> _outcomes) implements HostProcess
     required bool runInShell,
     required bool includeParentEnvironment,
   }) async {
+    executables.add(executable);
     this.arguments.add(List.unmodifiable(arguments));
+    includeParentEnvironmentValues.add(includeParentEnvironment);
     environments.add(environment == null ? null : Map.unmodifiable(environment));
     runInShellValues.add(runInShell);
     workingDirectories.add(workingDirectory);
