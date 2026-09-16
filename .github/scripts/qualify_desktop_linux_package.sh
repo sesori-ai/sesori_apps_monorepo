@@ -7,7 +7,7 @@ package="$2"
 bundle="$3"
 arch="$4"
 evidence="$5"
-script="${6:-/workspace/.github/scripts/package_desktop_linux.py}"
+script="${6:-$(dirname "$(realpath "$0")")/package_desktop_linux.py}"
 
 case "$format" in
   deb)

@@ -463,7 +463,8 @@ jobs:
             -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -v "$PUB_CACHE:$PUB_CACHE:ro" \
             -w "$GITHUB_WORKSPACE" "$FEDORA_IMAGE" bash -c '
               set -euo pipefail
-              dnf install -y python3 rpm-build
+              dnf install -y python3 rpm-build git
+              git config --global --add safe.directory "$PWD"
               python3 .github/scripts/package_desktop_linux.py package \
                 --bundle build/desktop-bundle/bundle --arch "${{ matrix.arch }}" --format rpm \
                 --package-config client/.dart_tool/package_config.json \
