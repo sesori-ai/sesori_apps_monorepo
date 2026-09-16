@@ -59,3 +59,13 @@ validate changed workflows with actionlint and whitespace/Markdown links. No Dar
 Flutter, signing, native app, live bridge or publication operation is needed locally.
 A trusted private Actions preparation can be exercised only against a new successful
 producer run that uploads channel evidence; historical runs do not supply that input.
+
+Local implementation checkpoint: `d72b0c9c7945794cbec2eed7fe4c3eba976d6ba7`.
+Before commit, the desktop Python discovery suite passed 31 cases. Two additional
+identity/inventory rejection tests were then added; the resulting focused preparation
+suite passed all 9 cases. Changed workflows passed actionlint. Those inputs were
+committed unchanged. Markdown links and `git diff --check` passed. Logs live in
+`build/desktop-release-preparation-evidence/` (`tests.log`, `actionlint.log`,
+`preparation-tests-final.log`). These are synthetic/offline tests, not a successful
+Actions preparation or native/public-release evidence. No signing credentials were
+used and no local bridge/app process was touched.
