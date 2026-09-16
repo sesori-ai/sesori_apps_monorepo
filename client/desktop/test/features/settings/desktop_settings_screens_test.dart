@@ -21,6 +21,7 @@ import "package:sesori_desktop/features/settings/desktop_settings_modal.dart";
 import "package:sesori_desktop/features/settings/desktop_update_section.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
@@ -598,5 +599,60 @@ void main() {
     expect(find.text("open"), findsOneWidget);
     expect(pluginSnapshots.hasListener, isFalse);
     verifyNever(() => pluginService.cancelAuthentication(pluginId: "opencode"));
+  });
+
+  testWidgets("pasted-code sheet defers opening and reaches the waiting state once applied", (tester) async {
+    final challenge = PluginAuthenticationPastedCodeChallenge(
+      authorizationUri: Uri.parse("https://auth.example/authorize"),
+    );
+    when(() => pluginService.startAuthentication(pluginId: "opencode")).thenAnswer((_) async {
+      authenticationChallenges.add({"opencode": challenge});
+      return PluginAuthenticationStartResult.challenge(challenge: challenge);
+    });
+    when(
+      () => pluginService.submitAuthenticationCode(pluginId: "opencode", code: "PASTE-CODE-123"),
+    ).thenAnswer((_) async => const PluginAuthenticationContinuationResult.applied());
+    pluginSnapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _pluginResponse.copyWith(
+          plugins: [
+            _plugin.copyWith(
+              setup: _plugin.setup.copyWith(state: PluginSetupState.authenticationRequired),
+              managementCapabilities: {PluginManagementCapability.authentication},
+            ),
+          ],
+        ),
+        refreshError: null,
+      ),
+    );
+    await open(tester: tester, tab: DesktopSettingsTab.harnesses);
+    await tester.tap(find.text("OpenCode"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("harness_authentication_opencode")));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    verifyNever(
+      () => getIt<UrlLauncher>().launch(Uri.parse("https://auth.example/authorize"), mode: UrlLaunchMode.externalApp),
+    );
+
+    final codeField = find.descendant(
+      of: find.byKey(const Key("harness_authentication_code_input")),
+      matching: find.byType(TextFormField),
+    );
+    final submitButton = find.byKey(const Key("harness_authentication_submit_code"));
+    expect(tester.widget<PregoButtonsSolid>(submitButton).onPressed, isNull);
+
+    await tester.enterText(codeField, "PASTE-CODE-123");
+    await tester.pump();
+    expect(tester.widget<PregoButtonsSolid>(submitButton).onPressed, isNotNull);
+
+    await tester.tap(submitButton);
+    await tester.pump();
+    verify(() => pluginService.submitAuthenticationCode(pluginId: "opencode", code: "PASTE-CODE-123")).called(1);
+
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const Key("harness_authentication_activity")), findsOneWidget);
+    expect(find.byKey(const Key("harness_authentication_code_input")), findsNothing);
   });
 }
