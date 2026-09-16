@@ -36,7 +36,9 @@ a local login would. Sesori never sees, stores, refreshes, or exchanges tokens.
   inspection. Remote failure text is the bridge's existing generic string;
   plugin-authored detail stays in local logs. No CLI process outlives its
   operation.
-- The bridge host never opens a browser during a Sesori-initiated login.
+- On macOS and Linux bridges the host never opens a browser during a
+  Sesori-initiated login. Windows keeps the CLI's default browser behavior,
+  as recorded in the capability matrix.
 - No authorization URL, pasted code, token, email, or organization value
   appears in bridge logs, client logs, error messages, analytics, SSE replay,
   or persistence.
@@ -226,6 +228,8 @@ no compatibility default or dated marker is needed.
   the runtime is touched: trim, non-empty, at most 512 characters, no
   whitespace or control characters; otherwise 400. Unknown plugin 404; typed
   409 conflicts with current management metadata, as the redirect route does.
+  Success is 200 with `SuccessEmptyResponse` exactly like the redirect route,
+  never 204, which the relay client reports as an empty-response error.
 - No new SSE event. Terminal progress, the existing generic remote failure
   text in `PluginLifecycleService` ("Authentication failed. Check the bridge
   logs for details."), and setup refresh are unchanged for every plugin.
@@ -260,8 +264,8 @@ ClaudeLoginOutputParser (repositories/parsers)
 
 ClaudeAuthenticationRepository (repositories)
   owns one ClaudeProcessHandle; decodes stdout and stderr as UTF-8 lines
-  start(): spawn and resolve the authorization URL from stdout, failing if the
-  process exits first or no valid URL appears
+  start(): spawn and return the authorization URL future, which fails if the
+  process exits first or the first URL is invalid; the service bounds the wait
   submitCode(code): one-shot; writes "<code>\n" and flushes
   waitForExit(): exit code
   dispose(): kill (graceful, forced after a short grace) and await exit;
@@ -269,10 +273,11 @@ ClaudeAuthenticationRepository (repositories)
 
 ClaudeAuthenticationService (services)
   authenticate() -> PluginAuthenticationOperation.pastedCode
-  event stream: start -> yield challenge -> race(exit, abort, ten-minute
-  budget) -> Completed on exit 0, otherwise Failed; abort disposes and throws
+  event stream: the ten-minute budget starts at spawn; the URL wait and the
+  wait after the challenge are both raced against exit, abort, and budget ->
+  Completed on exit 0, otherwise Failed; abort disposes and throws
   PluginStartAbortedException (mapped to cancelled by the bridge); finally
-  always disposes
+  always disposes, so no wait can outlive the operation
   submitCode: runs ClaudePastedCode.parse first; a valid code goes to the
   repository; a rejected shape is logged locally (without the code) and the
   repository is disposed, so the running exit race observes the killed process
@@ -300,8 +305,12 @@ clients still get a working instruction.
 
 Extend the existing layers without new owners:
 
-- `PluginApi.submitAuthenticationCode` posts to
-  `/plugin/:id/authentication/code`.
+- `PluginApi.startAuthentication` moves to the relay client's
+  sensitive-response post variant, so a malformed challenge response is never
+  logged or retained with its body (it carries the authorization URL and OAuth
+  state). `PluginApi.submitAuthenticationCode` posts to
+  `/plugin/:id/authentication/code` and expects the same 200
+  `SuccessEmptyResponse` as the redirect route.
 - `PluginRepository.submitAuthenticationCode` returns the existing
   `PluginAuthenticationContinuationResult`. The repository challenge model
   gains `pastedCode(authorizationUri)`, validated as absolute HTTPS in the
@@ -356,9 +365,11 @@ pasted-code branch:
 | New | Old | No authentication capability for Claude, so no login control. |
 | New | New | Pasted-code login, cancel, timeout, and setup refresh work end to end. |
 
-Ordering protects users: the client step merges before the plugin step, so an
-app release can never precede the bridge behavior it renders, while a bridge
-released before the app update fails closed with guidance.
+Ordering protects users: the wire contract and the apps merge first, so an app
+may ship before any bridge produces the pasted-code challenge; that window
+shows no login control. A bridge released before the app update fails closed
+with guidance. The bridge core merges before the Claude plugin, so no bridge
+advertises a login it cannot route.
 
 ## Failure And Recovery Contract
 
@@ -436,7 +447,7 @@ arise.
 - The Claude `actionHint` copy changes with the plugin step (older clients
   still receive a valid instruction).
 - `docs/HARNESS_CAPABILITIES.md` Claude login row moves from "Not implemented"
-  to implemented with the Windows host-browser limitation.
+  to implemented with the Windows host-browser limitation, in Step 4.
 - No obsolete code, fields, routes, or tests were found.
 
 ## Proportionality And Accepted Risk
@@ -480,9 +491,17 @@ requires explicit user acceptance recorded here.
 ## Delivery Rules
 
 - Six PRs, titles fixed below under slug `claude-code-login`; merge in order.
-- Step 1 raises this plan and tracker. Step 5 reconciles regression documents.
-  Step 6 runs the recorded level and matrix, records evidence in the tracker,
-  and moves this directory to `.plan/completed/claude-code-login/`.
+- Step 1 raises this plan and tracker. Step 4 lands the capability-matrix row
+  and the new regression document together with the behavior, so `main` is
+  never knowingly stale. Step 5 reconciles the shared regression documents and
+  completes coverage. Step 6 runs the recorded level and matrix, records
+  evidence in the tracker, and moves this directory to
+  `.plan/completed/claude-code-login/`.
+- Sealed challenge and presentation types force every exhaustive
+  in-repository consumer to change with its contract. The wire variant
+  therefore ships with all client consumers in Step 2, and the
+  plugin-interface variant with all bridge-core consumers in Step 3. No
+  temporary mapping bridges a split.
 - Soft cap 1,500 changed lines per PR including generated output and tests;
   split before opening a step that cannot fit.
 - Generated Freezed, JSON, and localization output changes only through the
@@ -499,10 +518,10 @@ requires explicit user acceptance recorded here.
 | Step | Title |
 |---|---|
 | 1/6 | `🌱 [claude-code-login] Publish the plan [step 1/6]` |
-| 2/6 | `🚧 [claude-code-login] Add the pasted-code authentication contract [step 2/6]` |
-| 3/6 | `⚙️ [claude-code-login] Present pasted-code login in the apps [step 3/6]` |
+| 2/6 | `🚧 [claude-code-login] Add pasted-code login to the wire contract and apps [step 2/6]` |
+| 3/6 | `🚧 [claude-code-login] Route pasted-code login through the bridge [step 3/6]` |
 | 4/6 | `🚧 [claude-code-login] Drive Claude CLI login from the bridge [step 4/6]` |
-| 5/6 | `🌱 [claude-code-login] Document Claude login coverage [step 5/6]` |
+| 5/6 | `🌱 [claude-code-login] Reconcile Claude login documentation [step 5/6]` |
 | 6/6 | `🌱 [claude-code-login] Verify and retire the plan [step 6/6]` |
 
 ## Step 1/6 — Publish The Plan
@@ -515,59 +534,67 @@ requires explicit user acceptance recorded here.
 
 Architecture plan review through a sub-agent; findings applied directly.
 
-## Step 2/6 — Add The Pasted-Code Authentication Contract
+## Step 2/6 — Add Pasted-Code Login To The Wire Contract And Apps
 
-Complexity 🚧: cross-layer wire contract with compatibility and continuation
-gating.
+Complexity 🚧: a sealed wire variant plus every client layer that switches on
+it, a new sheet variant, and localization.
 
 ### Scope
 
-- `bridge/sesori_plugin_interface/lib/src/lifecycle/plugin_authentication.dart`:
-  `pastedCode` operation, event interface, challenge event.
 - `shared/sesori_shared/lib/src/models/sesori/plugin_management.dart`:
   `pastedCode` challenge variant and `PluginAuthenticationCodeRequest` with
   regenerated output.
-- `bridge/app/lib/src/runtime/plugin_runtime.dart`, the lifecycle repository
-  seam, `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
-  `bridge/app/lib/src/routing/plugin_authentication_handlers.dart` and route
-  registration: `submitAuthenticationCode`, shared one-shot gate, challenge
-  mapping, new POST handler with neutral validation.
-- Tests: interface contract, shared wire JSON contract, runtime gate matrix
-  (stale, wrong kind, already submitted, aborted), lifecycle service mapping
-  and terminal progress with a fake pasted-code descriptor, handler status
-  matrix (200/204, 400, 404, 409).
-
-### Verification
-
-`dart analyze` and targeted `dart test` in `sesori_plugin_interface`,
-`sesori_shared`, and `bridge/app`; codegen clean. No user-visible change until
-a plugin produces the variant.
-
-## Step 3/6 — Present Pasted-Code Login In The Apps
-
-Complexity ⚙️: several client layers and a new sheet variant over established
-ownership.
-
-### Scope
-
-- `client/module_core`: `plugin_api.dart`, `plugin_repository.dart`,
+- `client/module_core`: `plugin_api.dart` (sensitive-response start, code
+  submission), `plugin_repository.dart`,
   `repositories/models/plugin_management_result.dart`,
   `services/plugin_management_service.dart`,
   `cubits/plugin_management/plugin_management_cubit.dart` and state.
 - `client/module_app_ui`: `features/settings/harness_settings_sheets.dart`
   pasted-code branch, `l10n/app_en.arb` harness-neutral strings parameterized
   by display name, and regenerated localizations.
-- Tests: API contract, service orchestration (fencing, continuation results),
+- Tests: shared wire JSON contract including the `unknown` fallback for the
+  new type; API contract including that a malformed challenge response never
+  exposes its body; service orchestration (fencing, continuation results);
   cubit transitions (launch, neutral input rule keeps the field editable,
-  submit, conflicts, terminal), phone and desktop settings widget tests (open
+  submit, conflicts, terminal); phone and desktop settings widget tests (open
   on explicit tap only, submit enabled by valid text, waiting state, cancel,
   update-required unchanged).
 
+The sealed challenge and presentation types make every exhaustive consumer
+change with the contract, so no smaller compiling split exists without a
+temporary mapping. Expect the diff near the soft cap; report generated
+(Freezed, JSON, localization) versus authored churn in the PR body.
+
 ### Verification
 
-`flutter analyze` and targeted tests in `module_core`, `module_app_ui`,
-`client/app`, and `client/desktop`. No user-visible change until a bridge
+`dart analyze` and `dart test` in `sesori_shared`; `flutter analyze` and
+targeted tests in `module_core`, `module_app_ui`, `client/app`, and
+`client/desktop`; codegen clean. No user-visible change until a bridge
 produces the variant; older bridges remain unaffected.
+
+## Step 3/6 — Route Pasted-Code Login Through The Bridge
+
+Complexity 🚧: plugin-interface variant, continuation gating, and a new route
+across runtime, service, and routing layers.
+
+### Scope
+
+- `bridge/sesori_plugin_interface/lib/src/lifecycle/plugin_authentication.dart`:
+  `pastedCode` operation, event interface, challenge event.
+- `bridge/app/lib/src/runtime/plugin_runtime.dart`, the lifecycle repository
+  seam, `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
+  `bridge/app/lib/src/routing/plugin_authentication_handlers.dart` and route
+  registration: `submitAuthenticationCode`, shared one-shot gate, challenge
+  mapping, new POST handler with neutral validation and the 200
+  `SuccessEmptyResponse` success body.
+- Tests: interface contract, runtime gate matrix (stale, wrong kind, already
+  submitted, aborted), lifecycle service mapping and terminal progress with a
+  fake pasted-code descriptor, handler status matrix (200, 400, 404, 409).
+
+### Verification
+
+`dart analyze` and targeted `dart test` in `sesori_plugin_interface` and
+`bridge/app`. No user-visible change until a plugin produces the variant.
 
 ## Step 4/6 — Drive Claude CLI Login From The Bridge
 
@@ -592,6 +619,9 @@ cancellation.
   capture proves no URL or code is logged.
 - Manual check on the developer machine with an isolated `CLAUDE_CONFIG_DIR`
   through the bridge routes.
+- `docs/HARNESS_CAPABILITIES.md` Claude login row and the new
+  `docs/regression/claude-code-authentication.md`, so the capability is
+  documented in the same PR that exposes it.
 
 ### Verification
 
@@ -599,13 +629,13 @@ cancellation.
 tests if composition changes. User-visible result: Claude shows `Log in` when
 authentication is required and completes login from the app.
 
-## Step 5/6 — Document Claude Login Coverage
+## Step 5/6 — Reconcile Claude Login Documentation
 
 ### Scope
 
-Create `docs/regression/claude-code-authentication.md`; update
-`docs/regression/plugin-setup-and-lifecycle.md` and
-`docs/HARNESS_CAPABILITIES.md`.
+Update `docs/regression/plugin-setup-and-lifecycle.md` for the shared sheet
+variant and complete `docs/regression/claude-code-authentication.md` with the
+coverage entries and failure signals observed during Step 4's manual checks.
 
 ### Verification
 
@@ -668,3 +698,21 @@ continuation methods behind a sealed payload, a separate per-operation class
 as in Antigravity, a URL host allowlist, persistence, reconnect
 reconciliation, a retry loop, and a guard for an orphaned login under an old
 app (bounded by the budget and abort).
+
+2026-09-16, PR #1508 automated review (cubic, Codex): seven findings, all
+applied in the same step:
+
+- The series order was wrong for sealed types: adding the wire variant breaks
+  the client's exhaustive challenge switch, so the wire contract and all
+  client consumers now ship together in Step 2, and the plugin interface with
+  the bridge core in Step 3.
+- The compatibility ordering sentence stated the opposite of the guarantee it
+  meant; it now names the real windows.
+- The no-host-browser success criterion is scoped to macOS and Linux.
+- The ten-minute budget starts at spawn and bounds URL acquisition as well as
+  completion, so a CLI that never prints a URL cannot outlive the operation.
+- The capability-matrix row and the new regression document land with the
+  plugin in Step 4; Step 5 reconciles the shared documents.
+- The start request moves to the relay client's sensitive-response path so a
+  malformed challenge response never retains the authorization URL.
+- The code route returns 200 with `SuccessEmptyResponse`, never 204.
