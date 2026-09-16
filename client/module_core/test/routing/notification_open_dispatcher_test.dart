@@ -323,6 +323,9 @@ class RecordingRouteDispatcher() implements RouteDispatcher {
   final List<RouteStack> replacedStacks = <RouteStack>[];
 
   @override
+  void dismissPopups() {}
+
+  @override
   void replaceStack({required RouteStack stack}) {
     replacedStacks.add(stack);
   }

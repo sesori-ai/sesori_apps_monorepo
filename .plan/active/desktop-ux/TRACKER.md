@@ -4,30 +4,32 @@ Status values: `pending` / `in-progress` / `done` / `blocked`. Evidence for a
 finished step lives in `steps/step-NN.md` (created when the step executes);
 this table records state only and never mirrors PR review status.
 
-There are 14 PRs across 12 logical steps. Step 2.a maps to PR ordinal 2;
+There are 15 PRs across 12 logical steps. Step 2.a maps to PR ordinal 2;
 step 2.b maps to ordinal 3; original steps 3–6 map to ordinals 4–7.
-Step 7.a maps to ordinal 8, step 7.b to ordinal 9, and original steps 8–12
-to ordinals 10–14. Step 2.a retains `steps/step-02.md`; its follow-up uses
-`steps/step-02b.md`. Settings preparation/modal use `step-07a.md`/`step-07b.md`.
+Steps 7.a/7.b/7.c map to ordinals 8/9/10; original steps 8–12 to ordinals 11–15.
+Step 2.a retains `steps/step-02.md`; its follow-up uses `steps/step-02b.md`.
+Shared settings, overlay navigation and modal evidence use `step-07a.md`,
+`step-07b.md` and `step-07c.md`, respectively.
 
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---|---|
-| [x] | 1 | `desktop-release-plan` | `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/14]` | ≤ 900 | done |
-| [x] | 2.a | `desktop-ux/sidebar-frame` | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/14]` | ≤ 1,400 | done |
-| [x] | 2.b | `desktop-ux/sidebar-polish` | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/14]` | ≤ 900 | done |
-| [x] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/14]` | ≤ 1,200 | done |
-| [x] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/14]` | ≤ 1,400 | done |
-| [x] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/14]` | ≤ 700 | done |
-| [x] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/14]` | ≤ 1,500 | done |
-| [x] | 7.a | `desktop-ux/settings-composition` | `🌿 [desktop-ux] Prepare shared settings composition [step 8/14]` | ≤ 500 | done |
-| [ ] | 7.b | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 9/14]` | ≤ 1,500 | pending |
-| [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 10/14]` | ≤ 1,000 | pending |
-| [ ] | 9 | `desktop-ux/app-log-files` | `🌿 [desktop-ux] Write app logs to rotating files [step 11/14]` | ≤ 700 | pending |
-| [ ] | 10 | `desktop-ux/shortcuts-title-bar` | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 12/14]` | ≤ 600 | pending |
-| [ ] | 11 | `desktop-ux/regression-docs` | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 13/14]` | ≤ 600 | pending |
-| [ ] | 12 | `desktop-ux/coverage-retire` | `🌿 [desktop-ux] Run coverage and retire the plan [step 14/14]` | ≤ 300 | pending |
+| [x] | 1 | `desktop-release-plan` | `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/15]` | ≤ 900 | done |
+| [x] | 2.a | `desktop-ux/sidebar-frame` | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/15]` | ≤ 1,400 | done |
+| [x] | 2.b | `desktop-ux/sidebar-polish` | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/15]` | ≤ 900 | done |
+| [x] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/15]` | ≤ 1,200 | done |
+| [x] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/15]` | ≤ 1,400 | done |
+| [x] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/15]` | ≤ 700 | done |
+| [x] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/15]` | ≤ 1,500 | done |
+| [x] | 7.a | `desktop-ux/settings-composition` | `🌿 [desktop-ux] Prepare shared settings composition [step 8/15]` | ≤ 500 | done |
+| [x] | 7.b | `desktop-ux/overlay-navigation` | `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/15]` | ≤ 700 | done |
+| [ ] | 7.c | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 10/15]` | ≤ 1,750 | in-progress |
+| [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/15]` | ≤ 1,000 | pending |
+| [ ] | 9 | `desktop-ux/app-log-files` | `🌿 [desktop-ux] Write app logs to rotating files [step 12/15]` | ≤ 700 | pending |
+| [ ] | 10 | `desktop-ux/shortcuts-title-bar` | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 13/15]` | ≤ 600 | pending |
+| [ ] | 11 | `desktop-ux/regression-docs` | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 14/15]` | ≤ 600 | pending |
+| [ ] | 12 | `desktop-ux/coverage-retire` | `🌿 [desktop-ux] Run coverage and retire the plan [step 15/15]` | ≤ 300 | pending |
 
-Ordering constraints: 2.a → 2.b → 3 → 4 → 6 → 7.a → 7.b; step 8 after 7.b; steps 5, 9
+Ordering constraints: 2.a → 2.b → 3 → 4 → 6 → 7.a → 7.b → 7.c; step 8 after 7.c; steps 5, 9
 and 10 may run in any order after 4. Step 11 after every implementation step;
 step 12 last. Only one PR is open; one local successor may be prepared.
 
@@ -42,6 +44,10 @@ step 12 last. Only one PR is open; one local successor may be prepared.
 
 - Step 5: [PR #1497](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1497).
 - Step 6: [PR #1498](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1498).
+- Step 7.a: [PR #1500](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1500).
+- Step 7.c: [PR #1501](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1501),
+  temporarily closed to land 7.b first. Published `8d9faed` and its review history
+  are preserved; integrate main forward and reopen, without force-pushing.
 
 ## Unattended execution
 
@@ -100,4 +106,8 @@ or waive shipping qualification.
 - Step 7.a: 68 focused cases across native preference commands and existing
   desktop/mobile settings consumers; four analyzers and fresh scoped
   architecture review pass. No visible navigation change or native mutation.
-  See `steps/step-07a.md`; modal delivery remains step 7.b.
+  See `steps/step-07a.md`; modal delivery is now step 7.c.
+- Step 7.b: 97 distinct focused cases pass across pinned checkpoints; all five
+  affected analyzers and scoped architecture plan/implementation reviews pass.
+  No production app/DI/native/bridge work was run.
+  See [step 7.b evidence](steps/step-07b.md); native/live qualification is unchanged.

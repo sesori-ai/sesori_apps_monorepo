@@ -4,6 +4,21 @@ import "package:flutter/widgets.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
+/// Carries a containing route's visibility across a nested navigator.
+///
+/// Hosts without a containing-route scope use the nearest page as their boundary.
+class const SessionDetailRouteVisibility({
+  super.key,
+  required final bool isVisible,
+  required super.child,
+}) extends InheritedWidget {
+  static bool isVisibleOf({required BuildContext context}) =>
+      context.dependOnInheritedWidgetOfExactType<SessionDetailRouteVisibility>()?.isVisible ?? true;
+
+  @override
+  bool updateShouldNotify(SessionDetailRouteVisibility oldWidget) => isVisible != oldWidget.isVisible;
+}
+
 /// Owns visibility and activity analytics for the inherited [SessionDetailCubit].
 ///
 /// The shell constructs and owns the cubit above this widget. The top route
@@ -34,7 +49,9 @@ class _SessionDetailActivityOwnerState() extends State<SessionDetailActivityOwne
 
   void _updateRouteVisibility() {
     final isPageCurrent = ModalRoute.of(context)?.isCurrent ?? false;
-    final isRouteVisible = widget.routeSource.currentRoute == widget.expectedDetailRoute && isPageCurrent;
+    final isContainingRouteVisible = SessionDetailRouteVisibility.isVisibleOf(context: context);
+    final isRouteVisible =
+        widget.routeSource.currentRoute == widget.expectedDetailRoute && isPageCurrent && isContainingRouteVisible;
     final cubit = context.read<SessionDetailCubit>();
     cubit.setRouteVisible(isVisible: isRouteVisible);
     final listener = _listener;

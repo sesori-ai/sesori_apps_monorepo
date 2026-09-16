@@ -586,6 +586,7 @@ class DesktopAttentionService({
       sessionTitle: request.sessionTitle,
       readOnly: false,
     );
+    _routeDispatcher.dismissPopups();
     final currentLocation = _routeSource.currentLocation;
     if (currentLocation != null && sessionDetail.showsEditableLocation(location: Uri.parse(currentLocation))) {
       return;
