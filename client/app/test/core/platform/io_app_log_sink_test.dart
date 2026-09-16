@@ -2,24 +2,25 @@ import "dart:async";
 import "dart:io";
 
 import "package:flutter_test/flutter_test.dart";
-import "package:sesori_dart_core/logging.dart";
-import "package:sesori_mobile/core/platform/application_support_directory_client.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/io_app_log_sink.dart";
 
 void main() {
   late Directory root;
-  late ApplicationSupportDirectoryClient directory;
+  late TemporaryDirectoryClient directory;
   late List<String> failures;
   late int lookups;
   setUp(() {
     root = Directory.systemTemp.createTempSync("sesori_mobile_logs_");
     failures = [];
     lookups = 0;
-    directory = ApplicationSupportDirectoryClient.forTesting(
-      load: () async {
-        lookups++;
-        return root;
-      },
+    directory = TemporaryDirectoryClient(
+      provider: _DirectoryProvider(
+        load: () async {
+          lookups++;
+          return root;
+        },
+      ),
     );
   });
   tearDown(() => root.deleteSync(recursive: true));
@@ -30,8 +31,8 @@ void main() {
     reportFailure: failures.add,
   );
 
-  test("lazy path lookup preserves console output and structured diagnostics", () async {
-    final sink = createSink(cap: 1024);
+  test("production sink lazily uses the temporary directory and preserves diagnostics", () async {
+    final sink = IoAppLogSink(directoryClient: directory);
     expect(lookups, 0);
     final lines = <String>[];
     await runZoned(
@@ -55,7 +56,6 @@ void main() {
       contains("[WARNING] context: disk /tmp/repo\nstack\n"),
     );
     expect(lookups, 1);
-    expect(failures, isEmpty);
   });
 
   test("serializes append and restart rotation with a single bounded predecessor", () async {
@@ -104,7 +104,7 @@ void main() {
 
   test("flush waits for admitted records through pending directory resolution", () async {
     final pending = Completer<Directory>();
-    directory = ApplicationSupportDirectoryClient.forTesting(load: () => pending.future);
+    directory = TemporaryDirectoryClient(provider: _DirectoryProvider(load: () => pending.future));
     final sink = createSink(cap: 1024);
     final records = [_record(message: "earlier"), _record(message: "final cleanup")];
     for (final record in records) {
@@ -120,15 +120,32 @@ void main() {
     expect(failures, isEmpty);
   });
 
+  test("cache eviction is recreated on the next append", () async {
+    final sink = createSink(cap: 1024);
+    sink.write(record: _record(message: "before eviction"));
+    await sink.flush();
+    Directory("${root.path}/logs").deleteSync(recursive: true);
+    sink.write(record: _record(message: "after eviction"));
+    await sink.flush();
+    expect(File("${root.path}/logs/app.log").readAsLinesSync(), [_record(message: "after eviction").formatted]);
+    expect(failures, isEmpty);
+    expect(lookups, 1);
+  });
+
   test("path-provider failure never escapes logging callers", () async {
-    directory = ApplicationSupportDirectoryClient.forTesting(
-      load: () async => throw const FileSystemException("lookup unavailable"),
+    directory = TemporaryDirectoryClient(
+      provider: _DirectoryProvider(load: () async => throw const FileSystemException("lookup unavailable")),
     );
     final sink = createSink(cap: 1024);
     expect(() => sink.write(record: _record(message: "original")), returnsNormally);
     await sink.flush();
     expect(failures.single, contains("lookup unavailable"));
   });
+}
+
+class _DirectoryProvider({required final Future<Directory> Function() load}) implements TemporaryDirectoryProvider {
+  @override
+  Future<Directory> temporaryDirectory() => load();
 }
 
 LogRecord _record({required String message}) => LogRecord(

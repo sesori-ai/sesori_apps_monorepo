@@ -4,18 +4,16 @@ import "dart:io";
 import "package:flutter/foundation.dart" show visibleForTesting;
 import "package:injectable/injectable.dart";
 import "package:path/path.dart" as path;
-import "package:sesori_dart_core/logging.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 
-import "application_support_directory_client.dart";
-
-/// Logs stay inside mobile's OS-private app-support sandbox; no chmod subprocess.
+/// Mobile's app-private cache is excluded from OS backup and may be evicted.
 @LazySingleton(as: LogSink)
 class IoAppLogSink.forTesting({
-  required final ApplicationSupportDirectoryClient _directoryClient,
+  required final TemporaryDirectoryClient _directoryClient,
   required final int _maxFileBytes,
   required final void Function(String message) _reportFailure,
 }) implements LogSink {
-  new({required ApplicationSupportDirectoryClient directoryClient})
+  new({required TemporaryDirectoryClient directoryClient})
     : this.forTesting(directoryClient: directoryClient, maxFileBytes: 5 * 1024 * 1024, reportFailure: stderr.writeln);
 
   @visibleForTesting
