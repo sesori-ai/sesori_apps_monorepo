@@ -113,12 +113,16 @@ helper E2E and signed synthetic Keychain/registration/file probes all pass.
 Source/run/artifact attribution and approved manifest reviews are in
 [steps/step-04.md](steps/step-04.md). No public package or local key export occurred.
 
-Native visual review exposed a separate startup wait: both app windows are black,
-and fixed-text breadcrumbs stop at desktop-attention startup before rendering.
-The native notification wait is split into [step 4.b](steps/step-04b.md) so lifecycle
-changes do not grow the package-signing review. The series now has 14 PRs; published
-history is preserved. No visual pass is claimed, and the active local desktop/bridge
-remain untouched. Real account, interactive TCC, OS-login and ship gates stay open.
+Step 4.b fixes the separately demonstrated native-attention startup wait without
+expanding package-signing ownership. At immutable implementation `25dc586`, all
+32 attention cases and both strict client analyzers pass; scoped implementation
+architecture review approved. Native package run `35038153010` measured that exact
+source (**1.8.4/build 23**): both signed installed windows now visibly render the
+login screen, and startup logs reach analytics/rendering. Both package/notary/helper
+and synthetic platform legs pass; downloaded hashes and screenshots were inspected.
+Details and retrieval are in [step 4.b](steps/step-04b.md). The series has 14 PRs;
+published history is preserved. No local desktop/bridge was disturbed. Real account,
+notification authorization/delivery, interactive TCC, OS-login and ship gates stay open.
 
 ## Qualification and ship gates
 

@@ -51,8 +51,10 @@ failure after extraction, rejected/pending notarization treated as success,
 Gatekeeper bypass instructions, library-validation/entitlement crashes, token
 restoration changes, or packaged helper lookup falling back to PATH. Vary the
 artifact format and native CPU, and preserve useful paths/errors in local evidence.
-A live native window with black/unrendered content is not a visual pass: inspect
-screenshots and the fixed-text desktop startup stages to identify the stalled await.
+Login must render even while native notification readiness/authorization is pending;
+notification listeners must already be installed. A live native window with
+black/unrendered content is not a visual pass: inspect screenshots and the fixed-text
+desktop startup stages to identify the stalled await.
 Use credential-free GUI replay against an available trusted package run rather than
 rebuilding unchanged packages for capture-only diagnostics.
 Never launch QA over another running desktop or change real account state without
