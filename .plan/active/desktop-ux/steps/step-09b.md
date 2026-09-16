@@ -5,7 +5,18 @@ Base: `23ed67ca38e85894d6c1ef7c91bbc0b95a667f8d` (merged #1509).
 Implementation A: `8a0cfcce3e30404b136d8a80529f7b097d67aae6`;
 tree `e2a24ff6c1b500f94def63f5ba7c7b48da12ca72`.
 The source/test scope is three paths, 124 additions + 18 deletions = 142 lines.
-The PR body records the inclusive published diff, including subsequent documentation.
+From the repository root, reproduce the entire immutable base-to-A diff without path filters:
+
+```sh
+git diff --numstat \
+  23ed67ca38e85894d6c1ef7c91bbc0b95a667f8d \
+  8a0cfcce3e30404b136d8a80529f7b097d67aae6
+```
+
+The rows are cockpit shell 42/16, sidebar 2/1, and cockpit tests 80/1 (additions/deletions).
+Their sums are 124/18. A contains no documentation: this file and later docs are excluded
+from that source checkpoint, not from the PR budget. The PR body records the inclusive
+published diff across every path, including subsequent documentation.
 
 ## Delivered
 
