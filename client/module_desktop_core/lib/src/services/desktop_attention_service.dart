@@ -120,7 +120,7 @@ class DesktopAttentionService({
   }
 
   Future<void> _initializeNotificationHandling() async {
-    await _ensureNotificationsAvailable();
+    final initialized = await _ensureNotificationsAvailable();
 
     try {
       // Consume launch metadata even when native initialization failed after
@@ -131,6 +131,11 @@ class DesktopAttentionService({
       }
     } on Object catch (error, stackTrace) {
       loge("Failed to read the initial desktop notification open", error, stackTrace);
+    }
+    if (!initialized) {
+      // Replay requests that joined the failed startup attempt once. Further
+      // failures retain the existing event-driven retry policy.
+      _resumePendingAttention();
     }
   }
 
@@ -259,10 +264,12 @@ class DesktopAttentionService({
 
   void _registerAttention({required String sessionId, required _DesktopAttentionRequest request}) {
     _pendingRequests.putIfAbsent(sessionId, () => <_DesktopAttentionRequest>{}).add(request);
-    _queueAttention(
-      sessionId: sessionId,
-      kind: request.kind,
-      generation: _advanceAttentionGeneration(sessionId: sessionId),
+    unawaited(
+      _queueAttention(
+        sessionId: sessionId,
+        kind: request.kind,
+        generation: _advanceAttentionGeneration(sessionId: sessionId),
+      ),
     );
   }
 
@@ -278,10 +285,12 @@ class DesktopAttentionService({
       );
       return;
     }
-    _queueAttention(
-      sessionId: sessionId,
-      kind: requests.last.kind,
-      generation: generation,
+    unawaited(
+      _queueAttention(
+        sessionId: sessionId,
+        kind: requests.last.kind,
+        generation: generation,
+      ),
     );
   }
 
@@ -314,12 +323,16 @@ class DesktopAttentionService({
     }
   }
 
-  void _queueAttention({
+  Future<void> _queueAttention({
     required String sessionId,
     required _DesktopAttentionKind kind,
     required int generation,
-  }) {
-    if (_logoutSuspended || _authCleanupInProgress) {
+  }) async {
+    // Readiness is preparation, not a native write: logout/disposal must not
+    // wait for it. Recheck the existing fences before admitting serialized work.
+    if (!_shouldAttemptAttention(sessionId: sessionId, generation: generation) ||
+        !await _ensureNotificationsAvailable() ||
+        !_shouldShowAttention(sessionId: sessionId, generation: generation)) {
       return;
     }
     final previous = _sessionNotificationWrites[sessionId];
@@ -364,9 +377,7 @@ class DesktopAttentionService({
     required _DesktopAttentionKind kind,
     required int generation,
   }) async {
-    if (!_shouldAttemptAttention(sessionId: sessionId, generation: generation) ||
-        !await _ensureNotificationsAvailable() ||
-        !_shouldShowAttention(sessionId: sessionId, generation: generation)) {
+    if (!_shouldShowAttention(sessionId: sessionId, generation: generation)) {
       return;
     }
 
@@ -412,7 +423,8 @@ class DesktopAttentionService({
   }
 
   bool _shouldAttemptAttention({required String sessionId, required int generation}) {
-    return !_logoutSuspended &&
+    return !_disposed &&
+        !_logoutSuspended &&
         !_authCleanupInProgress &&
         _attentionGenerations[sessionId] == generation &&
         (_pendingRequests[sessionId]?.isNotEmpty ?? false) &&
@@ -464,10 +476,12 @@ class DesktopAttentionService({
       if (entry.value.isEmpty) {
         continue;
       }
-      _queueAttention(
-        sessionId: entry.key,
-        kind: entry.value.last.kind,
-        generation: _advanceAttentionGeneration(sessionId: entry.key),
+      unawaited(
+        _queueAttention(
+          sessionId: entry.key,
+          kind: entry.value.last.kind,
+          generation: _advanceAttentionGeneration(sessionId: entry.key),
+        ),
       );
     }
   }
