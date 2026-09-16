@@ -298,6 +298,7 @@ jobs:
           }
           python .github/scripts/package_desktop_windows.py verify-installed --bundle $install --arch '${{ matrix.arch }}' --version $env:SESORI_WINDOWS_VERSION |
             Set-Content -Encoding utf8 build/desktop-windows-packaging/installed-inventory.json
+          if ($LASTEXITCODE -ne 0) { throw 'Installed payload verification failed' }
           $uninstaller = Join-Path $install 'unins000.exe'
           $mutex = [Threading.Mutex]::new($false, 'Local\com.sesori.desktop.running')
           $blocked = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru

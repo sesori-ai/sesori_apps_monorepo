@@ -112,10 +112,14 @@ class WindowsPackagingTests(unittest.TestCase):
     def test_installer_contract_is_bounded_and_mutex_protected(self):
         script = packaging.INSTALLER_SOURCE.read_text(encoding="utf-8")
         for directive in ("AppId={#AppId}", "DefaultDirName={localappdata}\\Programs\\Sesori",
-                          "PrivilegesRequired=lowest", "AppMutex={#RunningMutex}",
+                          "PrivilegesRequired=lowest", "SetupArchitecture=x64", "AppMutex={#RunningMutex}",
                           "CloseApplications=no", "RestartApplications=no"):
             self.assertIn(directive, script)
         self.assertIn('RegDeleteValue(HKCU, \'Software\\Microsoft\\Windows\\CurrentVersion\\Run\', \'Sesori\')', script)
+        self.assertIn('#define AllowedArchitecture "x64os"', script)
+        self.assertNotIn("x64compatible", script)
+        workflow = (packaging.ROOT / ".github/workflows/desktop-qualification.yml").read_text()
+        self.assertIn("if ($LASTEXITCODE -ne 0) { throw 'Installed payload verification failed' }", workflow)
         self.assertNotIn("[Run]", script)
         self.assertNotIn("[Registry]", script)
         self.assertNotIn("[UninstallDelete]", script)

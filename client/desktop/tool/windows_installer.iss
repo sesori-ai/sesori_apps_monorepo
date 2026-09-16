@@ -16,7 +16,7 @@
 #define RunningMutex "Local\com.sesori.desktop.running"
 
 #if Architecture == "x64"
-  #define AllowedArchitecture "x64compatible"
+  #define AllowedArchitecture "x64os"
 #elif Architecture == "arm64"
   #define AllowedArchitecture "arm64"
 #else
@@ -31,6 +31,7 @@ DefaultDirName={localappdata}\Programs\Sesori
 DefaultGroupName=Sesori
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
+SetupArchitecture=x64
 ArchitecturesAllowed={#AllowedArchitecture}
 ArchitecturesInstallIn64BitMode={#AllowedArchitecture}
 AppMutex={#RunningMutex}
