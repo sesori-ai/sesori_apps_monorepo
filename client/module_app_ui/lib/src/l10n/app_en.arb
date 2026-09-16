@@ -1430,9 +1430,17 @@
   "@catalogScanUnsupportedDetail": {
     "description": "Supporting line on the unsupported scan row, naming what would make scanning available."
   },
+  "catalogScanNotConnectedTitle": "Bridge not connected",
+  "@catalogScanNotConnectedTitle": {
+    "description": "Title of the scan row when a deep pull cannot start because there is no live bridge connection."
+  },
+  "catalogScanNotConnectedDetail": "Connect to a bridge to scan",
+  "@catalogScanNotConnectedDetail": {
+    "description": "Supporting line on the not-connected scan row, naming what the user must do before scanning."
+  },
   "catalogScanNoHarnessTitle": "No harness to scan",
   "@catalogScanNoHarnessTitle": {
-    "description": "Title of the scan row when no harness could be scanned: none is connected and ready, or the bridge has not reported its harnesses yet."
+    "description": "Title of the scan row when the connected bridge has no harness ready to scan, or has not reported its harnesses yet."
   },
   "catalogScanNoHarnessDetail": "Check your harnesses in Settings",
   "@catalogScanNoHarnessDetail": {

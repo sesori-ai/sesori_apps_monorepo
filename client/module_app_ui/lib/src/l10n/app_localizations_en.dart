@@ -2234,6 +2234,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanUnsupportedDetail => 'Update the bridge to scan from here';
 
   @override
+  String get catalogScanNotConnectedTitle => 'Bridge not connected';
+
+  @override
+  String get catalogScanNotConnectedDetail => 'Connect to a bridge to scan';
+
+  @override
   String get catalogScanNoHarnessTitle => 'No harness to scan';
 
   @override
