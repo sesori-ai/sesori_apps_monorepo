@@ -34,7 +34,7 @@
 
 | Step | Title | Status | PR | Evidence |
 |---|---|---|---|---|
-| 1/6 | 🌱 Publish the plan | In review | #1508 | Architecture plan review 2026-09-16: rejected with 4 must-fix and 2 optional findings; all applied, not re-reviewed per repository rules. PR automated review: four waves, 18 findings applied (one superseded by the second wave); CLI login flow verified on 2.1.221, 2.1.269, 2.1.272, and 2.1.273 |
+| 1/6 | 🌱 Publish the plan | In review | #1508 | Architecture plan review 2026-09-16: rejected with 4 must-fix and 2 optional findings; all applied, not re-reviewed per repository rules. PR automated review: five waves, 20 findings applied (one superseded by the second wave); CLI login flow verified on 2.1.221, 2.1.269, 2.1.272, and 2.1.273 |
 | 2/6 | 🚧 Add pasted-code login to the wire contract and apps | Not started | — | — |
 | 3/6 | 🚧 Route pasted-code login through the bridge | Not started | — | — |
 | 4/6 | 🚧 Drive Claude CLI login from the bridge | Not started | — | — |

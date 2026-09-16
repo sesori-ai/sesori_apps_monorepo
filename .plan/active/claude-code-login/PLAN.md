@@ -265,8 +265,9 @@ ClaudePastedCode (models)
 
 ClaudeLoginEnvironment (foundation, constant)
   {BROWSER: "true"} on every platform: the value the CLI itself treats as
-  "no browser"; no platform branch, no filesystem probe. The service passes
-  it to the API, which only executes
+  "no browser"; no platform branch, no filesystem probe. Descriptor
+  composition injects it into the repository; the service never sees launch
+  configuration and the API only executes
 
 HostClaudeProcessFactory (api, existing)
   spawn takes a neutral ClaudeProcessLaunch {binaryPath, arguments,
@@ -284,8 +285,11 @@ ClaudeLoginOutputParser (repositories/parsers)
   with a host)
 
 ClaudeAuthenticationRepository (repositories)
+  constructed with the factory, the binary path, and ClaudeLoginEnvironment;
   owns one ClaudeProcessHandle; decodes stdout and stderr as UTF-8 lines
-  start(): spawn and return the authorization URL future: found resolves it,
+  start(): builds the ClaudeProcessLaunch (`auth login --claudeai` plus the
+  environment override), spawns it through the factory, and returns the
+  authorization URL future: found resolves it,
   invalid fails it immediately, none keeps reading; process exit before a URL
   fails it; the service bounds the wait
   submitCode(code): writes "<code>\n" and flushes; the runtime already
@@ -471,9 +475,10 @@ arise.
   shared by both continuation kinds. No new registry, timer, or queue.
 - Claude plugin, per operation and disposed in `finally`: one process handle,
   one completer for the authorization URL, one disposed flag, and two
-  delayed-future budgets that live only inside the race (URL, overall). The one-shot rule stays with the runtime gate; the repository holds no
-  second flag. A rejected code shape reuses the exit race by disposing the
-  process; no rejection completer or state.
+  delayed-future budgets that live only inside the race (URL, overall). The
+  one-shot rule stays with the runtime gate; the repository holds no second
+  flag. A rejected code shape reuses the exit race by disposing the process;
+  no rejection completer or state.
   `ClaudeLoginEnvironment` is a constant; `ClaudePastedCode` is pure.
 - Client: two immutable presentation states and one text controller inside
   the sheet.
@@ -481,7 +486,7 @@ arise.
 ### Deliberately not added
 
 - Pseudo-terminal support; stderr-driven control flow; a retry loop after a
-  rejected code; a per-submission timer beyond the single budget.
+  rejected code; a per-submission timer beyond the URL and overall budgets.
 - Same-host automatic completion through the CLI's localhost callback.
 - Console, SSO, API-key, or long-lived token modes; logout; login while ready.
 - Persistence of the operation or challenge; reconnect reconciliation beyond
@@ -835,3 +840,14 @@ all applied:
   CLI fails before the app's timeout; the pre-existing no-cancel window is
   accepted and recorded in the proportionality table instead of adding a
   cancel/start race to the service.
+
+2026-09-16, PR #1508 fifth automated review wave (Codex, cubic): two
+findings, both applied:
+
+- Launch configuration skipped a layer: the service handed
+  `ClaudeLoginEnvironment` to the API. Descriptor composition now injects the
+  environment and the binary path into `ClaudeAuthenticationRepository`,
+  which builds and spawns the `ClaudeProcessLaunch`; the service depends only
+  on the repository.
+- The "single budget" phrase under Deliberately not added was stale after the
+  fourth wave; it now names the URL and overall budgets.
