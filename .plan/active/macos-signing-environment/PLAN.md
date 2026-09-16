@@ -67,7 +67,31 @@ signing wait for human approval.
 
 - Environment created with `main` branch policy and no reviewers/wait timer.
 - Destination public key ID: `3380204578043523366` (public metadata, not a secret).
-- Secret names audited across existing workflows; no values retrieved.
+- Consumer audit: source `ed09171665995b98d1e010b9b5bd340c3c50a605`, tree
+  `53e40902232a807cd91f83beaec669f95c084b9f`, from cwd
+  `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`.
+  Reproduced with the following source-only command (no secret values retrieved):
+
+  ```bash
+  source=ed09171665995b98d1e010b9b5bd340c3c50a605
+  pattern='secrets\.(MACOS_CERT_P12_BASE64|MACOS_CERT_PASSWORD|MACOS_KEYCHAIN_PASSWORD'
+  pattern+='|APPLE_ID|APPLE_APP_SPECIFIC_PASSWORD)'
+  git grep -n -E "$pattern" "$source" -- .github/workflows
+  ```
+
+  Result: 14 references across the four consumers/callers listed above; no iOS or
+  Android credential consumer uses this allowlist. This is source evidence, separate
+  from live environment API configuration. Environment configuration was checked via
+  `gh api repos/sesori-ai/sesori_apps_monorepo/environments/macos-signing` and its
+  `/deployment-branch-policies` endpoint.
+- Bootstrap reads repository values without a destination environment binding, so
+  partially populated destination secrets cannot shadow source values on retry.
+  The workflow's main-ref condition remains; consumers later use the environment's
+  independent main-branch deployment policy.
+- Bootstrap actions are pinned to full commits; PyNaCl, cffi and pycparser binary
+  wheels are version/hash-locked. A synthetic sealed-box roundtrip runs before
+  credential exposure. These pins bound dependency changes, not a claim that
+  hashing alone proves third-party code free of vulnerabilities.
 - No signing consumers changed and no repository secrets removed during bootstrap.
 - Step 1 implementation pending review; native verification and cutover remain pending.
 
