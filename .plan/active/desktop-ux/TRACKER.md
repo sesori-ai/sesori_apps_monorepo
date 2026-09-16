@@ -56,6 +56,11 @@ tooltip feedback. Only one PR is open; one local successor may be prepared.
   temporarily closed, not merged. Preserve published `dc1074117b42ad06c268e2d6068a309411d9e3c2`;
   after 9.a.1 merges, merge main forward and reopen without rewriting history.
 
+- Standalone user-requested sidebar correction:
+  [PR #1513](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1513) merged.
+  Selected-session pinning now uses the non-archived projection, including live archive updates.
+  Seven focused cases and core analysis passed; separate from the 18-PR series.
+
 ## Unattended execution
 
 The user reaffirmed autonomous completion on 2026-09-15: do not stop/restart
@@ -127,7 +132,8 @@ or waive shipping qualification.
   bridge work ran. See [step 8 evidence](steps/step-08.md).
 - Step 9.a.1: 136 distinct retained cases across 14 suites; five owning analyzers
   are clean at documented checkpoints. Full auth generation retains unrelated outputs.
-  See [prerequisite evidence](steps/step-09a1.md). No file sinks, production DI or native work.
+  Scoped architecture plan/implementation reviews approved. See [prerequisite evidence](steps/step-09a1.md).
+  No file sinks, production DI or native work.
 - Step 9.a.2: the original 91-case/five-analyzer evidence remains on preserved #1509,
   not evidence for its unimplemented review fixes. File completion/recovery warnings and
   directory copy follow 9.a.1. Sidebar work remains planned, not implemented.

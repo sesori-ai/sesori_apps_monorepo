@@ -173,7 +173,6 @@ and keep native close/quit behavior safe.
   useful error context remains. Final desktop Quit awaits admitted log output for
   at most two seconds after cleanup; flush failure/timeout reports directly to stdout
   and does not prevent exit. A failed helper stop still refuses Quit before flushing.
-  File sinks and actual native termination are not qualified by these fake-backed checks.
 - Open Logs prepares the owner-only active log through Layer-1 storage, then
   resolves it through the desktop log repository and delegates it to the system
   default application, including before the helper emits its first line. Both
