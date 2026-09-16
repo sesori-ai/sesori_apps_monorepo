@@ -85,3 +85,15 @@ Logs live in
 `preparation-tests-final.log`). These are synthetic/offline tests, not a successful
 Actions preparation or native/public-release evidence. No signing credentials were
 used and no local bridge/app process was touched.
+
+Review correction measured **after commit** at
+`d5f4b457ab0e8f2621c7a23e6b443a31b040d2b3`, tree
+`5f0c4722941522f106137685bf2a68d9749bc90f`, from the same cwd:
+
+- `python3 -m unittest discover -s .github/scripts -p 'test_prepare_desktop_release.py'`:
+  exit 0, 9 cases; `review-tests.log`.
+- `actionlint .github/workflows/desktop-release.yml`: exit 0; `review-actionlint.log`.
+- `git diff --check origin/main...HEAD`: exit 0; `review-whitespace.log`.
+
+Exact commands/cwd/source are also in local `review-verification.json` beside those
+logs. No test result is retroactively attributed to a later documentation commit.
