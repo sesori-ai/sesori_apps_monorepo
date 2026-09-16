@@ -11,8 +11,9 @@ total do not change.
 
 Current source and private evidence support these narrow claims:
 
-- macOS x64 and arm64 staging produces private Developer ID signed/notarized ZIP and
-  DMG packages. Nested code, complete helper payload, staples, Gatekeeper assessment,
+- macOS x64 and arm64 staging produces private signed/notarized/stapled DMGs and
+  ZIPs containing the Developer ID signed, notarized/stapled app. The ZIP itself is
+  neither signed nor stapled. Nested code, complete helper payload, Gatekeeper assessment,
   extracted inventories and helper execution are qualified. The GUI is manually
   replaced only after normal Quit; no updater service or automatic relaunch exists.
 - Windows x64 and arm64 staging produces private unsigned per-user Inno Setup

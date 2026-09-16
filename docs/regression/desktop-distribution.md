@@ -87,7 +87,8 @@ or permission to ship. Public release and native upgrade gates remain outstandin
 ## Current evidence boundary
 
 Private package mechanics are qualified for both native CPUs on all three desktop
-platforms: signed/notarized ZIP and DMG construction on macOS, unsigned per-user EXE
+platforms: signed/notarized/stapled DMGs and ZIPs containing the signed/notarized/stapled
+app on macOS (the ZIP itself is not signed or stapled), unsigned per-user EXE
 construction and isolated fixtures on Windows, and unsigned DEB/RPM construction plus
 six native package-manager fixtures on Linux. This is repository-shipped preparation,
 not public release support. Exact accepted sources, runs, hashes and proof limits stay

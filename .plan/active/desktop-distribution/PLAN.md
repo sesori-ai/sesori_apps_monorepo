@@ -381,8 +381,23 @@ history and keeps lifecycle changes out of the package-signing review.
 | 8 | ⚙️ [desktop-distribution] Deliver manual Windows updates and winget discovery [step 10/14] | After 6 and 7. Settings download action, signed N→N+1 manual replacement, channel-specific downloads, winget manifests and Windows ship gate. Medium integration risk; no embedded updater, forced helper shutdown or automatic restart. No database change. |
 | 9 | ⚙️ [desktop-distribution] Qualify private native DEB and RPM packages [step 11/14] | Independent private preparation after native bundle qualification. Four unsigned native packages, generated dependency manifests, desktop integration and isolated package-manager fixtures. Signing, public APT/RPM repositories and shipping remain blocked behind prior platform gates. No updater, home cleanup or database change. |
 | 10 | 🌿 [desktop-distribution] Offer shipped desktop downloads during onboarding [step 12/14] | After all platform gates. Shared mobile installation guidance and published links, preserve CLI alternative and truthful platform/CPU choices. Low/medium onboarding regression risk; focused UI/link tests and existing analytics assessment. New installation choice, no database change. |
-| 11 | 🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14] | Private-package reconciliation can proceed after step 9 while step 10 is blocked. Complete the final public-link/onboarding and release-runbook reconciliation only after step 10. Keep this step in progress until both portions are complete. Low risk; no runtime or database change. |
-| 12 | ⚙️ [desktop-distribution] Verify six-target releases and retire distribution plan [step 14/14] | After completed steps 10 and 11. Run/assemble the complete recorded release matrix through packaged/external boundaries, record exact artifacts and evidence, resolve failures, then move this directory to `.plan/completed/desktop-distribution/` and repoint live links. No runtime/database change except independently reviewed required fixes. Never retire partial/blocked coverage. |
+| 11 | 🌿 Private regression reconciliation (13/14) | Scope and exact PR title below. |
+| 12 | ⚙️ Release verification and retirement (14/14) | Scope and exact PR title below. |
+
+**Step 11 PR:**
+`🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
+Private-package reconciliation can proceed after step 9 while step 10 is blocked.
+Complete final public-link/onboarding and release-runbook reconciliation only after
+step 10. Keep this step in progress until both portions are complete. Low risk;
+no runtime or database change.
+
+**Step 12 PR:**
+`⚙️ [desktop-distribution] Verify six-target releases and retire distribution plan [step 14/14]`.
+After completed steps 10 and 11, run/assemble the complete recorded release matrix
+through packaged/external boundaries, record exact artifacts and evidence, resolve
+failures, then move this directory to `.plan/completed/desktop-distribution/` and
+repoint live links. No runtime/database change except independently reviewed required
+fixes. Never retire partial/blocked coverage.
 
 Step 2's platform qualification results may be gathered independently; there is no
 requirement to keep one expensive test machine idle until another OS finishes. PRs

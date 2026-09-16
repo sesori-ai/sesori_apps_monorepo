@@ -209,8 +209,13 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Signing and static hosting | Private macOS signed/notarized payloads and synthetic platform probes verified on both CPUs | Rendered GUI/account restoration, interactive TCC/OS-login, updater/Windows/Linux keys, GCS access and owner-approved protected-environment migration of shared repository signing secrets before public publication. |
 | macOS public gate | Pending | Both CPUs, parent prerequisite, actual signed N→N+1 upgrade, quit semantics, downloads, complete platform coverage from PLAN.md. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
-| Linux public gate | Private DEB/RPM mechanics passed on both CPUs; public gate pending | Signed repository install/N→N+1 update/remove, desktop-environment coverage, real account/keyring/tray/login behavior and declared minimum OS. |
-| Retirement | Blocked | Complete step 10 and the public portion of step 11, then run the complete recorded matrix; partial, blocked or missing targets keep the plan active. |
+| Linux public gate | Pending; private mechanics passed on both CPUs | Public and interactive checks below. |
+| Retirement | Blocked | Steps 10/11 closeout and the complete recorded matrix remain required. |
+
+Linux public coverage still requires signed repository install/N→N+1 update/remove,
+desktop-environment coverage, real account/keyring/tray/login behavior and declared
+minimum OS. Retirement requires completed step 10 and the public portion of step 11,
+then the complete recorded matrix. Partial, blocked or missing targets keep the plan active.
 
 ## Architecture plan review
 

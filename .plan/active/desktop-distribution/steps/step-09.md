@@ -90,6 +90,23 @@ PR #1522 merged this private qualification, accepting
 `3e869292f7f11eeb6356cfd56a938c3c20976239`. The accepted PR source, not the squash
 commit, is the artifact-producing revision.
 
+Both native jobs used checkout cwd
+`/home/runner/work/sesori_apps_monorepo/sesori_apps_monorepo`.
+The exact build, dependency-generation, container and fixture commands are the
+`linux-distribution` job at this immutable workflow revision, rather than a duplicated
+command list that could drift:
+
+```bash
+source=07bdd730e6451d221ebb86821a38c4252e4e0abc
+git show "$source:.github/workflows/desktop-qualification.yml"
+# Expanded commands and measured job environment:
+gh run view 35122448200 --repo sesori-ai/sesori_apps_monorepo --job 104883363575 --log
+gh run view 35122448200 --repo sesori-ai/sesori_apps_monorepo --job 104883363460 --log
+```
+
+Both jobs passed. This identifies the executed instructions, not a promise of
+bit-identical rebuilding against rolling package repositories.
+
 Final native run [35122448200](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35122448200)
 passed native x64 and ARM64 jobs at that accepted source. Both jobs built DEB and RPM
 packages and passed Ubuntu 24.04, Debian 13 and Fedora 44 install, same-version
