@@ -13,8 +13,8 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 3.b | 4 | Surface packaged helper repair guidance | done |
 | 4.a | 5 | Package and notarize native macOS builds | done |
 | 4.b | 6 | Keep desktop startup independent of native notifications | done |
-| 5 | 7 | Offer manual macOS updates through official downloads | in-progress |
-| 6 | 8 | Publish isolated desktop channels and macOS downloads | pending |
+| 5 | 7 | Offer manual macOS updates through official downloads | done |
+| 6 | 8 | Publish isolated desktop channels and macOS downloads | in-progress |
 | 7 | 9 | Package signed per-user Windows installers | pending |
 | 8 | 10 | Deliver manual Windows updates and winget discovery | pending |
 | 9 | 11 | Publish signed native DEB and RPM repositories | pending |
@@ -29,7 +29,15 @@ remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 Step 4.b merged as #1503: accepted `49694775e5d364a1316b767b66642531bf002e3a`,
 squash `d1813409e3c0a8e053c3a28068d574e24fb70730`. All 11 checks settled at
 acceptance (two skipped); all seven feedback threads resolved and Cubic approved.
-Step 5 uses the approved D6 manual fallback; details in [step-05](steps/step-05.md).
+Step 5 merged as #1506: accepted `3e890050bb1a55ee4d7e5c388afda67d0ae4384a`,
+squash `256565719e0804a62e467c01368e6dab5254544c` at 2026-09-16T08:20:58Z.
+All 19 checks passed at acceptance; Cubic approved and all threads were resolved.
+The subsequent merged report showed an additional twentieth check running; it is
+not included in the acceptance claim. Step 5 uses D6 manual updates and the
+user-selected `https://sesori.com/desktop/` (not yet live). Details in
+[step-05](steps/step-05.md). Step 6 continues in the same worktree on
+`desktop-distribution-release-channels`; publication remains gated.
+The current scope is private preparation only; see [step-06](steps/step-06.md).
 
 ## Alignment — 2026-09-15
 
@@ -108,8 +116,8 @@ accepting `9f286805514a26cf5e641ab96ee16e79c3bcc7f5`, as squash
 Cubic approved without findings and the owner-controlled secret migration remains
 an explicit public-release prerequisite. Final unsigned six-target qualification
 run 35036003267 measured merge checkout `e4aa30f017cf876a1f61f2a6881f1282f013dba1`.
-Step 4.b subsequently merged in PR #1503; step 5 is in progress in PR #1506 on
-`desktop-distribution-macos-updates` in the same worktree.
+Steps 4.b and 5 subsequently merged in PRs #1503 and #1506. Step 6 is now active;
+see the delivery records above for their exact acceptance and squash revisions.
 The following step-4.a evidence is historical; step-4.b evidence is recorded below.
 Existing trusted CI credentials produce private Developer-ID-signed, notarized
 and stapled packages on both native Macs. The reviewed manifest correction keeps

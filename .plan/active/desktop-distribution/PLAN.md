@@ -4,7 +4,8 @@
 
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
-- **Status:** Active — steps 1–4.b merged; step 5 manual macOS updates in progress.
+- **Status:** Active — steps 1–5 merged; step 6 private release preparation in progress.
+  Public macOS publication remains gated.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -274,6 +275,10 @@ Native signed N→N+1 manual replacement and preservation are still release gate
 
 ### 4. Publication and release isolation
 
+Step 6 first delivers private read-only preparation as described in
+[step-06](steps/step-06.md). Public publication remains blocked on the prerequisites
+below; merging preparation does not clear the macOS ship gate.
+
 Add a desktop-owned `desktop-release.yml` with explicit immutable ref, channel, and
 platform inputs and reusable platform build legs. It must not depend on mobile
 store jobs, move `internal-release-attempt`, or change the existing mobile/CLI
@@ -367,7 +372,7 @@ history and keeps lifecycle changes out of the package-signing review.
 | 4.a | 🚧 [desktop-distribution] Package and notarize native macOS builds [step 5/14] | After 3.b plus signer access. Private DMGs/ZIPs, nested hardened signing, notarization/stapling and native platform probes. High supply-chain/platform risk. Both Macs verify/install without Gatekeeper bypass; rendered startup is tracked in 4.b, not claimed passing. No database change. |
 | 4.b | ⚙️ [desktop-distribution] Keep desktop startup independent of native notifications [step 6/14] | After 4.a. Existing attention owner installs listeners before returning, without holding rendering behind native readiness; retain initial-open/account/disposal handling. Medium/high startup risk. Red/green service tests and both signed GUI targets; no new state owner, persistence, wire or database change. |
 | 5 | ⚙️ [desktop-distribution] Offer manual macOS updates through official downloads [step 7/14] | After 4.b. D6 manual fallback: immutable channel/CPU destination, honest download index, Settings guidance and staging channel metadata. Medium presentation/build risk; unchanged safe Quit, no automatic updater or database change. Native manual replacement remains a release gate. |
-| 6 | ⚙️ [desktop-distribution] Publish isolated desktop channels and macOS downloads [step 8/14] | After 5 and parent public-release prerequisite. Trusted manual workflow, GitHub desktop tags, download index/runbook, release-isolation tests and macOS ship gate. High operational risk but bounded publication logic; no mobile store uploads or database change. macOS public only after both native gates pass. |
+| 6 | ⚙️ [desktop-distribution] Prepare isolated desktop release channels [step 8/14] | After 5. Read-only producer-evidence validation and deterministic private metadata/checksums. No tags, releases, website writes, signing or database change. Publication stays gated on parent prerequisites, credential migration and both native macOS ship gates; it is not delivered by this preparation PR. |
 | 7 | 🚧 [desktop-distribution] Package signed per-user Windows installers [step 9/14] | After 3.b and Windows qualification; delivered after macOS gate. Native x64/arm64 EXEs, complete helper bundle, timestamped signing, shortcuts/autostart/uninstall and clean-host tests. High installer/trust risk. No elevation for normal use, no shared CLI data deletion, no database change. |
 | 8 | ⚙️ [desktop-distribution] Deliver manual Windows updates and winget discovery [step 10/14] | After 6 and 7. Settings download action, signed N→N+1 manual replacement, channel-specific downloads, winget manifests and Windows ship gate. Medium integration risk; no embedded updater, forced helper shutdown or automatic restart. No database change. |
 | 9 | ⚙️ [desktop-distribution] Publish signed native DEB and RPM repositories [step 11/14] | After 3.b and Linux qualification; delivered after Windows gate. Four native packages, dependency manifests, signed APT/RPM metadata/payload publication, desktop integration and Linux ship gate. Medium/high packaging risk; no custom updater or privileged per-user cleanup. Package-manager upgrades retain shared data; no database change. |
