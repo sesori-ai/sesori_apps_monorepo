@@ -566,12 +566,20 @@ final class PiSessionService({
       }
       await Future<void>.delayed(Duration.zero);
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
+      PiAgentState? observedAgentState;
+      if (turn is _PiCommandTurn) {
+        observedAgentState = await _processes.getState(connection: connection);
+        turn.effectiveSelection = observedAgentState.selection;
+        await Future<void>.delayed(Duration.zero);
+        if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
+      }
       if (turn.agentSettled) {
         _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
         return;
       }
       if (turn.settlementObservedBeforeAcceptance || !turn.agentStarted) {
-        var agentState = await _processes.getState(connection: connection);
+        var agentState = observedAgentState ?? await _processes.getState(connection: connection);
+        turn.effectiveSelection = agentState.selection;
         await Future<void>.delayed(Duration.zero);
         if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
         if (turn.agentSettled) {
@@ -589,6 +597,7 @@ final class PiSessionService({
           // barrier so a lifecycle frame delayed behind the first idle snapshot
           // wins over silent-command settlement.
           agentState = await _processes.getState(connection: connection);
+          turn.effectiveSelection = agentState.selection;
           await Future<void>.delayed(Duration.zero);
           if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
           if (turn.agentSettled) {
