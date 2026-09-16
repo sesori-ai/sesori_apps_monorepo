@@ -16,6 +16,8 @@ final class ClaudeAuthenticationService({
   final Duration _urlBudget = const Duration(seconds: 90),
   final Duration _overallBudget = const Duration(minutes: 10),
 }) {
+  final Completer<void> _rejectedCode = Completer<void>();
+
   PluginAuthenticationOperation authenticate() =>
       PluginAuthenticationOperation.pastedCode(events: _events(), submitCode: _submitCode);
 
@@ -30,8 +32,11 @@ final class ClaudeAuthenticationService({
         stage: "print a sign-in URL",
       );
       yield PluginAuthenticationPastedCodeChallenge(authorizationUri: authorizationUri);
+      final rejected = _rejectedCode.future.then<Never>(
+        (_) => throw ClaudeAuthenticationException(message: "The pasted code is not a code#state pair"),
+      );
       final exitCode = await _within(
-        work: Future.any([_repository.waitForExit(), abort]),
+        work: Future.any([_repository.waitForExit(), abort, rejected]),
         budget: _overallBudget - elapsed.elapsed,
         stage: "exit",
       );
@@ -52,9 +57,8 @@ final class ClaudeAuthenticationService({
   Future<void> _submitCode({required String code}) async {
     final pastedCode = ClaudePastedCode.tryParse(raw: code);
     if (pastedCode == null) {
-      // Stopping the CLI lets the running exit wait end the operation.
-      Log.w("[claude] pasted login code is not a code#state pair; ending the login");
-      await _repository.dispose();
+      // The running exit wait fails the operation, which then stops the CLI.
+      _rejectedCode.complete();
       return;
     }
     await _repository.submitCode(code: pastedCode);

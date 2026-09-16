@@ -10,7 +10,7 @@ final class ClaudeProcessLaunch({
   this {
     if (this.environment.containsKey("HOME")) {
       throw ArgumentError.value(
-        this.environment,
+        "HOME",
         "environment",
         "must not override HOME; use CLAUDE_CONFIG_DIR for isolation",
       );

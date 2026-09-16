@@ -143,7 +143,7 @@ void main() {
       expect(processes.gracefulSignals, [process.pid]);
     });
 
-    test("fails on a non-zero exit after the code and logs a redacted stderr tail", () async {
+    test("fails on a non-zero exit after the code and logs the redacted stderr written as it exits", () async {
       final logs = await _logsOf(
         body: () async {
           final processes = _LoginProcesses();
@@ -155,8 +155,10 @@ void main() {
           await _until(condition: () => events.isNotEmpty);
 
           await operation.submitCode(code: _code);
-          process.emitStderr(text: "OAuth error: invalid_grant, retry at $_url\n");
+          // The exit is reported before its last stderr line arrives.
+          process.reportExit(code: 1);
           await _pump();
+          process.emitStderr(text: "OAuth error: invalid_grant, retry at $_url\n");
           process.exit(code: 1);
           await done;
 
@@ -180,6 +182,8 @@ void main() {
 
       await expectLater(done, throwsA(isA<PluginStartAbortedException>()));
       expect(processes.gracefulSignals, [process.pid]);
+      // Signals leave the fake's pipes open, as a descendant holding them would.
+      expect(process.hasListeners, isFalse);
     });
 
     test("stops the CLI and cancels when aborted during code submission", () async {
@@ -206,7 +210,8 @@ void main() {
     test("stops the CLI and fails the operation for a code of the wrong shape", () async {
       final logs = await _logsOf(
         body: () async {
-          final processes = _LoginProcesses();
+          // The outcome must not depend on how the stopped CLI exits.
+          final processes = _LoginProcesses()..gracefulExitCode = 0;
           final operation = _operation(processes: processes);
           final events = <PluginAuthenticationPastedCodeEvent>[];
           final done = operation.events.forEach(events.add);
@@ -228,7 +233,7 @@ void main() {
     });
 
     test("forces a CLI that ignores the graceful stop", () async {
-      final processes = _LoginProcesses()..exitOnGracefulSignal = false;
+      final processes = _LoginProcesses()..gracefulExitCode = null;
       final done = _operation(
         processes: processes,
         urlBudget: const Duration(milliseconds: 20),
@@ -296,7 +301,9 @@ final class _LoginProcesses() implements HostProcessService {
   final List<_LoginProcess> spawned = [];
   final List<int> gracefulSignals = [];
   final List<int> forceSignals = [];
-  bool exitOnGracefulSignal = true;
+
+  /// The exit code a graceful signal reports, or null for a CLI that ignores it.
+  int? gracefulExitCode = -15;
   Object? spawnError;
 
   Future<_LoginProcess> spawnedProcess() async {
@@ -325,14 +332,14 @@ final class _LoginProcesses() implements HostProcessService {
   @override
   Future<SignalResult> signalGraceful({required int pid}) async {
     gracefulSignals.add(pid);
-    if (exitOnGracefulSignal) _process(pid: pid).exit(code: -15);
+    if (gracefulExitCode case final code?) _process(pid: pid).reportExit(code: code);
     return _signalResult(pid: pid);
   }
 
   @override
   Future<SignalResult> signalForce({required int pid}) async {
     forceSignals.add(pid);
-    _process(pid: pid).exit(code: -9);
+    _process(pid: pid).reportExit(code: -9);
     return _signalResult(pid: pid);
   }
 
@@ -367,13 +374,19 @@ final class _LoginProcess({@override required final int pid}) implements Spawned
   @override
   ProcessIdentity get identity => throw UnimplementedError();
 
+  bool get hasListeners => _stdout.hasListener || _stderr.hasListener;
+
   void emitStdout({required List<int> bytes}) => _stdout.add(bytes);
 
   void emitStderr({required String text}) => _stderr.add(utf8.encode(text));
 
+  /// Reports the exit code but leaves both pipes open.
+  void reportExit({required int code}) {
+    if (!_exit.isCompleted) _exit.complete(code);
+  }
+
   void exit({required int code}) {
-    if (_exit.isCompleted) return;
-    _exit.complete(code);
+    reportExit(code: code);
     unawaited(_stdout.close());
     unawaited(_stderr.close());
   }

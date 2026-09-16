@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:io" as io;
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/claude_process_factory.dart";
@@ -27,6 +28,8 @@ final class ClaudeAuthenticationRepository({
 
   final ClaudeLoginOutputParser _parser = const ClaudeLoginOutputParser();
   final Completer<Uri> _authorizationUri = Completer<Uri>();
+  final Completer<int> _exitCode = Completer<int>();
+  final CompositeSubscription _pipes = CompositeSubscription();
   final List<String> _stderrTail = [];
   Future<ClaudeProcessHandle>? _spawn;
   Future<void>? _disposal;
@@ -49,34 +52,45 @@ final class ClaudeAuthenticationRepository({
     final process = await spawn;
     // Broken pipes surface on `stdin.done`; the exit code reports the failure.
     unawaited(process.stdin.done.catchError((Object _) {}));
-    // Both pipes are drained until exit so the CLI never blocks on a full pipe.
-    _decodeLines(process.stdout).listen(
-      (line) {
-        if (_authorizationUri.isCompleted) return;
-        switch (_parser.parseLine(line: line)) {
-          case ClaudeLoginOutputNone():
-            break;
-          case ClaudeLoginOutputUrl(:final authorizationUri):
-            _authorizationUri.complete(authorizationUri);
-          case ClaudeLoginOutputInvalidUrl(:final length):
-            _authorizationUri.completeError(
-              ClaudeAuthenticationException(
-                message: "Claude Code printed an unusable sign-in URL ($length characters)",
-              ),
-            );
-        }
-      },
-      onError: (Object error, StackTrace stackTrace) => Log.w("[claude] login stdout failed", error, stackTrace),
+    // Both pipes are drained until they close so the CLI never blocks on a full pipe.
+    final stdoutClosed = Completer<void>();
+    final stderrClosed = Completer<void>();
+    _pipes.add(
+      _decodeLines(bytes: process.stdout).listen(
+        (line) {
+          if (_authorizationUri.isCompleted) return;
+          switch (_parser.parseLine(line: line)) {
+            case ClaudeLoginOutputNone():
+              break;
+            case ClaudeLoginOutputUrl(:final authorizationUri):
+              _authorizationUri.complete(authorizationUri);
+            case ClaudeLoginOutputInvalidUrl(:final length):
+              _authorizationUri.completeError(
+                ClaudeAuthenticationException(
+                  message: "Claude Code printed an unusable sign-in URL ($length characters)",
+                ),
+              );
+          }
+        },
+        onError: (Object error, StackTrace stackTrace) => Log.w("[claude] login stdout failed", error, stackTrace),
+        onDone: stdoutClosed.complete,
+      ),
     );
-    _decodeLines(process.stderr).listen(
-      (line) {
-        _stderrTail.add(_parser.redactLine(line: line));
-        if (_stderrTail.length > _stderrTailLines) _stderrTail.removeAt(0);
-      },
-      onError: (Object error, StackTrace stackTrace) => Log.w("[claude] login stderr failed", error, stackTrace),
+    _pipes.add(
+      _decodeLines(bytes: process.stderr).listen(
+        (line) {
+          _stderrTail.add(_parser.redactLine(line: line));
+          if (_stderrTail.length > _stderrTailLines) _stderrTail.removeAt(0);
+        },
+        onError: (Object error, StackTrace stackTrace) => Log.w("[claude] login stderr failed", error, stackTrace),
+        onDone: stderrClosed.complete,
+      ),
     );
+    // The exit can be reported before the last output arrives, so it counts
+    // only once both pipes close and the stderr tail is complete.
+    _exitCode.complete(Future.wait([stdoutClosed.future, stderrClosed.future]).then((_) => process.exitCode));
     unawaited(
-      process.exitCode.then((exitCode) {
+      _exitCode.future.then((exitCode) {
         if (_authorizationUri.isCompleted) return;
         _authorizationUri.completeError(
           ClaudeAuthenticationException(
@@ -96,12 +110,12 @@ final class ClaudeAuthenticationRepository({
     await process.stdin.flush();
   }
 
-  Future<int> waitForExit() async {
-    final process = await _started();
-    return await process.exitCode;
-  }
+  /// Completes with the exit code once the CLI has exited and closed both
+  /// pipes. Call only after [start] returned a URL.
+  Future<int> waitForExit() => _exitCode.future;
 
-  /// Stops the CLI, forcing it after a grace period, and waits for it to exit.
+  /// Stops the CLI, forcing it after a grace period, waits for it to exit, and
+  /// stops reading its pipes.
   Future<void> dispose() => _disposal ??= _stop();
 
   Future<void> _stop() async {
@@ -120,10 +134,12 @@ final class ClaudeAuthenticationRepository({
       process.kill(io.ProcessSignal.sigkill);
       await process.exitCode;
     }
+    // A descendant can keep a pipe open after the CLI exits.
+    await _pipes.cancel();
   }
 
   Future<ClaudeProcessHandle> _started() => _spawn ?? Future.error(StateError("Claude Code login has not started"));
 
-  static Stream<String> _decodeLines(Stream<List<int>> bytes) =>
+  static Stream<String> _decodeLines({required Stream<List<int>> bytes}) =>
       bytes.transform(const Utf8Decoder(allowMalformed: true)).transform(const LineSplitter());
 }

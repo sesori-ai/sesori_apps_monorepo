@@ -23,9 +23,10 @@ credential store, and never sets `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY
   code reaches the CLI's stdin as exactly one line. Any other shape stops the CLI and ends the operation with a
   failure, while the submission itself succeeds. The bridge accepts one submission per operation.
 - Exit 0 completes the operation. A non-zero exit, or the ten-minute overall budget measured from spawn, fails it.
-  Cancel and bridge shutdown settle it as cancelled. Every outcome stops the CLI (graceful signal, forced after five
-  seconds) and waits for it to exit; no budget timer outlives the operation. The bridge then re-inspects setup, which
-  alone decides readiness.
+  Cancel and bridge shutdown settle it as cancelled. An exit counts once both output pipes close, so output written
+  just before the exit still reaches the log. Every outcome stops the CLI (graceful signal, forced after five seconds),
+  waits for it to exit, and stops reading its pipes; no budget timer outlives the operation. The bridge then
+  re-inspects setup, which alone decides readiness.
 - Remote failures carry only the bridge's generic text. Local bridge logs keep the cause (exit code, budget, rejected
   shape), the stack, and the last 20 stderr lines with escapes stripped and every `https://` token replaced by
   `<url>`. The authorization URL, its state, and the pasted code never appear in logs, errors, analytics, SSE replay,
@@ -38,7 +39,7 @@ credential store, and never sets `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated: the Claude descriptor advertises authentication, and the shared contract and client mapper round-trip the pasted-code challenge and code request. |
-| L2 Routine | Automated: scripted CLI output through the Claude service (fragmented OSC 8 URL, exit before and after the challenge, both budgets, abort while waiting and while submitting, rejected shape, exact stdin bytes, forced stop, spawn failure, logs free of URLs and codes) and spawn wiring (binary, arguments, state directory, `BROWSER`, `HOME`); a fake pasted-code plugin through the bridge runtime gate, lifecycle service, and code route; sheet widget tests on phone and desktop. The [CLI probe](#cli-probe) when the plugin's minimum or target version changes. Live plugin for the probe. |
+| L2 Routine | Automated: scripted CLI output through the Claude service (fragmented OSC 8 URL, exit before and after the challenge, stderr arriving after the reported exit, both budgets, abort while waiting and while submitting, rejected shape failing even when the stopped CLI exits 0, pipes released when a descendant holds them open, exact stdin bytes, forced stop, spawn failure, logs free of URLs and codes) and spawn wiring (binary, arguments, state directory, `BROWSER`, `HOME`); a fake pasted-code plugin through the bridge runtime gate, lifecycle service, and code route; sheet widget tests on phone and desktop. The [CLI probe](#cli-probe) when the plugin's minimum or target version changes. Live plugin for the probe. |
 | L3 Release | A real login from the iOS app and from the macOS desktop app against a macOS arm64 bridge running the real CLI with a real claude.ai account: no host browser opens, the pasted code completes, `claude auth status` reports logged in, the harness becomes ready, and a Claude session starts from Sesori. An explicit cancel mid-flow leaves no `claude auth login` process. Client end to end. |
 | L4 Extended | A Linux headless bridge (credentials file), a well-formed wrong code, a budget expiry on the real CLI, an older app against the new bridge (update required), a bridge restart mid-login, an explicit `bin` override, and a supervised desktop bridge whose Keychain write may fall back to the credentials file. Client end to end. |
 | L5 Full | A Windows bridge, where a host sign-in tab is an accepted limitation, and the Android app. Client end to end. |

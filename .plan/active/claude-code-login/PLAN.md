@@ -297,8 +297,10 @@ ClaudeAuthenticationRepository (repositories)
   fails it; the service bounds the wait
   submitCode(code): writes "<code>\n" and flushes; the runtime already
   enforces one submission per operation, so no second flag here
-  waitForExit(): exit code
-  dispose(): kill (graceful, forced after a short grace) and await exit;
+  waitForExit(): exit code, counted once both pipes close, because the exit
+  can be reported before the last stderr lines arrive
+  dispose(): kill (graceful, forced after a short grace), await exit, and
+  cancel both pipe subscriptions, which a descendant could hold open;
   idempotent
 
 ClaudeAuthenticationService (services)
@@ -313,9 +315,10 @@ ClaudeAuthenticationService (services)
   (mapped to cancelled by the bridge); finally always disposes, so no wait
   or timer can outlive the operation
   submitCode: runs ClaudePastedCode.tryParse first; a valid code goes to the
-  repository; a rejected shape is logged locally (without the code) and the
-  repository is disposed, so the running exit race observes the killed process
-  and emits Failed; submitCode itself returns normally
+  repository; a rejected shape completes a rejection completer that the exit
+  wait also races, so Failed comes from the shape check itself rather than
+  from how the stopped CLI exits, and the cause is logged locally without the
+  code; finally stops the CLI; submitCode itself returns normally
 
 ClaudePluginDescriptor (runtime)
   implements InteractivePluginAuthenticationDescriptor; composes the layers
@@ -489,12 +492,14 @@ arise.
 - Bridge core: the existing per-operation continuation flag, renamed and
   shared by both continuation kinds. No new registry, timer, or queue.
 - Claude plugin, per operation and disposed in `finally`: one process handle,
-  one completer for the authorization URL, one memoized disposal future, a
+  one composite subscription for its two pipes, completers for the
+  authorization URL and the drained exit code, one memoized disposal future, a
   bounded stderr tail, and two budgets that are timeouts on their waits
   (URL, overall). The
   one-shot rule stays with the runtime gate; the repository holds no second
-  flag. A rejected code shape reuses the exit race by disposing the process;
-  no rejection completer or state.
+  flag. A rejected code shape completes one rejection completer in the
+  service, because inferring the failure from the stopped CLI's exit code
+  made the outcome depend on how the CLI handles a graceful stop.
   `ClaudeLoginEnvironment` is a constant; `ClaudePastedCode` is pure.
 - Client: three immutable presentation states and one text controller inside
   the sheet.
@@ -526,7 +531,7 @@ arise.
 | Suppress host browser | Verified: the CLI spawns `BROWSER` as one executable and special-cases the value `true`; Antigravity precedent | Confusing or unattended sign-in tab on the bridge host | `BROWSER=true` everywhere; Windows unverified and documented; no bridge-owned helper because the CLI spawns a single executable without a shell |
 | URL budget of 90 seconds plus ten minutes overall | The app's start request times out at two and a half minutes; the CLI prints the URL within seconds; users need minutes to approve and paste; the CLI never exits on its own | A single budget would keep a URL-less CLI alive for ten minutes after the app already reported failure | Two bounded waits; no per-submission timer |
 | No cancel before the challenge | Pre-existing shared sheet behavior for every plugin; the URL budget bounds the non-cancellable window to 90 seconds in the abnormal no-URL case | Cancelling an in-flight start needs a cancel/start race in the service | Accept; documented |
-| Terminal failure on rejected code | Restarting costs a few taps; the CLI's own shape check is mirrored; the provider page's copy action yields the full code | A typed rejection would need a new interface result, a wire conflict reason, and client state | Plugin disposes its CLI and the existing exit race reports failure; no retry loop |
+| Terminal failure on rejected code | Restarting costs a few taps; the CLI's own shape check is mirrored; the provider page's copy action yields the full code | A typed rejection would need a new interface result, a wire conflict reason, and client state | Plugin fails the operation from its shape check and stops its CLI; no retry loop |
 | Generic remote failure text | Existing lifecycle behavior for Codex and Antigravity; plugin detail stays in local logs | Distinguishing timeout from rejection remotely needs a lifecycle change for every plugin | Accept; no lifecycle change |
 | Ordinary relay post for the start request | Typed 409 conflicts are decoded from the body; a malformed successful body needs a bridge defect and leaks no credential | The blanket sensitive mode breaks conflict handling; a selective mode adds shared infrastructure for a theoretical case | Accept the local parsing-error residue; no new client mode |
 | Login only when authentication required | Parity with Codex | Re-login while ready | Excluded |

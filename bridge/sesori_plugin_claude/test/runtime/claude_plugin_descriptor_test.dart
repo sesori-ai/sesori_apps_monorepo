@@ -326,7 +326,7 @@ void main() {
   group("ClaudePluginDescriptor.authenticate", () {
     test("runs the configured binary's login in the state directory with the browser suppressed", () async {
       const url = "https://claude.com/cai/oauth/authorize?state=private-state";
-      final login = _ProbeProcess(stdoutText: "visit: $url\n", exitCode: Completer<int>().future, keepStdoutOpen: true);
+      final login = _ProbeProcess(stdoutText: "visit: $url\n", exitCode: Completer<int>().future);
       final processes = _ProcessService([login]);
 
       final operation = const ClaudePluginDescriptor().authenticate(
