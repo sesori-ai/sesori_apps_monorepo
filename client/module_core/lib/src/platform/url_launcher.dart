@@ -19,7 +19,7 @@ abstract class UrlLauncher() {
   Future<bool> launch(Uri url, {UrlLaunchMode mode = UrlLaunchMode.externalApp});
 }
 
-/// URI parts useful for diagnosing a launcher, without transcript-derived data.
+/// URI parts useful for launcher diagnostics, without user-info/path/query/fragment.
 extension UrlDiagnosticPresentation on Uri {
   String get diagnosticOrigin =>
       "scheme=${hasScheme ? scheme : 'none'}, host=${host.isEmpty ? 'none' : host}${hasPort ? ', port=$port' : ''}";

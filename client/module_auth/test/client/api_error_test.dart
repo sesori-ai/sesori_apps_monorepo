@@ -27,7 +27,7 @@ void main() {
     try {
       $checkedCreate<int>("CounterDto", {
         "count": "private transcript",
-      }, (convert) => convert("count", (v) => v as int));
+      }, (convert) => convert("count", (v) => v! as int));
     } on CheckedFromJsonException catch (error) {
       cause = error;
     }
