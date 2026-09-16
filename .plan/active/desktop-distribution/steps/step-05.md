@@ -31,8 +31,8 @@ No local app, running bridge or installed package may be disturbed.
 
 1. Add an immutable desktop-core foundation model for the update destination:
    manual download (required URI), package-manager guidance, or development build.
-   A closed stable/internal channel enum plus the existing bundle identity selects
-   the official channel/OS/CPU anchor. No parsing of backend data and no wire or
+   The shell resolver uses the closed stable/internal channel enum and existing
+   bundle identity to select the official channel/OS/CPU anchor. No parsing of backend data and no wire or
    persisted contract. Missing compiled bundle identity means a development build,
    not a guessed download architecture.
 2. Use a desktop-owned repository Markdown download index with stable/internal

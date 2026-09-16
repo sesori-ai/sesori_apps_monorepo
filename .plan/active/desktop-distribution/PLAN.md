@@ -257,8 +257,8 @@ prepared-update state, native installer handoff or relaunch is introduced.
 
 The compiled bundle identity and separate stable/internal channel define resolve
 an immutable `DesktopUpdateDestination` value from desktop core. Shell composition
-owns build decoding and package/link selection, then passes the result to `DesktopUpdateSection`; its action only
-opens the index. Linux presents package-manager guidance and source builds present
+owns build decoding and package/link selection, then passes the result to
+`DesktopUpdateSection`; its action only opens the index. Linux presents package-manager guidance and source builds present
 development guidance. Unshipped index entries contain no artifact links. The
 concrete files/data flow and approved review are in [step 5](steps/step-05.md).
 
