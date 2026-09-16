@@ -927,7 +927,11 @@ void main() {
     ).called(1);
   });
 
-  test("notification opens focus the window and replace the session stack", () async {
+  test("notification opens focus the window, dismiss popups, then replace the session stack", () async {
+    final operations = <String>[];
+    when(windowHost.show).thenAnswer((_) async => operations.add("focus"));
+    when(routeDispatcher.dismissPopups).thenAnswer((_) => operations.add("dismiss"));
+    when(() => routeDispatcher.replaceStack(stack: any(named: "stack"))).thenAnswer((_) => operations.add("replace"));
     await service.start();
 
     notificationOpens.add(
@@ -940,7 +944,7 @@ void main() {
     );
     await _flushAsync();
 
-    verify(() => windowHost.show()).called(1);
+    expect(operations, ["focus", "dismiss", "replace"]);
     final captured =
         verify(
               () => routeDispatcher.replaceStack(stack: captureAny(named: "stack")),
@@ -962,6 +966,30 @@ void main() {
     );
   });
 
+  test("a notification for the current editable session still dismisses popups without replacing its stack", () async {
+    when(() => routeSource.currentLocation).thenReturn(
+      const AppRoute.sessionDetail(
+        projectId: "project-1",
+        projectName: "Existing project title",
+        sessionId: "session-root",
+        sessionTitle: "Existing session title",
+        readOnly: false,
+      ).buildPath(),
+    );
+    await service.start();
+    notificationOpens.add(
+      const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-root",
+        sessionTitle: "Fix the build",
+        accountId: "user-1",
+      ),
+    );
+    await _flushAsync();
+    verifyInOrder([windowHost.show, routeDispatcher.dismissPopups]);
+    verifyNever(() => routeDispatcher.replaceStack(stack: any(named: "stack")));
+  });
+
   test("does not route an old-account notification after window focus awaits", () async {
     final windowFocus = Completer<void>();
     when(() => windowHost.show()).thenAnswer((_) => windowFocus.future);
@@ -981,6 +1009,7 @@ void main() {
     await _flushAsync();
 
     verify(() => windowHost.show()).called(1);
+    verifyNever(routeDispatcher.dismissPopups);
     verifyNever(() => routeDispatcher.replaceStack(stack: any(named: "stack")));
   });
 

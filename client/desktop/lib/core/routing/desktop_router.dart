@@ -82,7 +82,12 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           },
           onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
           onOpenSettings: () => _openSettings(context: context, currentPath: state.uri.path),
-          child: child,
+          child: Builder(
+            builder: (context) => SessionDetailRouteVisibility(
+              isVisible: ModalRoute.isCurrentOf(context) ?? false,
+              child: child,
+            ),
+          ),
         ),
       ),
     ),
