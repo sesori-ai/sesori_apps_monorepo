@@ -139,3 +139,30 @@ These unsigned, silent runner fixtures are **not** a signed N→N+1 upgrade, rea
 account/GUI lifecycle, interactive ARM64, SmartScreen or public-release proof.
 GitHub artifacts require authorization and have 14-day retention. Later docs-only
 commits do not change the measured native source above.
+
+## Review follow-up qualification
+
+Run **35101629087** passed both native rows on exact
+`e9c8a1aa8ccb88c73cb7ceae0a064da91f3440d1`, tree
+`c76f66d5c562e964d9707f61fe4ae2f5aab2b807`, **1.8.4/build 39**.
+It additionally verifies that every staged payload file is removed by uninstall
+while an unrecorded file inside the installation and the external shared sentinel
+survive. The fixture explicitly limits mutex evidence to nonzero exit with the
+marker held and success without it; the generic exit does not prove its diagnostic.
+
+- ARM64 job `104812289929`; installer SHA-256
+  `c705e3938aea14fee8cbd50c09ca45e249ab2e31f0f770829c077f377c956e6f`.
+- x64 job `104812289889`; installer SHA-256
+  `5c353ec2bdc5823804f4557f3aea3dee15b873b7ecaa174e884e37492ca40d05`.
+
+Downloaded with the same `gh run download` command above, substituting run
+`35101629087` and destination `build/desktop-windows-packaging-evidence/native-e9c8a1a`.
+Both downloaded hashes match; each installed identity and 15-binary inventory equals
+its staged report; both source patches are empty. Fixture assertions passed on both
+CPUs. These still do not establish signed N→N+1 or interactive product behavior.
+
+At exact `e9c8a1a`, from the repository root, the focused Python command above
+passed 9 cases and actionlint passed the changed workflow (exit 0).
+Logs: `build/desktop-windows-packaging-evidence/review-tests.log` and
+`review-actionlint.log`. These changed-input runs cover the added file-type checks;
+unchanged application tests were not rerun locally.
