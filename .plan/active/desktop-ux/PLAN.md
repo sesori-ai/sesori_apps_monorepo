@@ -532,11 +532,11 @@ remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 | 11 | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 14/15]` | ≤ 600 | Final control-content audit (labels, grouping, scope, redundancy and state-specific actions) plus regression reconciliation listed below. |
 | 12 | `🌿 [desktop-ux] Run coverage and retire the plan [step 15/15]` | ≤ 300 | Run the recorded matrix, record results, note the phase-2 handoff, move the plan to `.plan/completed/desktop-ux/`. |
 
-Step 7's integrated snapshot `5c1cd88` measured 1,670 changed lines (56 generated).
-Shared composition, copy and native preference commands landed separately in 7.a.
-The modal reached 1,725 lines at `8d9faed`, including 656 lines of settings-test
-replacement and 80 lines retiring an obsolete route test. Its bounded exception
-keeps route retirement and modal composition atomic, without interim routes/shims.
+Shared composition, copy and native preference commands landed separately in 7.a;
+its historical measurements are in [the preparation evidence](steps/step-07a.md).
+The modal's bounded exception keeps route retirement, replacement tests and modal
+composition atomic, without interim routes/shims. Publication measurements belong
+to [the modal PR evidence](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1501), not this forward-looking delivery plan.
 Review then identified ordinary root-popup flows: a covered nested session stays
 viewed, and notification activation leaves the popup over its destination.
 Those independently useful fixes are extracted into 7.b rather than expanding

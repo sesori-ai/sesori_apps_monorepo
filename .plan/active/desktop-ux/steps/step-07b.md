@@ -4,7 +4,7 @@ Ordinal 9/15; branch `desktop-ux/overlay-navigation`.
 
 ## Boundary and delivery
 
-Extracted from accepted #1501 review findings instead of expanding its 1,725-line
+Extracted from accepted #1501 review findings to keep lifecycle fixes in a smaller
 diff. Root popups already exist before the Settings modal, so this prerequisite
 is independently useful. #1501 is temporarily closed with its published branch
 and review history preserved; merge main forward and reopen it as step 7.c.
@@ -35,16 +35,17 @@ Base: `cd4c1412359ef8962cb019d97dc7fed73835e1c8`.
 **97 distinct cases**, not 152 accumulated executions. Commands use pinned
 Flutter 3.47.4 / bundled Dart, with cwd below `client/`:
 
-| Cwd | Command |
-|---|---|
-| `desktop` | `flutter test --no-pub --reporter json test/core/platform/desktop_route_dispatcher_test.dart test/core/routing/desktop_router_test.dart` |
-| `module_app_ui` | `flutter test --no-pub --reporter json test/features/session_detail/session_detail_activity_owner_test.dart` |
-| `app` | `flutter test --no-pub --reporter json test/core/routing/app_route_test.dart` |
-| `module_core` | `dart test --reporter json test/routing/notification_open_dispatcher_test.dart` |
-| `module_desktop_core` | `dart test --reporter json test/services/desktop_attention_service_test.dart` |
+| Cwd | Checkpoint (full commit/tree above) | Result | Test command |
+|---|---|---|---|
+| `desktop` | `ad0c385` | 17 passed; analyzer clean | `flutter test --no-pub --reporter json test/core/platform/desktop_route_dispatcher_test.dart test/core/routing/desktop_router_test.dart` |
+| `module_app_ui` | `d9a9e82` | 4 passed; analyzer clean | `flutter test --no-pub --reporter json test/features/session_detail/session_detail_activity_owner_test.dart` |
+| `app` | `ad0c385` | 38 passed; analyzer clean | `flutter test --no-pub --reporter json test/core/routing/app_route_test.dart` |
+| `module_core` | `d9a9e82` | 8 passed; analyzer clean | `dart test --reporter json test/routing/notification_open_dispatcher_test.dart` |
+| `module_desktop_core` | `d9a9e82` | 30 passed; analyzer clean | `dart test --reporter json test/services/desktop_attention_service_test.dart` |
 
-Each of those five packages: `dart analyze --fatal-infos`. Logs and parsed case
-summaries: `/tmp/rose-elephant-overlay-*-{tests,analyze}*.log` and
+Each row's analyzer command is `dart analyze --fatal-infos`, run at that row's
+same cwd and checkpoint; all exited 0. The initial desktop/mobile analyzer infos
+at `d9a9e82` are not claimed as passes. Logs and parsed case summaries: `/tmp/rose-elephant-overlay-*-{tests,analyze}*.log` and
 `/tmp/rose-elephant-overlay-{test,analyze,final}-summary.json`.
 Tests use real root dialogs/nested navigators and the registered shell boundary,
 but inert bodies and fake services. They prove same-session element/Back retention,
@@ -69,7 +70,15 @@ no session/acknowledgement was edited. Retained copy:
 `rose-elephant-overlay-architecture-provenance.json`. SHA256:
 `fc933b6b1ded4affa445759e34f00c4bb9fa23dfc17d0879ab2b12100426b2b9`.
 
-Count all added/deleted lines, including documentation and tests, using
-`git diff --numstat cd4c1412359ef8962cb019d97dc7fed73835e1c8 <snapshot>`.
-The prerequisite target is 700 lines; immutable publication totals belong in the
-PR body. No generated files change.
+Initial publication snapshot `1f3ce5326e0f2d20922c4b376a6f791c9d88d340`, against
+base `cd4c1412359ef8962cb019d97dc7fed73835e1c8`: **460 additions + 114 deletions =
+574 changed lines**, 17 files, 0 generated. This includes every source, test,
+plan, tracker, regression and evidence file at that snapshot, including this file.
+
+```bash
+git diff --numstat cd4c1412359ef8962cb019d97dc7fed73835e1c8 1f3ce5326e0f2d20922c4b376a6f791c9d88d340
+```
+
+This is an immutable publication measurement, not a moving-head total. The target
+is 700 lines; subsequent pinned totals live in the [PR publication evidence](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1502).
+Review follow-ups to this evidence are documentation-only, not test reruns.
