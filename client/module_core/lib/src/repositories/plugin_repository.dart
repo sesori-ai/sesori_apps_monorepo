@@ -50,10 +50,27 @@ class PluginRepository({required final PluginApi _api}) {
       pluginId: pluginId,
       request: PluginAuthenticationRedirectRequest(redirectUrl: redirectUri.toString()),
     );
+    return _mapAuthenticationContinuation(response: response);
+  }
+
+  Future<PluginAuthenticationContinuationResult> submitAuthenticationCode({
+    required String pluginId,
+    required String code,
+  }) async {
+    final response = await _api.submitAuthenticationCode(
+      pluginId: pluginId,
+      request: PluginAuthenticationCodeRequest(code: code),
+    );
+    return _mapAuthenticationContinuation(response: response);
+  }
+
+  PluginAuthenticationContinuationResult _mapAuthenticationContinuation({
+    required ApiResponse<SuccessEmptyResponse> response,
+  }) {
     return switch (response) {
       SuccessResponse() => const PluginAuthenticationContinuationResult.applied(),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 400)) =>
-        const PluginAuthenticationContinuationResult.invalidRedirect(),
+        const PluginAuthenticationContinuationResult.invalidInput(),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) =>
         const PluginAuthenticationContinuationResult.notFound(),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final body)) =>
@@ -72,20 +89,16 @@ class PluginRepository({required final PluginApi _api}) {
     required PluginAuthenticationChallengeResponse response,
   }) {
     final challenge = switch (response) {
-      PluginAuthenticationDeviceCodeChallengeResponse(:final verificationUrl, :final userCode) => switch (Uri.tryParse(
-        verificationUrl,
+      PluginAuthenticationDeviceCodeChallengeResponse(:final verificationUrl, :final userCode) => switch (_httpsUri(
+        url: verificationUrl,
       )) {
-        final uri? when uri.isAbsolute && uri.scheme == "https" && uri.host.isNotEmpty =>
-          PluginAuthenticationDeviceCodeChallenge(verificationUri: uri, userCode: userCode),
-        _ => null,
+        final uri? => PluginAuthenticationDeviceCodeChallenge(verificationUri: uri, userCode: userCode),
+        null => null,
       },
       PluginAuthenticationBrowserChallengeResponse(:final authorizationUrl, :final expectedCallbackUrl) => () {
-        final authorizationUri = Uri.tryParse(authorizationUrl);
+        final authorizationUri = _httpsUri(url: authorizationUrl);
         final expectedCallbackUri = Uri.tryParse(expectedCallbackUrl);
         if (authorizationUri == null ||
-            !authorizationUri.isAbsolute ||
-            authorizationUri.scheme != "https" ||
-            authorizationUri.host.isEmpty ||
             expectedCallbackUri == null ||
             !expectedCallbackUri.isAbsolute ||
             expectedCallbackUri.host.isEmpty) {
@@ -96,6 +109,12 @@ class PluginRepository({required final PluginApi _api}) {
           expectedCallbackUri: expectedCallbackUri,
         );
       }(),
+      PluginAuthenticationPastedCodeChallengeResponse(:final authorizationUrl) => switch (_httpsUri(
+        url: authorizationUrl,
+      )) {
+        final uri? => PluginAuthenticationPastedCodeChallenge(authorizationUri: uri),
+        null => null,
+      },
       PluginAuthenticationUnknownChallengeResponse() => const PluginAuthenticationUnsupportedChallenge(),
     };
     return challenge == null
@@ -129,6 +148,7 @@ class PluginRepository({required final PluginApi _api}) {
         );
     }
   }
+
   Future<CatalogImportMutationResult> startCatalogImport({required String pluginId}) async {
     return _mapCatalogImportMutation(await _api.startCatalogImport(pluginId: pluginId));
   }
@@ -296,6 +316,12 @@ class PluginRepository({required final PluginApi _api}) {
     };
   }
 }
+
+/// Provider pages the user opens must be absolute HTTPS URLs with a host.
+Uri? _httpsUri({required String url}) => switch (Uri.tryParse(url)) {
+  final uri? when uri.isAbsolute && uri.scheme == "https" && uri.host.isNotEmpty => uri,
+  _ => null,
+};
 
 sealed class const _AuthenticationConflictParseResult();
 

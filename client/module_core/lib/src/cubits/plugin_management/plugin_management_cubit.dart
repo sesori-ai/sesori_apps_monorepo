@@ -104,11 +104,12 @@ class PluginManagementCubit({
         if (current.authentication is PluginAuthenticationPresentationBrowserLaunchFailedState) {
           await _service.retryBrowserAuthentication(pluginId: challenge.pluginId);
         }
-      case PluginAuthenticationDeviceCodeChallenge(:final verificationUri):
+      case PluginAuthenticationDeviceCodeChallenge(verificationUri: final uri) ||
+          PluginAuthenticationPastedCodeChallenge(authorizationUri: final uri):
         final generation = _authenticationGeneration;
         bool launched;
         try {
-          launched = await _urlLauncher.launch(verificationUri);
+          launched = await _urlLauncher.launch(uri);
         } on Object {
           launched = false;
         }
@@ -120,6 +121,7 @@ class PluginManagementCubit({
           return;
         }
         if (latest.authentication is! PluginAuthenticationPresentationChallenge &&
+            latest.authentication is! PluginAuthenticationPresentationCodeRetry &&
             latest.authentication is! PluginAuthenticationPresentationBrowserLaunchFailedState) {
           return;
         }
@@ -131,6 +133,58 @@ class PluginManagementCubit({
         );
       case PluginAuthenticationUnsupportedChallenge():
         return;
+    }
+  }
+
+  /// Submits the code the user pasted for a pasted-code challenge. Invalid or
+  /// unconfirmed submissions keep the field editable with a hint.
+  Future<void> submitAuthenticationCode({required String code}) async {
+    final current = state;
+    if (isClosed || current is! PluginManagementReady) return;
+    final authentication = current.authentication;
+    final data = _authenticationChallengeData(authentication);
+    final challenge = data?.challenge;
+    if (data == null ||
+        challenge is! PluginAuthenticationPastedCodeChallenge ||
+        authentication is! PluginAuthenticationPresentationChallenge &&
+            authentication is! PluginAuthenticationPresentationCodeRetry &&
+            authentication is! PluginAuthenticationPresentationBrowserLaunchFailedState) {
+      return;
+    }
+    final pluginId = data.pluginId;
+    final submitting = PluginAuthenticationPresentationState.codeSubmitting(pluginId: pluginId, challenge: challenge);
+    _setAuthentication(submitting);
+    final result = await _service.submitAuthenticationCode(pluginId: pluginId, code: code);
+    final latest = state;
+    if (isClosed || latest is! PluginManagementReady || !identical(latest.authentication, submitting)) return;
+    switch (result) {
+      case PluginAuthenticationContinuationApplied() ||
+          PluginAuthenticationContinuationRejected(reason: PluginAuthenticationContinuationRejection.alreadySubmitted):
+        _setAuthentication(
+          PluginAuthenticationPresentationState.codeSubmitted(pluginId: pluginId, challenge: challenge),
+        );
+      case PluginAuthenticationContinuationInvalidInput():
+        _setAuthentication(
+          PluginAuthenticationPresentationState.codeRetry(
+            pluginId: pluginId,
+            challenge: challenge,
+            reason: PluginAuthenticationCodeRetryReason.invalidCode,
+          ),
+        );
+      // The code may have landed; a resubmission then reports alreadySubmitted.
+      case PluginAuthenticationContinuationUncertain() || PluginAuthenticationContinuationRequestFailure():
+        _setAuthentication(
+          PluginAuthenticationPresentationState.codeRetry(
+            pluginId: pluginId,
+            challenge: challenge,
+            reason: PluginAuthenticationCodeRetryReason.notConfirmed,
+          ),
+        );
+      // The service settles a login the bridge no longer runs.
+      case PluginAuthenticationContinuationNotFound():
+        _setAuthenticationFailure(pluginId: pluginId, error: const PluginAuthenticationPresentationError.notFound());
+      case PluginAuthenticationContinuationRejected():
+        _setAuthenticationFailure(pluginId: pluginId, error: const PluginAuthenticationPresentationError.uncertain());
     }
   }
 
@@ -557,6 +611,9 @@ class PluginManagementCubit({
             PluginAuthenticationPresentationBrowserWaiting() ||
             PluginAuthenticationPresentationBrowserFinalizing() ||
             PluginAuthenticationPresentationBrowserLaunchFailedState() ||
+            PluginAuthenticationPresentationCodeRetry() ||
+            PluginAuthenticationPresentationCodeSubmitting() ||
+            PluginAuthenticationPresentationCodeSubmitted() ||
             PluginAuthenticationPresentationCancelling() ||
             PluginAuthenticationPresentationCancellingUncertain() ||
             PluginAuthenticationPresentationFailed(error: PluginAuthenticationPresentationUncertain()) => true,
@@ -606,6 +663,9 @@ class PluginManagementCubit({
       PluginAuthenticationPresentationBrowserWaiting(:final pluginId) ||
       PluginAuthenticationPresentationBrowserFinalizing(:final pluginId) ||
       PluginAuthenticationPresentationBrowserLaunchFailedState(:final pluginId) ||
+      PluginAuthenticationPresentationCodeRetry(:final pluginId) ||
+      PluginAuthenticationPresentationCodeSubmitting(:final pluginId) ||
+      PluginAuthenticationPresentationCodeSubmitted(:final pluginId) ||
       PluginAuthenticationPresentationCancelling(:final pluginId) ||
       PluginAuthenticationPresentationCancellingUncertain(:final pluginId) => pluginId,
       PluginAuthenticationPresentationIdle() ||
@@ -640,7 +700,10 @@ class PluginManagementCubit({
     final data = _authenticationChallengeData(current.authentication);
     final challenge = switch (data?.challenge) {
       final PluginAuthenticationBrowserChallenge challenge => challenge,
-      PluginAuthenticationDeviceCodeChallenge() || PluginAuthenticationUnsupportedChallenge() || null => null,
+      PluginAuthenticationDeviceCodeChallenge() ||
+      PluginAuthenticationPastedCodeChallenge() ||
+      PluginAuthenticationUnsupportedChallenge() ||
+      null => null,
     };
     if (data == null || challenge == null) return;
     final browserState = browserStates[data.pluginId];
@@ -775,6 +838,12 @@ class PluginManagementCubit({
     pluginId: pluginId,
     challenge: challenge,
   ),
+  PluginAuthenticationPresentationCodeRetry(:final pluginId, :final challenge) ||
+  PluginAuthenticationPresentationCodeSubmitting(:final pluginId, :final challenge) ||
+  PluginAuthenticationPresentationCodeSubmitted(:final pluginId, :final challenge) => (
+    pluginId: pluginId,
+    challenge: challenge,
+  ),
   PluginAuthenticationPresentationIdle() ||
   PluginAuthenticationPresentationStarting() ||
   PluginAuthenticationPresentationSucceeded() ||
@@ -821,6 +890,9 @@ PluginAuthenticationChallengePresentation _presentationForChallenge(PluginAuthen
         challenge: challenge,
       ),
       final PluginAuthenticationBrowserChallenge challenge => PluginAuthenticationChallengePresentation.browser(
+        challenge: challenge,
+      ),
+      final PluginAuthenticationPastedCodeChallenge challenge => PluginAuthenticationChallengePresentation.pastedCode(
         challenge: challenge,
       ),
       final PluginAuthenticationUnsupportedChallenge challenge =>

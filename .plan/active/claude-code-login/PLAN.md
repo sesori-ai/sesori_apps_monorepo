@@ -4,7 +4,7 @@
 
 - **Plan slug:** `claude-code-login`
 - **Created:** 2026-09-16
-- **State:** Step 1/6 (plan) in review; implementation not started
+- **State:** Step 1/6 merged (#1508); Step 2/6 in review
 - **Series:** six PRs, titles fixed under "Fixed PR Series"
 
 ## Goal
@@ -363,17 +363,26 @@ Extend the existing layers without new owners:
 - `PluginManagementCubit` gains `submitAuthenticationCode(code)` and handles
   `launchAuthenticationBrowser` for pasted-code challenges through the existing
   `UrlLauncher`. Presentation adds
-  `PluginAuthenticationChallengePresentation.pastedCode` and two states,
-  `codeSubmitting` and `codeSubmitted` (awaiting terminal progress).
-  `alreadySubmitted` maps to `codeSubmitted`; `noActive` and stale results map
-  to the existing failure presentation and trigger a management refresh.
+  `PluginAuthenticationChallengePresentation.pastedCode` and three states:
+  `codeSubmitting`, `codeSubmitted` (awaiting terminal progress), and
+  `codeRetry` with a closed reason (`invalidCode`, `notConfirmed`) that keeps
+  the field editable. `alreadySubmitted` maps to `codeSubmitted`;
+  `invalidInput` maps to `codeRetry(invalidCode)`; an uncertain or failed
+  request maps to `codeRetry(notConfirmed)`, so a resubmission either lands or
+  reports `alreadySubmitted`; on a bridge `noActive` or `wrongKind` the
+  service settles the retained login as unknown and marks management stale,
+  which the cubit presents as the existing uncertain failure.
 - `PluginManagementService.submitAuthenticationCode` applies the same neutral
   rule as the bridge handler (trim, non-empty, no inner whitespace or control
   characters, bounded length) and returns a typed `invalidInput` outcome
   without sending, so the app never issues a request the handler would reject
-  with 400. The cubit only translates that outcome into the editable field
-  with a hint. Nothing in the client knows the `code#state` shape; a code the
-  plugin rejects arrives as ordinary terminal failure.
+  with 400. The rule is `PluginAuthenticationCodeRequest.normalizeCode` in
+  `sesori_shared`, which the bridge handler reuses. The existing
+  `invalidRedirect` continuation outcome is renamed `invalidInput` because
+  both continuations share it. The cubit only translates that outcome into
+  the editable field with a hint. Nothing in the client knows the
+  `code#state` shape; a code the plugin rejects arrives as ordinary terminal
+  failure.
 
 ### 6. Presentation (mobile and desktop)
 
@@ -387,8 +396,10 @@ pasted-code branch:
   `module_core`; backend identity comes from `setup.displayName` as the
   existing sheet strings do.
 - "Open sign-in page" opens the external browser on explicit tap only.
-- A single-line code field (autocorrect off, monospace, paste friendly) with a
-  "Submit code" action enabled when the trimmed text is non-empty.
+- A single-line code field (autocorrect off, paste friendly) with a
+  "Submit code" action enabled when the trimmed text is non-empty. The shared
+  `PregoInputField` has no text-style override, so the field keeps the
+  design-system font instead of monospace.
 - A waiting state after submission; terminal progress closes the sheet and the
   refreshed snapshot removes the login control, exactly as for device codes.
 - Cancel remains explicit; dismissal keeps the operation and the challenge
@@ -480,7 +491,7 @@ arise.
   flag. A rejected code shape reuses the exit race by disposing the process;
   no rejection completer or state.
   `ClaudeLoginEnvironment` is a constant; `ClaudePastedCode` is pure.
-- Client: two immutable presentation states and one text controller inside
+- Client: three immutable presentation states and one text controller inside
   the sheet.
 
 ### Deliberately not added

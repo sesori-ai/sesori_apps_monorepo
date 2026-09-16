@@ -215,6 +215,11 @@ Finder _timeoutField() => find.descendant(
   matching: find.byType(TextFormField),
 );
 
+Finder _pastedCodeField() => find.descendant(
+  of: find.byKey(const Key("harness_authentication_code_input")),
+  matching: find.byType(TextFormField),
+);
+
 int? _timeoutMinutes(PluginManagementIdleTimeoutInput input) => switch (input) {
   PluginManagementIdleTimeoutInputNoTimeout() => 0,
   PluginManagementIdleTimeoutInputCustom(:final input) => switch (int.tryParse(input.trim())) {
@@ -285,6 +290,12 @@ void main() {
     when(
       () => service.cancelAuthentication(pluginId: any(named: "pluginId")),
     ).thenAnswer((_) async => const PluginAuthenticationCancelResult.success());
+    when(
+      () => service.submitAuthenticationCode(
+        pluginId: any(named: "pluginId"),
+        code: any(named: "code"),
+      ),
+    ).thenAnswer((_) async => const PluginAuthenticationContinuationResult.applied());
     when(
       () => urlLauncher.launch(any(), mode: any(named: "mode")),
     ).thenAnswer((_) async => true);
@@ -604,6 +615,114 @@ void main() {
     expect(find.text("Finishing sign-in with the bridge…"), findsOneWidget);
     expect(find.byKey(const Key("harness_authentication_activity")), findsOneWidget);
     verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
+  });
+
+  Future<void> openPastedCodeSheet(WidgetTester tester) async {
+    _useTallSurface(tester);
+    final challenge = PluginAuthenticationPastedCodeChallenge(
+      authorizationUri: Uri.parse("https://auth.example/authorize"),
+    );
+    when(
+      () => service.startAuthentication(pluginId: "codex"),
+    ).thenAnswer((_) async => PluginAuthenticationStartResult.challenge(challenge: challenge));
+    await tester.pumpWidget(_app());
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired]),
+        refreshError: null,
+      ),
+    );
+    await tester.pumpAndSettle();
+    authenticationChallenges.add({"codex": challenge});
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets("pasted-code sheet opens the sign-in page only on tap and cancels explicitly", (tester) async {
+    await openPastedCodeSheet(tester);
+
+    expect(find.textContaining("Sesori will sign Codex on the connected computer"), findsOneWidget);
+    verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
+
+    await tester.tap(find.byKey(const Key("harness_authentication_open_browser")));
+    await tester.pump();
+    verify(
+      () => urlLauncher.launch(Uri.parse("https://auth.example/authorize"), mode: UrlLaunchMode.externalApp),
+    ).called(1);
+
+    await tester.tap(find.byKey(const Key("harness_authentication_cancel")));
+    await tester.pump();
+    verify(() => service.cancelAuthentication(pluginId: "codex")).called(1);
+  });
+
+  testWidgets("pasted-code submit is gated on entered text and reaches the waiting state", (tester) async {
+    await openPastedCodeSheet(tester);
+
+    final submitButton = find.byKey(const Key("harness_authentication_submit_code"));
+    expect(tester.widget<PregoButtonsSolid>(submitButton).onPressed, isNull);
+
+    await tester.enterText(_pastedCodeField(), "   ");
+    await tester.pump();
+    expect(tester.widget<PregoButtonsSolid>(submitButton).onPressed, isNull);
+
+    await tester.enterText(_pastedCodeField(), "PASTE-CODE-123");
+    await tester.pump();
+    expect(tester.widget<PregoButtonsSolid>(submitButton).onPressed, isNotNull);
+
+    await tester.tap(submitButton);
+    await tester.pump();
+    verify(() => service.submitAuthenticationCode(pluginId: "codex", code: "PASTE-CODE-123")).called(1);
+
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const Key("harness_authentication_activity")), findsOneWidget);
+    expect(find.text("Finishing sign-in with the bridge…"), findsOneWidget);
+    expect(find.byKey(const Key("harness_authentication_code_input")), findsNothing);
+  });
+
+  for (final testCase in [
+    (
+      label: "invalid code",
+      result: const PluginAuthenticationContinuationResult.invalidInput(),
+      hint: "Paste the complete code shown after approval, without spaces.",
+    ),
+    (
+      label: "not confirmed",
+      result: const PluginAuthenticationContinuationResult.uncertain(),
+      hint: "The code could not be confirmed. Submit it again.",
+    ),
+  ]) {
+    testWidgets("pasted code retry (${testCase.label}) keeps the field editable with a hint", (tester) async {
+      when(
+        () => service.submitAuthenticationCode(pluginId: "codex", code: "WRONG-CODE"),
+      ).thenAnswer((_) async => testCase.result);
+      await openPastedCodeSheet(tester);
+
+      await tester.enterText(_pastedCodeField(), "WRONG-CODE");
+      await tester.pump();
+      await tester.tap(find.byKey(const Key("harness_authentication_submit_code")));
+      await tester.pumpAndSettle();
+
+      verify(() => service.submitAuthenticationCode(pluginId: "codex", code: "WRONG-CODE")).called(1);
+      expect(find.text(testCase.hint), findsOneWidget);
+      expect(tester.widget<TextFormField>(_pastedCodeField()).controller?.text, "WRONG-CODE");
+    });
+  }
+
+  testWidgets("retrying a failed pasted-code login clears the previous code", (tester) async {
+    await openPastedCodeSheet(tester);
+    await tester.enterText(_pastedCodeField(), "EXPIRED-CODE");
+    authenticationTerminal.add((
+      pluginId: "codex",
+      progress: const PluginAuthenticationProgress.failed(message: "Authentication failed."),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("harness_authentication_retry")));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextFormField>(_pastedCodeField()).controller?.text, isEmpty);
   });
 
   testWidgets("shows preparing sheet before authentication start completes", (tester) async {

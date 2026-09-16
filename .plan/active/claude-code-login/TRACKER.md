@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `claude-code-login`
-- **Series state:** Step 1/6 open; implementation not started
-- **Current branch:** `code-harness-login-enhancement`
-- **Next action:** merge the plan PR, then open Step 2
+- **Series state:** Step 1/6 merged; Step 2/6 in review
+- **Current branch:** `claude-code-login-step-2`
+- **Next action:** land Step 2 review fixes; Step 3 proceeds locally until Step 2 merges
 
 ## Locked Product Decisions
 
@@ -34,8 +34,8 @@
 
 | Step | Title | Status | PR | Evidence |
 |---|---|---|---|---|
-| 1/6 | 🌱 Publish the plan | In review | #1508 | Architecture plan review 2026-09-16: rejected with 4 must-fix and 2 optional findings; all applied, not re-reviewed per repository rules. PR automated review: five waves, 20 findings applied (one superseded by the second wave); CLI login flow verified on 2.1.221, 2.1.269, 2.1.272, and 2.1.273 |
-| 2/6 | 🚧 Add pasted-code login to the wire contract and apps | Not started | — | — |
+| 1/6 | 🌱 Publish the plan | Merged | #1508 | Architecture plan review 2026-09-16: rejected with 4 must-fix and 2 optional findings; all applied, not re-reviewed per repository rules. PR automated review: five waves, 20 findings applied (one superseded by the second wave); CLI login flow verified on 2.1.221, 2.1.269, 2.1.272, and 2.1.273 |
+| 2/6 | 🚧 Add pasted-code login to the wire contract and apps | In review | — | Shared, `module_core`, `module_app_ui`, `client/app`, and `client/desktop` analyze and targeted tests pass; divergences (a `codeRetry` state, shared `normalizeCode`, `invalidRedirect` renamed `invalidInput`, no monospace field) recorded in `PLAN.md` |
 | 3/6 | 🚧 Route pasted-code login through the bridge | Not started | — | — |
 | 4/6 | 🚧 Drive Claude CLI login from the bridge | Not started | — | — |
 | 5/6 | 🌱 Reconcile Claude login documentation | Not started | — | — |

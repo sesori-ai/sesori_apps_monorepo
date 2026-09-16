@@ -123,6 +123,20 @@ Map<String, dynamic> _$PluginAuthenticationBrowserChallengeResponseToJson(
   'type': instance.$type,
 };
 
+PluginAuthenticationPastedCodeChallengeResponse
+_$PluginAuthenticationPastedCodeChallengeResponseFromJson(Map json) =>
+    PluginAuthenticationPastedCodeChallengeResponse(
+      authorizationUrl: json['authorizationUrl'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$PluginAuthenticationPastedCodeChallengeResponseToJson(
+  PluginAuthenticationPastedCodeChallengeResponse instance,
+) => <String, dynamic>{
+  'authorizationUrl': instance.authorizationUrl,
+  'type': instance.$type,
+};
+
 PluginAuthenticationUnknownChallengeResponse
 _$PluginAuthenticationUnknownChallengeResponseFromJson(Map json) =>
     PluginAuthenticationUnknownChallengeResponse(
@@ -142,6 +156,14 @@ _$PluginAuthenticationRedirectRequestFromJson(Map json) =>
 Map<String, dynamic> _$PluginAuthenticationRedirectRequestToJson(
   _PluginAuthenticationRedirectRequest instance,
 ) => <String, dynamic>{'redirectUrl': instance.redirectUrl};
+
+_PluginAuthenticationCodeRequest _$PluginAuthenticationCodeRequestFromJson(
+  Map json,
+) => _PluginAuthenticationCodeRequest(code: json['code'] as String);
+
+Map<String, dynamic> _$PluginAuthenticationCodeRequestToJson(
+  _PluginAuthenticationCodeRequest instance,
+) => <String, dynamic>{'code': instance.code};
 
 PluginAuthenticationCompletedProgress
 _$PluginAuthenticationCompletedProgressFromJson(Map json) =>
