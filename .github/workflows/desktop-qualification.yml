@@ -293,7 +293,9 @@ jobs:
           $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$install`"")
           $installed = Start-Process -FilePath $package -ArgumentList $arguments -Wait -PassThru
           if ($installed.ExitCode -ne 0) { throw "Install failed: $($installed.ExitCode)" }
-          $mutex = [Threading.Mutex]::new($false, 'Local\com.sesori.desktop.running')
+          $currentUserSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+          $runningMutexName = "Global\com.sesori.desktop.running.$currentUserSid"
+          $mutex = [Threading.Mutex]::new($false, $runningMutexName)
           $blocked = Start-Process -FilePath $package -ArgumentList $arguments -Wait -PassThru
           $setupMutexExit = $blocked.ExitCode
           $mutex.Dispose()
@@ -306,21 +308,41 @@ jobs:
           python .github/scripts/package_desktop_windows.py verify-installed --bundle $install --arch '${{ matrix.arch }}' --version $env:SESORI_WINDOWS_VERSION |
             Set-Content -Encoding utf8 build/desktop-windows-packaging/installed-inventory.json
           if ($LASTEXITCODE -ne 0) { throw 'Installed payload verification failed' }
-          $recordedPayload = Get-ChildItem 'build/desktop-bundle/bundle' -File -Recurse | ForEach-Object {
-            [IO.Path]::GetRelativePath((Resolve-Path 'build/desktop-bundle/bundle'), $_.FullName)
+          $stagedRoot = (Resolve-Path 'build/desktop-bundle/bundle').Path
+          $recordedPayload = Get-ChildItem $stagedRoot -File -Recurse | ForEach-Object {
+            $relative = [IO.Path]::GetRelativePath($stagedRoot, $_.FullName)
+            $installedPath = Join-Path $install $relative
+            if (-not (Test-Path $installedPath -PathType Leaf)) { throw "Installed payload missing: $relative" }
+            $stagedHash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
+            $installedHash = (Get-FileHash $installedPath -Algorithm SHA256).Hash
+            if ($stagedHash -ne $installedHash) { throw "Installed payload hash mismatch: $relative" }
+            [PSCustomObject]@{ relativePath = $relative; sha256 = $stagedHash.ToLowerInvariant() }
+          }
+          $recordedPaths = [Collections.Generic.HashSet[string]]::new(
+            [string[]]($recordedPayload | ForEach-Object { $_.relativePath }),
+            [StringComparer]::OrdinalIgnoreCase
+          )
+          $unexpectedInstalled = Get-ChildItem $install -File -Recurse | Where-Object {
+            $relative = [IO.Path]::GetRelativePath($install, $_.FullName)
+            -not $recordedPaths.Contains($relative) -and $relative -notmatch '^unins[0-9]{3}\.(dat|exe|msg)$'
+          }
+          if ($unexpectedInstalled) {
+            throw "Unexpected installed payload: $($unexpectedInstalled.FullName -join ', ')"
           }
           $unrecorded = Join-Path $install 'user-created-keep.txt'
           Set-Content -Path $unrecorded -Value 'unrecorded'
           $uninstaller = Join-Path $install 'unins000.exe'
-          $mutex = [Threading.Mutex]::new($false, 'Local\com.sesori.desktop.running')
+          $mutex = [Threading.Mutex]::new($false, $runningMutexName)
           $blocked = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
           $uninstallMutexExit = $blocked.ExitCode
           $mutex.Dispose()
           if ($uninstallMutexExit -eq 0) { throw 'Uninstall ignored running GUI marker' }
           $removed = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
           if ($removed.ExitCode -ne 0) { throw "Uninstall failed: $($removed.ExitCode)" }
-          foreach ($relative in $recordedPayload) {
-            if (Test-Path (Join-Path $install $relative)) { throw "Recorded payload remains: $relative" }
+          foreach ($payload in $recordedPayload) {
+            if (Test-Path (Join-Path $install $payload.relativePath)) {
+              throw "Recorded payload remains: $($payload.relativePath)"
+            }
           }
           if ((Get-Content $unrecorded) -ne 'unrecorded') { throw 'Unrecorded file changed' }
           if (Get-ItemProperty -Path $runKey -Name Sesori -ErrorAction SilentlyContinue) { throw 'Login value remains after uninstall' }

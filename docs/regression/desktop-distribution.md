@@ -28,16 +28,19 @@ Linux upgrades remain package-manager-owned. Shared CLI data is not update clean
 Manual `windows-packaging` qualification builds unsigned x64 and ARM64 per-user
 Inno Setup packages from exact native staged bundles. Install defaults to
 `%LOCALAPPDATA%\Programs\Sesori`; shortcuts launch `sesori_desktop.exe`. Setup and
-uninstall refuse while `Local\com.sesori.desktop.running` exists. This marker stays
-owned by GUI process until OS termination and does not reject another GUI instance.
+uninstall refuse while `Global\com.sesori.desktop.running.<current-user-SID>` exists.
+This per-user marker spans Windows sessions, stays owned by GUI process until OS
+termination, and does not reject another GUI instance.
 Installer never starts Sesori, enables login launch, closes/restarts processes, or
 removes unrecorded files. Uninstall additionally removes only existing `Sesori`
 login value; shared credentials, runtimes, databases, history and projects remain.
 
 Pinned Inno Setup 7.1.0 x64 compiler is checksum-verified. Its compiler and installer
 launcher may run under Windows ARM64 emulation; GUI, helper and shipped libraries
-must match target CPU. Isolated runner probes use mutex fixtures, not product startup,
-and prove silent fixture behavior only. Output remains private, unsigned CI evidence:
+must match target CPU. Isolated runner probes use per-user global mutex fixtures and
+compare every staged relative file path and SHA-256 with the installed payload; only
+Inno's generated uninstaller files are excluded from the installed extra-file set.
+They do not start the product and prove silent fixture behavior only. Output remains private, unsigned CI evidence:
 it does not establish publisher trust, SmartScreen reputation, interactive behavior,
 account restoration, upgrades, or release readiness.
 

@@ -7,8 +7,9 @@ shipping either platform. No Windows signing access has been established.
 ## Concrete implementation plan
 
 1. `client/desktop/windows/runner/main.cpp`: before Flutter startup create the named
-   mutex `Local\com.sesori.desktop.running` with `CreateMutexW(NULL, FALSE, ...)`.
-   The GUI process owns the handle until process termination; do not close it when
+   mutex `Global\com.sesori.desktop.running.<current-user-SID>` with
+   `CreateMutexW(NULL, FALSE, ...)`. The SID keeps the cross-session marker scoped
+   to one Windows account. The GUI process owns the handle until process termination; do not close it when
    the window hides or the message loop ends. Windows releases it at process exit,
    including the existing Dart exit path. This follows Inno's documented AppMutex
    guidance. A failed creation reports the Windows error and refuses startup, rather
@@ -83,8 +84,13 @@ Signing, publication and interactive product claims remain blocked.
 Sources: `stage_desktop_bundle.dart` stages Windows `runner/Release` into `bundle`;
 Windows CMake sets `BINARY_NAME=sesori_desktop`; `IoLaunchAtLogin` owns the `Sesori`
 Run value. Inno 7.1.0 official download and source license checked; AppMutex docs
-explicitly recommend retaining the handle until process termination:
-https://jrsoftware.org/ishelp/topic_setup_appmutex.htm.
+explicitly support constants and recommend retaining the handle until process termination.
+Inno's documented Pascal support-function list has no current-user SID function, so
+both the x64 installer script and native runner use the documented Windows token APIs
+`OpenProcessToken`, `GetTokenInformation(TokenUser)` and `ConvertSidToStringSidW`:
+https://jrsoftware.org/ishelp/topic_setup_appmutex.htm,
+https://jrsoftware.org/ishelp/topic_scriptfunctions.htm,
+https://learn.microsoft.com/windows/win32/secauthz/access-tokens.
 
 
 ## Parent review and focused follow-up

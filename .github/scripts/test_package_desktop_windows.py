@@ -120,7 +120,10 @@ class WindowsPackagingTests(unittest.TestCase):
 
     def test_runner_marker_precedes_flutter_and_is_not_single_instance_gate(self):
         source = (packaging.ROOT / "client/desktop/windows/runner/main.cpp").read_text(encoding="utf-8")
-        marker = 'CreateMutexW(nullptr, FALSE, kRunningMutexName)'
+        marker = 'CreateMutexW(nullptr, FALSE, running_mutex_name.c_str())'
+        self.assertIn('L"Global\\\\com.sesori.desktop.running."', source)
+        for api in ("OpenProcessToken", "GetTokenInformation", "ConvertSidToStringSidW"):
+            self.assertIn(api, source)
         self.assertIn(marker, source)
         self.assertLess(source.index(marker), source.index('flutter::DartProject project'))
         self.assertNotIn("ERROR_ALREADY_EXISTS", source)
@@ -129,14 +132,24 @@ class WindowsPackagingTests(unittest.TestCase):
     def test_installer_contract_is_bounded_and_mutex_protected(self):
         script = packaging.INSTALLER_SOURCE.read_text(encoding="utf-8")
         for directive in ("AppId={#AppId}", "DefaultDirName={localappdata}\\Programs\\Sesori",
-                          "PrivilegesRequired=lowest", "SetupArchitecture=x64", "AppMutex={#RunningMutex}",
+                          "PrivilegesRequired=lowest", "SetupArchitecture=x64", "AppMutex={code:RunningMutexName}",
                           "CloseApplications=no", "RestartApplications=no"):
             self.assertIn(directive, script)
         self.assertIn('RegDeleteValue(HKCU, \'Software\\Microsoft\\Windows\\CurrentVersion\\Run\', \'Sesori\')', script)
-        self.assertIn('#define AllowedArchitecture "x64os"', script)
+        self.assertIn('#define RunningMutexPrefix "Global\\com.sesori.desktop.running."', script)
+        for api in ("OpenProcessToken", "GetTokenInformation", "ConvertSidToStringSidW"):
+            self.assertIn(api, script)
+        for architecture, allowed in (("x64", "x64os"), ("arm64", "arm64")):
+            self.assertIn(f'#if Architecture == "{architecture}"' if architecture == "x64"
+                          else f'#elif Architecture == "{architecture}"', script)
+            self.assertIn(f'#define AllowedArchitecture "{allowed}"', script)
         self.assertNotIn("x64compatible", script)
         workflow = (packaging.ROOT / ".github/workflows/desktop-qualification.yml").read_text()
         self.assertIn("if ($LASTEXITCODE -ne 0) { throw 'Installed payload verification failed' }", workflow)
+        self.assertIn('[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value', workflow)
+        self.assertIn('Get-FileHash $installedPath -Algorithm SHA256', workflow)
+        self.assertIn("'^unins[0-9]{3}\\.(dat|exe|msg)$'", workflow)
+        self.assertIn('foreach ($payload in $recordedPayload)', workflow)
         self.assertNotIn("[Run]", script)
         self.assertNotIn("[Registry]", script)
         self.assertNotIn("[UninstallDelete]", script)
