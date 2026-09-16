@@ -41,7 +41,9 @@ class AppLogStorage.forTesting({
     } on Object catch (error, stackTrace) {
       if (!_failureReported) {
         _failureReported = true;
-        _reportFailure("Failed to persist desktop app logs; console output remains available: $error\n$stackTrace");
+        _reportFailure(
+          "Failed to persist desktop app logs; console output remains available: ${error.toString()}\n${stackTrace.toString()}",
+        );
       }
     }
   }

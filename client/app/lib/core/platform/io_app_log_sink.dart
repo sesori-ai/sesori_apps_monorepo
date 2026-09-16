@@ -59,7 +59,9 @@ class IoAppLogSink.forTesting({
     } on Object catch (error, stackTrace) {
       if (!_failureReported) {
         _failureReported = true;
-        _reportFailure("Failed to persist mobile app logs; console output remains available: $error\n$stackTrace");
+        _reportFailure(
+          "Failed to persist mobile app logs; console output remains available: ${error.toString()}\n${stackTrace.toString()}",
+        );
       }
     }
   }

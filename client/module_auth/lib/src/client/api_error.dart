@@ -26,7 +26,7 @@ sealed class ApiError._() extends Error with _$ApiError {
   @override
   String toString() => switch (this) {
     JsonParsingError() => "ApiError.jsonParsing(response body omitted)",
-    DartHttpClientError(:final innerError) => "ApiError.dartHttpClient(innerError: $innerError)",
+    DartHttpClientError(:final innerError) => "ApiError.dartHttpClient(innerError: ${innerError.toString()})",
     GenericError() => "ApiError.generic()",
     NotAuthenticatedError() => "ApiError.notAuthenticated()",
     NonSuccessCodeError(:final errorCode, :final rawErrorString) =>

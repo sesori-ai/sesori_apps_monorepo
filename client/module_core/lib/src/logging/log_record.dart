@@ -19,5 +19,5 @@ class const LogRecord({
   String get formatted =>
       "${timestamp.toIso8601String()} [${level.name.toUpperCase()}] $message"
       "${diagnosticError == null ? '' : ': $diagnosticError'}"
-      "${stackTrace == null ? '' : '\n$stackTrace'}";
+      "${stackTrace == null ? '' : '\n${stackTrace.toString()}'}";
 }

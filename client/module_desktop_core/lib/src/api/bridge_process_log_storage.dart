@@ -41,8 +41,8 @@ class BridgeProcessLogStorage._create({
       Directory(path.join((await _applicationSupportDirectory.resolve()).path, "logs"));
 
   /// Prepares an empty active file even before the helper emits its first line.
-  Future<String> get logFilePath async => _storage.prepare(directory: await _logsDirectory());
+  Future<String> get logFilePath async => await _storage.prepare(directory: await _logsDirectory());
 
   Future<void> appendLine({required String line}) async =>
-      _storage.appendLine(directory: await _logsDirectory(), line: line);
+      await _storage.appendLine(directory: await _logsDirectory(), line: line);
 }
