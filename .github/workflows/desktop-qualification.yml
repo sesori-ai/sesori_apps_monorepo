@@ -252,17 +252,24 @@ jobs:
             exit 1
           fi
       - name: Acquire pinned official Inno Setup compiler
+        shell: pwsh
+        timeout-minutes: 10
         env:
           INNO_DIR: ${{ runner.temp }}/inno-setup-7.1.0
         run: |
-          set -euo pipefail
-          ASSET="$RUNNER_TEMP/innosetup-7.1.0-x64.exe"
-          curl --fail --location --output "$ASSET" \
-            https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe
-          echo '0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f *'"$ASSET" | sha256sum --check
-          # Inno has no ARM64 compiler; Windows ARM64 may emulate this tooling and installer launcher only.
-          "$ASSET" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- "/DIR=$(cygpath -w "$INNO_DIR")"
-          echo "SESORI_ISCC=$INNO_DIR/ISCC.exe" >> "$GITHUB_ENV"
+          $ErrorActionPreference = 'Stop'
+          $asset = Join-Path $env:RUNNER_TEMP 'innosetup-7.1.0-x64.exe'
+          Invoke-WebRequest -Uri 'https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe' -OutFile $asset
+          if ((Get-FileHash $asset -Algorithm SHA256).Hash -ne '0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f') {
+            throw 'Inno compiler download hash mismatch'
+          }
+          # PowerShell preserves Inno switches; Git Bash can rewrite /VERYSILENT as a path.
+          # Compiler/installer launcher emulation only is approved on ARM64.
+          $log = Join-Path $env:GITHUB_WORKSPACE 'build/desktop-qualification/inno-install.log'
+          $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$env:INNO_DIR`"", "/LOG=`"$log`"")
+          $installed = Start-Process -FilePath $asset -ArgumentList $arguments -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { throw "Inno compiler install failed: $($installed.ExitCode)" }
+          "SESORI_ISCC=$(Join-Path $env:INNO_DIR 'ISCC.exe')" >> $env:GITHUB_ENV
       - name: Compile unsigned private installer from verified bundle
         run: |
           set -euo pipefail
