@@ -659,7 +659,7 @@ void main() {
           pluginId: "codex",
           capturedRedirectUri: Uri.parse("http://localhost:43120/callback?code=wrong-host"),
         ),
-        isA<PluginAuthenticationContinuationInvalidRedirect>(),
+        isA<PluginAuthenticationContinuationInvalidInput>(),
       );
       const redirect = "http://127.0.0.1:43120/callback?code=opaque";
       Future<PluginAuthenticationContinuationResult> submit() => service.submitAuthenticationRedirect(
@@ -683,6 +683,106 @@ void main() {
       expect(repository.authenticationRedirects, [Uri.parse(redirect)]);
       expect(service.authenticationChallenges.value, isEmpty);
       expect(terminals.single.progress, const PluginAuthenticationProgress.completed());
+    });
+
+    test("pasted codes follow the neutral rule and responses stay fenced", () async {
+      final challenge = PluginAuthenticationPastedCodeChallenge(
+        authorizationUri: Uri.parse("https://accounts.example/oauth"),
+      );
+      final lateContinuation = Completer<PluginAuthenticationContinuationResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge))
+        ..queueAuthenticationContinuation(const PluginAuthenticationContinuationResult.applied())
+        ..queueAuthenticationContinuation(lateContinuation.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = _pluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+
+      expect(
+        await service.submitAuthenticationCode(pluginId: "claude", code: "opaque#state"),
+        isA<PluginAuthenticationContinuationUncertain>(),
+      );
+      expect(await service.startAuthentication(pluginId: "claude"), isA<PluginAuthenticationStartChallenge>());
+      expect(service.authenticationChallenges.value["claude"], same(challenge));
+      expect(
+        await service.submitAuthenticationRedirect(
+          pluginId: "claude",
+          capturedRedirectUri: Uri.parse("http://127.0.0.1:43120/callback?code=opaque"),
+        ),
+        isA<PluginAuthenticationContinuationRejected>().having(
+          (result) => result.reason,
+          "reason",
+          PluginAuthenticationContinuationRejection.wrongKind,
+        ),
+      );
+      for (final invalid in ["", "   ", "opaque state", "a" * (PluginAuthenticationCodeRequest.maxCodeLength + 1)]) {
+        expect(
+          await service.submitAuthenticationCode(pluginId: "claude", code: invalid),
+          isA<PluginAuthenticationContinuationInvalidInput>(),
+        );
+      }
+      expect(repository.authenticationCodes, isEmpty);
+
+      expect(
+        await service.submitAuthenticationCode(pluginId: "claude", code: "  opaque#state\n"),
+        isA<PluginAuthenticationContinuationApplied>(),
+      );
+      expect(repository.authenticationCodes, ["opaque#state"]);
+
+      final lateSubmission = service.submitAuthenticationCode(pluginId: "claude", code: "opaque#state");
+      await _pump();
+      connection.emitStatus(const ConnectionDisconnected());
+      lateContinuation.complete(const PluginAuthenticationContinuationResult.applied());
+      expect(await lateSubmission, isA<PluginAuthenticationContinuationUncertain>());
+    });
+
+    test("a start retry is refused only while a start is in flight or a challenge is retained", () async {
+      final firstStart = Completer<PluginAuthenticationStartResult>();
+      final challenge = PluginAuthenticationPastedCodeChallenge(
+        authorizationUri: Uri.parse("https://accounts.example/oauth"),
+      );
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueAuthenticationStart(firstStart.future)
+        ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = _pluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+      final refused = isA<PluginAuthenticationStartFailed>().having(
+        (result) => result.failure,
+        "failure",
+        isA<PluginAuthenticationFailureRequest>(),
+      );
+
+      final uncertain = service.startAuthentication(pluginId: "claude");
+      expect(await service.startAuthentication(pluginId: "claude"), refused);
+      firstStart.complete(
+        const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.uncertain()),
+      );
+      expect(
+        await uncertain,
+        isA<PluginAuthenticationStartFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureUncertain>(),
+        ),
+      );
+
+      expect(await service.startAuthentication(pluginId: "claude"), isA<PluginAuthenticationStartChallenge>());
+      expect(service.authenticationChallenges.value["claude"], same(challenge));
+      expect(await service.startAuthentication(pluginId: "claude"), refused);
+      expect(repository.authenticationStartCalls, 2);
     });
 
     test("long-background same-bridge reconnect holds and forwards one captured callback", () async {
@@ -2616,6 +2716,8 @@ class _FakePluginRepository() implements PluginRepository {
   final Queue<Future<PluginAuthenticationCancelResult>> _authenticationCancels = Queue();
   final Queue<Future<PluginAuthenticationContinuationResult>> _authenticationContinuations = Queue();
   final List<Uri> authenticationRedirects = [];
+  final List<String> authenticationCodes = [];
+  int authenticationStartCalls = 0;
   int loadCalls = 0;
   int mutationCalls = 0;
   int authenticationCancelCalls = 0;
@@ -2650,8 +2752,19 @@ class _FakePluginRepository() implements PluginRepository {
   }
 
   @override
-  Future<PluginAuthenticationStartResult> startAuthentication({required String pluginId}) =>
-      _authenticationStarts.removeFirst();
+  Future<PluginAuthenticationContinuationResult> submitAuthenticationCode({
+    required String pluginId,
+    required String code,
+  }) {
+    authenticationCodes.add(code);
+    return _authenticationContinuations.removeFirst();
+  }
+
+  @override
+  Future<PluginAuthenticationStartResult> startAuthentication({required String pluginId}) {
+    authenticationStartCalls++;
+    return _authenticationStarts.removeFirst();
+  }
 
   @override
   Future<PluginAuthenticationCancelResult> cancelAuthentication({required String pluginId}) {

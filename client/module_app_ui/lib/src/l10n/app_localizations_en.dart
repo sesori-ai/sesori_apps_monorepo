@@ -675,6 +675,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessAuthenticationRequestFailed => 'Check your connection and try again.';
 
   @override
+  String harnessAuthenticationPastedCodeInstructions(String harnessName) {
+    return 'Only continue if you started this login. Sesori will sign $harnessName on the connected computer into your account. Open the sign-in page, verify its address, approve access, then paste the code shown after approval.';
+  }
+
+  @override
+  String get harnessAuthenticationOpenSignInPage => 'Open sign-in page';
+
+  @override
+  String get harnessAuthenticationPastedCodeLabel => 'Code from the sign-in page';
+
+  @override
+  String get harnessAuthenticationSubmitCode => 'Submit code';
+
+  @override
+  String get harnessAuthenticationPastedCodeInvalid => 'Paste the complete code shown after approval, without spaces.';
+
+  @override
+  String get harnessAuthenticationPastedCodeNotConfirmed => 'The code could not be confirmed. Submit it again.';
+
+  @override
   String get harnessesRegisteredSection => 'Registered Harnesses';
 
   @override

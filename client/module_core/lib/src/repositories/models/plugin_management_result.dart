@@ -106,6 +106,11 @@ final class const PluginAuthenticationBrowserChallenge({
   required final Uri expectedCallbackUri,
 }) extends PluginAuthenticationChallenge;
 
+/// The user opens [authorizationUri] and pastes the code the provider shows
+/// after approval. Never auto-driven.
+final class const PluginAuthenticationPastedCodeChallenge({required final Uri authorizationUri})
+    extends PluginAuthenticationChallenge;
+
 final class const PluginAuthenticationUnsupportedChallenge() extends PluginAuthenticationChallenge;
 
 sealed class const PluginAuthenticationStartResult() {
@@ -146,7 +151,8 @@ enum PluginAuthenticationContinuationRejection() {
 sealed class const PluginAuthenticationContinuationResult() {
   const factory applied() = PluginAuthenticationContinuationApplied;
 
-  const factory invalidRedirect() = PluginAuthenticationContinuationInvalidRedirect;
+  /// The redirect or pasted code failed validation, locally or at the bridge.
+  const factory invalidInput() = PluginAuthenticationContinuationInvalidInput;
 
   const factory notFound() = PluginAuthenticationContinuationNotFound;
 
@@ -160,7 +166,7 @@ sealed class const PluginAuthenticationContinuationResult() {
 
 final class const PluginAuthenticationContinuationApplied() extends PluginAuthenticationContinuationResult;
 
-final class const PluginAuthenticationContinuationInvalidRedirect() extends PluginAuthenticationContinuationResult;
+final class const PluginAuthenticationContinuationInvalidInput() extends PluginAuthenticationContinuationResult;
 
 final class const PluginAuthenticationContinuationNotFound() extends PluginAuthenticationContinuationResult;
 

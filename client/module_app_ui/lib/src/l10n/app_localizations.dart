@@ -1297,6 +1297,42 @@ abstract class AppLocalizations {
   /// **'Check your connection and try again.'**
   String get harnessAuthenticationRequestFailed;
 
+  /// No description provided for @harnessAuthenticationPastedCodeInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Only continue if you started this login. Sesori will sign {harnessName} on the connected computer into your account. Open the sign-in page, verify its address, approve access, then paste the code shown after approval.'**
+  String harnessAuthenticationPastedCodeInstructions(String harnessName);
+
+  /// No description provided for @harnessAuthenticationOpenSignInPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Open sign-in page'**
+  String get harnessAuthenticationOpenSignInPage;
+
+  /// No description provided for @harnessAuthenticationPastedCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Code from the sign-in page'**
+  String get harnessAuthenticationPastedCodeLabel;
+
+  /// No description provided for @harnessAuthenticationSubmitCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit code'**
+  String get harnessAuthenticationSubmitCode;
+
+  /// No description provided for @harnessAuthenticationPastedCodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the complete code shown after approval, without spaces.'**
+  String get harnessAuthenticationPastedCodeInvalid;
+
+  /// No description provided for @harnessAuthenticationPastedCodeNotConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'The code could not be confirmed. Submit it again.'**
+  String get harnessAuthenticationPastedCodeNotConfirmed;
+
   /// No description provided for @harnessesRegisteredSection.
   ///
   /// In en, this message translates to:

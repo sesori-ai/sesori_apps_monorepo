@@ -21,6 +21,7 @@ void main() {
     registerFallbackValue(const PluginLifecycleCommandRequest.enable());
     registerFallbackValue(const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 0));
     registerFallbackValue(const PluginAuthenticationRedirectRequest(redirectUrl: "http://127.0.0.1"));
+    registerFallbackValue(const PluginAuthenticationCodeRequest(code: "fallback"));
   });
 
   setUp(() {
@@ -393,6 +394,98 @@ void main() {
         "failure",
         isA<PluginAuthenticationFailureUncertain>(),
       ));
+    });
+
+    test("maps pasted-code challenges and code submissions", () async {
+      when(
+        () => api.startAuthentication(pluginId: any(named: "pluginId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const PluginAuthenticationChallengeResponse.pastedCode(authorizationUrl: "https://accounts.example/oauth"),
+        ),
+      );
+      expect(
+        await repository.startAuthentication(pluginId: "claude"),
+        isA<PluginAuthenticationStartChallenge>().having(
+          (result) => result.challenge,
+          "challenge",
+          isA<PluginAuthenticationPastedCodeChallenge>().having(
+            (challenge) => challenge.authorizationUri,
+            "authorizationUri",
+            Uri.parse("https://accounts.example/oauth"),
+          ),
+        ),
+      );
+
+      when(
+        () => api.startAuthentication(pluginId: any(named: "pluginId")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const PluginAuthenticationChallengeResponse.pastedCode(authorizationUrl: "http://accounts.example/oauth"),
+        ),
+      );
+      expect(
+        await repository.startAuthentication(pluginId: "claude"),
+        isA<PluginAuthenticationStartFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureRequest>(),
+        ),
+      );
+
+      final responses = <ApiResponse<SuccessEmptyResponse>>[
+        ApiResponse.success(const SuccessEmptyResponse()),
+        ApiResponse.error(ApiError.nonSuccessCode(errorCode: 400, rawErrorString: null)),
+        ApiResponse.error(
+          ApiError.nonSuccessCode(
+            errorCode: 409,
+            rawErrorString: jsonEncode(
+              const PluginAuthenticationConflict(
+                pluginId: "claude",
+                reasons: [PluginAuthenticationConflictReason.alreadySubmitted],
+                current: _managementPlugin,
+              ).toJson(),
+            ),
+          ),
+        ),
+        ApiResponse.error(ApiError.dartHttpClient(const RelayResponseLostException(message: "socket closed"))),
+      ];
+      when(
+        () => api.submitAuthenticationCode(
+          pluginId: any(named: "pluginId"),
+          request: any(named: "request"),
+        ),
+      ).thenAnswer((_) async => responses.removeAt(0));
+
+      expect(
+        await repository.submitAuthenticationCode(pluginId: "claude", code: "opaque#state"),
+        isA<PluginAuthenticationContinuationApplied>(),
+      );
+      final request =
+          verify(
+                () => api.submitAuthenticationCode(
+                  pluginId: "claude",
+                  request: captureAny(named: "request"),
+                ),
+              ).captured.single
+              as PluginAuthenticationCodeRequest;
+      expect(request.toJson(), {"code": "opaque#state"});
+      expect(
+        await repository.submitAuthenticationCode(pluginId: "claude", code: "opaque#state"),
+        isA<PluginAuthenticationContinuationInvalidInput>(),
+      );
+      expect(
+        await repository.submitAuthenticationCode(pluginId: "claude", code: "opaque#state"),
+        isA<PluginAuthenticationContinuationRejected>().having(
+          (result) => result.reason,
+          "reason",
+          PluginAuthenticationContinuationRejection.alreadySubmitted,
+        ),
+      );
+      expect(
+        await repository.submitAuthenticationCode(pluginId: "claude", code: "opaque#state"),
+        isA<PluginAuthenticationContinuationUncertain>(),
+      );
     });
 
     test("maps cancellation success and uncertain response loss", () async {

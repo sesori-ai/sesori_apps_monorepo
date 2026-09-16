@@ -83,6 +83,8 @@ sealed class const PluginAuthenticationChallengePresentation() {
       PluginAuthenticationDeviceCodePresentation;
   const factory browser({required PluginAuthenticationBrowserChallenge challenge}) =
       PluginAuthenticationBrowserPresentation;
+  const factory pastedCode({required PluginAuthenticationPastedCodeChallenge challenge}) =
+      PluginAuthenticationPastedCodePresentation;
   const factory updateRequired({required PluginAuthenticationUnsupportedChallenge challenge}) =
       PluginAuthenticationUpdateRequiredPresentation;
 
@@ -95,9 +97,21 @@ final class const PluginAuthenticationDeviceCodePresentation({
 final class const PluginAuthenticationBrowserPresentation({
   @override required final PluginAuthenticationBrowserChallenge challenge,
 }) extends PluginAuthenticationChallengePresentation;
+final class const PluginAuthenticationPastedCodePresentation({
+  @override required final PluginAuthenticationPastedCodeChallenge challenge,
+}) extends PluginAuthenticationChallengePresentation;
 final class const PluginAuthenticationUpdateRequiredPresentation({
   @override required final PluginAuthenticationUnsupportedChallenge challenge,
 }) extends PluginAuthenticationChallengePresentation;
+
+/// Why a pasted code needs another submission.
+enum PluginAuthenticationCodeRetryReason() {
+  /// The text is not a single bounded code.
+  invalidCode,
+
+  /// The submission failed or its response was lost.
+  notConfirmed,
+}
 
 @Freezed()
 sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPresentationState {
@@ -123,6 +137,21 @@ sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPr
     required String pluginId,
     required PluginAuthenticationChallenge challenge,
   }) = PluginAuthenticationPresentationBrowserLaunchFailedState;
+  const factory codeRetry({
+    required String pluginId,
+    required PluginAuthenticationPastedCodeChallenge challenge,
+    required PluginAuthenticationCodeRetryReason reason,
+  }) = PluginAuthenticationPresentationCodeRetry;
+  const factory codeSubmitting({
+    required String pluginId,
+    required PluginAuthenticationPastedCodeChallenge challenge,
+  }) = PluginAuthenticationPresentationCodeSubmitting;
+
+  /// The bridge accepted the code; terminal progress settles the login.
+  const factory codeSubmitted({
+    required String pluginId,
+    required PluginAuthenticationPastedCodeChallenge challenge,
+  }) = PluginAuthenticationPresentationCodeSubmitted;
   const factory cancelling({
     required String pluginId,
     required PluginAuthenticationChallenge challenge,
@@ -222,6 +251,9 @@ extension PluginManagementReadyActions on PluginManagementReady {
     PluginAuthenticationPresentationBrowserWaiting(:final pluginId) ||
     PluginAuthenticationPresentationBrowserFinalizing(:final pluginId) ||
     PluginAuthenticationPresentationBrowserLaunchFailedState(:final pluginId) ||
+    PluginAuthenticationPresentationCodeRetry(:final pluginId) ||
+    PluginAuthenticationPresentationCodeSubmitting(:final pluginId) ||
+    PluginAuthenticationPresentationCodeSubmitted(:final pluginId) ||
     PluginAuthenticationPresentationCancelling(:final pluginId) ||
     PluginAuthenticationPresentationCancellingUncertain(:final pluginId) => pluginId,
     PluginAuthenticationPresentationIdle() ||

@@ -213,7 +213,13 @@ class PluginManagementService({
   }
 
   Future<PluginAuthenticationStartResult> startAuthentication({required String pluginId}) async {
-    if (_disposed || !_connected || !_activeBridgeIdentityKnown || _selfStartedAuthentications.contains(pluginId)) {
+    // An uncertain start stays tracked for its terminal progress but does not
+    // block a retry, which rejoins the bridge's active operation.
+    if (_disposed ||
+        !_connected ||
+        !_activeBridgeIdentityKnown ||
+        _authenticationRequestOwners.containsKey(pluginId) ||
+        _authenticationChallenges.value.containsKey(pluginId)) {
       return PluginAuthenticationStartResult.failed(
         failure: PluginAuthenticationFailure.request(error: ApiError.generic()),
       );
@@ -464,7 +470,7 @@ class PluginManagementService({
           PluginAuthenticationContinuationUncertain() ||
           PluginAuthenticationContinuationRejected(reason: PluginAuthenticationContinuationRejection.alreadySubmitted):
         _heldAuthenticationCallbacks.remove(pluginId);
-      case PluginAuthenticationContinuationInvalidRedirect() ||
+      case PluginAuthenticationContinuationInvalidInput() ||
           PluginAuthenticationContinuationNotFound() ||
           PluginAuthenticationContinuationRejected() ||
           PluginAuthenticationContinuationRequestFailure():
@@ -506,17 +512,14 @@ class PluginManagementService({
       rawInput: capturedRedirectUri.toString(),
       challenge: challenge,
     );
-    if (redirectUri == null) return const PluginAuthenticationContinuationResult.invalidRedirect();
+    if (redirectUri == null) return const PluginAuthenticationContinuationResult.invalidInput();
 
     _authenticationRedirectClaims[pluginId] = fence;
     final result = await _pluginRepository.submitAuthenticationRedirect(pluginId: pluginId, redirectUri: redirectUri);
-    if (!_isConnectionFenceCurrent(fence) ||
-        !_activeBridgeIdentityKnown ||
-        _activeBridgeId != fence.bridgeId ||
-        _authenticationFences[pluginId] != null && _authenticationFences[pluginId] != fence) {
+    if (!_continuationFenceHolds(pluginId: pluginId, fence: fence)) {
       return const PluginAuthenticationContinuationResult.uncertain();
     }
-    if (result is PluginAuthenticationContinuationInvalidRedirect ||
+    if (result is PluginAuthenticationContinuationInvalidInput ||
         result is PluginAuthenticationContinuationNotFound ||
         result is PluginAuthenticationContinuationRejected &&
             (result.reason == PluginAuthenticationContinuationRejection.noActive ||
@@ -525,6 +528,45 @@ class PluginManagementService({
     }
     return result;
   }
+
+  /// Sends the code the user pasted for a retained pasted-code challenge. Text
+  /// failing the shared neutral rule returns `invalidInput` without a request.
+  Future<PluginAuthenticationContinuationResult> submitAuthenticationCode({
+    required String pluginId,
+    required String code,
+  }) async {
+    final fence = _authenticationFences[pluginId];
+    if (_disposed || !_connected || fence == null || !_isAuthenticationFenceCurrent(pluginId: pluginId)) {
+      return const PluginAuthenticationContinuationResult.uncertain();
+    }
+    final challenge = _authenticationChallenges.value[pluginId];
+    if (challenge == null) {
+      return const PluginAuthenticationContinuationResult.rejected(
+        reason: PluginAuthenticationContinuationRejection.noActive,
+      );
+    }
+    if (challenge is! PluginAuthenticationPastedCodeChallenge) {
+      return const PluginAuthenticationContinuationResult.rejected(
+        reason: PluginAuthenticationContinuationRejection.wrongKind,
+      );
+    }
+    final normalizedCode = PluginAuthenticationCodeRequest.normalizeCode(code: code);
+    if (normalizedCode == null) return const PluginAuthenticationContinuationResult.invalidInput();
+
+    final result = await _pluginRepository.submitAuthenticationCode(pluginId: pluginId, code: normalizedCode);
+    if (!_continuationFenceHolds(pluginId: pluginId, fence: fence)) {
+      return const PluginAuthenticationContinuationResult.uncertain();
+    }
+    return result;
+  }
+
+  /// Whether a continuation sent under [fence] can still trust its response:
+  /// the connection and bridge are unchanged and no newer start replaced it.
+  bool _continuationFenceHolds({required String pluginId, required _ManagementRequestFence fence}) =>
+      _isConnectionFenceCurrent(fence) &&
+      _activeBridgeIdentityKnown &&
+      _activeBridgeId == fence.bridgeId &&
+      (_authenticationFences[pluginId] == null || _authenticationFences[pluginId] == fence);
 
   Future<PluginAuthenticationCancelResult> cancelAuthentication({required String pluginId}) async {
     final originalFence = _authenticationFences[pluginId];
