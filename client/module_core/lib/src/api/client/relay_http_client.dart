@@ -209,16 +209,13 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
         final json = jsonDecodeMap(responseBody);
         return ApiResponse.success(fromJson(json));
       } catch (error, stackTrace) {
-        if (sensitiveResponse) {
-          loge(
-            "Failed to parse sensitive relay response JSON (${error.runtimeType.toString()}: ${_sourceFreeErrorMessage(error)})",
-            null,
-            stackTrace,
-          );
-          return ApiResponse.error(ApiError.jsonParsing(_sensitiveParsingErrorMarker));
-        }
-        loge("Failed to parse relay response JSON", error, stackTrace);
-        return ApiResponse.error(ApiError.jsonParsing(responseBody));
+        // Response source may contain session content even outside credential APIs.
+        loge(
+          "Failed to parse relay response JSON (${error.runtimeType.toString()}: ${_sourceFreeErrorMessage(error)})",
+          null,
+          stackTrace,
+        );
+        return ApiResponse.error(ApiError.jsonParsing(sensitiveResponse ? _sensitiveParsingErrorMarker : responseBody));
       }
     } on TimeoutException catch (error) {
       // The request may have been dispatched before the response was lost;

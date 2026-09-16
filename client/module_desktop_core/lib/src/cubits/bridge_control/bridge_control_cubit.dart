@@ -373,7 +373,7 @@ class BridgeControlCubit._create({
 
   Future<void> openLogs() async {
     try {
-      final Uri uri = await _logRepository.logFileUri;
+      final Uri uri = await _logRepository.logDirectoryUri;
       final bool opened = await _urlLauncher.launch(uri);
       if (!opened) {
         logw("The desktop could not open the supervised bridge log file");

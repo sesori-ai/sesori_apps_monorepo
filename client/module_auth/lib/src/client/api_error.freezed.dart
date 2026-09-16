@@ -68,10 +68,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-    return 'ApiError()';
-}
 
 
 }
@@ -115,10 +111,6 @@ int get hashCode {
     return Object.hash(runtimeType,jsonString);
 }
 
-@override
-String toString() {
-    return 'ApiError.jsonParsing(jsonString: $jsonString)';
-}
 
 
 }
@@ -187,10 +179,6 @@ int get hashCode {
     return Object.hash(runtimeType,const DeepCollectionEquality().hash(innerError));
 }
 
-@override
-String toString() {
-    return 'ApiError.dartHttpClient(innerError: $innerError)';
-}
 
 
 }
@@ -251,10 +239,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-    return 'ApiError.generic()';
-}
 
 
 }
@@ -287,10 +271,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-    return 'ApiError.notAuthenticated()';
-}
 
 
 }
@@ -331,10 +311,6 @@ int get hashCode {
     return Object.hash(runtimeType,errorCode,rawErrorString);
 }
 
-@override
-String toString() {
-    return 'ApiError.nonSuccessCode(errorCode: $errorCode, rawErrorString: $rawErrorString)';
-}
 
 
 }
@@ -397,10 +373,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-    return 'ApiError.emptyResponse()';
-}
 
 
 }

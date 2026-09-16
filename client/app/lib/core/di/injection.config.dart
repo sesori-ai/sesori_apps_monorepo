@@ -23,6 +23,7 @@ import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
 import 'package:image_picker/image_picker.dart' as _i183;
 import 'package:injectable/injectable.dart' as _i526;
+import 'package:sesori_dart_core/logging.dart' as _i798;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_mobile/capabilities/voice/audio_format_config.dart'
     as _i430;
@@ -84,6 +85,7 @@ import 'package:sesori_mobile/core/platform/go_router_route_dispatcher.dart'
     as _i610;
 import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
     as _i597;
+import 'package:sesori_mobile/core/platform/io_app_log_sink.dart' as _i130;
 import 'package:sesori_mobile/core/platform/mobile_active_bridge_locality.dart'
     as _i877;
 import 'package:sesori_mobile/core/platform/package_info_client.dart' as _i1024;
@@ -174,6 +176,11 @@ extension GetItInjectableX on _i174.GetIt {
         plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i798.LogSink>(
+      () => _i130.IoAppLogSink(
+        directoryClient: gh<_i441.ApplicationSupportDirectoryClient>(),
+      ),
     );
     gh.lazySingleton<_i948.NotificationCanceller>(
       () => registerModule.notificationCanceller(

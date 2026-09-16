@@ -1,77 +1,71 @@
-import "package:sesori_shared/sesori_shared.dart" show StringExtensions;
+import "log_record.dart";
+import "log_sink.dart";
+import "stdout_log_sink.dart";
 
-/// Controls which log messages are emitted.
-///
-/// Ordered from most-verbose to least-verbose. A message is printed when its
-/// level is ≥ the current [logLevel].
-///
-/// **Isolate note**: Dart isolates have separate memory spaces, so changing
-/// [logLevel] in one isolate does not affect others. Call [setLogLevel] at the
-/// entry point of any spawned isolate that needs a non-default level.
-enum LogLevel() { trace, debug, info, warning, error, none }
+export "log_record.dart";
+export "log_sink.dart";
+export "stdout_log_sink.dart";
 
-/// The active log level for this isolate.
-///
-/// Defaults to [LogLevel.debug] in debug builds and [LogLevel.warning] in
-/// release builds. Override at startup (or per-isolate) via [setLogLevel].
+/// Per-isolate defaults: debug in development, info in release builds.
 LogLevel _logLevel = const bool.fromEnvironment("dart.vm.product") ? LogLevel.info : LogLevel.debug;
+LogSink _logSink = const StdoutLogSink();
 
-/// Returns the current log level for this isolate.
 LogLevel get logLevel => _logLevel;
 
-/// Sets the log level for this isolate.
-///
-/// Messages below [level] will be suppressed. Call this from the entry point
-/// of each isolate independently if you need non-default verbosity.
+/// Configure each isolate independently when it needs another verbosity.
 void setLogLevel(LogLevel level) => _logLevel = level;
 
-// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
-void logt(String message, [Object? error, StackTrace? stackTrace]) {
-  if (_logLevel.index <= LogLevel.trace.index) {
-    _printWithDetails(message, error, stackTrace);
-  }
-}
+/// Installs output for this isolate only; existing level filtering still applies.
+void setLogSink({required LogSink sink}) => _logSink = sink;
 
 // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
-void logd(String message, [Object? error, StackTrace? stackTrace]) {
-  if (_logLevel.index <= LogLevel.debug.index) {
-    // ignore: avoid_print, logging intentionally writes to stdout in pure Dart modules
-    message.chunked(chunkSize: 800).forEach(print);
-  }
-}
+void logt(String message, [Object? error, StackTrace? stackTrace]) =>
+    _write(level: LogLevel.trace, message: message, error: error, stackTrace: stackTrace);
 
 // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
-void logi(String message, [Object? error, StackTrace? stackTrace]) {
-  if (_logLevel.index <= LogLevel.info.index) {
-    _printWithDetails(message, error, stackTrace);
-  }
-}
+void logd(String message, [Object? error, StackTrace? stackTrace]) =>
+    _write(level: LogLevel.debug, message: message, error: error, stackTrace: stackTrace);
 
 // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
-void logw(String message, [Object? error, StackTrace? stackTrace]) {
-  if (_logLevel.index <= LogLevel.warning.index) {
-    _printWithDetails(message, error, stackTrace);
-  }
-}
+void logi(String message, [Object? error, StackTrace? stackTrace]) =>
+    _write(level: LogLevel.info, message: message, error: error, stackTrace: stackTrace);
 
 // ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
-void loge(String message, [Object? error, StackTrace? stackTrace]) {
-  if (_logLevel.index <= LogLevel.error.index) {
-    _printWithDetails(message, error, stackTrace);
-  }
-}
+void logw(String message, [Object? error, StackTrace? stackTrace]) =>
+    _write(level: LogLevel.warning, message: message, error: error, stackTrace: stackTrace);
 
-// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, private logging helper keeps optional positional context
-void _printWithDetails(String message, Object? error, StackTrace? stackTrace) {
-  if (error != null) {
-    // ignore: avoid_print, logging intentionally writes to stdout in pure Dart modules
-    print("$message: ${error.toString()}");
-  } else {
-    // ignore: avoid_print, logging intentionally writes to stdout in pure Dart modules
-    message.chunked(chunkSize: 800).forEach(print);
-  }
-  if (stackTrace != null) {
-    // ignore: avoid_print, logging intentionally writes to stdout in pure Dart modules
-    print(stackTrace.toString());
+// ignore: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+void loge(String message, [Object? error, StackTrace? stackTrace]) =>
+    _write(level: LogLevel.error, message: message, error: error, stackTrace: stackTrace);
+
+void _write({
+  required LogLevel level,
+  required String message,
+  // ignore: no_slop_linter/prefer_specific_type, original diagnostic errors are converted at the logging boundary
+  required Object? error,
+  required StackTrace? stackTrace,
+}) {
+  if (_logLevel.index > level.index) return;
+  final record = LogRecord(
+    level: level,
+    timestamp: DateTime.now().toUtc(),
+    message: message,
+    diagnosticError: error?.toString(),
+    stackTrace: stackTrace,
+  );
+  try {
+    _logSink.write(record: record);
+  } on Object catch (sinkError, sinkStack) {
+    const fallback = StdoutLogSink();
+    fallback.write(record: record);
+    fallback.write(
+      record: LogRecord(
+        level: LogLevel.warning,
+        timestamp: DateTime.now().toUtc(),
+        message: "Log sink failed; using console output",
+        diagnosticError: sinkError.toString(),
+        stackTrace: sinkStack,
+      ),
+    );
   }
 }

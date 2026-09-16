@@ -4,7 +4,7 @@ part "api_error.freezed.dart";
 
 part "api_error.g.dart";
 
-@Freezed(fromJson: true)
+@Freezed(fromJson: true, toStringOverride: false)
 sealed class ApiError._() extends Error with _$ApiError {
   factory jsonParsing(String jsonString) = JsonParsingError;
 
@@ -22,6 +22,15 @@ sealed class ApiError._() extends Error with _$ApiError {
 
   factory emptyResponse() = EmptyResponseError;
 
-  // @override
-  // StackTrace? get stackTrace => super.stackTrace;
+  /// Parsing payloads can contain transcripts; keep the data, not its log rendering.
+  @override
+  String toString() => switch (this) {
+    JsonParsingError() => "ApiError.jsonParsing(response body omitted)",
+    DartHttpClientError(:final innerError) => "ApiError.dartHttpClient(innerError: $innerError)",
+    GenericError() => "ApiError.generic()",
+    NotAuthenticatedError() => "ApiError.notAuthenticated()",
+    NonSuccessCodeError(:final errorCode, :final rawErrorString) =>
+      "ApiError.nonSuccessCode(errorCode: $errorCode, rawErrorString: $rawErrorString)",
+    EmptyResponseError() => "ApiError.emptyResponse()",
+  };
 }

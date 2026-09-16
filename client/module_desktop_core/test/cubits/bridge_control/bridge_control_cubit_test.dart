@@ -431,7 +431,7 @@ void main() {
     test("Open Logs launches the repository-owned local file URI", () async {
       await cubit.openLogs();
 
-      expect(urlLauncher.launched, <Uri>[Uri.file("/tmp/sesori/bridge.log")]);
+      expect(urlLauncher.launched, <Uri>[Uri.directory("/tmp/sesori/logs")]);
     });
 
     test("toggle commands drive desired On and Off through the process service", () async {
@@ -849,7 +849,7 @@ class _RecordingDesktopInstanceRepository() implements DesktopInstanceRepository
 
 class _FakeBridgeProcessLogRepository() implements BridgeProcessLogRepository {
   @override
-  Future<Uri> get logFileUri async => Uri.file("/tmp/sesori/bridge.log");
+  Future<Uri> get logDirectoryUri async => Uri.directory("/tmp/sesori/logs");
 }
 
 class _FakeDesktopInstanceService() implements DesktopInstanceService {
