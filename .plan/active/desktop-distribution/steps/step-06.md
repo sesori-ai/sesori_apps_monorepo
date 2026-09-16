@@ -8,7 +8,8 @@ writes, new credentials, or changes to CLI/mobile finalizers.
 
 - `.github/workflows/desktop-release.yml` is manual and read-only. It downloads
   both CPUs' private packages/evidence from one successful qualification run.
-  Source SHA, run ID, channel and macOS platform are explicit inputs. Checkout is
+  Source SHA, run ID and channel are explicit inputs; this workflow is macOS-only.
+  Checkout is
   the workflow's tooling revision; it is not mislabeled as the package source.
 - `.github/scripts/prepare_desktop_release.py` checks the producer run, both bundle
   identities, compiled channel/identity defines, clean-source patch, accepted
@@ -64,7 +65,22 @@ Local implementation checkpoint: `d72b0c9c7945794cbec2eed7fe4c3eba976d6ba7`.
 Before commit, the desktop Python discovery suite passed 31 cases. Two additional
 identity/inventory rejection tests were then added; the resulting focused preparation
 suite passed all 9 cases. Changed workflows passed actionlint. Those inputs were
-committed unchanged. Markdown links and `git diff --check` passed. Logs live in
+committed unchanged. No Git tree was captured at the time of these pre-commit
+runs, so they are not claimed as exact-checkpoint measurements. Commands, all from
+`/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
+
+- `python3 -m unittest discover -s .github/scripts -p 'test_*desktop*.py'`:
+  exit 0, 31 cases, `tests.log`, before the final two test methods existed.
+- `python3 -m unittest discover -s .github/scripts -p 'test_prepare_desktop_release.py'`:
+  exit 0, 9 cases, `preparation-tests-final.log`, after those methods were added.
+- `actionlint .github/workflows/desktop-release.yml .github/workflows/desktop-qualification.yml
+  .github/workflows/release-workflow-ci.yml`: exit 0, `actionlint.log`.
+- `git diff --check`: exit 0; no separate historical log captured.
+- A Python Markdown-link check resolved relative Markdown targets against each
+  document's directory: passed; no separate historical log/script captured.
+  This was a local sanity check, not an independently reproducible saved test.
+
+Logs live in
 `build/desktop-release-preparation-evidence/` (`tests.log`, `actionlint.log`,
 `preparation-tests-final.log`). These are synthetic/offline tests, not a successful
 Actions preparation or native/public-release evidence. No signing credentials were

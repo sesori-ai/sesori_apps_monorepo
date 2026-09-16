@@ -154,8 +154,10 @@ class PrepareDesktopReleaseTest(unittest.TestCase):
         for forbidden in ("contents: write", "secrets.", "gh release", "gh api --method", "macos_signing_ci",
                           "release-all-platforms", "submit-release", "internal-release-attempt"):
             self.assertNotIn(forbidden, workflow)
-        self.assertIn("actions: read", workflow)
-        self.assertIn("contents: read", workflow)
+        # Pin the sole permission block, including its end: no job override or
+        # newly writable scope can be added without revisiting this contract.
+        self.assertEqual(workflow.count("permissions:"), 1)
+        self.assertIn("permissions:\n  contents: read\n  actions: read\n\njobs:", workflow)
         self.assertIn("persist-credentials: false", workflow)
         producer = (repo / ".github/workflows/desktop-qualification.yml").read_text()
         self.assertIn("--channel '${{ inputs.channel }}'", producer)
