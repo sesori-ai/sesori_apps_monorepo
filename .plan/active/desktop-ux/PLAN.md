@@ -176,9 +176,9 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   routes around `AppRouteDef.settings`) is removed; both
   `HarnessSettingsPresentation` variants (`modal` from new session and session
   detail, `pushed` from settings) become "open the modal at the Harnesses tab".
-  The underlying route stays current while the modal is open, so
-  viewed-project and attention suppression continue for the page behind the
-  modal (accepted).
+  The typed route stays unchanged while the modal is open, but the containing
+  root route pauses session activity/view claims. Step 7.b owns that visibility
+  boundary and notification-driven popup dismissal.
 - **D8 — Autostart defaults on, silently, once.** When the account is
   authenticated and no `bridge-desired-state` file exists,
   `DesktopStartupOrchestrator` (the existing owner of desired-state restore)
@@ -193,14 +193,15 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   using local bridge controls and Settings → General → Launch Sesori at login.
 - **D9 — Ask for Full Disk Access upfront, explain why, never block.** A new
   Layer-0 `FileAccessPermission` capability (`check()` →
-  granted/denied/unsupported, `openSystemSettings()`) with an `io` adapter in
+  granted/denied/unknown/unsupported, `openSystemSettings()`) with an `io` adapter in
   the desktop shell. A `FileAccessCubit` re-checks when the window regains
   focus. On macOS, while denied, the home pane shows a card: "Sesori runs
   coding agents on your behalf. Without Full Disk Access macOS interrupts them
   with folder prompts that stall a session while you are away. Grant it in
   System Settings and restart the bridge if a session was already running."
-  Buttons: Open System Settings / Not now (this run only). Settings → Bridge
-  always shows the status row. Nothing is persisted; nothing blocks.
+  Buttons: Open System Settings / Not now (this run only). On macOS, Settings →
+  Bridge → This computer retains the status row after dismissal. The copy explains
+  optional broader file access; no automatic grant/restart. Nothing is persisted.
 - **D10 — App logs go to a rotating file through one sink seam.** `logging.dart`
   in `module_core` gets only the seam: `LogRecord`, `LogSink`, `setLogSink`
   and the default `StdoutLogSink`. `module_core` stays free of `dart:io`; the
@@ -378,19 +379,21 @@ the modal.
   It checks `authSession.currentState is AuthAuthenticated` immediately and
   subscribes to `authStateStream` for later sign-ins, mirroring
   `DesktopAttentionService`. When authenticated and the persisted state is
-  null it writes On through `DesktopInstanceService`, calls
-  `LaunchAtLogin.enable()`, and starts the bridge through
-  `BridgeProcessService`. The write makes every later check a no-op; a
-  duplicate concurrent trigger is harmless because enable and start are
-  idempotent. Errors are logged and never surface as a screen state.
+  missing, `DesktopInstanceService.initializeFirstRunBridgeState()` queues the
+  missing-only On write on its existing desired-state queue/generation. Explicit
+  Off/logout invalidates a pending default; duplicate checks observe the first write.
+  After persistence, the orchestrator rechecks auth/disposal and admits process
+  start before awaiting best-effort `LaunchAtLogin.enable()`, avoiding a late start
+  after Stop during native registration. Errors remain logged, not screen state.
 - Settings exposes the existing native launch-at-login read through
   `BridgeControlCubit` when General opens; no new subscription or preference copy.
 - `FileAccessPermission` in `module_desktop_core/foundation/platform/`;
   `IoFileAccessPermission` in `client/desktop/lib/core/platform/` (macOS
   probe; Windows/Linux → unsupported; settings deep link through the existing
   `UrlLauncher`). `FileAccessCubit` (`module_desktop_core/cubits/`) holds
-  `status` and a per-run `dismissed` flag and re-checks on
-  `WindowHost.states == focused`.
+  `status` and a per-run `dismissed` flag at the app root and re-checks on
+  `WindowHost.states == focused`; one generation rejects stale probe completions.
+  The adapter only opens/closes the protected file, never reads its contents.
 
 ### Log files (D10)
 
@@ -423,8 +426,9 @@ the modal.
   and logs a warning; General preferences show the real launch-at-login state. If the
   bridge cannot start (login required, contention), the existing process
   states and supervision card apply.
-- FDA probe errors other than EPERM → `unsupported` (no card, status row reads
-  "Unknown"). The card never blocks anything.
+- FDA permission errors EPERM/EACCES → denied; absent paths/home or unexpected
+  failures → logged unknown. Unsupported is reserved for other OSes; no protected
+  probe there. The card never blocks anything.
 - Log sink failures never reach callers; logging falls back to stdout.
 
 ## Compatibility
@@ -461,8 +465,9 @@ New in-memory mutable parts:
 - `DesktopSidebarCubit` state (three fields) and its write future.
 - `RecentSessionsCubit` map plus five stream subscriptions (all mutation
   delegated to `SessionListService`).
-- `FileAccessCubit` status + per-run dismissed flag, one subscription.
-- `DesktopStartupOrchestrator`: one added auth subscription.
+- `FileAccessCubit` status + per-run dismissed flag, one subscription and probe generation.
+- `DesktopStartupOrchestrator`: one added auth subscription and disposal bit.
+  First-run persistence reuses the existing service write queue/restore generation.
 - One global `LogSink` and each file writer's open file handle.
 
 Deliberately not added: per-project refetch debounce timers (patching replaces

@@ -32,7 +32,11 @@ class const DesktopFileAccessCard({super.key}) extends StatelessWidget {
                 spacing: PregoSpacing.sm,
                 children: [
                   TextButton(onPressed: cubit.openSystemSettings, child: Text(loc.desktopFileAccessOpenSettings)),
-                  TextButton(onPressed: cubit.dismiss, child: Text(loc.desktopFileAccessNotNow)),
+                  TextButton(
+                    onPressed: cubit.dismiss,
+                    style: TextButton.styleFrom(foregroundColor: context.prego.colors.textSecondary),
+                    child: Text(loc.desktopFileAccessNotNow),
+                  ),
                 ],
               ),
             ],

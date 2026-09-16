@@ -251,6 +251,10 @@ class const _DesktopBridgeSettingsPage({required final VoidCallback onClose}) ex
                             FileAccessStatus.denied => loc.desktopFileAccessDenied,
                             FileAccessStatus.unknown || FileAccessStatus.unsupported => loc.desktopFileAccessUnknown,
                           }),
+                          trailing: Tooltip(
+                            message: loc.desktopFileAccessOpenSettings,
+                            child: const Icon(TablerRegular.external_link),
+                          ),
                           onTap: access.openSystemSettings,
                         ),
                       PregoGroupedRow(

@@ -23,7 +23,7 @@ Shared settings, overlay navigation and modal evidence use `step-07a.md`,
 | [x] | 7.a | `desktop-ux/settings-composition` | `🌿 [desktop-ux] Prepare shared settings composition [step 8/15]` | ≤ 500 | done |
 | [x] | 7.b | `desktop-ux/overlay-navigation` | `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/15]` | ≤ 700 | done |
 | [x] | 7.c | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 10/15]` | ≤ 1,750 | done |
-| [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/15]` | ≤ 1,000 | pending |
+| [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/15]` | ≤ 1,000 | in-progress |
 | [ ] | 9 | `desktop-ux/app-log-files` | `🌿 [desktop-ux] Write app logs to rotating files [step 12/15]` | ≤ 700 | pending |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 13/15]` | ≤ 600 | pending |
 | [ ] | 11 | `desktop-ux/regression-docs` | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 14/15]` | ≤ 600 | pending |
@@ -47,7 +47,7 @@ step 12 last. Only one PR is open; one local successor may be prepared.
 - Step 7.a: [PR #1500](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1500).
 - Step 7.b: [PR #1502](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1502).
 - Step 7.c: [PR #1501](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1501),
-  reopening after #1502's forward merge; published history is preserved without force-pushing.
+  merged after #1502's forward integration, preserving published history without force-pushing.
 
 ## Unattended execution
 

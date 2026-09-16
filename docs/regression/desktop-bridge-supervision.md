@@ -28,6 +28,12 @@ and keep native close/quit behavior safe.
   restores/focuses the owner's window. A killed owner releases the OS lock;
   stale activation metadata cannot block the next launch.
 - Desired bridge On/Off state persists under desktop-owned application data.
+  After authentication, a missing preference initializes On, admits helper start
+  and best-effort enables launch at login. Existing On/Off (including invalid
+  contents treated as Off) is never overwritten. The existing write queue and
+  restore generation make newer explicit Off/logout win pending initialization.
+  Native enable failure leaves On intact and logs the error; General reads the
+  actual OS registration when opened. No helper starts before dispatcher readiness.
   Startup restores last-On through the process service after the dispatcher is
   ready; signed-out restore reaches login-required without spawning a helper.
   Launch at login is an idempotent per-user registration that starts the app
@@ -145,6 +151,15 @@ and keep native close/quit behavior safe.
   progress until that bounded operation settles. One desktop connection pill
   overlays the main pane without moving routed content; local Off suppresses
   bridge-offline copy while relay recovery remains available.
+- macOS home offers optional Full Disk Access guidance for local coding agents:
+  folder prompts may pause unattended work; broader protected-file access is
+  optional. Open System Settings never grants access or restarts a helper.
+  Not now hides the card for this app run; Settings → Bridge → This computer
+  retains the status/action. Focus return rechecks without polling. The probe
+  opens/closes a protected file read-only without reading its contents; expected
+  permission failures mean denied, other failures remain logged unknown.
+  Other platforms perform no probe and show no permission row/card. Neither
+  the guidance nor its dismissal changes another connected computer's settings.
 - Appearance and default-input preferences are read before the first desktop
   frame, provided above the router, and persisted through the same shared
   cubits as mobile. Changing appearance in Settings re-themes the whole window
@@ -211,6 +226,10 @@ verify the actual relocated helper, not merely the presence of its binary.
 - No tray or command subscriptions until a signed-in screen reads the cubit.
 - A second process creates another tray/helper, fails to focus the owner, or a
   killed owner leaves a lock that bricks future launches.
+- First-run defaults overwrite saved intent, repeat after native-enable failure,
+  start after a superseding Off/logout, or block rendering. Permission guidance
+  claims unknown access is denied/granted, probes on unsupported platforms,
+  loses dismissal after navigation, or lets an older focus probe replace newer state.
 - Desired Off restores On, last-On never restores, startup bypasses auth gating,
   or bridge restore begins before the control dispatcher owns its event stream.
   Quit while desired On unexpectedly persists Off, or an explicit Take Over is
