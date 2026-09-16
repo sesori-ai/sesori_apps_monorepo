@@ -9,7 +9,7 @@ import "recent_sessions_state.dart";
 extension RecentSessionsResolvers on RecentSessionsLoaded {
   List<Session> rows({required String? selectedSessionId}) {
     final recent = visibleSessions.take(3).toList();
-    final selected = sourceSessions.firstWhereOrNull((session) => session.id == selectedSessionId);
+    final selected = visibleSessions.firstWhereOrNull((session) => session.id == selectedSessionId);
     return [
       ...recent,
       if (selected != null && !recent.any((session) => session.id == selected.id)) selected,
