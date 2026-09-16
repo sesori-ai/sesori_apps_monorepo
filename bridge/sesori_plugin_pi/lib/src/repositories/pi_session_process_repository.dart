@@ -466,7 +466,9 @@ final class PiSessionProcessRepository({
   }
 
   void invalidateSelection({required PiSessionConnection connection}) {
-    _requiredResident(connection).selection = null;
+    final resident = _residents[connection.sessionId];
+    if (resident == null || resident.generation != connection.generation) return;
+    resident.selection = null;
   }
 
   Future<PiAgentState> _readState(_ResidentClient resident) async {

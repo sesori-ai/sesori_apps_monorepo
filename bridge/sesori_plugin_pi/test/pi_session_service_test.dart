@@ -1456,6 +1456,94 @@ void main() {
     );
   }
 
+  test("pre-start command refresh failures fence delayed agents by replacing the resident", () async {
+    final process = FakePiProcess();
+    final replacement = FakePiProcess();
+    final fixture = _Fixture(processes: [process, replacement]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "high");
+
+    final accepted = service.sendCommand(
+      sessionId: "session",
+      promptId: "pre-start-command",
+      directory: "/project",
+      command: "maybe-start-agent",
+      arguments: "",
+      userVisibleArguments: null,
+      variant: variant,
+      model: model,
+    );
+    await _answerEntries(process);
+    final initialModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+    final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
+    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+    final commandPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: commandPrompt["id"]! as String, command: "prompt");
+    final commandState = await waitForCommand(process: process, type: "get_state");
+    await accepted;
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "after-pre-start-failure",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "next")],
+      userVisibleText: "next",
+      variant: variant,
+      model: model,
+    );
+    process.emitFailure(id: commandState["id"]! as String, command: "get_state", error: "unavailable");
+
+    await _answerEntries(replacement);
+    expect(process.killed, isTrue);
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+    final replacementModel = await waitForCommand(process: replacement, type: "set_model");
+    replacement.emitResponse(id: replacementModel["id"]! as String, command: "set_model");
+    final replacementThinking = await waitForCommand(process: replacement, type: "set_thinking_level");
+    replacement.emitResponse(id: replacementThinking["id"]! as String, command: "set_thinking_level");
+    final nextPrompt = await waitForCommand(process: replacement, type: "prompt");
+    replacement.emitResponse(id: nextPrompt["id"]! as String, command: "prompt");
+    replacement.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  test("command refresh transport failures tear down instead of hanging in flight", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "high");
+
+    final accepted = service.sendCommand(
+      sessionId: "session",
+      promptId: "transport-command",
+      directory: "/project",
+      command: "start-agent",
+      arguments: "",
+      userVisibleArguments: null,
+      variant: variant,
+      model: model,
+    );
+    await _answerEntries(process);
+    final initialModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+    final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
+    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+    final commandPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: commandPrompt["id"]! as String, command: "prompt");
+    await waitForCommand(process: process, type: "get_state");
+    await accepted;
+
+    process.failStdout(error: const SocketException("broken stdout"));
+
+    await _waitForIdle(service: service, sessionId: "session");
+    expect(process.killed, isTrue);
+  });
+
   test("queued work resets a terminal retry status before dispatch", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);

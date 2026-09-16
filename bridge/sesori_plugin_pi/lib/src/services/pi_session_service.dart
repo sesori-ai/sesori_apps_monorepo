@@ -508,12 +508,22 @@ final class PiSessionService({
     return nextVariant != null && nextVariant != effectiveSelection.variant.wireValue;
   }
 
+  bool _isConnectionFailure(Object error) =>
+      error is TimeoutException ||
+      error is PiRpcWriteException ||
+      error is PiRpcStdoutException ||
+      error is PiRpcStdinException ||
+      error is PiRpcProcessExitException ||
+      error is PiRpcNotRunningException ||
+      error is PiRpcDisposedException;
+
   Future<void> _runTurn({
     required String sessionId,
     required _PiSessionTurnState state,
     required _PiTurn turn,
     required int generation,
   }) async {
+    var commandRefreshRequiresTeardown = false;
     try {
       final idleReap = state.idleReap;
       if (idleReap != null) await idleReap;
@@ -576,7 +586,11 @@ final class PiSessionService({
             _processes.invalidateSelection(connection: connection);
             turn.effectiveSelection = null;
           }
-          if (!turn.agentStarted || error is TimeoutException || error is PiRpcProcessExitException) rethrow;
+          if (_isConnectionFailure(error)) rethrow;
+          if (!turn.agentStarted) {
+            commandRefreshRequiresTeardown = true;
+            rethrow;
+          }
           Log.w("[pi] failed to refresh accepted command state for session id=$sessionId", error, stack);
         }
         await Future<void>.delayed(Duration.zero);
@@ -645,14 +659,13 @@ final class PiSessionService({
         return;
       }
       final connection = turn.connection;
-      final connectionFailed =
-          turn.promptDispatched && (error is TimeoutException || error is PiRpcProcessExitException);
+      final connectionFailed = turn.promptDispatched && (commandRefreshRequiresTeardown || _isConnectionFailure(error));
       if (connectionFailed && connection != null) {
         _extensionUi.cancelForOwner(
           sessionId: sessionId,
           processGeneration: connection.generation,
         );
-        if (error is TimeoutException) {
+        if (error is! PiRpcProcessExitException) {
           await _processes.teardownConnection(connection: connection);
           if (!_ownsTurn(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
         }

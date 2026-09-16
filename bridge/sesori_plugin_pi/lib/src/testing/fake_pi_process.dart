@@ -64,6 +64,12 @@ class FakePiProcess({bool stdinCloseCompletes = true, bool stdinWritesFail = fal
     _stdout.add(bytes);
   }
 
+  /// Fails stdout while leaving process-exit timing under the test's control.
+  void failStdout({required Object error}) {
+    if (_stdout.isClosed) return;
+    _stdout.addError(error, StackTrace.current);
+  }
+
   /// Pushes raw stderr bytes, including non-UTF-8 output from a crashing child.
   void emitStderrRaw({required List<int> bytes}) {
     if (_stderr.isClosed) return;
