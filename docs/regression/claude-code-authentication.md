@@ -82,6 +82,9 @@ restart the bridge mid-login, and use an explicit `bin` override.
 - No challenge although the CLI printed a URL (parser drift after a CLI upgrade), or a start that outlives the
   90-second URL budget.
 - A failed or successful login spawn changing Claude's session health or setup status by itself.
+- A bridge that cannot exit promptly after a login ended, for example because a budget timer outlived the operation.
+- A code of the wrong shape leaving the sheet waiting instead of ending in failure, or an operation that stays open
+  after the CLI rejected a wrong code and exited.
 
 ## Known Limitations
 
