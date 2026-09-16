@@ -4,7 +4,7 @@
 
 - **Plan slug:** `claude-code-login`
 - **Created:** 2026-09-16
-- **State:** Step 1/6 merged (#1508); Step 2/6 in review
+- **State:** Steps 1–2/6 merged (#1508, #1516); Step 3/6 in review
 - **Series:** six PRs, titles fixed under "Fixed PR Series"
 
 ## Goal

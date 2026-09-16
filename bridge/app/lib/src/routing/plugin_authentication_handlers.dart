@@ -74,6 +74,41 @@ class PostPluginAuthenticationRedirectHandler({required final PluginLifecycleSer
   }
 }
 
+class PostPluginAuthenticationCodeHandler({required final PluginLifecycleService _lifecycleService})
+    extends RequestHandlerBase {
+  this : super(HttpMethod.post, "/plugin/:id/authentication/code");
+
+  @override
+  Future<RelayResponse> handleInternal(
+    RelayRequest request, {
+    required RequestTargetParams targetParams,
+  }) async {
+    try {
+      final pluginId = targetParams.pathParams["id"];
+      if (pluginId == null) return buildErrorResponse(request, 400, "plugin id is required");
+      final body = request.body;
+      if (body == null) return buildErrorResponse(request, 400, "authentication code body is required");
+      final PluginAuthenticationCodeRequest codeRequest;
+      try {
+        codeRequest = PluginAuthenticationCodeRequest.fromJson(jsonDecodeMap(body));
+      } on Object {
+        return buildErrorResponse(request, 400, "invalid authentication code body");
+      }
+      final code = PluginAuthenticationCodeRequest.normalizeCode(code: codeRequest.code);
+      if (code == null) return buildErrorResponse(request, 400, "invalid authentication code");
+      await _lifecycleService.submitAuthenticationCode(pluginId: pluginId, code: code);
+      return buildOkJsonResponse(request: request, body: const SuccessEmptyResponse());
+    } on PluginManagementPluginNotFoundException {
+      return buildErrorResponse(request, 404, "plugin not found");
+    } on PluginAuthenticationContinuationConflictException catch (error) {
+      return buildJsonErrorResponse(request: request, status: 409, body: error.conflict.toJson());
+    } on Object catch (error, stackTrace) {
+      Log.w("POST ${request.path}: plugin authentication code submission failed", error, stackTrace);
+      return buildErrorResponse(request, 500, "plugin authentication code submission failed");
+    }
+  }
+}
+
 class DeletePluginAuthenticationHandler({required final PluginLifecycleService _lifecycleService})
     extends RequestHandlerBase {
   this : super(HttpMethod.delete, "/plugin/:id/authentication");

@@ -462,6 +462,31 @@ class PluginLifecycleService({
   Future<void> submitAuthenticationRedirect({
     required String pluginId,
     required Uri redirectUri,
+  }) => _submitAuthenticationContinuation(
+    pluginId: pluginId,
+    submit: ({required generation}) => _lifecycleRepository.submitAuthenticationRedirect(
+      pluginId: pluginId,
+      generation: generation,
+      redirectUri: redirectUri,
+    ),
+  );
+
+  /// Hands a pasted code, already validated by the route, to the active operation.
+  Future<void> submitAuthenticationCode({
+    required String pluginId,
+    required String code,
+  }) => _submitAuthenticationContinuation(
+    pluginId: pluginId,
+    submit: ({required generation}) => _lifecycleRepository.submitAuthenticationCode(
+      pluginId: pluginId,
+      generation: generation,
+      code: code,
+    ),
+  );
+
+  Future<void> _submitAuthenticationContinuation({
+    required String pluginId,
+    required Future<PluginRuntimeAuthenticationContinuationResult> Function({required int generation}) submit,
   }) async {
     _requireAcceptingRequests();
     if (_setupById == null) {
@@ -478,11 +503,7 @@ class PluginLifecycleService({
         reason: PluginAuthenticationContinuationConflictReason.noActive,
       );
     }
-    final result = await _lifecycleRepository.submitAuthenticationRedirect(
-      pluginId: pluginId,
-      generation: authentication.operation.generation,
-      redirectUri: redirectUri,
-    );
+    final result = await submit(generation: authentication.operation.generation);
     switch (result) {
       case PluginRuntimeAuthenticationContinuationApplied():
         return;
@@ -583,6 +604,17 @@ class PluginLifecycleService({
                   authorizationUrl: authorizationUri.toString(),
                   expectedCallbackUrl: expectedCallbackUri.toString(),
                 ),
+              );
+            }
+            return terminal;
+          }(),
+          PluginAuthenticationPastedCodeChallenge(:final authorizationUri) => () {
+            if (authorizationUri.scheme != "https" || authorizationUri.host.isEmpty) {
+              throw StateError("Plugin authentication returned an invalid authorization URL.");
+            }
+            if (!authentication.challenge.isCompleted) {
+              authentication.challenge.complete(
+                PluginAuthenticationChallengeResponse.pastedCode(authorizationUrl: authorizationUri.toString()),
               );
             }
             return terminal;

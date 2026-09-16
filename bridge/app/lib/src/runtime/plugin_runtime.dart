@@ -344,36 +344,72 @@ class PluginRuntime({
     required int generation,
     required Uri redirectUri,
   }) async {
-    final slot = _requireSlot(pluginId);
-    final authentication = slot.authentication;
+    final authentication = _continuableAuthentication(pluginId: pluginId, generation: generation);
+    if (authentication == null) return _staleContinuation;
+    switch (authentication.operation) {
+      case PluginAuthenticationDeviceCodeOperation() || PluginAuthenticationPastedCodeOperation():
+        return _wrongKindContinuation;
+      case PluginAuthenticationBrowserOperation(:final submitRedirect):
+        return await _submitContinuation(
+          authentication: authentication,
+          submit: () => submitRedirect(redirectUri: redirectUri),
+        );
+    }
+  }
+
+  Future<PluginRuntimeAuthenticationContinuationResult> submitAuthenticationCode({
+    required String pluginId,
+    required int generation,
+    required String code,
+  }) async {
+    final authentication = _continuableAuthentication(pluginId: pluginId, generation: generation);
+    if (authentication == null) return _staleContinuation;
+    switch (authentication.operation) {
+      case PluginAuthenticationDeviceCodeOperation() || PluginAuthenticationBrowserOperation():
+        return _wrongKindContinuation;
+      case PluginAuthenticationPastedCodeOperation(:final submitCode):
+        return await _submitContinuation(
+          authentication: authentication,
+          submit: () => submitCode(code: code),
+        );
+    }
+  }
+
+  static const _staleContinuation = PluginRuntimeAuthenticationContinuationConflict(
+    reason: PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+  );
+
+  static const _wrongKindContinuation = PluginRuntimeAuthenticationContinuationConflict(
+    reason: PluginRuntimeAuthenticationContinuationConflictReason.wrongKind,
+  );
+
+  /// The active authentication [generation] names, or null once it is stale.
+  _PluginRuntimeAuthentication? _continuableAuthentication({required String pluginId, required int generation}) {
+    final authentication = _requireSlot(pluginId).authentication;
     if (_shuttingDown ||
         authentication == null ||
         authentication.generation != generation ||
         !authentication.acceptingContinuations) {
+      return null;
+    }
+    return authentication;
+  }
+
+  /// Hands the operation its one continuation. The flag is set before the
+  /// plugin call, so any later submission is `alreadySubmitted`.
+  Future<PluginRuntimeAuthenticationContinuationResult> _submitContinuation({
+    required _PluginRuntimeAuthentication authentication,
+    required Future<void> Function() submit,
+  }) async {
+    if (authentication.continuationSubmitted) {
       return const PluginRuntimeAuthenticationContinuationConflict(
-        reason: PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+        reason: PluginRuntimeAuthenticationContinuationConflictReason.alreadySubmitted,
       );
     }
-    switch (authentication.operation) {
-      case PluginAuthenticationDeviceCodeOperation():
-        return const PluginRuntimeAuthenticationContinuationConflict(
-          reason: PluginRuntimeAuthenticationContinuationConflictReason.wrongKind,
-        );
-      case PluginAuthenticationBrowserOperation(:final submitRedirect):
-        if (authentication.redirectSubmitted) {
-          return const PluginRuntimeAuthenticationContinuationConflict(
-            reason: PluginRuntimeAuthenticationContinuationConflictReason.alreadySubmitted,
-          );
-        }
-        authentication.redirectSubmitted = true;
-        await submitRedirect(redirectUri: redirectUri);
-        if (_shuttingDown || authentication.aborted) {
-          return const PluginRuntimeAuthenticationContinuationConflict(
-            reason: PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
-          );
-        }
-        return const PluginRuntimeAuthenticationContinuationApplied();
-    }
+    authentication.continuationSubmitted = true;
+    await submit();
+    if (_shuttingDown || authentication.aborted) return _staleContinuation;
+    return const PluginRuntimeAuthenticationContinuationApplied();
   }
 
   void _abortAuthentication({
@@ -2175,7 +2211,7 @@ class _PluginRuntimeAuthentication({
   required final PluginAuthenticationOperation operation,
 }) {
   bool acceptingContinuations = true;
-  bool redirectSubmitted = false;
+  bool continuationSubmitted = false;
   bool aborted = false;
 }
 

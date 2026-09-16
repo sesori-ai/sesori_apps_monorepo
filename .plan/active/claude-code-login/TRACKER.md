@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan slug:** `claude-code-login`
-- **Series state:** Step 1/6 merged; Step 2/6 in review
-- **Current branch:** `claude-code-login-step-2`
-- **Next action:** land Step 2 review fixes; Step 3 proceeds locally until Step 2 merges
+- **Series state:** Steps 1–2/6 merged; Step 3/6 in review
+- **Current branch:** `claude-code-login-step-3`
+- **Next action:** land Step 3 review fixes; Step 4 proceeds locally until Step 3 merges
 
 ## Locked Product Decisions
 
@@ -35,8 +35,8 @@
 | Step | Title | Status | PR | Evidence |
 |---|---|---|---|---|
 | 1/6 | 🌱 Publish the plan | Merged | #1508 | Architecture plan review 2026-09-16: rejected with 4 must-fix and 2 optional findings; all applied, not re-reviewed per repository rules. PR automated review: five waves, 20 findings applied (one superseded by the second wave); CLI login flow verified on 2.1.221, 2.1.269, 2.1.272, and 2.1.273 |
-| 2/6 | 🚧 Add pasted-code login to the wire contract and apps | In review | — | Shared, `module_core`, `module_app_ui`, `client/app`, and `client/desktop` analyze and targeted tests pass; divergences (a `codeRetry` state, shared `normalizeCode`, `invalidRedirect` renamed `invalidInput`, no monospace field) recorded in `PLAN.md` |
-| 3/6 | 🚧 Route pasted-code login through the bridge | Not started | — | — |
+| 2/6 | 🚧 Add pasted-code login to the wire contract and apps | Merged | #1516 | Shared, `module_core`, `module_app_ui`, `client/app`, and `client/desktop` analyze and targeted tests pass; divergences (a `codeRetry` state, shared `normalizeCode`, `invalidRedirect` renamed `invalidInput`, no monospace field) recorded in `PLAN.md`; architecture implementation review approved. PR automated review: one wave, 2 findings fixed (a `notFound` submission releases the retained login; Retry clears the previous code), 5 declined |
+| 3/6 | 🚧 Route pasted-code login through the bridge | In review | — | `sesori_plugin_interface` and `bridge/app` analyze clean; interface, runtime gate, lifecycle service, and handler tests pass; architecture implementation review approved, its optional finding (document the code guarantee and error privacy for plugins) applied |
 | 4/6 | 🚧 Drive Claude CLI login from the bridge | Not started | — | — |
 | 5/6 | 🌱 Reconcile Claude login documentation | Not started | — | — |
 | 6/6 | 🌱 Verify and retire the plan | Not started | — | — |
