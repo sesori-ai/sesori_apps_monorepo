@@ -1128,6 +1128,66 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
+  test("late selection changes requeue an admitted steering turn before setters", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "high");
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "race-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: variant,
+      model: model,
+    );
+    await _answerEntries(process);
+    final initialModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+    final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
+    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+
+    final history = fixture.repository.loadHistory(sessionId: "session", knownDirectories: const {"/project"});
+    final historyCommand = await _waitForNthCommand(process: process, type: "get_entries", count: 2);
+    final admitted = service.sendPrompt(
+      sessionId: "session",
+      promptId: "race-second",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "second")],
+      userVisibleText: "second",
+      variant: variant,
+      model: model,
+    );
+    process.emit(frame: {"type": "thinking_level_changed", "level": "low"});
+    await pump();
+    process.emitResponse(
+      id: historyCommand["id"]! as String,
+      command: "get_entries",
+      data: const {"entries": <Object?>[], "leafId": null},
+    );
+    await history;
+    await admitted;
+    await pump();
+
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+    expect(process.written.where((frame) => frame["type"] == "set_thinking_level"), hasLength(1));
+    process.emit(frame: {"type": "agent_settled"});
+
+    final restoredThinking = await _waitForNthCommand(process: process, type: "set_thinking_level", count: 2);
+    process.emitResponse(id: restoredThinking["id"]! as String, command: "set_thinking_level");
+    final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
   for (final runtimeState in [
     (name: "a missing model", model: null, thinkingLevel: "high"),
     (
@@ -1456,58 +1516,72 @@ void main() {
     );
   }
 
-  test("pre-start command refresh failures fence delayed agents by replacing the resident", () async {
-    final process = FakePiProcess();
-    final replacement = FakePiProcess();
-    final fixture = _Fixture(processes: [process, replacement]);
-    addTearDown(fixture.dispose);
-    final service = fixture.service();
-    const model = (providerID: "provider", modelID: "model");
-    const variant = PluginSessionVariant(id: "high");
+  for (final failSecondBarrier in [false, true]) {
+    test(
+      "pre-start command ${failSecondBarrier ? "second-barrier " : ""}refresh failures replace the resident",
+      () async {
+        final process = FakePiProcess();
+        final replacement = FakePiProcess();
+        final fixture = _Fixture(processes: [process, replacement]);
+        addTearDown(fixture.dispose);
+        final service = fixture.service();
+        const model = (providerID: "provider", modelID: "model");
+        const variant = PluginSessionVariant(id: "high");
 
-    final accepted = service.sendCommand(
-      sessionId: "session",
-      promptId: "pre-start-command",
-      directory: "/project",
-      command: "maybe-start-agent",
-      arguments: "",
-      userVisibleArguments: null,
-      variant: variant,
-      model: model,
+        final accepted = service.sendCommand(
+          sessionId: "session",
+          promptId: "pre-start-command",
+          directory: "/project",
+          command: "maybe-start-agent",
+          arguments: "",
+          userVisibleArguments: null,
+          variant: variant,
+          model: model,
+        );
+        await _answerEntries(process);
+        final initialModel = await waitForCommand(process: process, type: "set_model");
+        process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
+        final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
+        process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
+        final commandPrompt = await waitForCommand(process: process, type: "prompt");
+        process.emitResponse(id: commandPrompt["id"]! as String, command: "prompt");
+        final commandState = await waitForCommand(process: process, type: "get_state");
+        var failedState = commandState;
+        if (failSecondBarrier) {
+          process.emitResponse(
+            id: commandState["id"]! as String,
+            command: "get_state",
+            data: _stateData(process: process, streaming: false),
+          );
+          failedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
+        }
+        await accepted;
+
+        await service.sendPrompt(
+          sessionId: "session",
+          promptId: "after-pre-start-failure",
+          directory: "/project",
+          parts: [const PluginPromptPart.text(text: "next")],
+          userVisibleText: "next",
+          variant: variant,
+          model: model,
+        );
+        process.emitFailure(id: failedState["id"]! as String, command: "get_state", error: "unavailable");
+
+        await _answerEntries(replacement);
+        expect(process.killed, isTrue);
+        expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+        final replacementModel = await waitForCommand(process: replacement, type: "set_model");
+        replacement.emitResponse(id: replacementModel["id"]! as String, command: "set_model");
+        final replacementThinking = await waitForCommand(process: replacement, type: "set_thinking_level");
+        replacement.emitResponse(id: replacementThinking["id"]! as String, command: "set_thinking_level");
+        final nextPrompt = await waitForCommand(process: replacement, type: "prompt");
+        replacement.emitResponse(id: nextPrompt["id"]! as String, command: "prompt");
+        replacement.emit(frame: {"type": "agent_settled"});
+        await _waitForIdle(service: service, sessionId: "session");
+      },
     );
-    await _answerEntries(process);
-    final initialModel = await waitForCommand(process: process, type: "set_model");
-    process.emitResponse(id: initialModel["id"]! as String, command: "set_model");
-    final initialThinking = await waitForCommand(process: process, type: "set_thinking_level");
-    process.emitResponse(id: initialThinking["id"]! as String, command: "set_thinking_level");
-    final commandPrompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: commandPrompt["id"]! as String, command: "prompt");
-    final commandState = await waitForCommand(process: process, type: "get_state");
-    await accepted;
-
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "after-pre-start-failure",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "next")],
-      userVisibleText: "next",
-      variant: variant,
-      model: model,
-    );
-    process.emitFailure(id: commandState["id"]! as String, command: "get_state", error: "unavailable");
-
-    await _answerEntries(replacement);
-    expect(process.killed, isTrue);
-    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
-    final replacementModel = await waitForCommand(process: replacement, type: "set_model");
-    replacement.emitResponse(id: replacementModel["id"]! as String, command: "set_model");
-    final replacementThinking = await waitForCommand(process: replacement, type: "set_thinking_level");
-    replacement.emitResponse(id: replacementThinking["id"]! as String, command: "set_thinking_level");
-    final nextPrompt = await waitForCommand(process: replacement, type: "prompt");
-    replacement.emitResponse(id: nextPrompt["id"]! as String, command: "prompt");
-    replacement.emit(frame: {"type": "agent_settled"});
-    await _waitForIdle(service: service, sessionId: "session");
-  });
+  }
 
   test("command refresh transport failures tear down instead of hanging in flight", () async {
     final process = FakePiProcess();
@@ -1542,6 +1616,31 @@ void main() {
 
     await _waitForIdle(service: service, sessionId: "session");
     expect(process.killed, isTrue);
+  });
+
+  test("pre-dispatch state transport failures tear down the resident", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "inherited-transport-failure",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "prompt")],
+      userVisibleText: "prompt",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process, answerInitialSelection: false);
+    await waitForCommand(process: process, type: "get_state");
+
+    process.failStdout(error: const SocketException("broken stdout"));
+
+    await _waitForIdle(service: service, sessionId: "session");
+    expect(process.killed, isTrue);
+    expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
   });
 
   test("queued work resets a terminal retry status before dispatch", () async {

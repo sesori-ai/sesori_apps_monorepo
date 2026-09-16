@@ -71,6 +71,12 @@ final class const PiSessionConnection({
   required final int generation,
 });
 
+enum PiSessionProcessFailureDisposition() {
+  request,
+  teardownConnection,
+  connectionExited,
+}
+
 sealed class const PiSessionAbortResult();
 
 final class const PiSessionAbortAcknowledged() extends PiSessionAbortResult;
@@ -463,6 +469,19 @@ final class PiSessionProcessRepository({
     final state = await _readState(resident);
     resident.selection = state.selection;
     return state;
+  }
+
+  PiSessionProcessFailureDisposition classifyFailure({required Object error}) {
+    if (error is PiRpcProcessExitException) return PiSessionProcessFailureDisposition.connectionExited;
+    if (error is TimeoutException ||
+        error is PiRpcWriteException ||
+        error is PiRpcStdoutException ||
+        error is PiRpcStdinException ||
+        error is PiRpcNotRunningException ||
+        error is PiRpcDisposedException) {
+      return PiSessionProcessFailureDisposition.teardownConnection;
+    }
+    return PiSessionProcessFailureDisposition.request;
   }
 
   void invalidateSelection({required PiSessionConnection connection}) {
