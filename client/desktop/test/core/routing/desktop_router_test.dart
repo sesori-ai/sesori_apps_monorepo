@@ -270,7 +270,6 @@ void main() {
       expect(router.state.uri.toString(), _sessions.buildPath());
     });
   }
-
 }
 
 Iterable<_RouteRegistration> _routeRegistrations({

@@ -13,6 +13,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
+import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
 import "package:sesori_desktop/core/widgets/desktop_escape_dismissal.dart";
 import "package:sesori_desktop/features/auth_gate/auth_gate.dart";
 import "package:sesori_desktop/features/settings/desktop_settings_modal.dart";
@@ -221,7 +222,11 @@ void main() {
                 final shell = buildDesktopRoutes().single as ShellRoute;
                 final gate = shell.builder!(context, state, child) as AuthGate;
                 final shortcuts = (gate.child as Builder).builder(context) as CallbackShortcuts;
-                return CallbackShortcuts(bindings: shortcuts.bindings, child: child);
+                final provider = shortcuts.child as DesktopCockpitCubitProvider;
+                return CallbackShortcuts(
+                  bindings: shortcuts.bindings,
+                  child: (provider.child as DesktopCockpitShell).child,
+                );
               },
             ),
           ),
@@ -385,41 +390,51 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("minimum window keeps tabs reachable; Escape and outside preserve the route", (tester) async {
-    tester.view.physicalSize = const Size(560, 480);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    final router = await open(tester: tester, tab: DesktopSettingsTab.general);
-    final opener = tester.element(find.text("open", skipOffstage: false));
-    final bounds = tester.getRect(find.byKey(const Key("desktop-settings-modal")));
-    expect(bounds.left, greaterThanOrEqualTo(12));
-    expect(bounds.right, lessThanOrEqualTo(548));
-    expect(bounds.bottom, lessThanOrEqualTo(468));
-    for (final tab in DesktopSettingsTab.values) {
-      expect(find.byKey(ValueKey("desktop-settings-tab-${tab.name}")).hitTestable(), findsOneWidget);
-    }
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-    await tester.pumpAndSettle();
-    expect(router.state.uri.path, "/session");
-    expect(tester.element(find.text("open")), same(opener));
-    await tester.tap(find.text("open"));
-    await tester.pumpAndSettle();
-    await tester.tapAt(const Offset(2, 2));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
-    expect(tester.element(find.text("open")), same(opener));
-    final modifier = Theme.of(tester.element(find.text("open"))).platform == TargetPlatform.macOS
-        ? LogicalKeyboardKey.metaLeft
-        : LogicalKeyboardKey.controlLeft;
-    await tester.sendKeyDownEvent(modifier);
-    await tester.sendKeyEvent(LogicalKeyboardKey.comma);
-    await tester.sendKeyUpEvent(modifier);
-    await tester.pumpAndSettle();
-    expect(find.byType(AppearancePicker), findsOneWidget);
-    expect(router.state.uri.path, "/session");
-    expect(tester.element(find.text("open", skipOffstage: false)), same(opener));
-    expect(tester.takeException(), isNull);
-  }, variant: const TargetPlatformVariant({TargetPlatform.macOS, TargetPlatform.windows}));
+  for (final scale in [1.0, 2.5]) {
+    testWidgets("minimum window at ${scale}x keeps tabs reachable and preserves the route", (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      tester.view.physicalSize = const Size(560, 480);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final router = await open(tester: tester, tab: DesktopSettingsTab.general);
+      final opener = tester.element(find.text("open", skipOffstage: false));
+      expect(SessionDetailRouteVisibility.isVisibleOf(context: opener), isFalse);
+      final bounds = tester.getRect(find.byKey(const Key("desktop-settings-modal")));
+      expect(bounds.left, greaterThanOrEqualTo(12));
+      expect(bounds.right, lessThanOrEqualTo(548));
+      expect(bounds.bottom, lessThanOrEqualTo(468));
+      for (final tab in DesktopSettingsTab.values) {
+        final target = find.byKey(ValueKey("desktop-settings-tab-${tab.name}"));
+        await Scrollable.ensureVisible(tester.element(target), alignment: 0.5);
+        await tester.pumpAndSettle();
+        expect(target.hitTestable(), findsOneWidget);
+        expect(MediaQuery.textScalerOf(tester.element(target)).scale(10), 10 * scale);
+      }
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(router.state.uri.path, "/session");
+      expect(tester.element(find.text("open")), same(opener));
+      expect(SessionDetailRouteVisibility.isVisibleOf(context: opener), isTrue);
+      await tester.tap(find.text("open"));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(2, 2));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
+      expect(tester.element(find.text("open")), same(opener));
+      final modifier = Theme.of(tester.element(find.text("open"))).platform == TargetPlatform.macOS
+          ? LogicalKeyboardKey.metaLeft
+          : LogicalKeyboardKey.controlLeft;
+      await tester.sendKeyDownEvent(modifier);
+      await tester.sendKeyEvent(LogicalKeyboardKey.comma);
+      await tester.sendKeyUpEvent(modifier);
+      await tester.pumpAndSettle();
+      expect(find.byType(AppearancePicker), findsOneWidget);
+      expect(router.state.uri.path, "/session");
+      expect(tester.element(find.text("open", skipOffstage: false)), same(opener));
+      expect(tester.takeException(), isNull);
+    }, variant: const TargetPlatformVariant({TargetPlatform.macOS, TargetPlatform.windows}));
+  }
 
   testWidgets("harness detail shares its owner; Back stays inside and Close returns to the session", (tester) async {
     final router = await open(tester: tester, tab: DesktopSettingsTab.harnesses);

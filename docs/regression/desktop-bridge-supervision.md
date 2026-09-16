@@ -252,7 +252,7 @@ verify the actual relocated helper, not merely the presence of its binary.
   desktop exposes a dead mobile push-preference surface or registers a push
   token instead of using relay-derived local attention, a pushed settings
   child closes to Home, a standalone child cannot close, startup reconciliation
-  leaves the window blank, Profile leaves usage analytics stuck on Loading, or
+  leaves the window blank, Account leaves usage analytics stuck on Loading, or
   logout clears auth before analytics preparation and fails to resume analytics
   when token clearing fails. A desktop session row cannot reach its typed detail
   route, Back cannot return to the session list, a child-session link loses its

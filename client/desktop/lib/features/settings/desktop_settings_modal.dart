@@ -24,7 +24,7 @@ enum DesktopSettingsTab() {
   account,
 }
 
-/// Root presentation, not a product route: the session behind it stays current.
+/// Root presentation, not a product route: the underlying session stays mounted.
 Future<void> showDesktopSettingsModal({
   required BuildContext context,
   required DesktopSettingsTab initialTab,
@@ -123,6 +123,7 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
                       side: BorderSide(color: colors.borderSecondary),
                     ),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         SizedBox(
                           width: 160,
@@ -130,30 +131,36 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
                             color: colors.bgSurface2,
                             child: Padding(
                               padding: const EdgeInsets.all(PregoSpacing.md),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: PregoSpacing.xl),
-                                    child: Text(context.loc.settingsTitle, style: context.prego.textTheme.textMd.bold),
-                                  ),
-                                  for (final tab in DesktopSettingsTab.values)
-                                    Semantics(
-                                      selected: tab == _tab,
-                                      child: TextButton.icon(
-                                        key: ValueKey("desktop-settings-tab-${tab.name}"),
-                                        style: TextButton.styleFrom(
-                                          alignment: AlignmentDirectional.centerStart,
-                                          foregroundColor: tab == _tab ? colors.fgBrandPrimary : colors.textSecondary,
-                                          backgroundColor: tab == _tab ? colors.bgSurface3 : Colors.transparent,
-                                          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
-                                        ),
-                                        onPressed: () => setState(() => _tab = tab),
-                                        icon: Icon(_tabIcon(tab: tab), size: 18),
-                                        label: Text(_tabLabel(context: context, tab: tab)),
+                              child: SingleChildScrollView(
+                                primary: false,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: PregoSpacing.xl),
+                                      child: Text(
+                                        context.loc.settingsTitle,
+                                        style: context.prego.textTheme.textMd.bold,
                                       ),
                                     ),
-                                ],
+                                    for (final tab in DesktopSettingsTab.values)
+                                      Semantics(
+                                        selected: tab == _tab,
+                                        child: TextButton.icon(
+                                          key: ValueKey("desktop-settings-tab-${tab.name}"),
+                                          style: TextButton.styleFrom(
+                                            alignment: AlignmentDirectional.centerStart,
+                                            foregroundColor: tab == _tab ? colors.fgBrandPrimary : colors.textSecondary,
+                                            backgroundColor: tab == _tab ? colors.bgSurface3 : Colors.transparent,
+                                            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
+                                          ),
+                                          onPressed: () => setState(() => _tab = tab),
+                                          icon: Icon(_tabIcon(tab: tab), size: 18),
+                                          label: Text(_tabLabel(context: context, tab: tab)),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
