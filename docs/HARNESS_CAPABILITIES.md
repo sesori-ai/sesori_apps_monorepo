@@ -228,7 +228,7 @@ it does not claim an unprobed upstream ACP/RPC login API is supported or unsuppo
 
 | Harness | Login initiated from Sesori | Current local alternative/setup |
 |---|---|---|
-| Claude | Not implemented | `claude auth login` on the bridge machine. |
+| Claude | Implemented: claude.ai pasted-code login on mobile and desktop | `claude auth login` on the bridge machine remains an alternative. |
 | OpenCode | Not implemented | Local `opencode auth login` or provider configuration. |
 | Codex | Implemented: ChatGPT device-code login | Local Codex login/configuration remains an alternative. |
 | Copilot | Not implemented | `copilot login` on the bridge machine. |
@@ -240,7 +240,11 @@ it does not claim an unprobed upstream ACP/RPC login API is supported or unsuppo
 | Grok | Not implemented | `grok login` on the bridge machine. |
 | Antigravity | Implemented: automatic personal Google browser OAuth on mobile and desktop | No copy/paste fallback; current client required. |
 
-Codex and Antigravity implement `InteractivePluginAuthenticationDescriptor.authenticate`.
+Claude, Codex, and Antigravity implement `InteractivePluginAuthenticationDescriptor.authenticate`.
+Claude drives `claude auth login --claudeai` on the bridge: the user opens the sign-in page from the app and pastes the
+code it shows, for claude.ai subscription accounts only. The login sets `BROWSER=true` to keep the host browser closed,
+which is verified on macOS but not on Windows, where the host may still open a sign-in tab. See
+[Claude Code authentication](regression/claude-code-authentication.md).
 Codex uses the existing Sesori device-code UI; Antigravity implements automatic browser return. Current iOS/Android
 clients use a system authentication browser and nonce-only app return; remote desktop uses exact loopback capture and
 a static return page, while desktop connected to its exact supervised bridge lets the bridge receive callback directly.

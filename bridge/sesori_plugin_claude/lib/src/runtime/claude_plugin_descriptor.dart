@@ -13,11 +13,14 @@ import "../claude_approval_registry.dart";
 import "../claude_event_dispatcher.dart";
 import "../claude_history_mapper.dart";
 import "../claude_plugin_impl.dart";
+import "../foundation/claude_login_environment.dart";
+import "../repositories/claude_authentication_repository.dart";
 import "../repositories/claude_backend_catalog_repository.dart";
 import "../repositories/claude_session_process_repository.dart";
 import "../repositories/claude_transcript_catalog_repository.dart";
 import "../repositories/mappers/claude_content_mapper.dart";
 import "../repositories/trackers/claude_tool_tracker.dart";
+import "../services/claude_authentication_service.dart";
 import "../services/claude_catalog_service.dart";
 import "../services/claude_session_service.dart";
 import "claude_bridge_plugin.dart";
@@ -51,7 +54,7 @@ final class const ClaudePluginDescriptor({
   final Duration _probeTimeout = const Duration(seconds: 10),
   final Duration _statusDebounce = const Duration(seconds: 5),
   final ClaudeBridgePluginFactory? _buildBridgePlugin,
-}) extends BridgePluginDescriptor {
+}) extends BridgePluginDescriptor implements InteractivePluginAuthenticationDescriptor {
   static const String binOption = "bin";
   static const String defaultBinary = "claude";
 
@@ -106,6 +109,8 @@ final class const ClaudePluginDescriptor({
   @override
   Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) => {
     ...super.managementCapabilities(config: config),
+    // Login is a CLI action, so an explicit binary supports it too.
+    PluginControlCapability.authentication,
     if (_binary(config) == defaultBinary) PluginControlCapability.runtimeUpdate,
   };
 
@@ -216,7 +221,7 @@ final class const ClaudePluginDescriptor({
       return switch (status.loggedIn) {
         true => PluginSetupReady.versioned(runtimeVersion: runtimeVersion),
         false => PluginSetupAuthenticationRequired.versioned(
-          actionHint: "Run `claude auth login` on this machine, then retry setup detection.",
+          actionHint: "Log in from Sesori, or run `claude auth login` on this machine.",
           runtimeVersion: runtimeVersion,
         ),
         null => PluginSetupUnknown.versioned(
@@ -233,6 +238,25 @@ final class const ClaudePluginDescriptor({
   }
 
   @override
+  PluginAuthenticationOperation authenticate({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required HostJsonStore store,
+    required StartAbortSignal aborted,
+  }) => ClaudeAuthenticationService(
+    repository: ClaudeAuthenticationRepository(
+      // A dedicated factory keeps the login spawn out of the session health stream.
+      processFactory: HostClaudeProcessFactory(processes: processes, environment: environment),
+      binaryPath: _binary(config),
+      workingDirectory: stateDirectory,
+      environment: ClaudeLoginEnvironment.overrides,
+    ),
+    aborted: aborted,
+  ).authenticate();
+
+  @override
   Future<ClaudeBridgePlugin> start(PluginHost host) async {
     if (host.startAborted.isAborted) throw const PluginStartAbortedException();
 
@@ -242,7 +266,7 @@ final class const ClaudePluginDescriptor({
       environment: host.environment,
     );
     final processes = ClaudeSessionProcessRepository(
-      processFactory: processFactory.spawn,
+      processFactory: (spec) => processFactory.spawn(spec.processLaunch),
       binaryPath: binaryPath,
       // The host factory already inherits this environment. Launch specs carry
       // only explicit overrides so they never shadow HOME and break keychain auth.
