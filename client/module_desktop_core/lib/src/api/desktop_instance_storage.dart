@@ -25,11 +25,11 @@ class DesktopInstanceStorage._create({
   static const String _windowBoundsFileName = "window-bounds";
   static const String _attentionPreferenceFileName = "attention-notifications";
 
-  Future<BridgeProcessDesiredState> readBridgeDesiredState() async {
+  Future<BridgeProcessDesiredState?> readBridgeDesiredState() async {
     final File file = await _desiredStateFile();
     // ignore: avoid_slow_async_io, one startup read must not block the UI isolate
     if (!await file.exists()) {
-      return BridgeProcessDesiredState.off;
+      return null;
     }
     final String value = (await file.readAsString()).trim();
     for (final BridgeProcessDesiredState state in BridgeProcessDesiredState.values) {

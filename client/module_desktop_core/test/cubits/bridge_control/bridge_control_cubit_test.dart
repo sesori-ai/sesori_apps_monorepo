@@ -195,7 +195,7 @@ void main() {
       expect(cubit.state.launchAtLoginEnabled, isFalse);
     });
 
-    test("opening General refreshes an externally changed native registration", () async {
+    test("native registration refresh updates both General state and the tray", () async {
       await cubit.initialize();
       final activities = <BridgeControlActivity>[];
       final subscription = cubit.stream.map((state) => state.activity).listen(activities.add);
@@ -205,6 +205,10 @@ void main() {
       await pumpEventQueue();
       expect(activities, [BridgeControlActivity.configuringLaunchAtLogin, BridgeControlActivity.idle]);
       expect(cubit.state.launchAtLoginEnabled, isTrue);
+      expect(
+        _command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleLaunchAtLogin).label,
+        "Disable Launch at Login",
+      );
       expect(cubit.state.activity, BridgeControlActivity.idle);
       expect(launchAtLogin.enableCalls, 0);
       expect(launchAtLogin.disableCalls, 0);

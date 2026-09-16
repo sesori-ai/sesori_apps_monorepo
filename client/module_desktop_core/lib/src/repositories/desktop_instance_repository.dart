@@ -22,7 +22,7 @@ class DesktopInstanceRepository._create({
 
   Future<bool> signalPrimary() => _api.signalPrimary();
 
-  Future<BridgeProcessDesiredState> readBridgeDesiredState() => _storage.readBridgeDesiredState();
+  Future<BridgeProcessDesiredState?> readBridgeDesiredState() => _storage.readBridgeDesiredState();
 
   Future<void> writeBridgeDesiredState({required BridgeProcessDesiredState state}) =>
       _storage.writeBridgeDesiredState(state: state);

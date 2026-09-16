@@ -31,6 +31,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiErrorNetworkDown => 'Connection failed — check your network and try again.';
 
   @override
+  String get desktopFileAccessTitle => 'Full Disk Access';
+
+  @override
+  String get desktopFileAccessDescription =>
+      'Sesori runs coding agents on your behalf. macOS folder prompts can pause them while you\'re away. Full Disk Access lets Sesori and its agents access protected files without those prompts. This is optional; restart the local bridge after granting access.';
+
+  @override
+  String get desktopFileAccessOpenSettings => 'Open System Settings';
+
+  @override
+  String get desktopFileAccessNotNow => 'Not now';
+
+  @override
+  String get desktopFileAccessGranted => 'Protected files are accessible';
+
+  @override
+  String get desktopFileAccessDenied => 'Not granted — folder prompts may pause agents';
+
+  @override
+  String get desktopFileAccessUnknown => 'Access could not be confirmed';
+
+  @override
   String get desktopHomePickSession => 'Pick a session from the sidebar to get started.';
 
   @override

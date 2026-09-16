@@ -176,9 +176,9 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   routes around `AppRouteDef.settings`) is removed; both
   `HarnessSettingsPresentation` variants (`modal` from new session and session
   detail, `pushed` from settings) become "open the modal at the Harnesses tab".
-  The underlying route stays current while the modal is open, so
-  viewed-project and attention suppression continue for the page behind the
-  modal (accepted).
+  The typed route stays unchanged while the modal is open, but the containing
+  root route pauses session activity/view claims. Step 7.b owns that visibility
+  boundary and notification-driven popup dismissal.
 - **D8 — Autostart defaults on, silently, once.** When the account is
   authenticated and no `bridge-desired-state` file exists,
   `DesktopStartupOrchestrator` (the existing owner of desired-state restore)
@@ -186,21 +186,22 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   the write makes the file exist, this runs once per install and never
   overrides a later user Off. Absent-versus-Off is not representable today
   (storage maps a missing file to `off`), so the persisted read becomes
-  nullable end to end. `BridgeControlCubit` gets no new subscription; Settings
-  re-reads native launch-at-login when its app-startup preferences open so the
-  silently enabled default displays correctly. macOS may show its own "items added to
+  nullable end to end. `BridgeControlCubit` gets no new subscription; shell composition
+  refreshes its native preference after default registration and initial loading.
+  Opening General also re-reads the native preference. macOS may show its own "items added to
   run in the background" notice; that is acceptable. The user can disable both
   using local bridge controls and Settings → General → Launch Sesori at login.
 - **D9 — Ask for Full Disk Access upfront, explain why, never block.** A new
   Layer-0 `FileAccessPermission` capability (`check()` →
-  granted/denied/unsupported, `openSystemSettings()`) with an `io` adapter in
+  granted/denied/unknown/unsupported, `openSystemSettings()`) with an `io` adapter in
   the desktop shell. A `FileAccessCubit` re-checks when the window regains
   focus. On macOS, while denied, the home pane shows a card: "Sesori runs
   coding agents on your behalf. Without Full Disk Access macOS interrupts them
   with folder prompts that stall a session while you are away. Grant it in
   System Settings and restart the bridge if a session was already running."
-  Buttons: Open System Settings / Not now (this run only). Settings → Bridge
-  always shows the status row. Nothing is persisted; nothing blocks.
+  Buttons: Open System Settings / Not now (this run only). On macOS, Settings →
+  Bridge → This computer retains the status row after dismissal. The copy explains
+  optional broader file access; no automatic grant/restart. Nothing is persisted.
 - **D10 — App logs go to a rotating file through one sink seam.** `logging.dart`
   in `module_core` gets only the seam: `LogRecord`, `LogSink`, `setLogSink`
   and the default `StdoutLogSink`. `module_core` stays free of `dart:io`; the
@@ -374,23 +375,28 @@ the modal.
   is unchanged.
 - `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (new method on
   the existing orchestration owner, gaining `AuthSession` and `LaunchAtLogin`
-  dependencies) is called from `main.dart` next to `restoreBridgeDesiredState`.
+  dependencies) is called when the root bridge-control owner is composed, after
+  dispatcher readiness. `main.dart` retains ordinary desired-state restoration.
   It checks `authSession.currentState is AuthAuthenticated` immediately and
   subscribes to `authStateStream` for later sign-ins, mirroring
   `DesktopAttentionService`. When authenticated and the persisted state is
-  null it writes On through `DesktopInstanceService`, calls
-  `LaunchAtLogin.enable()`, and starts the bridge through
-  `BridgeProcessService`. The write makes every later check a no-op; a
-  duplicate concurrent trigger is harmless because enable and start are
-  idempotent. Errors are logged and never surface as a screen state.
-- Settings exposes the existing native launch-at-login read through
-  `BridgeControlCubit` when General opens; no new subscription or preference copy.
+  missing, `DesktopInstanceService.initializeFirstRunBridgeState()` queues the
+  missing-only On write on its existing desired-state queue/generation. Explicit
+  Off/logout invalidates a pending default, even if its persistence fails;
+  duplicate checks observe the first write. After persistence, disposal still
+  cancels admission; auth loss delegates to the process owner's existing login-required
+  On state, which resumes after sign-in. Start precedes best-effort native enable,
+  avoiding a late start after Stop. Errors remain logged, not screen state.
+- On successful native enable, a shell callback waits for the existing control
+  owner's initial load before refreshing its native read. It does not delay the
+  default start or first render. General also refreshes; no new subscription/cache.
 - `FileAccessPermission` in `module_desktop_core/foundation/platform/`;
   `IoFileAccessPermission` in `client/desktop/lib/core/platform/` (macOS
   probe; Windows/Linux → unsupported; settings deep link through the existing
   `UrlLauncher`). `FileAccessCubit` (`module_desktop_core/cubits/`) holds
-  `status` and a per-run `dismissed` flag and re-checks on
-  `WindowHost.states == focused`.
+  `status` and a per-run `dismissed` flag at the app root and re-checks on
+  `WindowHost.states == focused`; one generation rejects stale probe completions.
+  The adapter only opens/closes the protected file, never reads its contents.
 
 ### Log files (D10)
 
@@ -423,8 +429,9 @@ the modal.
   and logs a warning; General preferences show the real launch-at-login state. If the
   bridge cannot start (login required, contention), the existing process
   states and supervision card apply.
-- FDA probe errors other than EPERM → `unsupported` (no card, status row reads
-  "Unknown"). The card never blocks anything.
+- FDA permission errors EPERM/EACCES → denied; absent paths/home or unexpected
+  failures → logged unknown. Unsupported is reserved for other OSes; no protected
+  probe there. The card never blocks anything.
 - Log sink failures never reach callers; logging falls back to stdout.
 
 ## Compatibility
@@ -461,8 +468,9 @@ New in-memory mutable parts:
 - `DesktopSidebarCubit` state (three fields) and its write future.
 - `RecentSessionsCubit` map plus five stream subscriptions (all mutation
   delegated to `SessionListService`).
-- `FileAccessCubit` status + per-run dismissed flag, one subscription.
-- `DesktopStartupOrchestrator`: one added auth subscription.
+- `FileAccessCubit` status + per-run dismissed flag, one subscription and probe generation.
+- `DesktopStartupOrchestrator`: one added auth subscription and disposal bit.
+  First-run persistence reuses the existing service write queue/restore generation.
 - One global `LogSink` and each file writer's open file handle.
 
 Deliberately not added: per-project refetch debounce timers (patching replaces
@@ -526,7 +534,7 @@ remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 | 7.a | `🌿 [desktop-ux] Prepare shared settings composition [step 8/15]` | ≤ 500 | Reusable app-information/support/legal sections and picker exports, connected-bridge title input and desktop copy; native preference refresh/explicit-set methods on the existing control owner, with fake-backed tests. No changed settings navigation or visible controls yet. |
 | 7.b | `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/15]` | ≤ 700 | Containing-route visibility for the existing session activity owner; root-popup dismissal through both existing route adapters, ordered before desktop notification same-session detection/replacement. No new state owner, persisted fields or Settings presentation. |
 | 7.c | `⚙️ [desktop-ux] Present settings as a modal [step 10/15]` | ≤ 1,750 | `showDesktopSettingsModal` with blurred/dimmed backdrop, tab column, nested `Navigator`; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
-| 8 | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/15]` | ≤ 1,000 | Nullable `readBridgeDesiredState` through storage/repository with `off` applied by callers; `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (auth-driven) called from `main.dart`; `FileAccessPermission` capability + `IoFileAccessPermission`; `FileAccessCubit`; home-pane card with the agent explanation; Settings → Bridge status row; focus re-check. |
+| 8 | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/15]` | ≤ 1,000 | Nullable `readBridgeDesiredState` through storage/repository with `off` applied by callers; `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (auth-driven) composed beside root bridge controls after dispatcher readiness; `FileAccessPermission` capability + `IoFileAccessPermission`; `FileAccessCubit`; home-pane card with the agent explanation; Settings → Bridge status row; focus re-check. |
 | 9 | `🌿 [desktop-ux] Write app logs to rotating files [step 12/15]` | ≤ 700 | `LogSink`/`LogRecord`/`setLogSink`/`StdoutLogSink` in `module_core`; desktop writer in `module_desktop_core` `api/` sharing the bridge-log rotation helper; mobile writer in `client/app/lib/core/platform/`; installation in both `main.dart`s; Open logs opens the folder. |
 | 10 | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 13/15]` | ≤ 600 | ⌘N, ⌘, , ⌘B (toggle sidebar) via `CallbackShortcuts` at the cockpit root; tooltips with shortcut hints; macOS hidden title bar + drag region behind a single switch in `FlutterWindowHost.initialize` (D12 kill switch). |
 | 11 | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 14/15]` | ≤ 600 | Final control-content audit (labels, grouping, scope, redundancy and state-specific actions) plus regression reconciliation listed below. |
@@ -671,7 +679,8 @@ retire the plan under this matrix.
   phase-2 fix if it shows.
 - The sidebar declares no viewed project, so notification suppression while
   only the sidebar is in use equals today's behaviour on the home route.
-  While the settings modal is open, the page behind it stays "viewed".
+  The Settings modal retains the page but pauses its session-view/activity claim;
+  notification opens dismiss the covering popup before checking for the same session.
 - FDA detection is a heuristic probe on a system file; a false "denied" shows a
   dismissible card, a false "granted" hides it. Both self-correct on the next
   focus re-check. Granting FDA may require restarting the bridge for a running

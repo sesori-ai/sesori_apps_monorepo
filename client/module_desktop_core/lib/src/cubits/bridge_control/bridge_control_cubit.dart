@@ -218,7 +218,7 @@ class BridgeControlCubit._create({
 
   /// Reconciles General preferences with the OS without racing a quick toggle.
   Future<void> refreshLaunchAtLogin() async {
-    if (_controlsLocked) return;
+    if (isClosed || _controlsLocked) return;
     _activity = BridgeControlActivity.configuringLaunchAtLogin;
     _rebuildMenu();
     try {

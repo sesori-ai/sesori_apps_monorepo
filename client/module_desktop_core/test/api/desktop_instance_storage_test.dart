@@ -21,7 +21,9 @@ void main() {
     }
   });
 
-  test("missing state defaults to desired Off", () async {
+  test("missing state is distinct from an explicit desired Off", () async {
+    expect(await storage.readBridgeDesiredState(), isNull);
+    await storage.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
     expect(await storage.readBridgeDesiredState(), BridgeProcessDesiredState.off);
   });
 
