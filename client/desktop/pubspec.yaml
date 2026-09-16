@@ -4,7 +4,7 @@ publish_to: none
 resolution: workspace
 
 # Product semver stays aligned; desktop build numbers and release channels are independent.
-version: 1.8.4
+version: 1.9.0
 
 environment:
   sdk: ^3.13.3
