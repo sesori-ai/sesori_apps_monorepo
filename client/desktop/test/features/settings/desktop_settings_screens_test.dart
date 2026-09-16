@@ -23,6 +23,7 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
+class _MockFileAccessCubit() extends MockCubit<FileAccessState> implements FileAccessCubit;
 class _MockAppearanceStore() extends Mock implements AppearanceStore;
 class _MockChatInputModeStore() extends Mock implements ChatInputModeStore;
 class _MockBridgeSettingsRepository() extends Mock implements BridgeSettingsRepository;
@@ -107,6 +108,7 @@ void main() {
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
   late BehaviorSubject<CatalogRescanState> catalogScanStates;
   late int logoutCompletions;
+  late _MockFileAccessCubit fileAccess;
 
   setUp(() async {
     await getIt.reset();
@@ -118,6 +120,13 @@ void main() {
       buildSignature: "",
     );
     logoutCompletions = 0;
+    fileAccess = _MockFileAccessCubit();
+    whenListen(
+      fileAccess,
+      const Stream<FileAccessState>.empty(),
+      initialState: const FileAccessState(status: FileAccessStatus.unsupported, dismissed: false),
+    );
+    when(fileAccess.openSystemSettings).thenAnswer((_) async {});
     authGateCubit = _MockAuthGateCubit();
     whenListen(
       authGateCubit,
@@ -255,6 +264,7 @@ void main() {
       MultiBlocProvider(
         providers: [
           BlocProvider<BridgeControlCubit>.value(value: bridgeControl),
+          BlocProvider<FileAccessCubit>.value(value: fileAccess),
           BlocProvider<AppearanceCubit>.value(value: appearanceCubit),
           BlocProvider<ChatInputModeCubit>.value(value: chatInputModeCubit),
         ],
@@ -275,6 +285,28 @@ void main() {
   Future<void> select({required WidgetTester tester, required DesktopSettingsTab tab}) async {
     await tester.tap(find.byKey(ValueKey("desktop-settings-tab-${tab.name}")));
     await tester.pumpAndSettle();
+  }
+
+  for (final status in FileAccessStatus.values) {
+    testWidgets("Bridge shows local permission $status even after home dismissal", (tester) async {
+      whenListen(
+        fileAccess,
+        const Stream<FileAccessState>.empty(),
+        initialState: FileAccessState(status: status, dismissed: true),
+      );
+      await open(tester: tester, tab: DesktopSettingsTab.bridge);
+      if (status == FileAccessStatus.unsupported) {
+        expect(find.text("Full Disk Access"), findsNothing);
+      } else {
+        final title = find.text("Full Disk Access");
+        await Scrollable.ensureVisible(tester.element(title), alignment: 0.5);
+        await tester.pumpAndSettle();
+        await tester.tap(title);
+        verify(fileAccess.openSystemSettings).called(1);
+        expect(find.text("This computer"), findsOneWidget);
+      }
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets("General composes preferences instead of a mobile navigation menu", (tester) async {

@@ -55,7 +55,7 @@ Future<void> main(List<String> arguments) async {
   await getIt<DesktopAttentionService>().start();
   // Start local analytics state before building. Authenticated reconciliation
   // waits until after the first frame so a slow server cannot blank startup;
-  // Profile reflects the service's synchronization state until it settles.
+  // Account reflects the service's synchronization state until it settles.
   final ProductAnalyticsService productAnalyticsService = getIt();
   logi("Desktop startup: loading analytics preferences");
   await productAnalyticsService.start();

@@ -133,6 +133,48 @@ abstract class AppLocalizations {
   /// **'Connection failed — check your network and try again.'**
   String get apiErrorNetworkDown;
 
+  /// macOS protected-file access for this computer, not a remote bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Disk Access'**
+  String get desktopFileAccessTitle;
+
+  /// Explains the optional broader permission and the agent benefit before opening macOS settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori runs coding agents on your behalf. macOS folder prompts can pause them while you\'re away. Full Disk Access lets Sesori and its agents access protected files without those prompts. This is optional; restart the local bridge after granting access.'**
+  String get desktopFileAccessDescription;
+
+  /// No description provided for @desktopFileAccessOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open System Settings'**
+  String get desktopFileAccessOpenSettings;
+
+  /// No description provided for @desktopFileAccessNotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get desktopFileAccessNotNow;
+
+  /// No description provided for @desktopFileAccessGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Protected files are accessible'**
+  String get desktopFileAccessGranted;
+
+  /// No description provided for @desktopFileAccessDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Not granted — folder prompts may pause agents'**
+  String get desktopFileAccessDenied;
+
+  /// No description provided for @desktopFileAccessUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Access could not be confirmed'**
+  String get desktopFileAccessUnknown;
+
   /// Desktop home guidance when projects are available but no session is open.
   ///
   /// In en, this message translates to:
