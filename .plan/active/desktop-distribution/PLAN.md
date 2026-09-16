@@ -4,7 +4,7 @@
 
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
-- **Status:** Active — steps 1–4.a merged; step 4.b native-attention startup repair in progress.
+- **Status:** Active — steps 1–4.b merged; step 5 manual macOS updates in progress.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -54,11 +54,11 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 |---|---|
 | D1 | macOS first, followed by Windows and Linux; independent platform ship gates. |
 | D2 | All six native application targets: macOS, Windows, Linux × x64, arm64. User-approved exception (2026-09-15): the Windows ARM64 installer launcher may use emulation; installed GUI/helper/native libraries remain ARM64. No other silent reduction. |
-| D3 | macOS: direct Developer ID distribution, hardened runtime, notarization, stapled DMGs, Sparkle updates. App Store sandboxing does not fit the current host-tool model. |
+| D3 | macOS: direct Developer ID distribution, hardened runtime, notarization, stapled DMGs, manual signed-package updates (D6 fallback). App Store sandboxing does not fit the current host-tool model. |
 | D4 | Windows: direct download first, signed per-user Inno Setup EXE, manual Download update button, and winget discovery. No embedded Windows updater or automatic updates. Store/MSIX is not a launch requirement. |
 | D5 | Linux: DEB and RPM packages with signed APT/RPM repositories. No AppImage, Flatpak, Snap, or custom Linux self-updater in this plan. |
 | D6 | Trust, maturity, broad adoption, and simple integration outrank automation (user clarification 2026-09-15). Retain macOS background preparation/install-on-quit only through a small supported Sparkle integration; a manual update button is explicitly acceptable instead. No custom updater, security layer, or shutdown machinery just to preserve automation. Windows uses manual signed-installer updates; Linux remains package-manager-owned. Ordinary Quit never unexpectedly reopens the app. |
-| D7 | GitHub Releases hosts downloadable installers; static GCS hosts updater feeds and signed Linux repositories. No new backend release service. Linux repositories also host their package payloads, rather than relying on cross-origin package-manager redirects. |
+| D7 | GitHub Releases hosts downloadable installers; static GCS hosts signed Linux repositories. No new backend release service. Linux repositories also host their package payloads, rather than relying on cross-origin package-manager redirects. |
 
 ### Proposed implementation defaults
 
@@ -71,15 +71,15 @@ changing user intent, adding material infrastructure, or reducing the matrix.
   Dart/native-asset bundles. Harness runtimes remain installed on demand through
   existing plugin management; PATH-installed harnesses retain precedence.
 - Keep shared product semantic versioning, adding desktop to `tool/sync_versions.dart`.
-  Desktop release attempts have their own build number, tags, feeds, and publication
+  Desktop release attempts have their own build number, tags, download indexes, and publication
   gate; they never query TestFlight/Play to obtain a desktop build number.
 - Start with explicit internal and stable desktop release dispatches. No new hourly
   scheduler, release database, rollout service, or automatic stable promotion.
-- Stable is the installed default. Internal testing is an explicit separate feed/
+- Stable is the installed default. Internal testing is an explicit separate download/
   repository selection; do not build an in-app channel-switching feature now.
 - Use mature distribution tooling, not a new archive downloader/swap/rollback engine.
-  Sparkle is the macOS choice. Windows uses Inno Setup with an explicit download
-  link and normal Quit before installing; neither WinSparkle nor Velopack is needed.
+  macOS and Windows use explicit download links and normal Quit before installing;
+  Windows uses Inno Setup. No Sparkle, WinSparkle or Velopack is embedded.
   Manual updates are an approved simplification, not a missing automatic capability.
   Verify authenticity and safe replacement regardless of who initiates the update.
 - Use GCS's standard HTTPS object endpoint initially. A branded HTTPS hostname
@@ -194,7 +194,7 @@ on-disk helper can become newer than the running GUI. Check the immutable bundle
 identity at the existing helper-resolution boundary before a new spawn. A mismatch
 requires desktop restart, not mixed-version supervision. No file watcher, polling
 loop, or second lifecycle owner. Document quitting before package upgrades; external
-package-manager replacement is not Sesori's app-managed install-on-quit mechanism.
+package-manager replacement is not an app-managed install-on-quit mechanism.
 Installers own complete/authentic packages; sidecar comparison is not a filesystem
 transaction or tamper detector. Do not add per-spawn digests for partial file writes
 or fractional-number guards for manually edited manifests: the producer emits ints,
@@ -248,133 +248,27 @@ updates the same desktop-owned files; shared CLI state survives. OS signature tr
 and the documented publisher must be verified; do not call a web link an in-app
 signature-verifying updater. winget remains a separate package-manager update path.
 
-**macOS app-managed path, subject to the D6 simplicity budget:**
-Keep ownership narrow:
+**macOS manual path (D6 fallback selected in step 5):** Settings opens the official
+channel/CPU download index through the existing external-link seam. The user Quits
+normally, verifies the signed/notarized published package, replaces the complete
+app and reopens it manually. Close-to-tray is not Quit; failed helper stop refuses
+Quit and users must not replace the running installation. No automatic checks,
+prepared-update state, native installer handoff or relaunch is introduced.
 
-- Layer 0 `AppUpdater` exposes macOS native progress/state and prepared handoff.
-  `DesktopUpdatePlatform`, a sealed value in
-  `client/module_desktop_core/lib/src/foundation/models/desktop_update_platform.dart`,
-  has three variants: app-managed (required `AppUpdater`), manual-download (required
-  channel/CPU-specific `Uri`), and package-manager-owned (no updater). This avoids
-  dummy Windows/Linux adapters and nullable updater coordination.
-- Concrete shell adapter: `MacOsSparkleUpdater` in
-  `client/desktop/lib/core/platform/macos_sparkle_updater.dart`, calling
-  `SparkleUpdateBridge` in `client/desktop/macos/Runner/SparkleUpdateBridge.swift`
-  over one Flutter method/event-channel seam. Use Sparkle `2.10.0` directly through
-  its checksum-pinned SwiftPM binary target, not an additional Flutter updater wrapper.
-  Its framework and helpers contain both CPU slices; the public quit-install API
-  typechecks. Actual termination/restart ordering is still a step-5 entry gate,
-  not proven by the compile-only step-2 fixture.
-- Layer 1 `AppUpdateApi` wraps the adapter; Layer 2 `AppUpdateRepository` maps native
-  outcomes into sealed desktop-domain states and retains useful typed causes.
-- Layer 3 `DesktopUpdateService`, in
-  `client/module_desktop_core/lib/src/services/desktop_update_service.dart`, owns
-  update state, preparation policy, and prepared-install handoff decisions over
-  `AppUpdateRepository`. Background startup, native callbacks and both terminal
-  intents enter this one update pipeline. It never calls another service, stops
-  the helper, writes bridge intent, or creates its own process-restore mechanism.
-- The existing Layer 4 `BridgeControlCubit` remains the serialized terminal-quit
-  owner. It consumes service state for presentation, sequences its existing process,
-  instance, window and tray collaborators, and invokes a typed post-stop operation
-  on `DesktopUpdateService` for normal Quit or Install and restart. Update policy
-  stays in the service; helper-stop authority stays in `BridgeProcessService`.
-  Tray Quit, no-tray close, and explicit update restart call that same
-  `quit({required DesktopExitAction action})` method, extending the existing tested
-  sequence rather than introducing a second terminal workflow. The cubit remains
-  pure-Dart Layer-4 orchestration, not a Flutter-shell implementation.
-  No second stop path, service-to-service dependency, or cubit dependency is added.
-- Native callbacks marshal events onto the supported Flutter/native thread seam,
-  through API/repository into `DesktopUpdateService`. They never independently kill
-  the GUI/helper or start an installer. Unavailable Linux app-managed updating is
-  a typed capability, not a fake success from a no-op updater.
-- DI: a shell `DesktopUpdatePlatformModule` in
-  `client/desktop/lib/core/di/desktop_update_platform_module.dart` provides the one
-  `DesktopUpdatePlatform` value in phase 1 using static OS selection: macOS carries
-  `MacOsSparkleUpdater`, Windows carries its download URI, Linux is package-managed.
-  `AppUpdateApi` consumes that value. Register API/repository/service in
-  `configureDesktopCoreDependencies` (phase 4); no runtime adapter registry, fake
-  success or platform import enters desktop core. The shell's `BlocProvider`
-  constructs the cubit, which is never DI-registered.
+The compiled bundle identity and separate stable/internal channel define resolve
+an immutable `DesktopUpdateDestination` in desktop core. Shell composition decodes
+build metadata and passes the result to `DesktopUpdateSection`; its action only
+opens the index. Linux presents package-manager guidance and source builds present
+development guidance. Unshipped index entries contain no artifact links. The
+concrete files/data flow and approved review are in [step 5](steps/step-05.md).
 
-**Startup and cleanup owner:** `client/desktop/lib/main.dart` resolves the lazy
-`DesktopUpdateService` only for the primary desktop instance, after DI and successful
-local window/control setup. Non-app-managed variants never start checks or a native
-subscription. As with its existing post-frame analytics callback,
-`main` invokes `DesktopUpdateService.start()` in a guarded, unawaited first-frame
-callback. Constructors remain side-effect-free; `start()` subscribes to native
-outcomes before enabling background checks and does not wait for network completion.
-Failures become service failure state and useful local diagnostics, not silent
-unawaited errors. Initial routing/rendering and bridge restore do not wait for updates.
-
-For app-managed macOS only, the service owns the native-event subscription for the primary app lifetime.
-Its post-stop terminal operation retires background checking/callbacks as part of
-normal exit or accepted install handoff; cleanup must not cancel an already accepted
-native installer. Register `DesktopUpdateService.dispose()` with Injectable's disposal
-hook for `getIt.reset()`/test teardown; it releases the service subscription and
-native updater resources without applying an update. `BridgeControlCubit.close()`
-cancels only its presentation subscription to the service. Do not make a settings
-screen, incidental lazy lookup, or constructor responsible for starting checks.
-
-**Explicit restart surface:** step 5 adds the desktop-owned
-`DesktopUpdateSection` in
-`client/desktop/lib/features/settings/desktop_update_section.dart`, mounted in the
-current desktop Settings container (the Bridge tab when the `desktop-ux` modal
-lands). It renders the cubit's projected update state and, only for a prepared
-app-managed update, an **Install and restart Sesori** button. The handler calls
-`BridgeControlCubit.quit(action: DesktopExitAction.installAndRestart)` and obeys
-existing lifecycle command locking; ordinary Quit uses `normalQuit`. No new tray
-command is required. Linux shows package-manager guidance, not a dead install
-button. Step 8 reuses this section for the Windows manual download action, not the
-macOS prepared-state/restart flow. Focused
-widget/cubit coverage proves prepared-state action reachability, unavailable/not-
-prepared and lifecycle-locked behavior, and normal-Quit versus restart routing.
-
-The normal path is:
-
-1. The named first-frame startup call starts the native updater's own background
-   check/preparation through `DesktopUpdateService`; no splash network wait or
-   duplicate Dart polling timer. The cubit projects prepared/failed service state
-   without recreating policy or exposing raw errors to remote telemetry.
-2. Close-to-tray leaves the application and helper running. A prepared update must
-   not turn close-to-tray, logout, Bridge Off, or a helper crash into installation.
-   On a host without a tray, close already means safe application Quit and qualifies.
-3. On explicit normal Quit, use the existing cubit command lock, cancel pending
-   restore, and await the existing expected-stop process service. If helper stop
-   fails, refuse quit and installation while leaving controls recoverable.
-4. Only after helper teardown succeeds does the cubit invoke the update service's
-   post-stop terminal operation. The service determines whether a fully verified
-   prepared update can receive native install-on-exit handoff and returns a typed
-   outcome. The cubit finishes bounds/native-surface teardown and termination via
-   the same terminal flow. Normal Quit does not relaunch; Install and restart does.
-   Relaunch uses ordinary startup/last-On restoration, not a new restart journal.
-5. If no update is prepared, the service returns the normal-exit outcome; do not wait
-   for a network download on quit. A failed update handoff remains observable and
-   must not brick the current install or make quitting depend on successful update
-   work. Native updater recovery owns interrupted replacement and retains a runnable
-   install; no duplicate Dart rollback mechanism is added.
-
-Sparkle's `willInstallUpdateOnQuit:immediateInstallationBlock:` delegate can retain
-its supported explicit-restart handler while normal termination installs without
-calling that handler. Returning true stalls later update cycles; accept that bounded
-limitation rather than adding another scheduler. Qualification must still prove the
-real host-termination boundary: today's `IoDesktopApplicationTerminator` calls
-`dart:io.exit`, not AppKit termination. Do not assume that this invokes Sparkle's
-hooks, that `shouldPostponeRelaunchForUpdate` covers every exit, or that a native
-Install button can bypass helper teardown. Keep any native lifecycle integration
-small and routed to the existing Quit owner; use the approved manual fallback if
-that requires substantial new coordination. `SUAutomaticallyUpdate` alone is not proof.
-
-WinSparkle 0.9.4 lacks supported unattended preparation. The user explicitly chose
-simplicity over that requirement; Windows therefore uses the manual path above.
-Velopack is not adopted and no custom signed-feed or deferred-install layer is added.
-See step 2's evidence for maturity, API and installer-architecture findings.
-
-App-managed macOS update archives require updater-native signature verification in addition to HTTPS
-and OS code signing. Checksums downloaded from the same mutable feed are not an
-independent trust anchor. Keep signing keys out of public storage; refuse altered
-payloads and unauthenticated redirects/downgrades. Retain existing wire compatibility
-for public phone/bridge peers; do not invent compatibility shims for unpublished
-internal desktop builds or migrate their disposable GUI preferences.
+The Sparkle 2.10.0 probe remains historical API qualification, not an embedded
+updater. Its integration would require native termination and restart coordination
+beyond the existing `dart:io.exit` seam. The user explicitly accepts manual updates
+instead. Remove unused proposed updater layers rather than implement dummy APIs,
+services, subscriptions or terminal-action variants. OS package trust and publisher
+verification remain mandatory; the download link does not verify an installer.
+Native signed N→N+1 manual replacement and preservation are still release gates.
 
 ### 4. Publication and release isolation
 
@@ -401,7 +295,7 @@ Preserve source revision versus workflow revision when reusing actions for older
   asset names. Set GitHub releases `--latest=false`; do not move a published tag or
   overwrite a published stable artifact. Verify legacy bridge selectors ignore the
   new tags, including generic GitHub latest-release behavior.
-- Internal feeds reference only internal desktop builds; stable feeds reference only
+- Internal download entries reference only internal desktop builds; stable entries reference only
   approved stable artifacts. A stable build uses the tested source SHA and clean
   version, following the existing bridge production rebuild precedent; an internal
   binary with a prerelease version is not silently relabeled as stable. Reverify the
@@ -417,7 +311,7 @@ Preserve source revision versus workflow revision when reusing actions for older
   same DEB/RPM bytes can also be downloadable GitHub release assets. Do not make
   package managers depend on user-specific tokens or expiring download URLs.
 - Failed signing, notarization, architecture builds, or repository publication leaves
-  that platform's previous feed usable and blocks its promotion, not another product.
+  that platform's previous download index/repository usable and blocks its promotion, not another product.
   Manual retries reuse completed immutable artifacts where valid; stable corrections
   require a new version instead of clobbering delivered bytes.
 
@@ -470,8 +364,8 @@ history and keeps lifecycle changes out of the package-signing review.
 | 3.b | ⚙️ [desktop-distribution] Surface packaged helper repair guidance [step 4/14] | After 3.a. Existing service/state/cubit/window flow retains typed startup refusal without a new lifecycle owner. Medium startup/presentation risk; no PID fabrication, forced hidden-startup modal, database or wire change. |
 | 4.a | 🚧 [desktop-distribution] Package and notarize native macOS builds [step 5/14] | After 3.b plus signer access. Private DMGs/ZIPs, nested hardened signing, notarization/stapling and native platform probes. High supply-chain/platform risk. Both Macs verify/install without Gatekeeper bypass; rendered startup is tracked in 4.b, not claimed passing. No database change. |
 | 4.b | ⚙️ [desktop-distribution] Keep desktop startup independent of native notifications [step 6/14] | After 4.a. Existing attention owner installs listeners before returning, without holding rendering behind native readiness; retain initial-open/account/disposal handling. Medium/high startup risk. Red/green service tests and both signed GUI targets; no new state owner, persistence, wire or database change. |
-| 5 | 🚧 [desktop-distribution] Apply macOS updates through safe application quit [step 7/14] | After 4.b and the qualified macOS adapter graph. Narrow updater layers, Sparkle adapter, existing Quit owner integration, Settings update status/restart control, signed N→N+1 fixtures and failure tests. High lifecycle risk. Background prepare; normal Quit installs without relaunch, explicit restart restores intent. No new database or separate supervisor state machine. |
-| 6 | ⚙️ [desktop-distribution] Publish isolated desktop channels and macOS downloads [step 8/14] | After 5 and parent public-release prerequisite. Trusted manual workflow, GitHub desktop tags, GCS feed staging, download index/runbook, release-isolation tests and macOS ship gate. High operational risk but bounded publication logic; no mobile store uploads or database change. macOS public only after both native gates pass. |
+| 5 | ⚙️ [desktop-distribution] Offer manual macOS updates through official downloads [step 7/14] | After 4.b. D6 manual fallback: immutable channel/CPU destination, honest download index, Settings guidance and staging channel metadata. Medium presentation/build risk; unchanged safe Quit, no automatic updater or database change. Native manual replacement remains a release gate. |
+| 6 | ⚙️ [desktop-distribution] Publish isolated desktop channels and macOS downloads [step 8/14] | After 5 and parent public-release prerequisite. Trusted manual workflow, GitHub desktop tags, download index/runbook, release-isolation tests and macOS ship gate. High operational risk but bounded publication logic; no mobile store uploads or database change. macOS public only after both native gates pass. |
 | 7 | 🚧 [desktop-distribution] Package signed per-user Windows installers [step 9/14] | After 3.b and Windows qualification; delivered after macOS gate. Native x64/arm64 EXEs, complete helper bundle, timestamped signing, shortcuts/autostart/uninstall and clean-host tests. High installer/trust risk. No elevation for normal use, no shared CLI data deletion, no database change. |
 | 8 | ⚙️ [desktop-distribution] Deliver manual Windows updates and winget discovery [step 10/14] | After 6 and 7. Settings download action, signed N→N+1 manual replacement, channel-specific downloads, winget manifests and Windows ship gate. Medium integration risk; no embedded updater, forced helper shutdown or automatic restart. No database change. |
 | 9 | ⚙️ [desktop-distribution] Publish signed native DEB and RPM repositories [step 11/14] | After 3.b and Linux qualification; delivered after Windows gate. Four native packages, dependency manifests, signed APT/RPM metadata/payload publication, desktop integration and Linux ship gate. Medium/high packaging risk; no custom updater or privileged per-user cleanup. Package-manager upgrades retain shared data; no database change. |
@@ -535,10 +429,10 @@ every desktop environment: representative selection is justified per invariant.
    installation's credentials, runtimes, or session state.
 3. Login launch with last-On and last-Off, close-to-tray/no-tray behavior, single
    instance, native notifications/activation, helper restart, and normal Quit.
-4. macOS: authentic signed N→N+1 upgrade with helper On and Off; prove the selected
-   native Sparkle flow, refused helper stop, altered archive, handoff failure and
-   interrupted apply/recovery. Test background preparation/quit installation only if
-   that policy qualifies; a documented manual path is explicitly acceptable under D6.
+4. macOS: authentic signed N→N+1 manual upgrade with helper On and Off; prove
+   normal Quit stops the helper without reopening, failed stop refuses Quit,
+   publisher/Gatekeeper verification and complete-app replacement preserve state.
+   Manual update is selected under D6; no automatic-install behavior is claimed.
    Windows: open the channel/CPU-correct download page, observe installer refusal
    while the GUI is running, safely Quit, then apply the signed N→N+1 EXE as a standard
    user. Test refused helper stop, publisher verification, shared-data retention and
@@ -551,7 +445,7 @@ every desktop environment: representative selection is justified per invariant.
 7. Forced failed desktop leg/signature/feed publication leaves the previous channel
    valid and does not trigger or block mobile/CLI jobs. Stable never selects an
    internal desktop build; existing bridge installers still select bridge releases.
-8. Public GitHub downloads, GCS updater feeds and signed Linux repositories work
+8. Public GitHub downloads, signed Linux repositories work
    without authentication. winget discovery is verified through its actual external
    manifest/install path; record an unapproved manifest as blocked, not passing.
 
@@ -569,18 +463,12 @@ versions, outcomes, and cleanup; keep raw account/project/log content out of Git
 
 ## Complexity budget, safeguards, and accepted limits
 
-New mutable parts are limited to one native updater instance for macOS,
-one update-state subscription/projection owned by `DesktopUpdateService`, and an
-explicit terminal action (normal Quit versus Install and restart) within the existing
-serialized Quit owner. Cubit presentation derives from the service's state, with no
-second pending-update record. Native frameworks own their download cache, scheduling,
-staging, and recovery. Add
-no parallel Dart cache, durable pending-update record, timer, update lock, process
-registry, shutdown journal, or new database table. The immutable bundle manifest
-exists to bind shipped GUI/helper identity, not to coordinate running sessions.
-Windows has no update state, timer or handoff. Its sole additional native handle is
-an installer-visible process-lifetime mutex, used by Inno's existing install/remove
-check. Do not reuse VS Code's complex background-update installer scripting.
+Manual macOS/Windows updating adds zero mutable update state. The immutable channel
+and bundle target select a static download-index section. No updater framework,
+service subscription, download cache, timer, terminal action, restart journal or
+rollback engine is added. Existing safe Quit remains the one helper-stop authority.
+Windows adds only the planned installer-visible process-lifetime mutex for Inno's
+running-app refusal. Linux package managers own their normal state and replacement.
 
 Release state is bounded to immutable artifacts/tags, signed channel/repository
 entry points, and existing CI concurrency plus object-generation preconditions.
@@ -590,15 +478,14 @@ user intent. No release backend or general-purpose deployment framework.
 | Safeguard | Evidence and consequence if omitted |
 |---|---|
 | Complete helper bundle and identity check | Observed dev-only path and native CLI assets; ordinary packaged launch or package upgrade otherwise fails or starts a mismatched helper. |
-| Expected-stop before replacement | Ordinary update with bridge On; macOS handoff follows existing Quit, and the Windows installer refuses a running GUI so users take that same safe Quit path. |
+| Expected-stop before replacement | Ordinary update with bridge On; macOS replacement follows explicit Quit, and the Windows installer refuses a running GUI so users take that same safe Quit path. |
 | Cryptographic release/update verification | Ordinary remote software delivery crosses an executable-code trust boundary; unauthenticated substitution compromises developer machines. |
 | Immutable payloads and metadata-last publication | Ordinary partial upload/failing architecture; otherwise clients can discover incomplete or inconsistent releases. |
 | Clean native host and signed-artifact testing | Existing evidence is dev-built/three-runner CI; native plugins, permissions and package dependencies are platform-specific. |
 | Shared-state-preserving uninstall | Standalone CLI and desktop use shared bridge state; broad deletion loses user sessions/credentials. |
 
-Accept: updates wait indefinitely while an app stays open; no forced security-update
-restart policy is invented. OS logout/reboot/crash is not guaranteed to install a
-prepared update. Native package managers can replace files outside Sesori's control;
+Accept: users choose when to download and install updates; no forced security-update
+restart policy is invented. OS logout/reboot/crash never initiates a Sesori update. Native package managers can replace files outside Sesori's control;
 there is no custom root watchdog or multi-user shutdown protocol. Keep harmless
 user-level preference/autostart residue where removing it would require broad home
 scanning. No hypothetical filesystem locks or extra daemon for those cases.
@@ -617,7 +504,7 @@ scanning. No hypothetical filesystem locks or extra daemon for those cases.
 
 Execution blockers to resolve in step 2: native six-target Flutter/plugin build route
 (particularly Linux ARM64), exact OS minimums/VM ownership, Windows manual installer
-and signer, macOS notarization/updater signing access, GCS bucket/publication
+and signer, macOS notarization access, GCS bucket/publication
 permissions and public keys. Record chosen tool versions and identities, never
 private material. The user's all-six-target decision remains binding while blocked.
 

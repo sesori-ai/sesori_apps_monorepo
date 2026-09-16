@@ -1,0 +1,139 @@
+# Step 5 — Manual macOS Updates Through Safe Application Quit
+
+Status: **implemented — verification and implementation review in progress**.
+PR ordinal **7/14**; follows merged #1503 (accepted
+`49694775e5d364a1316b767b66642531bf002e3a`, squash
+`d1813409e3c0a8e053c3a28068d574e24fb70730`).
+
+## Decision and evidence
+
+D6 prioritizes a small integration and explicitly permits manual updates. Current
+`IoDesktopApplicationTerminator.terminate` calls `dart:io.exit`, while the existing
+`BridgeControlCubit.quit` stops the helper before disposing native surfaces and
+terminating. Preserve that single tested authority.
+
+The Sparkle 2.10.0 public API probe establishes compilation only. Its
+[`SPUUpdaterDelegate` contract](https://github.com/sparkle-project/Sparkle/blob/2.10.0/Sparkle/SPUUpdaterDelegate.h)
+says the install-on-quit handler installs and relaunches, and postponing relaunch is
+not invoked for every termination path. Automatic adoption would therefore require
+native termination integration, callback routing, an update-state subscription,
+prepared-install policy and explicit-restart coordination across native/Dart owners.
+Those are not proven unsafe or impossible; they exceed what a manual update action
+needs. Do not build that machinery solely to retain optional automation.
+
+Use the already approved manual path for macOS, as for Windows. Sparkle is not
+embedded, no updater signing key/feed is required, and ordinary Quit remains
+unchanged. This is a product simplification, not a passing automated-update probe.
+Native N→N+1 manual replacement and shared-state preservation remain release gates.
+No local app, running bridge or installed package may be disturbed.
+
+## Implementation plan
+
+1. Add an immutable desktop-core foundation model for the update destination:
+   manual download (required URI), package-manager guidance, or development build.
+   A closed stable/internal channel enum plus the existing bundle identity selects
+   the official channel/OS/CPU anchor. No parsing of backend data and no wire or
+   persisted contract. Missing compiled bundle identity means a development build,
+   not a guessed download architecture.
+2. Use a desktop-owned repository Markdown download index with stable/internal
+   macOS and Windows CPU sections. Every unshipped section explicitly says no
+   public download is available. No placeholder artifact URLs or latest-release
+   inference. Step 6 replaces only qualified Mac sections with verified links;
+   Windows stays gated until its later distribution steps. Linux directs users to
+   package-manager documentation once repositories ship, never to a self-updater.
+3. Add a thin shell `DesktopUpdateSection` to the existing Settings composition.
+   Render a `View downloads` action through the existing external-link seam,
+   explain that users must Quit (not close to tray), verify the approved publisher,
+   replace the app and reopen manually. The page is a download index, not an
+   assertion that an update or release exists. Development and package-manager
+   variants expose honest guidance without a dead action.
+4. Supply the immutable target from shell build configuration: reuse compiled
+   `DesktopBundleIdentity`; a desktop release channel compile define defaults to
+   stable. Teach staging a closed `--channel` option so future internal/stable
+   publishers do not guess from shared semantic versions. This metadata need not
+   change the GUI/helper identity or runtime wire schema.
+5. Update regression docs and synchronize plan defaults/steps to the selected
+   manual path. Do not add unused AppUpdater/API/repository/service/DI layers,
+   native framework dependencies, timers, mutable update state, install/restart
+   hooks or terminal-action variants. No new analytics event: opening a static
+   download index does not justify distribution-specific tracking.
+
+## Concrete boundaries and data flow
+
+- B-Client only. Add
+  `client/module_desktop_core/lib/src/foundation/models/desktop_update_destination.dart`:
+  plain immutable `sealed class const DesktopUpdateDestination`, with
+  `DesktopManualDownload(required Uri uri)`, `DesktopPackageManagerUpdate()` and
+  `DesktopDevelopmentUpdate()`. Add `DesktopReleaseChannel { stable, internal }`
+  and its `defineName = "SESORI_DESKTOP_RELEASE_CHANNEL"`. These are nonserialized
+  values, not new Freezed/JSON storage or transport models. Export from
+  `client/module_desktop_core/lib/sesori_desktop_core.dart`.
+- The destination's `forBundle({required DesktopBundleIdentity? identity,
+  required DesktopReleaseChannel channel})` factory owns static destination policy.
+  Null identity selects development; Linux selects package-manager guidance without
+  a link. macOS/Windows select a manual-download URI. No runtime architecture guess.
+- Add `client/desktop/lib/core/desktop_update_configuration.dart` with
+  `resolveDesktopUpdateDestination({required String? encodedIdentity,
+  required String encodedChannel})`. This shell/build boundary decodes present
+  identity and parses the channel enum; malformed present values throw rather than
+  select any link. No error recovery or silent stable fallback. Missing compile
+  identity becomes null using `bool.hasEnvironment`, not an empty-string sentinel.
+  `DesktopSettingsScreen` supplies compile-time values here before composing UI.
+- Canonical index: `docs/desktop/downloads.md`, public URI
+  `https://github.com/sesori-ai/sesori_apps_monorepo/blob/main/docs/desktop/downloads.md`.
+  The foundation destination factory owns that constant and constructs fragments
+  `<channel>-<os>-<architecture>` using closed enum names, for example
+  `stable-macos-arm64` or `internal-windows-x64`. Each of the eight matching Markdown
+  headings explicitly states no public download is available until that row ships.
+  No artifacts are linked yet, private artifacts are never linked, and neither
+  `latest` nor shared version strings select a channel. Include a Linux section
+  explaining that signed repositories are not published yet. A `View downloads`
+  action opens this truthful index; it does not claim an available update.
+- In `client/desktop/tool/stage_desktop_bundle.dart`, a named
+  `parseDesktopReleaseChannel({required String value})` helper parses the closed enum;
+  ArgParser `--channel` accepts `stable|internal` and defaults to `stable`.
+  `desktopBundleDefines({required DesktopBundleIdentity identity,
+  required DesktopReleaseChannel channel})` emits the existing identity line and
+  named channel line into the existing `dart-defines.env`. Invalid values fail
+  before building. Do not change `desktop-bundle.json`, identity schema or helper
+  validation. No global mutable configuration.
+- `client/desktop/lib/features/settings/desktop_update_section.dart` is const,
+  accepts `required DesktopUpdateDestination destination`, and only renders
+  `SettingsSection`/`PregoGroupedRows`. Manual rows call the existing
+  `openDesktopExternalLink` through `core/external_link.dart` with external-app mode;
+  development/Linux rows have no action. The manual subtitle explains Quit before
+  replacement, manual reopen and published-release availability; index instructions
+  name publisher verification. No GetIt, Cubit, service or Quit invocation here.
+- Existing `DesktopSettingsScreen` composes the attention and update sections with
+  a `Column` and explicit spacing inside `SettingsView.additionalSettings`, without
+  changing `module_app_ui` APIs. If the parallel Settings modal lands, preserve this
+  same shell-owned section in its desktop settings composition.
+- Flow: staging options → dotenv defines → shell typed decoding → foundation
+  destination factory → immutable widget input → existing external-link seam.
+  `BridgeControlCubit.quit` and `IoDesktopApplicationTerminator` are unchanged.
+- Tests: `client/module_desktop_core/test/foundation/desktop_update_destination_test.dart`
+  covers all eight manual destinations and Linux/development; shell configuration
+  and widget tests in `client/desktop/test/features/settings/desktop_settings_screens_test.dart`
+  cover valid/invalid defines, truthful guidance, and the injected existing
+  `UrlLauncher` callback. Extend `client/desktop/test/tool/stage_desktop_bundle_test.dart`
+  for stable/default, internal, invalid channel and exact define output. Add
+  `docs/regression/desktop-distribution.md`, update its index and packaging guidance.
+
+First plan review `6ea30f7a-e55d-469f-a239-1a2cbde5be49` rejected the pre-review gate
+for unnamed boundaries/data flow, not the approved manual choice. The concrete
+specification above addresses all six omissions; clarified review `be586eeb-b779-448e-9f1e-83e9ec275752` approved the plan.
+
+## Budget and verification
+
+Target under 900 authored lines (including removal of superseded Sparkle plan detail), zero generated; zero new mutable fields. Tests:
+closed channel and native CPU destination selection, development/Linux guidance,
+Settings action and callback, staging option/define propagation. Run relevant
+Flutter tests and strict analyzers for the touched modules. Existing safe Quit
+behavior is unchanged; run its focused tests if composition touches its contract.
+Architecture plan review precedes production edits, followed by a scoped
+implementation review. No signing, publishing, private-key generation or billable
+infrastructure change in this step.
+
+Manual signed N→N+1 install/relaunch and shared-data preservation remain a native
+CI/host qualification task, not evidence supplied by a link widget. Real accounts,
+minimum OS, interactive permissions and public-release prerequisites stay pending.

@@ -1,6 +1,9 @@
 # Step 4.b — Nonblocking Desktop Attention Startup
 
-Status: **in review — PR #1503; startup-admission follow-up verified**.
+Status: **done — PR #1503 merged**. Accepted head
+`49694775e5d364a1316b767b66642531bf002e3a`; squash
+`d1813409e3c0a8e053c3a28068d574e24fb70730`. Eleven checks settled at acceptance,
+including two skips; Cubic approved and all seven inline threads were resolved.
 Implementation base: `cd4c1412359ef8962cb019d97dc7fed73835e1c8` (step 4.a squash).
 PR ordinal **6/14**, after [step 4.a](step-04.md), before macOS updates.
 

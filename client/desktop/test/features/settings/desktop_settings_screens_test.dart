@@ -10,11 +10,13 @@ import "package:package_info_plus/package_info_plus.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_desktop/core/desktop_update_configuration.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/features/settings/desktop_harnesses_settings_screen.dart";
 import "package:sesori_desktop/features/settings/desktop_profile_screen.dart";
 import "package:sesori_desktop/features/settings/desktop_settings_screen.dart";
+import "package:sesori_desktop/features/settings/desktop_update_section.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -210,6 +212,64 @@ void main() {
     tester.view.physicalSize = const Size(1200, 3000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
+  }
+
+  test("update configuration rejects malformed present values without guessing a link", () {
+    expect(
+      resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "stable"),
+      isA<DesktopDevelopmentUpdate>(),
+    );
+    expect(
+      () => resolveDesktopUpdateDestination(encodedIdentity: "not-json", encodedChannel: "stable"),
+      throwsA(isA<Object>()),
+    );
+    expect(
+      () => resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "preview"),
+      throwsArgumentError,
+    );
+  });
+
+  testWidgets("manual update opens its channel and CPU index without claiming a release", (tester) async {
+    const identity = DesktopBundleIdentity(
+      version: "1.8.4",
+      buildNumber: 24,
+      sourceSha: "source",
+      os: DesktopBundleOs.macos,
+      architecture: DesktopBundleArchitecture.arm64,
+    );
+    final destination = resolveDesktopUpdateDestination(encodedIdentity: identity.encode(), encodedChannel: "internal");
+    final uri = (destination as DesktopManualDownload).uri;
+    final launcher = _MockUrlLauncher();
+    when(() => launcher.launch(uri, mode: UrlLaunchMode.externalApp)).thenAnswer((_) async => true);
+    getIt.registerSingleton<UrlLauncher>(launcher);
+    await tester.pumpWidget(
+      app(
+        child: Scaffold(body: DesktopUpdateSection(destination: destination)),
+      ),
+    );
+    expect(find.textContaining("Closing the window is not Quit"), findsOneWidget);
+    expect(uri.fragment, "internal-macos-arm64");
+    await tester.tap(find.text("View downloads"));
+    await tester.pump();
+    verify(() => launcher.launch(uri, mode: UrlLaunchMode.externalApp)).called(1);
+  });
+
+  for (final destination in <DesktopUpdateDestination>[
+    const DesktopDevelopmentUpdate(),
+    const DesktopPackageManagerUpdate(),
+  ]) {
+    testWidgets("$destination renders guidance without a download action", (tester) async {
+      await tester.pumpWidget(
+        app(
+          child: Scaffold(body: DesktopUpdateSection(destination: destination)),
+        ),
+      );
+      expect(find.text("View downloads"), findsNothing);
+      expect(
+        find.text(destination is DesktopDevelopmentUpdate ? "Development build" : "Package-managed updates"),
+        findsOneWidget,
+      );
+    });
   }
 
   testWidgets("desktop settings injects local attention without mobile notification routes", (tester) async {

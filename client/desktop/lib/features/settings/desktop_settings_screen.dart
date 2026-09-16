@@ -5,9 +5,11 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
+import "../../core/desktop_update_configuration.dart";
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
 import "desktop_attention_preference_section.dart";
+import "desktop_update_section.dart";
 
 /// Desktop-shell composition for the shared settings view.
 class const DesktopSettingsScreen({
@@ -66,7 +68,20 @@ class const _DesktopSettingsView({
       onOpenNotifications: null,
       onOpenHarnesses: onOpenHarnesses,
       onOpenDefaultInput: onOpenDefaultInput,
-      additionalSettings: const DesktopAttentionPreferenceSection(),
+      additionalSettings: Column(
+        children: [
+          const DesktopAttentionPreferenceSection(),
+          const SizedBox(height: 24),
+          DesktopUpdateSection(
+            destination: resolveDesktopUpdateDestination(
+              encodedIdentity: const bool.hasEnvironment(DesktopBundleIdentity.defineName)
+                  ? const String.fromEnvironment(DesktopBundleIdentity.defineName)
+                  : null,
+              encodedChannel: const String.fromEnvironment(DesktopReleaseChannel.defineName, defaultValue: "stable"),
+            ),
+          ),
+        ],
+      ),
       openSupportLink: ({required url}) async {
         await openDesktopExternalLink(url: url, mode: UrlLaunchMode.externalApp);
       },
