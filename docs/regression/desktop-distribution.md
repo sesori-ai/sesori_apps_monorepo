@@ -25,13 +25,17 @@ Linux upgrades remain package-manager-owned. Shared CLI data is not update clean
 
 ## Coverage
 
-| Level | Required evidence |
-|---|---|
-| L1 | Destination tests cover both channels and CPUs, Linux and source guidance; widget tests exercise external-link dispatch without claiming release availability. |
-| L2 | Staging parser/default/invalid-channel and exact dotenv tests; existing Settings composition retains attention controls. Every generated fragment matches an index heading. |
-| L3 | Real Settings navigation and external-browser dispatch to the correct index section on a packaged native build; unshipped entries remain explicit. No published installer is needed for this check. |
-| L4 | Actual publisher verification and signed N→N+1 manual replacement with helper On/Off, failed-stop refusal, normal Quit/no relaunch, and data preservation. |
-| L5 | All recorded native platform/package/host gates in the active distribution plan, downloaded artifacts, trust checks and public links. |
+- **L1:** Destination tests cover both channels and CPUs, Linux and source guidance;
+  widget tests exercise external-link dispatch without claiming release availability.
+- **L2:** Staging parser/default/invalid-channel and exact dotenv tests; Settings
+  composition retains attention controls. Generated fragments match specification headings.
+- **L3:** Real Settings navigation and external-browser dispatch on a packaged native
+  build. Verify the correct website section once live; until then record page availability
+  separately. No published installer is needed to check browser dispatch.
+- **L4:** Actual publisher verification and signed N→N+1 manual replacement with
+  helper On/Off, failed-stop refusal, normal Quit/no relaunch, and data preservation.
+- **L5:** All recorded native platform/package/host gates in the active distribution
+  plan, downloaded artifacts, trust checks and public links.
 
 L1/L2 do not establish installation, native trust, real-account restoration, minimum
 OS or publication. Public downloads remain gated; a merged index is not a release.

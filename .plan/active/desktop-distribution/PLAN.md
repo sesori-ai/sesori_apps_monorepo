@@ -257,11 +257,11 @@ app and reopens it manually. Close-to-tray is not Quit; failed helper stop refus
 Quit and users must not replace the running installation. No automatic checks,
 prepared-update state, native installer handoff or relaunch is introduced.
 
-The compiled bundle identity and separate stable/internal channel define resolve
-an immutable `DesktopUpdateDestination` value from desktop core. Shell composition
+The shell resolves compiled bundle identity and a separate stable/internal channel
+into an immutable `DesktopUpdateDestination` value from desktop core. Shell composition
 owns build decoding and package/link selection, then passes the result to
-`DesktopUpdateSection`; its action only opens the index. Linux presents package-manager guidance and source builds present
-development guidance. Unshipped index entries contain no artifact links. The
+`DesktopUpdateSection`; its action only opens the website. Linux presents
+package-manager guidance and source builds present development guidance. Unshipped index entries contain no artifact links. The
 concrete files/data flow and approved review are in [step 5](steps/step-05.md).
 
 The Sparkle 2.10.0 probe remains historical API qualification, not an embedded

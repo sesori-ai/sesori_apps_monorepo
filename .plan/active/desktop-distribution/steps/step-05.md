@@ -138,7 +138,12 @@ Manual signed N→N+1 install/relaunch and shared-data preservation remain a nat
 CI/host qualification task, not evidence supplied by a link widget. Real accounts,
 minimum OS, interactive permissions and public-release prerequisites stay pending.
 
-## Implementation evidence
+## Historical initial implementation evidence
+
+The commands in this section apply only to the measured revision below, not PR
+head. The original core destination test later moved into the shell's
+`client/desktop/test/core/desktop_update_configuration_test.dart` during the
+ownership correction. Do not substitute that later path into this historical run.
 
 Measured commit `69789cd200ab59f56c6676ed75d4b4eff4ed2741`, tree
 `e1ab30313629be4a054edc1dff8747dbf1c7735b`. Each command below ran from the named
@@ -197,10 +202,11 @@ Normal merge `8459c33eb` preserves incoming local-permission Settings behavior.
 
 From `client/desktop`, `flutter test test/core/desktop_update_configuration_test.dart
 test/features/settings/desktop_settings_screens_test.dart test/tool/stage_desktop_bundle_test.dart
---reporter expanded` passed 44 cases on the uncommitted correction retained in
-`7a4b9cb` except for a subsequent import-order-only fix. Core `dart analyze --fatal-infos`
-passed on that checkpoint; desktop strict analysis passed at exact `7a4b9cb` after
-the import sort. Logs in `build/desktop-manual-updates-evidence/`:
+--reporter expanded` passed 44 cases before commit, on the uncommitted ownership
+correction. Core `dart analyze --fatal-infos` also passed before commit on that
+uncommitted state. These are not exact-commit runs: a test import-order-only fix
+followed before the correction was committed as `7a4b9cb`. Desktop strict analysis
+then passed on exact commit `7a4b9cb`, including the import sort. Logs in `build/desktop-manual-updates-evidence/`:
 `shell-policy-tests.log`, `core-values-analyze.log`, `shell-policy-analyze-final.log`.
 Earlier review results remain historical. Second scoped implementation review
 `5d1129d4-0dc8-4f61-982b-7581ea9fc8a5` approved exact `7a4b9cb` against merge base

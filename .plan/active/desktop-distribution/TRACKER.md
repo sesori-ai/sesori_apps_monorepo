@@ -108,7 +108,9 @@ accepting `9f286805514a26cf5e641ab96ee16e79c3bcc7f5`, as squash
 Cubic approved without findings and the owner-controlled secret migration remains
 an explicit public-release prerequisite. Final unsigned six-target qualification
 run 35036003267 measured merge checkout `e4aa30f017cf876a1f61f2a6881f1282f013dba1`.
-Step 4.b continues in the same worktree on `desktop-distribution-attention-startup`.
+Step 4.b subsequently merged in PR #1503; step 5 is in progress in PR #1506 on
+`desktop-distribution-macos-updates` in the same worktree.
+The following step-4.a evidence is historical; step-4.b evidence is recorded below.
 Existing trusted CI credentials produce private Developer-ID-signed, notarized
 and stapled packages on both native Macs. The reviewed manifest correction keeps
 JSON in Resources and the complete helper in Helpers. Latest run 35019880379 at
