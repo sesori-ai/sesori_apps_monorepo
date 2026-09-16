@@ -180,9 +180,9 @@ class PluginManagementCubit({
             reason: PluginAuthenticationCodeRetryReason.notConfirmed,
           ),
         );
+      // The service settles a login the bridge no longer runs.
       case PluginAuthenticationContinuationNotFound():
         _setAuthenticationFailure(pluginId: pluginId, error: const PluginAuthenticationPresentationError.notFound());
-      // The service settles a login the bridge no longer runs.
       case PluginAuthenticationContinuationRejected():
         _setAuthenticationFailure(pluginId: pluginId, error: const PluginAuthenticationPresentationError.uncertain());
     }

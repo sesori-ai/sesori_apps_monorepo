@@ -721,7 +721,11 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
                 hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
                 size: PregoButtonsSolidSize.lg,
                 fullWidth: true,
-                onPressed: () => context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId),
+                onPressed: () {
+                  // A new login needs a new code.
+                  _codeController.clear();
+                  unawaited(context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId));
+                },
               ),
             ],
             const SizedBox(height: PregoSpacing.md),

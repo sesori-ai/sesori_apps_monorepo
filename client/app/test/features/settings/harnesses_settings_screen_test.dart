@@ -710,6 +710,21 @@ void main() {
     });
   }
 
+  testWidgets("retrying a failed pasted-code login clears the previous code", (tester) async {
+    await openPastedCodeSheet(tester);
+    await tester.enterText(_pastedCodeField(), "EXPIRED-CODE");
+    authenticationTerminal.add((
+      pluginId: "codex",
+      progress: const PluginAuthenticationProgress.failed(message: "Authentication failed."),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("harness_authentication_retry")));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextFormField>(_pastedCodeField()).controller?.text, isEmpty);
+  });
+
   testWidgets("shows preparing sheet before authentication start completes", (tester) async {
     _useTallSurface(tester);
     final start = Completer<PluginAuthenticationStartResult>();

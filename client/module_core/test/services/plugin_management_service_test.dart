@@ -757,6 +757,9 @@ void main() {
           ),
         )
         ..queueLoad(_supported(_response(token: "settled")))
+        ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge))
+        ..queueAuthenticationContinuation(const PluginAuthenticationContinuationResult.notFound())
+        ..queueLoad(_supported(_response(token: "not-found")))
         ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge));
       final connection = _FakeConnectionService(initialStatus: _connected);
       final service = _pluginManagementService(
@@ -800,6 +803,15 @@ void main() {
       expect(service.authenticationChallenges.value, isEmpty);
       expect(terminals.single.progress, const PluginAuthenticationProgress.unknown());
       await _waitFor(() => repository.loadCalls == 2);
+      expect(await service.startAuthentication(pluginId: "claude"), isA<PluginAuthenticationStartChallenge>());
+
+      expect(
+        await service.submitAuthenticationCode(pluginId: "claude", code: "opaque#state"),
+        isA<PluginAuthenticationContinuationNotFound>(),
+      );
+      expect(service.authenticationChallenges.value, isEmpty);
+      expect(terminals.last.progress, const PluginAuthenticationProgress.unknown());
+      await _waitFor(() => repository.loadCalls == 3);
       expect(await service.startAuthentication(pluginId: "claude"), isA<PluginAuthenticationStartChallenge>());
     });
 
