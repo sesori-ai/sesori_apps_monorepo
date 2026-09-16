@@ -8,6 +8,39 @@ acceptance; Cubic approved without findings. Final unsigned qualification run
 rows; that does not replace the separate signed-package evidence below.
 PR ordinal **5/14**. Work remains in the original `tan-antelope` worktree.
 
+### Final unsigned CI receipt
+
+Run [35036003267](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35036003267)
+uses event head `9f286805514a26cf5e641ab96ee16e79c3bcc7f5`, but actually checks out
+merge `e4aa30f017cf876a1f61f2a6881f1282f013dba1`, full tree
+`143703345bcd3b46a8e83b22352576dfe5e52fbf`; neither is the squash above.
+The [immutable workflow recipes](https://github.com/sesori-ai/sesori_apps_monorepo/blob/e4aa30f017cf876a1f61f2a6881f1282f013dba1/.github/workflows/desktop-qualification.yml#L192-L337)
+provide the bootstrap/dependency commands and six target substitutions. For the
+commands below, `ARCH` is each row's CPU, `BUNDLE` is `Sesori.app` on macOS and
+`bundle` elsewhere, and `GITHUB_WORKSPACE` is the runner checkout root:
+
+| Cwd | Command | Result on each of six rows |
+|---|---|---|
+| `client/desktop` | `dart run tool/stage_desktop_bundle.dart --build-number 22 --output "$GITHUB_WORKSPACE/build/desktop-qualification/staged"` | Exit 0; GUI/helper 1.8.4/build 22; manifest source equals the merge checkout |
+| Checkout root | `python .github/scripts/qualify_desktop.py inspect --arch "$ARCH" --bundle-dir "build/desktop-qualification/staged/$BUNDLE"` | Exit 0; expected native CPU; helper 1.8.4; `trackedSourceDirty=false` |
+| `bridge/app` | `dart test test/integration/supervised_e2e_test.dart --reporter expanded` | Exit 0; `All tests passed!` with isolated fakes |
+
+| Target | Successful native job |
+|---|---|
+| macOS arm64 | `104605185057` |
+| macOS x64 | `104605185187` |
+| Windows arm64 | `104605185156` |
+| Windows x64 | `104605185133` |
+| Linux arm64 | `104605185097` |
+| Linux x64 | `104605185088` |
+
+All six downloaded manifests/inventories/helper logs confirm these results. Retrieve
+with authorized access within 14 days using `gh run download 35036003267 --repo
+sesori-ai/sesori_apps_monorepo --pattern 'desktop-qualification-*' --dir <fresh-destination>`.
+Local copies: `build/desktop-attention-startup-evidence/qualification-e4aa30f/`;
+job/tree receipt: `build/desktop-attention-startup-evidence/pr1499-qualification-receipt.json`.
+This is historical unsigned qualification, not a newly run suite or signed/GUI proof.
+
 ## Scope and safety
 
 - Produce private native x64/arm64 DMGs and app ZIPs with the complete helper bundle.

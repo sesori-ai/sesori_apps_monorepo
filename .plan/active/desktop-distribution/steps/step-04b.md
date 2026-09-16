@@ -1,6 +1,6 @@
 # Step 4.b — Nonblocking Desktop Attention Startup
 
-Status: **implemented and verified — ready for PR review**.
+Status: **in review — PR #1503; startup-admission follow-up verified locally**.
 Implementation base: `cd4c1412359ef8962cb019d97dc7fed73835e1c8` (step 4.a squash).
 PR ordinal **6/14**, after [step 4.a](step-04.md), before macOS updates.
 
@@ -27,8 +27,11 @@ be a prerequisite for rendering the app.
   returning, preserving observation before AuthGate restoration or helper startup.
 - Start the existing native-initialization/initial-open sequence asynchronously from
   that owner. Reuse `_notificationInitialization`, `_notificationsAvailable`, the
-  existing pending-request state and account guards; notification delivery already
-  awaits the shared readiness future. Do not add another initialization owner.
+  existing pending-request state and account guards. Await shared readiness before
+  admitting serialized notification writes, so cleanup settles actual writes without
+  waiting on native authorization. Recheck the existing fences after readiness.
+  Replay captured attention once after failed startup initialization; subsequent
+  failures retain event-driven retry. Do not add another initialization owner.
 - Preserve useful original error/stack logging. Consume native launch metadata even
   if initialization failed, as today. If completion arrives after service disposal,
   do not open a window or route; the existing `_disposed` field suffices. Do not
@@ -47,8 +50,10 @@ Output: `reviews/desktop-distribution-step-04b-plan.md` in that run's artifacts.
 
 ## Verification and budget
 
-Target **under 250 authored changed lines**, zero generated. Moderate implementation
-complexity; lifecycle/startup risk warrants focused review and native execution.
+Revised review budget: **about 500 authored changed lines**, zero generated. The
+original under-250 estimate grew for reachable logout/retry regressions and explicit
+evidence receipts, not new mutable coordination. Moderate implementation complexity;
+lifecycle/startup risk warrants focused review and native execution.
 
 1. Add a red/green test proving `start()` returns with a deliberately held native
    initializer after listeners are installed. Release it and verify normal delivery
@@ -68,29 +73,83 @@ public ship gates remain part of the final verification handoff, not fabricated 
 
 ## Implementation evidence
 
-Immutable implementation: `25dc586d8a4a05a513f44aa6eb5982989e928501`, **111 authored
-changed lines**, zero generated, against the base above. Three focused assertions
+Initial immutable implementation: `25dc586d8a4a05a513f44aa6eb5982989e928501`.
+From the repository root, the fixed budget measurement is:
+
+```bash
+git diff --numstat cd4c1412359ef8962cb019d97dc7fed73835e1c8 25dc586d8a4a05a513f44aa6eb5982989e928501
+```
+
+It includes every changed path, **including this step file at that revision**:
+**7 files, 94 additions + 17 deletions = 111 authored changed lines**, zero generated.
+Later evidence text is not retroactively included. The same fixed base against
+`5d2db9dc995766f5929c8081c35264596f25cd6f` gives 8 files, 173 + 27 = **200**;
+against `5b6bdb56be70e9ecccee95b6e95ad84bf2a992e3`, 8 files, 285 + 70 = **355**.
+These are revision-bound snapshots, not self-updating current-PR totals.
+
+Three focused assertions
 failed before the production fix: held initialization blocked `start()`, and late
 success/failure reopened a disposed service. Those red tests were an uncommitted
 checkpoint against the base; no immutable red tree is claimed. Final tests also
 cover disposal while initial-open window focus is pending.
 
-At `25dc586`, **32 attention cases** passed (non-hidden JSON `testDone` events), and
-both owning-core and desktop strict analyzers passed. Commands, run separately:
+Every row below measured full commit `25dc586d8a4a05a513f44aa6eb5982989e928501`,
+full tree `f5a12df4629a16b08b875adcccbb8b45d3551f5d`, using the pinned Flutter-owned
+Dart executable. Working directories are relative to repository root
+`/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`.
+Commands ran individually, not as a combined suite:
 
-```bash
-# client/module_desktop_core
-dart test test/services/desktop_attention_service_test.dart --reporter json
-dart analyze --fatal-infos
-# client/desktop
-dart analyze --fatal-infos
-```
+| Cwd | Command | Individual result |
+|---|---|---|
+| `client/module_desktop_core` | `dart test test/services/desktop_attention_service_test.dart --reporter json` | Exit 0; 32 non-hidden successful `testDone` cases; `done.success=true` |
+| `client/module_desktop_core` | `dart analyze --fatal-infos` | Exit 0; `No issues found!` |
+| `client/desktop` | `dart analyze --fatal-infos` | Exit 0; `No issues found!` |
 
 Local evidence: `build/desktop-attention-startup-evidence/attention-startup-red.log`,
 `attention-tests-final.jsonl`, and `local-verification-25dc586.json`. Scoped
 architecture implementation review **approved** exact `25dc586` against the base,
 run `15293d58-5c2d-4bf9-af7f-775169242992`, B-Client only, no findings; output
 `reviews/desktop-distribution-step-04b-implementation.md` in that run's artifacts.
+
+## Review follow-up: readiness admission and captured retries
+
+Ordinary flow: an authenticated attention event joins pending native initialization,
+then the user signs out. That wait must not enter `_inFlightNotifications`, because
+logout settles those writes before clearing credentials. `_queueAttention` now waits
+for readiness first, checks the existing fences (including disposal), then admits
+serialized writes. Actual writes remain settlement barriers. A failed startup attempt
+also replays captured requests once through the existing shared initializer; there
+is no repeated retry loop or new state.
+
+Immutable red checkpoint `e78e87a3ebe136caa3c0534f54022d7dab0b22eb`, tree
+`b619505c44f9d067a6815d8b01225ba8152d5167`, cwd `client/module_desktop_core`:
+
+```bash
+dart test test/services/desktop_attention_service_test.dart --reporter json \
+  --name 'start returns|startup failure retries|cleanup excludes'
+```
+
+Exit **1**: one success, two expected attempt-count assertion failures, and two
+expected one-second cleanup timeouts (Dart reports these as errors).
+
+Every green row below measured full commit `5b6bdb56be70e9ecccee95b6e95ad84bf2a992e3`,
+full tree `8b39259a6dcb117f0311a8e5f875d7ecd0d78862`, with the same root/SDK as above:
+
+| Cwd | Command | Individual result |
+|---|---|---|
+| `client/module_desktop_core` | `dart test test/services/desktop_attention_service_test.dart test/orchestration/desktop_logout_orchestrator_test.dart --reporter json` | Exit 0; 36 attention + 17 logout cases passed |
+| `client/module_desktop_core` | `dart analyze --fatal-infos` | Exit 0; `No issues found!` |
+| `client/desktop` | `dart analyze --fatal-infos` | Exit 0; `No issues found!` |
+
+Machine-readable local receipts under `build/desktop-attention-startup-evidence/`:
+`review-red-receipt.json`, `review-regressions-red-e78e87a.jsonl`,
+`review-verification-5b6bdb5.json`, and `review-tests-5b6bdb5.jsonl`.
+Second scoped implementation architecture review **approved** full `5b6bdb5` against
+the base, run `3b0b36da-6b9a-4a43-bf3b-a5645fc42e13`, B-Client only, no findings;
+output `reviews/desktop-distribution-step-04b-implementation-followup.md`.
+The native proof below remains attributed to its earlier source, not this follow-up.
+
+## Native first-render evidence
 
 Native signed run [35038153010](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35038153010)
 measured exact `25dc586d8a4a05a513f44aa6eb5982989e928501`, **1.8.4/build 23**.

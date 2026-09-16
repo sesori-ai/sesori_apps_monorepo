@@ -120,6 +120,10 @@ architecture review approved. Native package run `35038153010` measured that exa
 source (**1.8.4/build 23**): both signed installed windows now visibly render the
 login screen, and startup logs reach analytics/rendering. Both package/notary/helper
 and synthetic platform legs pass; downloaded hashes and screenshots were inspected.
+PR #1503 review exposed reachable pending-readiness logout and captured-retry gaps.
+Follow-up `5b6bdb5` keeps readiness outside tracked native writes and replays startup
+failure once: 36 attention + 17 logout cases and both strict analyzers pass; second
+scoped architecture review approved. Native proof above remains pinned to `25dc586`.
 Details and retrieval are in [step 4.b](steps/step-04b.md). The series has 14 PRs;
 published history is preserved. No local desktop/bridge was disturbed. Real account,
 notification authorization/delivery, interactive TCC, OS-login and ship gates stay open.

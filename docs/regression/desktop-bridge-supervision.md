@@ -111,8 +111,11 @@ and keep native close/quit behavior safe.
   alerts from authenticated relay SSE and never registers for push. Attention
   installs its listeners before rendering without waiting for native notification
   readiness or a permission decision. Delivery shares the existing initialization
-  future; initial-open metadata is consumed asynchronously, including after native
-  failure, without reopening or routing a disposed service. Project recovery never shows
+  future before entering tracked writes, so pending native readiness cannot block
+  logout/disposal while actual native writes still settle before cleanup. Captured
+  attention gets one replay after failed startup initialization; later failures use
+  event-driven retry. Initial-open metadata is consumed asynchronously, including
+  after native failure, without reopening or routing a disposed service. Project recovery never shows
   mobile CLI installation guidance: both never-registered and disconnected
   states offer supervised **Start the bridge**, which persists desired On,
   starts or retries rather than applying toggle semantics, and establishes the
