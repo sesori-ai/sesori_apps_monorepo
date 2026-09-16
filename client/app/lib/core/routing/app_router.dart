@@ -445,8 +445,10 @@ final appRouter = GoRouter(
   initialLocation: AppRouteDef.splash.path,
   onException: (context, state, router) {
     final uri = state.uri;
-    if (uri.scheme == bundleId) return logd("GoRouter ignoring deep link (handled by app_links): $uri");
-    loge("GoRouter could not match route: ${uri.toString()}");
+    if (uri.scheme == bundleId) {
+      return logd("GoRouter ignoring deep link (handled by app_links): ${uri.diagnosticOrigin}");
+    }
+    loge("GoRouter could not match route: ${uri.diagnosticOrigin}");
   },
   routes: buildAppRoutes(),
 );
