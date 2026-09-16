@@ -18,8 +18,9 @@ def verify_bundle(*, bundle: Path, arch: str, version: str, installed: bool = Fa
     manifest_path = bundle / "bridge/desktop-bundle.json"
     required = (bundle / "sesori_desktop.exe", bundle / "bridge/bin/bridge.exe", bundle / "bridge/lib", manifest_path)
     for path in required:
-        if not path.exists():
-            raise ValueError(f"Required staged entry missing: {path}")
+        valid = path.is_dir() if path == bundle / "bridge/lib" else path.is_file()
+        if not valid:
+            raise ValueError(f"Required staged entry missing or wrong type: {path}")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     expected = {"os": "windows", "architecture": arch, "version": version}
     actual = {key: manifest.get(key) for key in expected}

@@ -44,9 +44,10 @@ At acceptance 17/17 checks passed, Cubic approved, and all threads were resolved
 the merged report subsequently showed 18/18 passing. Public publication remains
 blocked, not completed; see [step-06](steps/step-06.md). Independent private Windows
 installer preparation continues on `desktop-distribution-windows-packaging` in the
-same worktree. Local implementation and offline checks are complete; native x64/
-ARM64 compile, install, upgrade, mutex and uninstall execution remains pending in
-the undispatched manual private workflow. This does not authorize shipping Windows
+same worktree. On 2026-09-16, private run 35097548359 at `a36896d051` passed native
+x64/ARM64 compilation and silent install/reinstall/uninstall fixtures. Exact hashes,
+source and proof boundaries are recorded in [step-07](steps/step-07.md); the earlier
+run 35092987496 was cancelled, not passing or still running. This does not authorize shipping Windows
 before the macOS gate.
 
 ## Alignment — 2026-09-15

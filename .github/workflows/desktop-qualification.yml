@@ -243,7 +243,7 @@ jobs:
           (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
           (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
           VERSION="$(awk '/^version:/{print $2; exit}' client/desktop/pubspec.yaml)"
-          echo "SESORI_WINDOWS_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "SESORI_WINDOWS_VERSION=${VERSION%%+*}" >> "$GITHUB_ENV"
           (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
             --build-number '${{ github.run_number }}' --output '${{ github.workspace }}/build/desktop-bundle') \
             2>&1 | tee build/desktop-qualification/bundle-build.log
@@ -306,6 +306,11 @@ jobs:
           python .github/scripts/package_desktop_windows.py verify-installed --bundle $install --arch '${{ matrix.arch }}' --version $env:SESORI_WINDOWS_VERSION |
             Set-Content -Encoding utf8 build/desktop-windows-packaging/installed-inventory.json
           if ($LASTEXITCODE -ne 0) { throw 'Installed payload verification failed' }
+          $recordedPayload = Get-ChildItem 'build/desktop-bundle/bundle' -File -Recurse | ForEach-Object {
+            [IO.Path]::GetRelativePath((Resolve-Path 'build/desktop-bundle/bundle'), $_.FullName)
+          }
+          $unrecorded = Join-Path $install 'user-created-keep.txt'
+          Set-Content -Path $unrecorded -Value 'unrecorded'
           $uninstaller = Join-Path $install 'unins000.exe'
           $mutex = [Threading.Mutex]::new($false, 'Local\com.sesori.desktop.running')
           $blocked = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
@@ -314,7 +319,10 @@ jobs:
           if ($uninstallMutexExit -eq 0) { throw 'Uninstall ignored running GUI marker' }
           $removed = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
           if ($removed.ExitCode -ne 0) { throw "Uninstall failed: $($removed.ExitCode)" }
-          if (Test-Path (Join-Path $install 'sesori_desktop.exe')) { throw 'Installed GUI remains after uninstall' }
+          foreach ($relative in $recordedPayload) {
+            if (Test-Path (Join-Path $install $relative)) { throw "Recorded payload remains: $relative" }
+          }
+          if ((Get-Content $unrecorded) -ne 'unrecorded') { throw 'Unrecorded file changed' }
           if (Get-ItemProperty -Path $runKey -Name Sesori -ErrorAction SilentlyContinue) { throw 'Login value remains after uninstall' }
           if ((Get-Content (Join-Path $shared 'keep.txt')) -ne 'preserve') { throw 'Shared sentinel changed' }
           @{
@@ -324,7 +332,7 @@ jobs:
             installedPayloadVerified = $true
             sameVersionUpgradeVerified = $true
             uninstallRemovedOnlyRecordedPayload = $true
-            proofBoundary = 'Silent isolated runner fixture; not interactive GUI, account, SmartScreen, signing, or product QA'
+            proofBoundary = 'Silent fixture: nonzero exits with mutex held and success without it; no diagnostic-specific refusal proof. Not interactive GUI, account, SmartScreen, signing, or product QA'
           } | ConvertTo-Json | Set-Content -Encoding utf8 build/desktop-windows-packaging/installer-probe.json
       - name: Upload private unsigned installer
         uses: actions/upload-artifact@v4

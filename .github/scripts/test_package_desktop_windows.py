@@ -69,6 +69,23 @@ class WindowsPackagingTests(unittest.TestCase):
                     packaging.verify_bundle(bundle=self.bundle, arch="x64", version=self.version)
                 moved.rename(missing)
 
+    def test_library_must_be_directory_and_executable_must_be_file(self):
+        for path in (self.bundle / "bridge/lib", self.bundle / "sesori_desktop.exe"):
+            with self.subTest(path=path):
+                moved = path.with_name(path.name + ".saved")
+                path.rename(moved)
+                if moved.is_dir():
+                    path.write_text("not a directory")
+                else:
+                    path.mkdir()
+                with self.assertRaisesRegex(ValueError, "wrong type"):
+                    packaging.verify_bundle(bundle=self.bundle, arch="x64", version=self.version)
+                if path.is_dir():
+                    path.rmdir()
+                else:
+                    path.unlink()
+                moved.rename(path)
+
     def test_package_passes_absolute_inputs_and_records_unsigned_hash(self):
         output = self.root / "installer output"
 
