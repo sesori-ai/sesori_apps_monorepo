@@ -11,14 +11,14 @@ import "package:package_info_plus/package_info_plus.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/desktop_update_configuration.dart";
-import "package:sesori_desktop/features/settings/desktop_update_section.dart";
+import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
 import "package:sesori_desktop/core/widgets/desktop_escape_dismissal.dart";
 import "package:sesori_desktop/features/auth_gate/auth_gate.dart";
 import "package:sesori_desktop/features/settings/desktop_settings_modal.dart";
+import "package:sesori_desktop/features/settings/desktop_update_section.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -279,6 +279,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Widget app({required Widget child}) => MaterialApp(
+    theme: buildPregoThemeData(brightness: Brightness.light),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: child,
+  );
+
   test("update configuration rejects malformed present values without guessing a link", () {
     expect(
       resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "stable"),
@@ -304,9 +311,8 @@ void main() {
     );
     final destination = resolveDesktopUpdateDestination(encodedIdentity: identity.encode(), encodedChannel: "internal");
     final uri = (destination as DesktopManualDownload).uri;
-    final launcher = _MockUrlLauncher();
+    final launcher = getIt<UrlLauncher>();
     when(() => launcher.launch(uri, mode: UrlLaunchMode.externalApp)).thenAnswer((_) async => true);
-    getIt.registerSingleton<UrlLauncher>(launcher);
     await tester.pumpWidget(
       app(
         child: Scaffold(body: DesktopUpdateSection(destination: destination)),
@@ -362,6 +368,8 @@ void main() {
 
   testWidgets("Bridge distinguishes connected configuration from local diagnostics", (tester) async {
     await open(tester: tester, tab: DesktopSettingsTab.bridge);
+    expect(find.text("Desktop updates"), findsOneWidget);
+    expect(find.text("Development build"), findsOneWidget);
     expect(find.text("Connected bridge"), findsOneWidget);
     expect(find.text("This computer"), findsOneWidget);
     expect(find.text("Local bridge"), findsOneWidget);
@@ -370,11 +378,13 @@ void main() {
     expect(find.text("Launch Sesori at login"), findsNothing);
     expect(find.text("Quit Sesori"), findsNothing);
     await tester.ensureVisible(find.text("Open Logs"));
+    await tester.pumpAndSettle();
     await tester.tap(find.text("Open Logs"));
     verify(bridgeControl.openLogs).called(1);
     verifyNever(bridgeControl.refreshLaunchAtLogin);
     final interval = find.byKey(const Key("pull_request_refresh_interval"));
     await tester.ensureVisible(interval);
+    await tester.pumpAndSettle();
     await tester.tap(interval);
     await tester.pumpAndSettle();
     final input = find.byType(EditableText);
