@@ -157,7 +157,13 @@ Performed 2026-09-15 by the `medium-intelligence-fast` subagent using
 
 The initial draft was **rejected** for update policy in the cubit, ambiguous update
 trigger ownership, unnamed DI phases, and unnamed bundle-manifest boundaries.
-Applied the actionable corrections directly:
+Historical automatic-updater architecture below is superseded by step 5's approved
+manual fallback. It records the original review disposition, not current implementation
+guidance: no update service, updater adapter, SwiftPM dependency or update lifecycle
+subscription is now required. Step 5's explicit plan and implementation reviews own
+the current architecture.
+
+Applied the original actionable corrections directly:
 
 - `DesktopUpdateService` owns preparation/state/handoff policy over the update
   repository. All update triggers flow through it. No second stop or restore owner.
