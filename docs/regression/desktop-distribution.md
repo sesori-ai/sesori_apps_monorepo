@@ -23,11 +23,27 @@ Failed helper stop retains the existing refusal to Quit. Nothing in the download
 action stops a helper, installs, changes bridge intent or automatically relaunches.
 Linux upgrades remain package-manager-owned. Shared CLI data is not update cleanup.
 
+## Private release preparation
+
+The manual Desktop Release Preparation workflow consumes both native macOS package
+artifacts from one successful qualification run. It checks source/version/build,
+compiled channel, clean-source evidence, accepted notarization receipts, inventory
+agreement and payload hashes before producing private metadata and checksums.
+Preparation source and package source are recorded separately. Old producer runs
+without channel evidence are rejected rather than assigned a guessed channel.
+
+Preparation has read-only repository/Actions permissions and never signs, executes
+packages, creates tags/releases, edits website links, or triggers CLI/mobile release
+work. These are evidence-consistency checks, not independent signature verification
+or permission to ship. Public release and native upgrade gates remain outstanding.
+
 ## Coverage
 
 - **L1:** Destination tests cover both channels and CPUs, Linux and source guidance;
   widget tests exercise external-link dispatch without claiming release availability.
-- **L2:** Staging parser/default/invalid-channel and exact dotenv tests; Settings
+- **L2:** Offline preparation fixtures cover both CPUs, channel/source mismatches,
+  altered payload/evidence, missing packages, deterministic output and no overwrite.
+  Staging parser/default/invalid-channel and exact dotenv tests; Settings
   composition retains attention controls. Generated fragments match specification headings.
 - **L3:** Real Settings navigation and external-browser dispatch on a packaged native
   build. Verify the correct website section once live; until then record page availability

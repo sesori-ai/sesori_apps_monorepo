@@ -1,0 +1,77 @@
+name: Desktop Release Preparation
+
+# Preparation only. Public releases remain blocked on owner-approved credential
+# migration and native/parent ship gates. No tags, releases, signing, or website writes.
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Exact 40-character package source SHA'
+        type: string
+        required: true
+      packaging_run:
+        description: 'Successful private macOS packaging run from that source'
+        type: string
+        required: true
+      channel:
+        description: 'Channel compiled into the selected packages'
+        type: choice
+        options: [stable, internal]
+        required: true
+      platform:
+        description: 'Qualified platform (other platforms are not enabled yet)'
+        type: choice
+        options: [macos]
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Download private evidence and packages from one selected run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PACKAGING_RUN: ${{ inputs.packaging_run }}
+        run: |
+          set -euo pipefail
+          [[ "$PACKAGING_RUN" =~ ^[1-9][0-9]*$ ]] || { echo 'Expected a packaging run ID' >&2; exit 1; }
+          mkdir -p build/desktop-release-input
+          gh api "repos/$GH_REPO/actions/runs/$PACKAGING_RUN" > build/desktop-release-input/run.json
+          for arch in arm64 x64; do
+            for kind in packages evidence; do
+              name="desktop-macos-$kind-$arch"
+              gh run download "$PACKAGING_RUN" --name "$name" --dir "build/desktop-release-input/$name"
+            done
+          done
+      - name: Validate identities and prepare metadata without publication
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          CHANNEL: ${{ inputs.channel }}
+          PACKAGING_RUN: ${{ inputs.packaging_run }}
+          REPOSITORY: ${{ github.repository }}
+          TOOLING_SHA: ${{ github.sha }}
+        run: |
+          python .github/scripts/prepare_desktop_release.py \
+            --root build/desktop-release-input --source-sha "$SOURCE_SHA" \
+            --channel "$CHANNEL" --run-id "$PACKAGING_RUN" --repository "$REPOSITORY" \
+            --tooling-sha "$TOOLING_SHA" --output build/desktop-release-prepared
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-release-preparation
+          path: |
+            build/desktop-release-prepared/
+            build/desktop-release-input/run.json
+          if-no-files-found: error
+          retention-days: 14
