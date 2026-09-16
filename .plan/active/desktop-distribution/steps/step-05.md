@@ -68,10 +68,9 @@ No local app, running bridge or installed package may be disturbed.
   and its `defineName = "SESORI_DESKTOP_RELEASE_CHANNEL"`. These are nonserialized
   values, not new Freezed/JSON storage or transport models. Export from
   `client/module_desktop_core/lib/sesori_desktop_core.dart`.
-- The destination's `forBundle({required DesktopBundleIdentity? identity,
-  required DesktopReleaseChannel channel})` factory owns static destination policy.
-  Null identity selects development; Linux selects package-manager guidance without
-  a link. macOS/Windows select a manual-download URI. No runtime architecture guess.
+- Destination types carry values only. Package/link selection belongs to the shell:
+  null identity selects development, Linux selects package-manager guidance, and
+  macOS/Windows select a manual-download URI. No runtime architecture guess.
 - Add `client/desktop/lib/core/desktop_update_configuration.dart` with
   `resolveDesktopUpdateDestination({required String? encodedIdentity,
   required String encodedChannel})`. This shell/build boundary decodes present
@@ -82,7 +81,7 @@ No local app, running bridge or installed package may be disturbed.
   values here before composing UI.
 - Canonical index: `docs/desktop/downloads.md`, public URI
   `https://github.com/sesori-ai/sesori_apps_monorepo/blob/main/docs/desktop/downloads.md`.
-  The foundation destination factory owns that constant and constructs fragments
+  The shell configuration function owns that constant and constructs fragments
   `<channel>-<os>-<architecture>` using closed enum names, for example
   `stable-macos-arm64` or `internal-windows-x64`. Each of the eight matching Markdown
   headings explicitly states no public download is available until that row ships.
@@ -109,10 +108,9 @@ No local app, running bridge or installed package may be disturbed.
   update section in its existing Bridge tab Column with Prego spacing. Attention
   remains in Notifications. The removed standalone Settings screen stays removed;
   no `module_app_ui` API changes are needed.
-- Flow: staging options → dotenv defines → shell typed decoding → foundation
-  destination factory → immutable widget input → existing external-link seam.
+- Flow: staging options → dotenv defines → shell typed decoding and package/link selection → immutable widget input → existing external-link seam.
   `BridgeControlCubit.quit` and `IoDesktopApplicationTerminator` are unchanged.
-- Tests: `client/module_desktop_core/test/foundation/desktop_update_destination_test.dart`
+- Tests: `client/desktop/test/core/desktop_update_configuration_test.dart`
   covers all eight manual destinations and Linux/development; shell configuration
   and widget tests in `client/desktop/test/features/settings/desktop_settings_screens_test.dart`
   cover valid/invalid defines, truthful guidance, and the injected existing
@@ -186,3 +184,24 @@ Logs: `build/desktop-manual-updates-evidence/merged-settings-tests-green.log` an
 `merged-desktop-analyze-green.log`. This is separate from the original 18-case combined
 Settings/staging result above; unchanged destination/staging tests were not rerun.
 The original architecture review remains scoped to its recorded revision.
+
+
+## Shell ownership review correction
+
+PR feedback correctly identified package/link strategy as shell-owned. Commit
+`7a4b9cb1a67f6f9cbd8adbd6605a21564a8dc7bd`, tree
+`188853817ffcf3e38ae74b7d8eeae05f1d839852`, moves policy and its tests into the
+shell, retaining only immutable destination variants/channel metadata in desktop core.
+Normal merge `8459c33eb` preserves incoming local-permission Settings behavior.
+
+From `client/desktop`, `flutter test test/core/desktop_update_configuration_test.dart
+test/features/settings/desktop_settings_screens_test.dart test/tool/stage_desktop_bundle_test.dart
+--reporter expanded` passed 44 cases on the uncommitted correction retained in
+`7a4b9cb` except for a subsequent import-order-only fix. Core `dart analyze --fatal-infos`
+passed on that checkpoint; desktop strict analysis passed at exact `7a4b9cb` after
+the import sort. Logs in `build/desktop-manual-updates-evidence/`:
+`shell-policy-tests.log`, `core-values-analyze.log`, `shell-policy-analyze-final.log`.
+Earlier review results remain historical. Second scoped implementation review
+`5d1129d4-0dc8-4f61-982b-7581ea9fc8a5` approved exact `7a4b9cb` against merge base
+`69d6803daba48c9bf3a8a9e48e00c2d862f7aca0`, B-Client only, no findings.
+Output: `reviews/desktop-distribution-step-05-implementation-followup.md`.
