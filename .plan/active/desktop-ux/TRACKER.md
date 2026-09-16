@@ -138,11 +138,13 @@ or waive shipping qualification.
   long-error console chunking. Full auth generation retains unrelated outputs.
   Scoped architecture plan/implementation reviews approved. See [prerequisite evidence](steps/step-09a1.md).
   No file sinks, production DI or native work.
-- Step 9.a.2: 66 retained cases/eight suites: 55 desktop-core at A plus 11 mobile
-  at the backup-exclusion follow-up B. Desktop-core/desktop analysis remains clean
-  at A; mobile analysis passes at B. Full generation at A preserved ten tracked
+- Step 9.a.2: 112 retained cases/ten suites: 55 desktop-core at A, 11 mobile at
+  backup-exclusion follow-up B, and 46 routing/service cases at C. Desktop-core/
+  desktop analysis remains clean at A; mobile analysis passes at C. Full generation at A preserved ten tracked
   outputs; B regenerates the sole mobile DI output for the existing cache client.
   Completion, final-record persistence before fake termination, warning recovery,
   directory copy and OS-evictable, backup-excluded mobile storage are implemented.
-  Both scoped architecture passes approved. See [file-output evidence](steps/step-09a.md).
+  C removes incoming-link payloads from three diagnostic messages without routing changes.
+  Both earlier scoped architecture passes approved; C is localized non-architectural logic.
+  See [file-output evidence](steps/step-09a.md).
   Native and sidebar follow-ups remain planned.

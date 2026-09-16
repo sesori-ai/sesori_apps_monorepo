@@ -290,6 +290,8 @@ verify the actual relocated helper, not merely the presence of its binary.
   never reports a later failure episode. App/helper files must remain independent;
   persisted diagnostic presentation must not restore omitted parsing bodies or link payloads.
   Mobile logs must not move into backup-eligible storage or fail to recreate an evicted cache.
+  Incoming-link diagnostics in the mobile router/app-links service retain origin and
+  operation context, not URI path/query/fragment payloads, including debug-level messages.
 - Window and tray disagree on desired state, status, or active-session count.
 - Takeover, login-required, or crash give-up is rendered as healthy/connected,
   a takeover starts a restart war or approves a non-replacement prompt, crash

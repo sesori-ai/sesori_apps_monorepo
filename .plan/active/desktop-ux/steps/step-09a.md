@@ -25,7 +25,9 @@ The source-free diagnostic foundation is delivered separately by #1514; its
   ownership; failure wording now identifies the directory. Helper drains remain bounded.
 - Core/auth and their generated outputs are byte-identical to the landed prerequisite.
   Its typed causes, lower-adapter URI protection, console chunking and bounded Quit
-  policy remain intact. No wire, database, auth-policy or analytics change.
+  policy remain intact. Incoming mobile link diagnostics now also omit URI payloads
+  in the router and its existing app-links service. No wire, database, auth-policy
+  or analytics change.
 
 Seven mutable parts belong to these file writers: desktop tail/failure bit and
 its rotation instance's tail/two preparation bits; mobile tail/failure bit.
@@ -45,12 +47,14 @@ Package cwd below is relative to the repository.
 | A: forward integration and fixes | `a882b8dcfe41283a22dc454a02723bf63e7bc5bd` | `7d9e95d9f6342ff2f75ce0911bea8686be51a05c` |
 | Continuation publication | `0bb47d28c062b76f5154ae223689b129e31b5c7c` | `146bf4f8a027271e1a949b27106f77ff55ff91e5` |
 | B: mobile backup exclusion | `ed9feb31adc8fc26ba2521c67be80870cad1cb70` | `706cbf2db015c3f5127bf471e3c5b88f65cb6d7c` |
+| C: incoming-link diagnostics | `bfea7d122bfc1455fd4195fe103265dfbd2ec1c2` | `f7ed9b5a69d6504d33ed9b9250e12858d0072651` |
 
 A is a merge with the preserved publication and landed prerequisite as parents;
 no published history was rewritten. The logging/privacy and plan conflicts retain
 main's versions; regression prose combines the actual file and foundation behavior.
 The continuation publication after A changed only docs. B changes the mobile
-sink, its tests and generated DI; subsequent parent edits are documentation only.
+sink, its tests and generated DI. C changes three diagnostic messages and their
+routing/service tests. Publication edits after each source checkpoint are docs only.
 Use the immutable base, not moving `origin/main`: other worktrees can advance that
 shared ref while integration is underway.
 
@@ -126,6 +130,29 @@ name `IoAppLogSink`'s `TemporaryDirectoryClient` dependency, resolved after core
 No production container was activated. Commands/results are recorded in
 `/tmp/rose-elephant-app-logs-backup-{generation,verification}.json` and adjacent logs.
 
+## Incoming-link diagnostic follow-up at C
+
+A verified HTTPS link can reach the mobile router's unmatched-route callback.
+It logged the full URI at error level; its handled custom-scheme branch and the
+existing `DeepLinkService` also logged it at debug level. All three now reuse
+`diagnosticOrigin`, retaining scheme/host/port and operation context without URI
+payloads. Routing, exception objects, levels and callback results are unchanged;
+no new state, class, API or lifecycle behavior was introduced.
+
+Three focused regressions failed before the fix at index tree
+`4cacae6c2602c6985b3d2d348d4a1e38f253fcc8`, each exposing the synthetic private
+payload. Tests use the actual production router's matcher/exception callback with
+a fake context, and the real service over a fake stream; no production DI or
+native link dispatch. The callback preserves the prior route configuration.
+
+At C, `F test/core/routing/app_route_test.dart test/core/routing/deep_link_service_test.dart`
+in `client/app` passed **40 + 6 = 46 cases**, no failures/skips. Mobile `dart analyze --fatal-infos` passed. An initial
+46-case pass preceded an analyzer-requested if-body brace fix; its rerun is not
+added again. Combined retained evidence is **55 at A + 11 at B + 46 at C = 112
+cases across ten suites**. Mobile's clean analyzer is now at C; the others remain A.
+No annotated shape or registration changed, so generation remains B's evidence.
+Manifests: `/tmp/rose-elephant-app-logs-routing-{red,verification,final-verification}.json`.
+
 ## Architecture and provenance
 
 The approved extraction plan (`e973a005-01ab-43fe-aaf8-eb43ebc854f6`) covers this
@@ -145,6 +172,8 @@ no findings. Run `da7fcc4c-ad01-406b-a9e9-8ac22d5321a2`; complete bound report
 `bd76e256cf726a7d73adac55e6029debde8a19eb75bc0a38dad91691f66f51da`.
 No tests/native operations ran in this review. Parent docs are outside its verdict;
 package documentation and static DI review are not a native backup/restore exercise.
+Neither verdict includes C's subsequent localized diagnostic-message/test changes;
+those change no architecture and did not trigger another architecture review.
 
 Original combined-publication evidence, including the filtered-generation failure
 and recovery, remains in Git at
