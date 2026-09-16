@@ -11,7 +11,7 @@ on:
       mode:
         description: 'Qualification mode (no product publication)'
         type: choice
-        options: [native-builds, macos-signing-preflight, macos-packaging, macos-gui-probe]
+        options: [native-builds, macos-signing-preflight, macos-packaging, macos-gui-probe, windows-packaging]
         default: native-builds
       channel:
         description: 'Compiled download channel (macos-packaging only)'
@@ -28,6 +28,10 @@ on:
       - '.github/scripts/test_qualify_desktop.py'
       - '.github/scripts/package_desktop_macos.py'
       - '.github/scripts/test_package_desktop_macos.py'
+      - '.github/scripts/package_desktop_windows.py'
+      - '.github/scripts/test_package_desktop_windows.py'
+      - 'client/desktop/tool/windows_installer.iss'
+      - 'client/desktop/windows/runner/main.cpp'
       - '.github/scripts/macos_signing_ci.sh'
       - '.github/scripts/probe_sparkle.swift'
       - '.github/scripts/probe_desktop_macos.py'
@@ -194,6 +198,144 @@ jobs:
             build/desktop-macos-packaging/*.log
             build/desktop-macos-packaging/supervised-e2e/
             build/desktop-macos-packaging/platform-probe/
+          if-no-files-found: warn
+          retention-days: 14
+
+  windows-distribution:
+    needs: tooling
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'windows-packaging'
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            arch: x64
+          - runner: windows-11-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      CI: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      PUB_CACHE: ${{ github.workspace }}/../desktop-qualification-pub-cache
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.arch }}
+      - name: Bootstrap pinned native SDK
+        env:
+          SDK_DIR: ${{ runner.temp }}/desktop-qualification-flutter
+        run: |
+          set -euo pipefail
+          mkdir -p build/desktop-qualification
+          python .github/scripts/qualify_desktop.py bootstrap --arch '${{ matrix.arch }}' --sdk-dir "$SDK_DIR" \
+            2>&1 | tee build/desktop-qualification/bootstrap.log
+      - name: Build exact native GUI and helper bundle
+        run: |
+          set -euo pipefail
+          (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
+          (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+          VERSION="$(awk '/^version:/{print $2; exit}' client/desktop/pubspec.yaml)"
+          echo "SESORI_WINDOWS_VERSION=$VERSION" >> "$GITHUB_ENV"
+          (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
+            --build-number '${{ github.run_number }}' --output '${{ github.workspace }}/build/desktop-bundle') \
+            2>&1 | tee build/desktop-qualification/bundle-build.log
+          if [[ -s build/desktop-bundle/build-source-changes.patch ]]; then
+            echo 'Commit build-generated source changes before installer compilation.' >&2
+            exit 1
+          fi
+      - name: Acquire pinned official Inno Setup compiler
+        env:
+          INNO_DIR: ${{ runner.temp }}/inno-setup-7.1.0
+        run: |
+          set -euo pipefail
+          ASSET="$RUNNER_TEMP/innosetup-7.1.0-x64.exe"
+          curl --fail --location --output "$ASSET" \
+            https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe
+          echo '0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f *'"$ASSET" | sha256sum --check
+          # Inno has no ARM64 compiler; Windows ARM64 may emulate this tooling and installer launcher only.
+          "$ASSET" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- "/DIR=$(cygpath -w "$INNO_DIR")"
+          echo "SESORI_ISCC=$INNO_DIR/ISCC.exe" >> "$GITHUB_ENV"
+      - name: Compile unsigned private installer from verified bundle
+        run: |
+          set -euo pipefail
+          python .github/scripts/package_desktop_windows.py package \
+            --bundle build/desktop-bundle/bundle --arch '${{ matrix.arch }}' \
+            --version "$SESORI_WINDOWS_VERSION" --iscc "$SESORI_ISCC" \
+            --output build/desktop-windows-packaging \
+            2>&1 | tee build/desktop-qualification/windows-packaging.log
+      - name: Probe mutex refusal, isolated install and bounded uninstall
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = Resolve-Path "build/desktop-windows-packaging/Sesori-windows-${{ matrix.arch }}-$env:SESORI_WINDOWS_VERSION.exe"
+          $install = Join-Path $env:RUNNER_TEMP 'Sesori isolated install'
+          $shared = Join-Path $env:APPDATA 'Sesori qualification shared-data sentinel'
+          New-Item -ItemType Directory -Path $shared | Out-Null
+          Set-Content -Path (Join-Path $shared 'keep.txt') -Value 'preserve'
+          $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+          New-Item -Path $runKey -Force | Out-Null
+          New-ItemProperty -Path $runKey -Name Sesori -Value 'preexisting-login-intent' -PropertyType String -Force | Out-Null
+          $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$install`"")
+          $installed = Start-Process -FilePath $package -ArgumentList $arguments -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { throw "Install failed: $($installed.ExitCode)" }
+          $mutex = [Threading.Mutex]::new($false, 'Local\com.sesori.desktop.running')
+          $blocked = Start-Process -FilePath $package -ArgumentList $arguments -Wait -PassThru
+          $setupMutexExit = $blocked.ExitCode
+          $mutex.Dispose()
+          if ($setupMutexExit -eq 0) { throw 'Upgrade ignored running GUI marker' }
+          $upgraded = Start-Process -FilePath $package -ArgumentList $arguments -Wait -PassThru
+          if ($upgraded.ExitCode -ne 0) { throw "Upgrade failed: $($upgraded.ExitCode)" }
+          if ((Get-ItemPropertyValue -Path $runKey -Name Sesori) -ne 'preexisting-login-intent') {
+            throw 'Install or upgrade changed login intent'
+          }
+          python .github/scripts/package_desktop_windows.py verify-installed --bundle $install --arch '${{ matrix.arch }}' --version $env:SESORI_WINDOWS_VERSION |
+            Set-Content -Encoding utf8 build/desktop-windows-packaging/installed-inventory.json
+          $uninstaller = Join-Path $install 'unins000.exe'
+          $mutex = [Threading.Mutex]::new($false, 'Local\com.sesori.desktop.running')
+          $blocked = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
+          $uninstallMutexExit = $blocked.ExitCode
+          $mutex.Dispose()
+          if ($uninstallMutexExit -eq 0) { throw 'Uninstall ignored running GUI marker' }
+          $removed = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
+          if ($removed.ExitCode -ne 0) { throw "Uninstall failed: $($removed.ExitCode)" }
+          if (Test-Path (Join-Path $install 'sesori_desktop.exe')) { throw 'Installed GUI remains after uninstall' }
+          if (Get-ItemProperty -Path $runKey -Name Sesori -ErrorAction SilentlyContinue) { throw 'Login value remains after uninstall' }
+          if ((Get-Content (Join-Path $shared 'keep.txt')) -ne 'preserve') { throw 'Shared sentinel changed' }
+          @{
+            architecture = '${{ matrix.arch }}'
+            setupMutexExit = $setupMutexExit
+            uninstallMutexExit = $uninstallMutexExit
+            installedPayloadVerified = $true
+            sameVersionUpgradeVerified = $true
+            uninstallRemovedOnlyRecordedPayload = $true
+            proofBoundary = 'Silent isolated runner fixture; not interactive GUI, account, SmartScreen, signing, or product QA'
+          } | ConvertTo-Json | Set-Content -Encoding utf8 build/desktop-windows-packaging/installer-probe.json
+      - name: Upload private unsigned installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows-packages-${{ matrix.arch }}
+          path: build/desktop-windows-packaging/Sesori-windows-*.exe
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload qualification evidence, including partial failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows-evidence-${{ matrix.arch }}
+          path: |
+            build/desktop-qualification/*.log
+            build/desktop-bundle/build-source-changes.patch
+            build/desktop-bundle/bundle/bridge/desktop-bundle.json
+            build/desktop-windows-packaging/*.json
+            build/desktop-windows-packaging/*.log
           if-no-files-found: warn
           retention-days: 14
 

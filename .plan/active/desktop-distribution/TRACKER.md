@@ -14,8 +14,8 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 4.a | 5 | Package and notarize native macOS builds | done |
 | 4.b | 6 | Keep desktop startup independent of native notifications | done |
 | 5 | 7 | Offer manual macOS updates through official downloads | done |
-| 6 | 8 | Publish isolated desktop channels and macOS downloads | in-progress |
-| 7 | 9 | Package signed per-user Windows installers | pending |
+| 6 | 8 | Private release preparation merged; macOS publication gated | blocked |
+| 7 | 9 | Prepare per-user Windows installers; signing/publication gated | in-progress |
 | 8 | 10 | Deliver manual Windows updates and winget discovery | pending |
 | 9 | 11 | Publish signed native DEB and RPM repositories | pending |
 | 10 | 12 | Offer shipped desktop downloads during onboarding | pending |
@@ -35,9 +35,19 @@ All 19 checks passed at acceptance; Cubic approved and all threads were resolved
 The subsequent merged report showed an additional twentieth check running; it is
 not included in the acceptance claim. Step 5 uses D6 manual updates and the
 user-selected `https://sesori.com/desktop/` (not yet live). Details in
-[step-05](steps/step-05.md). Step 6 continues in the same worktree on
+[step-05](steps/step-05.md). Step 6 preparation ran in the same worktree on
 `desktop-distribution-release-channels`; publication remains gated.
-The current scope is private preparation only; see [step-06](steps/step-06.md).
+Private preparation merged in #1511: accepted
+`9b5d19c01480b0ee71732435955cf945d086abbc`, squash
+`e91e1fc37cf308f228d3b0601781b62ebd465629` at 2026-09-16T09:36:49Z.
+At acceptance 17/17 checks passed, Cubic approved, and all threads were resolved;
+the merged report subsequently showed 18/18 passing. Public publication remains
+blocked, not completed; see [step-06](steps/step-06.md). Independent private Windows
+installer preparation continues on `desktop-distribution-windows-packaging` in the
+same worktree. Local implementation and offline checks are complete; native x64/
+ARM64 compile, install, upgrade, mutex and uninstall execution remains pending in
+the undispatched manual private workflow. This does not authorize shipping Windows
+before the macOS gate.
 
 ## Alignment — 2026-09-15
 
@@ -116,8 +126,8 @@ accepting `9f286805514a26cf5e641ab96ee16e79c3bcc7f5`, as squash
 Cubic approved without findings and the owner-controlled secret migration remains
 an explicit public-release prerequisite. Final unsigned six-target qualification
 run 35036003267 measured merge checkout `e4aa30f017cf876a1f61f2a6881f1282f013dba1`.
-Steps 4.b and 5 subsequently merged in PRs #1503 and #1506. Step 6 is now active;
-see the delivery records above for their exact acceptance and squash revisions.
+Steps 4.b, 5 and private step-6 preparation subsequently merged in PRs #1503,
+#1506 and #1511. See the delivery records above for current work and exact revisions.
 The following step-4.a evidence is historical; step-4.b evidence is recorded below.
 Existing trusted CI credentials produce private Developer-ID-signed, notarized
 and stapled packages on both native Macs. The reviewed manifest correction keeps

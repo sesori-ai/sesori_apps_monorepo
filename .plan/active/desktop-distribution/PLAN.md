@@ -4,8 +4,9 @@
 
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
-- **Status:** Active — steps 1–5 merged; step 6 private release preparation in progress.
-  Public macOS publication remains gated.
+- **Status:** Active — steps 1–5 and private step-6 preparation merged.
+  Public macOS publication remains gated; independent private Windows installer
+  preparation is in progress. Platform shipping order remains macOS, Windows, Linux.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.

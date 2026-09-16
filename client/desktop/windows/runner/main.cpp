@@ -8,6 +8,11 @@
 namespace {
 
 constexpr char kHiddenLaunchArgument[] = "--hidden";
+constexpr wchar_t kRunningMutexName[] = L"Local\\com.sesori.desktop.running";
+
+// Inno Setup observes this process-lifetime marker before install or uninstall.
+// Do not close it during window or Dart shutdown; Windows releases it at exit.
+HANDLE g_running_mutex = nullptr;
 
 bool HasHiddenLaunchArgument(const std::vector<std::string>& arguments) {
   for (const std::string& argument : arguments) {
@@ -22,6 +27,15 @@ bool HasHiddenLaunchArgument(const std::vector<std::string>& arguments) {
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  g_running_mutex = ::CreateMutexW(nullptr, FALSE, kRunningMutexName);
+  if (g_running_mutex == nullptr) {
+    wchar_t error_message[160];
+    swprintf_s(error_message, _countof(error_message),
+               L"Sesori could not create its installer safety marker (Windows error %lu).", ::GetLastError());
+    ::MessageBoxW(nullptr, error_message, L"Sesori startup failed", MB_OK | MB_ICONERROR);
+    return EXIT_FAILURE;
+  }
+
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
