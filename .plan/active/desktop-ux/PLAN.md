@@ -807,7 +807,8 @@ The code-informed D10 plan review rejected underspecified helper ownership,
 DI timing and diagnostic representation. Those findings were applied directly,
 not re-reviewed as a plan. The preserved #1509 implementation was approved at
 `f37931dd4ab9b0c6dceb38a18a9907d5fed0c1ed`; that verdict does not cover review fixes.
-Publication measurements remain owned by [preserved PR #1509](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1509).
+Publication measurements remain owned by
+[preserved PR #1509](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1509).
 Review then identified concrete URI/cause/ordinary-Quit gaps. Rather than expand
 that review loop, 9.a.1 landed separately as #1514; file output remains 9.a.2. A fresh architecture
 plan review (`e973a005-01ab-43fe-aaf8-eb43ebc854f6`) approved the two-slice ownership;
