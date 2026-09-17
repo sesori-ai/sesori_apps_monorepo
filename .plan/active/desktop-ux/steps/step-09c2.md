@@ -29,7 +29,7 @@ resolved (report SHA-256 `84823cda7172172b5ffd549ffcc04fc1ce43712131ee69a16f6d56
 
 ## Verification
 
-The all-path delivery is 688 changed lines (595 additions, 93 deletions); pinned Dart/Flutter 3.47.4:
+The all-path delivery is 689 changed lines (596 additions, 93 deletions); pinned Dart/Flutter 3.47.4:
 
 - `client/module_core`: 20 recent-session cases pass; `dart analyze --fatal-infos` is clean.
 - `client/module_desktop_core`: 10 projection/refresh Cubit/orchestrator cases pass;
