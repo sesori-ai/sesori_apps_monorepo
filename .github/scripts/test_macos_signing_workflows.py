@@ -1,6 +1,7 @@
 """Bounded source contracts; live environment policy and signing need native probes."""
-from pathlib import Path
+import re
 import unittest
+from pathlib import Path
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
 
@@ -28,7 +29,13 @@ class MacosSigningWorkflowTest(unittest.TestCase):
                 self.assertIn(f"      {secret}:\n        required: false", secret_block)
         for name in ("release-all-platforms.yml", "submit-release.yml", "verify-macos-signing.yml"):
             with self.subTest(workflow=name):
-                self.assertNotIn("secrets.MACOS_", (WORKFLOWS / name).read_text())
+                caller = (WORKFLOWS / name).read_text()
+                call = caller.split("uses: ./.github/workflows/_reusable-bridge-build.yml", 1)[1]
+                next_job = re.search(r"\n  [A-Za-z0-9_-]+:", call)
+                if next_job is not None:
+                    call = call[:next_job.start()]
+                self.assertIn("\n    secrets: inherit\n", call)
+                self.assertNotIn("secrets.MACOS_", caller)
 
     def test_main_guards_precede_mobile_or_release_jobs(self):
         release_all = (WORKFLOWS / "release-all-platforms.yml").read_text()
@@ -42,8 +49,9 @@ class MacosSigningWorkflowTest(unittest.TestCase):
         guard = "if [[ \"$GITHUB_REF\" != 'refs/heads/main' ]]"
         self.assertLess(probe.index(guard), probe.index("uses: actions/checkout@v6"))
         self.assertIn("uses: ./.github/workflows/_reusable-bridge-build.yml", probe)
+        self.assertEqual(probe.count("secrets: inherit"), 1)
         self.assertIn("  contents: read", probe)
-        for forbidden in ("contents: write", "secrets:", "_reusable-ios", "_reusable-android", "gh release"):
+        for forbidden in ("contents: write", "secrets.MACOS_", "_reusable-ios", "_reusable-android", "gh release"):
             self.assertNotIn(forbidden, probe)
 
     def test_bootstrap_is_retired(self):

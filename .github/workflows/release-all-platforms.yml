@@ -145,6 +145,7 @@ jobs:
     uses: ./.github/workflows/_reusable-bridge-build.yml
     with:
       version: ${{ needs.preflight.outputs.version }}-internal.${{ needs.next-build-number.outputs.build_number }}
+    secrets: inherit
 
   # All-or-nothing: runs only when iOS, Android AND all six bridge targets
   # succeeded, so every internal tag maps to a complete set (both store builds

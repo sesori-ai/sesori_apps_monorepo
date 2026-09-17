@@ -32,8 +32,10 @@ changes, or live app/bridge interruption.
      no credential values enter logs or local files. Verify recipient key before upload.
    - Existing consumers and repository secrets stay untouched throughout this step.
 2. `⚙️ [macos-signing-environment] Cut over automatic signing and retire repository copies [step 2/2]`
-   - Bind signing consumers to the main-only environment; remove caller secret passing
-     and required reusable-workflow secret declarations together.
+   - Bind signing consumers to the main-only environment and remove caller value maps.
+     The reusable workflow keeps exactly three optional signing declarations, while its
+     trusted main-only callers use `secrets: inherit` so GitHub resolves the called job's
+     environment values. Signing steps reference only those three declared names.
    - Add a private verification route for the reusable CLI build if necessary, with no
      mobile upload, tagging or release creation. Reuse private desktop credential checks.
    - Remove temporary migration workflow. Add focused workflow contract tests/docs.
@@ -42,8 +44,10 @@ changes, or live app/bridge interruption.
    - Remove only the five repository secret copies after verification. Verify environment
      names/policies and repository absence; document exact source/run evidence.
 
-Two coherent PRs preserve the source credentials until migration and consumers are
-verified. No additional product persistent state, services, timers or lifecycle owners.
+The two planned PRs preserve the source credentials until migration and consumers are
+verified. Bounded corrective PRs discovered during native cutover proof remain part of
+step 2 and do not authorize source-secret deletion before a passing environment-only
+probe. No additional product persistent state, services, timers or lifecycle owners.
 The temporary encrypted artifact is retained for one day and should be removed after
 successful import. No plaintext secret artifact is permitted.
 
@@ -131,12 +135,22 @@ signing wait for human approval.
   and arm64 job `105123329399`, without an approval wait.
 - CLI verification run `35197240797` at the same source/tree passed all four non-macOS
   targets but failed both native macOS jobs (`105123324081`, `105123324088`) at
-  certificate import. Sanitized logs show an empty/invalid certificate input while
-  direct desktop consumers succeed. Repository copies were correctly retained.
-  Root cause: removing the `workflow_call.secrets` declarations left those names
-  unavailable in the called workflow even though its job selected the environment.
-  Restore the three names as optional declarations; callers still pass nothing and
-  the job environment remains authoritative. Rerun the actual CLI probe before deletion.
+  certificate import. Sanitized logs showed invalid PKCS#12 input while direct desktop
+  consumers succeeded. Repository copies were correctly retained.
+- Corrective PR #1531 restored exactly three optional `workflow_call.secrets`
+  declarations and merged as `de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594`, tree
+  `8c4c2e9cf7eded87d466e34198722a552492683b`. Current-source CLI run `35199943612`
+  passed all four non-macOS targets but failed native x64 job `105132089029` and arm64
+  job `105132089209` before certificate import. The explicit nonempty checks established
+  that `MACOS_CERT_P12_BASE64` was absent in the called workflow; declarations alone do
+  not make the selected environment's values available.
+- GitHub's reusable-workflow boundary requires the trusted caller to opt into
+  `secrets: inherit` before the called job can resolve environment-scoped secrets. Add
+  inheritance to only the three existing main-guarded callers, retain the optional
+  three-name contract and caller value-map prohibition, and rerun the actual CLI probe.
+  Repository copies remain present. After a passing run, remove the repository-level
+  `MACOS_KEYCHAIN_PASSWORD` first and rerun as an environment-only canary before deleting
+  any irreplaceable certificate or notarization copies.
 - Live CLI cutover verification and repository-copy removal are still pending. TestFlight
   and Android workflow files, credentials and release jobs remain unchanged.
 
