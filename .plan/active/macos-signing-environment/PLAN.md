@@ -113,11 +113,23 @@ signing wait for human approval.
   and `desktop-qualification.yml` with `mode=macos-signing-preflight` from main.
   Verify successful native x64/ARM64 signing and environment admission without approval.
   Repository copies must not be deleted before those checks and an active-release check.
-- Cutover #1527 merged as `05e019302ebeb017af899504d75e995bc6b54dc7`.
+- Cutover #1527 merged as `05e019302ebeb017af899504d75e995bc6b54dc7`,
+  tree `d68f8060d6eab33b9fef755ae9dff2d01e5d5921`. Both checkpoints were dispatched
+  from `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`
+  against that immutable `main` source:
+
+  ```bash
+  gh workflow run verify-macos-signing.yml \
+    --repo sesori-ai/sesori_apps_monorepo --ref main
+  gh workflow run desktop-qualification.yml \
+    --repo sesori-ai/sesori_apps_monorepo --ref main \
+    -f mode=macos-signing-preflight -f channel=stable -f packaging_run=''
+  ```
+
   Desktop preflight run `35197244286` passed environment admission, certificate import,
   notarization authentication and synthetic signing on native x64 job `105123329300`
   and arm64 job `105123329399`, without an approval wait.
-- CLI verification run `35197240797` at the same source passed all four non-macOS
+- CLI verification run `35197240797` at the same source/tree passed all four non-macOS
   targets but failed both native macOS jobs (`105123324081`, `105123324088`) at
   certificate import. Sanitized logs show an empty/invalid certificate input while
   direct desktop consumers succeed. Repository copies were correctly retained.
