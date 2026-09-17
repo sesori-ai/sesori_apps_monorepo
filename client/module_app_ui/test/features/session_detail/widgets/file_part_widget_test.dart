@@ -1438,8 +1438,10 @@ void main() {
     for (final command in [null, "capture-preview"]) {
       await tester.pumpWidget(
         _app(
-          child: ToolPartWidget(
-            part: part.copyWith(state: part.state.copyWith(shellCommand: command)),
+          child: SingleChildScrollView(
+            child: ToolPartWidget(
+              part: part.copyWith(state: part.state.copyWith(shellCommand: command)),
+            ),
           ),
         ),
       );
