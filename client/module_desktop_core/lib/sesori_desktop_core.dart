@@ -41,6 +41,7 @@ export "src/foundation/platform/system_tray.dart";
 export "src/foundation/platform/window_host.dart";
 export "src/orchestration/desktop_bridge_takeover_orchestrator.dart";
 export "src/orchestration/desktop_logout_orchestrator.dart";
+export "src/orchestration/desktop_sidebar_refresh_orchestrator.dart";
 export "src/orchestration/desktop_startup_orchestrator.dart";
 export "src/repositories/bridge_process_log_repository.dart";
 export "src/repositories/bridge_process_repository.dart";

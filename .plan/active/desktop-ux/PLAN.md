@@ -274,7 +274,8 @@ navigation or repeated settings links. Inspect the actual rendered result.
 - Apply the hover-hint rule above throughout the sidebar and in step 11's wider
   desktop audit. The scoped 9.c.2 architecture plan review rejected a foundation-layer
   projection and widget-owned refresh sequencing. The implementation addresses those
-  required findings with Layer-4 desktop-core projection and refresh owners.
+  required findings with a Layer-4 projection, a non-Cubit Layer-4 orchestrator, and a
+  refresh Cubit that depends only on that boundary.
 
 ### Cockpit shell
 

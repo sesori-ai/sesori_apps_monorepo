@@ -1,39 +1,25 @@
 import "package:bloc/bloc.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
+
+import "../../orchestration/desktop_sidebar_refresh_orchestrator.dart";
 
 class DesktopSidebarRefreshCubit._create({
-  required final ProjectListCubit _projectListCubit,
-  required final RecentSessionsCubit _recentSessionsCubit,
+  required final DesktopSidebarRefreshOperation _refreshOperation,
 }) extends Cubit<DesktopSidebarRefreshState> {
-  new({
-    required ProjectListCubit projectListCubit,
-    required RecentSessionsCubit recentSessionsCubit,
-  }) : this._create(projectListCubit: projectListCubit, recentSessionsCubit: recentSessionsCubit);
+  new({required DesktopSidebarRefreshOperation refreshOperation}) : this._create(refreshOperation: refreshOperation);
 
   this : super(const DesktopSidebarRefreshIdle());
 
   Future<void> refresh() async {
-    if (state is DesktopSidebarRefreshInProgress || _projectListCubit.state is! ProjectListLoaded) return;
+    if (state is DesktopSidebarRefreshInProgress) return;
     emit(const DesktopSidebarRefreshInProgress());
-    try {
-      final projectsSucceeded = await _projectListCubit.refreshProjects();
-      if (isClosed) return;
-      final currentProjects = _projectListCubit.state;
-      final sessionsSucceeded = currentProjects is ProjectListLoaded
-          ? await _recentSessionsCubit.refreshProjects(
-              projectIds: currentProjects.projects.map((project) => project.id),
-            )
-          : false;
-      if (isClosed) return;
-      emit(
-        projectsSucceeded && sessionsSucceeded
-            ? const DesktopSidebarRefreshSucceeded()
-            : const DesktopSidebarRefreshFailed(),
-      );
-    } on Object catch (error, stackTrace) {
-      loge("Failed to refresh the desktop sidebar", error, stackTrace);
-      if (!isClosed) emit(const DesktopSidebarRefreshFailed());
-    }
+    final result = await _refreshOperation.refresh();
+    if (isClosed) return;
+    emit(
+      switch (result) {
+        DesktopSidebarRefreshResult.succeeded => const DesktopSidebarRefreshSucceeded(),
+        DesktopSidebarRefreshResult.failed => const DesktopSidebarRefreshFailed(),
+      },
+    );
   }
 }
 

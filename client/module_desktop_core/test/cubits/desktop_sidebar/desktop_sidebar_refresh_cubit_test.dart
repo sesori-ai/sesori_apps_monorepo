@@ -1,90 +1,66 @@
 import "dart:async";
 
 import "package:mocktail/mocktail.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  late _ProjectListCubit projects;
-  late _RecentSessionsCubit recent;
+  late _RefreshOrchestrator orchestrator;
   late DesktopSidebarRefreshCubit cubit;
 
   setUp(() {
-    projects = _ProjectListCubit();
-    recent = _RecentSessionsCubit();
-    when(() => projects.state).thenReturn(_loadedProjects(ids: const ["old"]));
-    when(() => projects.refreshProjects()).thenAnswer((_) async => true);
-    when(() => recent.refreshProjects(projectIds: any(named: "projectIds"))).thenAnswer((_) async => true);
-    cubit = DesktopSidebarRefreshCubit(projectListCubit: projects, recentSessionsCubit: recent);
+    orchestrator = _RefreshOrchestrator();
+    when(orchestrator.refresh).thenAnswer((_) async => DesktopSidebarRefreshResult.succeeded);
+    cubit = DesktopSidebarRefreshCubit(refreshOperation: orchestrator);
   });
 
-  tearDown(() => cubit.close());
-
-  test("refreshes the resulting project inventories after the project snapshot", () async {
-    final projectReply = Completer<bool>();
-    when(() => projects.refreshProjects()).thenAnswer((_) => projectReply.future);
-    final pending = cubit.refresh();
-
-    expect(cubit.state, isA<DesktopSidebarRefreshInProgress>());
-    verifyNever(() => recent.refreshProjects(projectIds: any(named: "projectIds")));
-    when(() => projects.state).thenReturn(_loadedProjects(ids: const ["new", "other"]));
-    projectReply.complete(true);
-    await pending;
-
-    final captured = verify(() => recent.refreshProjects(projectIds: captureAny(named: "projectIds"))).captured.single;
-    expect(captured, orderedEquals(["new", "other"]));
-    expect(cubit.state, isA<DesktopSidebarRefreshSucceeded>());
+  tearDown(() async {
+    if (!cubit.isClosed) await cubit.close();
   });
 
-  test("coalesces duplicate intent while refreshing", () async {
-    final projectReply = Completer<bool>();
-    when(() => projects.refreshProjects()).thenAnswer((_) => projectReply.future);
-    final first = cubit.refresh();
-    final second = cubit.refresh();
-    projectReply.complete(true);
-    await Future.wait([first, second]);
-
-    verify(() => projects.refreshProjects()).called(1);
-    verify(() => recent.refreshProjects(projectIds: any(named: "projectIds"))).called(1);
-    expect(cubit.state, isA<DesktopSidebarRefreshSucceeded>());
-  });
-
-  test("refreshes retained session inventories but reports either phase failing", () async {
-    when(() => projects.refreshProjects()).thenAnswer((_) async => false);
-    when(() => recent.refreshProjects(projectIds: any(named: "projectIds"))).thenAnswer((_) async => true);
+  test("maps the coordinated result to presentation state", () async {
+    final states = expectLater(
+      cubit.stream,
+      emitsInOrder([const DesktopSidebarRefreshInProgress(), const DesktopSidebarRefreshSucceeded()]),
+    );
 
     await cubit.refresh();
+    await states;
 
-    verify(() => recent.refreshProjects(projectIds: any(named: "projectIds"))).called(1);
-    expect(cubit.state, isA<DesktopSidebarRefreshFailed>());
+    verify(orchestrator.refresh).called(1);
   });
 
-  test("reports failure when session inventory refresh fails", () async {
-    when(() => recent.refreshProjects(projectIds: any(named: "projectIds"))).thenAnswer((_) async => false);
+  test("maps a failed result", () async {
+    when(orchestrator.refresh).thenAnswer((_) async => DesktopSidebarRefreshResult.failed);
 
     await cubit.refresh();
 
     expect(cubit.state, const DesktopSidebarRefreshFailed());
   });
 
-  test("reports an unexpected thrown workflow failure", () async {
-    when(() => projects.refreshProjects()).thenThrow(StateError("unexpected"));
+  test("coalesces duplicate intent while refreshing", () async {
+    final result = Completer<DesktopSidebarRefreshResult>();
+    when(orchestrator.refresh).thenAnswer((_) => result.future);
+    final first = cubit.refresh();
+    final second = cubit.refresh();
+    result.complete(DesktopSidebarRefreshResult.succeeded);
+    await Future.wait([first, second]);
 
-    await cubit.refresh();
+    verify(orchestrator.refresh).called(1);
+    expect(cubit.state, const DesktopSidebarRefreshSucceeded());
+  });
 
-    expect(cubit.state, isA<DesktopSidebarRefreshFailed>());
-    verifyNever(() => recent.refreshProjects(projectIds: any(named: "projectIds")));
+  test("does not publish after close", () async {
+    final result = Completer<DesktopSidebarRefreshResult>();
+    when(orchestrator.refresh).thenAnswer((_) => result.future);
+    final pending = cubit.refresh();
+    await cubit.close();
+    result.complete(DesktopSidebarRefreshResult.succeeded);
+
+    await pending;
+
+    expect(cubit.isClosed, isTrue);
   });
 }
 
-ProjectListLoaded _loadedProjects({required List<String> ids}) => ProjectListState.loaded(
-  projects: [
-    for (final id in ids) ProjectSummary(id: id, name: id, path: "/$id", time: null),
-  ],
-  activityById: const {},
-) as ProjectListLoaded;
-
-class _ProjectListCubit() extends Mock implements ProjectListCubit;
-class _RecentSessionsCubit() extends Mock implements RecentSessionsCubit;
+class _RefreshOrchestrator() extends Mock implements DesktopSidebarRefreshOperation;
