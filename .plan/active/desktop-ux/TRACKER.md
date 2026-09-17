@@ -32,13 +32,13 @@ keeps the architectural owners separate from Flutter composition, and adds no sc
 | [x] | 9.a.2 | `desktop-ux/app-logs` | [13/20](#pr-titles) | ≤ 1,300 | done |
 | [x] | 9.b | `desktop-ux/sidebar-interactions` | [14/20](#pr-titles) | ≤ 500 | done |
 | [x] | 9.c.1 | `desktop-ux/sidebar-refresh-continuity` | [15/20](#pr-titles) | ≤ 650 | done |
-| [ ] | 9.c.2a | `desktop-ux/sidebar-activity-foundation` | [16/20](#pr-titles) | ≤ 700 | in-progress |
-| [ ] | 9.c.2b | `desktop-ux/sidebar-activity-controls` | [17/20](#pr-titles) | ≤ 1,450 | pending |
+| [x] | 9.c.2a | `desktop-ux/sidebar-activity-foundation` | [16/20](#pr-titles) | ≤ 700 | done |
+| [ ] | 9.c.2b | `desktop-ux/sidebar-activity-controls` | [17/20](#pr-titles) | ≤ 1,450 | in-progress |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | [18/20](#pr-titles) | ≤ 600 | pending |
 | [ ] | 11 | `desktop-ux/regression-docs` | [19/20](#pr-titles) | ≤ 600 | pending |
 | [ ] | 12 | `desktop-ux/coverage-retire` | [20/20](#pr-titles) | ≤ 300 | pending |
 
-Current: 9.c.2a activity/refresh ownership, then 9.c.2b UI → 10 → 11 → 12.
+Current: publish 9.c.2a, then deliver prepared 9.c.2b UI → 10 → 11 → 12.
 9.c.1 merged as #1526; native qualification remains outstanding.
 One PR at a time; prepare at most one local successor and publish after its predecessor merges.
 
