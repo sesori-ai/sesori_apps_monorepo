@@ -40,6 +40,7 @@ The all-path delivery is 688 changed lines (595 additions, 93 deletions); pinned
 
 ## Boundaries
 
+Series-title metadata receipt: `/tmp/rose-elephant-series-20-title-receipts.json`.
 This prerequisite has no user-visible, database, wire, bridge/plugin or generated-file impact.
 The local successor owns Flutter composition, localization, regression docs and synthetic renders.
 No production DI, app smoke, GUI/helper/bridge, auth/preferences, registration, secure storage or device operation ran.
