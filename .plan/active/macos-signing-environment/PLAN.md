@@ -92,8 +92,53 @@ signing wait for human approval.
   wheels are version/hash-locked. A synthetic sealed-box roundtrip runs before
   credential exposure. These pins bound dependency changes, not a claim that
   hashing alone proves third-party code free of vulnerabilities.
-- No signing consumers changed and no repository secrets removed during bootstrap.
-- Step 1 implementation pending review; native verification and cutover remain pending.
+- Bootstrap #1525 merged as `ab9d4eb245434195c6b70fdb70b285e0a7a05bd5`.
+  Manual run `35139046166`, job `104938663518`, passed at that exact source;
+  the synthetic sealed-box roundtrip and encryption completed without plaintext output.
+- The five ciphertext values were imported via GitHub's environment-secret API only
+  after checking the exact source, allowlist, destination environment, public key and
+  key ID. Metadata confirms five destination names. The temporary Actions artifact
+  `10464765058` and local ciphertext file were removed after successful import.
+- Repository copies remain present. Step 2 binds existing consumers to the environment,
+  removes their caller secret passing, and removes the temporary bootstrap workflow.
+  The reusable build's full six-target matrix uses the environment (no approval delay);
+  only its macOS signing steps consume credentials. Private desktop qualification uses
+  the same environment. Both routes now require dispatch from main. The combined
+  internal-release and submission callers also fail non-main dispatches before
+  build-number/store work, preventing partial mobile uploads when signing is denied.
+- `verify-macos-signing.yml` calls the actual reusable CLI build with the committed
+  version and read-only repository permission. It uploads private build artifacts only;
+  no TestFlight, Android, tag, release or installer publication is invoked.
+- Cutover must merge before main-only native proof: dispatch `verify-macos-signing.yml`
+  and `desktop-qualification.yml` with `mode=macos-signing-preflight` from main.
+  Verify successful native x64/ARM64 signing and environment admission without approval.
+  Repository copies must not be deleted before those checks and an active-release check.
+- Cutover #1527 merged as `05e019302ebeb017af899504d75e995bc6b54dc7`,
+  tree `d68f8060d6eab33b9fef755ae9dff2d01e5d5921`. Both checkpoints were dispatched
+  from `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`
+  against that immutable `main` source:
+
+  ```bash
+  gh workflow run verify-macos-signing.yml \
+    --repo sesori-ai/sesori_apps_monorepo --ref main
+  gh workflow run desktop-qualification.yml \
+    --repo sesori-ai/sesori_apps_monorepo --ref main \
+    -f mode=macos-signing-preflight -f channel=stable -f packaging_run=''
+  ```
+
+  Desktop preflight run `35197244286` passed environment admission, certificate import,
+  notarization authentication and synthetic signing on native x64 job `105123329300`
+  and arm64 job `105123329399`, without an approval wait.
+- CLI verification run `35197240797` at the same source/tree passed all four non-macOS
+  targets but failed both native macOS jobs (`105123324081`, `105123324088`) at
+  certificate import. Sanitized logs show an empty/invalid certificate input while
+  direct desktop consumers succeed. Repository copies were correctly retained.
+  Root cause: removing the `workflow_call.secrets` declarations left those names
+  unavailable in the called workflow even though its job selected the environment.
+  Restore the three names as optional declarations; callers still pass nothing and
+  the job environment remains authoritative. Rerun the actual CLI probe before deletion.
+- Live CLI cutover verification and repository-copy removal are still pending. TestFlight
+  and Android workflow files, credentials and release jobs remain unchanged.
 
 Keep this plan active until consumer verification, removal and final metadata checks
 are recorded. Existing desktop distribution release/interactive gates remain separate.
