@@ -114,7 +114,8 @@ content the transcript renders live and after reload.
 - User, tool, and each maximal contiguous run of assistant file attachments use
   the same compact collection: 100 px square previews with 4 px corners and
   6 px gaps, wrapping within the parent width (and shrinking if the pane is
-  narrower than one preview). Loaded images center-crop without an obscuring
+  narrower than one preview). Attachment-only outgoing bubbles shrink to their
+  thumbnail run instead of filling the maximum bubble width. Loaded images center-crop without an obscuring
   metadata overlay; filenames remain accessible and in the full-screen viewer.
   Assistant Markdown images use the same compact crop and reveal the contained
   image during the viewer transition. Loading, failure, retry, and metadata-only

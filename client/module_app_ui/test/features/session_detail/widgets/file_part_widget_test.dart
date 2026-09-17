@@ -300,7 +300,7 @@ void main() {
       );
 
       final collection = find.byType(AttachmentCollectionWidget);
-      expect(tester.getSize(find.byKey(AttachmentCollectionWidget.surfaceKey)).width, 320);
+      expect(tester.getSize(find.byKey(AttachmentCollectionWidget.surfaceKey)).width, [100, 206, 312, 320][count - 1]);
       final tiles = find.descendant(of: collection, matching: find.byType(AspectRatio));
       expect(tiles, findsNWidgets(count));
       for (final tile in tester.widgetList<AspectRatio>(tiles)) {
@@ -314,6 +314,44 @@ void main() {
           expect(tester.getTopLeft(tiles.at(index)).dy, greaterThan(tester.getBottomLeft(tiles.first).dy));
         }
       }
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets("attachment-only user bubbles shrink to their thumbnail run", (tester) async {
+    for (final count in [1, 2]) {
+      await tester.pumpWidget(
+        _app(
+          child: SizedBox(
+            width: 402,
+            child: UserMessageBubble(
+              markdown: null,
+              attachments: [
+                AttachmentCollectionWidget(
+                  sessionId: "session-1",
+                  attachments: List.generate(
+                    count,
+                    (index) => MessageAttachment.metadata(mime: "image/png", filename: "preview-$index.png"),
+                  ),
+                ),
+              ],
+              outlined: false,
+              transitionDuration: Duration.zero,
+            ),
+          ),
+        ),
+      );
+      final surface = find.byWidgetPredicate((widget) {
+        if (widget is! DecoratedBox) return false;
+        final decoration = widget.decoration;
+        return decoration is BoxDecoration &&
+            decoration.color == PregoDesignSystem.light.colors.bgSurface2 &&
+            decoration.borderRadius == BorderRadius.circular(12);
+      });
+      expect(surface, findsOneWidget);
+      final rect = tester.getRect(surface);
+      expect(rect.width, count == 1 ? 120 : 226);
+      expect(rect.right, 386);
       expect(tester.takeException(), isNull);
     }
   });

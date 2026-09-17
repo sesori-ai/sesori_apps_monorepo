@@ -22,13 +22,15 @@ class const AttachmentCollectionWidget({
     return LayoutBuilder(
       builder: (context, constraints) {
         final tileWidth = math.min(constraints.maxWidth, FilePartWidget.previewSize);
+        final runWidth = visibleAttachments.length * tileWidth + (visibleAttachments.length - 1) * prego.spacing.sm;
         final duplicateCounts = <String, int>{};
 
         return Align(
           alignment: Alignment.centerLeft,
+          widthFactor: 1,
           child: SizedBox(
             key: surfaceKey,
-            width: constraints.maxWidth,
+            width: math.min(constraints.maxWidth, runWidth),
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: prego.spacing.xs),
               child: Wrap(
