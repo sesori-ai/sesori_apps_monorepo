@@ -128,7 +128,10 @@ wait timer: scheduled internal and production CLI build jobs must not acquire a 
 manual approval. Existing store submission approvals remain separate and unchanged.
 TestFlight/Android credentials and build-number resolution do not move with these
 macOS credentials. Production release source may still be checked out by the existing
-validated `ref` input; dispatch the owning workflow from main.
+validated `ref` input; dispatch the owning workflow from main. GitHub reusable-workflow
+callers must use `secrets: inherit` for the called job to receive its selected environment's
+secrets. The callers do not map macOS values, and the called workflow declares and uses
+only the three CLI-signing names; review it as secret-bearing code.
 
 The manual `verify-macos-signing.yml` route exercises the actual reusable six-target
 build and both native macOS signing legs without mobile uploads, tags or publication.

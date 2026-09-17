@@ -77,9 +77,13 @@ Only the explicit preflight/packaging signing step consumes `MACOS_CERT_P12_BASE
 `APPLE_APP_SPECIFIC_PASSWORD` from the `macos-signing` environment, plus the
 `APPLE_TEAM_ID` repository variable. The environment admits workflows dispatched from
 `main` and intentionally has no reviewers or wait timer, preserving automatic CLI
-signing. Desktop publication remains a separate human-gated operation. Temporary
-certificate/Keychain/profile files stay outside checkout and artifact paths and are
-removed after use. Passwords never become Python packager arguments or exception text.
+signing. GitHub requires each trusted reusable-workflow caller to use `secrets: inherit`
+before the called job can resolve environment secrets; callers do not map signing values,
+and signing steps reference only the three declared macOS names. Treat changes to the
+called workflow as secret-bearing because inheritance exposes caller-visible secrets to it.
+Desktop publication remains a separate human-gated operation. Temporary certificate,
+Keychain, and profile files stay outside checkout and artifact paths and are removed after
+use. Passwords never become Python packager arguments or exception text.
 
 During cutover, same-named repository copies remain only until native environment-backed
 CLI signing and desktop preflight both pass; environment values override them in this

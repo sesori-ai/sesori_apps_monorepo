@@ -407,6 +407,7 @@ jobs:
     with:
       ref: ${{ needs.resolve.outputs.commit_sha }}
       version: ${{ needs.resolve.outputs.version }}
+    secrets: inherit
 
   # bridge-only submits skip both store jobs and with them the
   # store-production reviewer gate. This no-op job holds that gate BEFORE the

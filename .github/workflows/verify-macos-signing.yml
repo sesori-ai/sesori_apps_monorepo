@@ -34,3 +34,4 @@ jobs:
     uses: ./.github/workflows/_reusable-bridge-build.yml
     with:
       version: ${{ needs.version.outputs.value }}
+    secrets: inherit
