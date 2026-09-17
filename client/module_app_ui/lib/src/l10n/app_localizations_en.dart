@@ -1229,6 +1229,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailToolCancelled => 'Cancelled';
 
   @override
+  String get sessionDetailShell => 'Shell';
+
+  @override
+  String get sessionDetailCommandRan => 'Ran';
+
+  @override
+  String get sessionDetailCopyCommand => 'Copy command';
+
+  @override
+  String get sessionDetailShellOutput => 'Output';
+
+  @override
+  String get sessionDetailCopyOutput => 'Copy output';
+
+  @override
   String get sessionDetailFollowOutput => 'Follow';
 
   @override
