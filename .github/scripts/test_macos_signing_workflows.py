@@ -11,7 +11,21 @@ class MacosSigningWorkflowTest(unittest.TestCase):
         desktop = (WORKFLOWS / "desktop-qualification.yml").read_text()
         self.assertIn("    environment: macos-signing\n", bridge)
         self.assertIn("    environment: macos-signing\n", desktop)
-        self.assertNotIn("    secrets:\n", bridge.split("jobs:", 1)[0])
+        header = bridge.split("jobs:", 1)[0]
+        secret_block = header.split("    secrets:\n", 1)[1]
+        expected_secrets = {
+            "MACOS_CERT_P12_BASE64", "MACOS_CERT_PASSWORD", "MACOS_KEYCHAIN_PASSWORD",
+        }
+        declared_secrets = {
+            line.strip().removesuffix(":")
+            for line in secret_block.splitlines()
+            if line.startswith("      ") and not line.startswith("        ")
+        }
+        self.assertEqual(declared_secrets, expected_secrets)
+        self.assertNotIn("required: true", secret_block)
+        for secret in expected_secrets:
+            with self.subTest(declaration=secret):
+                self.assertIn(f"      {secret}:\n        required: false", secret_block)
         for name in ("release-all-platforms.yml", "submit-release.yml", "verify-macos-signing.yml"):
             with self.subTest(workflow=name):
                 self.assertNotIn("secrets.MACOS_", (WORKFLOWS / name).read_text())
