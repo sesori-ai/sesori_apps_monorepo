@@ -113,7 +113,19 @@ signing wait for human approval.
   and `desktop-qualification.yml` with `mode=macos-signing-preflight` from main.
   Verify successful native x64/ARM64 signing and environment admission without approval.
   Repository copies must not be deleted before those checks and an active-release check.
-- Live cutover verification and repository-copy removal are still pending. TestFlight
+- Cutover #1527 merged as `05e019302ebeb017af899504d75e995bc6b54dc7`.
+  Desktop preflight run `35197244286` passed environment admission, certificate import,
+  notarization authentication and synthetic signing on native x64 job `105123329300`
+  and arm64 job `105123329399`, without an approval wait.
+- CLI verification run `35197240797` at the same source passed all four non-macOS
+  targets but failed both native macOS jobs (`105123324081`, `105123324088`) at
+  certificate import. Sanitized logs show an empty/invalid certificate input while
+  direct desktop consumers succeed. Repository copies were correctly retained.
+  Root cause: removing the `workflow_call.secrets` declarations left those names
+  unavailable in the called workflow even though its job selected the environment.
+  Restore the three names as optional declarations; callers still pass nothing and
+  the job environment remains authoritative. Rerun the actual CLI probe before deletion.
+- Live CLI cutover verification and repository-copy removal are still pending. TestFlight
   and Android workflow files, credentials and release jobs remain unchanged.
 
 Keep this plan active until consumer verification, removal and final metadata checks
