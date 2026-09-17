@@ -50,10 +50,20 @@ class RecentSessionsCubit({
     await _load(projectId: projectId);
   }
 
-  Future<void> retry({required String projectId}) => _load(projectId: projectId);
+  Future<void> retry({required String projectId}) async {
+    await _load(projectId: projectId);
+  }
 
-  Future<void> _load({required String projectId}) async {
-    if (isClosed) return;
+  /// Refreshes the named inventories and reports whether every snapshot applied.
+  Future<bool> refreshProjects({required Iterable<String> projectIds}) async {
+    final outcomes = await Future.wait([
+      for (final projectId in projectIds.toSet()) _load(projectId: projectId),
+    ]);
+    return outcomes.every((applied) => applied);
+  }
+
+  Future<bool> _load({required String projectId}) async {
+    if (isClosed) return false;
     final request = RecentSessionsLoading();
     _pendingReads[projectId] = request;
     final lifecycleChangeGeneration = _lifecycleChangeGenerations[projectId];
@@ -66,12 +76,11 @@ class RecentSessionsCubit({
       }
       // A reconnect/catalog event can request a newer snapshot while this read
       // is in flight. Its result, not this older one, owns the project entry.
-      if (isClosed || !identical(_pendingReads[projectId], request)) return;
+      if (isClosed || !identical(_pendingReads[projectId], request)) return false;
       // A phone/backend mutation may commit after the server took this list's
       // snapshot. Coalesce those events into one follow-up read before seeding.
       if (_lifecycleChangeGenerations[projectId] != lifecycleChangeGeneration) {
-        await _load(projectId: projectId);
-        return;
+        return await _load(projectId: projectId);
       }
       switch (response) {
         case SuccessResponse(:final data):
@@ -90,6 +99,7 @@ class RecentSessionsCubit({
           if (_lifecycleChangeGenerations[projectId] == lifecycleChangeGeneration) {
             _lifecycleChangeGenerations.remove(projectId);
           }
+          return true;
         case ErrorResponse(:final error):
           if (state[projectId] is! RecentSessionsLoaded) {
             _put(
@@ -97,6 +107,7 @@ class RecentSessionsCubit({
               entry: RecentSessionsFailed(reason: error.remoteFailureReason),
             );
           }
+          return false;
       }
     } catch (error, stackTrace) {
       loge("Failed to load recent sessions for project $projectId", error, stackTrace);
@@ -108,6 +119,7 @@ class RecentSessionsCubit({
           );
         }
       }
+      return false;
     } finally {
       if (identical(_pendingReads[projectId], request)) _pendingReads.remove(projectId);
     }

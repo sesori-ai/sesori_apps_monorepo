@@ -20,6 +20,8 @@ export "src/cubits/bridge_control/bridge_control_cubit.dart";
 export "src/cubits/bridge_control/bridge_control_state.dart";
 export "src/cubits/desktop_attention_preference/desktop_attention_preference_cubit.dart";
 export "src/cubits/desktop_sidebar/desktop_sidebar_cubit.dart";
+export "src/cubits/desktop_sidebar/desktop_sidebar_refresh_cubit.dart";
+export "src/cubits/desktop_sidebar/desktop_sidebar_session_projection.dart";
 export "src/cubits/file_access/file_access_cubit.dart";
 export "src/cubits/file_access/file_access_state.dart";
 export "src/di/injection.dart";

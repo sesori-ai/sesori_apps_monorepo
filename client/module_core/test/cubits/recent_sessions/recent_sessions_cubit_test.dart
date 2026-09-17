@@ -84,6 +84,53 @@ void main() {
     verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
   });
 
+  test("explicit batch refresh deduplicates projects and reports applied snapshots", () async {
+    when(() => repository.listSessions(projectId: "project-1", waitForPrData: false)).thenAnswer(
+      (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "one")])),
+    );
+    when(() => repository.listSessions(projectId: "project-2", waitForPrData: false)).thenAnswer(
+      (_) async => ApiResponse.success(
+        SessionListResponse(
+          items: [testSession(id: "two").copyWith(projectID: "project-2")],
+        ),
+      ),
+    );
+
+    final succeeded = await cubit.refreshProjects(projectIds: const ["project-1", "project-2", "project-1"]);
+
+    expect(succeeded, isTrue);
+    expect((cubit.state["project-1"]! as RecentSessionsLoaded).sourceSessions.single.id, "one");
+    expect((cubit.state["project-2"]! as RecentSessionsLoaded).sourceSessions.single.id, "two");
+    verify(() => repository.listSessions(projectId: "project-1", waitForPrData: false)).called(1);
+    verify(() => repository.listSessions(projectId: "project-2", waitForPrData: false)).called(1);
+  });
+
+  test("explicit batch refresh reports partial failure and keeps failed loaded data", () async {
+    when(() => repository.listSessions(projectId: "project-1", waitForPrData: false)).thenAnswer(
+      (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "old-one")])),
+    );
+    when(() => repository.listSessions(projectId: "project-2", waitForPrData: false)).thenAnswer(
+      (_) async => ApiResponse.success(
+        SessionListResponse(
+          items: [testSession(id: "old-two").copyWith(projectID: "project-2")],
+        ),
+      ),
+    );
+    await cubit.refreshProjects(projectIds: const ["project-1", "project-2"]);
+    when(() => repository.listSessions(projectId: "project-1", waitForPrData: false)).thenAnswer(
+      (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "new-one")])),
+    );
+    when(() => repository.listSessions(projectId: "project-2", waitForPrData: false)).thenAnswer(
+      (_) async => ApiResponse.error(ApiError.generic()),
+    );
+
+    final succeeded = await cubit.refreshProjects(projectIds: const ["project-1", "project-2"]);
+
+    expect(succeeded, isFalse);
+    expect((cubit.state["project-1"]! as RecentSessionsLoaded).sourceSessions.single.id, "new-one");
+    expect((cubit.state["project-2"]! as RecentSessionsLoaded).sourceSessions.single.id, "old-two");
+  });
+
   test("live running/unseen state reorders locally without touching an unrelated entry", () async {
     final old = testSession(id: "old", updatedAt: 1, unseen: true);
     stubSessions(
