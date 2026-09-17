@@ -8,7 +8,13 @@ class const PermissionDetailsMapper() {
     if (metadata == null || !const {"bash", "edit", "webfetch"}.contains(permission)) {
       return const PluginPermissionDetails.generic();
     }
-    final value = OpenCodePermissionMetadataDto.fromJson(metadata);
+    final OpenCodePermissionMetadataDto value;
+    try {
+      value = OpenCodePermissionMetadataDto.fromJson(metadata);
+    } on Object catch (error, stackTrace) {
+      Log.w("[opencode] cannot decode optional permission details for $permission", error, stackTrace);
+      return const PluginPermissionDetails.generic();
+    }
     switch (permission) {
       case "bash":
         final command = value.command;

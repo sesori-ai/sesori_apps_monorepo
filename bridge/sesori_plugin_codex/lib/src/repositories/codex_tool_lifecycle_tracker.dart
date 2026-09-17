@@ -124,7 +124,7 @@ class CodexToolLifecycleTracker({
         title: event.changes.map((change) => change.path).join(", "),
         turnId: turnId,
         chronologySegment: thread.chronologySegment,
-        isRolloutCall: false,
+        kind: _TrackedToolKind.nativeFile,
       );
     }
     if (canonicalId == null) return null;
@@ -226,7 +226,7 @@ class CodexToolLifecycleTracker({
           title: null,
           turnId: turnId,
           chronologySegment: thread.chronologySegment,
-          isRolloutCall: false,
+          kind: _TrackedToolKind.image,
         ),
       );
       tool.turnId ??= turnId;
@@ -361,7 +361,7 @@ class CodexToolLifecycleTracker({
           continue;
         }
         tool.status = terminalStatus;
-        updates.add(tool.snapshot());
+        if (tool.kind != _TrackedToolKind.nativeFile) updates.add(tool.snapshot());
       }
       if (thread.appServerItemAliases.isNotEmpty) {
         final retainedCommands = _retainedCommandsByThread.putIfAbsent(
@@ -403,7 +403,7 @@ class CodexToolLifecycleTracker({
           title: null,
           turnId: null,
           chronologySegment: thread.chronologySegment,
-          isRolloutCall: false,
+          kind: _TrackedToolKind.image,
         ),
       );
       tool.time ??= time;
@@ -451,7 +451,7 @@ class CodexToolLifecycleTracker({
           title: call.title,
           turnId: effectiveTurnId,
           chronologySegment: thread.chronologySegment,
-          isRolloutCall: true,
+          kind: _TrackedToolKind.rolloutCall,
         ),
       );
       tool.time ??= time;
@@ -585,7 +585,7 @@ class CodexToolLifecycleTracker({
         title: null,
         turnId: null,
         chronologySegment: thread.chronologySegment,
-        isRolloutCall: false,
+        kind: _TrackedToolKind.image,
       ),
     );
     tool.time ??= time;
@@ -628,7 +628,7 @@ class CodexToolLifecycleTracker({
         continue;
       }
       tool.status = PluginToolStatus.error;
-      updates.add(tool.snapshot());
+      if (tool.kind != _TrackedToolKind.nativeFile) updates.add(tool.snapshot());
     }
     thread
       ..chronologySegment += 1
@@ -876,6 +876,12 @@ class _ThreadToolLifecycle() {
   int chronologySegment = 0;
 }
 
+enum _TrackedToolKind() {
+  rolloutCall,
+  image,
+  nativeFile,
+}
+
 class _TrackedTool({
   required final String id,
   required final String tool,
@@ -883,8 +889,10 @@ class _TrackedTool({
   required var String? title,
   required var String? turnId,
   required final int chronologySegment,
-  required final bool isRolloutCall,
+  required final _TrackedToolKind kind,
 }) {
+  bool get isRolloutCall => kind == _TrackedToolKind.rolloutCall;
+
   PluginToolStatus status = PluginToolStatus.running;
   String? shellCommand;
   String? rolloutOutput;

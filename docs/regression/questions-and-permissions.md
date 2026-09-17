@@ -56,9 +56,13 @@ reaches the backend so the turn continues.
   follow-up prompt. Users may send a normal message afterward.
 - Rich details survive both live events and pending snapshots, including
   child-to-root display mapping. Older bridges or unknown future detail kinds
-  retain the generic tool/description UI and existing reply behavior. Clients
-  never infer request kinds from tool names, patterns or prose. See
-  [the harness matrix](../HARNESS_CAPABILITIES.md#rich-permission-request-details)
+  retain the generic tool/description UI and existing reply behavior. Optional
+  native detail decoding failures are logged locally and also retain that
+  actionable generic request rather than blocking the approval. Clients never
+  infer request kinds from tool names, patterns or prose. Codex approvals do not
+  wait for transcript drains or child metadata reads: file details not yet
+  processed when the request is published remain generic for that decision.
+  See [the harness matrix](../HARNESS_CAPABILITIES.md#rich-permission-request-details)
   for authoritative sources and gaps.
 - A plugin advertising ACP form elicitation maps supported string, string-enum,
   boolean, and finite string-choice array properties to questions and returns

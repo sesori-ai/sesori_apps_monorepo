@@ -87,6 +87,29 @@ void main() {
       },
     );
 
+    test("malformed optional approval details remain visible and rejectable", () async {
+      for (final optional in [
+        {"command": 1},
+        {
+          "networkApprovalContext": {"protocol": "https"},
+        },
+      ]) {
+        requests.add(
+          CodexServerRequest(
+            id: 92,
+            method: "item/commandExecution/requestApproval",
+            params: {"threadId": "t-1", "reason": "Review this request", ...optional},
+          ),
+        );
+        await pump();
+        final event = emitted.last as BridgeSsePermissionAsked;
+        expect(event.details, const PluginPermissionDetails.generic());
+        expect(registry.pendingPermissionsForSession(sessionId: "t-1").single.details, event.details);
+        registry.replyPermission(requestId: event.requestID, reply: PluginPermissionReply.reject);
+        expect(respondCalls.last.result, {"decision": "decline"});
+      }
+    });
+
     test("network context keeps command and host without changing the reply", () async {
       requests.add(
         const CodexServerRequest(

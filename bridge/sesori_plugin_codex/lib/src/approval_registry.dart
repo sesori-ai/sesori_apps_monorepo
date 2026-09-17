@@ -381,7 +381,13 @@ class ApprovalRegistry({
     if (entry.method != "item/commandExecution/requestApproval" && entry.method != "item/fileChange/requestApproval") {
       return const PluginPermissionDetails.generic();
     }
-    final value = CodexApprovalDetailsDto.fromJson(entry.params);
+    final CodexApprovalDetailsDto value;
+    try {
+      value = CodexApprovalDetailsDto.fromJson(entry.params);
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] cannot decode optional permission details for ${entry.method}", error, stackTrace);
+      return const PluginPermissionDetails.generic();
+    }
     if (entry.method == "item/fileChange/requestApproval") {
       final itemId = value.itemId;
       if (itemId == null) return const PluginPermissionDetails.generic();

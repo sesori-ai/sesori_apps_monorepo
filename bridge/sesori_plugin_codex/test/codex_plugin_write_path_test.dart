@@ -821,6 +821,60 @@ void main() {
       expect(pending.single.displaySessionId, "t-existing-root");
     });
 
+    test("file approval stays actionable while notification work is pending", () async {
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      await plugin.healthCheck();
+      final permission = plugin.events
+          .where((event) => event is BridgeSsePermissionAsked)
+          .cast<BridgeSsePermissionAsked>()
+          .first;
+      fake.pushNotification("thread/started", {
+        "thread": {"id": "t-file", "cwd": "/work/sample", "createdAt": 1700000000, "updatedAt": 1700000000},
+      });
+      fake.pushNotification("turn/started", {
+        "threadId": "t-file",
+        "turn": {"id": "turn-old"},
+      });
+      fake.pushNotification("turn/completed", {
+        "threadId": "t-file",
+        "turn": {"id": "turn-old"},
+      });
+      fake.pushNotification("turn/started", {
+        "threadId": "t-file",
+        "turn": {"id": "turn-1"},
+      });
+      fake.pushNotification("item/started", {
+        "threadId": "t-file",
+        "turnId": "turn-1",
+        "item": {
+          "id": "native-file",
+          "type": "fileChange",
+          "status": "inProgress",
+          "changes": [
+            {
+              "path": "/work/sample/new.txt",
+              "kind": {"type": "add"},
+            },
+          ],
+        },
+      });
+      fake.pushServerRequest(
+        id: 98,
+        method: "item/fileChange/requestApproval",
+        params: {"threadId": "t-file", "turnId": "turn-1", "itemId": "native-file"},
+      );
+
+      final asked = await permission.timeout(const Duration(seconds: 2));
+      expect(asked.details, const PluginPermissionDetails.generic());
+      expect((await plugin.getPendingPermissions(sessionId: "t-file")).single.details, asked.details);
+      await plugin.replyToPermission(
+        requestId: asked.requestID,
+        sessionId: "t-file",
+        reply: PluginPermissionReply.reject,
+      );
+      expect(await plugin.getPendingPermissions(sessionId: "t-file"), isEmpty);
+    });
+
     test("connection startup hydrates persisted child approval routing", () async {
       const rootId = "019a0000-1111-2222-3333-000000000001";
       const childId = "019a0000-1111-2222-3333-000000000002";

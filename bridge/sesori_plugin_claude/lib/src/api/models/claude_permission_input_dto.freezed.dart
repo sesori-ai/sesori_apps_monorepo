@@ -38,11 +38,6 @@ int get hashCode {
   return Object.hash(runtimeType,_this.command,_this.filePath,_this.notebookPath,_this.url);
 }
 
-@override
-String toString() {
-  final _this = this as ClaudePermissionInputDto;
-  return 'ClaudePermissionInputDto(command: ${_this.command}, filePath: ${_this.filePath}, notebookPath: ${_this.notebookPath}, url: ${_this.url})';
-}
 
 
 }
@@ -114,10 +109,6 @@ int get hashCode {
     return Object.hash(runtimeType,command,filePath,notebookPath,url);
 }
 
-@override
-String toString() {
-    return 'ClaudePermissionInputDto(command: $command, filePath: $filePath, notebookPath: $notebookPath, url: $url)';
-}
 
 
 }

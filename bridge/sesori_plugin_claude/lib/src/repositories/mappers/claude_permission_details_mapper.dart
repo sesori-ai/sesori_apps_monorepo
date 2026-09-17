@@ -7,7 +7,13 @@ class const ClaudePermissionDetailsMapper() {
     if (!const {"Bash", "Edit", "MultiEdit", "Write", "NotebookEdit", "WebFetch"}.contains(tool)) {
       return const PluginPermissionDetails.generic();
     }
-    final value = ClaudePermissionInputDto.fromJson(input);
+    final ClaudePermissionInputDto value;
+    try {
+      value = ClaudePermissionInputDto.fromJson(input);
+    } on Object catch (error, stackTrace) {
+      Log.w("[claude] cannot decode optional permission details for $tool", error, stackTrace);
+      return const PluginPermissionDetails.generic();
+    }
     return switch (tool) {
       "Bash" when value.command != null && value.command!.isNotEmpty => PluginPermissionDetails.command(
         command: value.command!,

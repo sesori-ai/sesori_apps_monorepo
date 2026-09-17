@@ -622,9 +622,9 @@ class CodexPlugin._({
       ),
     );
     _approvalRegistry = registry;
-    // This plugin owns both app-server streams. Both pending-input sources
-    // enter the same registry, with notifications retaining their serialized
-    // lifecycle/child-scope processing above.
+    // Do not queue approvals behind transcript drains or child metadata reads.
+    // Enrichment is best-effort: file details not yet tracked remain generic,
+    // while the user can still answer the request immediately.
     _serverRequestSubscription = client.serverRequests.listen(
       (request) => registry.handleRequest(CodexPendingRequest(request: request)),
     );

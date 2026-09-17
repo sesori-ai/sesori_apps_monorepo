@@ -4,8 +4,14 @@ import "../../api/models/acp_permission_details_dto.dart";
 
 class const AcpPermissionDetailsMapper() {
   PluginPermissionDetails map({required Map<String, dynamic> toolCall, required String? command}) {
-    final value = AcpPermissionDetailsDto.fromJson(toolCall);
     if (command != null && command.isNotEmpty) return PluginPermissionDetails.command(command: command);
+    final AcpPermissionDetailsDto value;
+    try {
+      value = AcpPermissionDetailsDto.fromJson(toolCall);
+    } on Object catch (error, stackTrace) {
+      Log.w("[acp] cannot decode optional permission details for ${toolCall["toolCallId"]}", error, stackTrace);
+      return const PluginPermissionDetails.generic();
+    }
     final diffs = value.content.whereType<AcpPermissionDiffDto>();
     final files = <PluginPermissionFile>[
       for (final diff in diffs)

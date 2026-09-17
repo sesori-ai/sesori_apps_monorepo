@@ -3,6 +3,7 @@ import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/api/parsers/codex_command_execution_parser.dart";
 import "package:codex_plugin/src/api/parsers/codex_file_change_parser.dart";
 import "package:codex_plugin/src/codex_app_server_client.dart";
+import "package:codex_plugin/src/models/codex_replay_tool_disposition.dart";
 import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.dart";
@@ -359,6 +360,34 @@ void main() {
     );
     expect(target.permissionFiles(threadId: "thread-1", itemId: "native-file-1"), isEmpty);
   });
+
+  for (final replayTerminal in [false, true]) {
+    test("running native file stays out of terminal projections (replay: $replayTerminal)", () {
+      final target = tracker();
+      target.observeAppServerTool(
+        imageGeneration: null,
+        notification: _fileChangeNotification(
+          method: "item/started",
+          itemId: "native-file-1",
+          turnId: "turn-1",
+          status: "inProgress",
+        ),
+      );
+      if (replayTerminal) {
+        expect(
+          target.finishRolloutReplay(threadId: "thread-1", disposition: CodexReplayToolDisposition.terminalize),
+          isEmpty,
+        );
+      }
+      expect(
+        target.observeTerminalNotification(
+          notification: const CodexServerNotification(method: "error", params: {"threadId": "thread-1"}),
+        ),
+        isEmpty,
+      );
+      expect(target.permissionFiles(threadId: "thread-1", itemId: "native-file-1"), isEmpty);
+    });
+  }
 
   test("correlates code-mode commands containing invocation-like text", () {
     final target = tracker();

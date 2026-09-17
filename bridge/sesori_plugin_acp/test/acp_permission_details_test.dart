@@ -53,6 +53,23 @@ void main() {
       const PluginPermissionDetails.generic(),
     );
   });
+  test("malformed optional fields keep permissions actionable", () {
+    for (final toolCall in <Map<String, dynamic>>[
+      {"locations": "not a list"},
+      {
+        "content": [
+          {"type": "diff", "path": 1},
+        ],
+      },
+    ]) {
+      expect(mapper.map(toolCall: toolCall, command: null), const PluginPermissionDetails.generic());
+      expect(
+        mapper.map(toolCall: toolCall, command: "printf ok"),
+        const PluginPermissionDetails.command(command: "printf ok"),
+      );
+    }
+  });
+
   test("keeps authoritative commands and standard fetch resource URLs complete", () {
     expect(
       mapper.map(toolCall: {}, command: "printf '[full] * command'"),

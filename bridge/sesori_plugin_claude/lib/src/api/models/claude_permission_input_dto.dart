@@ -5,7 +5,7 @@ part "claude_permission_input_dto.g.dart";
 
 /// Known built-in tool inputs on Claude's can_use_tool request. Custom/MCP
 /// tools are not decoded as built-ins merely because they use similar keys.
-@Freezed(fromJson: true, toJson: false)
+@Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudePermissionInputDto with _$ClaudePermissionInputDto {
   const factory({
     required String? command,

@@ -28,5 +28,22 @@ void main() {
       const PluginPermissionDetails.generic(),
     );
     expect(mapper.map(tool: "Bash", input: {}), const PluginPermissionDetails.generic());
+    for (final (tool, input) in <(String, Map<String, Object?>)>[
+      ("Bash", {"command": 1}),
+      (
+        "Write",
+        {
+          "file_path": ["not a native path"],
+        },
+      ),
+      (
+        "WebFetch",
+        {
+          "url": {"host": "example.com"},
+        },
+      ),
+    ]) {
+      expect(mapper.map(tool: tool, input: input), const PluginPermissionDetails.generic());
+    }
   });
 }

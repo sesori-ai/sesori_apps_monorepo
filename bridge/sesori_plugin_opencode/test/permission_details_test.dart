@@ -42,6 +42,29 @@ void main() {
         const PluginPermissionDetails.network(targets: ["https://example.com/full/path"], command: null),
       ),
       ("bash", {}, const PluginPermissionDetails.generic()),
+      (
+        "bash",
+        {
+          "command": ["printf", "ok"],
+        },
+        const PluginPermissionDetails.generic(),
+      ),
+      (
+        "edit",
+        {
+          "files": [
+            {"filePath": 1},
+          ],
+        },
+        const PluginPermissionDetails.generic(),
+      ),
+      (
+        "webfetch",
+        {
+          "url": {"host": "example.com"},
+        },
+        const PluginPermissionDetails.generic(),
+      ),
       ("future", {"command": "not authoritative"}, const PluginPermissionDetails.generic()),
     ];
     for (final (permission, metadata, expected) in cases) {
