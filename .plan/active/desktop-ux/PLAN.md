@@ -256,6 +256,8 @@ navigation or repeated settings links. Inspect the actual rendered result.
   Reserve scrollbar space so project expand/collapse controls remain clickable.
 - **9.c.1:** keep loaded/live-patched rows during automatic refresh and logged
   refresh failures; separate request identity from visible state in the existing owner.
+  A failed coalesced snapshot retains its lifecycle generation until a later inventory
+  or lifecycle entry applies an authoritative snapshot.
 - **9.c.2:** remove the useless clickable Projects heading; preserve canonical
   home routing for real consumers. Put all running/unseen sessions up front,
   without losing selected-session access or making collapsed projects hide activity.
@@ -521,8 +523,9 @@ New in-memory mutable parts:
   append future and failure bit plus its helper's queue/directory/file preparation
   state; mobile queue and failure bit. Bridge helper state is moved, not duplicated.
 - Step 9.b: one ephemeral drag-origin value (initial width/global pointer position).
-- Step 9.c.1: one transient pending-read identity map in `RecentSessionsCubit`,
-  allowing usable data and an in-flight read to coexist. Existing coalescing remains authoritative.
+- Step 9.c.1: one pending-read identity map plus one lifecycle-generation map in
+  `RecentSessionsCubit`; the latter replaces the earlier changed-during-read set.
+  Usable data and an in-flight read coexist, and staleness retires only after snapshot application.
 - Step 9.c.2 reuses inventory/refresh owners and Prego animation state;
   derive priority rows without another cache, subscription, timer or persistence.
 
@@ -599,8 +602,8 @@ Completed implementation specifics live in the linked evidence; this matrix summ
 
 9.c.1 extracts the observed loading-placeholder replacement from the larger UI slice.
 It keeps current loaded data through automatic refresh/failure, continues live patches,
-and moves only request identity into one private map; supersession and coalescing stay in
-`RecentSessionsCubit`. No new API/model/DI or Flutter production change. Its scoped plan review
+and separates private request identity from a retained lifecycle generation; supersession
+and coalescing stay in `RecentSessionsCubit`. No new API/model/DI or Flutter production change. Its scoped plan review
 is approved; later 9.c.2 composition needs its own review. The split adds no feature scope.
 
 Step 10 retains ⌘N, ⌘, and ⌘B via cockpit `CallbackShortcuts`, shortcut hints, and macOS hidden
@@ -709,7 +712,8 @@ later slices against the repository's actual-change rule.
 - **Step 9.b:** pointer overshoot/reversal at both width bounds, one committed
   persistence write, edge-button hit testing with a scrollbar and usable scrolling.
 - **Step 9.c.1:** retained loaded entries through catalog/reconnect reads and failures,
-  continued live patches, coalesced rereads and superseded-request cleanup; core and cockpit regressions.
+  continued live patches, coalesced rereads, failed-reread rearming and superseded-request cleanup;
+  core and cockpit regressions.
 - **Step 9.c.2:** all running/unread rows (including collapsed/offscreen projects),
   no duplicates, live false overriding stale unread data, selected-session retention,
   refresh success/failure, stable insertion/removal and reduced motion. Inspect real-font

@@ -61,6 +61,8 @@ The main pane hosts one full-width routed page.
   Loaded rows remain visible during refresh and logged refresh failures; live
   activity/unread and root lifecycle patches continue against that useful data.
   Lifecycle changes overlapping a returned snapshot trigger a coalesced fresh read before seeding.
+  A response or thrown failure retains that lifecycle generation; the next loaded-inventory check
+  or root lifecycle event rearms the authoritative read. Initial failures still require explicit retry.
   Closed or superseded reads cannot seed shared unseen state, and an older
   completion cannot release a newer pending read.
 - The sidebar is the only navigation pane, including at minimum window width.
@@ -159,7 +161,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   new-session replacement, diff/direct-entry Back, home states, package-font resolution.
 - Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
   project-collapse persistence, shared menu/route callbacks. Keep loaded rows through catalog/reconnect
-  refreshes and failures, including live unread false, lifecycle patches and superseded-read completion.
+  refreshes and failures, including live unread false, lifecycle patches, failed-reread rearming and
+  superseded-read completion.
 - Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel and reset-only persistence,
   visible-scrollbar edge hit tests and thumb dragging, intermediate collapse/expand frames with cramped
   session-row signals, both reduced-motion signals, temporary narrow-window mode, running/unread updates

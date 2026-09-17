@@ -91,8 +91,9 @@ These are current series titles; historical Git/squash subjects remain unchanged
 - Step 9.b: [PR #1524](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1524),
   merged at accepted head `bf273d272e0ffff4191f870919760e686fb80446`;
   squash `ed09171665995b98d1e010b9b5bd340c3c50a605`. See `steps/step-09b.md`.
-- Step 9.c.1: source checkpoint `f2d06b20b762aa96efb6396339b35d5414426fb3`;
-  46 focused cases and core/desktop analysis passed; architecture approved. Merge pending.
+- Step 9.c.1: source checkpoint `f73693554c21780ddfde91a9c89f99d996c92ae3`;
+  51 focused cases and core/desktop analysis passed. Initial architecture scope approved;
+  localized review-follow-up method logic is recorded separately. Merge pending.
   Scope-bound verification and review evidence: `steps/step-09c1.md`.
 
 - Standalone user-requested sidebar correction:
