@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/verify-macos-signing.yml'
       - '.github/workflows/submit-release.yml'
+      - '.github/workflows/desktop-qualification.yml'
+      - '.github/workflows/migrate-macos-signing-secrets.yml'
       - '.github/scripts/test_macos_signing_workflows.py'
       - '.github/actions/**'
       - '.github/workflows/_reusable-*.yml'
@@ -25,6 +27,8 @@ on:
     paths:
       - '.github/workflows/verify-macos-signing.yml'
       - '.github/workflows/submit-release.yml'
+      - '.github/workflows/desktop-qualification.yml'
+      - '.github/workflows/migrate-macos-signing-secrets.yml'
       - '.github/scripts/test_macos_signing_workflows.py'
       - '.github/actions/**'
       - '.github/workflows/_reusable-*.yml'

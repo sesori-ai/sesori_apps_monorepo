@@ -71,6 +71,12 @@ jobs:
       commit_sha:   ${{ steps.pick.outputs.commit_sha }}
       version:      ${{ steps.pick.outputs.version }}
     steps:
+      - name: Require main before any store submission or release
+        run: |
+          if [[ "$GITHUB_REF" != 'refs/heads/main' ]]; then
+            echo 'Store submissions and bridge releases must be dispatched from main.' >&2
+            exit 1
+          fi
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0

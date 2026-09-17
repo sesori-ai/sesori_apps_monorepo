@@ -103,7 +103,9 @@ signing wait for human approval.
   removes their caller secret passing, and removes the temporary bootstrap workflow.
   The reusable build's full six-target matrix uses the environment (no approval delay);
   only its macOS signing steps consume credentials. Private desktop qualification uses
-  the same environment. Both routes now require dispatch from main.
+  the same environment. Both routes now require dispatch from main. The combined
+  internal-release and submission callers also fail non-main dispatches before
+  build-number/store work, preventing partial mobile uploads when signing is denied.
 - `verify-macos-signing.yml` calls the actual reusable CLI build with the committed
   version and read-only repository permission. It uploads private build artifacts only;
   no TestFlight, Android, tag, release or installer publication is invoked.

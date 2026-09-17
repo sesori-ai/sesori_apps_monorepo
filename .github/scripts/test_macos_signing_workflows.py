@@ -16,6 +16,13 @@ class MacosSigningWorkflowTest(unittest.TestCase):
             with self.subTest(workflow=name):
                 self.assertNotIn("secrets.MACOS_", (WORKFLOWS / name).read_text())
 
+    def test_main_guards_precede_mobile_or_release_jobs(self):
+        release_all = (WORKFLOWS / "release-all-platforms.yml").read_text()
+        submit = (WORKFLOWS / "submit-release.yml").read_text()
+        guard = "if [[ \"$GITHUB_REF\" != 'refs/heads/main' ]]"
+        self.assertLess(release_all.index(guard), release_all.index("  next-build-number:"))
+        self.assertLess(submit.index(guard), submit.index("  submit-ios:"))
+
     def test_private_probe_has_no_release_or_mobile_upload_capability(self):
         probe = (WORKFLOWS / "verify-macos-signing.yml").read_text()
         self.assertIn("if: github.ref == 'refs/heads/main'", probe)
