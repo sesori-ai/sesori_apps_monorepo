@@ -446,7 +446,10 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                             RecentSessionsLoaded() => Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                for (final session in entry.rows(selectedSessionId: widget.selectedSessionId))
+                                for (final session in entry.rows(
+                                  selectedSessionId: widget.selectedSessionId,
+                                  excludingSessionIds: const {},
+                                ))
                                   _SidebarSessionRow(
                                     key: ValueKey(session.id),
                                     session: session,

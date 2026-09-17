@@ -1613,6 +1613,26 @@ void main() {
       expect: () => <ProjectListState>[],
     );
 
+    blocTest<ProjectListCubit, ProjectListState>(
+      "refreshProjectInventory: reports retained project ids when refresh fails",
+      build: () {
+        when(
+          () => mockProjectRepository.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        when(() => mockProjectRepository.listProjects()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        final result = await cubit.refreshProjectInventory();
+        expect(result.succeeded, isFalse);
+        expect(result.projectIds, ["A"]);
+        expect(result.projectIds.clear, throwsUnsupportedError);
+      },
+      skip: 1,
+      expect: () => <ProjectListState>[],
+    );
+
     // -------------------------------------------------------------------------
     // Test 10: activity stream update propagates to state
     // -------------------------------------------------------------------------

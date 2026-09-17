@@ -11,6 +11,7 @@ import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../services/catalog_rescan_service.dart";
+import "../../services/inventory_refresh_operation.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/models/session_list_filter.dart";
 import "../../services/models/session_list_item_state.dart";
@@ -19,6 +20,18 @@ import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
 import "recent_sessions_state.dart";
 
+enum _RecentSessionsFetchOutcome() {
+  applied,
+  failed,
+  superseded,
+}
+
+final class _RecentSessionsRead() {
+  final RecentSessionsLoading loading = RecentSessionsLoading();
+  late final Future<_RecentSessionsFetchOutcome> outcome;
+  _RecentSessionsRead? successor;
+}
+
 /// Sidebar inventory only: never acquires a project-view claim.
 class RecentSessionsCubit({
   required final SessionListService _sessionListService,
@@ -26,10 +39,10 @@ class RecentSessionsCubit({
   required final SseEventTracker _sseEventTracker,
   required final SessionUnseenTracker _sessionUnseenTracker,
   required CatalogRescanService catalogRescanService,
-}) extends Cubit<Map<String, RecentSessionsEntry>> {
+}) extends Cubit<Map<String, RecentSessionsEntry>> implements SessionInventoryRefreshOperation {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   // Refresh ownership is separate from the usable, live-patched display data.
-  final Map<String, RecentSessionsLoading> _pendingReads = {};
+  final Map<String, _RecentSessionsRead> _pendingReads = {};
   // Retained until a snapshot covering this lifecycle generation is applied.
   final Map<String, int> _lifecycleChangeGenerations = {};
 
@@ -55,6 +68,7 @@ class RecentSessionsCubit({
   }
 
   /// Refreshes the named inventories and reports whether every snapshot applied.
+  @override
   Future<bool> refreshProjects({required Iterable<String> projectIds}) async {
     final outcomes = await Future.wait([
       for (final projectId in projectIds.toSet()) _load(projectId: projectId),
@@ -62,12 +76,41 @@ class RecentSessionsCubit({
     return outcomes.every((applied) => applied);
   }
 
-  Future<bool> _load({required String projectId}) async {
-    if (isClosed) return false;
-    final request = RecentSessionsLoading();
+  Future<bool> _load({required String projectId}) {
+    return _awaitReadResult(read: _startRead(projectId: projectId));
+  }
+
+  _RecentSessionsRead _startRead({required String projectId}) {
+    final request = _RecentSessionsRead();
+    _pendingReads[projectId]?.successor = request;
     _pendingReads[projectId] = request;
+    request.outcome = _read(projectId: projectId, request: request);
+    return request;
+  }
+
+  Future<bool> _awaitReadResult({required _RecentSessionsRead read}) async {
+    var latest = read;
+    while (true) {
+      switch (await latest.outcome) {
+        case _RecentSessionsFetchOutcome.applied:
+          return true;
+        case _RecentSessionsFetchOutcome.failed:
+          return false;
+        case _RecentSessionsFetchOutcome.superseded:
+          final winningRead = latest.successor;
+          if (winningRead == null) return false;
+          latest = winningRead;
+      }
+    }
+  }
+
+  Future<_RecentSessionsFetchOutcome> _read({
+    required String projectId,
+    required _RecentSessionsRead request,
+  }) async {
+    if (isClosed) return _RecentSessionsFetchOutcome.failed;
     final lifecycleChangeGeneration = _lifecycleChangeGenerations[projectId];
-    if (state[projectId] is! RecentSessionsLoaded) _put(projectId: projectId, entry: request);
+    if (state[projectId] is! RecentSessionsLoaded) _put(projectId: projectId, entry: request.loading);
     try {
       final unseenTick = _sessionUnseenTracker.tick;
       final response = await _sessionListService.listSessions(projectId: projectId, waitForPrData: false);
@@ -76,11 +119,13 @@ class RecentSessionsCubit({
       }
       // A reconnect/catalog event can request a newer snapshot while this read
       // is in flight. Its result, not this older one, owns the project entry.
-      if (isClosed || !identical(_pendingReads[projectId], request)) return false;
+      if (isClosed) return _RecentSessionsFetchOutcome.failed;
+      if (!identical(_pendingReads[projectId], request)) return _RecentSessionsFetchOutcome.superseded;
       // A phone/backend mutation may commit after the server took this list's
       // snapshot. Coalesce those events into one follow-up read before seeding.
       if (_lifecycleChangeGenerations[projectId] != lifecycleChangeGeneration) {
-        return await _load(projectId: projectId);
+        _startRead(projectId: projectId);
+        return _RecentSessionsFetchOutcome.superseded;
       }
       switch (response) {
         case SuccessResponse(:final data):
@@ -99,7 +144,7 @@ class RecentSessionsCubit({
           if (_lifecycleChangeGenerations[projectId] == lifecycleChangeGeneration) {
             _lifecycleChangeGenerations.remove(projectId);
           }
-          return true;
+          return _RecentSessionsFetchOutcome.applied;
         case ErrorResponse(:final error):
           if (state[projectId] is! RecentSessionsLoaded) {
             _put(
@@ -107,19 +152,20 @@ class RecentSessionsCubit({
               entry: RecentSessionsFailed(reason: error.remoteFailureReason),
             );
           }
-          return false;
+          return _RecentSessionsFetchOutcome.failed;
       }
     } catch (error, stackTrace) {
       loge("Failed to load recent sessions for project $projectId", error, stackTrace);
-      if (!isClosed && identical(_pendingReads[projectId], request)) {
-        if (state[projectId] is! RecentSessionsLoaded) {
-          _put(
-            projectId: projectId,
-            entry: const RecentSessionsFailed(reason: RemoteFailureReason.unknown),
-          );
-        }
+      if (!isClosed && !identical(_pendingReads[projectId], request)) {
+        return _RecentSessionsFetchOutcome.superseded;
       }
-      return false;
+      if (!isClosed && state[projectId] is! RecentSessionsLoaded) {
+        _put(
+          projectId: projectId,
+          entry: const RecentSessionsFailed(reason: RemoteFailureReason.unknown),
+        );
+      }
+      return _RecentSessionsFetchOutcome.failed;
     } finally {
       if (identical(_pendingReads[projectId], request)) _pendingReads.remove(projectId);
     }

@@ -74,9 +74,15 @@ void main() {
     await pending;
     await cubit.ensureLoaded(projectId: projectId);
     expect(loaded().visibleSessions.map((session) => session.id), ["4", "3", "2", "1"]);
-    expect(loaded().rows(selectedSessionId: "1").map((session) => session.id), ["4", "3", "2", "1"]);
-    expect(loaded().rows(selectedSessionId: "4").length, 3);
-    expect(loaded().rows(selectedSessionId: "archived").map((session) => session.id), ["4", "3", "2"]);
+    expect(
+      loaded().rows(selectedSessionId: "1", excludingSessionIds: const {}).map((session) => session.id),
+      ["4", "3", "2", "1"],
+    );
+    expect(loaded().rows(selectedSessionId: "4", excludingSessionIds: const {}).length, 3);
+    expect(
+      loaded().rows(selectedSessionId: "archived", excludingSessionIds: const {}).map((session) => session.id),
+      ["4", "3", "2"],
+    );
     expect(() => loaded().sourceSessions.clear(), throwsUnsupportedError);
     expect(() => loaded().visibleSessions.clear(), throwsUnsupportedError);
     expect(() => loaded().activityBySessionId.clear(), throwsUnsupportedError);
@@ -184,7 +190,7 @@ void main() {
       ),
     );
     expect(loaded().visibleSessions, isEmpty);
-    expect(loaded().rows(selectedSessionId: "created"), isEmpty);
+    expect(loaded().rows(selectedSessionId: "created", excludingSessionIds: const {}), isEmpty);
     expect(loaded().sourceSessions, hasLength(1));
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: session)));
     expect(loaded().sourceSessions, isEmpty);
@@ -321,7 +327,7 @@ void main() {
     events.add(SseEvent(data: SesoriSseEvent.sessionUpdated(info: archivedUpdate)));
     expect(cubit.state[projectId], isA<RecentSessionsLoaded>());
     expect(loaded().visibleSessions.single, renamed);
-    expect(loaded().rows(selectedSessionId: "archived"), [renamed]);
+    expect(loaded().rows(selectedSessionId: "archived", excludingSessionIds: const {}), [renamed]);
     stubSessions(sessions: [renamed, archivedUpdate]);
     reply.complete(ApiResponse.success(SessionListResponse(items: [deleted, archived])));
     await pending;
@@ -331,19 +337,22 @@ void main() {
     verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(3);
   });
 
-  test("superseded refresh completion cannot release a newer pending read", () async {
+  test("superseded explicit refresh follows the newer owning read", () async {
     final known = testSession(id: "known");
     final created = testSession(id: "created");
     stubSessions(sessions: [known]);
     await cubit.ensureLoaded(projectId: projectId);
     final older = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => older.future);
-    final oldRead = cubit.retry(projectId: projectId);
+    final oldRead = cubit.refreshProjects(projectIds: const [projectId]);
+    var oldReadCompleted = false;
+    unawaited(oldRead.whenComplete(() => oldReadCompleted = true));
     final newer = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => newer.future);
     final currentRead = cubit.retry(projectId: projectId);
     older.complete(ApiResponse.success(SessionListResponse(items: [testSession(id: "stale", unseen: true)])));
-    await oldRead;
+    await Future<void>.delayed(Duration.zero);
+    expect(oldReadCompleted, isFalse);
     expect(cubit.state[projectId], isA<RecentSessionsLoaded>());
     expect(loaded().sourceSessions, [known]);
     expect(unseen.seededSessions, hasLength(1));
@@ -352,6 +361,7 @@ void main() {
     stubSessions(sessions: [known, created]);
     newer.complete(ApiResponse.success(SessionListResponse(items: [known])));
     await currentRead;
+    expect(await oldRead, isTrue);
     expect(loaded().sourceSessions, unorderedEquals([known, created]));
     expect(unseen.seededSessions, hasLength(2));
     verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(4);

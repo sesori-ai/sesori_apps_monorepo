@@ -274,8 +274,8 @@ navigation or repeated settings links. Inspect the actual rendered result.
 - Apply the hover-hint rule above throughout the sidebar and in step 11's wider
   desktop audit. The scoped 9.c.2 architecture plan review rejected a foundation-layer
   projection and widget-owned refresh sequencing. The implementation addresses those
-  required findings with a Layer-4 projection, a non-Cubit Layer-4 orchestrator, and a
-  refresh Cubit that depends only on that boundary.
+  required findings with a Layer-4 projection, lower-layer refresh operation contracts
+  and service, and a refresh Cubit that depends only on that service boundary.
 
 ### Cockpit shell
 
@@ -597,7 +597,7 @@ Completed implementation specifics live in the linked evidence; this matrix summ
 | 9.a.2 | 13/20 | ≤ 1,300 | [Rotating app files and prepared logs directory](steps/step-09a.md). |
 | 9.b | 14/20 | ≤ 500 | [Anchored resizing and scrollbar hit targets](steps/step-09b.md). |
 | 9.c.1 | 15/20 | ≤ 650 | [Loaded/live inventory and request ownership](steps/step-09c1.md). |
-| 9.c.2a | 16/20 | ≤ 700 | Activity projection and explicit refresh ownership in pure Dart. |
+| 9.c.2a | 16/20 | ≤ 1,000 | Activity projection and explicit refresh ownership in pure Dart. |
 | 9.c.2b | 17/20 | ≤ 1,450 | Priority activity, purposeful controls, Prego transitions and useful hints. |
 | 10 | 18/20 | ≤ 600 | Keyboard shortcuts and macOS title-bar/drag integration. |
 | 11 | 19/20 | ≤ 600 | Control-content audit and regression reconciliation. |
@@ -608,7 +608,8 @@ It keeps current loaded data through automatic refresh/failure, continues live p
 and separates private request identity from a retained lifecycle generation; supersession
 and coalescing stay in `RecentSessionsCubit`. No new API/model/DI or Flutter production change. Its scoped plan review
 is approved; later 9.c.2 composition needs its own review. Measured implementation size then split 9.c.2 into
-pure-Dart ownership (9.c.2a) and Flutter composition (9.c.2b), without changing the reviewed architecture or feature scope.
+pure-Dart ownership (9.c.2a) and Flutter composition (9.c.2b), without changing the reviewed
+architecture or feature scope.
 
 Step 10 retains ⌘N, ⌘, and ⌘B via cockpit `CallbackShortcuts`, shortcut hints, and macOS hidden
 chrome/drag region behind the single D12 switch in `FlutterWindowHost.initialize`.
@@ -811,8 +812,9 @@ Review then identified concrete URI/cause/ordinary-Quit gaps. Rather than expand
 that review loop, 9.a.1 landed separately as #1514; file output remains 9.a.2. A fresh architecture
 plan review (`e973a005-01ab-43fe-aaf8-eb43ebc854f6`) approved the two-slice ownership;
 see [prerequisite evidence](steps/step-09a1.md). Sidebar 9.c.1 received its separate
-refresh-continuity plan approval. The scoped 9.c.2 review rejected foundation placement and widget orchestration;
-the required corrections put both decisions in Layer-4 desktop-core owners before implementation.
+refresh-continuity plan approval. The scoped 9.c.2 review rejected foundation placement and widget
+orchestration; the required corrections use Layer-4 projection/presentation owners over lower-layer refresh
+operation contracts and a service.
 
 ## Relation To Other Plans
 

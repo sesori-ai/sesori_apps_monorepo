@@ -1,6 +1,6 @@
 import "package:bloc/bloc.dart";
 
-import "../../orchestration/desktop_sidebar_refresh_orchestrator.dart";
+import "../../services/desktop_sidebar_refresh_service.dart";
 
 class DesktopSidebarRefreshCubit._create({
   required final DesktopSidebarRefreshOperation _refreshOperation,

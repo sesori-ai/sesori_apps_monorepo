@@ -190,6 +190,7 @@ export "src/services/composer_draft_calculator.dart";
 export "src/services/connection_notification_observation_service.dart";
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/installation_analytics_service.dart";
+export "src/services/inventory_refresh_operation.dart";
 export "src/services/loaded_state_analytics_reporter.dart";
 export "src/services/message_thumbnail_cache_service.dart";
 export "src/services/models/catalog_rescan_state.dart";

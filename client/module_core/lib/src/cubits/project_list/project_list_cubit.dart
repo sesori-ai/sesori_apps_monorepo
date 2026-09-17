@@ -16,6 +16,7 @@ import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/catalog_rescan_service.dart";
+import "../../services/inventory_refresh_operation.dart";
 import "../../services/loaded_state_analytics_reporter.dart";
 import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/session_activity_info.dart";
@@ -54,7 +55,7 @@ class ProjectListCubit(
   required final LoadedStateAnalyticsReporter _loadedStateAnalyticsReporter,
   required final FailureReporter _failureReporter,
   required final CatalogRescanService _catalogRescanService,
-}) extends Cubit<ProjectListState> {
+}) extends Cubit<ProjectListState> implements ProjectInventoryRefreshOperation {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   /// Keeps pre-rename list responses from repainting an old name while the
@@ -516,6 +517,16 @@ class ProjectListCubit(
   /// Concurrent ordinary calls coalesce onto the current silent refresh.
   Future<bool> refreshProjects() {
     return _awaitRefreshResult(refresh: _refreshProjects(force: false, catalogRefresh: false));
+  }
+
+  @override
+  Future<ProjectInventoryRefreshResult> refreshProjectInventory() async {
+    final succeeded = await refreshProjects();
+    final List<String> projectIds = switch (state) {
+      ProjectListLoaded(:final projects) => [for (final project in projects) project.id],
+      ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => const <String>[],
+    };
+    return ProjectInventoryRefreshResult(succeeded: succeeded, projectIds: List.unmodifiable(projectIds));
   }
 
   /// A catalog refresh can supersede an explicit pull. Wait for the newer read
