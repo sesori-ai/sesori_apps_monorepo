@@ -1,5 +1,15 @@
 # macOS signing environment migration
 
+## Status
+
+- **Plan slug:** `macos-signing-environment`
+- **State:** Retired on 2026-09-17 after environment-only native x64/arm64 CLI
+  signing and direct desktop signing/notarization preflight both passed.
+- **Delivery:** Bootstrap #1525, cutover #1527, corrective declarations #1531,
+  and reusable-workflow inheritance #1532.
+- **Publication:** No product was published. Desktop release and interactive QA gates
+  remain owned by the active `desktop-distribution` plan.
+
 ## Authorized outcome
 
 Move the existing five macOS signing/notarization secrets from repository scope to
@@ -103,20 +113,21 @@ signing wait for human approval.
   after checking the exact source, allowlist, destination environment, public key and
   key ID. Metadata confirms five destination names. The temporary Actions artifact
   `10464765058` and local ciphertext file were removed after successful import.
-- Repository copies remain present. Step 2 binds existing consumers to the environment,
-  removes their caller secret passing, and removes the temporary bootstrap workflow.
-  The reusable build's full six-target matrix uses the environment (no approval delay);
-  only its macOS signing steps consume credentials. Private desktop qualification uses
-  the same environment. Both routes now require dispatch from main. The combined
-  internal-release and submission callers also fail non-main dispatches before
-  build-number/store work, preventing partial mobile uploads when signing is denied.
+- At the initial cutover checkpoint, repository copies remained present. Step 2 bound
+  existing consumers to the environment, removed caller value maps, and removed the
+  temporary bootstrap workflow. The reusable build's full six-target matrix uses the
+  environment without an approval delay; only its macOS signing steps consume
+  credentials. Private desktop qualification uses the same environment. Both routes
+  require dispatch from main. Combined internal-release and submission callers fail
+  non-main dispatches before build-number/store work, preventing partial mobile uploads
+  when signing is denied.
 - `verify-macos-signing.yml` calls the actual reusable CLI build with the committed
   version and read-only repository permission. It uploads private build artifacts only;
   no TestFlight, Android, tag, release or installer publication is invoked.
-- Cutover must merge before main-only native proof: dispatch `verify-macos-signing.yml`
-  and `desktop-qualification.yml` with `mode=macos-signing-preflight` from main.
-  Verify successful native x64/ARM64 signing and environment admission without approval.
-  Repository copies must not be deleted before those checks and an active-release check.
+- Main-only native proof uses `verify-macos-signing.yml` and
+  `desktop-qualification.yml` with `mode=macos-signing-preflight`. Successful native
+  x64/arm64 signing and environment admission without approval are required. Repository
+  copies were retained until those checks and an active-release check passed.
 - Cutover #1527 merged as `05e019302ebeb017af899504d75e995bc6b54dc7`,
   tree `d68f8060d6eab33b9fef755ae9dff2d01e5d5921`. Both checkpoints were dispatched
   from `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`
@@ -145,14 +156,35 @@ signing wait for human approval.
   that `MACOS_CERT_P12_BASE64` was absent in the called workflow; declarations alone do
   not make the selected environment's values available.
 - GitHub's reusable-workflow boundary requires the trusted caller to opt into
-  `secrets: inherit` before the called job can resolve environment-scoped secrets. Add
-  inheritance to only the three existing main-guarded callers, retain the optional
-  three-name contract and caller value-map prohibition, and rerun the actual CLI probe.
-  Repository copies remain present. After a passing run, remove the repository-level
-  `MACOS_KEYCHAIN_PASSWORD` first and rerun as an environment-only canary before deleting
-  any irreplaceable certificate or notarization copies.
-- Live CLI cutover verification and repository-copy removal are still pending. TestFlight
-  and Android workflow files, credentials and release jobs remain unchanged.
-
-Keep this plan active until consumer verification, removal and final metadata checks
-are recorded. Existing desktop distribution release/interactive gates remain separate.
+  `secrets: inherit` before the called job can resolve environment-scoped secrets.
+  Corrective PR #1532 added inheritance only to the three existing main-guarded callers,
+  retained the optional three-name contract and caller value-map prohibition, and passed
+  all 14 checks at accepted head `400ebd8a64ae3bb7afb4e60fbcd2af168e7715b0`.
+  It squash-merged as `f881ce985f587aed09e937aff510486f9993f66a`, tree
+  `f00de644951d5f29b619f18199b02e188d4a6526`.
+- Merged-main CLI run `35203834653` passed all six targets at that exact squash source.
+  Native x64 job `105144749915` and arm64 job `105144749920` both passed certificate
+  import and signing-prerequisite verification. No approval wait occurred.
+- `MACOS_KEYCHAIN_PASSWORD` was then removed only at repository scope. Environment-only
+  canary run `35204413401` passed all six targets at the same source. Native x64 job
+  `105146645837` and arm64 job `105146645938` both passed certificate import and signing
+  prerequisites, proving the called workflow could resolve a value available only from
+  `macos-signing` before irreplaceable source copies were removed.
+- A fresh active-run query found zero release, TestFlight or submission workflows in an
+  active state. The remaining four approved repository copies were then removed:
+  `MACOS_CERT_P12_BASE64`, `MACOS_CERT_PASSWORD`, `APPLE_ID`, and
+  `APPLE_APP_SPECIFIC_PASSWORD`. Repository metadata now contains none of the five names;
+  `macos-signing` contains exactly all five, and the `APPLE_TEAM_ID` repository variable
+  remains present. The environment still has only custom branch policy `main`, with no
+  required-reviewer or wait-timer protection rule.
+- Final post-deletion CLI run `35205182663` passed all six targets at source
+  `f881ce985f587aed09e937aff510486f9993f66a`. Native x64 job `105149143925` and arm64
+  job `105149143940` both passed certificate import and signing prerequisites.
+- Final post-deletion desktop preflight run `35205185758` passed at the same source.
+  Native x64 job `105149176445` and arm64 job `105149176511` both passed certificate
+  import, notarization authentication and synthetic timestamped/hardened Developer ID
+  signing. It submitted or published no product.
+- No plaintext or private key was exported, no local Keychain/app/bridge was touched,
+  and no TestFlight, App Store Connect, Match, Android, build-number or unrelated
+  repository credential was changed. Existing desktop distribution release and
+  interactive QA gates remain separate and incomplete.
