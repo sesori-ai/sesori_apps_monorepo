@@ -71,6 +71,12 @@ jobs:
       commit_sha:   ${{ steps.pick.outputs.commit_sha }}
       version:      ${{ steps.pick.outputs.version }}
     steps:
+      - name: Require main before any store submission or release
+        run: |
+          if [[ "$GITHUB_REF" != 'refs/heads/main' ]]; then
+            echo 'Store submissions and bridge releases must be dispatched from main.' >&2
+            exit 1
+          fi
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -401,10 +407,6 @@ jobs:
     with:
       ref: ${{ needs.resolve.outputs.commit_sha }}
       version: ${{ needs.resolve.outputs.version }}
-    secrets:
-      MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
-      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
-      MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
 
   # bridge-only submits skip both store jobs and with them the
   # store-production reviewer gate. This no-op job holds that gate BEFORE the

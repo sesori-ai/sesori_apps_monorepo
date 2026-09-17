@@ -28,19 +28,15 @@ on:
         description: "Version the binaries must report (X.Y.Z or X.Y.Z-internal.N)"
         required: true
         type: string
-    secrets:
-      MACOS_CERT_P12_BASE64:
-        required: true
-      MACOS_CERT_PASSWORD:
-        required: true
-      MACOS_KEYCHAIN_PASSWORD:
-        required: true
 
 jobs:
   build:
     name: Build (${{ matrix.asset_name }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+    # Main-only environment, deliberately without reviewer/wait gates: frequent
+    # scheduled CLI builds stay automatic. Only macOS steps consume these secrets.
+    environment: macos-signing
     strategy:
       fail-fast: false
       matrix:

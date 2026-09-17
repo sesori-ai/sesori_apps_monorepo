@@ -55,6 +55,8 @@ concurrency:
 
 jobs:
   macos-distribution:
+    # Automatic signing is separate from any future human-gated publication job.
+    environment: macos-signing
     needs: tooling
     if: >-
       github.event_name == 'workflow_dispatch' &&
