@@ -310,6 +310,78 @@ void main() {
     verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(4);
   });
 
+  for (final failure in _RefreshFailure.values) {
+    for (final recovery in _RefreshRecovery.values) {
+      test("coalesced ${failure.name} failure rearms through ${recovery.name}", () async {
+        final known = testSession(id: "known");
+        final created = testSession(id: "created");
+        final authoritative = testSession(id: "authoritative");
+        stubSessions(sessions: [known]);
+        await cubit.ensureLoaded(projectId: projectId);
+        final reply = Completer<ApiResponse<SessionListResponse>>();
+        when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
+        final pending = cubit.retry(projectId: projectId);
+        events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
+        when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) async {
+          if (failure == _RefreshFailure.exception) throw StateError("follow-up failed");
+          return ApiResponse.error(ApiError.generic());
+        });
+        reply.complete(ApiResponse.success(SessionListResponse(items: [known])));
+        await pending;
+        expect(loaded().sourceSessions, contains(created));
+        expect(unseen.seededSessions, hasLength(1));
+        stubSessions(sessions: [known, created, authoritative]);
+        switch (recovery) {
+          case _RefreshRecovery.inventory:
+            final nextReply = Completer<ApiResponse<SessionListResponse>>();
+            when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+                .thenAnswer((_) => nextReply.future);
+            final rearmed = cubit.ensureLoaded(projectId: projectId);
+            await cubit.ensureLoaded(projectId: projectId);
+            final newest = testSession(id: "newest");
+            events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: newest)));
+            stubSessions(sessions: [known, created, authoritative, newest]);
+            nextReply.complete(ApiResponse.success(SessionListResponse(items: [known, created, authoritative])));
+            await rearmed;
+            expect(loaded().sourceSessions, contains(newest));
+          case _RefreshRecovery.lifecycle:
+            events.add(
+              SseEvent(
+                data: SesoriSseEvent.sessionUpdated(info: created.copyWith(title: "Live")),
+              ),
+            );
+            await Future<void>.delayed(Duration.zero);
+        }
+        expect(loaded().sourceSessions, contains(authoritative));
+        expect(unseen.seededSessions, hasLength(2));
+        // Successful application retires the signal; an ordinary ensure stays cached.
+        await cubit.ensureLoaded(projectId: projectId);
+        verify(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+            .called(recovery == _RefreshRecovery.inventory ? 5 : 4);
+      });
+    }
+  }
+
+  test("failed initial coalesced read still requires explicit retry", () async {
+    final created = testSession(id: "created");
+    final reply = Completer<ApiResponse<SessionListResponse>>();
+    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
+    final pending = cubit.ensureLoaded(projectId: projectId);
+    events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
+    when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+        .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+    reply.complete(ApiResponse.success(const SessionListResponse(items: [])));
+    await pending;
+    expect(cubit.state[projectId], isA<RecentSessionsFailed>());
+    expect(unseen.seededSessions, isEmpty);
+    await cubit.ensureLoaded(projectId: projectId);
+    stubSessions(sessions: [created]);
+    await cubit.retry(projectId: projectId);
+    expect(loaded().sourceSessions, [created]);
+    await cubit.ensureLoaded(projectId: projectId);
+    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(3);
+  });
+
   test("close cancels listeners and late reads cannot seed shared unseen state", () async {
     final reply = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
@@ -322,4 +394,12 @@ void main() {
   });
 }
 
-enum _RefreshFailure() { response, exception }
+enum _RefreshFailure() {
+  response,
+  exception,
+}
+
+enum _RefreshRecovery() {
+  inventory,
+  lifecycle,
+}
