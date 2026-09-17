@@ -38,21 +38,40 @@ checkpoint-B verification is superseded by the exact-C evidence below.
 ## Verification
 
 Checkpoint C measures 838 changed lines (724 additions, 114 deletions) across 20 all-path files: 274 production,
-320 test, 244 documentation and zero generated lines. Reproduce that immutable measurement from the repository root:
+320 test, 244 documentation and zero generated lines. The total includes the checkpoint-C version of this file and
+every changed path in the range; this later evidence-only correction is outside it. Reproduce the immutable measurement
+from the repository root:
 
 ```bash
 git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..24eca1eadeebdfd266fe255d9b75f9fbaf8de56f --
 ```
 
-Pinned Dart/Flutter 3.47.4 verification against exact checkpoint C:
+Pinned Dart/Flutter 3.47.4 verification against exact checkpoint C used these commands and working directories:
 
-- `client/module_core`: 20 recent-session cases and 90 project-list cases pass; analyzer is clean.
-- `client/module_desktop_core`: 10 projection/refresh Cubit/service cases pass; analyzer is clean.
-- `client/desktop`: analyzer is clean.
-- Logs: `/tmp/rose-elephant-1533-recent-review-fixes-final.log`,
-  `/tmp/rose-elephant-1533-project-review-fixes-final.log`, and
-  `/tmp/rose-elephant-1533-desktop-core-review-fixes-final.log`.
-- No generator was needed; all changed Dart sources were formatted.
+```bash
+cd client/module_core
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart test -r expanded \
+  test/cubits/recent_sessions/recent_sessions_cubit_test.dart
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart test -r expanded \
+  test/cubits/project_list/project_list_cubit_test.dart
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart analyze --fatal-infos
+
+cd ../module_desktop_core
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart test -r expanded \
+  test/cubits/desktop_sidebar/desktop_sidebar_session_projection_test.dart \
+  test/cubits/desktop_sidebar/desktop_sidebar_refresh_cubit_test.dart \
+  test/services/desktop_sidebar_refresh_service_test.dart
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart analyze --fatal-infos
+
+cd ../desktop
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart analyze --fatal-infos
+```
+
+Results: 20 recent-session cases, 90 project-list cases and 10 desktop-core cases pass; all three analyzers are
+clean. Logs: `/tmp/rose-elephant-1533-recent-review-fixes-final.log`,
+`/tmp/rose-elephant-1533-project-review-fixes-final.log`, and
+`/tmp/rose-elephant-1533-desktop-core-review-fixes-final.log`. No generator was needed; all changed Dart sources were
+formatted.
 
 ## Boundaries
 
