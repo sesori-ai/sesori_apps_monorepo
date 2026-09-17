@@ -10,12 +10,17 @@ permissions:
 
 jobs:
   version:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       value: ${{ steps.version.outputs.value }}
     steps:
+      - name: Require main for environment-backed signing proof
+        run: |
+          if [[ "$GITHUB_REF" != 'refs/heads/main' ]]; then
+            echo 'macOS signing verification must be dispatched from main.' >&2
+            exit 1
+          fi
       - uses: actions/checkout@v6
         with:
           persist-credentials: false

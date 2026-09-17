@@ -25,7 +25,8 @@ class MacosSigningWorkflowTest(unittest.TestCase):
 
     def test_private_probe_has_no_release_or_mobile_upload_capability(self):
         probe = (WORKFLOWS / "verify-macos-signing.yml").read_text()
-        self.assertIn("if: github.ref == 'refs/heads/main'", probe)
+        guard = "if [[ \"$GITHUB_REF\" != 'refs/heads/main' ]]"
+        self.assertLess(probe.index(guard), probe.index("uses: actions/checkout@v6"))
         self.assertIn("uses: ./.github/workflows/_reusable-bridge-build.yml", probe)
         self.assertIn("  contents: read", probe)
         for forbidden in ("contents: write", "secrets:", "_reusable-ios", "_reusable-android", "gh release"):
