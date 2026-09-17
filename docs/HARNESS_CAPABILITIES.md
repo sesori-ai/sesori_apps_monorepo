@@ -73,14 +73,28 @@ rejecting never submits another prompt or restarts a turn.
 
 | Harness / boundary | Status and authoritative detail source |
 |---|---|
-| Codex | ✅ Command approval's complete `command` and managed-network `networkApprovalContext.host`; native or rollout-correlated file-change item's paths and operation kinds via the existing thread/item tracker. File requests lacking matching native item details at publication, including while notification processing lags, keep generic details for that decision; approvals never wait for transcript drains or child metadata reads. Broad permission profiles and MCP approvals also keep generic details. Command and native-only file approvals verified live on iOS. |
-| Claude | ✅ Native Bash command; Edit/MultiEdit/Write file path; NotebookEdit notebook path; WebFetch URL. A write is not labelled create without creation evidence. WebSearch queries are not network destinations and currently retain generic details, as do custom/MCP tools. |
+| Codex | ✅ Native command, managed-network host and exact file-change item details; see notes below. |
+| Claude | ✅ Native Bash, Edit/MultiEdit/Write, NotebookEdit and WebFetch inputs; see notes below. |
 | OpenCode | ✅ The same native permission metadata feeds live and snapshot mapping: bash command, edit filepath or apply_patch file rows, and webfetch URL. Verified against pinned 1.18.30 tool sources; patterns/globs are not treated as concrete request contents. |
 | ACP family: Cursor, OMP, Hermes, DeepSeek, Copilot, Grok, Antigravity | ✅ Common standardized diff/location rows and fetch resource-link targets where the actual request includes them. Opaque/title-only requests stay generic; this is not a claim that every adapter emits those fields. |
 | Grok | ✅ Reuses the adapter's exact terminal tool metadata + typed rawInput command for permission requests. Automated fixture evidence, not a new native capture. |
 | Antigravity | ✅ Native command input aliases retain the full command without transcript-title truncation. Existing warning exclusion and once-only policy are unchanged. Automated fixture evidence. |
 | Cursor, OMP, Hermes, DeepSeek, Copilot command approvals | ⬜ Dedicated command extraction remains unimplemented/source-unverified. Execute kinds, titles and arbitrary command-shaped inputs are not command authority; this does not claim native harness non-support. |
 | Pi | 🚫 No tool permission channel on the driven RPC seam. Its existing extension questions are unchanged. |
+
+- **Codex:** Command approvals preserve the complete `command`; managed-network
+  requests provide `networkApprovalContext.host`. Native or rollout-correlated
+  file-change items supply paths and operation kinds through the existing
+  thread/item tracker. File requests lacking matching native item details at
+  publication, including while notification processing lags, keep generic
+  details for that decision. Approvals never wait for transcript drains or child
+  metadata reads. Broad permission profiles and MCP approvals also keep generic
+  details. Command and native-only file approvals were verified live on iOS.
+- **Claude:** Bash supplies the command; Edit/MultiEdit/Write supply the file
+  path; NotebookEdit supplies the notebook path; WebFetch supplies the URL. A
+  write is not labelled create without creation evidence. WebSearch queries are
+  not network destinations and currently retain generic details, as do
+  custom/MCP tools.
 
 Missing rich fields from released bridges, unknown future detail kinds and
 unknown file operations degrade to honest generic/unknown presentation. Existing
