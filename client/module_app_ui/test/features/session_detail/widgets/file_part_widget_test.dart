@@ -278,7 +278,7 @@ void main() {
     verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
   });
 
-  testWidgets("lays out one two three and four attachments as capped square grids", (tester) async {
+  testWidgets("lays out one two three and four attachments as compact previews", (tester) async {
     const attachments = [
       MessageAttachment.metadata(mime: "image/png", filename: "one.png"),
       MessageAttachment.metadata(mime: "image/png", filename: "two.png"),
@@ -290,7 +290,7 @@ void main() {
       await tester.pumpWidget(
         _app(
           child: SizedBox(
-            width: 500,
+            width: 320,
             child: AttachmentCollectionWidget(
               sessionId: "session-1",
               attachments: attachments.take(count).toList(),
@@ -306,11 +306,13 @@ void main() {
       for (final tile in tester.widgetList<AspectRatio>(tiles)) {
         expect(tile.aspectRatio, 1);
       }
-      final firstSize = tester.getSize(tiles.at(0));
-      if (count.isOdd) {
-        expect(firstSize.width, 320);
-      } else {
-        expect(firstSize.width, closeTo(157, 0.01));
+      for (var index = 0; index < count; index++) {
+        expect(tester.getSize(tiles.at(index)), const Size(100, 100));
+        if (index < 3) {
+          expect(tester.getTopLeft(tiles.at(index)).dy, tester.getTopLeft(tiles.first).dy);
+        } else {
+          expect(tester.getTopLeft(tiles.at(index)).dy, greaterThan(tester.getBottomLeft(tiles.first).dy));
+        }
       }
       expect(tester.takeException(), isNull);
     }
@@ -335,7 +337,7 @@ void main() {
       of: find.byType(AttachmentCollectionWidget),
       matching: find.byType(AspectRatio),
     );
-    expect(tester.getSize(tile), const Size(180, 180));
+    expect(tester.getSize(tile), const Size(100, 100));
     final filenameText = tester.widget<Text>(find.text(filename));
     expect(filenameText.maxLines, 1);
     expect(filenameText.overflow, TextOverflow.ellipsis);
@@ -364,7 +366,51 @@ void main() {
       matching: find.byType(AspectRatio),
     );
     expect(tile, findsOneWidget);
-    expect(tester.getSize(tile).width, 320);
+    expect(tester.getSize(tile).width, 100);
+  });
+
+  for (final themeMode in [ThemeMode.light, ThemeMode.dark]) {
+    testWidgets("${themeMode.name} image preview is compact and unobscured", (tester) async {
+      await tester.pumpWidget(
+        _app(
+          themeMode: themeMode,
+          child: const FilePartWidget(
+            sessionId: "session-1",
+            attachment: MessageAttachment.inlineImage(
+              mime: "image/png",
+              base64: _pngBase64,
+              filename: "preview.png",
+            ),
+          ),
+        ),
+      );
+      await _finishAsyncDecode(tester: tester);
+      final preview = find.byKey(FilePartWidget.previewImageKey);
+      expect(tester.getSize(preview), const Size(100, 100));
+      expect(tester.widget<Image>(preview).fit, BoxFit.cover);
+      expect(tester.widget<Image>(preview).semanticLabel, "preview.png");
+      expect(tester.widget<ClipRRect>(find.byType(ClipRRect)).borderRadius, BorderRadius.circular(4));
+      expect(find.text("preview.png"), findsNothing);
+      expect(find.text("image/png"), findsNothing);
+      expect(find.byIcon(TablerRegular.x), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets("compact preview fits a pane narrower than its preferred size", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        child: const SizedBox(
+          width: 80,
+          child: AttachmentCollectionWidget(
+            sessionId: "session-1",
+            attachments: [MessageAttachment.metadata(mime: "image/png", filename: "narrow.png")],
+          ),
+        ),
+      ),
+    );
+    expect(tester.getSize(find.byType(AspectRatio)), const Size(80, 80));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("fallback metadata is announced once", (tester) async {
@@ -513,9 +559,9 @@ void main() {
     });
     await tester.pump();
     expect(requests, 1);
-    expect(find.text("Retry"), findsOneWidget);
+    expect(find.byTooltip("Retry"), findsOneWidget);
     expect(find.byIcon(Icons.open_in_new), findsOneWidget);
-    expect(tester.getSemantics(find.text("Retry")).getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    expect(tester.getSemantics(find.byTooltip("Retry")).getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
 
     await tester.tapAt(const Offset(12, 12));
     await tester.pump();
@@ -523,7 +569,7 @@ void main() {
       () => urlLauncher.launch(Uri.parse("https://files.example.com/retry.png"), mode: UrlLaunchMode.externalApp),
     ).called(1);
 
-    await tester.tap(find.text("Retry"));
+    await tester.tap(find.byTooltip("Retry"));
     await tester.runAsync(() async {
       while (requests < 2) {
         await Future<void>.delayed(const Duration(milliseconds: 1));
@@ -1265,7 +1311,7 @@ void main() {
     expect(find.byType(Image), findsNothing);
     verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
 
-    await tester.tap(find.text("report.pdf"));
+    await tester.tap(find.byType(AspectRatio));
     await tester.pump();
 
     verify(
@@ -1351,9 +1397,9 @@ void main() {
 
     expect(find.byType(ImageAttachmentViewer), findsNothing);
     expect(find.byIcon(Icons.broken_image), findsOneWidget);
-    expect(find.text("Retry"), findsOneWidget);
+    expect(find.byTooltip("Retry"), findsOneWidget);
     final requestsAfterTap = requests;
-    await tester.tap(find.text("Retry"));
+    await tester.tap(find.byTooltip("Retry"));
     await tester.runAsync(() async {
       while (requests <= requestsAfterTap) {
         await Future<void>.delayed(const Duration(milliseconds: 1));
@@ -1412,7 +1458,7 @@ void main() {
 
     expect(find.text("broken.png"), findsOneWidget);
     expect(find.byIcon(Icons.broken_image), findsOneWidget);
-    expect(find.text("Retry"), findsNothing);
+    expect(find.byTooltip("Retry"), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

@@ -112,14 +112,15 @@ content the transcript renders live and after reload.
   open, including when the Android back gesture delivers a second pop while the
   viewer is still fading out.
 - User, tool, and each maximal contiguous run of assistant file attachments use
-  the same left-aligned square collection, capped at 320 px and constrained by
-  the available parent width. One attachment spans the collection, two split a
-  row, three use one lead tile above a pair, and larger collections continue in
-  paired rows. Images center-crop within their square; metadata appears in a
-  bounded bottom gradient; loading, failure, retry, and metadata-only fallbacks
-  retain the same square geometry. Reduced-motion loading is static, retry is an
-  explicit accessible action, and non-file assistant parts retain chronology
-  between separate file runs.
+  the same compact collection: 100 px square previews with 4 px corners and
+  6 px gaps, wrapping within the parent width (and shrinking if the pane is
+  narrower than one preview). Loaded images center-crop without an obscuring
+  metadata overlay; filenames remain accessible and in the full-screen viewer.
+  Assistant Markdown images use the same compact crop and reveal the contained
+  image during the viewer transition. Loading, failure, retry, and metadata-only
+  fallbacks retain square geometry and bounded metadata. Reduced-motion loading
+  is static, retry is an accessible 44 px icon button, and non-file assistant
+  parts retain chronology between separate file runs.
 - History requests default to the released bounded inline shape. A client that
   explicitly requests stored references receives bridge-scoped image metadata
   in the same part and tool-attachment order, including after archive; a missing
@@ -141,7 +142,7 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes. |
+| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes; transcript previews stay compact and unobscured in both themes, wrap without reordering, and retain accessible retry and full-screen viewing at enlarged text sizes. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. The desktop picker filters to supported raster extensions and preflights oversized files, and desktop adapter coverage verifies file-pick and file-save success and cancellation, pasteboard writes, and system-share file lifecycle. |
 | L3 Release | Client end to end on mobile and desktop for new-session and existing-session composer input, and on every release-target session-detail surface for transcript output, every supporting production plugin: staged composer images are sent and echoed per attachment-capable plugin; a failed current-route mobile creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
 | L4 Extended | Client end to end on mobile and desktop: change availability from another surface while an existing-session picker is open or an attachment is staged; no blocked send lands, transcript images remain usable, and recovery presents a fresh composer. Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. Automated, no plugin: sensitive-response redaction, persistent thumbnail cache corruption recovery, bounded pruning, auth cleanup, viewer decode and load retry, and original eviction and release on close. |
@@ -179,7 +180,7 @@ account-level rejection without changing the descriptor's capability claim.
 - A thumbnail cache path exposes a raw identity, persists an original, remains
   above its per-account budget after a successful prune, or survives retirement
   of its authenticated account scope.
-- An attachment collection exceeds its parent or 320 px cap, loses square tile
+- A transcript preview exceeds its parent or 100 px cap, loses square tile
   geometry between states, reorders assistant content, or offers a failed image
   without an accessible retry action.
 - A stored viewer fetches an original before opening, blanks the cached

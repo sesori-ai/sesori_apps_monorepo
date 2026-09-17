@@ -21,24 +21,23 @@ class const AttachmentCollectionWidget({
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = math.min(constraints.maxWidth, prego.widths.xxs);
-        final pairedWidth = (width - prego.spacing.sm) / 2;
+        final tileWidth = math.min(constraints.maxWidth, FilePartWidget.previewSize);
         final duplicateCounts = <String, int>{};
 
         return Align(
           alignment: Alignment.centerLeft,
           child: SizedBox(
             key: surfaceKey,
-            width: width,
+            width: constraints.maxWidth,
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: prego.spacing.xs),
               child: Wrap(
                 spacing: prego.spacing.sm,
                 runSpacing: prego.spacing.sm,
                 children: [
-                  for (final (index, attachment) in visibleAttachments.indexed)
+                  for (final attachment in visibleAttachments)
                     SizedBox(
-                      width: index == 0 && visibleAttachments.length.isOdd ? width : pairedWidth,
+                      width: tileWidth,
                       child: _tile(
                         attachment: attachment,
                         duplicateCounts: duplicateCounts,

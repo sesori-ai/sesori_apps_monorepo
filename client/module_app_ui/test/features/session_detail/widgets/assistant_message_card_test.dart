@@ -294,6 +294,10 @@ void main() {
     final preview = tester.widget<Image>(find.descendant(of: markdownImage, matching: find.byType(Image)));
     expect(preview.image, isA<ResizeImage>());
     expect((preview.image as ResizeImage).imageProvider, isA<MemoryImage>());
+    expect(preview.fit, BoxFit.cover);
+    expect(tester.getSize(find.descendant(of: markdownImage, matching: find.byType(Image))), const Size(100, 100));
+    final clip = tester.widget<ClipRRect>(find.descendant(of: markdownImage, matching: find.byType(ClipRRect)));
+    expect(clip.borderRadius, BorderRadius.circular(4));
     await tester.runAsync(
       () => precacheImage(
         preview.image,
@@ -314,7 +318,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 130));
 
-    expect(find.byKey(ImageAttachmentViewer.flightCropImageKey), findsNothing);
+    expect(find.byKey(ImageAttachmentViewer.flightCropImageKey), findsOneWidget);
     expect(find.byKey(ImageAttachmentViewer.flightFullImageKey), findsOneWidget);
 
     await tester.pumpAndSettle();
