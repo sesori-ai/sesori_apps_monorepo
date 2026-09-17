@@ -30,11 +30,14 @@ class MacosSigningWorkflowTest(unittest.TestCase):
         for name in ("release-all-platforms.yml", "submit-release.yml", "verify-macos-signing.yml"):
             with self.subTest(workflow=name):
                 caller = (WORKFLOWS / name).read_text()
-                call = caller.split("uses: ./.github/workflows/_reusable-bridge-build.yml", 1)[1]
-                next_job = re.search(r"\n  [A-Za-z0-9_-]+:", call)
-                if next_job is not None:
-                    call = call[:next_job.start()]
-                self.assertIn("\n    secrets: inherit\n", call)
+                calls = caller.split("uses: ./.github/workflows/_reusable-bridge-build.yml")[1:]
+                self.assertGreater(len(calls), 0)
+                for index, call in enumerate(calls, start=1):
+                    next_job = re.search(r"\n  [A-Za-z0-9_-]+:", call)
+                    if next_job is not None:
+                        call = call[:next_job.start()]
+                    with self.subTest(workflow=name, call=index):
+                        self.assertIn("\n    secrets: inherit\n", call)
                 self.assertNotIn("secrets.MACOS_", caller)
 
     def test_main_guards_precede_mobile_or_release_jobs(self):
