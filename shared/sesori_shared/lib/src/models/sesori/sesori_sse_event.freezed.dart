@@ -2099,7 +2099,7 @@ as String,
 @JsonSerializable()
 
 class SesoriPermissionAsked implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriPermissionAsked({required this.requestID, required this.sessionID, required this.displaySessionId, required this.tool, required this.description, this.allowAlways = true,  String? $type}): $type = $type ?? 'permission.asked';
+  const SesoriPermissionAsked({required this.requestID, required this.sessionID, required this.displaySessionId, required this.tool, required this.description, this.details = const PermissionDetails.generic(), this.allowAlways = true,  String? $type}): $type = $type ?? 'permission.asked';
   factory SesoriPermissionAsked.fromJson(Map<String, dynamic> json) => _$SesoriPermissionAskedFromJson(json);
 
  final  String requestID;
@@ -2110,6 +2110,7 @@ class SesoriPermissionAsked implements SesoriSseEvent, SesoriSessionEvent {
  final  String? displaySessionId;
  final  String tool;
  final  String description;
+@JsonKey() final  PermissionDetails details;
 @JsonKey() final  bool allowAlways;
 
 @JsonKey(name: 'type')
@@ -2129,18 +2130,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionAsked&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description)&&(identical(other.allowAlways, allowAlways) || other.allowAlways == allowAlways));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionAsked&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description)&&(identical(other.details, details) || other.details == details)&&(identical(other.allowAlways, allowAlways) || other.allowAlways == allowAlways));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,requestID,sessionID,displaySessionId,tool,description,allowAlways);
+    return Object.hash(runtimeType,requestID,sessionID,displaySessionId,tool,description,details,allowAlways);
 }
 
 @override
 String toString() {
-    return 'SesoriSseEvent.permissionAsked(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description, allowAlways: $allowAlways)';
+    return 'SesoriSseEvent.permissionAsked(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description, details: $details, allowAlways: $allowAlways)';
 }
 
 
@@ -2151,11 +2152,11 @@ abstract mixin class $SesoriPermissionAskedCopyWith<$Res> implements $SesoriSseE
   factory $SesoriPermissionAskedCopyWith(SesoriPermissionAsked value, $Res Function(SesoriPermissionAsked) _then) = _$SesoriPermissionAskedCopyWithImpl;
 @useResult
 $Res call({
- String requestID, String sessionID, String? displaySessionId, String tool, String description, bool allowAlways
+ String requestID, String sessionID, String? displaySessionId, String tool, String description, PermissionDetails details, bool allowAlways
 });
 
 
-
+$PermissionDetailsCopyWith<$Res> get details;
 
 }
 /// @nodoc
@@ -2168,19 +2169,29 @@ class _$SesoriPermissionAskedCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,Object? allowAlways = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,Object? details = null,Object? allowAlways = null,}) {
   return _then(SesoriPermissionAsked(
 requestID: null == requestID ? _self.requestID : requestID // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
 as String?,tool: null == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String,allowAlways: null == allowAlways ? _self.allowAlways : allowAlways // ignore: cast_nullable_to_non_nullable
+as String,details: null == details ? _self.details : details // ignore: cast_nullable_to_non_nullable
+as PermissionDetails,allowAlways: null == allowAlways ? _self.allowAlways : allowAlways // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
 
-
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PermissionDetailsCopyWith<$Res> get details {
+  
+  return $PermissionDetailsCopyWith<$Res>(_self.details, (value) {
+    return _then(_self.copyWith(details: value));
+  });
+}
 }
 
 /// @nodoc

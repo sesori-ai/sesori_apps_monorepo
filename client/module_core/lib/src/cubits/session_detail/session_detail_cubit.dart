@@ -2794,6 +2794,7 @@ class SessionDetailCubit(
             displaySessionId: p.displaySessionId,
             tool: p.tool,
             description: p.description,
+            details: p.details,
             allowAlways: p.allowAlways,
           ),
         )

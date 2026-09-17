@@ -65,6 +65,21 @@ whitespace accepted). Expressions, multiple commands and other JavaScript forms
 need trustworthy correlated command-execution evidence; raw scripts never become
 commands. No general JavaScript parser or runtime execution is involved.
 
+## Rich permission request details
+
+The shared wire contract and client renderer support generic, command,
+file-change and network details. Missing details and unknown future kinds keep
+existing generic permission dialogs; known commands and paths remain literal
+and copyable. Clients never infer request kinds from tool names or prose.
+
+Native detail production is not implemented yet for Codex, Claude, OpenCode or
+ACP-based plugins in this build. Their existing generic permission requests
+and Allow / optional Always / Reject behavior remain available. Pi has no tool
+permission channel on its driven RPC seam; its extension questions are unchanged.
+
+Inline text/voice instructions are not offered. Reject never starts another
+prompt or restarts a turn. No permission details are persisted as history.
+
 ## Ordinary tool titles
 
 Non-shell tool cards show a bounded title naming what the tool touched (file

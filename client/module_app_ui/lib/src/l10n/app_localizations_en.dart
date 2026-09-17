@@ -1942,6 +1942,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diffPermissionRequestTitle => 'Allow this action?';
 
   @override
+  String get permissionCommandTitle => 'Allow this command?';
+
+  @override
+  String get permissionFilesTitle => 'Allow these file changes?';
+
+  @override
+  String get permissionNetworkTitle => 'Allow this network access?';
+
+  @override
+  String get permissionFileCreate => 'create';
+
+  @override
+  String get permissionFileWrite => 'write';
+
+  @override
+  String get permissionFileDelete => 'delete';
+
+  @override
+  String permissionNetworkTarget(String target) {
+    return 'Connect to $target';
+  }
+
+  @override
   String get diffPermissionReject => 'Don’t allow';
 
   @override
