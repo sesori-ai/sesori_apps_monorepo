@@ -27,7 +27,8 @@ git diff --numstat \
 
 Production: 39 additions + 19 deletions = 58; tests: 197 additions = 197.
 Cumulative source/test scope: **255 changed lines**, no generated output.
-A was 153 lines; the review-feedback follow-up adds 108 lines across those same paths.
+A was 153 lines. The direct A-to-B diff is 108 lines (101 additions + 7 deletions), but it is not additive:
+it edits lines already counted in A. Cumulative base-to-B scope grows by 102, from 153 to 255 lines.
 The PR body owns the final unfiltered all-path size; this slice targets ≤650, including documentation.
 
 ## Behavior and ownership
@@ -43,8 +44,9 @@ Initial loading/failure/retry and late-after-close guards remain intact.
 All session fetch/filter/order/mutation behavior stays in `SessionListService`; live unread false keeps precedence.
 Failures preserve the current live projection, not a captured older snapshot, and retain existing local diagnostics.
 No new model, API, DI, subscription, timer, persistence, transport, backend rule or Flutter presentation change.
-No new analytics action. No generation needed. Priority acquisition, manual refresh outcome UI, menu composition,
-Prego reconciliation and control/tooltip changes remain 9.c.2, requiring their own concrete plan review.
+No new analytics action or code generation/build_runner step. The lifecycle generation is private in-memory
+request bookkeeping. Priority acquisition, manual refresh outcome UI, menu composition, Prego reconciliation
+and control/tooltip changes remain 9.c.2, requiring their own concrete plan review.
 
 ## Verification
 
