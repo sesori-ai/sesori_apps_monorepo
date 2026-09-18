@@ -11,7 +11,7 @@ import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../services/catalog_rescan_service.dart";
-import "../../services/inventory_refresh_operation.dart";
+import "../../services/inventory_refresh_service.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/models/session_list_filter.dart";
 import "../../services/models/session_list_item_state.dart";
@@ -39,7 +39,8 @@ class RecentSessionsCubit({
   required final SseEventTracker _sseEventTracker,
   required final SessionUnseenTracker _sessionUnseenTracker,
   required CatalogRescanService catalogRescanService,
-}) extends Cubit<Map<String, RecentSessionsEntry>> implements SessionInventoryRefreshOperation {
+  required InventoryRefreshService inventoryRefreshService,
+}) extends Cubit<Map<String, RecentSessionsEntry>> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   // Refresh ownership is separate from the usable, live-patched display data.
   final Map<String, _RecentSessionsRead> _pendingReads = {};
@@ -52,6 +53,7 @@ class RecentSessionsCubit({
     _subscriptions.add(_sessionUnseenTracker.sessionUnseen.listen((_) => _projectLiveState()));
     _subscriptions.add(_connectionService.dataMayBeStale.listen((_) => _refreshKnownProjects()));
     _subscriptions.add(catalogRescanService.catalogChanged.listen((_) => _refreshKnownProjects()));
+    _subscriptions.add(inventoryRefreshService.sessionRequests.listen(_onInventoryRefreshRequested));
   }
 
   Future<void> ensureLoaded({required String projectId}) async {
@@ -68,12 +70,24 @@ class RecentSessionsCubit({
   }
 
   /// Refreshes the named inventories and reports whether every snapshot applied.
-  @override
   Future<bool> refreshProjects({required Iterable<String> projectIds}) async {
     final outcomes = await Future.wait([
       for (final projectId in projectIds.toSet()) _load(projectId: projectId),
     ]);
     return outcomes.every((applied) => applied);
+  }
+
+  void _onInventoryRefreshRequested(SessionInventoryRefreshRequest request) {
+    unawaited(_fulfillInventoryRefresh(request: request));
+  }
+
+  Future<void> _fulfillInventoryRefresh({required SessionInventoryRefreshRequest request}) async {
+    try {
+      request.complete(succeeded: await refreshProjects(projectIds: request.projectIds));
+    } on Object catch (error, stackTrace) {
+      loge("Failed to fulfill the session inventory refresh", error, stackTrace);
+      request.complete(succeeded: false);
+    }
   }
 
   Future<bool> _load({required String projectId}) {

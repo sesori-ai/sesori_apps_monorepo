@@ -14,6 +14,7 @@ void main() {
   late MockSseEventTracker activity;
   late FakeSessionUnseenTracker unseen;
   late FakeCatalogRescanService catalog;
+  late InventoryRefreshService inventoryRefreshService;
   late StreamController<SseEvent> events;
   late RecentSessionsCubit cubit;
   const projectId = "project-1";
@@ -25,6 +26,7 @@ void main() {
     activity = MockSseEventTracker();
     unseen = FakeSessionUnseenTracker();
     catalog = FakeCatalogRescanService();
+    inventoryRefreshService = InventoryRefreshService();
     events = StreamController.broadcast(sync: true);
     when(() => connection.events).thenAnswer((_) => events.stream);
     when(() => repository.listSessions(projectId: any(named: "projectId"), waitForPrData: false))
@@ -38,10 +40,12 @@ void main() {
       sseEventTracker: activity,
       sessionUnseenTracker: unseen,
       catalogRescanService: catalog,
+      inventoryRefreshService: inventoryRefreshService,
     );
   });
   tearDown(() async {
     await cubit.close();
+    await inventoryRefreshService.dispose();
     await events.close();
     await activity.onDispose();
     await unseen.onDispose();
@@ -102,7 +106,9 @@ void main() {
       ),
     );
 
-    final succeeded = await cubit.refreshProjects(projectIds: const ["project-1", "project-2", "project-1"]);
+    final succeeded = await inventoryRefreshService.refreshSessionInventories(
+      projectIds: const ["project-1", "project-2", "project-1"],
+    );
 
     expect(succeeded, isTrue);
     expect((cubit.state["project-1"]! as RecentSessionsLoaded).sourceSessions.single.id, "one");

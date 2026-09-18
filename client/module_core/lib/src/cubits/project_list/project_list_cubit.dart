@@ -16,7 +16,7 @@ import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/catalog_rescan_service.dart";
-import "../../services/inventory_refresh_operation.dart";
+import "../../services/inventory_refresh_service.dart";
 import "../../services/loaded_state_analytics_reporter.dart";
 import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/session_activity_info.dart";
@@ -55,7 +55,8 @@ class ProjectListCubit(
   required final LoadedStateAnalyticsReporter _loadedStateAnalyticsReporter,
   required final FailureReporter _failureReporter,
   required final CatalogRescanService _catalogRescanService,
-}) extends Cubit<ProjectListState> implements ProjectInventoryRefreshOperation {
+  required final InventoryRefreshService _inventoryRefreshService,
+}) extends Cubit<ProjectListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   /// Keeps pre-rename list responses from repainting an old name while the
@@ -85,6 +86,7 @@ class ProjectListCubit(
     _subscriptions.add(_catalogRescanService.state.listen(_onCatalogScanState));
     // A committed import raises no list invalidation of its own.
     _subscriptions.add(_catalogRescanService.catalogChanged.listen((_) => _onCatalogChanged()));
+    _subscriptions.add(_inventoryRefreshService.projectRequests.listen(_onInventoryRefreshRequested));
 
     // 1b. Immediate unseen (bold) updates (no API call).
     _subscriptions.add(
@@ -519,15 +521,28 @@ class ProjectListCubit(
     return _awaitRefreshResult(refresh: _refreshProjects(force: false, catalogRefresh: false));
   }
 
-  @override
-  Future<ProjectInventoryRefreshResult> refreshProjectInventory() async {
-    final succeeded = await refreshProjects();
-    final List<String> projectIds = switch (state) {
-      ProjectListLoaded(:final projects) => [for (final project in projects) project.id],
-      ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => const <String>[],
-    };
-    return ProjectInventoryRefreshResult(succeeded: succeeded, projectIds: List.unmodifiable(projectIds));
+  void _onInventoryRefreshRequested(ProjectInventoryRefreshRequest request) {
+    unawaited(_fulfillInventoryRefresh(request: request));
   }
+
+  Future<void> _fulfillInventoryRefresh({required ProjectInventoryRefreshRequest request}) async {
+    try {
+      final succeeded = await refreshProjects();
+      request.complete(
+        result: ProjectInventoryRefreshResult(succeeded: succeeded, projectIds: _currentProjectIds),
+      );
+    } on Object catch (error, stackTrace) {
+      loge("Failed to fulfill the project inventory refresh", error, stackTrace);
+      request.complete(
+        result: ProjectInventoryRefreshResult(succeeded: false, projectIds: _currentProjectIds),
+      );
+    }
+  }
+
+  List<String> get _currentProjectIds => switch (state) {
+    ProjectListLoaded(:final projects) => List.unmodifiable([for (final project in projects) project.id]),
+    ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => const <String>[],
+  };
 
   /// A catalog refresh can supersede an explicit pull. Wait for the newer read
   /// so the caller reports that read's outcome rather than premature success.

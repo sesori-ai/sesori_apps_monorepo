@@ -63,6 +63,8 @@ import 'package:sesori_desktop_core/src/services/desktop_instance_service.dart'
     as _i494;
 import 'package:sesori_desktop_core/src/services/desktop_relay_connection_service.dart'
     as _i314;
+import 'package:sesori_desktop_core/src/services/desktop_sidebar_refresh_service.dart'
+    as _i983;
 import 'package:sesori_desktop_core/src/services/window_bounds_service.dart'
     as _i68;
 import 'package:sesori_desktop_core/src/trackers/bridge_process_log_tracker.dart'
@@ -102,6 +104,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i874.BridgeProcessApi>(
       () => _i874.BridgeProcessApi(
         processEnvironment: gh<_i961.BridgeProcessEnvironment>(),
+      ),
+    );
+    gh.lazySingleton<_i983.DesktopSidebarRefreshService>(
+      () => _i983.DesktopSidebarRefreshService(
+        inventoryRefreshService: gh<_i948.InventoryRefreshService>(),
       ),
     );
     gh.lazySingleton<_i73.BridgeIdStorage>(

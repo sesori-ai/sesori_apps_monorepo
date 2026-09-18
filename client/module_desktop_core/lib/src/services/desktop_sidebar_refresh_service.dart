@@ -1,3 +1,4 @@
+import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 abstract interface class DesktopSidebarRefreshOperation() {
@@ -5,20 +6,19 @@ abstract interface class DesktopSidebarRefreshOperation() {
 }
 
 /// Coordinates the two independent inventories behind one sidebar refresh.
-final class DesktopSidebarRefreshService._create({
-  required final ProjectInventoryRefreshOperation _projectInventory,
-  required final SessionInventoryRefreshOperation _sessionInventory,
+@lazySingleton
+class DesktopSidebarRefreshService({
+  required final InventoryRefreshService inventoryRefreshService,
 }) implements DesktopSidebarRefreshOperation {
-  new({
-    required ProjectInventoryRefreshOperation projectInventory,
-    required SessionInventoryRefreshOperation sessionInventory,
-  }) : this._create(projectInventory: projectInventory, sessionInventory: sessionInventory);
+  final InventoryRefreshService _inventoryRefreshService = inventoryRefreshService;
 
   @override
   Future<DesktopSidebarRefreshResult> refresh() async {
     try {
-      final projects = await _projectInventory.refreshProjectInventory();
-      final sessionsSucceeded = await _sessionInventory.refreshProjects(projectIds: projects.projectIds);
+      final projects = await _inventoryRefreshService.refreshProjectInventory();
+      final sessionsSucceeded = await _inventoryRefreshService.refreshSessionInventories(
+        projectIds: projects.projectIds,
+      );
       return projects.succeeded && sessionsSucceeded
           ? DesktopSidebarRefreshResult.succeeded
           : DesktopSidebarRefreshResult.failed;
