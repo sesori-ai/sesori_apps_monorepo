@@ -17,8 +17,10 @@ reconciliation, periodic check, in-place apply, and explicit update command.
   documentation batches skip, but product changes before an unrelated tip commit still
   qualify. A rolling `internal-release-attempt` tag is written before version validation
   or builds, preventing automatic retries after failure or cancellation. Manual GitHub
-  dispatch with `automatic=false` can retry; release tags, branch checkpoint behavior,
-  serialized release concurrency, and all-platform success requirement stay unchanged.
+  dispatch from `main` with `automatic=false` can retry. Non-main dispatches fail before
+  build-number queries or mobile uploads so the main-only macOS signing environment
+  cannot leave partial store uploads. Release tags, serialized release concurrency and
+  all-platform success requirements stay unchanged.
 - TestFlight and Play internal notes list commit subjects since the nearest
   `v*` release tag on the build's first-parent history, newest first, and retain
   the build SHA. Failed attempts do not reset this range. With no release tag,
@@ -71,9 +73,19 @@ reconciliation, periodic check, in-place apply, and explicit update command.
 |---|---|
 | L1 Smoke | Not included. Distribution work is expensive and is not a per-run heartbeat. |
 | L2 Routine | Update-skip policy and startup reconciliation on a non-managed run: a build-tree or opted-out bridge neither rewrites itself nor fails startup, and reconciliation is silent with no pending attempt. Headless bridge; no plugin. |
-| L3 Release | Scheduled-release gate tests cover batched changes, tagged/attempted skips, failure suppression, manual retries, and marker-write failure without store calls. Store-note tests cover release ranges, failed attempts, immutable targets, Unicode, and exact omission counts at both length limits. The release artifact set and checksum manifest for the tag are complete and basename-keyed, and a managed install on the release-target bridge host reports the expected version and starts. Packaged or external. |
+| L3 Release | Release gates, artifacts, managed startup and automatic macOS signing. Packaged/external. |
 | L4 Extended | Interrupted or failed apply reconciled at a later start, including lock-contended and deletion-failed residue retained observably for another retry; rollback; refused checksum mismatch; unavailable release service staying quiet; track switch; periodic cycle applying in place and reporting pending activation; and an alternate bridge host. Packaged or external for the install; headless bridge for policy. |
 | L5 Full | Both installers and the npm bootstrap on every supported platform and architecture, the npm fallback to the tagged release asset, an end-to-end upgrade from a prior release on both tracks, the update command including force, and the documented uninstall contract. Packaged or external. |
+
+L3 release coverage includes scheduled-gate tests for batched changes,
+tagged/attempted skips, failure suppression, main-only manual retries and marker-write
+failure without store calls. Store-note tests cover release ranges, failed attempts,
+immutable targets, Unicode and exact omission counts at both length limits. The release
+artifact set and checksum manifest are complete and basename-keyed, and a managed
+install reports the expected version and starts. The native signing probe must also
+show approval-free `macos-signing` admission and valid x64/arm64 signatures from the
+actual reusable bridge build. Static workflow contracts remain L2 evidence and cannot
+replace this packaged/external L3 proof.
 
 ## Exploration Guidance
 
@@ -107,6 +119,28 @@ after apply. Use a throwaway machine when mutating an install root.
   shutdown before successful child creation, being killed with the predecessor tree, or forcing
   predecessor-only termination that leaves
   bridge-owned descendants behind.
+
+## Automatic macOS signing boundary
+
+The reusable bridge release build consumes `macos-signing` environment credentials.
+That environment admits only main-branch workflows and has no required reviewer or
+wait timer: scheduled internal and production CLI build jobs must not acquire a new
+manual approval. Existing store submission approvals remain separate and unchanged.
+TestFlight/Android credentials and build-number resolution do not move with these
+macOS credentials. Production release source may still be checked out by the existing
+validated `ref` input; dispatch the owning workflow from main. GitHub reusable-workflow
+callers must use `secrets: inherit` for the called job to receive its selected environment's
+secrets. The callers do not map macOS values, and the called workflow declares and uses
+only the three CLI-signing names; review it as secret-bearing code.
+
+The manual `verify-macos-signing.yml` route exercises the actual reusable six-target
+build and both native macOS signing legs without mobile uploads, tags or publication.
+Private desktop credential checks use `desktop-qualification.yml` mode
+`macos-signing-preflight`. Environment admission without approval and successful native
+signing are required cutover evidence; static workflow tests alone do not establish it.
+Desktop publication must retain a separate human approval gate, never one on routine
+CLI signing. Missing environment credentials, unexpected approval waits, or skipped
+macOS signing are material failures.
 
 ## Known Limitations
 

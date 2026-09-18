@@ -28,7 +28,10 @@ class RecentSessionsCubit({
   required CatalogRescanService catalogRescanService,
 }) extends Cubit<Map<String, RecentSessionsEntry>> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
-  final Set<String> _changedDuringRead = {};
+  // Refresh ownership is separate from the usable, live-patched display data.
+  final Map<String, RecentSessionsLoading> _pendingReads = {};
+  // Retained until a snapshot covering this lifecycle generation is applied.
+  final Map<String, int> _lifecycleChangeGenerations = {};
 
   this : super(const {}) {
     _subscriptions.add(_connectionService.events.listen((event) => _onEvent(event: event)));
@@ -39,7 +42,11 @@ class RecentSessionsCubit({
   }
 
   Future<void> ensureLoaded({required String projectId}) async {
-    if (isClosed || state.containsKey(projectId)) return;
+    if (isClosed || _pendingReads.containsKey(projectId)) return;
+    final entry = state[projectId];
+    if (entry != null && !(entry is RecentSessionsLoaded && _lifecycleChangeGenerations.containsKey(projectId))) {
+      return;
+    }
     await _load(projectId: projectId);
   }
 
@@ -48,8 +55,9 @@ class RecentSessionsCubit({
   Future<void> _load({required String projectId}) async {
     if (isClosed) return;
     final request = RecentSessionsLoading();
-    _changedDuringRead.remove(projectId);
-    _put(projectId: projectId, entry: request);
+    _pendingReads[projectId] = request;
+    final lifecycleChangeGeneration = _lifecycleChangeGenerations[projectId];
+    if (state[projectId] is! RecentSessionsLoaded) _put(projectId: projectId, entry: request);
     try {
       final unseenTick = _sessionUnseenTracker.tick;
       final response = await _sessionListService.listSessions(projectId: projectId, waitForPrData: false);
@@ -58,10 +66,10 @@ class RecentSessionsCubit({
       }
       // A reconnect/catalog event can request a newer snapshot while this read
       // is in flight. Its result, not this older one, owns the project entry.
-      if (isClosed || !identical(state[projectId], request)) return;
+      if (isClosed || !identical(_pendingReads[projectId], request)) return;
       // A phone/backend mutation may commit after the server took this list's
       // snapshot. Coalesce those events into one follow-up read before seeding.
-      if (_changedDuringRead.remove(projectId)) {
+      if (_lifecycleChangeGenerations[projectId] != lifecycleChangeGeneration) {
         await _load(projectId: projectId);
         return;
       }
@@ -79,21 +87,29 @@ class RecentSessionsCubit({
             projectId: projectId,
             entry: _project(projectId: projectId, sessions: data.items),
           );
+          if (_lifecycleChangeGenerations[projectId] == lifecycleChangeGeneration) {
+            _lifecycleChangeGenerations.remove(projectId);
+          }
         case ErrorResponse(:final error):
-          _put(
-            projectId: projectId,
-            entry: RecentSessionsFailed(reason: error.remoteFailureReason),
-          );
+          if (state[projectId] is! RecentSessionsLoaded) {
+            _put(
+              projectId: projectId,
+              entry: RecentSessionsFailed(reason: error.remoteFailureReason),
+            );
+          }
       }
     } catch (error, stackTrace) {
       loge("Failed to load recent sessions for project $projectId", error, stackTrace);
-      if (!isClosed && identical(state[projectId], request)) {
-        _changedDuringRead.remove(projectId);
-        _put(
-          projectId: projectId,
-          entry: const RecentSessionsFailed(reason: RemoteFailureReason.unknown),
-        );
+      if (!isClosed && identical(_pendingReads[projectId], request)) {
+        if (state[projectId] is! RecentSessionsLoaded) {
+          _put(
+            projectId: projectId,
+            entry: const RecentSessionsFailed(reason: RemoteFailureReason.unknown),
+          );
+        }
       }
+    } finally {
+      if (identical(_pendingReads[projectId], request)) _pendingReads.remove(projectId);
     }
   }
 
@@ -118,9 +134,10 @@ class RecentSessionsCubit({
       final projectId = info.projectID;
       final entry = state[projectId];
       if (info.parentID != null) return;
-      if (entry is RecentSessionsLoading) {
-        _changedDuringRead.add(projectId);
-        return;
+      final hasPendingRead = _pendingReads.containsKey(projectId);
+      final hasRetainedLifecycleChange = _lifecycleChangeGenerations.containsKey(projectId);
+      if (hasPendingRead || hasRetainedLifecycleChange) {
+        _lifecycleChangeGenerations[projectId] = (_lifecycleChangeGenerations[projectId] ?? 0) + 1;
       }
       if (entry is! RecentSessionsLoaded) return;
       final existing = entry.sourceSessions.firstWhereOrNull((session) => session.id == info.id);
@@ -140,6 +157,9 @@ class RecentSessionsCubit({
         projectId: projectId,
         entry: _project(projectId: projectId, sessions: sessions),
       );
+      if (!hasPendingRead && hasRetainedLifecycleChange) {
+        unawaited(_load(projectId: projectId));
+      }
     }
   }
 

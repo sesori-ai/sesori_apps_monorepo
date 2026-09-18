@@ -28,19 +28,25 @@ on:
         description: "Version the binaries must report (X.Y.Z or X.Y.Z-internal.N)"
         required: true
         type: string
+    # Declarations make these names available in a called workflow. They remain
+    # optional because callers pass nothing: the build job's macos-signing
+    # environment supplies and overrides them.
     secrets:
       MACOS_CERT_P12_BASE64:
-        required: true
+        required: false
       MACOS_CERT_PASSWORD:
-        required: true
+        required: false
       MACOS_KEYCHAIN_PASSWORD:
-        required: true
+        required: false
 
 jobs:
   build:
     name: Build (${{ matrix.asset_name }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+    # Main-only environment, deliberately without reviewer/wait gates: frequent
+    # scheduled CLI builds stay automatic. Only macOS steps consume these secrets.
+    environment: macos-signing
     strategy:
       fail-fast: false
       matrix:
@@ -169,7 +175,14 @@ jobs:
           MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
           MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
         run: |
-          echo -n "$MACOS_CERT_P12_BASE64" | base64 --decode -o certificate.p12
+          for name in MACOS_CERT_P12_BASE64 MACOS_CERT_PASSWORD MACOS_KEYCHAIN_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "Error: macos-signing environment did not provide $name." >&2
+              exit 1
+            fi
+          done
+          trap 'rm -f certificate.p12' EXIT
+          printf '%s' "$MACOS_CERT_P12_BASE64" | base64 --decode -o certificate.p12
           security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" build.keychain
           security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" build.keychain
           security set-keychain-settings -lut 1200 build.keychain

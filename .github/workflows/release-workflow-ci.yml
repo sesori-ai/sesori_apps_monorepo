@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/verify-macos-signing.yml'
+      - '.github/workflows/submit-release.yml'
+      - '.github/workflows/desktop-qualification.yml'
+      - '.github/workflows/migrate-macos-signing-secrets.yml'
+      - '.github/scripts/test_macos_signing_workflows.py'
       - '.github/actions/**'
       - '.github/workflows/_reusable-*.yml'
       - '.github/scripts/check_internal_release.sh'
@@ -20,6 +25,11 @@ on:
       - 'client/app/android/fastlane/Fastfile'
   pull_request:
     paths:
+      - '.github/workflows/verify-macos-signing.yml'
+      - '.github/workflows/submit-release.yml'
+      - '.github/workflows/desktop-qualification.yml'
+      - '.github/workflows/migrate-macos-signing-secrets.yml'
+      - '.github/scripts/test_macos_signing_workflows.py'
       - '.github/actions/**'
       - '.github/workflows/_reusable-*.yml'
       - '.github/scripts/check_internal_release.sh'
@@ -47,6 +57,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
+      - name: Test automatic macOS signing workflow contracts
+        run: python -m unittest discover -s .github/scripts -p 'test_macos_signing_workflows.py'
       - name: Test private desktop release preparation
         run: python -m unittest discover -s .github/scripts -p 'test_prepare_desktop_release.py'
       - name: Lint release gate

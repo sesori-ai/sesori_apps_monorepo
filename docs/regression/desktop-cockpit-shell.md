@@ -57,9 +57,14 @@ The main pane hosts one full-width routed page.
   the existing action controller; its context survives removal of a session row.
 - Expanded project loads are cached per signed-in shell. Live session/activity/unread
   events update its projection; reconnect/catalog invalidation refreshes known
-  projects, including failed reads. A project's retry/loading state does not
-  block its siblings. Lifecycle changes during a read trigger a coalesced fresh
-  snapshot. Closed or superseded reads cannot seed shared unseen state.
+  projects, including failed reads. Initial loading/failure stays project-local.
+  Loaded rows remain visible during refresh and logged refresh failures; live
+  activity/unread and root lifecycle patches continue against that useful data.
+  Lifecycle changes overlapping a returned snapshot trigger a coalesced fresh read before seeding.
+  A response or thrown failure retains that lifecycle generation; the next loaded-inventory check
+  or root lifecycle event rearms the authoritative read. Initial failures still require explicit retry.
+  Closed or superseded reads cannot seed shared unseen state, and an older
+  completion cannot release a newer pending read.
 - The sidebar is the only navigation pane, including at minimum window width.
   All sessions, new session, detail, and diffs are sibling main-pane routes.
   All sessions uses the shared full list, archive filter, actions, scan/refresh,
@@ -155,7 +160,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
   new-session replacement, diff/direct-entry Back, home states, package-font resolution.
 - Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
-  project-collapse persistence, shared menu/route callbacks.
+  project-collapse persistence, shared menu/route callbacks. Keep loaded rows through catalog/reconnect
+  refreshes and failures, including live unread false, lifecycle patches, failed-reread rearming and
+  superseded-read completion.
 - Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel and reset-only persistence,
   visible-scrollbar edge hit tests and thumb dragging, intermediate collapse/expand frames with cramped
   session-row signals, both reduced-motion signals, temporary narrow-window mode, running/unread updates

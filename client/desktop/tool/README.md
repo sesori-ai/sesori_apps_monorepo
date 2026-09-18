@@ -73,15 +73,23 @@ Signing refuses a nonempty build-recorded source patch; commit those source chan
 and retry from a fresh committed checkout rather than signing a dirty build.
 
 Only the explicit preflight/packaging signing step consumes `MACOS_CERT_P12_BASE64`,
-`MACOS_CERT_PASSWORD`, `MACOS_KEYCHAIN_PASSWORD`, `APPLE_ID`,
-`APPLE_APP_SPECIFIC_PASSWORD`, and the `APPLE_TEAM_ID` repository variable. Signing
-uses the established Developer ID publisher. Temporary certificate/Keychain/profile
-files stay outside the checkout and artifact paths and are removed after use.
-Passwords never become Python packager arguments or exception text. These existing
-repository-level secrets assume trusted repository writers; manual dispatch is not
-an access-control boundary against them. Owner-approved migration to protected
-environments, including shared CLI callers and removal of repository-wide copies,
-is a public-publication prerequisite, not an already-enforced qualification guard.
+`MACOS_CERT_PASSWORD`, `MACOS_KEYCHAIN_PASSWORD`, `APPLE_ID`, and
+`APPLE_APP_SPECIFIC_PASSWORD` from the `macos-signing` environment, plus the
+`APPLE_TEAM_ID` repository variable. The environment admits workflows dispatched from
+`main` and intentionally has no reviewers or wait timer, preserving automatic CLI
+signing. GitHub requires each trusted reusable-workflow caller to use `secrets: inherit`
+before the called job can resolve environment secrets; callers do not map signing values,
+and signing steps reference only the three declared macOS names. Treat changes to the
+called workflow as secret-bearing because inheritance exposes caller-visible secrets to it.
+Desktop publication remains a separate human-gated operation. Temporary certificate,
+Keychain, and profile files stay outside checkout and artifact paths and are removed after
+use. Passwords never become Python packager arguments or exception text.
+
+During cutover, same-named repository copies remain only until native environment-backed
+CLI signing and desktop preflight both pass; environment values override them in this
+job. Remove those copies only after the recorded verification. A non-main dispatch is
+not valid signing evidence and must fail environment admission or explicit preflight.
+TestFlight/App Store Connect and Match credentials are separate and unchanged.
 
 Private artifacts `desktop-macos-packages-{x64,arm64}` contain
 `Sesori-macos-<arch>.dmg` and `.zip`; matching `desktop-macos-evidence-<arch>`
