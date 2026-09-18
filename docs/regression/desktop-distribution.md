@@ -98,9 +98,9 @@ compiled channel; an older unpublished baseline may predate channel metadata.
 
 On a fresh Actions host with no existing app, bridge, login registration or relevant
 state root, the probe copies the previous app from its real DMG into Applications,
-launches a visible window with persisted Bridge Off and presses its process-owned
-status item with AXPress capability, validates its small menu-bar frame and clicks that
-exact frame. It then performs a system-wide z-order hit test beside the frame and
+launches a visible window with persisted Bridge Off, requires AXPress capability on its
+process-owned status item, validates its small menu-bar frame and clicks that exact
+frame. It then performs a system-wide z-order hit test beside the frame and
 accepts only a menu owned by the exact PID and anchored to that frame,
 then invokes `Quit Sesori` only inside the
 accepted menu. The probe rejects relaunch or

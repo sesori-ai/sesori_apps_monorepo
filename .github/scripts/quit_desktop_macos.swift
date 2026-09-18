@@ -116,14 +116,19 @@ private func quitItem(in menu: AXUIElement, ownedBy pid: pid_t) -> AXUIElement? 
     }
 }
 
-private func clickStatusItem(in statusFrame: CGRect) -> Bool {
-    guard statusFrame.width >= 4,
+private func clickStatusItem(
+    _ statusItem: AXUIElement,
+    ownedBy pid: pid_t
+) -> CGRect? {
+    guard processIdentifier(statusItem) == pid,
+          let statusFrame = frame(of: statusItem),
+          statusFrame.width >= 4,
           statusFrame.width <= 100,
           statusFrame.height >= 4,
           statusFrame.height <= 64,
           statusFrame.minY >= 0,
           statusFrame.maxY <= 80 else {
-        return false
+        return nil
     }
     let point = CGPoint(x: statusFrame.midX, y: statusFrame.midY)
     let source = CGEventSource(stateID: .combinedSessionState)
@@ -138,12 +143,12 @@ private func clickStatusItem(in statusFrame: CGRect) -> Bool {
         mouseCursorPosition: point,
         mouseButton: .left
     ) else {
-        return false
+        return nil
     }
     mouseDown.post(tap: .cghidEventTap)
     Thread.sleep(forTimeInterval: 0.05)
     mouseUp.post(tap: .cghidEventTap)
-    return true
+    return statusFrame
 }
 
 private func hitTest(at point: CGPoint) -> AXUIElement? {
@@ -237,19 +242,16 @@ guard !statusItems.isEmpty else {
 for (index, statusItem) in statusItems.enumerated() {
     print("STATUS_ITEM \(index) \(description(statusItem))")
     let actions = actionNames(statusItem)
-    guard let statusFrame = frame(of: statusItem) else {
-        print("STATUS_ITEM \(index) has no accessible frame")
+    // tray_manager opens its context menu from a custom NSView mouse-down callback.
+    // Require the expected AXPress capability, then re-read ownership and the frame
+    // immediately before clicking this exact process-owned status item.
+    guard actions.contains(kAXPressAction),
+          let statusFrame = clickStatusItem(statusItem, ownedBy: pid) else {
+        print("STATUS_ITEM \(index) could not receive a bounded click")
         continue
     }
     print("STATUS_FRAME \(index) x=\(statusFrame.minX) y=\(statusFrame.minY) "
         + "width=\(statusFrame.width) height=\(statusFrame.height)")
-    // tray_manager opens its context menu from a custom NSView mouse-down callback.
-    // Require the expected AXPress capability, then send a real click only to the
-    // bounded frame read from this exact process-owned status item.
-    guard actions.contains(kAXPressAction), clickStatusItem(in: statusFrame) else {
-        print("STATUS_ITEM \(index) could not receive a bounded click")
-        continue
-    }
     // tray_manager's transient menu is not exposed as a status-item child. Hit-test
     // immediately beside the clicked item's frame, accept only an anchored process-owned
     // AXMenu reached at that visible screen location, then search only inside that menu.
