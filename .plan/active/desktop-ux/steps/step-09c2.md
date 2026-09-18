@@ -72,15 +72,15 @@ Review `d4f41d4d-41e0-4194-8476-fcc872c300bc` approved explicit menu leases and 
 Latest report: `/tmp/rose-elephant-1533-required-menu-hide-successor-architecture-plan-review.md`, SHA-256
 `a95bef7ea7757ee89bfe55e3d3a78e424cf389c64dc9b6f2ee326d26562377d2`.
 
-Previous source checkpoint: `18416e20af99f45cee3cecac0f3cf5564e0b702b`, tree
-`9df30b5a7dacc84d08aea17110050267beae123a`. It measures 1,816 all-path changed lines (1,602 additions,
-214 deletions) across 34 files: 796 production, 578 tests, 421 documentation and 21 generated lines. The later
+Final source checkpoint: `16390973cb1e6f7e0d483e9844c5f8e20765a890`, tree
+`f558db947d975c25c4a3ee8a6141607d321ea9a9`. It measures 1,849 all-path changed lines (1,635 additions,
+214 deletions) across 39 files: 806 production, 603 tests, 419 documentation and 21 generated lines. The later
 publication-evidence correction is outside that immutable measurement. The soft-cap overage consists primarily of
-review-required regression coverage (578 lines) and durable plan/regression evidence (421 lines); the 796 production
+review-required regression coverage (603 lines) and durable plan/regression evidence (419 lines); the 806 production
 lines remain one Activity projection/consumer whose hide and menu-lifetime correctness cannot be split independently.
 
 ```bash
-git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..18416e20af99f45cee3cecac0f3cf5564e0b702b --
+git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..16390973cb1e6f7e0d483e9844c5f8e20765a890 --
 ```
 
 ## Verification
