@@ -62,13 +62,13 @@ revisions without findings. Final report:
 `/tmp/rose-elephant-1533-review-corrections-architecture-plan-review-followup.md`, SHA-256
 `6fb1bc9ccc36790996e75418478c033dbc3910ef42b8c77bed73d3dca204e6e9`.
 
-Final source checkpoint: `132bac6fa9880f397520404d5258c1b2a58eab90`, tree
-`97e5472fbbb46c70e330c8a7175ccfa09e191d46`. It measures 1,344 all-path changed lines (1,174 additions,
-170 deletions) across 23 files: 583 production, 351 tests, 389 documentation and 21 generated lines. The later
+Final source checkpoint: `b7825f21f5287788ac55b5f55f3b976e65932092`, tree
+`cab4ec6a196a869a48c4a3270707494f0c028980`. It measures 1,491 all-path changed lines (1,306 additions,
+185 deletions) across 25 files: 674 production, 398 tests, 398 documentation and 21 generated lines. The later
 source-evidence correction is outside that immutable measurement.
 
 ```bash
-git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..132bac6fa9880f397520404d5258c1b2a58eab90 --
+git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..b7825f21f5287788ac55b5f55f3b976e65932092 --
 ```
 
 ## Verification
