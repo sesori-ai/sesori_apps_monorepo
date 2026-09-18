@@ -39,11 +39,12 @@ Latest is repository-wide: eventual publication must use `--latest=false` for
 both desktop channels. This step generates a proposed tag but never creates it.
 It neither consumes mobile/CLI versions nor moves `internal-release-attempt`.
 
-Do not claim step 6 shipped from preparation. Remaining gates:
+Do not claim step 6 shipped from preparation. The owner-approved signing migration
+is complete: all five values live only in `macos-signing`, shared CLI and direct
+desktop native proof passed on both CPUs after repository-copy removal, and the
+migration plan retired in #1534. Remaining gates:
 
-- Owner-approved migration of repository signing credentials, including shared CLI
-  consumers and removal of repository copies, into protected environments.
-- Both native macOS manual upgrade/data-preservation gates and parent desktop-app
+- Full native macOS manual upgrade/data-preservation gates and parent desktop-app
   prerequisites; existing private package probes do not establish these.
 - Live `https://sesori.com/desktop/` and verified public download links. The URL was
   explicitly selected by the user before the page existed.
@@ -52,6 +53,27 @@ Do not claim step 6 shipped from preparation. Remaining gates:
 
 No automatic updater layers remain to clean up. The private producer stays separate
 from public release authority. Windows/Linux publication remains disabled.
+
+## Post-migration continuation
+
+Fresh stable package run `35206885114` passed both native package jobs at source
+`7aecbd943671290eca53506949a9c38f2d8da4d0`: x64 job `105154787465` and arm64 job
+`105154787487` both completed signing/notarization, helper E2E, installed GUI/platform
+fixture probes and private artifact upload. Read-only preparation run `35359083211`
+then validated those packages as proposed `desktop-v1.9.0`, build 62. Its tooling
+source was `beb99dc35e18ecbe596753ba7353237a817acf87`; package source remained the exact
+prior SHA. The four prepared package hashes are retained in that run's private
+metadata; neither run published a tag, release, feed or website.
+
+The next bounded continuation adds credential-free `macos-upgrade-probe` qualification.
+It consumes retained successful 1.8.4 and stable 1.9.0 package runs, verifies producer
+provenance, clean source, strict identity ordering, notarization, DMG hashes, Developer
+ID identity, tickets and Gatekeeper, then exercises actual DMG installation, accessible
+tray Quit, no relaunch/orphan and bounded desktop/shared-state plus valid
+login-registration preservation on both native CPUs. This closes only the private
+signed helper-Off replacement slice. Authenticated
+helper-On/failed-stop, real account/Keychain/TCC, minimum OS, public download and parent
+Gate C remain explicit blockers rather than inferred passes.
 
 ## Verification
 

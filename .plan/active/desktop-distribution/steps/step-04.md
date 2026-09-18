@@ -64,8 +64,9 @@ This is historical unsigned qualification, not a newly run suite or signed/GUI p
 
 ## Implementation
 
-`desktop-qualification.yml` offers closed manual modes: `native-builds`,
-`macos-signing-preflight`, `macos-packaging`, and `macos-gui-probe`.
+`desktop-qualification.yml` offers closed manual macOS modes: `native-builds`,
+`macos-signing-preflight`, `macos-packaging`, `macos-gui-probe`, and the later
+credential-free `macos-upgrade-probe` continuation.
 
 `.github/scripts/macos_signing_ci.sh` owns private import/profile setup and cleanup.
 `.github/scripts/package_desktop_macos.py` reuses the existing native inventory,

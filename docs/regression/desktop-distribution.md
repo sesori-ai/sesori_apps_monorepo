@@ -84,6 +84,27 @@ packages, creates tags/releases, edits website links, or triggers CLI/mobile rel
 work. These are evidence-consistency checks, not independent signature verification
 or permission to ship. Public release and native upgrade gates remain outstanding.
 
+## Private macOS manual-replacement qualification
+
+Manual `macos-upgrade-probe` qualification is credential-free and consumes two
+retained successful macOS packaging runs on each package's native CPU. It requires
+both source SHAs to be ancestors of the trusted tooling checkout, verifies exact DMG
+hashes against producer evidence, and rechecks clean source, sealed identities,
+accepted notarization, Developer ID identity, tickets and Gatekeeper. The current
+package must have a strictly newer semantic-version/build identity and the requested
+compiled channel; an older unpublished baseline may predate channel metadata.
+
+On a fresh Actions host with no existing app, bridge, login registration or relevant
+state root, the probe copies the previous app from its real DMG into Applications,
+launches a visible window with persisted Bridge Off, invokes the app's accessible tray
+**Quit Sesori** command, and rejects relaunch or orphan processes. It then replaces the
+complete app from the current DMG and repeats, preserving bounded desktop, shared
+CLI-data, attachment and valid login-registration sentinels. Cleanup removes only
+probe-owned paths.
+This establishes the signed helper-Off replacement slice; it does not prove an
+authenticated helper-On or failed-stop path, real-account/Keychain/TCC behavior,
+minimum-OS support, public retrieval, or release readiness.
+
 ## Current evidence boundary
 
 Private package mechanics are qualified for both native CPUs on all three desktop
@@ -97,9 +118,10 @@ in the active distribution plan's [macOS](../../.plan/active/desktop-distributio
 [Linux](../../.plan/active/desktop-distribution/steps/step-09.md) evidence.
 
 Still unproved: public retrieval and trust, real-account restoration, declared minimum
-OS, interactive GUI/keyring/tray/login behavior, signed macOS/Windows N→N+1 manual
-replacement, and signed-repository Linux N→N+1 updates. A private build, silent fixture
-or same-version reinstall cannot close those gates.
+OS, full interactive GUI/keyring/tray/login behavior, authenticated helper-On and
+failed-stop macOS replacement, signed Windows N→N+1 manual replacement, and
+signed-repository Linux N→N+1 updates. A private helper-Off probe, silent fixture or
+same-version reinstall cannot close those gates.
 
 ## Coverage
 
@@ -111,7 +133,8 @@ or same-version reinstall cannot close those gates.
   compiler arguments, bounded installer directives and no-overwrite diagnostics.
   Linux fixtures cover identity/CPU refusal, payload layout and symlink preservation,
   source-derived dynamic-loading audit, generated dependency invocation, bounded
-  ownership and absence of package lifecycle scripts.
+  ownership and absence of package lifecycle scripts. macOS upgrade fixtures cover
+  producer/run/source/channel/identity ordering, altered DMGs and dirty-source refusal.
   Staging parser/default/invalid-channel and exact dotenv tests; Settings
   composition retains attention controls. Generated fragments match specification headings.
 - **L3:** Real Settings navigation and external-browser dispatch on a packaged native

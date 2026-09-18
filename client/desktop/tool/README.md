@@ -85,10 +85,10 @@ Desktop publication remains a separate human-gated operation. Temporary certific
 Keychain, and profile files stay outside checkout and artifact paths and are removed after
 use. Passwords never become Python packager arguments or exception text.
 
-During cutover, same-named repository copies remain only until native environment-backed
-CLI signing and desktop preflight both pass; environment values override them in this
-job. Remove those copies only after the recorded verification. A non-main dispatch is
-not valid signing evidence and must fail environment admission or explicit preflight.
+The five same-named repository copies were removed after environment-only native CLI
+signing and desktop preflight passed on both CPUs. All five values now live only in
+`macos-signing`; `APPLE_TEAM_ID` remains a repository variable. A non-main signing
+dispatch is not valid evidence and must fail environment admission or explicit preflight.
 TestFlight/App Store Connect and Match credentials are separate and unchanged.
 
 Private artifacts `desktop-macos-packages-{x64,arm64}` contain
@@ -117,7 +117,28 @@ gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo 
   --ref main -f mode=macos-gui-probe -f packaging_run="$PACKAGING_RUN"
 ```
 
+For a private manual-replacement probe, select two retained successful package runs
+whose sealed identities increase strictly. The current run must contain the requested
+compiled channel; an older unpublished baseline may predate channel metadata. This mode
+uses no signing credentials and never republishes either package:
+
+```bash
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-upgrade-probe -f channel=stable \
+  -f previous_packaging_run="$PREVIOUS_RUN" -f packaging_run="$CURRENT_RUN"
+```
+
+Each native job verifies producer provenance, clean source, accepted notarization,
+DMG hashes, Developer ID identity, tickets and Gatekeeper before copying the prior app
+from its DMG into Applications. It launches the real signed app with persisted Bridge
+Off, invokes the accessible tray **Quit Sesori** command, rejects relaunch/orphans,
+replaces the complete app from the newer DMG, and repeats while checking bounded
+desktop, shared CLI-data, attachment and valid login-registration sentinels. Existing
+app, bridge, registration or relevant state root causes refusal; cleanup is limited to
+probe-owned paths on the fresh Actions host.
+
 This pipeline does not publish a release/feed or prove installed GUI authentication,
-Keychain restoration, TCC, autostart, minimum-OS operation, updates or public-release
-readiness. Keep those checks explicit in the distribution plan and
+authenticated helper-On/failed-stop behavior, real-account Keychain/TCC, minimum-OS
+operation, public retrieval or public-release readiness. Keep those checks explicit in
+the distribution plan and
 [macOS packaging regression](../../../docs/regression/desktop-macos-packaging.md).
