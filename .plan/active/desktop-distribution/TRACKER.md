@@ -34,7 +34,8 @@ squash `256565719e0804a62e467c01368e6dab5254544c` at 2026-09-16T08:20:58Z.
 All 19 checks passed at acceptance; Cubic approved and all threads were resolved.
 The subsequent merged report showed an additional twentieth check running; it is
 not included in the acceptance claim. Step 5 uses D6 manual updates and the
-user-selected `https://sesori.com/desktop/` (not yet live). Details in
+user-selected `https://sesori.com/desktop/`, live since 2026-09-18 with every row
+still an unshipped placeholder. Details in
 [step-05](steps/step-05.md). Step 6 preparation ran in the same worktree on
 `desktop-distribution-release-channels`; publication remains gated.
 Private preparation merged in #1511: accepted
