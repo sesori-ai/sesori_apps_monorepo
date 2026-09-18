@@ -153,9 +153,10 @@ state/login-registration preservation. Evidence artifacts are `10571804180` (x64
 digest `bc9ac73ebf451a400280a8b8e3c478eba3e67013d64a2a79e77e6877b47a7fc4`) and
 `10571709031` (arm64, digest
 `c7663919c1da5ff531c7103834c6e292f0b962d8ad0a73519f429a58f378876d`), expiring
-2026-10-02. Private helper-Off replacement is accepted on both CPUs. Authenticated
-helper-On, failed-stop, real-account/Keychain/TCC, minimum-OS, public retrieval and
-parent Gate C remain open.
+2026-10-02. Private signed replacement with persisted Bridge Off intent is accepted
+on both CPUs. The probe did not inspect helper absence while either GUI was running,
+so helper-Off, authenticated helper-On, failed-stop, real-account/Keychain/TCC,
+minimum-OS, public retrieval and parent Gate C remain open.
 
 Dispatches and expanded logs were run from
 `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:

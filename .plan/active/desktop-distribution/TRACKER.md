@@ -127,9 +127,11 @@ added a bounded 45-second read-only window wait with per-attempt evidence and me
 `305998d689d13051ac0fb58f9d970dfffe319bf0`. Main-only run `35405646668` at that
 source, tree `a6f358647c559b840f1c3ecade88be1502632a57`, passed x64 job `105794893362`
 and arm64 job `105794893463`. Artifacts `10571804180` and `10571709031` record every
-`upgrade.json` check true. Private signed helper-Off replacement is accepted on both
-CPUs. Authenticated helper-On, failed-stop, real-account/TCC, minimum-OS and public
-artifact retrieval remain open; the download page itself is live.
+implemented `upgrade.json` check true. Private signed replacement with persisted Bridge
+Off intent is accepted on both CPUs. The probe did not inspect helper absence while
+either GUI was running, so helper-Off, authenticated helper-On, failed-stop,
+real-account/TCC, minimum-OS and public artifact retrieval remain open; the download
+page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
 private-package documentation portion can proceed independently, so its dependency
