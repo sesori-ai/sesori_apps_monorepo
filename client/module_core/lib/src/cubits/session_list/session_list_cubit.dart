@@ -261,10 +261,21 @@ class SessionListCubit({
     }
   }
 
-  Future<T> _runActionScopeOperation<T>({required Future<T> Function() operation}) {
-    if (!_waitForActionOperationsOnClose) return operation();
+  /// Keeps an action-only owner usable while its confirmation UI is open.
+  void Function() retainActionScope() {
+    if (!_waitForActionOperationsOnClose) return () {};
+    var released = false;
     _pendingActionOperations++;
-    return operation().whenComplete(_completeActionOperation);
+    return () {
+      if (released) return;
+      released = true;
+      _completeActionOperation();
+    };
+  }
+
+  Future<T> _runActionScopeOperation<T>({required Future<T> Function() operation}) {
+    final release = retainActionScope();
+    return operation().whenComplete(release);
   }
 
   void _completeActionOperation() {
@@ -458,7 +469,11 @@ class SessionListCubit({
 
   /// Renames a session optimistically. Returns `false` after restoring the
   /// prior title when the bridge rejects the rename.
-  Future<bool> renameSession({required String sessionId, required String title}) async {
+  Future<bool> renameSession({required String sessionId, required String title}) => _runActionScopeOperation(
+    operation: () => _renameSession(sessionId: sessionId, title: title),
+  );
+
+  Future<bool> _renameSession({required String sessionId, required String title}) async {
     if (state is! SessionListLoaded) return false;
 
     final index = _allSessions.indexWhere((session) => session.id == sessionId);

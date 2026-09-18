@@ -4,7 +4,7 @@ part of "session_list_action_dispatcher.dart";
 // Force delete / archive dialog (409 rejection)
 // ---------------------------------------------------------------------------
 
-void _showForceDialog({
+Future<void> _showForceDialog({
   required BuildContext context,
   required SessionListCubit cubit,
   required String sessionId,
@@ -15,7 +15,7 @@ void _showForceDialog({
 }) {
   final loc = context.loc;
 
-  showDialog<void>(
+  return showDialog<void>(
     context: context,
     builder: (dialogContext) {
       return AlertDialog(
@@ -54,8 +54,10 @@ void _showForceDialog({
           TextButton(
             onPressed: () {
               dialogContext.pop();
+              final release = cubit.retainActionScope();
+              final Future<void> operation;
               if (isDelete) {
-                _deleteSession(
+                operation = _deleteSession(
                   context: context,
                   cubit: cubit,
                   sessionId: sessionId,
@@ -64,7 +66,7 @@ void _showForceDialog({
                   onSessionDeleted: onSessionDeleted,
                 );
               } else {
-                _archiveSession(
+                operation = _archiveSession(
                   context: context,
                   cubit: cubit,
                   sessionId: sessionId,
@@ -72,6 +74,7 @@ void _showForceDialog({
                   force: true,
                 );
               }
+              unawaited(operation.whenComplete(release));
             },
             child: Text(
               isDelete ? loc.sessionListForceDeleteAction : loc.sessionListForceArchiveAction,

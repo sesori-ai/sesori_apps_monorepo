@@ -60,8 +60,9 @@ The main pane hosts one full-width routed page.
   them with the row instead of overflowing it.
 - Opening the sidebar or its session action menu never claims project viewing.
   The main list/detail routes retain viewing ownership. Session mutations use
-  the existing action controller and a stable sidebar presentation context. An admitted mark-read, archive or delete
-  completes its response/recovery handling even if a local change or bridge event removes the final Activity row.
+  the existing action controller and a stable sidebar presentation context. Rename/archive/delete confirmation keeps
+  its action owner alive if the Activity group disappears; cancel releases it, while confirm transfers ownership to
+  the admitted operation. Mark-read, archive and delete finish response/recovery handling before final disposal.
 - Each winning successful project snapshot admits every current project to the shared recent-session Cubit,
   independent of expansion or viewport position. The pure-Dart Cubit is the sole automatic admission owner; the
   Flutter shell only constructs it eagerly and renders its state, so rebuilds and project expansion dispatch no

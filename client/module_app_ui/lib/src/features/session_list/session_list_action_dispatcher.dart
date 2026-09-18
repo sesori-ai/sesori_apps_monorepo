@@ -20,14 +20,22 @@ typedef SessionDeletedRouteHandler = void Function({
   required String sessionId,
 });
 
+void _showRetainedActionDialog({
+  required SessionListCubit cubit,
+  required Future<void> Function() show,
+}) {
+  final release = cubit.retainActionScope();
+  unawaited(show().whenComplete(release));
+}
+
 class const SessionListActionDispatcher({required final SessionDeletedRouteHandler? onSessionDeleted}) {
   /// The long-press actions for [session], rendered by [SessionTile] in a
   /// [PregoAnchorMenu] anchored to the row.
   ///
   /// [context] must belong to the stable list/sidebar owner rather than the
   /// row: archive/delete can remove that row before their follow-up UI runs.
-  /// [cubit] may be scoped more narrowly and is kept alive through admitted
-  /// row-removing operations by its action-mode close policy.
+  /// [cubit] may be scoped more narrowly and is retained while confirmation
+  /// UI is open and while the resulting operation settles.
   List<PregoMenuEntry> sessionMenuEntries({
     required BuildContext context,
     required SessionListCubit cubit,
@@ -44,7 +52,10 @@ class const SessionListActionDispatcher({required final SessionDeletedRouteHandl
           title: loc.rename,
           subtitle: null,
           isSelected: false,
-          onTap: () => showRenameSessionDialog(context: context, session: session, cubit: cubit),
+          onTap: () => _showRetainedActionDialog(
+            cubit: cubit,
+            show: () => showRenameSessionDialog(context: context, session: session, cubit: cubit),
+          ),
         ),
       PregoMenuItem(
         leadingIcon: isUnseen ? TablerRegular.mail_opened : TablerRegular.mail,
