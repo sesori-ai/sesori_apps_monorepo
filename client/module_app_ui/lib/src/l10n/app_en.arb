@@ -723,6 +723,11 @@
   "sessionDetailToolCompleted": "Done",
   "sessionDetailToolError": "Failed",
   "sessionDetailToolCancelled": "Cancelled",
+  "sessionDetailShell": "Shell",
+  "sessionDetailCommandRan": "Ran",
+  "sessionDetailCopyCommand": "Copy command",
+  "sessionDetailShellOutput": "Output",
+  "sessionDetailCopyOutput": "Copy output",
   "sessionDetailFollowOutput": "Follow",
   "sessionDetailJumpToLatest": "Jump to latest",
   "@sessionDetailJumpToLatest": {

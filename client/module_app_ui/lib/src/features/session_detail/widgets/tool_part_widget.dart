@@ -16,26 +16,22 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
     final loc = context.loc;
     final state = part.state;
     final toolName = part.tool.isEmpty ? loc.sessionDetailToolUnknown : part.tool;
-    // The action stays visible; the command or title (file path, pattern,
-    // skill) follows it in a lighter style.
-    final detail = state.shellCommand ?? state.title;
+    final detail = state.title;
     final status = state.status;
     final output = status == ToolStatus.completed ? state.output : null;
     final errorText = status == ToolStatus.error ? state.error : null;
+    final command = state.shellCommand;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Container(
-        decoration: BoxDecoration(
-          color: prego.colors.bgSecondary,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: prego.colors.borderSecondary),
-        ),
-        child: Column(
-          crossAxisAlignment: .start,
-          children: [
+      child: Column(
+        crossAxisAlignment: .start,
+        children: [
+          if (command != null)
+            _ShellToolPreview(command: command, state: state)
+          else
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: EdgeInsets.symmetric(vertical: prego.spacing.sm),
               child: Row(
                 children: [
                   _statusIcon(status: status, prego: prego),
@@ -55,7 +51,7 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
                         ],
                       ),
                       style: prego.textTheme.textSm.regular.copyWith(
-                        fontWeight: FontWeight.w500,
+                        color: prego.colors.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: .ellipsis,
@@ -63,59 +59,51 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
                   ),
                   Text(
                     _statusLabel(loc: loc, status: status),
-                    style: prego.textTheme.textXs.medium.copyWith(
-                      color: prego.colors.textSecondary,
-                    ),
+                    style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary),
                   ),
                 ],
               ),
             ),
-            if (output != null)
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
-                child: _ToolOutputBlock(output: output),
-              ),
-            if (errorText != null)
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
-                child: Text(
-                  errorText,
-                  style: prego.textTheme.textXs.regular.copyWith(
-                    color: prego.colors.fgErrorPrimary,
-                  ),
-                  maxLines: 4,
-                  overflow: .ellipsis,
+          if (command == null && output != null)
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
+              child: _ToolOutputBlock(output: output),
+            ),
+          if (command == null && errorText != null)
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
+              child: Text(
+                errorText,
+                style: prego.textTheme.textXs.regular.copyWith(
+                  color: prego.colors.fgErrorPrimary,
                 ),
+                maxLines: 4,
+                overflow: .ellipsis,
               ),
-            if (state.attachments.isNotEmpty)
-              Padding(
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  prego.spacing.lg,
-                  0,
-                  prego.spacing.lg,
-                  prego.spacing.md,
-                ),
-                child: AttachmentCollectionWidget(
-                  sessionId: part.sessionID,
-                  attachments: state.attachments,
-                ),
+            ),
+          if (state.attachments.isNotEmpty)
+            Padding(
+              padding: EdgeInsetsDirectional.only(top: prego.spacing.xs),
+              child: AttachmentCollectionWidget(
+                sessionId: part.sessionID,
+                attachments: state.attachments,
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
 
-  Widget _statusIcon({required ToolStatus status, required PregoDesignSystem prego}) => switch (status) {
+  static Widget _statusIcon({required ToolStatus status, required PregoDesignSystem prego}) => switch (status) {
     ToolStatus.pending || ToolStatus.running => const SizedBox(
       width: 16,
       height: 16,
       child: PregoActivityIndicator(color: null),
     ),
     ToolStatus.completed => Icon(
-      Icons.check_circle,
+      TablerRegular.tool,
       size: 16,
-      color: prego.colors.bgBrandSolid,
+      color: prego.colors.textTertiary,
     ),
     ToolStatus.error => Icon(Icons.error, size: 16, color: prego.colors.fgErrorPrimary),
     ToolStatus.cancelled => Icon(
@@ -130,7 +118,7 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
     ),
   };
 
-  String _statusLabel({required AppLocalizations loc, required ToolStatus status}) => switch (status) {
+  static String _statusLabel({required AppLocalizations loc, required ToolStatus status}) => switch (status) {
     ToolStatus.pending => loc.sessionDetailToolPending,
     ToolStatus.running => loc.sessionDetailToolRunning,
     ToolStatus.completed => loc.sessionDetailToolCompleted,
@@ -138,6 +126,212 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
     ToolStatus.cancelled => loc.sessionDetailToolCancelled,
     ToolStatus.unknown => loc.sessionDetailToolUnknown,
   };
+}
+
+/// A disclosure for an authoritative shell command, never inferred from a tool name.
+class const _ShellToolPreview({required final String command, required final ToolState state}) extends StatefulWidget {
+  @override
+  State<_ShellToolPreview> createState() => _ShellToolPreviewState();
+}
+
+class _ShellToolPreviewState() extends State<_ShellToolPreview> {
+  bool _expanded = false;
+  final _verticalController = ScrollController();
+  final _horizontalController = ScrollController();
+
+  @override
+  void dispose() {
+    _verticalController.dispose();
+    _horizontalController.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _expanded = !_expanded);
+    if (!_expanded) return;
+    // The transcript is reversed. Growing a historical row otherwise pushes
+    // its header above the viewport (and behind the floating navigation).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Scrollable.ensureVisible(context, alignment: 0.5);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+    final state = widget.state;
+    final output = state.output;
+    final error = state.error;
+    final statusLabel = ToolPartWidget._statusLabel(loc: loc, status: state.status);
+    final rowLabel = state.status == ToolStatus.completed ? loc.sessionDetailCommandRan : statusLabel;
+    final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
+    final rowStyle = state.status == ToolStatus.error ? style.copyWith(color: prego.colors.textErrorPrimary) : style;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          expanded: _expanded,
+          child: TextButton(
+            key: const ValueKey("shellTool.toggle"),
+            onPressed: _toggle,
+            style: TextButton.styleFrom(
+              foregroundColor: prego.colors.textSecondary,
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(44, 44),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              alignment: AlignmentDirectional.centerStart,
+            ),
+            child: Row(
+              children: [
+                if (state.status == ToolStatus.pending || state.status == ToolStatus.running)
+                  ToolPartWidget._statusIcon(status: state.status, prego: prego)
+                else
+                  Icon(TablerRegular.terminal_2, size: 16, color: rowStyle.color),
+                SizedBox(width: prego.spacing.md),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      text: "$rowLabel ",
+                      children: [
+                        TextSpan(
+                          text: "\$ ${widget.command}",
+                          style: rowStyle.copyWith(decoration: TextDecoration.underline),
+                        ),
+                      ],
+                    ),
+                    style: rowStyle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_expanded)
+          Container(
+            key: const ValueKey("shellTool.panel"),
+            width: double.infinity,
+            padding: EdgeInsets.all(prego.spacing.md),
+            decoration: BoxDecoration(
+              color: prego.colors.bgSurface2,
+              borderRadius: BorderRadius.circular(prego.radius.xl),
+              border: Border.all(color: prego.colors.borderPrimary),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text(loc.sessionDetailShell, style: style)),
+                    PregoCopyIconButton(
+                      onCopy: () => copyTextToClipboard(text: widget.command, operation: "shell command"),
+                      tooltip: loc.sessionDetailCopyCommand,
+                    ),
+                  ],
+                ),
+                SizedBox(
+                  key: const ValueKey("shellTool.viewport"),
+                  height: 144,
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                    // System safe-area insets belong to the screen, not this
+                    // embedded terminal's scrollbar tracks.
+                    child: MediaQuery.removePadding(
+                      context: context,
+                      removeTop: true,
+                      removeBottom: true,
+                      removeLeft: true,
+                      removeRight: true,
+                      child: RawScrollbar(
+                        controller: _horizontalController,
+                        scrollbarOrientation: ScrollbarOrientation.bottom,
+                        thumbVisibility: true,
+                        interactive: true,
+                        thumbColor: prego.colors.borderPrimary,
+                        thickness: 5,
+                        radius: Radius.circular(prego.radius.full),
+                        notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
+                        child: RawScrollbar(
+                          controller: _verticalController,
+                          scrollbarOrientation: ScrollbarOrientation.right,
+                          thumbVisibility: true,
+                          interactive: true,
+                          thumbColor: prego.colors.borderPrimary,
+                          thickness: 5,
+                          radius: Radius.circular(prego.radius.full),
+                          notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
+                          child: SingleChildScrollView(
+                            controller: _verticalController,
+                            primary: false,
+                            child: SingleChildScrollView(
+                              controller: _horizontalController,
+                              scrollDirection: Axis.horizontal,
+                              primary: false,
+                              padding: EdgeInsetsDirectional.only(end: prego.spacing.lg, bottom: prego.spacing.lg),
+                              child: Text.rich(
+                                TextSpan(
+                                  text: "\$ ${widget.command}",
+                                  children: [
+                                    if (output != null) TextSpan(text: "\n\n$output"),
+                                    if (error != null)
+                                      TextSpan(
+                                        text: "\n\n$error",
+                                        style: TextStyle(color: prego.colors.textErrorPrimary),
+                                      ),
+                                  ],
+                                ),
+                                style: style.monospace,
+                                softWrap: false,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  child: Wrap(
+                    alignment: output == null ? WrapAlignment.end : WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: prego.spacing.md,
+                    children: [
+                      if (output != null)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(child: Text(loc.sessionDetailShellOutput, style: style)),
+                            PregoCopyIconButton(
+                              onCopy: () => copyTextToClipboard(text: output, operation: "tool output"),
+                              tooltip: loc.sessionDetailCopyOutput,
+                            ),
+                          ],
+                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (state.status == ToolStatus.completed)
+                            Icon(TablerRegular.check, size: 16, color: prego.colors.textSecondary)
+                          else
+                            ToolPartWidget._statusIcon(status: state.status, prego: prego),
+                          SizedBox(width: prego.spacing.xs),
+                          Flexible(child: Text(statusLabel, style: style)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 /// Tool output panel: collapsed to 8 lines by default with a one-tap copy
