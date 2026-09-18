@@ -563,10 +563,10 @@ Deferred: none. No obsolete wire or database artifacts result from this plan.
 
 ## Delivery Plan
 
-Series slug `desktop-ux`: 12 logical steps, 20 PRs. Steps 2.a/2.b map to
+Series slug `desktop-ux`: 12 logical steps, 21 PRs. Steps 2.a/2.b map to
 ordinals 2/3; original 3–6 to 4–7; 7.a/7.b/7.c to 8/9/10; step 8 to 11.
-Logging 9.a.1/9.a.2 are 12/13; sidebar 9.b/9.c.1/9.c.2a/9.c.2b are 14/15/16/17.
-Steps 10–12 map to 18–20. Targets count additions plus deletions across every path.
+Logging 9.a.1/9.a.2 are 12/13; sidebar 9.b/9.c.1/9.c.2a/9.c.2b/9.c.2c are 14–18.
+Steps 10–12 map to 19–21. Targets count additions plus deletions across every path.
 Exact titles and branches are in [TRACKER](TRACKER.md#pr-titles); historical Git subjects are preserved.
 
 On 2026-09-15 the user explicitly requested keeping additional styling out of
@@ -582,34 +582,37 @@ Completed implementation specifics live in the linked evidence; this matrix summ
 
 | Step | Delivery | Target | Scope |
 |---|---|---|---|
-| 1 | 1/20 | ≤ 900 | This plan, tracker and roadmap cross-references. |
-| 2.a | 2/20 | ≤ 1,400 | [Resizable/collapsible sidebar frame and layout persistence](steps/step-02.md). |
-| 2.b | 3/20 | ≤ 900 | [Sidebar styling, motion and project activity](steps/step-02b.md). |
-| 3 | 4/20 | ≤ 1,200 | [Shared recent-session inventory and project actions](steps/step-03.md). |
-| 4 | 5/20 | ≤ 1,400 | [Main-pane routing, home and shared fonts](steps/step-04.md). |
-| 5 | 6/20 | ≤ 700 | [Connection overlay without layout shift](steps/step-05.md). |
-| 6 | 7/20 | ≤ 1,500 | [Contextual bridge popover and canonical home](steps/step-06.md). |
-| 7.a | 8/20 | ≤ 500 | [Shared Settings composition and native preference commands](steps/step-07a.md). |
-| 7.b | 9/20 | ≤ 700 | [Viewed-session ownership across root overlays](steps/step-07b.md). |
-| 7.c | 10/20 | ≤ 1,750 | [Settings modal and route retirement](steps/step-07c.md). |
-| 8 | 11/20 | ≤ 1,000 | [First-run defaults and optional file-access guidance](steps/step-08.md). |
-| 9.a.1 | 12/20 | ≤ 1,300 | [Safe diagnostics and bounded Quit completion](steps/step-09a1.md). |
-| 9.a.2 | 13/20 | ≤ 1,300 | [Rotating app files and prepared logs directory](steps/step-09a.md). |
-| 9.b | 14/20 | ≤ 500 | [Anchored resizing and scrollbar hit targets](steps/step-09b.md). |
-| 9.c.1 | 15/20 | ≤ 650 | [Loaded/live inventory and request ownership](steps/step-09c1.md). |
-| 9.c.2a | 16/20 | ≤ 1,200 | Activity projection and explicit refresh ownership in pure Dart. |
-| 9.c.2b | 17/20 | ≤ 1,450 | Priority activity, purposeful controls, Prego transitions and useful hints. |
-| 10 | 18/20 | ≤ 600 | Keyboard shortcuts and macOS title-bar/drag integration. |
-| 11 | 19/20 | ≤ 600 | Control-content audit and regression reconciliation. |
-| 12 | 20/20 | ≤ 300 | Recorded coverage, phase-2 handoff and plan retirement. |
+| 1 | 1/21 | ≤ 900 | This plan, tracker and roadmap cross-references. |
+| 2.a | 2/21 | ≤ 1,400 | [Resizable/collapsible sidebar frame and layout persistence](steps/step-02.md). |
+| 2.b | 3/21 | ≤ 900 | [Sidebar styling, motion and project activity](steps/step-02b.md). |
+| 3 | 4/21 | ≤ 1,200 | [Shared recent-session inventory and project actions](steps/step-03.md). |
+| 4 | 5/21 | ≤ 1,400 | [Main-pane routing, home and shared fonts](steps/step-04.md). |
+| 5 | 6/21 | ≤ 700 | [Connection overlay without layout shift](steps/step-05.md). |
+| 6 | 7/21 | ≤ 1,500 | [Contextual bridge popover and canonical home](steps/step-06.md). |
+| 7.a | 8/21 | ≤ 500 | [Shared Settings composition and native preference commands](steps/step-07a.md). |
+| 7.b | 9/21 | ≤ 700 | [Viewed-session ownership across root overlays](steps/step-07b.md). |
+| 7.c | 10/21 | ≤ 1,750 | [Settings modal and route retirement](steps/step-07c.md). |
+| 8 | 11/21 | ≤ 1,000 | [First-run defaults and optional file-access guidance](steps/step-08.md). |
+| 9.a.1 | 12/21 | ≤ 1,300 | [Safe diagnostics and bounded Quit completion](steps/step-09a1.md). |
+| 9.a.2 | 13/21 | ≤ 1,300 | [Rotating app files and prepared logs directory](steps/step-09a.md). |
+| 9.b | 14/21 | ≤ 500 | [Anchored resizing and scrollbar hit targets](steps/step-09b.md). |
+| 9.c.1 | 15/21 | ≤ 650 | [Loaded/live inventory and request ownership](steps/step-09c1.md). |
+| 9.c.2a | 16/21 | ≤ 700 | Pure-Dart all-project activity and priority-exclusion projection. |
+| 9.c.2b | 17/21 | ≤ 1,400 | Authoritative inventory refresh below presentation owners. |
+| 9.c.2c | 18/21 | ≤ 1,450 | Priority activity, purposeful controls, Prego transitions and useful hints. |
+| 10 | 19/21 | ≤ 600 | Keyboard shortcuts and macOS title-bar/drag integration. |
+| 11 | 20/21 | ≤ 600 | Control-content audit and regression reconciliation. |
+| 12 | 21/21 | ≤ 300 | Recorded coverage, phase-2 handoff and plan retirement. |
 
 9.c.1 extracts the observed loading-placeholder replacement from the larger UI slice.
 It keeps current loaded data through automatic refresh/failure, continues live patches,
 and separates private request identity from a retained lifecycle generation; supersession
 and coalescing stay in `RecentSessionsCubit`. No new API/model/DI or Flutter production change. Its scoped plan review
-is approved; later 9.c.2 composition needs its own review. Measured implementation size then split 9.c.2 into
-pure-Dart ownership (9.c.2a) and Flutter composition (9.c.2b), without changing the reviewed
-architecture or feature scope.
+is approved; later 9.c.2 composition needs its own review. Measured implementation size first split 9.c.2 into
+pure-Dart foundations and Flutter composition. PR #1533 review then proved that a request bus still made lower-layer
+refresh execution depend on mounted presentation Cubits. Keep 9.c.2a to the independent activity projection, move
+true lower-layer execution into 9.c.2b, and retain the prepared Flutter composition as 9.c.2c. This adds no feature scope
+and avoids growing a heavily reviewed PR beyond the repository soft cap.
 
 Step 10 retains ⌘N, ⌘, and ⌘B via cockpit `CallbackShortcuts`, shortcut hints, and macOS hidden
 chrome/drag region behind the single D12 switch in `FlutterWindowHost.initialize`.
@@ -646,8 +649,8 @@ mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 
 Logging 9.a.1–9.a.2 is merged, preserving #1509's published history through forward integration.
 9.b interactions merged as #1524 and 9.c.1 refresh continuity merged as #1526. Continue with 9.c.2a
-activity/refresh owners, 9.c.2b activity/controls UI and 10 shortcuts/title bar; publish each successor only
-after its predecessor merges.
+activity projection, 9.c.2b lower refresh ownership, 9.c.2c activity/controls UI and 10 shortcuts/title bar;
+publish each successor only after its predecessor merges.
 Steps 11 and 12 remain the final audit and qualification.
 Step 8 must land after
 step 7.c (General startup preferences and Bridge/FDA settings). Step 7.a follows

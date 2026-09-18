@@ -6,39 +6,41 @@ this table records state only and never mirrors PR review status.
 `done` means the step's implementation and focused verification are complete;
 merge history and outstanding native qualification are recorded separately.
 
-There are 20 PRs across 12 logical steps. Step 2.a/2.b map to ordinals 2/3;
+There are 21 PRs across 12 logical steps. Step 2.a/2.b map to ordinals 2/3;
 original 3–6 to 4–7; 7.a/7.b/7.c to 8/9/10; step 8 to 11.
-Logging 9.a.1/9.a.2 are 12/13; sidebar 9.b/9.c.1/9.c.2a/9.c.2b are 14/15/16/17;
-original steps 10–12 are 18–20. Earlier evidence filenames stay unchanged.
+Logging 9.a.1/9.a.2 are 12/13; sidebar 9.b/9.c.1/9.c.2a/9.c.2b/9.c.2c are 14–18;
+original steps 10–12 are 19–21. Earlier evidence filenames stay unchanged.
 Logging uses `step-09a1.md` and `step-09a.md`; sidebar uses `step-09b.md`,
-`step-09c1.md` (refresh continuity), `step-09c2.md` (activity/refresh owners),
-and `step-09c.md` (activity/controls UI). The latest split follows measured size,
-keeps the architectural owners separate from Flutter composition, and adds no scope.
+`step-09c1.md` (refresh continuity), `step-09c2.md` (activity projection),
+`step-09c2b.md` (lower refresh ownership), and `step-09c.md` (activity/controls UI).
+The latest split removes an invalid presentation-owner runtime dependency from 9.c.2a;
+the dedicated lower-layer follow-up can preserve refresh semantics without making the reviewed PR oversized.
 
 | Done | Step | Branch | Title | Target | State |
 |---|---|---|---|---|---|
-| [x] | 1 | `desktop-release-plan` | [1/20](#pr-titles) | ≤ 900 | done |
-| [x] | 2.a | `desktop-ux/sidebar-frame` | [2/20](#pr-titles) | ≤ 1,400 | done |
-| [x] | 2.b | `desktop-ux/sidebar-polish` | [3/20](#pr-titles) | ≤ 900 | done |
-| [x] | 3 | `desktop-ux/recent-sessions` | [4/20](#pr-titles) | ≤ 1,200 | done |
-| [x] | 4 | `desktop-ux/main-pane-routes` | [5/20](#pr-titles) | ≤ 1,400 | done |
-| [x] | 5 | `desktop-ux/connection-pill` | [6/20](#pr-titles) | ≤ 700 | done |
-| [x] | 6 | `desktop-ux/bridge-popover` | [7/20](#pr-titles) | ≤ 1,500 | done |
-| [x] | 7.a | `desktop-ux/settings-composition` | [8/20](#pr-titles) | ≤ 500 | done |
-| [x] | 7.b | `desktop-ux/overlay-navigation` | [9/20](#pr-titles) | ≤ 700 | done |
-| [x] | 7.c | `desktop-ux/settings-modal` | [10/20](#pr-titles) | ≤ 1,750 | done |
-| [x] | 8 | `desktop-ux/first-run-defaults` | [11/20](#pr-titles) | ≤ 1,000 | done |
-| [x] | 9.a.1 | `desktop-ux/logging-foundation` | [12/20](#pr-titles) | ≤ 1,300 | done |
-| [x] | 9.a.2 | `desktop-ux/app-logs` | [13/20](#pr-titles) | ≤ 1,300 | done |
-| [x] | 9.b | `desktop-ux/sidebar-interactions` | [14/20](#pr-titles) | ≤ 500 | done |
-| [x] | 9.c.1 | `desktop-ux/sidebar-refresh-continuity` | [15/20](#pr-titles) | ≤ 650 | done |
-| [x] | 9.c.2a | `desktop-ux/sidebar-activity-foundation` | [16/20](#pr-titles) | ≤ 1,200 | done |
-| [ ] | 9.c.2b | `desktop-ux/sidebar-activity-controls` | [17/20](#pr-titles) | ≤ 1,450 | in-progress |
-| [ ] | 10 | `desktop-ux/shortcuts-title-bar` | [18/20](#pr-titles) | ≤ 600 | pending |
-| [ ] | 11 | `desktop-ux/regression-docs` | [19/20](#pr-titles) | ≤ 600 | pending |
-| [ ] | 12 | `desktop-ux/coverage-retire` | [20/20](#pr-titles) | ≤ 300 | pending |
+| [x] | 1 | `desktop-release-plan` | [1/21](#pr-titles) | ≤ 900 | done |
+| [x] | 2.a | `desktop-ux/sidebar-frame` | [2/21](#pr-titles) | ≤ 1,400 | done |
+| [x] | 2.b | `desktop-ux/sidebar-polish` | [3/21](#pr-titles) | ≤ 900 | done |
+| [x] | 3 | `desktop-ux/recent-sessions` | [4/21](#pr-titles) | ≤ 1,200 | done |
+| [x] | 4 | `desktop-ux/main-pane-routes` | [5/21](#pr-titles) | ≤ 1,400 | done |
+| [x] | 5 | `desktop-ux/connection-pill` | [6/21](#pr-titles) | ≤ 700 | done |
+| [x] | 6 | `desktop-ux/bridge-popover` | [7/21](#pr-titles) | ≤ 1,500 | done |
+| [x] | 7.a | `desktop-ux/settings-composition` | [8/21](#pr-titles) | ≤ 500 | done |
+| [x] | 7.b | `desktop-ux/overlay-navigation` | [9/21](#pr-titles) | ≤ 700 | done |
+| [x] | 7.c | `desktop-ux/settings-modal` | [10/21](#pr-titles) | ≤ 1,750 | done |
+| [x] | 8 | `desktop-ux/first-run-defaults` | [11/21](#pr-titles) | ≤ 1,000 | done |
+| [x] | 9.a.1 | `desktop-ux/logging-foundation` | [12/21](#pr-titles) | ≤ 1,300 | done |
+| [x] | 9.a.2 | `desktop-ux/app-logs` | [13/21](#pr-titles) | ≤ 1,300 | done |
+| [x] | 9.b | `desktop-ux/sidebar-interactions` | [14/21](#pr-titles) | ≤ 500 | done |
+| [x] | 9.c.1 | `desktop-ux/sidebar-refresh-continuity` | [15/21](#pr-titles) | ≤ 650 | done |
+| [x] | 9.c.2a | `desktop-ux/sidebar-activity-foundation` | [16/21](#pr-titles) | ≤ 700 | done |
+| [ ] | 9.c.2b | `desktop-ux/sidebar-refresh-ownership` | [17/21](#pr-titles) | ≤ 1,400 | in-progress |
+| [ ] | 9.c.2c | `desktop-ux/sidebar-activity-controls` | [18/21](#pr-titles) | ≤ 1,450 | pending |
+| [ ] | 10 | `desktop-ux/shortcuts-title-bar` | [19/21](#pr-titles) | ≤ 600 | pending |
+| [ ] | 11 | `desktop-ux/regression-docs` | [20/21](#pr-titles) | ≤ 600 | pending |
+| [ ] | 12 | `desktop-ux/coverage-retire` | [21/21](#pr-titles) | ≤ 300 | pending |
 
-Current: publish 9.c.2a, then deliver prepared 9.c.2b UI → 10 → 11 → 12.
+Current: publish 9.c.2a, then deliver 9.c.2b lower ownership → prepared 9.c.2c UI → 10 → 11 → 12.
 9.c.1 merged as #1526; native qualification remains outstanding.
 One PR at a time; prepare at most one local successor and publish after its predecessor merges.
 
@@ -46,26 +48,27 @@ One PR at a time; prepare at most one local successor and publish after its pred
 
 These are current series titles; historical Git/squash subjects remain unchanged.
 
-- 1/20: `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/20]`
-- 2/20: `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/20]`
-- 3/20: `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/20]`
-- 4/20: `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/20]`
-- 5/20: `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/20]`
-- 6/20: `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/20]`
-- 7/20: `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/20]`
-- 8/20: `🌿 [desktop-ux] Prepare shared settings composition [step 8/20]`
-- 9/20: `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/20]`
-- 10/20: `⚙️ [desktop-ux] Present settings as a modal [step 10/20]`
-- 11/20: `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/20]`
-- 12/20: `⚙️ [desktop-ux] Prepare safe diagnostics and bounded quit flushing [step 12/20]`
-- 13/20: `⚙️ [desktop-ux] Write app logs to rotating files [step 13/20]`
-- 14/20: `🌿 [desktop-ux] Fix sidebar resizing and project hit targets [step 14/20]`
-- 15/20: `⚙️ [desktop-ux] Preserve sidebar sessions during refresh [step 15/20]`
-- 16/20: `⚙️ [desktop-ux] Prepare sidebar activity and refresh ownership [step 16/20]`
-- 17/20: `⚙️ [desktop-ux] Prioritize sidebar activity and simplify controls [step 17/20]`
-- 18/20: `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 18/20]`
-- 19/20: `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 19/20]`
-- 20/20: `🌿 [desktop-ux] Run coverage and retire the plan [step 20/20]`
+- 1/21: `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/21]`
+- 2/21: `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/21]`
+- 3/21: `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/21]`
+- 4/21: `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/21]`
+- 5/21: `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/21]`
+- 6/21: `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/21]`
+- 7/21: `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/21]`
+- 8/21: `🌿 [desktop-ux] Prepare shared settings composition [step 8/21]`
+- 9/21: `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/21]`
+- 10/21: `⚙️ [desktop-ux] Present settings as a modal [step 10/21]`
+- 11/21: `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/21]`
+- 12/21: `⚙️ [desktop-ux] Prepare safe diagnostics and bounded quit flushing [step 12/21]`
+- 13/21: `⚙️ [desktop-ux] Write app logs to rotating files [step 13/21]`
+- 14/21: `🌿 [desktop-ux] Fix sidebar resizing and project hit targets [step 14/21]`
+- 15/21: `⚙️ [desktop-ux] Preserve sidebar sessions during refresh [step 15/21]`
+- 16/21: `🌿 [desktop-ux] Prepare sidebar activity projection [step 16/21]`
+- 17/21: `🚧 [desktop-ux] Move sidebar refresh ownership below Cubits [step 17/21]`
+- 18/21: `⚙️ [desktop-ux] Prioritize sidebar activity and simplify controls [step 18/21]`
+- 19/21: `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 19/21]`
+- 20/21: `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 20/21]`
+- 21/21: `🌿 [desktop-ux] Run coverage and retire the plan [step 21/21]`
 
 ## Delivery history
 
@@ -104,7 +107,7 @@ These are current series titles; historical Git/squash subjects remain unchanged
 - Standalone user-requested sidebar correction:
   [PR #1513](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1513) merged.
   Selected-session pinning now uses the non-archived projection, including live archive updates.
-  Seven focused cases and core analysis passed; separate from the 20-PR series.
+  Seven focused cases and core analysis passed; separate from the 21-PR series.
 
 ## Unattended execution
 

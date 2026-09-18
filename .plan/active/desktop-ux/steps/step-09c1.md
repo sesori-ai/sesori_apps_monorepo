@@ -1,6 +1,6 @@
 # Step 9.c.1 — sidebar refresh continuity
 
-Delivery 15/20; branch `desktop-ux/sidebar-refresh-continuity`. The merged PR was published as 15/19.
+Delivery 15/21; branch `desktop-ux/sidebar-refresh-continuity`. The merged PR was published as 15/19.
 Implementation and focused verification complete; merged as PR #1526.
 The original 9.c is split without added scope: this existing-owner lifecycle fix, then 9.c.2 UI composition.
 
@@ -144,9 +144,9 @@ this evidence file as published; later series-denominator edits are outside that
 12/12 and automated review was resolved before readiness. Publication manifest:
 `/tmp/rose-elephant-sidebar-refresh-final-publication.json`.
 
-Series titles now use 20 slots after the measured 9.c.2 implementation split; the fifteen already-merged PR metadata
-titles were updated without rewriting Git subjects or published history. The earlier 19-slot receipt remains at
-`/tmp/rose-elephant-series-19-title-receipts.json`; the 20-slot update is recorded with 9.c.2a.
+Series titles now use 21 slots after PR review split lower-layer refresh ownership from the activity projection; the
+fifteen already-merged PR metadata titles were updated without rewriting Git subjects or published history. Earlier
+19- and 20-slot receipts remain outside the repository; the 21-slot update is recorded with 9.c.2a.
 No protected GUI, bridge/helper, production DI, app smoke, auth/preferences, registration, bundle or device operation.
 No new visual fixtures were needed for this pure-Dart owner change. Native scrolling/indicator efficiency, relaunch
 persistence and broader live/packaged/backup qualification remain required but unexecuted.
