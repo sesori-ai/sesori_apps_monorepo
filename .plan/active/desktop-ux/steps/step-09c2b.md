@@ -35,8 +35,19 @@ Plan: `/tmp/rose-elephant-recent-inventory-ownership-plan.md`, SHA-256
 Architecture plan review `46845cb8-150d-481a-a6c0-d9589a9bf170` approved without findings.
 Report: `/tmp/rose-elephant-recent-inventory-plan-review.md`, SHA-256
 `a44b51357a7d9985d5c49e5838161da3f6a80ae6fd8b7df7f8b58e2383904ef3`.
-Implementation architecture review and immutable publication evidence follow focused verification.
-Target: ≤1,200 changed lines, counting production, tests, documentation, and generated files together.
+Architecture implementation review `e6a2807d-c60c-44f9-8032-a016d19180b2` approved all 19 changed paths without
+findings at source `538ba831a45145ca3be7d3b9037ab4fc00449849`, tree
+`0a401b6ed7e43a7fabf5a8fbca71d1292477c75a`. Report:
+`/tmp/rose-elephant-recent-inventory-implementation-review.md`, SHA-256
+`37d1691e64dd667ed0715be0351ee07eb677fb75a3ff6c3cec724a8af9f4d2fe`.
+
+That source measures 1,112 changed lines (701 additions, 411 deletions) across 19 paths:
+498 production, 273 tests, 329 documentation, and 12 generated lines. The following publication-evidence commit
+is outside that immutable source measurement. Target: ≤1,200 all-path lines.
+
+```bash
+git diff --numstat d530a19ec993b295a058f6ff0ae0316bb5ef0bd5..538ba831a45145ca3be7d3b9037ab4fc00449849 --
+```
 
 ## Verification commands
 

@@ -35,14 +35,14 @@ boundary so each owner lands with its production consumer. No request bus, secon
 | [x] | 9.b | `desktop-ux/sidebar-interactions` | [14/22](#pr-titles) | ≤ 500 | done |
 | [x] | 9.c.1 | `desktop-ux/sidebar-refresh-continuity` | [15/22](#pr-titles) | ≤ 650 | done |
 | [x] | 9.c.2a | `desktop-ux/sidebar-activity-foundation` | [16/22](#pr-titles) | ≤ 1,400 | done |
-| [ ] | 9.c.2b.1 | `desktop-ux/sidebar-refresh-ownership` | [17/22](#pr-titles) | ≤ 1,200 | in-progress |
+| [x] | 9.c.2b.1 | `desktop-ux/sidebar-refresh-ownership` | [17/22](#pr-titles) | ≤ 1,200 | done |
 | [ ] | 9.c.2b.2 | `desktop-ux/project-refresh-ownership` | [18/22](#pr-titles) | ≤ 1,400 | pending |
 | [ ] | 9.c.2c | `desktop-ux/sidebar-activity-controls` | [19/22](#pr-titles) | ≤ 1,450 | pending |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | [20/22](#pr-titles) | ≤ 600 | pending |
 | [ ] | 11 | `desktop-ux/regression-docs` | [21/22](#pr-titles) | ≤ 600 | pending |
 | [ ] | 12 | `desktop-ux/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | pending |
 
-Current: deliver 9.c.2b.1 recent ownership → 9.c.2b.2 project ownership/workflow → prepared 9.c.2c UI → 10 → 11 → 12.
+Current: publish 9.c.2b.1, then 9.c.2b.2 project ownership/workflow → prepared 9.c.2c UI → 10 → 11 → 12.
 9.c.1 merged as #1526 and 9.c.2a as #1533; native qualification remains outstanding.
 One PR at a time; prepare at most one local successor and publish after its predecessor merges.
 
