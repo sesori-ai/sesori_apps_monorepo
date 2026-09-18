@@ -87,6 +87,20 @@ Inventory stream assertions skip the new service's retained replay when awaiting
 
 Saved desktop execution report: `/tmp/rose-elephant-recent-inventory-desktop-final-tests.jsonl`, SHA-256
 `db5e16b174ab7ad9573d1f721fda0cd7cdcd80a3e869122edb64fcea05f39ee3`.
+Execution checkpoint: **uncommitted working tree**, based on `d530a19ec993b295a058f6ff0ae0316bb5ef0bd5`.
+The tested production and desktop-test files were then committed unchanged in
+`538ba831a45145ca3be7d3b9037ab4fc00449849`, tree `0a401b6ed7e43a7fabf5a8fbca71d1292477c75a`.
+That commit was created after the run; the receipt does not claim execution from an already committed tree.
+The later core-test replay-assertion adjustment and documentation edits are outside this desktop-run receipt.
+Exact cwd: `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/rose-elephant/client/desktop`.
+Exact command (exit 0), also saved in `/tmp/rose-elephant-recent-inventory-core-desktop-final-tests.json`:
+
+```bash
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/flutter test --no-pub --reporter=json \
+  test/core/widgets/desktop_cockpit_cubit_provider_test.dart \
+  test/core/widgets/desktop_cockpit_shell_test.dart
+```
+
 Its 38 successful non-hidden `testDone` events map to 37 cockpit cases and one provider case; `done.success` is true.
 The cockpit's 33 registration sites expand by two loop-generated cases and two extra platform-variant cases:
 `project toggle edge and scrollbar thumb remain usable` and `running and unread project signals update in expanded
