@@ -5,8 +5,9 @@
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
 - **Status:** Active — steps 1–5 and the private portions of steps 6, 7 and 9
-  merged. The macOS signing-secret migration is complete; private helper-Off manual
-  replacement qualification is in progress. Public macOS/Windows/Linux publication
+  merged. The macOS signing-secret migration and private native x64/arm64 helper-Off
+  `1.8.4+24 → 1.9.0+62` manual replacement qualification are complete. Public
+  macOS/Windows/Linux publication
   and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
   releases. The independently executable private portion of step 11 is in progress;
   its public-release reconciliation and final plan retirement remain blocked. Shipping

@@ -99,6 +99,29 @@ items to the exact app PID, prefers `AXPress` so `tray_manager` receives its rea
 click callback, searches the status item/menu-bar/app accessibility roots, and retains
 bounded element/action diagnostics on another refusal.
 
+Final branch run `35363132033` passed at qualification source
+`2f036ea94fed5f485d8f63c36ba9b948b98db8ae`: native x64 job `105659084181` and
+arm64 job `105659084218`. Each job reverified the retained successful producer runs,
+accepted the 1.8.4 source through squash-merged PR #1503, validated exact DMG digests,
+Developer ID identity, tickets, Gatekeeper, sealed versions/builds and package-native
+helper CPU, then performed real `1.8.4+24 → 1.9.0+62` replacement in Applications.
+Both prior/current launches rendered the signed-out window, invoked the exact app-owned
+AX menu item `Quit Sesori`, exited without relaunch/orphans, and preserved Bridge Off,
+desktop/shared-data/attachment sentinels and a valid login registration. The four
+screenshots were inspected as rendered rather than inferred from window existence.
+
+Evidence artifacts `10554589107` (x64) and `10554949003` (arm64) expire on
+2026-10-02. Prior/current DMG hashes were respectively
+`e0ee205da412828e667cd63653e92005986e926275b9fcc992e05d78415bbe7f` /
+`54eab0a8fa1538401ce49820c92edd449e9b59df9aaef8ae9c4f6a38586e67a3`
+for x64 and `27de5e5c8cfc15ed707c199d193b202fe0aec45c69abd5985f7c23ea129fda16` /
+`ae287512772a4c2dd313f68f52eec14526222704b3a67ba50c7c6ed9af724e24`
+for arm64. Locally downloaded evidence was independently checked in
+`build/desktop-macos-upgrade-evidence/native-2f036ea/verified-summary.json`.
+This closes only private signed helper-Off replacement; authenticated helper-On,
+failed-stop refusal, real-account/Keychain/TCC, minimum-OS, public retrieval and parent
+Gate C remain open.
+
 ## Verification
 
 Run the new Python tests and the directly affected existing desktop tooling tests;
