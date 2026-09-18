@@ -64,13 +64,14 @@ Review `196e83e2-5386-45db-8ef8-1e63bd4287cb` approved the confirmation-lifecycl
 report: `/tmp/rose-elephant-1533-dialog-lease-architecture-plan-review.md`, SHA-256
 `4be4e6c1351f13dd7c00e89c2afb40b3e6b4f43136dba7e49f3501bc4f871b48`.
 
-Final source checkpoint: `b7825f21f5287788ac55b5f55f3b976e65932092`, tree
-`cab4ec6a196a869a48c4a3270707494f0c028980`. It measures 1,491 all-path changed lines (1,306 additions,
-185 deletions) across 25 files: 674 production, 398 tests, 398 documentation and 21 generated lines. The later
-source-evidence correction is outside that immutable measurement.
+Final source checkpoint: `9a172e0984320def3bb09da28b6ccf8e4ee6c22c`, tree
+`0af04ba677b385c6068f174c148c6cad78fd8263`. It measures 1,586 all-path changed lines (1,380 additions,
+206 deletions) across 27 files: 755 production, 409 tests, 401 documentation and 21 generated lines. The later
+publication-evidence correction is outside that immutable measurement. The modest soft-cap overage keeps the
+review-required dialog lifetime fix with the Activity action owner it corrects; no independently valid split exists.
 
 ```bash
-git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..b7825f21f5287788ac55b5f55f3b976e65932092 --
+git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..9a172e0984320def3bb09da28b6ccf8e4ee6c22c --
 ```
 
 ## Verification
