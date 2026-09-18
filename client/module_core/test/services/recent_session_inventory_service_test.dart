@@ -6,7 +6,7 @@ import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../../helpers/test_helpers.dart";
+import "../helpers/test_helpers.dart";
 
 void main() {
   late MockProjectRepository repository;
@@ -16,7 +16,7 @@ void main() {
   late FakeCatalogRescanService catalog;
   late StreamController<SseEvent> events;
   late ProjectListService projectListService;
-  late RecentSessionsCubit cubit;
+  late RecentSessionInventoryService inventory;
   const projectId = "project-1";
 
   setUpAll(registerAllFallbackValues);
@@ -34,7 +34,7 @@ void main() {
       repository: repository,
       activityCalculator: const SessionActivityCalculator(),
     );
-    cubit = RecentSessionsCubit(
+    inventory = RecentSessionInventoryService(
       sessionListService: SessionListService(
         repository: repository,
         activityCalculator: const SessionActivityCalculator(),
@@ -47,7 +47,7 @@ void main() {
     );
   });
   tearDown(() async {
-    await cubit.close();
+    await inventory.dispose();
     await projectListService.dispose();
     await events.close();
     await activity.onDispose();
@@ -55,7 +55,7 @@ void main() {
     await catalog.onDispose();
   });
 
-  RecentSessionsLoaded loaded() => cubit.state[projectId]! as RecentSessionsLoaded;
+  RecentSessionsLoaded loaded() => inventory.state.value[projectId]! as RecentSessionsLoaded;
   void stubSessions({required List<Session> sessions}) {
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
         .thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: sessions)));
@@ -71,7 +71,7 @@ void main() {
     when(() => repository.listProjects()).thenAnswer((_) async => ApiResponse.success(projects));
 
     await projectListService.listProjects();
-    await cubit.stream.firstWhere((state) => state.length == 2);
+    await inventory.state.skip(1).firstWhere((state) => state.length == 2);
     await projectListService.listProjects();
     await Future<void>.delayed(Duration.zero);
 
@@ -98,18 +98,18 @@ void main() {
         .thenAnswer((_) => removedSessions.future);
     final staleRead = projectListService.listProjects();
     await projectListService.listProjects();
-    if (cubit.state.length != 2) await cubit.stream.firstWhere((state) => state.length == 2);
+    if (inventory.state.value.length != 2) await inventory.state.skip(1).firstWhere((state) => state.length == 2);
 
     await projectListService.listProjects();
-    expect(cubit.state.keys.toSet(), {current.id});
+    expect(inventory.state.value.keys.toSet(), {current.id});
     removedSessions.complete(ApiResponse.success(const SessionListResponse(items: [])));
     staleProjects.complete(ApiResponse.success(const Projects(data: [stale])));
     await staleRead;
     await Future<void>.delayed(Duration.zero);
-    expect(cubit.state.keys.toSet(), {current.id});
-    final previousCurrent = cubit.state[current.id];
+    expect(inventory.state.value.keys.toSet(), {current.id});
+    final previousCurrent = inventory.state.value[current.id];
     connection.emitDataMayBeStale();
-    await cubit.stream.firstWhere((state) => !identical(state[current.id], previousCurrent));
+    await inventory.state.skip(1).firstWhere((state) => !identical(state[current.id], previousCurrent));
     verify(() => repository.listSessions(projectId: current.id, waitForPrData: false)).called(2);
     verify(() => repository.listSessions(projectId: removed.id, waitForPrData: false)).called(1);
     verifyNever(() => repository.listSessions(projectId: stale.id, waitForPrData: false));
@@ -126,13 +126,13 @@ void main() {
         .thenAnswer((_) => hiddenSessions.future);
 
     await projectListService.listProjects();
-    if (cubit.state.length != 2) await cubit.stream.firstWhere((state) => state.length == 2);
+    if (inventory.state.value.length != 2) await inventory.state.skip(1).firstWhere((state) => state.length == 2);
     projectListService.removeProjectAndPublish(projects: const [kept, hidden], projectId: hidden.id);
-    expect(cubit.state.keys, [kept.id]);
+    expect(inventory.state.value.keys, [kept.id]);
 
     hiddenSessions.complete(ApiResponse.success(const SessionListResponse(items: [])));
     await Future<void>.delayed(Duration.zero);
-    expect(cubit.state.keys, [kept.id]);
+    expect(inventory.state.value.keys, [kept.id]);
     connection.emitDataMayBeStale();
     await Future<void>.delayed(Duration.zero);
     verify(() => repository.listSessions(projectId: kept.id, waitForPrData: false)).called(2);
@@ -140,12 +140,12 @@ void main() {
   });
 
   test("lazy reads deduplicate, use active ordering, and pin the open row only once", () async {
-    expect(cubit.state, isEmpty);
+    expect(inventory.state.value, isEmpty);
     final reply = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
-    final pending = cubit.ensureLoaded(projectId: projectId);
-    await cubit.ensureLoaded(projectId: projectId);
-    expect(cubit.state[projectId], isA<RecentSessionsLoading>());
+    final pending = inventory.ensureLoaded(projectId: projectId);
+    await inventory.ensureLoaded(projectId: projectId);
+    expect(inventory.state.value[projectId], isA<RecentSessionsLoading>());
     reply.complete(
       ApiResponse.success(
         SessionListResponse(
@@ -157,7 +157,7 @@ void main() {
       ),
     );
     await pending;
-    await cubit.ensureLoaded(projectId: projectId);
+    await inventory.ensureLoaded(projectId: projectId);
     expect(loaded().visibleSessions.map((session) => session.id), ["4", "3", "2", "1"]);
     expect(
       loaded().rows(selectedSessionId: "1", excludingSessionIds: const {}).map((session) => session.id),
@@ -183,9 +183,9 @@ void main() {
         testSession(id: "new", updatedAt: 2),
       ],
     );
-    await cubit.ensureLoaded(projectId: projectId);
-    await cubit.ensureLoaded(projectId: "other");
-    final other = cubit.state["other"];
+    await inventory.ensureLoaded(projectId: projectId);
+    await inventory.ensureLoaded(projectId: "other");
+    final other = inventory.state.value["other"];
     unseen.applyLocalSessionUnseen(projectId: projectId, sessionId: "old", unseen: false);
     await Future<void>.delayed(Duration.zero);
     expect(loaded().isUnseen(session: old), isFalse);
@@ -195,12 +195,12 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(loaded().visibleSessions.first.id, "old");
     expect(loaded().isRunning(session: old), isTrue);
-    expect(identical(cubit.state["other"], other), isTrue);
+    expect(identical(inventory.state.value["other"], other), isTrue);
     verify(() => repository.listSessions(projectId: any(named: "projectId"), waitForPrData: false)).called(2);
   });
 
   test("root create/update/archive/delete mutate inventory without refetching", () async {
-    await cubit.ensureLoaded(projectId: projectId);
+    await inventory.ensureLoaded(projectId: projectId);
     final session = testSession(id: "created", title: "First");
     events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: session)));
     events.add(
@@ -240,7 +240,7 @@ void main() {
     final created = testSession(id: "created");
     final reply = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
-    final pending = cubit.ensureLoaded(projectId: projectId);
+    final pending = inventory.ensureLoaded(projectId: projectId);
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: old)));
     events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
     events.add(
@@ -260,10 +260,10 @@ void main() {
   test("catalog invalidation replaces in-flight reads; old results cannot seed unseen state", () async {
     final old = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => old.future);
-    final pending = cubit.ensureLoaded(projectId: projectId);
+    final pending = inventory.ensureLoaded(projectId: projectId);
     stubSessions(sessions: [testSession(id: "fresh")]);
     catalog.emitCatalogChanged();
-    await cubit.stream.firstWhere((state) => state[projectId] is RecentSessionsLoaded);
+    await inventory.state.skip(1).firstWhere((state) => state[projectId] is RecentSessionsLoaded);
     old.complete(ApiResponse.success(SessionListResponse(items: [testSession(id: "stale", unseen: true)])));
     await pending;
     expect(loaded().sourceSessions.single.id, "fresh");
@@ -274,15 +274,15 @@ void main() {
   test("failed entries retry on reconnect and project invalidation refreshes only known projects", () async {
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
         .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-    await cubit.ensureLoaded(projectId: projectId);
-    expect(cubit.state[projectId], isA<RecentSessionsFailed>());
+    await inventory.ensureLoaded(projectId: projectId);
+    expect(inventory.state.value[projectId], isA<RecentSessionsFailed>());
     stubSessions(sessions: [testSession()]);
     connection.emitDataMayBeStale();
-    await cubit.stream.firstWhere((state) => state[projectId] is RecentSessionsLoaded);
+    await inventory.state.skip(1).firstWhere((state) => state[projectId] is RecentSessionsLoaded);
     events.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "other")));
     events.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: projectId)));
-    await cubit.stream.firstWhere((state) => state[projectId] is RecentSessionsLoaded);
-    await cubit.retry(projectId: projectId);
+    await inventory.state.skip(1).firstWhere((state) => state[projectId] is RecentSessionsLoaded);
+    await inventory.retry(projectId: projectId);
     verify(() => repository.listSessions(projectId: any(named: "projectId"), waitForPrData: false)).called(4);
   });
 
@@ -293,7 +293,7 @@ void main() {
     test("pending ${invalidation.name} refresh retains loaded rows and live activity/unseen updates", () async {
       final session = testSession(unseen: true);
       stubSessions(sessions: [session]);
-      await cubit.ensureLoaded(projectId: projectId);
+      await inventory.ensureLoaded(projectId: projectId);
       final previous = loaded();
       final started = Completer<void>();
       final reply = Completer<ApiResponse<SessionListResponse>>();
@@ -303,7 +303,7 @@ void main() {
       });
       invalidation.emit();
       await started.future;
-      expect(cubit.state[projectId], same(previous));
+      expect(inventory.state.value[projectId], same(previous));
       unseen.applyLocalSessionUnseen(projectId: projectId, sessionId: session.id, unseen: false);
       activity.emitSessionActivity({
         projectId: {
@@ -313,7 +313,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(loaded().isUnseen(session: session), isFalse);
       expect(loaded().isRunning(session: session), isTrue);
-      final refreshed = cubit.stream.first;
+      final refreshed = inventory.state.skip(1).first;
       reply.complete(ApiResponse.success(SessionListResponse(items: [session])));
       await refreshed;
       expect(loaded().isUnseen(session: session), isFalse);
@@ -327,10 +327,10 @@ void main() {
     test("${failure.name} refresh failure retains the current live projection", () async {
       final session = testSession(unseen: true);
       stubSessions(sessions: [session]);
-      await cubit.ensureLoaded(projectId: projectId);
+      await inventory.ensureLoaded(projectId: projectId);
       final reply = Completer<ApiResponse<SessionListResponse>>();
       when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
-      final pending = cubit.retry(projectId: projectId);
+      final pending = inventory.retry(projectId: projectId);
       unseen.applyLocalSessionUnseen(projectId: projectId, sessionId: session.id, unseen: false);
       await Future<void>.delayed(Duration.zero);
       switch (failure) {
@@ -340,7 +340,7 @@ void main() {
           reply.completeError(StateError("read failed"), StackTrace.current);
       }
       await pending;
-      expect(cubit.state[projectId], isA<RecentSessionsLoaded>());
+      expect(inventory.state.value[projectId], isA<RecentSessionsLoaded>());
       expect(loaded().sourceSessions, [session]);
       expect(loaded().isUnseen(session: session), isFalse);
       expect(unseen.seededSessions, hasLength(1));
@@ -355,15 +355,15 @@ void main() {
     final renamed = created.copyWith(title: "Current");
     final archivedUpdate = archived.copyWith(time: archived.time!.copyWith(archived: 1));
     stubSessions(sessions: [deleted, archived]);
-    await cubit.ensureLoaded(projectId: projectId);
+    await inventory.ensureLoaded(projectId: projectId);
     final reply = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
-    final pending = cubit.retry(projectId: projectId);
+    final pending = inventory.retry(projectId: projectId);
     events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
     events.add(SseEvent(data: SesoriSseEvent.sessionUpdated(info: renamed)));
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: deleted)));
     events.add(SseEvent(data: SesoriSseEvent.sessionUpdated(info: archivedUpdate)));
-    expect(cubit.state[projectId], isA<RecentSessionsLoaded>());
+    expect(inventory.state.value[projectId], isA<RecentSessionsLoaded>());
     expect(loaded().visibleSessions.single, renamed);
     expect(loaded().rows(selectedSessionId: "archived", excludingSessionIds: const {}), [renamed]);
     stubSessions(sessions: [renamed, archivedUpdate]);
@@ -379,16 +379,16 @@ void main() {
     final known = testSession(id: "known");
     final created = testSession(id: "created");
     stubSessions(sessions: [known]);
-    await cubit.ensureLoaded(projectId: projectId);
+    await inventory.ensureLoaded(projectId: projectId);
     final older = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => older.future);
-    final oldRead = cubit.retry(projectId: projectId);
+    final oldRead = inventory.retry(projectId: projectId);
     final newer = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => newer.future);
-    final currentRead = cubit.retry(projectId: projectId);
+    final currentRead = inventory.retry(projectId: projectId);
     older.complete(ApiResponse.success(SessionListResponse(items: [testSession(id: "stale", unseen: true)])));
     await oldRead;
-    expect(cubit.state[projectId], isA<RecentSessionsLoaded>());
+    expect(inventory.state.value[projectId], isA<RecentSessionsLoaded>());
     expect(loaded().sourceSessions, [known]);
     expect(unseen.seededSessions, hasLength(1));
     events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
@@ -408,10 +408,10 @@ void main() {
         final created = testSession(id: "created");
         final authoritative = testSession(id: "authoritative");
         stubSessions(sessions: [known]);
-        await cubit.ensureLoaded(projectId: projectId);
+        await inventory.ensureLoaded(projectId: projectId);
         final reply = Completer<ApiResponse<SessionListResponse>>();
         when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
-        final pending = cubit.retry(projectId: projectId);
+        final pending = inventory.retry(projectId: projectId);
         events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
         when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) async {
           if (failure == _RefreshFailure.exception) throw StateError("follow-up failed");
@@ -427,8 +427,8 @@ void main() {
             final nextReply = Completer<ApiResponse<SessionListResponse>>();
             when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
                 .thenAnswer((_) => nextReply.future);
-            final rearmed = cubit.ensureLoaded(projectId: projectId);
-            await cubit.ensureLoaded(projectId: projectId);
+            final rearmed = inventory.ensureLoaded(projectId: projectId);
+            await inventory.ensureLoaded(projectId: projectId);
             final newest = testSession(id: "newest");
             events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: newest)));
             stubSessions(sessions: [known, created, authoritative, newest]);
@@ -446,7 +446,7 @@ void main() {
         expect(loaded().sourceSessions, contains(authoritative));
         expect(unseen.seededSessions, hasLength(2));
         // Successful application retires the signal; an ordinary ensure stays cached.
-        await cubit.ensureLoaded(projectId: projectId);
+        await inventory.ensureLoaded(projectId: projectId);
         verify(() => repository.listSessions(projectId: projectId, waitForPrData: false))
             .called(recovery == _RefreshRecovery.inventory ? 5 : 4);
       });
@@ -457,27 +457,27 @@ void main() {
     final created = testSession(id: "created");
     final reply = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
-    final pending = cubit.ensureLoaded(projectId: projectId);
+    final pending = inventory.ensureLoaded(projectId: projectId);
     events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
         .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
     reply.complete(ApiResponse.success(const SessionListResponse(items: [])));
     await pending;
-    expect(cubit.state[projectId], isA<RecentSessionsFailed>());
+    expect(inventory.state.value[projectId], isA<RecentSessionsFailed>());
     expect(unseen.seededSessions, isEmpty);
-    await cubit.ensureLoaded(projectId: projectId);
+    await inventory.ensureLoaded(projectId: projectId);
     stubSessions(sessions: [created]);
-    await cubit.retry(projectId: projectId);
+    await inventory.retry(projectId: projectId);
     expect(loaded().sourceSessions, [created]);
-    await cubit.ensureLoaded(projectId: projectId);
+    await inventory.ensureLoaded(projectId: projectId);
     verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(3);
   });
 
-  test("close cancels listeners and late reads cannot seed shared unseen state", () async {
+  test("dispose cancels listeners and late reads cannot seed shared unseen state", () async {
     final reply = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
-    final pending = cubit.ensureLoaded(projectId: projectId);
-    await cubit.close();
+    final pending = inventory.ensureLoaded(projectId: projectId);
+    await inventory.dispose();
     expect(events.hasListener, isFalse);
     reply.complete(ApiResponse.success(SessionListResponse(items: [testSession()])));
     await pending;

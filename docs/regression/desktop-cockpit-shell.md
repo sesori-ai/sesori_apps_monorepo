@@ -63,10 +63,12 @@ The main pane hosts one full-width routed page.
   the existing action controller and a stable sidebar presentation context. Opening a session menu first retains its
   action owner even if reconciliation removes the row/group; dismissal releases it, while selection transfers to the
   confirmation or admitted operation lease. Mark-read, rename, archive and delete finish handling before disposal.
-- Each winning successful project snapshot admits every current project to the shared recent-session Cubit,
-  independent of expansion or viewport position. The pure-Dart Cubit is the sole automatic admission owner; the
-  Flutter shell only constructs it eagerly and renders its state, so rebuilds and project expansion dispatch no
-  reads. A superseded project response cannot admit stale IDs. A successful local project hide publishes the accepted
+- Each winning successful project snapshot admits every current project to the scoped pure-Dart recent inventory,
+  independent of expansion or viewport position. `RecentSessionInventoryService` owns admission, reads and live state;
+  its Cubit only mirrors immutable snapshots and delegates explicit retry. The signed-in cockpit resolves one factory
+  instance before initial project publication and disposes it on exit. A replacement Cubit sees retained data, while a
+  new signed-in scope gets an empty inventory. Flutter rebuilds and project expansion dispatch no reads.
+  A superseded project response cannot admit stale IDs. A successful local project hide publishes the accepted
   post-hide inventory through that same seam and fences older list responses. If a connection/reload has replaced loaded
   state before hide acceptance, one forced successor fetch replaces the superseded load and publishes its winning
   inventory. Absent IDs and pending reads are removed; reconnect/catalog invalidation refreshes only retained entries,
@@ -179,6 +181,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   selection/navigation/actions, and reconciles keyed movement/reordering under reduced motion. Empty/loading/failed
   entries preserve the stable header and project-local retry. Keep loaded rows through catalog/reconnect refreshes and
   failures, including live unread false, lifecycle patches, failed-reread rearming and superseded-read completion.
+  Execute those inventory cases without a mounted Cubit. Verify adapter replay/retry, independent consumer close,
+  one eager factory instance per signed-in scope, and disposal before a fresh scope admits data.
 - Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel and reset-only persistence,
   visible-scrollbar edge hit tests and thumb dragging, intermediate collapse/expand frames with cramped
   session-row signals, both reduced-motion signals, temporary narrow-window mode, running/unread updates

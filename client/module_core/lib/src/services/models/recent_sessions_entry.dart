@@ -1,10 +1,10 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
-import "../../services/models/session_activity_info.dart";
-import "../../services/models/session_list_item_state.dart";
+import "session_activity_info.dart";
+import "session_list_item_state.dart";
 
-/// Absence from the cubit's map means this project has not been requested.
+/// Absence from the inventory means this project has not been requested.
 sealed class const RecentSessionsEntry();
 
 /// Also identifies the current request; each refresh gets its own instance.

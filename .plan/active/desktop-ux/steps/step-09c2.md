@@ -1,6 +1,6 @@
 # Step 9.c.2a — Sidebar Activity projection and presentation
 
-Delivery 16/21; branch `desktop-ux/sidebar-activity-foundation`.
+Delivery 16/22; branch `desktop-ux/sidebar-activity-foundation`.
 Base: #1526 squash `a6b32359f028151649cc4553297bc60ace1c0383`, tree
 `4d52ad1899e1de87690bc3fb4593f66a03eb82b0`.
 
@@ -55,7 +55,7 @@ menu route holds a short-lived action lease and transfers it to the existing dia
 Threads `PRRT_kwDORscidM6j2mNL` and `PRRT_kwDORscidM6j2mct` then required explicit nullable lease arguments at all
 menu call sites and a forced successor fetch when hide acceptance arrives after loaded state has been replaced. That
 successor uses the Cubit's existing generation/coalescing path; only its winning inventory publishes and applies.
-Explicit refresh execution remains delivery 17/21; refresh/control presentation remains 18/21.
+Recent/project inventory ownership is split into deliveries 17–18/22; refresh/control presentation remains 19/22.
 
 Architecture plan review `878b3d10-d3a4-48ad-9876-2d842f4ccccf` rejected the first correction draft for leaving the
 duplicate expansion trigger and underspecifying lifecycle/action-menu composition. All valid findings were applied
