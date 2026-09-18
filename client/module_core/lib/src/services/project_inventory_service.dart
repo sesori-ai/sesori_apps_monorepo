@@ -14,7 +14,6 @@ import "../logging/logging.dart";
 import "../platform/route_source.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 import "../repositories/project_repository.dart";
-import "../routing/app_routes.dart";
 import "catalog_rescan_service.dart";
 import "loaded_state_analytics_reporter.dart";
 import "models/add_project_outcome.dart";
@@ -107,9 +106,9 @@ class ProjectInventoryService({
     //    projects page is visible. switchMap cancels the inner subscription
     //    when the route leaves projects and restarts it when coming back.
     _subscriptions.add(
-      routeSource.currentRouteStream
-          .switchMap((route) {
-            if (route != AppRouteDef.projects) return const Stream<void>.empty();
+      routeSource.projectPageVisibility
+          .switchMap((isVisible) {
+            if (!isVisible) return const Stream<void>.empty();
             return _sseEventTracker.projectActivity.throttleTime(
               refreshThrottleDuration,
               trailing: true,
@@ -126,14 +125,10 @@ class ProjectInventoryService({
     //    the projects page. pairwise() ensures this doesn't fire on the
     //    initial route emission (needs two values before it emits).
     _subscriptions.add(
-      routeSource.currentRouteStream
-          .distinct()
-          .pairwise()
-          .where((pair) => pair.first != AppRouteDef.projects && pair.last == AppRouteDef.projects)
-          .listen((_) {
-            if (_state.isClosed) return;
-            unawaited(refreshProjects());
-          }),
+      routeSource.projectPageVisibility.distinct().pairwise().where((pair) => !pair.first && pair.last).listen((_) {
+        if (_state.isClosed) return;
+        unawaited(refreshProjects());
+      }),
     );
 
     // 4. Connection reconnect: silent refresh when connection is restored.

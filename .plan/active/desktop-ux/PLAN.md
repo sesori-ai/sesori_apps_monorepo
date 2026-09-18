@@ -127,6 +127,8 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   forward intents. The desktop cockpit owns one factory instance of each, creating recent admission before project
   startup; mobile owns only the project service for its project-route lifetime. Existing list helpers retain ordering
   and patching policy. Neither inventory takes a project-view claim: sessions/detail routes own viewing.
+  Visibility-gated project refresh consumes `RouteSource.projectPageVisibility`; the shared router adapter,
+  not the business service, classifies route definitions.
 - **D3 — Activity first, then ordinary recents.** Step 9.c.2 adds an upfront
   section for every running or unseen non-archived session, including collapsed
   projects, with project context and no duplicate session rows. Existing

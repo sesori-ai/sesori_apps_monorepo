@@ -315,6 +315,9 @@ class MockRouteSource({
   @override
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRoute.stream;
 
+  @override
+  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
+
   AppRouteDef? get currentRoute => _currentRoute.value;
 
   void emitRoute(AppRouteDef? route) => _currentRoute.add(route);

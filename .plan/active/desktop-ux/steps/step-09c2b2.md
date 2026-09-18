@@ -33,7 +33,9 @@ Plan: `/tmp/rose-elephant-project-inventory-ownership-plan.md`, SHA-256
 Architecture plan review `3d4e415b-df9f-44c8-a354-319bdb50d41d` approved without findings.
 Report: `/tmp/rose-elephant-project-inventory-plan-review.md`, SHA-256
 `7fd626aecc48d00b5432608a957ab06c6c06acc85d8141d50fd39717eb521048`.
-Implementation architecture review and immutable source/publication checkpoints follow focused verification.
+Initial implementation source: `a76afd442128e55987d7d7fd1c3b86b5c1e38cf2`, tree
+`94365a7e7cd4008aadcb75a5abca8073348307ea`; 826 lines (580 additions/246 deletions), 26 paths.
+Pass 1 rejected its newly upward route-definition dependency; the focused correction is recorded below.
 Target: ≤1,400 all-path changed lines; count moved-file edits, generated output, tests and documentation together.
 
 ## Verification and execution provenance
@@ -63,7 +65,7 @@ SDK=/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin
 (cd client/module_app_ui && "$SDK/dart" analyze --fatal-infos)
 ```
 
-Latest per-suite results: **263 successful cases**, without double-counting retries:
+Initial extraction checkpoint: **263 successful cases**, without double-counting retries:
 
 | Area | Successful cases | Saved JSON report under `/tmp/` |
 |---|---:|---|
@@ -88,6 +90,51 @@ exit, per-suite counts and report hashes. Counts come from non-hidden `testDone`
 The headless cases prove initial execution without a Cubit, retained replay, live updates after consumer closure,
 replacement consumers and disposal fencing a pending result/unseen seeding. The fake desktop provider fixture proves
 recent admission exists before project startup publication, both scoped owners are shared, and exit disposes both.
+
+## Implementation review correction — project-page observation
+
+Review `61e34c72-4bc9-4d75-b403-72ec0317e0f3` rejected the direct `routing/app_routes.dart` dependency newly moved
+into `ProjectInventoryService`. The report resolves the correct base/source range above despite a typo in its displayed
+requested base. Preserved report: `/tmp/rose-elephant-project-inventory-implementation-review-1.md`, SHA-256
+`057451db41d1079a43adfb8515c11d3389c953269d05943ccaa319679ce972b2`.
+
+The correction adds replaying `RouteSource.projectPageVisibility` at the existing foundation contract. The shared
+GoRouter adapter classifies routes; both product adapters inherit that behavior. Service-owned activity throttling and
+return refresh consume only that boolean stream. Fakes update in lockstep. No route tree moves, new mutable fields,
+subjects, subscriptions, timers, DI owners, compatibility paths or unrelated legacy cleanup are introduced.
+Correction plan: `/tmp/rose-elephant-project-visibility-correction-plan.md`, SHA-256
+`cd0d306a4b68ea1a559ca4fc6454f9bb89bfd72ab540404d6869db87ce9fbd7b`.
+
+Follow-up commands ran in the **uncommitted working tree based on `a76afd4`**, before the correction commit existed.
+The same repository cwd and pinned SDK above apply. These 145 cases and all four analyzers pass; each test command
+exits 0 with `done.success: true`. Earlier unaffected suites remain preceding-checkpoint evidence, not fresh runs.
+
+```bash
+(cd client/module_core && "$SDK/dart" test --reporter=json \
+  test/cubits/project_list/project_list_cubit_test.dart test/routing/notification_open_dispatcher_test.dart \
+  test/routing/analytics_route_listener_test.dart test/services/project_viewing_service_test.dart)
+(cd client/module_app_ui && "$SDK/flutter" test --no-pub --reporter=json \
+  test/platform/go_router_route_source_test.dart test/widgets/sse_toast_listener_test.dart)
+(cd client/desktop && "$SDK/flutter" test --no-pub --reporter=json \
+  test/core/platform/desktop_route_source_test.dart test/core/widgets/desktop_cockpit_cubit_provider_test.dart)
+(cd client/app && "$SDK/flutter" test --no-pub --reporter=json \
+  test/features/project_list/project_list_nav_bar_test.dart)
+```
+
+JSON reports: `/tmp/rose-elephant-project-visibility-<package>-tests.jsonl`.
+
+| Package | Area | Cases |
+|---|---|---:|
+| `module_core` | Project lifetime, notifications, analytics routing, project viewing | 92 + 8 + 9 + 18 |
+| `module_app_ui` | Shared route source and toast listener | 7 + 1 |
+| `desktop` | Route source and scoped providers | 2 + 1 |
+| `app` | Project navigation | 7 |
+
+Machine receipts: `/tmp/rose-elephant-project-visibility-tests.json` and
+`/tmp/rose-elephant-project-visibility-analyzers.json`; these bind cwd, exact command, execution checkpoint,
+exit and report hashes. The added shared-router case proves false/true replay to new subscribers and visibility
+transitions through pushed settings and nested session routes, then popping back to projects. Existing project
+throttle/return tests remain intact. The complete corrected branch receives the second implementation-review pass.
 
 ## Boundaries
 

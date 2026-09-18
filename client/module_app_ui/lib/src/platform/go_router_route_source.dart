@@ -24,6 +24,9 @@ class GoRouterRouteSource._({required final GoRouterDelegate _routerDelegate}) i
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRouteStream.stream;
 
   @override
+  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
+
+  @override
   String? get currentLocation => _currentLocation(_routerDelegate.currentConfiguration);
 
   Future<void> dispose() async {
