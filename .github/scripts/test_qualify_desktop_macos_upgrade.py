@@ -350,6 +350,8 @@ class MacosUpgradeWorkflowTests(unittest.TestCase):
         )
         self.assertNotIn("CGEvent(", quitter)
         self.assertNotIn("postKey(", quitter)
+        self.assertNotIn("quitItems(from:", quitter)
+        self.assertNotIn("menus(from:", quitter)
         press = quitter.index("AXUIElementPerformAction(statusItem")
         self.assertLess(press, quitter.rindex("visibleTrayMenu("))
 
