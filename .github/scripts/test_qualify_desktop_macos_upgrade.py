@@ -334,10 +334,13 @@ class MacosUpgradeWorkflowTests(unittest.TestCase):
         self.assertNotIn("secrets.", job)
         self.assertNotIn("contents: write", job)
 
-    def test_quit_lookup_stays_inside_pressed_status_item(self):
+    def test_quit_lookup_requires_new_presentation_after_status_press(self):
         quitter = QUITTER.read_text()
-        self.assertIn("findQuitItem(from: [statusItem])", quitter)
-        self.assertNotIn("findQuitItem(from: [statusItem, extras, appElement])", quitter)
+        self.assertIn("let baseline = quitItems(from: quitSearchRoots", quitter)
+        self.assertIn("newlyPresentedQuitItem(", quitter)
+        self.assertIn("let quitSearchRoots = statusItems + [extras, appElement]", quitter)
+        self.assertLess(quitter.index("let baseline = quitItems"), quitter.index("AXUIElementPerformAction(statusItem"))
+        self.assertLess(quitter.index("AXUIElementPerformAction(statusItem"), quitter.rindex("newlyPresentedQuitItem("))
 
 
 class MacosUpgradeSafetyTests(unittest.TestCase):

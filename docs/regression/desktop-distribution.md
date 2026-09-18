@@ -4,8 +4,8 @@
 
 Desktop Settings includes update guidance. Packaged macOS/Windows builds expose
 **View downloads**, opening `https://sesori.com/desktop/` with the compiled build's
-stable/internal channel, OS and CPU section. This does not claim an available
-update or published installer. Unshipped sections explicitly contain no public
+stable/internal channel, OS and CPU section. The page is live; this does not claim an
+available update or published installer. Unshipped sections explicitly contain no public
 download; they never link private CI artifacts or infer desktop assets from Latest.
 The website page renders all eight channel/OS/CPU anchors and `linux-package-managers`,
 so every generated fragment lands on its own section.
@@ -98,13 +98,15 @@ compiled channel; an older unpublished baseline may predate channel metadata.
 
 On a fresh Actions host with no existing app, bridge, login registration or relevant
 state root, the probe copies the previous app from its real DMG into Applications,
-launches a visible window with persisted Bridge Off, invokes the app's accessible tray
-**Quit Sesori** command, and rejects relaunch or orphan processes. It then replaces the
-complete app from the current DMG and repeats, preserving bounded desktop, shared
-CLI-data, attachment and valid login-registration sentinels. Cleanup removes only
-probe-owned paths. Pre-merge run `35363132033` passed this exact
-`1.8.4+24 → 1.9.0+62` behavior on both CPUs, but accepted qualification requires a
-post-merge `main` run. This does not prove an
+launches a visible window with persisted Bridge Off, presses the process-owned status
+item and invokes only a process-owned `Quit Sesori` item newly exposed by that press.
+This excludes the pre-existing application main menu. The probe rejects relaunch or
+orphan processes, replaces the complete app from the current DMG and repeats while
+preserving bounded desktop, shared CLI-data, attachment and valid login-registration
+sentinels. Cleanup removes only probe-owned paths. Pre-merge run `35363132033` is not
+accepted because its Quit lookup was broader. First main-only run `35367589565` failed
+safely on both CPUs when status-item-only traversal could not observe AppKit's transient
+menu; the delta-scoped replacement awaits a new main run. This does not prove an
 authenticated helper-On or failed-stop path, real-account/Keychain/TCC behavior,
 minimum-OS support, public retrieval, or release readiness.
 

@@ -96,12 +96,16 @@ platform fixture probes on both CPUs at source
 `35359083211` validated the four payloads as proposed `desktop-v1.9.0`, build 62;
 it did not publish. Pre-merge implementation run `35363132033` at source
 `2f036ea94fed5f485d8f63c36ba9b948b98db8ae`, tree
-`713b3844b0f1c204b996ed80f3182bb921f509bf`, passed signed `1.8.4+24 → 1.9.0+62`
-helper-Off replacement on native x64 job `105659084181` and arm64 job `105659084218`.
-It reverified trust, used the real tray Quit command and preserved bounded state, but is
-not accepted release evidence because the reviewed probe is now main-only. Rerun it
-from `main` after this tooling merges. Authenticated helper-On, failed-stop,
-real-account/TCC, minimum-OS, live-site and public retrieval remain open.
+`713b3844b0f1c204b996ed80f3182bb921f509bf`, completed both CPU flows, but review
+correctly rejected its broad Quit-item lookup as final evidence. First main-only run
+`35367589565` at accepted source `e8e2e328675707d0d4c64ab083a6c0bc533c7d13`, tree
+`c070c5520b11cfde1f6b5596697c4fd2f37360a9`, then failed safely at prior-version Quit
+on arm64 job `105673774002` and x64 job `105673774047`: AppKit did not expose the
+transient tray menu as a status-item child. Cleanup removed probe-owned app/state. The
+follow-up snapshots process-owned Quit items before AXPress and accepts only a newly
+exposed item afterward, preventing fallback to the pre-existing application main menu.
+Authenticated helper-On, failed-stop, real-account/TCC, minimum-OS and public
+artifact retrieval remain open; the download page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
 private-package documentation portion can proceed independently, so its dependency
@@ -224,7 +228,7 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update path | Branch probe passed | Trusted-main/full gates pending. |
+| macOS update path | Main probe failed safely | Delta-scoped Quit rerun and full gates pending. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Migration complete | Public hosting gates pending. |
 | macOS public gate | Pending | See checkpoint above. |

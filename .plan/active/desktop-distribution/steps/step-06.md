@@ -79,9 +79,9 @@ Branch diagnostics converged without being reclassified as accepted evidence:
 - `35362043592` exposed the universal-GUI/package-native-helper topology before copy.
 - `35362624156` reached the prior visible app but refused to infer an unobserved Quit.
 - `35363132033`, source `2f036ea94fed5f485d8f63c36ba9b948b98db8ae`,
-  tree `713b3844b0f1c204b996ed80f3182bb921f509bf`, passed x64 job
-  `105659084181` and arm64 job `105659084218`. It rendered all four windows, used the
-  process-owned AX tray item, rejected relaunch/orphans and preserved bounded state.
+  tree `713b3844b0f1c204b996ed80f3182bb921f509bf`, completed x64 job
+  `105659084181` and arm64 job `105659084218`, but its broad Quit-item search could
+  select the pre-existing application main menu and is not accepted evidence.
 
 Run `35363132033` artifacts `10554589107` (x64) and `10554949003` (arm64) expire
 2026-10-02. Prior/current DMG hashes were respectively
@@ -89,9 +89,19 @@ Run `35363132033` artifacts `10554589107` (x64) and `10554949003` (arm64) expire
 `54eab0a8fa1538401ce49820c92edd449e9b59df9aaef8ae9c4f6a38586e67a3`
 for x64 and `27de5e5c8cfc15ed707c199d193b202fe0aec45c69abd5985f7c23ea129fda16` /
 `ae287512772a4c2dd313f68f52eec14526222704b3a67ba50c7c6ed9af724e24`
-for arm64. The branch run proves implementation behavior only; accepted evidence requires a
-post-merge `main` rerun. Authenticated helper-On, failed-stop, real-account/Keychain/TCC,
-minimum-OS, public retrieval and parent Gate C remain open.
+for arm64.
+
+First main-only run `35367589565` used accepted source
+`e8e2e328675707d0d4c64ab083a6c0bc533c7d13`, tree
+`c070c5520b11cfde1f6b5596697c4fd2f37360a9`. Arm64 job `105673774002` and x64
+job `105673774047` both failed safely at the prior-version Quit step: AppKit exposes
+`tray_manager`'s transient menu outside the status item's child tree. Neither job
+installed the current package, and final cleanup removed its probe-owned app/state.
+The follow-up snapshots exact process-owned Quit items before AXPress, traverses the
+bounded app/extras/status hierarchy afterward and accepts only a newly exposed item.
+That preserves causal tray-menu proof while excluding the pre-existing application
+main menu. A new main run is required. Authenticated helper-On, failed-stop,
+real-account/Keychain/TCC, minimum-OS, public retrieval and parent Gate C remain open.
 
 Dispatches and expanded logs were run from
 `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
@@ -111,6 +121,11 @@ gh run view 35206885114 --repo sesori-ai/sesori_apps_monorepo --job 105154787487
 gh run view 35359083211 --repo sesori-ai/sesori_apps_monorepo --job 105645579449 --log
 gh run view 35363132033 --repo sesori-ai/sesori_apps_monorepo --job 105659084181 --log
 gh run view 35363132033 --repo sesori-ai/sesori_apps_monorepo --job 105659084218 --log
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-upgrade-probe -f channel=stable \
+  -f previous_packaging_run=35042335424 -f packaging_run=35206885114
+gh run view 35367589565 --repo sesori-ai/sesori_apps_monorepo --job 105673774002 --log
+gh run view 35367589565 --repo sesori-ai/sesori_apps_monorepo --job 105673774047 --log
 ```
 
 ## Verification

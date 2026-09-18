@@ -62,22 +62,34 @@ private func description(_ element: AXUIElement) -> String {
     return attributes.joined(separator: " ")
 }
 
-private func findQuitItem(from roots: [AXUIElement]) -> AXUIElement? {
+private func quitItems(from roots: [AXUIElement], ownedBy pid: pid_t) -> [AXUIElement] {
     var queue = roots
     var visited: [AXUIElement] = []
+    var matches: [AXUIElement] = []
     while !queue.isEmpty && visited.count < 1_024 {
         let element = queue.removeFirst()
         if visited.contains(where: { CFEqual($0, element) }) {
             continue
         }
         visited.append(element)
-        if stringAttribute(element, kAXRoleAttribute as CFString) == kAXMenuItemRole,
+        if processIdentifier(element) == pid,
+           stringAttribute(element, kAXRoleAttribute as CFString) == kAXMenuItemRole,
            stringAttribute(element, kAXTitleAttribute as CFString) == quitTitle {
-            return element
+            matches.append(element)
         }
         queue.append(contentsOf: children(element))
     }
-    return nil
+    return matches
+}
+
+private func newlyPresentedQuitItem(
+    from roots: [AXUIElement],
+    ownedBy pid: pid_t,
+    comparedWith baseline: [AXUIElement]
+) -> AXUIElement? {
+    quitItems(from: roots, ownedBy: pid).first { candidate in
+        !baseline.contains(where: { CFEqual($0, candidate) })
+    }
 }
 
 guard CommandLine.arguments.count == 2, let pid = pid_t(CommandLine.arguments[1]) else {
@@ -100,8 +112,15 @@ guard !statusItems.isEmpty else {
     fail("Sesori has no process-owned accessible status item")
 }
 
+let quitSearchRoots = statusItems + [extras, appElement]
 for (index, statusItem) in statusItems.enumerated() {
     print("STATUS_ITEM \(index) \(description(statusItem))")
+    // AppKit exposes tray_manager's transient NSMenu under the application hierarchy,
+    // not as a status-item child. Snapshot exact process-owned Quit items before the
+    // click and accept only an item newly exposed by that click. This permits the real
+    // popup hierarchy without mistaking the always-present application main menu.
+    let baseline = quitItems(from: quitSearchRoots, ownedBy: pid)
+    print("QUIT_BASELINE count=\(baseline.count)")
     let actions = actionNames(statusItem)
     // tray_manager opens its context menu from the icon mouse-down callback. AXPress
     // follows that real click path; AXShowMenu may bypass the callback because the
@@ -112,7 +131,11 @@ for (index, statusItem) in statusItems.enumerated() {
         continue
     }
     for _ in 0..<100 {
-        if let quitItem = findQuitItem(from: [statusItem]) {
+        if let quitItem = newlyPresentedQuitItem(
+            from: quitSearchRoots,
+            ownedBy: pid,
+            comparedWith: baseline
+        ) {
             print("QUIT_ITEM \(description(quitItem))")
             if AXUIElementPerformAction(quitItem, kAXPressAction as CFString) == .success {
                 print("PASS invoked the accessible Sesori tray Quit command")

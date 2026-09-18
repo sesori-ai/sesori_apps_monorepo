@@ -79,9 +79,9 @@ No local app, running bridge or installed package may be disturbed.
   identity becomes null using `bool.hasEnvironment`, not an empty-string sentinel.
   `_DesktopBridgeSettingsPage` in `desktop_settings_modal.dart` supplies compile-time
   values here before composing UI.
-- Canonical user-facing URI: `https://sesori.com/desktop/`, explicitly selected by
-  the user while not yet live. `docs/desktop/downloads.md` is the publication
-  content/anchor specification, not the destination opened by the app.
+- Canonical user-facing URI: `https://sesori.com/desktop/`, selected by the user
+  before launch and live since 2026-09-18. `docs/desktop/downloads.md` is the
+  publication content/anchor specification, not the destination opened by the app.
   The shell configuration function owns that constant and constructs fragments
   `<channel>-<os>-<architecture>` using closed enum names, for example
   `stable-macos-arm64` or `internal-windows-x64`. Each of the eight matching Markdown
@@ -214,7 +214,7 @@ Earlier review results remain historical. Second scoped implementation review
 Output: `reviews/desktop-distribution-step-05-implementation-followup.md`.
 
 
-User decision: use `https://sesori.com/desktop/` despite the page not yet being live,
-and return PR #1506 to non-draft. Channel/OS/CPU fragments remain hints for the
-future page; until its anchors exist a browser still opens `/desktop/`. Website
+User decision: use `https://sesori.com/desktop/` before the page launched and return
+PR #1506 to non-draft. The page went live on 2026-09-18 with the specified anchors;
+its unshipped rows remain explicit placeholders until public artifacts exist. Website
 availability and published installers remain release gates, not claimed passes.
