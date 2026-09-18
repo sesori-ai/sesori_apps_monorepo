@@ -69,14 +69,15 @@ The latest focused correction plan is `/tmp/rose-elephant-1533-review-correction
 `/tmp/rose-elephant-1533-hide-menu-architecture-plan-review.md`, SHA-256
 `a531af948b724d3778597b1eb4c30545414fee52b3c4bd60b7ed18ae0b61d5e7`.
 
-Final source checkpoint: `9a172e0984320def3bb09da28b6ccf8e4ee6c22c`, tree
-`0af04ba677b385c6068f174c148c6cad78fd8263`. It measures 1,586 all-path changed lines (1,380 additions,
-206 deletions) across 27 files: 755 production, 409 tests, 401 documentation and 21 generated lines. The later
-publication-evidence correction is outside that immutable measurement. The modest soft-cap overage keeps the
-review-required dialog lifetime fix with the Activity action owner it corrects; no independently valid split exists.
+Final source checkpoint: `18416e20af99f45cee3cecac0f3cf5564e0b702b`, tree
+`9df30b5a7dacc84d08aea17110050267beae123a`. It measures 1,816 all-path changed lines (1,602 additions,
+214 deletions) across 34 files: 796 production, 578 tests, 421 documentation and 21 generated lines. The later
+publication-evidence correction is outside that immutable measurement. The soft-cap overage consists primarily of
+review-required regression coverage (578 lines) and durable plan/regression evidence (421 lines); the 796 production
+lines remain one Activity projection/consumer whose hide and menu-lifetime correctness cannot be split independently.
 
 ```bash
-git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..9a172e0984320def3bb09da28b6ccf8e4ee6c22c --
+git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..18416e20af99f45cee3cecac0f3cf5564e0b702b --
 ```
 
 ## Verification
