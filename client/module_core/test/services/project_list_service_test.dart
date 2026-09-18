@@ -1,4 +1,7 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
+import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/project_list_service.dart";
@@ -9,6 +12,48 @@ import "package:test/test.dart";
 class _MockProjectRepository() extends Mock implements ProjectRepository;
 
 void main() {
+  test("accepted local removal publishes once and fences an older list response", () async {
+    final repository = _MockProjectRepository();
+    final service = ProjectListService(
+      repository: repository,
+      activityCalculator: const SessionActivityCalculator(),
+    );
+    final staleReply = Completer<ApiResponse<Projects>>();
+    when(repository.listProjects).thenAnswer((_) => staleReply.future);
+    final snapshots = <List<ProjectSummary>>[];
+    final subscription = service.listedProjects.listen(snapshots.add);
+
+    final staleRead = service.listProjects();
+    final remaining = service.removeProjectAndPublish(
+      projects: [
+        _project(id: "hidden", name: "Hidden", updatedAt: 2),
+        _project(id: "kept", name: "Kept", updatedAt: 1),
+      ],
+      projectId: "hidden",
+    );
+    expect(remaining.map((project) => project.id), ["kept"]);
+    expect(remaining.clear, throwsUnsupportedError);
+
+    staleReply.complete(
+      ApiResponse.success(
+        Projects(
+          data: [
+            _project(id: "hidden", name: "Hidden", updatedAt: 2),
+            _project(id: "kept", name: "Kept", updatedAt: 1),
+          ],
+        ),
+      ),
+    );
+    await staleRead;
+    await Future<void>.delayed(Duration.zero);
+    expect(snapshots.map((projects) => projects.map((project) => project.id).toList()), [
+      ["kept"],
+    ]);
+
+    await subscription.cancel();
+    await service.dispose();
+  });
+
   test("running projects use activity while awaiting-only and inactive projects keep timestamp order", () {
     final service = ProjectListService(
       repository: _MockProjectRepository(),

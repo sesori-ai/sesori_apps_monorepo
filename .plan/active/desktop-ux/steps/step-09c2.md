@@ -47,8 +47,12 @@ removal. The correction generation-gates the non-retained project stream, reconc
 admitted mark/archive/delete operations, and uses the stable sidebar inventory context for follow-up UI while passing
 its action Cubit explicitly. Thread `PRRT_kwDORscidM6j1mlL` then exposed the pre-admission interval while confirmation
 UI remains open. A short-lived action-scope lease now covers each dialog and response workflow, transferring to the
-tracked operation on confirm and releasing on cancel. Explicit refresh execution remains delivery 17/21;
-refresh/control presentation remains 18/21.
+tracked operation on confirm and releasing on cancel. Threads `PRRT_kwDORscidM6j2GMo` and
+`PRRT_kwDORscidM6j2GMr` then exposed two earlier boundaries: an accepted local project hide did not publish through
+that admission seam, and a materialized menu could outlive its conditional action owner before item selection. The
+accepted post-hide inventory now advances both service-publication and Cubit-application generations, while the flat
+menu route holds a short-lived action lease and transfers it to the existing dialog/operation lease on selection.
+Explicit refresh execution remains delivery 17/21; refresh/control presentation remains 18/21.
 
 Architecture plan review `878b3d10-d3a4-48ad-9876-2d842f4ccccf` rejected the first correction draft for leaving the
 duplicate expansion trigger and underspecifying lifecycle/action-menu composition. All valid findings were applied
@@ -58,11 +62,12 @@ directly without another review. Revised plan:
 Review report SHA-256: `a5e9543041d35bb6604171ec30c496d8e54d64e6ac7a9673541d0ab6657a3834`.
 
 The latest focused correction plan is `/tmp/rose-elephant-1533-review-corrections-plan.md`, SHA-256
-`fdec952c74323fe93f0daf5043cfb49629abefdcac9258618fc863f8ae1ed309`. Reviews
-`fcdadab0-2c2e-495c-8236-f444907c2463` and `e0607827-77e7-45d3-a51e-e8aab32f4b2e` approved the earlier revisions.
-Review `196e83e2-5386-45db-8ef8-1e63bd4287cb` approved the confirmation-lifecycle revision without findings. Latest
-report: `/tmp/rose-elephant-1533-dialog-lease-architecture-plan-review.md`, SHA-256
-`4be4e6c1351f13dd7c00e89c2afb40b3e6b4f43136dba7e49f3501bc4f871b48`.
+`7c4806bf836fe43618d1bbcf4e3064faf862558e244e9f0adea68b93c915b21f`. Reviews
+`fcdadab0-2c2e-495c-8236-f444907c2463`, `e0607827-77e7-45d3-a51e-e8aab32f4b2e` and
+`196e83e2-5386-45db-8ef8-1e63bd4287cb` approved earlier revisions. Review
+`60442cea-94f1-483f-ab43-e12c9c972dba` approved the hide/menu-lifecycle revision without findings. Latest report:
+`/tmp/rose-elephant-1533-hide-menu-architecture-plan-review.md`, SHA-256
+`a531af948b724d3778597b1eb4c30545414fee52b3c4bd60b7ed18ae0b61d5e7`.
 
 Final source checkpoint: `9a172e0984320def3bb09da28b6ccf8e4ee6c22c`, tree
 `0af04ba677b385c6068f174c148c6cad78fd8263`. It measures 1,586 all-path changed lines (1,380 additions,
@@ -88,6 +93,7 @@ cd client/module_app_ui
 cd ../module_core
 /Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart test -r expanded \
   test/services/project_list_service_test.dart \
+  test/cubits/project_list/project_list_cubit_test.dart \
   test/cubits/recent_sessions/recent_sessions_cubit_test.dart \
   test/cubits/session_list/session_list_cubit_test.dart
 /Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart analyze --fatal-infos
@@ -95,6 +101,17 @@ cd ../module_core
 cd ../module_desktop_core
 /Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart test -r expanded \
   test/cubits/desktop_sidebar/desktop_sidebar_session_projection_test.dart
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart analyze --fatal-infos
+
+cd ../module_prego
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/flutter test \
+  test/components/prego_anchor_menu_test.dart
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart analyze --fatal-infos
+
+cd ../app
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/flutter test \
+  test/features/session_list/session_tile_menu_test.dart \
+  test/features/session_list/session_tile_swipe_test.dart
 /Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart analyze --fatal-infos
 
 cd ../desktop
@@ -105,9 +122,10 @@ cd ../desktop
 git diff --check
 ```
 
-Results: 37 desktop cockpit/sidebar cases, 4 session-list presentation cases, 2 projection cases and 93 focused
-module-core cases pass (5 project-list service, 20 recent-session and 68 session-list). Module-app-ui, module-core,
-module-desktop-core and desktop analyzers are clean. The 11 app session-split cases that failed under the
+Current correction evidence passes 117 project-list/recent core cases, 27 Prego menu cases, 16 mobile
+session-menu/swipe cases and 37 desktop cockpit/sidebar cases. The unchanged 68 session-list, 4 app-ui presentation and
+2 projection cases passed at the preceding source checkpoint. Module-core, module-prego, app, desktop, module-app-ui
+and module-desktop-core analyzers are clean. The 11 app session-split cases that failed under the
 discarded DI constructor change passed after its removal at checkpoint `888e67c21e9`; those unchanged inputs were not
 rerun after the Activity-only desktop composition.
 

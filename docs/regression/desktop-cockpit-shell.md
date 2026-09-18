@@ -60,15 +60,16 @@ The main pane hosts one full-width routed page.
   them with the row instead of overflowing it.
 - Opening the sidebar or its session action menu never claims project viewing.
   The main list/detail routes retain viewing ownership. Session mutations use
-  the existing action controller and a stable sidebar presentation context. Rename/archive/delete confirmation keeps
-  its action owner alive if the Activity group disappears; cancel releases it, while confirm transfers ownership to
-  the admitted operation. Mark-read, archive and delete finish response/recovery handling before final disposal.
+  the existing action controller and a stable sidebar presentation context. Opening a session menu first retains its
+  action owner even if reconciliation removes the row/group; dismissal releases it, while selection transfers to the
+  confirmation or admitted operation lease. Mark-read, rename, archive and delete finish handling before disposal.
 - Each winning successful project snapshot admits every current project to the shared recent-session Cubit,
   independent of expansion or viewport position. The pure-Dart Cubit is the sole automatic admission owner; the
   Flutter shell only constructs it eagerly and renders its state, so rebuilds and project expansion dispatch no
-  reads. A superseded project response cannot admit stale IDs. IDs absent from a winning snapshot are removed, their
-  pending reads are fenced, and reconnect/catalog invalidation refreshes only retained entries, including failed
-  reads. Initial loading/failure stays project-local. Live session/activity/unread events update loaded projections.
+  reads. A superseded project response cannot admit stale IDs. A successful local project hide publishes the accepted
+  post-hide inventory through that same seam and fences older list responses. Absent IDs and pending reads are removed;
+  reconnect/catalog invalidation refreshes only retained entries, including failures. Initial loading/failure stays
+  project-local. Live session/activity/unread events update loaded projections.
   Loaded rows remain visible during refresh and logged refresh failures; live
   activity/unread and root lifecycle patches continue against that useful data.
   Lifecycle changes overlapping a returned snapshot trigger a coalesced fresh read before seeding.

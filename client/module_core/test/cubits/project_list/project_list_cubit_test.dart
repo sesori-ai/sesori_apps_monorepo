@@ -850,7 +850,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "hideProject: removes project from state and calls repository.hideProject",
+      "hideProject: removes and publishes the accepted local inventory",
       build: () {
         when(() => mockProjectRepository.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
@@ -862,7 +862,9 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        await cubit.hideProject("B");
+        final published = projectListService.listedProjects.first;
+        expect(await cubit.hideProject("B"), isTrue);
+        expect((await published).map((project) => project.id), ["A", "C"]);
       },
       skip: 1,
       expect: () => [
@@ -887,6 +889,32 @@ void main() {
         verify(() => mockProjectRepository.hideProject(projectId: "B")).called(1);
       },
     );
+
+    test("hideProject fences an older refresh from restoring the accepted removal", () async {
+      final staleRefresh = Completer<ApiResponse<Projects>>();
+      var projectRead = 0;
+      when(() => mockProjectRepository.listProjects()).thenAnswer((_) {
+        projectRead++;
+        return projectRead == 1
+            ? Future.value(ApiResponse.success(Projects(data: [projectA, projectB])))
+            : staleRefresh.future;
+      });
+      when(
+        () => mockProjectRepository.hideProject(projectId: any(named: "projectId")),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      if (cubit.state is! ProjectListLoaded) {
+        await cubit.stream.firstWhere((state) => state is ProjectListLoaded);
+      }
+
+      final refresh = cubit.refreshProjects();
+      expect(await cubit.hideProject("B"), isTrue);
+      staleRefresh.complete(ApiResponse.success(Projects(data: [projectA, projectB])));
+
+      expect(await refresh, isFalse);
+      expect((cubit.state as ProjectListLoaded).projects.map((project) => project.id), ["A"]);
+    });
 
     blocTest<ProjectListCubit, ProjectListState>(
       "hideProject: reports failure and keeps the project when the bridge rejects the hide",

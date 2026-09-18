@@ -10,6 +10,7 @@ Widget _harness(
   bool reverseScroll = false,
   PregoMenuSpotlight? spotlight,
   double? maxHeight,
+  PregoMenuOpenLease? acquireOpenLease,
 }) {
   return MaterialApp(
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -21,6 +22,7 @@ Widget _harness(
           flat: flat,
           reverseScroll: reverseScroll,
           spotlight: spotlight,
+          acquireOpenLease: acquireOpenLease,
           entriesBuilder: () => entries,
           triggerBuilder: (context, toggle) => ElevatedButton(
             onPressed: toggle,
@@ -89,6 +91,51 @@ void main() {
       expect(find.text("Alpha"), findsNothing);
     }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
+    testWidgets("an open lease spans selection and outside dismissal", (tester) async {
+      var acquisitions = 0;
+      var releases = 0;
+      var taps = 0;
+      await tester.pumpWidget(
+        _harness(
+          [
+            PregoMenuItem(
+              title: "Alpha",
+              subtitle: null,
+              isSelected: false,
+              onTap: () {
+                expect(releases, 0);
+                taps++;
+              },
+            ),
+          ],
+          flat: true,
+          acquireOpenLease: () {
+            acquisitions++;
+            var released = false;
+            return () {
+              expect(released, isFalse);
+              released = true;
+              releases++;
+            };
+          },
+        ),
+      );
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+      expect((acquisitions, releases), (1, 0));
+      await tester.tap(find.widgetWithText(InkWell, "Alpha"));
+      await tester.pumpAndSettle();
+      expect((taps, acquisitions, releases), (1, 1, 1));
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+      expect((acquisitions, releases), (2, 1));
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
+      expect((acquisitions, releases), (2, 2));
+    });
+
     testWidgets("reverse scrolling opens at the last entries without reordering rows", (tester) async {
       await tester.pumpWidget(
         _harness(
@@ -114,10 +161,18 @@ void main() {
       expect(first.hitTestable(), findsOneWidget);
     });
 
-    test("reverse scrolling requires the flat path", () {
+    test("flat-only behavior rejects the glass path", () {
       expect(
         () => PregoAnchorMenu(
           reverseScroll: true,
+          entriesBuilder: () => [],
+          triggerBuilder: (context, toggle) => const SizedBox.shrink(),
+        ),
+        throwsAssertionError,
+      );
+      expect(
+        () => PregoAnchorMenu(
+          acquireOpenLease: () => () {},
           entriesBuilder: () => [],
           triggerBuilder: (context, toggle) => const SizedBox.shrink(),
         ),

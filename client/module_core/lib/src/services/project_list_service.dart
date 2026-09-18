@@ -53,8 +53,19 @@ class ProjectListService({
     return (changed: changed, projects: _sortProjects(mergedProjects));
   }
 
-  List<ProjectSummary> removeProject({required Iterable<ProjectSummary> projects, required String projectId}) {
-    return _sortProjects(projects.where((project) => project.id != projectId));
+  /// Applies an accepted local hide and publishes the resulting inventory.
+  /// Incrementing the generation prevents an older list response from
+  /// republishing the hidden project.
+  List<ProjectSummary> removeProjectAndPublish({
+    required Iterable<ProjectSummary> projects,
+    required String projectId,
+  }) {
+    _listGeneration++;
+    final remaining = List<ProjectSummary>.unmodifiable(
+      _sortProjects(projects.where((project) => project.id != projectId)),
+    );
+    if (!_listedProjects.isClosed) _listedProjects.add(remaining);
+    return remaining;
   }
 
   List<ProjectSummary> orderProjects({

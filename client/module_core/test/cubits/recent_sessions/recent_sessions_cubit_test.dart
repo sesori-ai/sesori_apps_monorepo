@@ -115,6 +115,30 @@ void main() {
     verifyNever(() => repository.listSessions(projectId: stale.id, waitForPrData: false));
   });
 
+  test("accepted local project removal evicts its entry and fences its pending read", () async {
+    const kept = ProjectSummary(id: "kept", name: "Kept", path: "/kept", time: null);
+    const hidden = ProjectSummary(id: "hidden", name: "Hidden", path: "/hidden", time: null);
+    final hiddenSessions = Completer<ApiResponse<SessionListResponse>>();
+    when(() => repository.listProjects()).thenAnswer(
+      (_) async => ApiResponse.success(const Projects(data: [kept, hidden])),
+    );
+    when(() => repository.listSessions(projectId: hidden.id, waitForPrData: false))
+        .thenAnswer((_) => hiddenSessions.future);
+
+    await projectListService.listProjects();
+    if (cubit.state.length != 2) await cubit.stream.firstWhere((state) => state.length == 2);
+    projectListService.removeProjectAndPublish(projects: const [kept, hidden], projectId: hidden.id);
+    expect(cubit.state.keys, [kept.id]);
+
+    hiddenSessions.complete(ApiResponse.success(const SessionListResponse(items: [])));
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.keys, [kept.id]);
+    connection.emitDataMayBeStale();
+    await Future<void>.delayed(Duration.zero);
+    verify(() => repository.listSessions(projectId: kept.id, waitForPrData: false)).called(2);
+    verify(() => repository.listSessions(projectId: hidden.id, waitForPrData: false)).called(1);
+  });
+
   test("lazy reads deduplicate, use active ordering, and pin the open row only once", () async {
     expect(cubit.state, isEmpty);
     final reply = Completer<ApiResponse<SessionListResponse>>();

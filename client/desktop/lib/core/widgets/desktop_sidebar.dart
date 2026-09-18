@@ -406,6 +406,7 @@ class const _SidebarActivityProjectGroup({
             displayName: projectName,
             session: item.session,
           ),
+          acquireMenuLease: () => actionContext.read<SessionListCubit>().retainActionScope(),
           menuEntries: () {
             final cubit = actionContext.read<SessionListCubit>()..updateActionSession(session: item.session);
             return sessionMenuEntries(cubit: cubit, session: item.session);
@@ -583,6 +584,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                                       displayName: widget.name,
                                       session: session,
                                     ),
+                                    acquireMenuLease: () => actionContext.read<SessionListCubit>().retainActionScope(),
                                     menuEntries: () {
                                       final cubit = actionContext.read<SessionListCubit>()
                                         ..updateActionSession(session: session);
@@ -648,6 +650,7 @@ class const _SidebarActivitySessionRow({
   required final bool selected,
   required final double expansion,
   required final VoidCallback onPressed,
+  required final PregoMenuOpenLease acquireMenuLease,
   required final List<PregoMenuEntry> Function() menuEntries,
 }) extends StatelessWidget {
   @override
@@ -667,6 +670,7 @@ class const _SidebarActivitySessionRow({
       child: PregoAnchorMenu(
         flat: true,
         menuWidth: 220,
+        acquireOpenLease: acquireMenuLease,
         entriesBuilder: menuEntries,
         triggerBuilder: (_, openMenu) => GestureDetector(
           onSecondaryTap: openMenu,
@@ -779,6 +783,7 @@ class const _SidebarSessionRow({
   required final bool selected,
   required final double expansion,
   required final VoidCallback onPressed,
+  required final PregoMenuOpenLease acquireMenuLease,
   required final List<PregoMenuEntry> Function() menuEntries,
 }) extends StatelessWidget {
   @override
@@ -805,6 +810,7 @@ class const _SidebarSessionRow({
       child: PregoAnchorMenu(
         flat: true,
         menuWidth: 220,
+        acquireOpenLease: acquireMenuLease,
         entriesBuilder: menuEntries,
         triggerBuilder: (_, openMenu) => GestureDetector(
           onSecondaryTap: openMenu,

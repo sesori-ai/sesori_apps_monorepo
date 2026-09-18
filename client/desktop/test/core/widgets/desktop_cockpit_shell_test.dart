@@ -308,7 +308,9 @@ void main() {
     );
     await tester.tap(priorityRow);
     expect(openedSession, "priority");
-    expect(find.descendant(of: priorityRow, matching: find.byType(PregoAnchorMenu)), findsOneWidget);
+    final activityMenu = find.descendant(of: priorityRow, matching: find.byType(PregoAnchorMenu));
+    expect(activityMenu, findsOneWidget);
+    expect(tester.widget<PregoAnchorMenu>(activityMenu).acquireOpenLease, isNotNull);
   });
 
   testWidgets("activity reconciliation moves one stable session without duplicates under reduced motion", (
@@ -334,8 +336,15 @@ void main() {
     final projectElement = tester.element(find.byKey(const ValueKey("project-1")));
     final activityHeader = find.byKey(const Key("desktop-sidebar-activity-header"), skipOffstage: false);
     expect(activityHeader, findsOneWidget);
-    expect(find.byKey(const ValueKey("sidebar-session-project-1-moving")), findsOneWidget);
+    final ordinaryRow = find.byKey(const ValueKey("sidebar-session-project-1-moving"));
+    expect(ordinaryRow, findsOneWidget);
     expect(find.byKey(const ValueKey("sidebar-activity-session-project-1-moving")), findsNothing);
+    expect(
+      tester
+          .widget<PregoAnchorMenu>(find.descendant(of: ordinaryRow, matching: find.byType(PregoAnchorMenu)))
+          .acquireOpenLease,
+      isNotNull,
+    );
 
     updates.add({
       "project-1": RecentSessionsLoaded(
