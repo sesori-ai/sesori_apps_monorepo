@@ -107,12 +107,20 @@ elements before the press, so novelty could not identify the tray menu. On x64 t
 hierarchy traversal invalidated the status-item reference before its action was read.
 Neither job installed the current package; cleanup removed probe-owned app/state.
 
-The next correction records the status-item frame and actions immediately and requires
-AXPress before menu lookup. It then hit-tests screen points beside that frame, accepts
-only a process-owned parent AXMenu anchored to the frame, and searches for the exact
-Quit title only inside that visible menu. It posts no synthetic keyboard events.
-A new main run is required. Authenticated helper-On, failed-stop,
-real-account/Keychain/TCC, minimum-OS, public retrieval and parent Gate C remain open.
+The second correction recorded the status-item frame/actions immediately, required
+AXPress and used application-scoped hit testing beside the frame. Third main-only run
+`35384845467` used accepted source `9258270896ca5d95d74b084f15789a8132e55d95`,
+tree `0bb665f8913aebaabe5886b1228885f7c961b252`. X64 job `105729297682` and arm64
+job `105729297693` both failed safely at prior-version Quit because application-scoped
+hit testing did not surface the status-bar menu. Neither installed the current package;
+cleanup removed probe-owned app/state.
+
+The next correction uses system-wide z-order hit testing, which includes status-bar
+windows, but still accepts only an AXMenu owned by the exact app PID and anchored to the
+recorded status frame. Quit lookup remains bounded to that menu; no synthetic keyboard
+events or broad app traversal are used. A new main run is required. Authenticated
+helper-On, failed-stop, real-account/Keychain/TCC, minimum-OS, public retrieval and
+parent Gate C remain open.
 
 Dispatches and expanded logs were run from
 `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
@@ -142,6 +150,11 @@ gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo 
   -f previous_packaging_run=35042335424 -f packaging_run=35206885114
 gh run view 35375073067 --repo sesori-ai/sesori_apps_monorepo --job 105697793343 --log
 gh run view 35375073067 --repo sesori-ai/sesori_apps_monorepo --job 105697793591 --log
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-upgrade-probe -f channel=stable \
+  -f previous_packaging_run=35042335424 -f packaging_run=35206885114
+gh run view 35384845467 --repo sesori-ai/sesori_apps_monorepo --job 105729297682 --log
+gh run view 35384845467 --repo sesori-ai/sesori_apps_monorepo --job 105729297693 --log
 ```
 
 ## Verification

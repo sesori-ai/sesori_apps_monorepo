@@ -107,8 +107,12 @@ follow-up snapshots process-owned AXMenu elements before AXPress. Second main-on
 `91964b2e117ec314a4a79ebbe8b85f48d1d588be`, failed safely on arm64 job
 `105697793343` and x64 job `105697793591`: arm64 had 16 pre-existing menu elements but
 no new accepted popup, while traversal invalidated x64's status-item reference before press. The
-next correction requires AXPress first, hit-tests beside the recorded status frame,
-accepts only an anchored process-owned menu and searches for Quit only inside it.
+next correction requires AXPress first and uses app-scoped hit testing. Third main-only
+run `35384845467` at source `9258270896ca5d95d74b084f15789a8132e55d95`, tree
+`0bb665f8913aebaabe5886b1228885f7c961b252`, failed safely on x64 job
+`105729297682` and arm64 job `105729297693`: neither app-scoped hit test surfaced the
+status-bar menu. The follow-up uses system-wide z-order hit testing while still
+requiring the exact PID and status-frame anchoring before menu-bounded Quit lookup.
 Authenticated helper-On, failed-stop, real-account/TCC, minimum-OS and public artifact
 retrieval remain open; the download page itself is live.
 
@@ -233,7 +237,7 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update path | Two main probes failed safely | Hit-tested-menu rerun and full gates pending. |
+| macOS update path | Three main probes failed safely | System-wide hit-test rerun and full gates pending. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Migration complete | Public hosting gates pending. |
 | macOS public gate | Pending | See checkpoint above. |

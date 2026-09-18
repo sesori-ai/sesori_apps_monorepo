@@ -116,10 +116,10 @@ private func quitItem(in menu: AXUIElement, ownedBy pid: pid_t) -> AXUIElement? 
     }
 }
 
-private func hitTest(_ application: AXUIElement, at point: CGPoint) -> AXUIElement? {
+private func hitTest(at point: CGPoint) -> AXUIElement? {
     var element: AXUIElement?
     guard AXUIElementCopyElementAtPosition(
-        application,
+        AXUIElementCreateSystemWide(),
         Float(point.x),
         Float(point.y),
         &element
@@ -150,9 +150,9 @@ private func anchoredMenu(
 }
 
 private func visibleTrayMenu(
-    in application: AXUIElement,
     ownedBy pid: pid_t,
-    anchoredTo statusFrame: CGRect
+    anchoredTo statusFrame: CGRect,
+    reportHits: Bool
 ) -> AXUIElement? {
     let offsets: [CGFloat] = [6, 18, 30, 50, 74]
     for offset in offsets {
@@ -161,7 +161,12 @@ private func visibleTrayMenu(
             CGPoint(x: statusFrame.midX, y: statusFrame.minY - offset),
         ]
         for point in points {
-            guard let element = hitTest(application, at: point),
+            let element = hitTest(at: point)
+            if reportHits {
+                let result = element.map(description) ?? "<none>"
+                print("HIT_TEST x=\(point.x) y=\(point.y) \(result)")
+            }
+            guard let element,
                   let menu = anchoredMenu(
                     containing: element,
                     ownedBy: pid,
@@ -202,6 +207,8 @@ for (index, statusItem) in statusItems.enumerated() {
         print("STATUS_ITEM \(index) has no accessible frame")
         continue
     }
+    print("STATUS_FRAME \(index) x=\(statusFrame.minX) y=\(statusFrame.minY) "
+        + "width=\(statusFrame.width) height=\(statusFrame.height)")
     // tray_manager opens its context menu from the icon mouse-down callback. Require
     // AXPress because AXShowMenu can bypass that callback for this custom status item.
     guard actions.contains(kAXPressAction),
@@ -212,11 +219,11 @@ for (index, statusItem) in statusItems.enumerated() {
     // tray_manager's transient menu is not exposed as a status-item child. Hit-test
     // immediately beside the clicked item's frame, accept only an anchored process-owned
     // AXMenu reached at that visible screen location, then search only inside that menu.
-    for _ in 0..<100 {
+    for attempt in 0..<100 {
         if let trayMenu = visibleTrayMenu(
-            in: appElement,
             ownedBy: pid,
-            anchoredTo: statusFrame
+            anchoredTo: statusFrame,
+            reportHits: attempt == 0 || attempt == 50
         ), let quitItem = quitItem(in: trayMenu, ownedBy: pid) {
             print("TRAY_MENU \(description(trayMenu))")
             print("QUIT_ITEM \(description(quitItem))")
