@@ -2,7 +2,8 @@
 
 Planned delivery 19/22, after project inventory ownership (18/22) merges.
 This successor owns both the typed refresh workflow and its first production control, not presentation alone.
-Target ≤1,450 all-path changed lines, including generated output, tests and documentation; remeasure before publishing.
+Target ≤1,450 all-path changed lines, including generated output, tests and documentation;
+remeasure before publishing.
 
 ## Required behavior
 
@@ -21,8 +22,10 @@ Target ≤1,450 all-path changed lines, including generated output, tests and do
 
 ## Execution boundary
 
-Selectively reuse `stash@{0}: sidebar-activity-controls-successor`; do not restore superseded Activity ownership or
-obsolete refresh-bus code. Create a concrete code-informed plan and obtain its scoped architecture plan review before
+Selectively reuse the local stash named `sidebar-activity-controls-successor`, object
+`1bfa2c1ff8ad859773303eb60e7a81902d7d8668` (created on `desktop-ux/sidebar-activity-controls`).
+Find it by that identity, not a mutable stash-list position. Do not restore superseded Activity ownership or obsolete
+refresh-bus code. Create a concrete code-informed plan and obtain its scoped architecture plan review before
 implementation. This document records the accepted PR boundary and retained requirements, not implementation approval.
 
 Run focused fake-backed service/adapter/control tests and owning analyzers. Do not bootstrap production DI, relaunch

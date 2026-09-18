@@ -12,7 +12,7 @@
 ///   value falls back to the newest pending request, or to the confirmation if
 ///   that is newer still.
 ///
-/// Inventory owners instantiate one tracker per entity and keep entity maps,
+/// Owners instantiate one tracker per entity and keep entity maps,
 /// repository calls and state projection to themselves. [confirmedValue] is
 /// nullable because an entity may have no name before its first rename.
 final class OptimisticRenameTracker({required String? confirmedValue}) {

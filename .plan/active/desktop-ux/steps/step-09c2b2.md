@@ -147,6 +147,42 @@ The route-boundary correction was explicitly verified. Preserved report:
 Later publication documentation records this approval without changing executable code; it is not a fresh test run.
 The source commit above was created after the recorded uncommitted follow-up commands completed.
 
+## Reproducing the size checkpoints
+
+Run these literal ranges from the repository root. Sum additions plus deletions across **all** numstat rows and count
+rows for the changed-path total. Git recognizes the genuine renames; an unchanged renamed generated file contributes
+one path and zero changed lines. Production, tests, generated output, and all documentation are included, including
+this step document and `TRACKER.md` as they existed at each named commit. Later documentation is not retroactively
+included in an earlier checkpoint. These are complete branch diffs, not the sum of individual commit patch sizes.
+
+```bash
+git diff --numstat 41e019da8bb5af9e23d76888a3a50912a308f26f..a76afd442128e55987d7d7fd1c3b86b5c1e38cf2 --
+git diff --numstat 41e019da8bb5af9e23d76888a3a50912a308f26f..cde8c241b42d94c19d44be2bbfa2ed6c57543fe1 --
+git diff --numstat 41e019da8bb5af9e23d76888a3a50912a308f26f..782e7e34f0ee5b180d637220ef1a66046122c051 --
+```
+
+| Checkpoint | Additions | Deletions | Total | Paths | Production | Tests | Docs | Generated |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Initial `a76afd4` | 580 | 246 | 826 | 26 | 411 | 160 | 239 | 16 |
+| Approved `cde8c24` | 691 | 259 | 950 | 34 | 442 | 202 | 290 | 16 |
+| First publication `782e7e3` | 702 | 259 | 961 | 34 | 442 | 202 | 301 | 16 |
+
+The route-boundary correction increases the full range by 124 lines: 31 production, 42 tests and 51 documentation;
+generated churn is unchanged. It brings these eight additional paths into scope:
+
+- `client/module_core/lib/src/platform/route_source.dart`
+- `client/module_core/lib/src/testing/test_helpers.dart`
+- `client/module_core/test/routing/notification_open_dispatcher_test.dart`
+- `client/module_core/test/routing/analytics_route_listener_test.dart`
+- `client/module_core/test/services/project_viewing_service_test.dart`
+- `client/module_app_ui/lib/src/platform/go_router_route_source.dart`
+- `client/module_app_ui/test/platform/go_router_route_source_test.dart`
+- `client/module_app_ui/test/widgets/sse_toast_listener_test.dart`
+
+Existing in-scope service and documentation paths also change. The first publication adds only 11 net diff lines of
+approval/tracker documentation beyond the approved source. This later reproducibility clarification and the neutral
+tracker comment change no executable behavior; their publication size is reported separately in the PR body.
+
 ## Boundaries
 
 No intended user-visible, analytics-policy, database or transport change. No real app, bridge/helper, auth/preferences,
