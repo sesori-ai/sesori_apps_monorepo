@@ -60,14 +60,14 @@ The main pane hosts one full-width routed page.
   them with the row instead of overflowing it.
 - Opening the sidebar or its session action menu never claims project viewing.
   The main list/detail routes retain viewing ownership. Session mutations use
-  the existing action controller; an in-flight mark-read owner completes failure recovery even if its optimistic
-  update removes the final Activity row.
-- Each successful project snapshot admits every current project to the shared recent-session Cubit, independent of
-  expansion or viewport position. The pure-Dart Cubit is the sole automatic admission owner; the Flutter shell only
-  constructs it eagerly and renders its state, so rebuilds and project expansion dispatch no reads. The Cubit owns
-  requests/results per signed-in shell. Live session/activity/unread events update its projection;
-  reconnect/catalog invalidation refreshes known projects, including failed reads. Initial loading/failure stays
-  project-local.
+  the existing action controller and a stable sidebar presentation context. An admitted mark-read, archive or delete
+  completes its response/recovery handling even if a local change or bridge event removes the final Activity row.
+- Each winning successful project snapshot admits every current project to the shared recent-session Cubit,
+  independent of expansion or viewport position. The pure-Dart Cubit is the sole automatic admission owner; the
+  Flutter shell only constructs it eagerly and renders its state, so rebuilds and project expansion dispatch no
+  reads. A superseded project response cannot admit stale IDs. IDs absent from a winning snapshot are removed, their
+  pending reads are fenced, and reconnect/catalog invalidation refreshes only retained entries, including failed
+  reads. Initial loading/failure stays project-local. Live session/activity/unread events update loaded projections.
   Loaded rows remain visible during refresh and logged refresh failures; live
   activity/unread and root lifecycle patches continue against that useful data.
   Lifecycle changes overlapping a returned snapshot trigger a coalesced fresh read before seeding.

@@ -38,8 +38,15 @@ Later current-head threads required two ownership corrections. `PRRT_kwDORscidM6
 admission out of `_SidebarInventory`: `ProjectListService` publishes successful snapshots without retaining another
 inventory, and the pure-Dart `RecentSessionsCubit` owns admission and deduplication. `PRRT_kwDORscidM6jz6TX` keeps an
 action Cubit alive only while an admitted mark-seen operation completes, so optimistic removal of the final Activity
-row cannot suppress authoritative failure recovery. Explicit refresh execution remains delivery 17/21;
-refresh/control presentation remains 18/21.
+row cannot suppress authoritative failure recovery.
+
+Newest current-head threads tightened those fixes. `PRRT_kwDORscidM6j1GZS` requires project-snapshot publication only
+for the latest overlapping service read. `PRRT_kwDORscidM6j1OCP` requires a winning snapshot to remove absent recent
+entries and fence their pending reads. `PRRT_kwDORscidM6j1OCX` requires delete completion to survive an Activity-group
+removal. The correction generation-gates the non-retained project stream, reconciles recent state, drains already
+admitted mark/archive/delete operations, and uses the stable sidebar inventory context for follow-up UI while passing
+its action Cubit explicitly. Explicit refresh execution remains delivery 17/21; refresh/control presentation remains
+18/21.
 
 Architecture plan review `878b3d10-d3a4-48ad-9876-2d842f4ccccf` rejected the first correction draft for leaving the
 duplicate expansion trigger and underspecifying lifecycle/action-menu composition. All valid findings were applied
@@ -48,12 +55,12 @@ directly without another review. Revised plan:
 `a893e5a3120356e2b4688e1c2c7ce55e43cc5f1163ec1fca5f61a56625aa8832`.
 Review report SHA-256: `a5e9543041d35bb6604171ec30c496d8e54d64e6ac7a9673541d0ab6657a3834`.
 
-The focused current-head correction plan is
-`/tmp/rose-elephant-1533-review-corrections-plan.md`, SHA-256
-`438adb1c5d2edbd4a36d2ca03100991ae232c79b1dd2021c71a7903b136ac722`. Architecture plan review
-`fcdadab0-2c2e-495c-8236-f444907c2463` approved it without findings. Report:
-`/tmp/rose-elephant-1533-review-corrections-architecture-plan-review.md`, SHA-256
-`d42efb22d10c0eb7298944721644ab607b64067b0942342fa164b7eb3867c8c2`.
+The final focused correction plan is `/tmp/rose-elephant-1533-review-corrections-plan.md`, SHA-256
+`7c5d6814b92b1489498b6b193b1031f202da97a776173f3b7b714d74c7d4495e`. Reviews
+`fcdadab0-2c2e-495c-8236-f444907c2463` and `e0607827-77e7-45d3-a51e-e8aab32f4b2e` approved the initial and final
+revisions without findings. Final report:
+`/tmp/rose-elephant-1533-review-corrections-architecture-plan-review-followup.md`, SHA-256
+`6fb1bc9ccc36790996e75418478c033dbc3910ef42b8c77bed73d3dca204e6e9`.
 
 Final source checkpoint: `132bac6fa9880f397520404d5258c1b2a58eab90`, tree
 `97e5472fbbb46c70e330c8a7175ccfa09e191d46`. It measures 1,344 all-path changed lines (1,174 additions,
@@ -71,6 +78,8 @@ Pinned Dart/Flutter 3.47.4:
 ```bash
 cd client/module_app_ui
 /Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/flutter gen-l10n
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/flutter test \
+  test/features/session_list/session_list_content_test.dart
 /Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/flutter analyze --fatal-infos
 
 cd ../module_core
@@ -93,9 +102,9 @@ cd ../desktop
 git diff --check
 ```
 
-Results: 37 desktop cockpit/sidebar cases, 2 projection cases and 92 focused module-core cases pass (5 project-list
-service, 19 recent-session and 68 session-list). Module-app-ui, module-core, module-desktop-core and desktop analyzers
-are clean. The 11 app session-split cases that failed under the
+Results: 37 desktop cockpit/sidebar cases, 4 session-list presentation cases, 2 projection cases and 93 focused
+module-core cases pass (5 project-list service, 20 recent-session and 68 session-list). Module-app-ui, module-core,
+module-desktop-core and desktop analyzers are clean. The 11 app session-split cases that failed under the
 discarded DI constructor change passed after its removal at checkpoint `888e67c21e9`; those unchanged inputs were not
 rerun after the Activity-only desktop composition.
 

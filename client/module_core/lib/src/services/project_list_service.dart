@@ -15,17 +15,19 @@ class ProjectListService({
   required final SessionActivityCalculator _activityCalculator,
 }) {
   final StreamController<List<ProjectSummary>> _listedProjects = StreamController.broadcast(sync: true);
+  int _listGeneration = 0;
 
-  /// Every successful authoritative project snapshot, without retaining a
+  /// Every winning successful authoritative project snapshot, without retaining a
   /// second project inventory alongside the owning Cubit.
   Stream<List<ProjectSummary>> get listedProjects => _listedProjects.stream;
 
   Future<ApiResponse<Projects>> listProjects() async {
+    final generation = ++_listGeneration;
     final response = await _repository.listProjects();
     return switch (response) {
       SuccessResponse(:final data) => () {
         final projects = List<ProjectSummary>.unmodifiable(_sortProjects(data.data));
-        if (!_listedProjects.isClosed) _listedProjects.add(projects);
+        if (generation == _listGeneration && !_listedProjects.isClosed) _listedProjects.add(projects);
         return ApiResponse.success(Projects(data: projects));
       }(),
       ErrorResponse(:final error) => ApiResponse.error(error),

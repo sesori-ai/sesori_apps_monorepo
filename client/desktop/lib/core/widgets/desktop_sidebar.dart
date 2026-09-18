@@ -19,6 +19,11 @@ typedef SidebarSessionOpenedCallback = void Function({
   required Session session,
 });
 
+typedef _SidebarSessionMenuEntriesBuilder = List<PregoMenuEntry> Function({
+  required SessionListCubit cubit,
+  required Session session,
+});
+
 /// Desktop navigation frame. Its project inventory is shared with the main pane.
 class const DesktopSidebar({
   super.key,
@@ -277,6 +282,10 @@ class const _SidebarInventory({
   Widget build(BuildContext context) {
     final entries = context.watch<RecentSessionsCubit>().state;
     final projection = DesktopSidebarSessionProjection.from(projects: projects, entries: entries);
+    List<PregoMenuEntry> buildSessionMenuEntries({
+      required SessionListCubit cubit,
+      required Session session,
+    }) => sessionActions.sessionMenuEntries(context: context, cubit: cubit, session: session);
     final gutter = PregoSpacing.xl * expansion;
     final activityHeaderExpansion = projection.activityGroups.isEmpty ? 0.0 : expansion;
     return CustomScrollView(
@@ -320,7 +329,7 @@ class const _SidebarInventory({
                 expansion: expansion,
                 selectedSessionId: group.project.id == selectedProjectId ? selectedSessionId : null,
                 onOpenSession: onOpenSession,
-                sessionActions: sessionActions,
+                sessionMenuEntries: buildSessionMenuEntries,
               );
             },
           ),
@@ -355,7 +364,7 @@ class const _SidebarInventory({
                 onOpenProject: onOpenProject,
                 onOpenSession: onOpenSession,
                 onNewSession: onNewSession,
-                sessionActions: sessionActions,
+                sessionMenuEntries: buildSessionMenuEntries,
               );
             },
           ),
@@ -372,7 +381,7 @@ class const _SidebarActivityProjectGroup({
   required final double expansion,
   required final String? selectedSessionId,
   required final SidebarSessionOpenedCallback onOpenSession,
-  required final SessionListActionDispatcher sessionActions,
+  required final _SidebarSessionMenuEntriesBuilder sessionMenuEntries,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocProvider<SessionListCubit>(
@@ -398,8 +407,8 @@ class const _SidebarActivityProjectGroup({
             session: item.session,
           ),
           menuEntries: () {
-            actionContext.read<SessionListCubit>().updateActionSession(session: item.session);
-            return sessionActions.sessionMenuEntries(context: actionContext, session: item.session);
+            final cubit = actionContext.read<SessionListCubit>()..updateActionSession(session: item.session);
+            return sessionMenuEntries(cubit: cubit, session: item.session);
           },
         ),
       ),
@@ -422,7 +431,7 @@ class const _SidebarProjectGroup({
   required final ProjectOpenedCallback onOpenProject,
   required final SidebarSessionOpenedCallback onOpenSession,
   required final ProjectOpenedCallback onNewSession,
-  required final SessionListActionDispatcher sessionActions,
+  required final _SidebarSessionMenuEntriesBuilder sessionMenuEntries,
 }) extends StatefulWidget {
   @override
   State<_SidebarProjectGroup> createState() => _SidebarProjectGroupState();
@@ -575,11 +584,9 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                                       session: session,
                                     ),
                                     menuEntries: () {
-                                      actionContext.read<SessionListCubit>().updateActionSession(session: session);
-                                      return widget.sessionActions.sessionMenuEntries(
-                                        context: actionContext,
-                                        session: session,
-                                      );
+                                      final cubit = actionContext.read<SessionListCubit>()
+                                        ..updateActionSession(session: session);
+                                      return widget.sessionMenuEntries(cubit: cubit, session: session);
                                     },
                                   ),
                                 ),

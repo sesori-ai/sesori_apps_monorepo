@@ -46,6 +46,16 @@ class RecentSessionsCubit({
 
   void _admitProjects(List<ProjectSummary> projects) {
     if (isClosed) return;
+    final projectIds = projects.map((project) => project.id).toSet();
+    final removedProjectIds = state.keys.where((projectId) => !projectIds.contains(projectId)).toList();
+    if (removedProjectIds.isNotEmpty) {
+      for (final projectId in removedProjectIds) {
+        // Removing the request identity fences any completion already in flight.
+        _pendingReads.remove(projectId);
+        _lifecycleChangeGenerations.remove(projectId);
+      }
+      emit(Map.unmodifiable({...state}..removeWhere((projectId, _) => !projectIds.contains(projectId))));
+    }
     for (final project in projects) {
       unawaited(ensureLoaded(projectId: project.id));
     }

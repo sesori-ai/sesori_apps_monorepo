@@ -132,7 +132,11 @@ class const SessionListContent({
                       onTap: onSessionTap == null ? null : () => onSessionTap(session: session),
                       // The list's context, not the row's: archive/delete
                       // unmount the row before their follow-ups run.
-                      menuEntries: () => actionDispatcher.sessionMenuEntries(context: context, session: session),
+                      menuEntries: () => actionDispatcher.sessionMenuEntries(
+                        context: context,
+                        cubit: context.read<SessionListCubit>(),
+                        session: session,
+                      ),
                       onArchive: () => actionDispatcher.handleSessionArchive(context: context, session: session),
                       onDelete: () => actionDispatcher.handleSessionDelete(context: context, session: session),
                       onToggleUnread: () => actionDispatcher.handleSessionToggleUnread(

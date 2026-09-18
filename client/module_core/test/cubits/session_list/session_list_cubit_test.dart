@@ -2491,13 +2491,17 @@ void main() {
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
     });
 
-    test("action scope close waits for mark-seen failure recovery", () async {
+    test("action scope close waits for mark-seen recovery and delete response", () async {
       mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projects);
       final session = testSession(id: "s1", unseen: true);
       final markReply = Completer<ApiResponse<void>>();
+      final deleteReply = Completer<ApiResponse<void>>();
       when(
         () => mockSessionService.markSessionSeen(sessionId: session.id, read: true),
       ).thenAnswer((_) => markReply.future);
+      when(
+        () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
+      ).thenAnswer((_) => deleteReply.future);
       when(
         () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
@@ -2517,17 +2521,24 @@ void main() {
       );
 
       final mutation = cubit.markSessionSeen(sessionId: session.id, read: true);
+      final deletion = cubit.deleteSession(sessionId: session.id, deleteWorktree: true, force: false);
       final close = cubit.close();
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isFalse);
       expect(cubit.isClosed, isFalse);
 
       markReply.complete(ApiResponse.error(ApiError.generic()));
       await mutation;
+      expect(cubit.isClosed, isFalse);
+      deleteReply.complete(ApiResponse.success(null));
+      expect(await deletion, isTrue);
       await close;
 
       expect(cubit.isClosed, isTrue);
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isTrue);
       verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
+      verify(
+        () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
+      ).called(1);
     });
 
     group("catalog scan", () {

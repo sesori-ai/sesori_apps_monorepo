@@ -79,6 +79,42 @@ void main() {
     verify(() => repository.listSessions(projectId: "project-2", waitForPrData: false)).called(1);
   });
 
+  test("winning snapshots remove absent projects and fence their pending reads", () async {
+    const current = ProjectSummary(id: "current", name: "Current", path: "/current", time: null);
+    const removed = ProjectSummary(id: "removed", name: "Removed", path: "/removed", time: null);
+    const stale = ProjectSummary(id: "stale", name: "Stale", path: "/stale", time: null);
+    final staleProjects = Completer<ApiResponse<Projects>>();
+    final removedSessions = Completer<ApiResponse<SessionListResponse>>();
+    var projectRead = 0;
+    when(() => repository.listProjects()).thenAnswer((_) {
+      projectRead++;
+      return switch (projectRead) {
+        1 => staleProjects.future,
+        2 => Future.value(ApiResponse.success(const Projects(data: [current, removed]))),
+        _ => Future.value(ApiResponse.success(const Projects(data: [current]))),
+      };
+    });
+    when(() => repository.listSessions(projectId: removed.id, waitForPrData: false))
+        .thenAnswer((_) => removedSessions.future);
+    final staleRead = projectListService.listProjects();
+    await projectListService.listProjects();
+    if (cubit.state.length != 2) await cubit.stream.firstWhere((state) => state.length == 2);
+
+    await projectListService.listProjects();
+    expect(cubit.state.keys.toSet(), {current.id});
+    removedSessions.complete(ApiResponse.success(const SessionListResponse(items: [])));
+    staleProjects.complete(ApiResponse.success(const Projects(data: [stale])));
+    await staleRead;
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.keys.toSet(), {current.id});
+    final previousCurrent = cubit.state[current.id];
+    connection.emitDataMayBeStale();
+    await cubit.stream.firstWhere((state) => !identical(state[current.id], previousCurrent));
+    verify(() => repository.listSessions(projectId: current.id, waitForPrData: false)).called(2);
+    verify(() => repository.listSessions(projectId: removed.id, waitForPrData: false)).called(1);
+    verifyNever(() => repository.listSessions(projectId: stale.id, waitForPrData: false));
+  });
+
   test("lazy reads deduplicate, use active ordering, and pin the open row only once", () async {
     expect(cubit.state, isEmpty);
     final reply = Completer<ApiResponse<SessionListResponse>>();
