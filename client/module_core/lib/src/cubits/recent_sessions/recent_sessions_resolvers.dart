@@ -1,8 +1,8 @@
 import "package:collection/collection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../services/models/recent_sessions_entry.dart";
 import "../../services/session_activity_calculator.dart";
-import "recent_sessions_state.dart";
 
 /// Surface-neutral presentation derivation, following SessionListResolvers.
 /// Ordering/filtering remain owned by SessionListService; this chooses its head.

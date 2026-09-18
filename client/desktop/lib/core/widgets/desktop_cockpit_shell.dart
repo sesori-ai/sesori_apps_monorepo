@@ -15,23 +15,20 @@ import "desktop_sidebar.dart";
 /// Shared project/recent inventories and one layout owner per signed-in cockpit.
 class const DesktopCockpitCubitProvider({super.key, required final Widget child}) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => MultiBlocProvider(
-    providers: [
-      BlocProvider(create: (_) => createProjectListCubit(locator: getIt)),
-      BlocProvider(
-        lazy: false,
-        create: (_) => RecentSessionsCubit(
-          sessionListService: getIt<SessionListService>(),
-          projectListService: getIt<ProjectListService>(),
-          connectionService: getIt<ConnectionService>(),
-          sseEventTracker: getIt<SseEventTracker>(),
-          sessionUnseenTracker: getIt<SessionUnseenTracker>(),
-          catalogRescanService: getIt<CatalogRescanService>(),
+  Widget build(BuildContext context) => RepositoryProvider<RecentSessionInventoryService>(
+    create: (_) => getIt<RecentSessionInventoryService>(),
+    dispose: (inventory) => unawaited(inventory.dispose()),
+    child: MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => createProjectListCubit(locator: getIt)),
+        BlocProvider(
+          lazy: false,
+          create: (context) => RecentSessionsCubit(inventoryService: context.read<RecentSessionInventoryService>()),
         ),
-      ),
-      BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
-    ],
-    child: child,
+        BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
+      ],
+      child: child,
+    ),
   );
 }
 

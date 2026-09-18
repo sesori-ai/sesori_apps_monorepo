@@ -42,7 +42,7 @@ void main() {
       const Stream<Map<String, RecentSessionsEntry>>.empty(),
       initialState: const <String, RecentSessionsEntry>{},
     );
-    when(() => recent.ensureLoaded(projectId: any(named: "projectId"))).thenAnswer((_) async {});
+    when(() => recent.retry(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
@@ -224,7 +224,7 @@ void main() {
     updates.add(const ProjectListState.loaded(projects: [added], activityById: {}));
     await tester.pumpAndSettle();
 
-    verifyNever(() => recent.ensureLoaded(projectId: any(named: "projectId")));
+    verifyNever(() => recent.retry(projectId: any(named: "projectId")));
     await tester.pumpWidget(const SizedBox.shrink());
     await updates.close();
   });

@@ -122,16 +122,11 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   the only navigation surface. The main pane hosts one routed page: home,
   session detail, all sessions of a project, new session, diffs. The desktop
   no longer mounts `SessionSplitShell`; mobile keeps it.
-- **D2 — Sidebar data comes from existing cubits plus one small new cubit.**
-  `ProjectListCubit` moves up to the cockpit shell (created once per signed-in
-  shell). Recent sessions per project come from a new surface-neutral
-  `RecentSessionsCubit` in `module_core` that holds one entry per project and
-  delegates every fetch, filter, ordering and patch step to the existing
-  `SessionListService` methods `SessionListCubit` already uses. The cubit adds
-  no list-mutation logic of its own. It takes no project-view claim, so
-  viewing semantics (`ProjectViewingService`) stay exactly as today: the
-  sessions route and the detail route declare the viewed project, the sidebar
-  never does.
+- **D2 — Sidebar inventory has a scoped business owner.** `ProjectListCubit` is created once per signed-in
+  cockpit. `RecentSessionInventoryService` owns recent-session execution and immutable results in `module_core`,
+  using the existing `SessionListService` fetch/filter/order/patch methods. `RecentSessionsCubit` only mirrors
+  that service and forwards retry. The cockpit owns one factory instance, not a singleton or a second cache.
+  Neither owner takes a project-view claim: sessions/detail routes declare the viewed project; the sidebar never does.
 - **D3 — Activity first, then ordinary recents.** Step 9.c.2 adds an upfront
   section for every running or unseen non-archived session, including collapsed
   projects, with project context and no duplicate session rows. Existing
@@ -264,8 +259,8 @@ navigation or repeated settings links. Inspect the actual rendered result.
   Refine the oversized footer into compact purposeful controls, using plain-language
   local-computer wording rather than unexplained “Bridge”. Keep local supervision
   distinct from a connected remote computer and keep Quit app-scoped.
-- In 9.c.2b, move authoritative project/recent-session fetch execution and retained result state below presentation
-  Cubits, then expose one typed explicit refresh workflow to desktop-core. In 9.c.2c, show that workflow's
+- In 9.c.2b.1, move recent-session execution/results into a scoped service with a thin Cubit consumer. In 9.c.2b.2,
+  move project ownership and expose one typed explicit refresh workflow to desktop-core. In 9.c.2c, show that workflow's
   busy/failure state honestly in the footer or header, not through a new pull gesture.
 - Inspect flashing before attributing it to absent animation: preserve stable row
   identity and useful loaded data during refresh. Reuse `PregoAnimatedSliverList`
@@ -274,8 +269,8 @@ navigation or repeated settings links. Inspect the actual rendered result.
 - Apply the hover-hint rule above throughout the sidebar and in step 11's wider
   desktop audit. The scoped 9.c.2 architecture plan review rejected a foundation-layer
   projection and widget-owned refresh sequencing. Delivery 9.c.2a keeps the Layer-4 projection with its sidebar
-  consumer. Delivery 9.c.2b will add authoritative lower-layer refresh ownership, and 9.c.2c will consume its
-  registered desktop workflow; neither service exists in 9.c.2a.
+  consumer. Deliveries 9.c.2b.1/9.c.2b.2 add lower-layer inventory ownership, and 9.c.2c consumes the registered
+  desktop workflow. Neither lower-layer owner existed in 9.c.2a.
 
 ### Cockpit shell
 
@@ -316,16 +311,15 @@ Row
   `RecentSessionsLoaded` via its resolver extension, right-click opens the shared `SessionTile` actions
   (rename, archive, delete…). Left-click navigates to session detail.
 - "All sessions · N" row navigates to the project's sessions route.
-- Collapsed projects keep fetched data. Step 9.c.2 requests inventory through the
-  existing `RecentSessionsCubit.ensureLoaded(projectId:)` owner for all sidebar
-  projects, so priority activity is not limited to mounted or expanded groups.
+- Collapsed projects keep fetched data. `ProjectListService.listedProjects` admits every listed project through
+  `RecentSessionInventoryService`, so priority activity is not limited to mounted or expanded groups.
 
-### `RecentSessionsCubit` (module_core, Layer 4)
+### Recent inventory (module_core service and Layer-4 adapter)
 
-State: `Map<String projectId, RecentSessionsEntry>` where the entry is a sealed
+`RecentSessionInventoryService` owns `Map<String projectId, RecentSessionsEntry>` with sealed entries:
 `loading | failed | loaded(sourceSessions, visibleSessions, activityBySessionId, listStateBySessionId)`.
-The state is data-only; `RecentSessionsResolvers` derives the head-plus-open rows
-and status presentation, following the existing session-list resolver boundary.
+`RecentSessionsCubit` mirrors those immutable values through one subscription and delegates explicit retry.
+`RecentSessionsResolvers` derives head-plus-open rows and status presentation at the existing Layer-4 boundary.
 
 - `ensureLoaded(projectId:)` fetches via `SessionListService.listSessions(
   projectId:, waitForPrData: false)` and seeds `SessionUnseenTracker` exactly
@@ -334,24 +328,21 @@ and status presentation, following the existing session-list resolver boundary.
 - Rows are derived, not stored: `SessionListService.visibleSessions(sessions:,
   filter: SessionListFilter.active, activityBySessionId:,
   listStateBySessionId:)` at emit time, then the head-plus-open-session rule.
-- Subscriptions: `ConnectionService.events` (session created/updated/deleted
-  → `SessionListService.upsertSession` / `applySessionUpdatedEvent` /
-  `removeSession` on the entry's stored list, the same calls
-  `SessionListCubit` makes), `SseEventTracker.sessionActivity`,
-  `SessionUnseenTracker.sessionUnseen`, `ConnectionService.dataMayBeStale`
-  (refetch every requested project), `CatalogRescanService.catalogChanged`
-  (refetch every requested project, including failed/in-flight reads). No ordering, filtering or patching code is
-  written in the cubit.
-- A failed fetch keeps the entry `failed` with a retry row; it never blocks
-  other projects. Retry reads through `SessionListService`; transport recovery
-  remains outside this cubit.
+- The service owns six subscriptions: `ProjectListService.listedProjects`, `ConnectionService.events`,
+  `SseEventTracker.sessionActivity`, `SessionUnseenTracker.sessionUnseen`, `ConnectionService.dataMayBeStale`,
+  and `CatalogRescanService.catalogChanged`. Session events use the same upsert/update/remove helpers as
+  `SessionListCubit`; reconnect/catalog signals refresh every known project, including failed/in-flight entries.
+- A failed initial fetch exposes a project-local retry row. A background failure logs the error and retains loaded
+  rows until an explicit retry or a later refresh signal; it does not schedule its own retries.
+  Transport recovery stays outside this service.
 - Shared session menus use a lazy per-project `SessionListMode.actions` scope,
   seeded from the recent inventory, with no initial read, project-view claim,
   or route-navigation refresh. Normal pages use `SessionListMode.view`;
   existing mutation/refresh behavior remains shared. Each menu synchronizes its
   named session from the current recent inventory without replacing other rows.
-- Created directly in `DesktopCockpitCubitProvider`, resolving service dependencies
-  inside `BlocProvider(create:)`.
+- `DesktopCockpitCubitProvider` owns one injectable service factory through `RepositoryProvider` and eagerly creates
+  its Cubit before initial project publication. Adapter close only cancels its subscription; cockpit teardown disposes
+  the service. A replacement consumer sees retained data, while a new signed-in scope starts empty.
 
 ### Main pane pages
 
@@ -472,9 +463,9 @@ the modal.
 - Sidebar persistence read failure → defaults (260 px, expanded, nothing
   collapsed) and a warning log. Write failure → warning log; the in-memory
   layout still applies for the session.
-- `RecentSessionsCubit` fetch failure → that project's entry is `failed`; a
-  retry row re-runs `ensureLoaded`. Reconnect (`dataMayBeStale`) refetches
-  every loaded project.
+- `RecentSessionInventoryService` initial-fetch failure → that project's entry is `failed`; its retry row delegates
+  to service `retry`. Background failure retains loaded/live-patched rows and logs the error. A later explicit retry,
+  reconnect (`dataMayBeStale`), catalog commit, or relevant session event can refresh it; no autonomous retry is added.
 - First-run defaults: a failed `LaunchAtLogin.enable()` leaves the bridge On
   and logs a warning; General preferences show the real launch-at-login state. If the
   bridge cannot start (login required, contention), the existing process
@@ -516,8 +507,8 @@ New persistent state:
 New in-memory mutable parts:
 
 - `DesktopSidebarCubit` state (three fields) and its write future.
-- `RecentSessionsCubit` map plus five stream subscriptions (all mutation
-  delegated to `SessionListService`).
+- `RecentSessionInventoryService`: one inventory subject and six event subscriptions, with list operations delegated
+  to `SessionListService`. `RecentSessionsCubit`: one adapter subscription, cancelled independently of the service.
 - `FileAccessCubit` status + per-run dismissed flag, one subscription and probe generation.
 - `DesktopStartupOrchestrator`: one added auth subscription and disposal bit.
   First-run persistence reuses the existing service write queue/restore generation.
@@ -525,12 +516,13 @@ New in-memory mutable parts:
   append future and failure bit plus its helper's queue/directory/file preparation
   state; mobile queue and failure bit. Bridge helper state is moved, not duplicated.
 - Step 9.b: one ephemeral drag-origin value (initial width/global pointer position).
-- Step 9.c.1: one pending-read identity map plus one lifecycle-generation map in
-  `RecentSessionsCubit`; the latter replaces the earlier changed-during-read set.
-  Usable data and an in-flight read coexist, and staleness retires only after snapshot application.
+- One pending-read identity map plus one lifecycle-generation map, introduced in 9.c.1 and now owned by
+  `RecentSessionInventoryService`. Usable data and an in-flight read coexist; lifecycle staleness retires only after
+  snapshot application.
 - Step 9.c.2a adds a state-free priority projection and Prego consumer without another data cache, timer or
-  persistence. Step 9.c.2b may add lower-layer refresh state only by replacing presentation-owned fetch execution,
-  not by publishing requests back to Cubits. Step 9.c.2c consumes that service in Flutter.
+  persistence. Step 9.c.2b.1 moves its two maps and subscriptions into a scoped factory service; one BehaviorSubject
+  replaces Bloc's inventory storage and the Cubit only mirrors immutable values. The signed-in cockpit owns disposal.
+  Step 9.c.2b.2 replaces project-owned execution, never dispatching requests back to Cubits; 9.c.2c adds its UI.
 
 Deliberately not added: per-project refetch debounce timers (patching replaces
 them), a "last open session" record, a settings deep-link route scheme, a
@@ -564,10 +556,10 @@ Deferred: none. No obsolete wire or database artifacts result from this plan.
 
 ## Delivery Plan
 
-Series slug `desktop-ux`: 12 logical steps, 21 PRs. Steps 2.a/2.b map to
+Series slug `desktop-ux`: 12 logical steps, 22 PRs. Steps 2.a/2.b map to
 ordinals 2/3; original 3–6 to 4–7; 7.a/7.b/7.c to 8/9/10; step 8 to 11.
-Logging 9.a.1/9.a.2 are 12/13; sidebar 9.b/9.c.1/9.c.2a/9.c.2b/9.c.2c are 14–18.
-Steps 10–12 map to 19–21. Targets count additions plus deletions across every path.
+Logging 9.a.1/9.a.2 are 12/13; sidebar 9.b/9.c.1/9.c.2a are 14–16, 9.c.2b.1/9.c.2b.2 are 17/18,
+and 9.c.2c is 19. Steps 10–12 map to 20–22. Targets count additions plus deletions across every path.
 Exact titles and branches are in [TRACKER](TRACKER.md#pr-titles); historical Git subjects are preserved.
 
 On 2026-09-15 the user explicitly requested keeping additional styling out of
@@ -583,38 +575,42 @@ Completed implementation specifics live in the linked evidence; this matrix summ
 
 | Step | Delivery | Target | Scope |
 |---|---|---|---|
-| 1 | 1/21 | ≤ 900 | This plan, tracker and roadmap cross-references. |
-| 2.a | 2/21 | ≤ 1,400 | [Resizable/collapsible sidebar frame and layout persistence](steps/step-02.md). |
-| 2.b | 3/21 | ≤ 900 | [Sidebar styling, motion and project activity](steps/step-02b.md). |
-| 3 | 4/21 | ≤ 1,200 | [Shared recent-session inventory and project actions](steps/step-03.md). |
-| 4 | 5/21 | ≤ 1,400 | [Main-pane routing, home and shared fonts](steps/step-04.md). |
-| 5 | 6/21 | ≤ 700 | [Connection overlay without layout shift](steps/step-05.md). |
-| 6 | 7/21 | ≤ 1,500 | [Contextual bridge popover and canonical home](steps/step-06.md). |
-| 7.a | 8/21 | ≤ 500 | [Shared Settings composition and native preference commands](steps/step-07a.md). |
-| 7.b | 9/21 | ≤ 700 | [Viewed-session ownership across root overlays](steps/step-07b.md). |
-| 7.c | 10/21 | ≤ 1,750 | [Settings modal and route retirement](steps/step-07c.md). |
-| 8 | 11/21 | ≤ 1,000 | [First-run defaults and optional file-access guidance](steps/step-08.md). |
-| 9.a.1 | 12/21 | ≤ 1,300 | [Safe diagnostics and bounded Quit completion](steps/step-09a1.md). |
-| 9.a.2 | 13/21 | ≤ 1,300 | [Rotating app files and prepared logs directory](steps/step-09a.md). |
-| 9.b | 14/21 | ≤ 500 | [Anchored resizing and scrollbar hit targets](steps/step-09b.md). |
-| 9.c.1 | 15/21 | ≤ 650 | [Loaded/live inventory and request ownership](steps/step-09c1.md). |
-| 9.c.2a | 16/21 | ≤ 1,400 | All-project Activity projection and sidebar presentation with priority exclusion. |
-| 9.c.2b | 17/21 | ≤ 1,400 | Authoritative inventory refresh below presentation owners. |
-| 9.c.2c | 18/21 | ≤ 1,450 | Explicit refresh presentation, purposeful controls and useful hints. |
-| 10 | 19/21 | ≤ 600 | Keyboard shortcuts and macOS title-bar/drag integration. |
-| 11 | 20/21 | ≤ 600 | Control-content audit and regression reconciliation. |
-| 12 | 21/21 | ≤ 300 | Recorded coverage, phase-2 handoff and plan retirement. |
+| 1 | 1/22 | ≤ 900 | This plan, tracker and roadmap cross-references. |
+| 2.a | 2/22 | ≤ 1,400 | [Resizable/collapsible sidebar frame and layout persistence](steps/step-02.md). |
+| 2.b | 3/22 | ≤ 900 | [Sidebar styling, motion and project activity](steps/step-02b.md). |
+| 3 | 4/22 | ≤ 1,200 | [Shared recent-session inventory and project actions](steps/step-03.md). |
+| 4 | 5/22 | ≤ 1,400 | [Main-pane routing, home and shared fonts](steps/step-04.md). |
+| 5 | 6/22 | ≤ 700 | [Connection overlay without layout shift](steps/step-05.md). |
+| 6 | 7/22 | ≤ 1,500 | [Contextual bridge popover and canonical home](steps/step-06.md). |
+| 7.a | 8/22 | ≤ 500 | [Shared Settings composition and native preference commands](steps/step-07a.md). |
+| 7.b | 9/22 | ≤ 700 | [Viewed-session ownership across root overlays](steps/step-07b.md). |
+| 7.c | 10/22 | ≤ 1,750 | [Settings modal and route retirement](steps/step-07c.md). |
+| 8 | 11/22 | ≤ 1,000 | [First-run defaults and optional file-access guidance](steps/step-08.md). |
+| 9.a.1 | 12/22 | ≤ 1,300 | [Safe diagnostics and bounded Quit completion](steps/step-09a1.md). |
+| 9.a.2 | 13/22 | ≤ 1,300 | [Rotating app files and prepared logs directory](steps/step-09a.md). |
+| 9.b | 14/22 | ≤ 500 | [Anchored resizing and scrollbar hit targets](steps/step-09b.md). |
+| 9.c.1 | 15/22 | ≤ 650 | [Loaded/live inventory and request ownership](steps/step-09c1.md). |
+| 9.c.2a | 16/22 | ≤ 1,400 | All-project Activity projection and sidebar presentation with priority exclusion. |
+| 9.c.2b.1 | 17/22 | ≤ 1,200 | Scoped recent-session inventory below its presentation adapter. |
+| 9.c.2b.2 | 18/22 | ≤ 1,400 | Project inventory ownership and typed lower-layer refresh workflow. |
+| 9.c.2c | 19/22 | ≤ 1,450 | Explicit refresh presentation, purposeful controls and useful hints. |
+| 10 | 20/22 | ≤ 600 | Keyboard shortcuts and macOS title-bar/drag integration. |
+| 11 | 21/22 | ≤ 600 | Control-content audit and regression reconciliation. |
+| 12 | 22/22 | ≤ 300 | Recorded coverage, phase-2 handoff and plan retirement. |
 
 9.c.1 extracts the observed loading-placeholder replacement from the larger UI slice.
 It keeps current loaded data through automatic refresh/failure, continues live patches,
 and separates private request identity from a retained lifecycle generation; supersession
-and coalescing stay in `RecentSessionsCubit`. No new API/model/DI or Flutter production change. Its scoped plan review
-is approved; later 9.c.2 composition needs its own review. Measured implementation size first split 9.c.2 into
-pure-Dart foundations and Flutter composition. PR #1533 review then proved that a request bus still made lower-layer
+and coalescing stayed in `RecentSessionsCubit` in that slice. It added no API/model/DI or Flutter production changes.
+Its scoped plan review is approved; later 9.c.2 composition needs its own review.
+Measured implementation size first split 9.c.2 into pure-Dart foundations and Flutter composition.
+PR #1533 review then proved that a request bus still made lower-layer
 refresh execution depend on mounted presentation Cubits. Keep 9.c.2a to the independent activity projection, move
 true lower-layer execution into 9.c.2b. A later review required the projection to land with its production Activity
-consumer, so 9.c.2a retains that prepared subset while refresh/control composition stays in 9.c.2c. This adds no feature
-scope and keeps the reviewed PR below the repository soft cap.
+consumer, so 9.c.2a retains that prepared subset while refresh/control composition stays in 9.c.2c. Its final measured
+soft-cap exception is recorded in the step evidence. The follow-up now splits at the existing recent/project inventory
+boundary: 9.c.2b.1 moves recent ownership and its consumer; 9.c.2b.2 moves project ownership and the refresh workflow.
+This adds no feature scope, temporary compatibility API, or presentation-driven request bus.
 
 Step 10 retains ⌘N, ⌘, and ⌘B via cockpit `CallbackShortcuts`, shortcut hints, and macOS hidden
 chrome/drag region behind the single D12 switch in `FlutterWindowHost.initialize`.
@@ -650,9 +646,9 @@ overrides. This small shared typography fix adds no state or renderer changes;
 mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 
 Logging 9.a.1–9.a.2 is merged, preserving #1509's published history through forward integration.
-9.b interactions merged as #1524 and 9.c.1 refresh continuity merged as #1526. Continue with 9.c.2a
-activity projection/presentation, 9.c.2b lower refresh ownership, 9.c.2c refresh/controls UI and 10 shortcuts/title bar;
-publish each successor only after its predecessor merges.
+9.b interactions merged as #1524, 9.c.1 refresh continuity as #1526, and 9.c.2a Activity presentation as #1533.
+Continue with 9.c.2b.1 recent ownership, 9.c.2b.2 project ownership/workflow, 9.c.2c controls,
+and 10 shortcuts/title bar; publish each successor only after its predecessor merges.
 Steps 11 and 12 remain the final audit and qualification.
 Step 8 must land after
 step 7.c (General startup preferences and Bridge/FDA settings). Step 7.a follows
@@ -819,8 +815,9 @@ that review loop, 9.a.1 landed separately as #1514; file output remains 9.a.2. A
 plan review (`e973a005-01ab-43fe-aaf8-eb43ebc854f6`) approved the two-slice ownership;
 see [prerequisite evidence](steps/step-09a1.md). Sidebar 9.c.1 received its separate
 refresh-continuity plan approval. The scoped 9.c.2 review rejected foundation placement and widget
-orchestration. Delivery 9.c.2a uses the Layer-4 projection from the desktop shell; 9.c.2b will move authoritative
-refresh execution/state below presentation owners; 9.c.2c will add the DI-registered desktop workflow consumer.
+orchestration. Delivery 9.c.2a uses the Layer-4 projection from the desktop shell. Scoped plan review
+`46845cb8-150d-481a-a6c0-d9589a9bf170` approves 9.c.2b.1's factory-owned recent inventory and thin Cubit.
+9.c.2b.2 will move project ownership and the refresh workflow; 9.c.2c adds the registered workflow's UI consumer.
 
 ## Relation To Other Plans
 

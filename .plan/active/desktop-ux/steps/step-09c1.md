@@ -1,6 +1,6 @@
 # Step 9.c.1 — sidebar refresh continuity
 
-Delivery 15/21; branch `desktop-ux/sidebar-refresh-continuity`. The merged PR was published as 15/19.
+Delivery 15/22; branch `desktop-ux/sidebar-refresh-continuity`. The merged PR was published as 15/19.
 Implementation and focused verification complete; merged as PR #1526.
 The original 9.c is split without added scope: this existing-owner lifecycle fix, then 9.c.2 UI composition.
 
