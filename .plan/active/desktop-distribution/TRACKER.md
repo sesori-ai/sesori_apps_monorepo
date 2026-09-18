@@ -115,9 +115,16 @@ status-bar menu. The follow-up used system-wide z-order hit testing. Fourth main
 run `35391748404` at source `f6cc2f0cccdd13db1f067f8914bfab3c9a9a437f`, tree
 `39b10f019514c5623a6bf1b6a0ef30a399d5d8ec`, failed safely on arm64 job
 `105751519510` and x64 job `105751519532`: sampled points saw only AXGroup/AXWindow,
-not an accepted popup. The next correction sends one real mouse click to the strictly
-bounded process-owned status frame, then retains exact PID/menu/frame/Quit admission.
-Authenticated helper-On, failed-stop, real-account/TCC, minimum-OS and public artifact
+not an accepted popup. PR #1541 added one real mouse click to the strictly bounded
+process-owned status frame while retaining exact PID/menu/frame/Quit admission; it
+merged as `75a3e8c49be647ff663ea05207ed1badaa14db28`. Runs `35399491087` and
+`35399933745` at that source/tree
+`9724e3a2de1c31cfb4ca0fa3284aa423a8266b86` passed complete arm64 flows in jobs
+`105775932697` and `105777334558`. X64 jobs `105775932698` and `105777334570`
+passed the prior app's replacement/Quit and installed/launched the current app, but the
+single inspector call 15 seconds after launch found no visible current window. The next
+correction retains all admission gates and adds a bounded 45-second read-only window
+wait with per-attempt evidence. Authenticated helper-On, failed-stop, real-account/TCC, minimum-OS and public artifact
 retrieval remain open; the download page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
@@ -241,7 +248,7 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update path | Four main probes failed safely | Bounded real-click rerun and full gates pending. |
+| macOS update path | Arm64 complete; x64 window sample absent | Bounded readiness rerun and full gates pending. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Migration complete | Public hosting gates pending. |
 | macOS public gate | Pending | See checkpoint above. |

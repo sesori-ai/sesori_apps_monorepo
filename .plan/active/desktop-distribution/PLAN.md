@@ -5,9 +5,10 @@
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
 - **Status:** Active — steps 1–5 and the private portions of steps 6, 7 and 9
-  merged. The macOS signing-secret migration is complete. Four main-only native
-  x64/arm64 helper-Off `1.8.4+24 → 1.9.0+62` runs failed safely at tray Quit; a
-  bounded real-click fix and accepted rerun are pending. Public
+  merged. The macOS signing-secret migration is complete. Six main-only native
+  x64/arm64 helper-Off `1.8.4+24 → 1.9.0+62` runs have not yet yielded dual-CPU
+  acceptance: the latest two passed arm64 completely but sampled the x64 current
+  window only once before it became visible. A bounded readiness-wait rerun is pending. Public
   macOS/Windows/Linux publication
   and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
   releases. The independently executable private portion of step 11 is in progress;
@@ -421,7 +422,15 @@ searching for Quit only inside that menu.
 The fourth main-only run showed system-wide hit tests still saw only groups/windows,
 confirming AXPress did not expose the custom-view popup. The correction sends one mouse
 click to the verified process-owned 4–100 × 4–64 point frame within the top 80 points,
-then retains the exact PID/AXMenu/frame/bounded-Quit admission checks.
+then retains the exact PID/AXMenu/frame/bounded-Quit admission checks. It merged as
+`75a3e8c49be647ff663ea05207ed1badaa14db28`.
+
+**Step 6 visible-window wait correction PR:**
+`🌿 [desktop-distribution] Wait for macOS replacement window [step 8/14]`.
+Two post-merge runs passed arm64 completely and reached current-package startup on x64,
+but each x64 job failed at its only visible-window sample 15 seconds after launch. The
+correction retries that read-only inspector for 45 additional bounded seconds, records
+every attempt, and still refuses an exited process, inactive screen or final absence.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.

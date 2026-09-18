@@ -98,8 +98,14 @@ compiled channel; an older unpublished baseline may predate channel metadata.
 
 On a fresh Actions host with no existing app, bridge, login registration or relevant
 state root, the probe copies the previous app from its real DMG into Applications,
-launches a visible window with persisted Bridge Off, requires AXPress capability on its
-process-owned status item, validates its small menu-bar frame and clicks that exact
+launches with persisted Bridge Off and, after the initial startup interval, retries the
+read-only visible-window inspector for up to 45 additional seconds while the process
+remains alive. This is the deliberate exception to one-shot window observation because
+two native x64 runs had a live owned process at that boundary: it polls only the local
+inspector within the fixed deadline, never restarts the app or workflow, and leaves the
+window acceptance criteria unchanged. It requires AXPress capability on its
+process-owned status item,
+validates its small menu-bar frame and clicks that exact
 frame. It then performs a system-wide z-order hit test beside the frame and
 accepts only a menu owned by the exact PID and anchored to that frame,
 then invokes `Quit Sesori` only inside the
@@ -114,8 +120,10 @@ before the press without a new accepted popup, while x64 traversal invalidated i
 status-item reference. Third main-only run `35384845467` failed safely because
 application-scoped hit testing did not surface the status-bar menu on either CPU.
 Fourth main-only run `35391748404` also refused because AXPress left only groups/windows
-at the system-wide sample points. The bounded real-click correction awaits a new main
-run. This does not prove an
+at the system-wide sample points. The bounded real-click correction then merged. Runs
+`35399491087` and `35399933745` passed arm64 completely. Both x64 jobs passed prior-app
+Quit and current installation/launch but found no current window at the single sample
+15 seconds after launch. The bounded visible-window wait awaits a new main run. This does not prove an
 authenticated helper-On or failed-stop path, real-account/Keychain/TCC behavior,
 minimum-OS support, public retrieval, or release readiness.
 
