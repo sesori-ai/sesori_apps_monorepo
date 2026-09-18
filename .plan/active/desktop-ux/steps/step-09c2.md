@@ -55,13 +55,13 @@ The focused current-head correction plan is
 `/tmp/rose-elephant-1533-review-corrections-architecture-plan-review.md`, SHA-256
 `d42efb22d10c0eb7298944721644ab607b64067b0942342fa164b7eb3867c8c2`.
 
-Final source checkpoint: `4ccaf6302bf0ae906cccf4796702a8289db84669`, tree
-`973922f0fddd6c820d5cb16ee9a2ded33363bf9f`. It measures 1,226 all-path changed lines (1,065 additions,
-161 deletions) across 18 files: 550 production, 313 tests, 343 documentation and 20 generated localization lines.
-The later evidence correction is outside that immutable measurement.
+Final source checkpoint: `132bac6fa9880f397520404d5258c1b2a58eab90`, tree
+`97e5472fbbb46c70e330c8a7175ccfa09e191d46`. It measures 1,344 all-path changed lines (1,174 additions,
+170 deletions) across 23 files: 583 production, 351 tests, 389 documentation and 21 generated lines. The later
+source-evidence correction is outside that immutable measurement.
 
 ```bash
-git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..4ccaf6302bf0ae906cccf4796702a8289db84669 --
+git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..132bac6fa9880f397520404d5258c1b2a58eab90 --
 ```
 
 ## Verification
