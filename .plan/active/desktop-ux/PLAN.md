@@ -264,18 +264,18 @@ navigation or repeated settings links. Inspect the actual rendered result.
   Refine the oversized footer into compact purposeful controls, using plain-language
   local-computer wording rather than unexplained “Bridge”. Keep local supervision
   distinct from a connected remote computer and keep Quit app-scoped.
-- Add subtle refresh/resync by reusing `ProjectListCubit.refreshProjects()` and
-  the existing catalog/recent-session refresh owners; show busy/failure honestly.
-  Placement belongs in the footer or header, not a new pull gesture.
+- In 9.c.2b, move authoritative project/recent-session fetch execution and retained result state below presentation
+  Cubits, then expose one typed explicit refresh workflow to desktop-core. In 9.c.2c, show that workflow's
+  busy/failure state honestly in the footer or header, not through a new pull gesture.
 - Inspect flashing before attributing it to absent animation: preserve stable row
   identity and useful loaded data during refresh. Reuse `PregoAnimatedSliverList`
   for the scrolling inventory and `PregoAnimatedList` where nested rows fit;
   retain reduced motion and native Apple indicators. Do not build another animator.
 - Apply the hover-hint rule above throughout the sidebar and in step 11's wider
   desktop audit. The scoped 9.c.2 architecture plan review rejected a foundation-layer
-  projection and widget-owned refresh sequencing. The implementation addresses those
-  required findings with a Layer-4 projection, a DI-registered lower-layer refresh request
-  owner consumed by the inventory Cubits, and a registered desktop workflow service.
+  projection and widget-owned refresh sequencing. Delivery 9.c.2a keeps the Layer-4 projection with its sidebar
+  consumer. Delivery 9.c.2b will add authoritative lower-layer refresh ownership, and 9.c.2c will consume its
+  registered desktop workflow; neither service exists in 9.c.2a.
 
 ### Cockpit shell
 
@@ -528,8 +528,9 @@ New in-memory mutable parts:
 - Step 9.c.1: one pending-read identity map plus one lifecycle-generation map in
   `RecentSessionsCubit`; the latter replaces the earlier changed-during-read set.
   Usable data and an in-flight read coexist, and staleness retires only after snapshot application.
-- Step 9.c.2 reuses inventory owners and Prego animation state; a lower service owns the two explicit request streams;
-  derive priority rows without another data cache, timer or persistence.
+- Step 9.c.2a adds a state-free priority projection and Prego consumer without another data cache, timer or
+  persistence. Step 9.c.2b may add lower-layer refresh state only by replacing presentation-owned fetch execution,
+  not by publishing requests back to Cubits. Step 9.c.2c consumes that service in Flutter.
 
 Deliberately not added: per-project refetch debounce timers (patching replaces
 them), a "last open session" record, a settings deep-link route scheme, a
@@ -597,9 +598,9 @@ Completed implementation specifics live in the linked evidence; this matrix summ
 | 9.a.2 | 13/21 | ≤ 1,300 | [Rotating app files and prepared logs directory](steps/step-09a.md). |
 | 9.b | 14/21 | ≤ 500 | [Anchored resizing and scrollbar hit targets](steps/step-09b.md). |
 | 9.c.1 | 15/21 | ≤ 650 | [Loaded/live inventory and request ownership](steps/step-09c1.md). |
-| 9.c.2a | 16/21 | ≤ 700 | Pure-Dart all-project activity and priority-exclusion projection. |
+| 9.c.2a | 16/21 | ≤ 1,400 | All-project Activity projection and sidebar presentation with priority exclusion. |
 | 9.c.2b | 17/21 | ≤ 1,400 | Authoritative inventory refresh below presentation owners. |
-| 9.c.2c | 18/21 | ≤ 1,450 | Priority activity, purposeful controls, Prego transitions and useful hints. |
+| 9.c.2c | 18/21 | ≤ 1,450 | Explicit refresh presentation, purposeful controls and useful hints. |
 | 10 | 19/21 | ≤ 600 | Keyboard shortcuts and macOS title-bar/drag integration. |
 | 11 | 20/21 | ≤ 600 | Control-content audit and regression reconciliation. |
 | 12 | 21/21 | ≤ 300 | Recorded coverage, phase-2 handoff and plan retirement. |
@@ -611,8 +612,9 @@ and coalescing stay in `RecentSessionsCubit`. No new API/model/DI or Flutter pro
 is approved; later 9.c.2 composition needs its own review. Measured implementation size first split 9.c.2 into
 pure-Dart foundations and Flutter composition. PR #1533 review then proved that a request bus still made lower-layer
 refresh execution depend on mounted presentation Cubits. Keep 9.c.2a to the independent activity projection, move
-true lower-layer execution into 9.c.2b, and retain the prepared Flutter composition as 9.c.2c. This adds no feature scope
-and avoids growing a heavily reviewed PR beyond the repository soft cap.
+true lower-layer execution into 9.c.2b. A later review required the projection to land with its production Activity
+consumer, so 9.c.2a retains that prepared subset while refresh/control composition stays in 9.c.2c. This adds no feature
+scope and keeps the reviewed PR below the repository soft cap.
 
 Step 10 retains ⌘N, ⌘, and ⌘B via cockpit `CallbackShortcuts`, shortcut hints, and macOS hidden
 chrome/drag region behind the single D12 switch in `FlutterWindowHost.initialize`.
@@ -649,7 +651,7 @@ mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 
 Logging 9.a.1–9.a.2 is merged, preserving #1509's published history through forward integration.
 9.b interactions merged as #1524 and 9.c.1 refresh continuity merged as #1526. Continue with 9.c.2a
-activity projection, 9.c.2b lower refresh ownership, 9.c.2c activity/controls UI and 10 shortcuts/title bar;
+activity projection/presentation, 9.c.2b lower refresh ownership, 9.c.2c refresh/controls UI and 10 shortcuts/title bar;
 publish each successor only after its predecessor merges.
 Steps 11 and 12 remain the final audit and qualification.
 Step 8 must land after
@@ -817,8 +819,8 @@ that review loop, 9.a.1 landed separately as #1514; file output remains 9.a.2. A
 plan review (`e973a005-01ab-43fe-aaf8-eb43ebc854f6`) approved the two-slice ownership;
 see [prerequisite evidence](steps/step-09a1.md). Sidebar 9.c.1 received its separate
 refresh-continuity plan approval. The scoped 9.c.2 review rejected foundation placement and widget
-orchestration; the required corrections use a Layer-4 projection, lower-layer refresh request ownership consumed by
-independent inventory Cubits, and a DI-registered desktop workflow service.
+orchestration. Delivery 9.c.2a uses the Layer-4 projection from the desktop shell; 9.c.2b will move authoritative
+refresh execution/state below presentation owners; 9.c.2c will add the DI-registered desktop workflow consumer.
 
 ## Relation To Other Plans
 

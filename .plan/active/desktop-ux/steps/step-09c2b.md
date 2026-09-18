@@ -17,6 +17,6 @@ Status: pending #1533 merge.
 ## Delivery boundary
 
 Prepare a fresh code-informed plan and architecture plan review after 9.c.2a merges. Keep this change independent from
-9.c.2c Flutter activity/control composition. If a coherent implementation approaches the 1,400-line target, split at an
+9.c.2c explicit-refresh and control composition. If a coherent implementation approaches the 1,400-line target, split at an
 independently valid lower-layer boundary rather than adding temporary compatibility APIs or feeding an oversized review
 loop.

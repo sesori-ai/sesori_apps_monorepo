@@ -11,10 +11,11 @@ original 3–6 to 4–7; 7.a/7.b/7.c to 8/9/10; step 8 to 11.
 Logging 9.a.1/9.a.2 are 12/13; sidebar 9.b/9.c.1/9.c.2a/9.c.2b/9.c.2c are 14–18;
 original steps 10–12 are 19–21. Earlier evidence filenames stay unchanged.
 Logging uses `step-09a1.md` and `step-09a.md`; sidebar uses `step-09b.md`,
-`step-09c1.md` (refresh continuity), `step-09c2.md` (activity projection),
-`step-09c2b.md` (lower refresh ownership), and `step-09c.md` (activity/controls UI).
-The latest split removes an invalid presentation-owner runtime dependency from 9.c.2a;
-the dedicated lower-layer follow-up can preserve refresh semantics without making the reviewed PR oversized.
+`step-09c1.md` (refresh continuity), `step-09c2.md` (activity projection/presentation),
+`step-09c2b.md` (lower refresh ownership), and `step-09c.md` (refresh/controls UI).
+The latest split removes an invalid presentation-owner runtime dependency from 9.c.2a. Review then kept its
+projection with the production Activity consumer; the dedicated lower-layer follow-up can preserve refresh semantics
+without making the reviewed PR oversized.
 
 | Done | Step | Branch | Title | Target | State |
 |---|---|---|---|---|---|
@@ -33,7 +34,7 @@ the dedicated lower-layer follow-up can preserve refresh semantics without makin
 | [x] | 9.a.2 | `desktop-ux/app-logs` | [13/21](#pr-titles) | ≤ 1,300 | done |
 | [x] | 9.b | `desktop-ux/sidebar-interactions` | [14/21](#pr-titles) | ≤ 500 | done |
 | [x] | 9.c.1 | `desktop-ux/sidebar-refresh-continuity` | [15/21](#pr-titles) | ≤ 650 | done |
-| [x] | 9.c.2a | `desktop-ux/sidebar-activity-foundation` | [16/21](#pr-titles) | ≤ 700 | done |
+| [x] | 9.c.2a | `desktop-ux/sidebar-activity-foundation` | [16/21](#pr-titles) | ≤ 1,400 | done |
 | [ ] | 9.c.2b | `desktop-ux/sidebar-refresh-ownership` | [17/21](#pr-titles) | ≤ 1,400 | in-progress |
 | [ ] | 9.c.2c | `desktop-ux/sidebar-activity-controls` | [18/21](#pr-titles) | ≤ 1,450 | pending |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | [19/21](#pr-titles) | ≤ 600 | pending |
@@ -63,9 +64,9 @@ These are current series titles; historical Git/squash subjects remain unchanged
 - 13/21: `⚙️ [desktop-ux] Write app logs to rotating files [step 13/21]`
 - 14/21: `🌿 [desktop-ux] Fix sidebar resizing and project hit targets [step 14/21]`
 - 15/21: `⚙️ [desktop-ux] Preserve sidebar sessions during refresh [step 15/21]`
-- 16/21: `🌿 [desktop-ux] Prepare sidebar activity projection [step 16/21]`
+- 16/21: `⚙️ [desktop-ux] Prioritize activity in the sidebar [step 16/21]`
 - 17/21: `🚧 [desktop-ux] Move sidebar refresh ownership below Cubits [step 17/21]`
-- 18/21: `⚙️ [desktop-ux] Prioritize sidebar activity and simplify controls [step 18/21]`
+- 18/21: `⚙️ [desktop-ux] Add sidebar refresh and simplify controls [step 18/21]`
 - 19/21: `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 19/21]`
 - 20/21: `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 20/21]`
 - 21/21: `🌿 [desktop-ux] Run coverage and retire the plan [step 21/21]`

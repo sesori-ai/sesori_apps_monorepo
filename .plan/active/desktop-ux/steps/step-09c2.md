@@ -1,4 +1,4 @@
-# Step 9.c.2a — Sidebar activity projection
+# Step 9.c.2a — Sidebar Activity projection and presentation
 
 Delivery 16/21; branch `desktop-ux/sidebar-activity-foundation`.
 Base: #1526 squash `a6b32359f028151649cc4553297bc60ace1c0383`, tree
@@ -6,43 +6,61 @@ Base: #1526 squash `a6b32359f028151649cc4553297bc60ace1c0383`, tree
 
 ## Scope
 
-- Derive every running or live-unseen non-archived session across all loaded projects in a pure Layer-4 desktop
+- Derive every running or live-unseen non-archived session across all current projects in a pure Layer-4 desktop
   projection, preserving project order and session order.
-- Exclude projected activity IDs before choosing each project's ordinary three rows plus the selected active row.
-- Require every recent-row caller to provide its exclusion set explicitly; the existing sidebar supplies `const {}`
-  until the Flutter composition lands.
-- Add no Flutter composition, explicit refresh operation, DI registration, request/cache owner, backend request,
-  persistence, timer, project-view claim or analytics event.
+- Present those sessions once in a keyed Activity section with project context, status, selection, navigation and the
+  existing action menus.
+- Exclude Activity IDs before choosing each project's ordinary three rows plus active selected-session pin while keeping
+  `All sessions · N` based on the full active inventory.
+- Admit collapsed and offscreen projects through the existing recent-session Cubit; the sidebar inventory is the sole
+  automatic admission trigger and dispatches only when a project ID enters.
+- Reuse Prego list reconciliation/reduced-motion behavior, stable project/session keys, existing action-only
+  `SessionListCubit` scopes, native Apple indicators, useful-only hints and accessibility semantics.
+- Add no explicit refresh operation, lower-layer refresh owner, backend request shape, data cache, timer, queue,
+  project-view claim, persistence or analytics event.
 
-## Review-driven split
+## Review-driven boundary
 
 The scoped plan review `7a64c300-5abd-46c6-8656-b75f8acb882d` rejected Layer-0 projection placement and widget-owned
 refresh sequencing. Earlier implementation checkpoints then tried a Layer-4 orchestrator, Cubit-implemented operation
-ports, and finally a Layer-3 request bus consumed by Cubits. PR review thread `PRRT_kwDORscidM6jyatt` correctly found
-that the request bus still required mounted Layer-4 presentation owners to execute lower-layer operations. Thread
-`PRRT_kwDORscidM6jyat1` also found that the added explicit session-refresh successor chain could lose a later winner
-after a completed successor left the pending map.
+ports, and a Layer-3 request bus consumed by Cubits. PR thread `PRRT_kwDORscidM6jyatt` correctly found that the bus still
+required mounted Layer-4 presentation owners to execute lower-layer operations. Thread `PRRT_kwDORscidM6jyat1` found
+that its explicit session-refresh result chain could lose a later winner after a completed successor left the pending
+map. Those refresh additions were removed rather than hidden behind another abstraction.
 
-Both invalid refresh additions are removed from this delivery rather than hidden behind another abstraction or grown
-into a large correction inside an already reviewed PR. Project and recent-session Cubits, core and desktop DI, and the
-desktop shell return to the merged #1526 behavior. The dedicated 9.c.2b delivery owns the substantive move of
-authoritative fetch execution and state below presentation owners; prepared Flutter composition moves unchanged in
-scope to 9.c.2c. This clean split follows the repository's review-convergence rule and adds no feature.
+Current-head thread `PRRT_kwDORscidM6jzTfa` then correctly rejected landing the state-free projection without a
+production consumer. The correction retains only the prepared Activity subset. `_SidebarInventory` composes the
+projection in `client/desktop`; `DesktopSidebarSessionProjection` remains Flutter/Prego-free in desktop-core. Activity
+and ordinary project groups are sibling presentation peers with independent action-only Cubit scopes. Automatic
+per-expanded-project admission was removed, leaving one lifecycle/diff-driven all-project trigger with no local fetch
+state. Explicit refresh execution remains delivery 17/21; refresh/control presentation remains 18/21.
 
-Final projection source checkpoint: `888e67c21e9387e54e9664d36d79442f0a0bb545`, tree
-`b89d2d97877fb732b4387e2e9861521a1e171834`. Against the integrated base, client code measures 195 changed lines
-(186 additions and 9 deletions) across six files, with zero generated churn:
+Architecture plan review `878b3d10-d3a4-48ad-9876-2d842f4ccccf` rejected the first correction draft for leaving the
+duplicate expansion trigger and underspecifying lifecycle/action-menu composition. All valid findings were applied
+directly without another review. Revised plan:
+`/tmp/rose-elephant-1533-activity-consumer-plan.md`, SHA-256
+`a893e5a3120356e2b4688e1c2c7ce55e43cc5f1163ec1fca5f61a56625aa8832`.
+Review report SHA-256: `a5e9543041d35bb6604171ec30c496d8e54d64e6ac7a9673541d0ab6657a3834`.
+
+Final source checkpoint: `4ccaf6302bf0ae906cccf4796702a8289db84669`, tree
+`973922f0fddd6c820d5cb16ee9a2ded33363bf9f`. It measures 1,226 all-path changed lines (1,065 additions,
+161 deletions) across 18 files: 550 production, 313 tests, 343 documentation and 20 generated localization lines.
+The later evidence correction is outside that immutable measurement.
 
 ```bash
-git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..888e67c21e9387e54e9664d36d79442f0a0bb545 -- client
+git diff --numstat de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594..4ccaf6302bf0ae906cccf4796702a8289db84669 --
 ```
 
 ## Verification
 
-Pinned Dart/Flutter 3.47.4 verification against exact source checkpoint `888e67c21e9`:
+Pinned Dart/Flutter 3.47.4:
 
 ```bash
-cd client/module_core
+cd client/module_app_ui
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/flutter gen-l10n
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/flutter analyze --fatal-infos
+
+cd ../module_core
 /Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart test -r expanded \
   test/cubits/recent_sessions/recent_sessions_cubit_test.dart
 /Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart analyze --fatal-infos
@@ -52,29 +70,28 @@ cd ../module_desktop_core
   test/cubits/desktop_sidebar/desktop_sidebar_session_projection_test.dart
 /Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart analyze --fatal-infos
 
-cd ../app
-/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/flutter test \
-  test/core/widgets/session_split/session_split_shell_test.dart
-
 cd ../desktop
+/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/flutter test \
+  test/core/widgets/desktop_cockpit_shell_test.dart
 /Users/alexandrudochioiu/.asdf/installs/flutter/3.47.4-stable/bin/dart analyze --fatal-infos
 
 git diff --check
 ```
 
-Results: 18 recent-session cases, 2 projection cases, and all 11 previously failing app session-split cases pass;
-module-core, module-desktop-core, and desktop analyzers are clean; diff check is clean. Evidence checkpoint
-`787e9a6227410e6f6aac96956fdbb7e07c92be10`, tree `10fcca6b8d9f558482f7a7cf299e4034744b4b53`, measures 504
-all-path changed lines (407 additions, 97 deletions) across 13 files: 85 production, 110 tests, 309 documentation,
-and zero generated. This measurement includes the checkpoint version of this file; this evidence-only paragraph is
-outside it. The app failures at published
-head `43af1265c1` were `type 'Null' is not a subtype of type 'ProjectListCubit' in type cast` after the discarded DI
-constructor change; removing that incomplete refresh wiring restores the established composition.
+Results: 37 desktop cockpit/sidebar cases, 2 projection cases and 18 recent-session cases pass. Module-app-ui,
+module-core, module-desktop-core and desktop analyzers are clean. The 11 app session-split cases that failed under the
+discarded DI constructor change passed after its removal at checkpoint `888e67c21e9`; those unchanged inputs were not
+rerun after the Activity-only desktop composition.
+
+The ignored production-widget fixture passed four synthetic Linux variants and each image was inspected: expanded
+light, 200-pixel dark, compact light and compact dark. Output:
+`/tmp/rose-elephant-sidebar-activity-consumer-preview-final.1cDuCK/`. These prove bounded synthetic rendering only,
+not native macOS behavior, native indicator efficiency or user approval.
 
 ## Boundaries
 
-Series-title metadata receipt: `/tmp/rose-elephant-series-21-title-receipts.json`. This prerequisite has no
-user-visible, generated,
-database, wire or bridge/plugin impact. 9.c.2b owns lower-layer refresh execution; 9.c.2c owns Flutter composition,
-localization, regression docs and synthetic renders. No app smoke, GUI/helper/bridge, auth/preferences, registration,
+Series-title metadata receipt: `/tmp/rose-elephant-series-21-title-receipts.json` (updated title verification follows
+publication). This delivery has user-visible sidebar presentation and generated localization impact, but no database,
+wire, backend, bridge/plugin or analytics impact. 9.c.2b owns lower-layer refresh execution; 9.c.2c owns explicit
+refresh presentation and compact control cleanup. No app smoke, GUI/helper/bridge, auth/preferences, registration,
 secure storage or device operation ran. Native/live qualification remains required and unexecuted.
