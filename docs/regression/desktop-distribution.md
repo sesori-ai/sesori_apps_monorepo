@@ -87,9 +87,10 @@ or permission to ship. Public release and native upgrade gates remain outstandin
 ## Private macOS manual-replacement qualification
 
 Manual `macos-upgrade-probe` qualification is credential-free and consumes two
-retained successful macOS packaging runs on each package's native CPU. It requires
-both source SHAs to be ancestors of the trusted tooling checkout, verifies exact DMG
-hashes against producer evidence, and rechecks clean source, sealed identities,
+retained successful macOS packaging runs on each package's native CPU. It accepts a
+source only when it is in the trusted tooling history or associated with a merged-main
+PR whose merge commit is in that history. It verifies exact DMG hashes against producer
+evidence and rechecks clean source, sealed identities,
 accepted notarization, Developer ID identity, tickets and Gatekeeper. The current
 package must have a strictly newer semantic-version/build identity and the requested
 compiled channel; an older unpublished baseline may predate channel metadata.

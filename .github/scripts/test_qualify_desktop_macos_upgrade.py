@@ -9,6 +9,7 @@ from unittest.mock import patch
 from qualify_desktop_macos_upgrade import (
     load_candidate,
     require_fresh_native_runner,
+    require_trusted_source,
     validate_upgrade,
 )
 
@@ -183,11 +184,54 @@ class MacosUpgradeValidationTests(unittest.TestCase):
                 load_candidate(**fixture)
 
 
+class MacosUpgradeSourceTrustTests(unittest.TestCase):
+    def test_accepts_source_in_tooling_history(self):
+        with patch("qualify_desktop_macos_upgrade.git_is_ancestor", return_value=True):
+            self.assertEqual(
+                require_trusted_source(source_sha="a" * 40, associated_pulls=[]),
+                {"kind": "toolingAncestor"},
+            )
+
+    def test_accepts_source_from_merged_main_pull_request(self):
+        merge_sha = "c" * 40
+        associated_pulls = [{
+            "number": 1503,
+            "state": "closed",
+            "merged_at": "2026-09-16T01:40:57Z",
+            "merge_commit_sha": merge_sha,
+            "base": {
+                "ref": "main",
+                "repo": {"full_name": "sesori-ai/sesori_apps_monorepo"},
+            },
+        }]
+        with patch(
+            "qualify_desktop_macos_upgrade.git_is_ancestor",
+            side_effect=lambda *, source_sha: source_sha == merge_sha,
+        ):
+            self.assertEqual(
+                require_trusted_source(source_sha="a" * 40, associated_pulls=associated_pulls),
+                {
+                    "kind": "mergedMainPullRequest",
+                    "pullRequest": 1503,
+                    "mergeCommitSha": merge_sha,
+                },
+            )
+
+    def test_rejects_source_without_merged_main_acceptance(self):
+        with patch("qualify_desktop_macos_upgrade.git_is_ancestor", return_value=False):
+            with self.assertRaisesRegex(ValueError, "neither in trusted tooling history"):
+                require_trusted_source(source_sha="a" * 40, associated_pulls=[])
+
+
 class MacosUpgradeWorkflowTests(unittest.TestCase):
     def test_upgrade_job_is_credential_free_and_uses_selected_artifacts(self):
         workflow = WORKFLOW.read_text()
         job = workflow.split("  macos-upgrade:\n", 1)[1].split("\n  windows-distribution:", 1)[0]
         self.assertIn("      actions: read", job)
+        self.assertIn("      pull-requests: read", job)
+        self.assertIn('commits/$source/pulls', job)
+        self.assertIn("--previous-pulls-json", job)
+        self.assertIn("--current-pulls-json", job)
         self.assertIn("desktop-macos-packages-${{ matrix.arch }}", job)
         self.assertIn("desktop-macos-evidence-${{ matrix.arch }}", job)
         self.assertIn("qualify_desktop_macos_upgrade.py", job)

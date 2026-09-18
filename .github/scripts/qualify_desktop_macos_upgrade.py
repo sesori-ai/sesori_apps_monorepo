@@ -60,6 +60,13 @@ def read_json(path: Path) -> dict:
     return value
 
 
+def read_json_array(path: Path) -> list[dict]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    require(isinstance(value, list) and all(isinstance(item, dict) for item in value),
+            f"Expected JSON object array: {path}")
+    return value
+
+
 def sha256(path: Path) -> str:
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
@@ -144,7 +151,7 @@ def validate_upgrade(*, previous: Candidate, current: Candidate) -> None:
             "Current package must have a strictly newer semantic version/build identity")
 
 
-def require_trusted_ancestor(*, source_sha: str) -> None:
+def git_is_ancestor(*, source_sha: str) -> bool:
     result = subprocess.run(
         ["git", "merge-base", "--is-ancestor", source_sha, "HEAD"],
         cwd=ROOT,
@@ -152,7 +159,36 @@ def require_trusted_ancestor(*, source_sha: str) -> None:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    require(result.returncode == 0, f"Selected source is not an ancestor of trusted tooling: {source_sha}")
+    return result.returncode == 0
+
+
+def require_trusted_source(*, source_sha: str, associated_pulls: list[dict]) -> dict:
+    if git_is_ancestor(source_sha=source_sha):
+        return {"kind": "toolingAncestor"}
+    accepted_pulls = []
+    for pull in associated_pulls:
+        merge_sha = pull.get("merge_commit_sha")
+        base = pull.get("base", {})
+        base_repository = base.get("repo", {}) if isinstance(base, dict) else {}
+        if (
+            pull.get("state") == "closed"
+            and isinstance(pull.get("merged_at"), str)
+            and type(pull.get("number")) is int
+            and isinstance(merge_sha, str)
+            and bool(re.fullmatch(r"[0-9a-f]{40}", merge_sha))
+            and base.get("ref") == "main"
+            and base_repository.get("full_name") == REPOSITORY
+            and git_is_ancestor(source_sha=merge_sha)
+        ):
+            accepted_pulls.append(pull)
+    require(accepted_pulls,
+            f"Selected source is neither in trusted tooling history nor associated with a merged main PR: {source_sha}")
+    accepted = min(accepted_pulls, key=lambda pull: pull["number"])
+    return {
+        "kind": "mergedMainPullRequest",
+        "pullRequest": accepted["number"],
+        "mergeCommitSha": accepted["merge_commit_sha"],
+    }
 
 
 def require_fresh_native_runner() -> None:
@@ -353,9 +389,11 @@ def qualify(
     previous_run_json: Path,
     previous_packages: Path,
     previous_evidence: Path,
+    previous_pulls_json: Path,
     current_run_json: Path,
     current_packages: Path,
     current_evidence: Path,
+    current_pulls_json: Path,
     architecture: str,
     channel: str,
     output: Path,
@@ -380,8 +418,14 @@ def qualify(
         expected_channel=channel,
     )
     validate_upgrade(previous=previous, current=current)
-    require_trusted_ancestor(source_sha=previous.source_sha)
-    require_trusted_ancestor(source_sha=current.source_sha)
+    previous_source_acceptance = require_trusted_source(
+        source_sha=previous.source_sha,
+        associated_pulls=read_json_array(previous_pulls_json),
+    )
+    current_source_acceptance = require_trusted_source(
+        source_sha=current.source_sha,
+        associated_pulls=read_json_array(current_pulls_json),
+    )
     inspector, quitter = compile_native_helpers(output=output, log=log)
 
     sentinel = SUPPORT_ROOT / "desktop-instance/upgrade-probe-sentinel"
@@ -440,6 +484,7 @@ def qualify(
             "previous": {
                 "runId": previous.run_id,
                 "sourceSha": previous.source_sha,
+                "sourceAcceptance": previous_source_acceptance,
                 "version": previous.version,
                 "buildNumber": previous.build_number,
                 "dmgSha256": previous.dmg_sha256,
@@ -447,6 +492,7 @@ def qualify(
             "current": {
                 "runId": current.run_id,
                 "sourceSha": current.source_sha,
+                "sourceAcceptance": current_source_acceptance,
                 "version": current.version,
                 "buildNumber": current.build_number,
                 "dmgSha256": current.dmg_sha256,
@@ -491,9 +537,11 @@ def main() -> None:
     parser.add_argument("--previous-run-json", type=Path, required=True)
     parser.add_argument("--previous-packages", type=Path, required=True)
     parser.add_argument("--previous-evidence", type=Path, required=True)
+    parser.add_argument("--previous-pulls-json", type=Path, required=True)
     parser.add_argument("--current-run-json", type=Path, required=True)
     parser.add_argument("--current-packages", type=Path, required=True)
     parser.add_argument("--current-evidence", type=Path, required=True)
+    parser.add_argument("--current-pulls-json", type=Path, required=True)
     parser.add_argument("--architecture", choices=("x64", "arm64"), required=True)
     parser.add_argument("--channel", choices=("stable", "internal"), required=True)
     parser.add_argument("--output", type=Path, required=True)

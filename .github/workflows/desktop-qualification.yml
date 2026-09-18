@@ -226,6 +226,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      pull-requests: read
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -268,6 +269,12 @@ jobs:
             > build/desktop-macos-upgrade/previous/run.json
           gh api "repos/$GH_REPO/actions/runs/$CURRENT_RUN" \
             > build/desktop-macos-upgrade/current/run.json
+          for label in previous current; do
+            source="$(jq -r .head_sha "build/desktop-macos-upgrade/$label/run.json")"
+            [[ "$source" =~ ^[0-9a-f]{40}$ ]] || { echo "$label run has an invalid source SHA." >&2; exit 1; }
+            gh api "repos/$GH_REPO/commits/$source/pulls" \
+              > "build/desktop-macos-upgrade/$label/pulls.json"
+          done
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
@@ -298,9 +305,11 @@ jobs:
             --previous-run-json build/desktop-macos-upgrade/previous/run.json \
             --previous-packages build/desktop-macos-upgrade/previous/packages \
             --previous-evidence build/desktop-macos-upgrade/previous/evidence \
+            --previous-pulls-json build/desktop-macos-upgrade/previous/pulls.json \
             --current-run-json build/desktop-macos-upgrade/current/run.json \
             --current-packages build/desktop-macos-upgrade/current/packages \
             --current-evidence build/desktop-macos-upgrade/current/evidence \
+            --current-pulls-json build/desktop-macos-upgrade/current/pulls.json \
             --architecture '${{ matrix.arch }}' --channel '${{ inputs.channel }}' \
             --output build/desktop-macos-upgrade/result
       - name: Upload private upgrade evidence

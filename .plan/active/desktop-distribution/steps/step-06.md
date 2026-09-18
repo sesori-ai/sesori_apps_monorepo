@@ -75,6 +75,14 @@ signed helper-Off replacement slice. Authenticated
 helper-On/failed-stop, real account/Keychain/TCC, minimum OS, public download and parent
 Gate C remain explicit blockers rather than inferred passes.
 
+Initial branch run `35361626933` stopped on both CPUs before mounting or executing a
+package: retained 1.8.4 source `efefcbcff7e7b75bdde271c1c670333987530212`
+was a reviewed commit in squash-merged PR #1503 rather than a direct `main` ancestor.
+The corrected trust rule accepts either direct tooling ancestry or GitHub's association
+with a merged-to-main PR whose merge commit is an ancestor, and records which path
+accepted each source. It does not weaken producer, hash, identity, notarization or
+native package checks.
+
 ## Verification
 
 Run the new Python tests and the directly affected existing desktop tooling tests;
