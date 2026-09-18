@@ -392,7 +392,9 @@ def launch_and_quit(*, label: str, inspector: Path, quitter: Path, output: Path,
         (output / f"{label}-quit.log").write_text(quit_result.stdout + quit_result.stderr, encoding="utf-8")
         if quit_result.returncode == 2:
             raise RuntimeError(f"BLOCKED {label}: native runner lacks Accessibility trust")
-        quit_result.check_returncode()
+        if quit_result.returncode != 0:
+            details = (quit_result.stdout + quit_result.stderr).strip()
+            raise RuntimeError(f"{label}: accessible tray Quit failed: {details}")
         launcher.wait(timeout=30)
         if launcher.returncode != 0:
             raise RuntimeError(f"{label}: tray Quit returned launcher exit {launcher.returncode}")

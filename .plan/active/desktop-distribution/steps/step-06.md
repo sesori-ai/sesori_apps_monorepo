@@ -91,6 +91,14 @@ single-architecture. The corrected check requires the selected CPU in the GUI sl
 and requires the helper to be exactly package-native, matching the trusted producer
 inventory instead of weakening architecture validation.
 
+Third branch run `35362624156` passed trust, installation, visible-window and screenshot
+checks for the prior app on both CPUs, then refused to infer Quit when the first AX
+helper could not find the menu command. It did not install the current package and its
+failure cleanup left no owned process or state. The corrected helper restricts status
+items to the exact app PID, prefers `AXPress` so `tray_manager` receives its real icon
+click callback, searches the status item/menu-bar/app accessibility roots, and retains
+bounded element/action diagnostics on another refusal.
+
 ## Verification
 
 Run the new Python tests and the directly affected existing desktop tooling tests;

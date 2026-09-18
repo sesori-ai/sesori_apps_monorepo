@@ -26,7 +26,8 @@ private func elements(_ value: CFTypeRef?) -> [AXUIElement] {
 
 private func children(_ element: AXUIElement) -> [AXUIElement] {
     let visible = elements(attribute(element, kAXVisibleChildrenAttribute as CFString))
-    return visible.isEmpty ? elements(attribute(element, kAXChildrenAttribute as CFString)) : visible
+    let all = elements(attribute(element, kAXChildrenAttribute as CFString))
+    return visible + all
 }
 
 private func stringAttribute(_ element: AXUIElement, _ name: CFString) -> String? {
@@ -41,12 +42,35 @@ private func actionNames(_ element: AXUIElement) -> [String] {
     return names as? [String] ?? []
 }
 
-private func findQuitItem(from root: AXUIElement) -> AXUIElement? {
-    var queue = [root]
-    var visited = 0
-    while !queue.isEmpty && visited < 256 {
+private func processIdentifier(_ element: AXUIElement) -> pid_t? {
+    var pid: pid_t = 0
+    guard AXUIElementGetPid(element, &pid) == .success else {
+        return nil
+    }
+    return pid
+}
+
+private func description(_ element: AXUIElement) -> String {
+    let attributes = [
+        "role=\(stringAttribute(element, kAXRoleAttribute as CFString) ?? "<none>")",
+        "subrole=\(stringAttribute(element, kAXSubroleAttribute as CFString) ?? "<none>")",
+        "title=\(stringAttribute(element, kAXTitleAttribute as CFString) ?? "<none>")",
+        "description=\(stringAttribute(element, kAXDescriptionAttribute as CFString) ?? "<none>")",
+        "identifier=\(stringAttribute(element, kAXIdentifierAttribute as CFString) ?? "<none>")",
+        "actions=\(actionNames(element).joined(separator: ","))",
+    ]
+    return attributes.joined(separator: " ")
+}
+
+private func findQuitItem(from roots: [AXUIElement]) -> AXUIElement? {
+    var queue = roots
+    var visited: [AXUIElement] = []
+    while !queue.isEmpty && visited.count < 1_024 {
         let element = queue.removeFirst()
-        visited += 1
+        if visited.contains(where: { CFEqual($0, element) }) {
+            continue
+        }
+        visited.append(element)
         if stringAttribute(element, kAXRoleAttribute as CFString) == kAXMenuItemRole,
            stringAttribute(element, kAXTitleAttribute as CFString) == quitTitle {
             return element
@@ -71,22 +95,29 @@ let appElement = AXUIElementCreateApplication(pid)
 guard let extras = elements(attribute(appElement, kAXExtrasMenuBarAttribute as CFString)).first else {
     fail("Sesori has no accessible status-item menu bar")
 }
-let statusItems = children(extras)
+let statusItems = children(extras).filter { processIdentifier($0) == pid }
 guard !statusItems.isEmpty else {
-    fail("Sesori has no accessible status item")
+    fail("Sesori has no process-owned accessible status item")
 }
 
-for statusItem in statusItems {
+for (index, statusItem) in statusItems.enumerated() {
+    print("STATUS_ITEM \(index) \(description(statusItem))")
     let actions = actionNames(statusItem)
-    let action = actions.contains(kAXShowMenuAction) ? kAXShowMenuAction : kAXPressAction
-    guard AXUIElementPerformAction(statusItem, action as CFString) == .success else {
+    // tray_manager opens its context menu from the icon mouse-down callback. AXPress
+    // follows that real click path; AXShowMenu may bypass the callback because the
+    // plugin does not attach its menu directly to the NSStatusItem.
+    let action = actions.contains(kAXPressAction) ? kAXPressAction : kAXShowMenuAction
+    guard actions.contains(action), AXUIElementPerformAction(statusItem, action as CFString) == .success else {
+        print("STATUS_ITEM \(index) could not perform \(action)")
         continue
     }
-    for _ in 0..<50 {
-        if let quitItem = findQuitItem(from: statusItem),
-           AXUIElementPerformAction(quitItem, kAXPressAction as CFString) == .success {
-            print("PASS invoked the accessible Sesori tray Quit command")
-            exit(0)
+    for _ in 0..<100 {
+        if let quitItem = findQuitItem(from: [statusItem, extras, appElement]) {
+            print("QUIT_ITEM \(description(quitItem))")
+            if AXUIElementPerformAction(quitItem, kAXPressAction as CFString) == .success {
+                print("PASS invoked the accessible Sesori tray Quit command")
+                exit(0)
+            }
         }
         Thread.sleep(forTimeInterval: 0.1)
     }
