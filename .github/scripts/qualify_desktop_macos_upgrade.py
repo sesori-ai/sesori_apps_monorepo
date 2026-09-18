@@ -379,10 +379,31 @@ def wait_for_visible_window(
 ) -> str:
     deadline = time.monotonic() + WINDOW_WAIT_SECONDS
     attempts: list[str] = []
+    window_log = output / f"{label}-window.log"
+    timeout_message = f"{label}: installed desktop has no visible main window after {WINDOW_WAIT_SECONDS:.0f} seconds"
     while True:
-        window = subprocess.run([str(inspector), str(app_pid)], text=True, capture_output=True, check=False)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError(timeout_message)
+        try:
+            window = subprocess.run(
+                [str(inspector), str(app_pid)],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=remaining,
+            )
+        except subprocess.TimeoutExpired as error:
+            partial_output = ""
+            for stream in (error.stdout, error.stderr):
+                if isinstance(stream, bytes):
+                    stream = stream.decode("utf-8", errors="replace")
+                partial_output += stream or ""
+            attempts.append(f"ATTEMPT {len(attempts) + 1}\nINSPECTOR_TIMEOUT\n{partial_output}")
+            window_log.write_text("\n".join(attempts), encoding="utf-8")
+            raise RuntimeError(timeout_message) from error
         attempts.append(f"ATTEMPT {len(attempts) + 1}\n{window.stdout}{window.stderr}")
-        (output / f"{label}-window.log").write_text("\n".join(attempts), encoding="utf-8")
+        window_log.write_text("\n".join(attempts), encoding="utf-8")
         if window.returncode == 2:
             raise RuntimeError(f"BLOCKED {label}: native runner has no active screen")
         if window.returncode == 0:
@@ -391,11 +412,10 @@ def wait_for_visible_window(
             return window_id[1]
         if launcher.poll() is not None:
             raise RuntimeError(f"{label}: installed desktop exited before showing a visible main window")
-        if time.monotonic() >= deadline:
-            raise RuntimeError(
-                f"{label}: installed desktop has no visible main window after {WINDOW_WAIT_SECONDS:.0f} seconds"
-            )
-        time.sleep(WINDOW_POLL_INTERVAL_SECONDS)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError(timeout_message)
+        time.sleep(min(WINDOW_POLL_INTERVAL_SECONDS, remaining))
 
 
 def launch_and_quit(*, label: str, inspector: Path, quitter: Path, output: Path, log: Path) -> None:

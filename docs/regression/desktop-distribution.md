@@ -100,7 +100,11 @@ On a fresh Actions host with no existing app, bridge, login registration or rele
 state root, the probe copies the previous app from its real DMG into Applications,
 launches with persisted Bridge Off and, after the initial startup interval, retries the
 read-only visible-window inspector for up to 45 additional seconds while the process
-remains alive. It requires AXPress capability on its process-owned status item,
+remains alive. This is the deliberate exception to one-shot window observation because
+two native x64 runs had a live owned process at that boundary: it polls only the local
+inspector within the fixed deadline, never restarts the app or workflow, and leaves the
+window acceptance criteria unchanged. It requires AXPress capability on its
+process-owned status item,
 validates its small menu-bar frame and clicks that exact
 frame. It then performs a system-wide z-order hit test beside the frame and
 accepts only a menu owned by the exact PID and anchored to that frame,

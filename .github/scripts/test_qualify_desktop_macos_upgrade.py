@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
@@ -326,7 +327,10 @@ class MacosUpgradeWindowTests(unittest.TestCase):
         launcher.poll.return_value = None
         with tempfile.TemporaryDirectory() as temp, \
                 patch("qualify_desktop_macos_upgrade.subprocess.run", side_effect=[missing, visible]) as run, \
-                patch("qualify_desktop_macos_upgrade.time.monotonic", side_effect=[100.0, 101.0]), \
+                patch(
+                    "qualify_desktop_macos_upgrade.time.monotonic",
+                    side_effect=[100.0, 100.0, 101.0, 102.0],
+                ), \
                 patch("qualify_desktop_macos_upgrade.time.sleep") as sleep:
             output = Path(temp)
             self.assertEqual(
@@ -340,31 +344,35 @@ class MacosUpgradeWindowTests(unittest.TestCase):
                 "42",
             )
             self.assertEqual(run.call_count, 2)
+            self.assertEqual(run.call_args_list[0].kwargs["timeout"], 45.0)
+            self.assertEqual(run.call_args_list[1].kwargs["timeout"], 43.0)
             sleep.assert_called_once_with(1.0)
             window_log = (output / "current-window.log").read_text(encoding="utf-8")
             self.assertIn("ATTEMPT 1", window_log)
             self.assertIn("ATTEMPT 2", window_log)
             self.assertIn("WINDOW_ID 42", window_log)
 
-    def test_wait_refuses_inactive_screen(self):
+    def test_wait_refuses_inactive_screen_and_preserves_attempt(self):
         blocked = Mock(returncode=2, stdout="SCREEN_COUNT 0\n", stderr="")
         launcher = Mock()
         with tempfile.TemporaryDirectory() as temp, \
                 patch("qualify_desktop_macos_upgrade.subprocess.run", return_value=blocked), \
                 patch("qualify_desktop_macos_upgrade.time.monotonic", return_value=100.0), \
                 patch("qualify_desktop_macos_upgrade.time.sleep") as sleep:
+            output = Path(temp)
             with self.assertRaisesRegex(RuntimeError, "native runner has no active screen"):
                 wait_for_visible_window(
                     label="current",
                     inspector=Path("window-inspector"),
                     app_pid=42,
                     launcher=launcher,
-                    output=Path(temp),
+                    output=output,
                 )
+            self.assertIn("ATTEMPT 1", (output / "current-window.log").read_text(encoding="utf-8"))
             launcher.poll.assert_not_called()
             sleep.assert_not_called()
 
-    def test_wait_refuses_if_process_exits(self):
+    def test_wait_refuses_process_exit_and_preserves_attempt(self):
         missing = Mock(returncode=1, stdout="SCREEN_COUNT 1\n", stderr="No visible main window\n")
         launcher = Mock()
         launcher.poll.return_value = 0
@@ -372,32 +380,65 @@ class MacosUpgradeWindowTests(unittest.TestCase):
                 patch("qualify_desktop_macos_upgrade.subprocess.run", return_value=missing), \
                 patch("qualify_desktop_macos_upgrade.time.monotonic", return_value=100.0), \
                 patch("qualify_desktop_macos_upgrade.time.sleep") as sleep:
+            output = Path(temp)
             with self.assertRaisesRegex(RuntimeError, "exited before showing a visible main window"):
                 wait_for_visible_window(
                     label="current",
                     inspector=Path("window-inspector"),
                     app_pid=42,
                     launcher=launcher,
-                    output=Path(temp),
+                    output=output,
                 )
+            self.assertIn("ATTEMPT 1", (output / "current-window.log").read_text(encoding="utf-8"))
             sleep.assert_not_called()
 
-    def test_wait_refuses_after_bounded_deadline(self):
+    def test_wait_refuses_deadline_and_preserves_attempt(self):
         missing = Mock(returncode=1, stdout="SCREEN_COUNT 1\n", stderr="No visible main window\n")
         launcher = Mock()
         launcher.poll.return_value = None
         with tempfile.TemporaryDirectory() as temp, \
                 patch("qualify_desktop_macos_upgrade.subprocess.run", return_value=missing), \
-                patch("qualify_desktop_macos_upgrade.time.monotonic", side_effect=[100.0, 145.0]), \
+                patch("qualify_desktop_macos_upgrade.time.monotonic", side_effect=[100.0, 100.0, 145.0]), \
                 patch("qualify_desktop_macos_upgrade.time.sleep") as sleep:
+            output = Path(temp)
             with self.assertRaisesRegex(RuntimeError, "no visible main window after 45 seconds"):
                 wait_for_visible_window(
                     label="current",
                     inspector=Path("window-inspector"),
                     app_pid=42,
                     launcher=launcher,
-                    output=Path(temp),
+                    output=output,
                 )
+            self.assertIn("ATTEMPT 1", (output / "current-window.log").read_text(encoding="utf-8"))
+            sleep.assert_not_called()
+
+    def test_wait_bounds_hung_inspector_and_preserves_partial_output(self):
+        launcher = Mock()
+        timeout = subprocess.TimeoutExpired(
+            cmd=["window-inspector", "42"],
+            timeout=45.0,
+            output="partial stdout\n",
+            stderr="partial stderr\n",
+        )
+        with tempfile.TemporaryDirectory() as temp, \
+                patch("qualify_desktop_macos_upgrade.subprocess.run", side_effect=timeout), \
+                patch("qualify_desktop_macos_upgrade.time.monotonic", return_value=100.0), \
+                patch("qualify_desktop_macos_upgrade.time.sleep") as sleep:
+            output = Path(temp)
+            with self.assertRaisesRegex(RuntimeError, "no visible main window after 45 seconds"):
+                wait_for_visible_window(
+                    label="current",
+                    inspector=Path("window-inspector"),
+                    app_pid=42,
+                    launcher=launcher,
+                    output=output,
+                )
+            window_log = (output / "current-window.log").read_text(encoding="utf-8")
+            self.assertIn("ATTEMPT 1", window_log)
+            self.assertIn("INSPECTOR_TIMEOUT", window_log)
+            self.assertIn("partial stdout", window_log)
+            self.assertIn("partial stderr", window_log)
+            launcher.poll.assert_not_called()
             sleep.assert_not_called()
 
 
