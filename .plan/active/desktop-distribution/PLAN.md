@@ -5,11 +5,13 @@
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
 - **Status:** Active — steps 1–5 and the private portions of steps 6, 7 and 9
-  merged. Public macOS/Windows/Linux publication and step-8 winget assets remain
-  gated. Step 10 onboarding waits for genuine shipped releases. The independently
-  executable private portion of step 11 is in progress; its public-release
-  reconciliation and final plan retirement remain blocked. Shipping order remains
-  macOS, Windows, Linux. No blocked publication step is claimed completed.
+  merged. The macOS signing-secret migration is complete. A private native x64/arm64
+  helper-Off `1.8.4+24 → 1.9.0+62` branch probe passed; accepted main-only evidence is
+  pending this tooling PR's merge. Public macOS/Windows/Linux publication
+  and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
+  releases. The independently executable private portion of step 11 is in progress;
+  its public-release reconciliation and final plan retirement remain blocked. Shipping
+  order remains macOS, Windows, Linux. No blocked publication step is claimed completed.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -288,12 +290,12 @@ platform inputs and reusable platform build legs. It must not depend on mobile
 store jobs, move `internal-release-attempt`, or change the existing mobile/CLI
 finalizer's success conditions. PR packaging CI has no signing/publication secrets;
 manual trusted release jobs use protected environments and least-privilege OIDC
-where supported. Existing private qualification uses the owner's authorized
-repository-level signing secrets; manual dispatch is not isolation from malicious
-repository writers. Before public publication, the owner must approve a protected-
-environment credential migration, including shared CLI callers and removal of
-repository-wide copies. Merely naming an environment does not secure those copies.
-Do not provision protection rules or move credentials without that authorization.
+where supported. Private qualification now uses the owner-approved `macos-signing`
+environment, which admits `main` with no reviewer or wait gate so routine CLI signing
+remains automatic.
+All five repository-level copies are removed after post-deletion native proof; shared
+reusable callers use reviewed inheritance while TestFlight/Android credentials remain
+separate. Desktop publication still requires a different human-approved environment.
 Preserve source revision versus workflow revision when reusing actions for older refs.
 
 - Artifact identity includes semantic version, build number, source SHA, platform,
@@ -376,13 +378,22 @@ history and keeps lifecycle changes out of the package-signing review.
 | 4.a | 🚧 [desktop-distribution] Package and notarize native macOS builds [step 5/14] | After 3.b plus signer access. Private DMGs/ZIPs, nested hardened signing, notarization/stapling and native platform probes. High supply-chain/platform risk. Both Macs verify/install without Gatekeeper bypass; rendered startup is tracked in 4.b, not claimed passing. No database change. |
 | 4.b | ⚙️ [desktop-distribution] Keep desktop startup independent of native notifications [step 6/14] | After 4.a. Existing attention owner installs listeners before returning, without holding rendering behind native readiness; retain initial-open/account/disposal handling. Medium/high startup risk. Red/green service tests and both signed GUI targets; no new state owner, persistence, wire or database change. |
 | 5 | ⚙️ [desktop-distribution] Offer manual macOS updates through official downloads [step 7/14] | After 4.b. D6 manual fallback: immutable channel/CPU destination, honest download index, Settings guidance and staging channel metadata. Medium presentation/build risk; unchanged safe Quit, no automatic updater or database change. Native manual replacement remains a release gate. |
-| 6 | ⚙️ [desktop-distribution] Prepare isolated desktop release channels [step 8/14] | After 5. Read-only producer-evidence validation and deterministic private metadata/checksums. No tags, releases, website writes, signing or database change. Publication stays gated on parent prerequisites, credential migration and both native macOS ship gates; it is not delivered by this preparation PR. |
+| 6 | ⚙️ [desktop-distribution] Prepare isolated desktop release channels [step 8/14] | Private preparation. |
 | 7 | 🚧 [desktop-distribution] Qualify private per-user Windows installers [step 9/14] | After 3.b and Windows qualification. Independent private unsigned x64/arm64 installers, complete helper bundle, shortcuts, mutex refusal and isolated install/uninstall fixtures. Signing, timestamp/publisher verification and public delivery remain gated, including the prior macOS ship gate. High installer risk; no shared CLI data deletion or database change. |
 | 8 | ⚙️ [desktop-distribution] Deliver manual Windows updates and winget discovery [step 10/14] | After 6 and 7. Settings download action, signed N→N+1 manual replacement, channel-specific downloads, winget manifests and Windows ship gate. Medium integration risk; no embedded updater, forced helper shutdown or automatic restart. No database change. |
 | 9 | ⚙️ [desktop-distribution] Qualify private native DEB and RPM packages [step 11/14] | Independent private preparation after native bundle qualification. Four unsigned native packages, generated dependency manifests, desktop integration and isolated package-manager fixtures. Signing, public APT/RPM repositories and shipping remain blocked behind prior platform gates. No updater, home cleanup or database change. |
 | 10 | 🌿 [desktop-distribution] Offer shipped desktop downloads during onboarding [step 12/14] | After all platform gates. Shared mobile installation guidance and published links, preserve CLI alternative and truthful platform/CPU choices. Low/medium onboarding regression risk; focused UI/link tests and existing analytics assessment. New installation choice, no database change. |
 | 11 | 🌿 Private regression reconciliation (13/14) | Scope and exact PR title below. |
 | 12 | ⚙️ Release verification and retirement (14/14) | Scope and exact PR title below. |
+
+Step 6 delivered read-only private metadata/checksums in PR #1511 without publication.
+Credential migration is complete, but parent and native/public ship gates still apply.
+
+**Step 6 continuation PR:**
+`🚧 [desktop-distribution] Qualify signed macOS manual replacement [step 8/14]`.
+This credential-free continuation adds the private native replacement probe. It closes
+only after its reviewed tooling is merged and rerun from `main`; no tag, release,
+website write or database change is included.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.

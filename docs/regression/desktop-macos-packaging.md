@@ -28,6 +28,18 @@ packaging capability does not imply public downloads or an updater have shipped.
   but incomplete packages are not uploaded as successful package artifacts.
 - Missing native screens must fail the platform-probe step with explicit blocked
   evidence, not silently skip qualification and continue verified-package upload.
+- Private upgrade qualification must consume two retained successful native packaging
+  runs and require a strictly increasing sealed semantic-version/build identity. Run
+  from `main`; accept package sources only from `origin/main` or an exact pinned
+  retained baseline. Verify clean producers, notarization receipts, exact DMG digests,
+  Developer ID identity, tickets and Gatekeeper before
+  installation. The universal GUI must include the selected CPU while the bundled
+  helper must be exactly package-native. On a fresh host, install from
+  the prior DMG, invoke the real accessible tray Quit command, reject relaunch/orphans,
+  replace the complete app from the newer DMG, and preserve bounded desktop, shared
+  CLI-data, attachment and valid login-registration sentinels. Existing app, bridge,
+  registration or relevant state root causes refusal; the probe owns only its installed
+  copy and exact fresh-host state paths.
 - Signing, native-header inventory and fake-service helper E2E cannot stand in for
   installed GUI, account, Keychain, filesystem/TCC, autostart, minimum-OS or update
   evidence. Public-release prerequisites stay independent.
@@ -41,8 +53,14 @@ These are required checks, not a record that every level has passed.
 | L1 | Automated; no plugin | Signing order, publisher/runtime/entitlement arguments, architecture and ZIP/DMG divergence refusal, every helper library's signature, isolated local/active-process/registration guards and blocked-screen failure. |
 | L2 | Packaged/external; macOS x64 + arm64; faithful bridge fakes | Trusted CI signs/notarizes both formats; verify extracted headers, signatures, staples, Gatekeeper and helper E2E. Fresh native hosts exercise a separately signed release fixture's synthetic Keychain persistence/delete, login-registration write/read/remove and owned file access; install the real signed app, observe its window and attempt a screenshot. Retain source/run evidence and explicit blocked outcomes. Default PR runs cannot receive signing credentials. |
 | L3 | Client end to end; installed macOS x64 + arm64; representative production plugin | Download and install the signed app into Applications without a security bypass. Verify actual GUI startup, browser login/return, token write/read/relaunch restoration, helper control, runtime launch and user-approved filesystem/TCC behavior. |
-| L4 | Packaged/client end to end; both Mac CPUs | Exercise paths with spaces, login/autostart and close-to-tray versus Quit. Compare an installed N→N+1 package with stable signing identity; preserve shared CLI credentials, runtimes, history and projects. |
+| L4 | Packaged/client end to end; both Mac CPUs | Private helper-Off replacement plus the full coverage below. |
 | L5 | Packaged/client end to end; both Mac CPUs | Include the declared minimum OS and clean-host cases. Combine with the distribution plan's full platform/public ship gate; missing hosts or credentials remain Blocked, not Pass. |
+
+At L4, install strictly increasing signed DMGs, exercise real tray Quit, reject
+relaunch/orphans and preserve bounded desktop/shared-state and login-registration
+sentinels. Full coverage also exercises paths with spaces, authenticated helper On,
+failed-stop, login/autostart and close-to-tray versus Quit with real shared CLI
+credentials, runtimes, history and projects.
 
 ## Failure Signals And Exploration
 
@@ -66,6 +84,10 @@ following the macOS QA process.
 - `.github/scripts/macos_signing_ci.sh`
 - `.github/scripts/package_desktop_macos.py`
 - `.github/scripts/test_package_desktop_macos.py`
+- `.github/scripts/qualify_desktop_macos_upgrade.py`
+- `.github/scripts/test_qualify_desktop_macos_upgrade.py`
+- `.github/scripts/quit_desktop_macos.swift`
+- `.github/scripts/inspect_desktop_macos_window.swift`
 - `client/desktop/tool/stage_desktop_bundle.dart`
 - `client/desktop/lib/core/di/register_module.dart`
 - `client/desktop/macos/Runner/Release.entitlements`

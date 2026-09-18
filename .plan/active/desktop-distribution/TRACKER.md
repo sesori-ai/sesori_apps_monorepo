@@ -86,6 +86,23 @@ reported required checks passed and the skipped platform-distribution jobs were
 inapplicable to this Linux-only private run. Earlier failing attempts remain run
 history, not unsupported product behavior or regression tombstones.
 
+The macOS credential migration is complete: all five signing/notarization values are
+now scoped to the main-only, approval-free `macos-signing` environment, their five
+repository copies are absent, and both reusable CLI signing and direct desktop
+preflight passed post-deletion on native x64/arm64. Fresh stable package run
+`35206885114` then passed signed/notarized packaging, helper E2E, installed GUI and
+platform fixture probes on both CPUs at source
+`7aecbd943671290eca53506949a9c38f2d8da4d0`. Read-only preparation run
+`35359083211` validated the four payloads as proposed `desktop-v1.9.0`, build 62;
+it did not publish. Pre-merge implementation run `35363132033` at source
+`2f036ea94fed5f485d8f63c36ba9b948b98db8ae`, tree
+`713b3844b0f1c204b996ed80f3182bb921f509bf`, passed signed `1.8.4+24 → 1.9.0+62`
+helper-Off replacement on native x64 job `105659084181` and arm64 job `105659084218`.
+It reverified trust, used the real tray Quit command and preserved bounded state, but is
+not accepted release evidence because the reviewed probe is now main-only. Rerun it
+from `main` after this tooling merges. Authenticated helper-On, failed-stop,
+real-account/TCC, minimum-OS, live-site and public retrieval remain open.
+
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
 private-package documentation portion can proceed independently, so its dependency
 is narrowed without reordering stable IDs or the 14-PR series. Its public-link and
@@ -167,9 +184,10 @@ threads were resolved; the final Cubic review approved with no findings.
 Step 4.a merged in [PR #1499](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1499),
 accepting `9f286805514a26cf5e641ab96ee16e79c3bcc7f5`, as squash
 `cd4c1412359ef8962cb019d97dc7fed73835e1c8`. All 19 checks settled/passed at acceptance;
-Cubic approved without findings and the owner-controlled secret migration remains
-an explicit public-release prerequisite. Final unsigned six-target qualification
-run 35036003267 measured merge checkout `e4aa30f017cf876a1f61f2a6881f1282f013dba1`.
+Cubic approved without findings. The later owner-controlled signing-secret migration
+completed separately in #1525/#1527/#1531/#1532 and retired in #1534. Final unsigned
+six-target qualification run 35036003267 measured merge checkout
+`e4aa30f017cf876a1f61f2a6881f1282f013dba1`.
 Steps 4.b, 5 and private step-6 preparation subsequently merged in PRs #1503,
 #1506 and #1511. See the delivery records above for current work and exact revisions.
 The following step-4.a evidence is historical; step-4.b evidence is recorded below.
@@ -206,10 +224,10 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update path | Manual D6 fallback selected | Step 5 preserves safe Quit and opens a channel/CPU index. No Sparkle integration or updater keys/feed. Native manual N→N+1 replacement remains a release gate. |
+| macOS update path | Branch probe passed | Trusted-main/full gates pending. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
-| Signing and static hosting | Private macOS signed/notarized payloads and synthetic platform probes verified on both CPUs | Rendered GUI/account restoration, interactive TCC/OS-login, updater/Windows/Linux keys, GCS access and owner-approved protected-environment migration of shared repository signing secrets before public publication. |
-| macOS public gate | Pending | Both CPUs, parent prerequisite, actual signed N→N+1 upgrade, quit semantics, downloads, complete platform coverage from PLAN.md. |
+| Signing and static hosting | Migration complete | Public hosting gates pending. |
+| macOS public gate | Pending | See checkpoint above. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
 | Linux public gate | Pending; private mechanics passed on both CPUs | Public and interactive checks below. |
 | Retirement | Blocked | Steps 10/11 closeout and the complete recorded matrix remain required. |

@@ -39,11 +39,12 @@ Latest is repository-wide: eventual publication must use `--latest=false` for
 both desktop channels. This step generates a proposed tag but never creates it.
 It neither consumes mobile/CLI versions nor moves `internal-release-attempt`.
 
-Do not claim step 6 shipped from preparation. Remaining gates:
+Do not claim step 6 shipped from preparation. The owner-approved signing migration
+is complete: all five values live only in `macos-signing`, shared CLI and direct
+desktop native proof passed on both CPUs after repository-copy removal, and the
+migration plan retired in #1534. Remaining gates:
 
-- Owner-approved migration of repository signing credentials, including shared CLI
-  consumers and removal of repository copies, into protected environments.
-- Both native macOS manual upgrade/data-preservation gates and parent desktop-app
+- Full native macOS manual upgrade/data-preservation gates and parent desktop-app
   prerequisites; existing private package probes do not establish these.
 - Verified public download links on `https://sesori.com/desktop/`. The page itself went
   live on 2026-09-18 (sesori-ai/landingpage#107) with all eight build anchors and
@@ -53,6 +54,64 @@ Do not claim step 6 shipped from preparation. Remaining gates:
 
 No automatic updater layers remain to clean up. The private producer stays separate
 from public release authority. Windows/Linux publication remains disabled.
+
+## Post-migration continuation
+
+Stable package run `35206885114` used source
+`7aecbd943671290eca53506949a9c38f2d8da4d0`, tree
+`497c66e6407b9ca25a998fc60dab4679377ad233`, and passed x64 job `105154787465`
+and arm64 job `105154787487`. Read-only preparation run `35359083211` used tooling
+source `beb99dc35e18ecbe596753ba7353237a817acf87`, tree
+`8b5fd10865a37ae2e5f0b1a10642e02b98981ca6`, while retaining that exact package
+source/tree. It proposed `desktop-v1.9.0`, build 62, without publishing.
+
+The continuation adds credential-free, main-only `macos-upgrade-probe` qualification.
+It accepts ordinary sources only from `origin/main`; the sole older exception is exact
+retained run `35042335424`, source
+`efefcbcff7e7b75bdde271c1c670333987530212`, tree
+`d0f1d0e3cfb31090d0ddb6d5b8321604e7e65730`, with pinned merged-PR provenance.
+It verifies package trust, performs actual DMG replacement and tray Quit, rejects
+relaunch/orphans, and checks bounded desktop/shared-state plus login registration.
+
+Branch diagnostics converged without being reclassified as accepted evidence:
+
+- `35361626933` rejected the squash-merged retained source before package execution.
+- `35362043592` exposed the universal-GUI/package-native-helper topology before copy.
+- `35362624156` reached the prior visible app but refused to infer an unobserved Quit.
+- `35363132033`, source `2f036ea94fed5f485d8f63c36ba9b948b98db8ae`,
+  tree `713b3844b0f1c204b996ed80f3182bb921f509bf`, passed x64 job
+  `105659084181` and arm64 job `105659084218`. It rendered all four windows, used the
+  process-owned AX tray item, rejected relaunch/orphans and preserved bounded state.
+
+Run `35363132033` artifacts `10554589107` (x64) and `10554949003` (arm64) expire
+2026-10-02. Prior/current DMG hashes were respectively
+`e0ee205da412828e667cd63653e92005986e926275b9fcc992e05d78415bbe7f` /
+`54eab0a8fa1538401ce49820c92edd449e9b59df9aaef8ae9c4f6a38586e67a3`
+for x64 and `27de5e5c8cfc15ed707c199d193b202fe0aec45c69abd5985f7c23ea129fda16` /
+`ae287512772a4c2dd313f68f52eec14526222704b3a67ba50c7c6ed9af724e24`
+for arm64. The branch run proves implementation behavior only; accepted evidence requires a
+post-merge `main` rerun. Authenticated helper-On, failed-stop, real-account/Keychain/TCC,
+minimum-OS, public retrieval and parent Gate C remain open.
+
+Dispatches and expanded logs were run from
+`/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
+
+```bash
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-packaging -f channel=stable
+gh workflow run desktop-release.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f source_sha=7aecbd943671290eca53506949a9c38f2d8da4d0 \
+  -f packaging_run=35206885114 -f channel=stable
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref desktop-distribution-macos-upgrade-probe -f mode=macos-upgrade-probe \
+  -f channel=stable -f previous_packaging_run=35042335424 \
+  -f packaging_run=35206885114
+gh run view 35206885114 --repo sesori-ai/sesori_apps_monorepo --job 105154787465 --log
+gh run view 35206885114 --repo sesori-ai/sesori_apps_monorepo --job 105154787487 --log
+gh run view 35359083211 --repo sesori-ai/sesori_apps_monorepo --job 105645579449 --log
+gh run view 35363132033 --repo sesori-ai/sesori_apps_monorepo --job 105659084181 --log
+gh run view 35363132033 --repo sesori-ai/sesori_apps_monorepo --job 105659084218 --log
+```
 
 ## Verification
 
