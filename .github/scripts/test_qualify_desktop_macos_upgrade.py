@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from qualify_desktop_macos_upgrade import (
     PINNED_RETAINED_BASELINES,
@@ -14,6 +14,7 @@ from qualify_desktop_macos_upgrade import (
     require_trusted_source,
     validate_installed_architectures,
     validate_upgrade,
+    wait_for_visible_window,
 )
 
 
@@ -315,6 +316,89 @@ class MacosUpgradeSourceTrustTests(unittest.TestCase):
         with patch("qualify_desktop_macos_upgrade.git_is_main_ancestor", return_value=False):
             with self.assertRaisesRegex(ValueError, "neither in main history nor an exact pinned"):
                 require_trusted_source(run_id=42, source_sha="a" * 40, associated_pulls=[])
+
+
+class MacosUpgradeWindowTests(unittest.TestCase):
+    def test_wait_retries_until_owned_window_is_visible(self):
+        missing = Mock(returncode=1, stdout="SCREEN_COUNT 1\n", stderr="No visible main window\n")
+        visible = Mock(returncode=0, stdout="SCREEN_COUNT 1\nWINDOW_ID 42\n", stderr="")
+        launcher = Mock()
+        launcher.poll.return_value = None
+        with tempfile.TemporaryDirectory() as temp, \
+                patch("qualify_desktop_macos_upgrade.subprocess.run", side_effect=[missing, visible]) as run, \
+                patch("qualify_desktop_macos_upgrade.time.monotonic", side_effect=[100.0, 101.0]), \
+                patch("qualify_desktop_macos_upgrade.time.sleep") as sleep:
+            output = Path(temp)
+            self.assertEqual(
+                wait_for_visible_window(
+                    label="current",
+                    inspector=Path("window-inspector"),
+                    app_pid=42,
+                    launcher=launcher,
+                    output=output,
+                ),
+                "42",
+            )
+            self.assertEqual(run.call_count, 2)
+            sleep.assert_called_once_with(1.0)
+            window_log = (output / "current-window.log").read_text(encoding="utf-8")
+            self.assertIn("ATTEMPT 1", window_log)
+            self.assertIn("ATTEMPT 2", window_log)
+            self.assertIn("WINDOW_ID 42", window_log)
+
+    def test_wait_refuses_inactive_screen(self):
+        blocked = Mock(returncode=2, stdout="SCREEN_COUNT 0\n", stderr="")
+        launcher = Mock()
+        with tempfile.TemporaryDirectory() as temp, \
+                patch("qualify_desktop_macos_upgrade.subprocess.run", return_value=blocked), \
+                patch("qualify_desktop_macos_upgrade.time.monotonic", return_value=100.0), \
+                patch("qualify_desktop_macos_upgrade.time.sleep") as sleep:
+            with self.assertRaisesRegex(RuntimeError, "native runner has no active screen"):
+                wait_for_visible_window(
+                    label="current",
+                    inspector=Path("window-inspector"),
+                    app_pid=42,
+                    launcher=launcher,
+                    output=Path(temp),
+                )
+            launcher.poll.assert_not_called()
+            sleep.assert_not_called()
+
+    def test_wait_refuses_if_process_exits(self):
+        missing = Mock(returncode=1, stdout="SCREEN_COUNT 1\n", stderr="No visible main window\n")
+        launcher = Mock()
+        launcher.poll.return_value = 0
+        with tempfile.TemporaryDirectory() as temp, \
+                patch("qualify_desktop_macos_upgrade.subprocess.run", return_value=missing), \
+                patch("qualify_desktop_macos_upgrade.time.monotonic", return_value=100.0), \
+                patch("qualify_desktop_macos_upgrade.time.sleep") as sleep:
+            with self.assertRaisesRegex(RuntimeError, "exited before showing a visible main window"):
+                wait_for_visible_window(
+                    label="current",
+                    inspector=Path("window-inspector"),
+                    app_pid=42,
+                    launcher=launcher,
+                    output=Path(temp),
+                )
+            sleep.assert_not_called()
+
+    def test_wait_refuses_after_bounded_deadline(self):
+        missing = Mock(returncode=1, stdout="SCREEN_COUNT 1\n", stderr="No visible main window\n")
+        launcher = Mock()
+        launcher.poll.return_value = None
+        with tempfile.TemporaryDirectory() as temp, \
+                patch("qualify_desktop_macos_upgrade.subprocess.run", return_value=missing), \
+                patch("qualify_desktop_macos_upgrade.time.monotonic", side_effect=[100.0, 145.0]), \
+                patch("qualify_desktop_macos_upgrade.time.sleep") as sleep:
+            with self.assertRaisesRegex(RuntimeError, "no visible main window after 45 seconds"):
+                wait_for_visible_window(
+                    label="current",
+                    inspector=Path("window-inspector"),
+                    app_pid=42,
+                    launcher=launcher,
+                    output=Path(temp),
+                )
+            sleep.assert_not_called()
 
 
 class MacosUpgradeWorkflowTests(unittest.TestCase):

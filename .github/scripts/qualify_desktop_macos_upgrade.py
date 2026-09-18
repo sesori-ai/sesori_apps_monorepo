@@ -26,6 +26,8 @@ REGISTRATION = Path.home() / "Library/LaunchAgents/com.sesori.desktop.plist"
 SUPPORT_ROOT = Path.home() / "Library/Application Support/com.sesori.desktop"
 SHARED_DATA_ROOT = Path.home() / ".local/share/sesori"
 ATTACHMENTS_ROOT = Path.home() / "Library/Application Support/Sesori Attachments"
+WINDOW_WAIT_SECONDS = 45.0
+WINDOW_POLL_INTERVAL_SECONDS = 1.0
 PROCESS_PATTERN = (
     r"/Sesori\.app/Contents/MacOS/|/bridge/app/build/cli/bundle/bin/bridge|"
     r"/Contents/Helpers/bridge/bin/bridge|sesori-bridge"
@@ -367,6 +369,35 @@ def seed_login_registration() -> str:
     return sha256(REGISTRATION)
 
 
+def wait_for_visible_window(
+    *,
+    label: str,
+    inspector: Path,
+    app_pid: int,
+    launcher: subprocess.Popen[str],
+    output: Path,
+) -> str:
+    deadline = time.monotonic() + WINDOW_WAIT_SECONDS
+    attempts: list[str] = []
+    while True:
+        window = subprocess.run([str(inspector), str(app_pid)], text=True, capture_output=True, check=False)
+        attempts.append(f"ATTEMPT {len(attempts) + 1}\n{window.stdout}{window.stderr}")
+        (output / f"{label}-window.log").write_text("\n".join(attempts), encoding="utf-8")
+        if window.returncode == 2:
+            raise RuntimeError(f"BLOCKED {label}: native runner has no active screen")
+        if window.returncode == 0:
+            window_id = re.search(r"WINDOW_ID (\d+)", window.stdout)
+            require(window_id is not None, f"{label}: window inspector did not report a window ID")
+            return window_id[1]
+        if launcher.poll() is not None:
+            raise RuntimeError(f"{label}: installed desktop exited before showing a visible main window")
+        if time.monotonic() >= deadline:
+            raise RuntimeError(
+                f"{label}: installed desktop has no visible main window after {WINDOW_WAIT_SECONDS:.0f} seconds"
+            )
+        time.sleep(WINDOW_POLL_INTERVAL_SECONDS)
+
+
 def launch_and_quit(*, label: str, inspector: Path, quitter: Path, output: Path, log: Path) -> None:
     launcher_log = output / f"{label}-launcher.log"
     app_log = output / f"{label}-installed-gui.log"
@@ -389,16 +420,15 @@ def launch_and_quit(*, label: str, inspector: Path, quitter: Path, output: Path,
         ).split()
         require(len(pids) == 1, f"{label}: expected exactly one installed desktop process")
         app_pid = int(pids[0])
-        window = subprocess.run([str(inspector), str(app_pid)], text=True, capture_output=True, check=False)
-        (output / f"{label}-window.log").write_text(window.stdout + window.stderr, encoding="utf-8")
-        if window.returncode == 2:
-            raise RuntimeError(f"BLOCKED {label}: native runner has no active screen")
-        if window.returncode != 0:
-            raise RuntimeError(f"{label}: installed desktop has no visible main window")
-        window_id = re.search(r"WINDOW_ID (\d+)", window.stdout)
-        require(window_id is not None, f"{label}: window inspector did not report a window ID")
+        window_id = wait_for_visible_window(
+            label=label,
+            inspector=inspector,
+            app_pid=app_pid,
+            launcher=launcher,
+            output=output,
+        )
         execute(
-            command=["screencapture", "-x", "-l", window_id[1], str(output / f"{label}-installed-gui.png")],
+            command=["screencapture", "-x", "-l", window_id, str(output / f"{label}-installed-gui.png")],
             log=log,
         )
         quit_result = subprocess.run([str(quitter), str(app_pid)], text=True, capture_output=True, check=False)
