@@ -42,11 +42,17 @@ The main pane hosts one full-width routed page.
 - A selected project follows route identity, not the displayed name. Each
   signed-in cockpit owns one project-list cubit, including the home pane;
   leaving the signed-in shell releases it.
+- Activity appears before projects whenever any non-archived session is running or live-unseen. It spans every
+  current project, including collapsed/offscreen projects, preserves project/session source order, identifies each
+  session's project, and renders each priority session once. Priority IDs are excluded before each project's ordinary
+  three rows plus active selected-session pin are chosen. An active selected session stays selected in Activity; an
+  inactive selected session remains pinnable ordinarily. The keyed header remains structurally stable at zero height
+  when Activity is empty, and keyed Prego reconciliation honors reduced motion as rows enter, leave or reorder.
 - Expanded projects show the first three active visible sessions in the shared
   list's order, plus the open session when present outside that head. The
-  “All sessions · N” link counts the active visible inventory and opens the
-  existing sessions page. Compact/project collapse hides rows without clearing
-  their cached data; per-project collapse preferences survive layout restore.
+  “All sessions · N” link counts the full active visible inventory, including sessions currently prioritized in
+  Activity, and opens the existing sessions page. Compact/project collapse hides ordinary rows without clearing
+  cached data or hiding that project's Activity rows; per-project collapse preferences survive layout restore.
 - Project hover/keyboard focus reveals New session. Right-click project and
   session menus reuse the shared rename/hide and session action flows.
   Session title tooltips, selection, running/awaiting/unread signals and
@@ -55,8 +61,10 @@ The main pane hosts one full-width routed page.
 - Opening the sidebar or its session action menu never claims project viewing.
   The main list/detail routes retain viewing ownership. Session mutations use
   the existing action controller; its context survives removal of a session row.
-- Expanded project loads are cached per signed-in shell. Live session/activity/unread
-  events update its projection; reconnect/catalog invalidation refreshes known
+- The sidebar inventory admits every current project to the shared recent-session Cubit when its ID enters the
+  inventory, independent of expansion or viewport position. It is the sole automatic sidebar admission trigger;
+  unchanged rebuilds and project expansion do not dispatch another path. The Cubit owns requests/results and caches
+  them per signed-in shell. Live session/activity/unread events update its projection; reconnect/catalog invalidation refreshes known
   projects, including failed reads. Initial loading/failure stays project-local.
   Loaded rows remain visible during refresh and logged refresh failures; live
   activity/unread and root lifecycle patches continue against that useful data.
@@ -160,9 +168,11 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
   new-session replacement, diff/direct-entry Back, home states, package-font resolution.
 - Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
-  project-collapse persistence, shared menu/route callbacks. Keep loaded rows through catalog/reconnect
-  refreshes and failures, including live unread false, lifecycle patches, failed-reread rearming and
-  superseded-read completion.
+  project-collapse persistence, shared menu/route callbacks. All-project admission happens once per entering ID,
+  including collapsed/offscreen projects; priority Activity is deduplicated from ordinary rows, keeps project context,
+  selection/navigation/actions, and reconciles keyed movement/reordering under reduced motion. Empty/loading/failed
+  entries preserve the stable header and project-local retry. Keep loaded rows through catalog/reconnect refreshes and
+  failures, including live unread false, lifecycle patches, failed-reread rearming and superseded-read completion.
 - Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel and reset-only persistence,
   visible-scrollbar edge hit tests and thumb dragging, intermediate collapse/expand frames with cramped
   session-row signals, both reduced-motion signals, temporary narrow-window mode, running/unread updates
@@ -184,7 +194,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 Look for overflow at minimum width, drag updates that stall or write per frame,
 width jumping on reversal beyond a bound, scrollbars intercepting project toggles,
 automatic collapse overwriting user preferences, missing/stale activity marks,
-duplicate project inventories or a second session-list pane, sidebar browsing clearing unread state,
+duplicate project inventories or Activity/ordinary session rows, repeated admission on rebuild/expansion, lost project
+context, a shifting empty Activity header, a second session-list pane, sidebar browsing clearing unread state,
 stale/missing recent rows,
 covered transcripts marked viewed, notification opens stranded behind a popup,
 wrong session-action targets, or lost navigation after switching projects. Vary project-name lengths and

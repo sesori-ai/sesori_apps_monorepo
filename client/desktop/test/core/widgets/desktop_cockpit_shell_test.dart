@@ -211,6 +211,205 @@ void main() {
     await updates.close();
   });
 
+  testWidgets("admits every project once as IDs enter, independent of expansion", (tester) async {
+    final updates = StreamController<ProjectListState>();
+    final initialProjects = [
+      for (var index = 0; index < 20; index++)
+        ProjectSummary(id: "project-$index", name: "Project $index", path: "/fixture/$index", time: null),
+    ];
+    when(repository.readSidebarLayout).thenAnswer(
+      (_) async => const DesktopSidebarLayout(collapsedProjectIds: {"project-0", "project-19"}),
+    );
+    whenListen(
+      projects,
+      updates.stream,
+      initialState: ProjectListState.loaded(projects: initialProjects, activityById: const {}),
+    );
+
+    await tester.pumpWidget(app(state: running));
+    await tester.pump();
+    for (final project in initialProjects) {
+      verify(() => recent.ensureLoaded(projectId: project.id)).called(1);
+    }
+    expect(sidebar.state.collapsedProjectIds, {"project-0", "project-19"});
+
+    clearInteractions(recent);
+    updates.add(ProjectListState.loaded(projects: initialProjects.reversed.toList(), activityById: const {}));
+    await tester.pumpAndSettle();
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    for (final project in initialProjects) {
+      verifyNever(() => recent.ensureLoaded(projectId: project.id));
+    }
+
+    const added = ProjectSummary(id: "project-20", name: "Project 20", path: "/fixture/20", time: null);
+    updates.add(ProjectListState.loaded(projects: [...initialProjects, added], activityById: const {}));
+    await tester.pumpAndSettle();
+    verify(() => recent.ensureLoaded(projectId: added.id)).called(1);
+    for (final project in initialProjects) {
+      verifyNever(() => recent.ensureLoaded(projectId: project.id));
+    }
+    await tester.pumpWidget(const SizedBox.shrink());
+    await updates.close();
+  });
+
+  testWidgets("priority activity stays global, selected, actionable, and absent from ordinary recents", (
+    tester,
+  ) async {
+    const projectOne = ProjectSummary(id: "project-1", name: "Project One", path: "/one", time: null);
+    const projectTwo = ProjectSummary(id: "project-2", name: "Project Two", path: "/two", time: null);
+    final priority = _session(id: "priority").copyWith(unseen: true);
+    final ordinary = _session(id: "ordinary");
+    final runningSession = _session(id: "running").copyWith(projectID: "project-2", directory: "/two");
+    when(repository.readSidebarLayout).thenAnswer(
+      (_) async => const DesktopSidebarLayout(collapsedProjectIds: {"project-1", "project-2"}),
+    );
+    whenListen(
+      projects,
+      const Stream<ProjectListState>.empty(),
+      initialState: const ProjectListState.loaded(projects: [projectOne, projectTwo], activityById: {}),
+    );
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: [priority, ordinary],
+          visibleSessions: [priority, ordinary],
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+        "project-2": RecentSessionsLoaded(
+          sourceSessions: [runningSession],
+          visibleSessions: [runningSession],
+          activityBySessionId: const {
+            "running": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    String? openedSession;
+    await tester.pumpWidget(
+      app(
+        state: running,
+        child: DesktopCockpitShell(
+          selectedProjectId: "project-1",
+          selectedSessionId: "priority",
+          onOpenSession: ({required context, required project, required displayName, required session}) =>
+              openedSession = session.id,
+          onNewSession: _openProject,
+          sessionActions: _sessionActions,
+          onOpenProject: _openProject,
+          onOpenBridgeSettings: _noOp,
+          onOpenProjects: _noOp,
+          onOpenSettings: _noOp,
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("Activity"), findsOneWidget);
+    final priorityRow = find.byKey(const ValueKey("sidebar-activity-session-project-1-priority"));
+    final runningRow = find.byKey(const ValueKey("sidebar-activity-session-project-2-running"));
+    expect(priorityRow, findsOneWidget);
+    expect(runningRow, findsOneWidget);
+    expect(find.byKey(const ValueKey("sidebar-session-project-1-priority")), findsNothing);
+    expect(find.text("priority"), findsOneWidget);
+    expect(find.text("Project One"), findsNWidgets(2));
+    expect(
+      tester
+          .widget<Semantics>(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is Semantics && (widget.properties.label?.startsWith("priority in Project One") ?? false),
+            ),
+          )
+          .properties
+          .selected,
+      isTrue,
+    );
+    await tester.tap(priorityRow);
+    expect(openedSession, "priority");
+    expect(find.descendant(of: priorityRow, matching: find.byType(PregoAnchorMenu)), findsOneWidget);
+  });
+
+  testWidgets("activity reconciliation moves one stable session without duplicates under reduced motion", (
+    tester,
+  ) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    final session = _session(id: "moving").copyWith(unseen: true);
+    final updates = StreamController<Map<String, RecentSessionsEntry>>();
+    whenListen(
+      recent,
+      updates.stream,
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: [session],
+          visibleSessions: [session],
+          activityBySessionId: const {},
+          listStateBySessionId: const {"moving": (unseen: false, lastUserActivityAt: null)},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+    final projectElement = tester.element(find.byKey(const ValueKey("project-1")));
+    final activityHeader = find.byKey(const Key("desktop-sidebar-activity-header"), skipOffstage: false);
+    expect(activityHeader, findsOneWidget);
+    expect(find.byKey(const ValueKey("sidebar-session-project-1-moving")), findsOneWidget);
+    expect(find.byKey(const ValueKey("sidebar-activity-session-project-1-moving")), findsNothing);
+
+    updates.add({
+      "project-1": RecentSessionsLoaded(
+        sourceSessions: [session],
+        visibleSessions: [session],
+        activityBySessionId: const {},
+        listStateBySessionId: const {"moving": (unseen: true, lastUserActivityAt: null)},
+      ),
+    });
+    await tester.pump();
+    expect(find.byKey(const ValueKey("sidebar-session-project-1-moving")), findsNothing);
+    expect(find.byKey(const ValueKey("sidebar-activity-session-project-1-moving")), findsOneWidget);
+    expect(find.text("moving"), findsOneWidget);
+    expect(tester.element(find.byKey(const ValueKey("project-1"))), same(projectElement));
+
+    updates.add({
+      "project-1": RecentSessionsLoaded(
+        sourceSessions: [session],
+        visibleSessions: [session],
+        activityBySessionId: const {},
+        listStateBySessionId: const {"moving": (unseen: false, lastUserActivityAt: null)},
+      ),
+    });
+    await tester.pump();
+    expect(find.byKey(const ValueKey("sidebar-session-project-1-moving")), findsOneWidget);
+    expect(find.byKey(const ValueKey("sidebar-activity-session-project-1-moving")), findsNothing);
+    expect(find.text("moving"), findsOneWidget);
+    expect(activityHeader, findsOneWidget);
+    await updates.close();
+  });
+
+  testWidgets("recent inventory failure stays project-local and retries explicitly", (tester) async {
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: const {
+        "project-1": RecentSessionsFailed(reason: RemoteFailureReason.networkDown),
+      },
+    );
+    when(() => recent.retry(projectId: "project-1")).thenAnswer((_) async {});
+
+    await tester.pumpWidget(app(state: running));
+    final activityHeader = find.byKey(const Key("desktop-sidebar-activity-header"), skipOffstage: false);
+    expect(activityHeader, findsOneWidget);
+    await tester.tap(find.text("Retry"));
+    verify(() => recent.retry(projectId: "project-1")).called(1);
+  });
+
   testWidgets("renders shared projects and dispatches existing route actions", (tester) async {
     var bridgeOpens = 0;
     var projectOpens = 0;
@@ -448,8 +647,8 @@ void main() {
       ),
     );
     await tester.pumpWidget(app(state: running));
-    final list = find.byType(ListView);
-    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    final list = find.byKey(const Key("desktop-sidebar-project-list"));
+    final scrollable = tester.state<ScrollableState>(find.descendant(of: list, matching: find.byType(Scrollable)));
     expect(scrollable.position.maxScrollExtent, greaterThan(0));
     // Show the automatic desktop scrollbar at the first project's row.
     scrollable.position.jumpTo(24);
