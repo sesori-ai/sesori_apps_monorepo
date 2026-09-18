@@ -8,8 +8,10 @@ from unittest.mock import patch
 
 from qualify_desktop_macos_upgrade import (
     load_candidate,
+    normalized_lipo_architectures,
     require_fresh_native_runner,
     require_trusted_source,
+    validate_installed_architectures,
     validate_upgrade,
 )
 
@@ -182,6 +184,30 @@ class MacosUpgradeValidationTests(unittest.TestCase):
             fixture["run_json"].write_text(json.dumps(run))
             with self.assertRaisesRegex(ValueError, "wrong producer workflow"):
                 load_candidate(**fixture)
+
+
+class MacosUpgradeArchitectureTests(unittest.TestCase):
+    def test_accepts_universal_gui_with_native_helper(self):
+        validate_installed_architectures(
+            label="previous",
+            expected="arm64",
+            gui_output="x86_64 arm64\n",
+            helper_output="arm64\n",
+        )
+        self.assertEqual(normalized_lipo_architectures("x86_64 arm64\n"), {"x64", "arm64"})
+
+    def test_rejects_wrong_helper_architecture(self):
+        with self.assertRaisesRegex(ValueError, "helper architecture differs"):
+            validate_installed_architectures(
+                label="previous",
+                expected="arm64",
+                gui_output="x86_64 arm64",
+                helper_output="x86_64",
+            )
+
+    def test_rejects_unknown_native_architecture(self):
+        with self.assertRaisesRegex(ValueError, "unsupported architecture"):
+            normalized_lipo_architectures("arm64 i386")
 
 
 class MacosUpgradeSourceTrustTests(unittest.TestCase):

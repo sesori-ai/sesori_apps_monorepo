@@ -83,6 +83,14 @@ with a merged-to-main PR whose merge commit is an ancestor, and records which pa
 accepted each source. It does not weaken producer, hash, identity, notarization or
 native package checks.
 
+Second branch run `35362043592` passed the corrected source gate and all DMG trust
+checks, then stopped before copying either prior app into Applications. Both retained
+packages intentionally contain a universal Flutter GUI (`x64` + `arm64`) and a
+package-native bridge helper; the probe had incorrectly required the GUI itself to be
+single-architecture. The corrected check requires the selected CPU in the GUI slices
+and requires the helper to be exactly package-native, matching the trusted producer
+inventory instead of weakening architecture validation.
+
 ## Verification
 
 Run the new Python tests and the directly affected existing desktop tooling tests;

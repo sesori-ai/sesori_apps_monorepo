@@ -30,8 +30,10 @@ packaging capability does not imply public downloads or an updater have shipped.
   evidence, not silently skip qualification and continue verified-package upload.
 - Private upgrade qualification must consume two retained successful native packaging
   runs and require a strictly increasing sealed semantic-version/build identity. Verify
-  source ancestry, clean producers, notarization receipts, exact DMG digests, Developer
-  ID identity, tickets and Gatekeeper before installation. On a fresh host, install from
+  direct-history or merged-main source acceptance, clean producers, notarization
+  receipts, exact DMG digests, Developer ID identity, tickets and Gatekeeper before
+  installation. The universal GUI must include the selected CPU while the bundled
+  helper must be exactly package-native. On a fresh host, install from
   the prior DMG, invoke the real accessible tray Quit command, reject relaunch/orphans,
   replace the complete app from the newer DMG, and preserve bounded desktop, shared
   CLI-data, attachment and valid login-registration sentinels. Existing app, bridge,

@@ -76,6 +76,27 @@ def parse_defines(path: Path) -> dict[str, str]:
     return dict(line.split("=", 1) for line in path.read_text(encoding="utf-8").splitlines())
 
 
+def normalized_lipo_architectures(output: str) -> set[str]:
+    mapping = {"x86_64": "x64", "arm64": "arm64"}
+    architectures = output.split()
+    require(architectures and all(architecture in mapping for architecture in architectures),
+            "Native executable reported an unsupported architecture")
+    return {mapping[architecture] for architecture in architectures}
+
+
+def validate_installed_architectures(
+    *,
+    label: str,
+    expected: str,
+    gui_output: str,
+    helper_output: str,
+) -> None:
+    require(expected in normalized_lipo_architectures(gui_output),
+            f"{label}: installed GUI does not support the package architecture")
+    require(normalized_lipo_architectures(helper_output) == {expected},
+            f"{label}: installed helper architecture differs")
+
+
 def load_candidate(
     *,
     label: str,
@@ -257,9 +278,15 @@ def verify_installed_app(*, candidate: Candidate, app: Path, log: Path) -> None:
             f"{candidate.label}: installed version differs")
     require(metadata.get("CFBundleVersion") == str(candidate.build_number),
             f"{candidate.label}: installed build number differs")
-    architectures = execute(command=["lipo", "-archs", str(app / "Contents/MacOS/Sesori")], log=log).split()
-    expected_architecture = "x86_64" if candidate.architecture == "x64" else "arm64"
-    require(architectures == [expected_architecture], f"{candidate.label}: installed architecture differs")
+    validate_installed_architectures(
+        label=candidate.label,
+        expected=candidate.architecture,
+        gui_output=execute(command=["lipo", "-archs", str(app / "Contents/MacOS/Sesori")], log=log),
+        helper_output=execute(
+            command=["lipo", "-archs", str(app / "Contents/Helpers/bridge/bin/bridge")],
+            log=log,
+        ),
+    )
 
 
 def install_candidate(*, candidate: Candidate, mount: Path, log: Path) -> None:
