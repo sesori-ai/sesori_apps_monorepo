@@ -471,6 +471,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                       child: PregoAnchorMenu(
                         flat: true,
                         menuWidth: 200,
+                        acquireOpenLease: null,
                         entriesBuilder: () => ProjectTile.menuEntries(context: actionContext, project: widget.project),
                         triggerBuilder: (_, openMenu) => GestureDetector(
                           onSecondaryTap: openMenu,

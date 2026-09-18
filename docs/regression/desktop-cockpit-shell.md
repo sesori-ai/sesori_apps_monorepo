@@ -67,8 +67,10 @@ The main pane hosts one full-width routed page.
   independent of expansion or viewport position. The pure-Dart Cubit is the sole automatic admission owner; the
   Flutter shell only constructs it eagerly and renders its state, so rebuilds and project expansion dispatch no
   reads. A superseded project response cannot admit stale IDs. A successful local project hide publishes the accepted
-  post-hide inventory through that same seam and fences older list responses. Absent IDs and pending reads are removed;
-  reconnect/catalog invalidation refreshes only retained entries, including failures. Initial loading/failure stays
+  post-hide inventory through that same seam and fences older list responses. If a connection/reload has replaced loaded
+  state before hide acceptance, one forced successor fetch replaces the superseded load and publishes its winning
+  inventory. Absent IDs and pending reads are removed; reconnect/catalog invalidation refreshes only retained entries,
+  including failures. Initial loading/failure stays
   project-local. Live session/activity/unread events update loaded projections.
   Loaded rows remain visible during refresh and logged refresh failures; live
   activity/unread and root lifecycle patches continue against that useful data.

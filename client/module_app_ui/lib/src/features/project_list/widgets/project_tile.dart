@@ -82,6 +82,7 @@ class const ProjectTile({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: _menuWidth,
+      acquireOpenLease: null,
       // While the menu is open the rest of the list blurs back and this row
       // stays sharp, so which project the actions will hit is unambiguous.
       spotlight: PregoMenuSpotlight.listRow,

@@ -890,30 +890,51 @@ void main() {
       },
     );
 
-    test("hideProject fences an older refresh from restoring the accepted removal", () async {
-      final staleRefresh = Completer<ApiResponse<Projects>>();
+    test("hideProject starts a winning successor when accepted during a full load", () async {
+      final hideResponse = Completer<ApiResponse<void>>();
+      final staleLoadResponse = Completer<ApiResponse<Projects>>();
+      final successorResponse = Completer<ApiResponse<Projects>>();
       var projectRead = 0;
       when(() => mockProjectRepository.listProjects()).thenAnswer((_) {
         projectRead++;
-        return projectRead == 1
-            ? Future.value(ApiResponse.success(Projects(data: [projectA, projectB])))
-            : staleRefresh.future;
+        return switch (projectRead) {
+          1 => Future.value(ApiResponse.success(Projects(data: [projectA, projectB]))),
+          2 => staleLoadResponse.future,
+          _ => successorResponse.future,
+        };
       });
       when(
         () => mockProjectRepository.hideProject(projectId: any(named: "projectId")),
-      ).thenAnswer((_) async => ApiResponse.success(null));
+      ).thenAnswer((_) => hideResponse.future);
       final cubit = buildCubit();
       addTearDown(cubit.close);
       if (cubit.state is! ProjectListLoaded) {
         await cubit.stream.firstWhere((state) => state is ProjectListLoaded);
       }
+      final published = <List<ProjectSummary>>[];
+      final subscription = projectListService.listedProjects.listen(published.add);
+      addTearDown(subscription.cancel);
 
+      final hide = cubit.hideProject("B");
+      final staleLoad = cubit.loadProjects();
+      expect(cubit.state, isA<ProjectListLoading>());
+      hideResponse.complete(ApiResponse.success(null));
+      expect(await hide, isTrue);
+      expect(projectRead, 3);
       final refresh = cubit.refreshProjects();
-      expect(await cubit.hideProject("B"), isTrue);
-      staleRefresh.complete(ApiResponse.success(Projects(data: [projectA, projectB])));
+      expect(projectRead, 3);
 
-      expect(await refresh, isFalse);
+      staleLoadResponse.complete(ApiResponse.success(Projects(data: [projectA, projectB])));
+      await staleLoad;
+      expect(cubit.state, isA<ProjectListLoading>());
+      expect(published, isEmpty);
+
+      successorResponse.complete(ApiResponse.success(Projects(data: [projectA])));
+      expect(await refresh, isTrue);
       expect((cubit.state as ProjectListLoaded).projects.map((project) => project.id), ["A"]);
+      expect(published.map((projects) => projects.map((project) => project.id)), [
+        ["A"],
+      ]);
     });
 
     blocTest<ProjectListCubit, ProjectListState>(

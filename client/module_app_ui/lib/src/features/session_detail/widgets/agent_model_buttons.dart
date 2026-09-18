@@ -148,6 +148,7 @@ class const _AgentMenu({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: 240,
+      acquireOpenLease: null,
       menuMaxHeight: _pickerMaxHeight,
       triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.smart_toy_outlined,
@@ -214,6 +215,7 @@ class const _ModelMenu({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: 320,
+      acquireOpenLease: null,
       menuMaxHeight: _pickerMaxHeight,
       triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.memory_outlined,
@@ -239,6 +241,7 @@ class const _VariantMenu({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: 220,
+      acquireOpenLease: null,
       menuMaxHeight: _pickerMaxHeight,
       reverseScroll: true,
       triggerBuilder: (context, toggle) => PregoPickerButton(

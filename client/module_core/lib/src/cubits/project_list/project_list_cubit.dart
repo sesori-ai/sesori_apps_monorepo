@@ -572,6 +572,8 @@ class ProjectListCubit(
         ),
         activityByProjectId: _sseEventTracker.currentSessionActivity,
       );
+    } else {
+      unawaited(_refreshProjects(force: true, catalogRefresh: false));
     }
     return true;
   }

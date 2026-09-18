@@ -164,6 +164,7 @@ void main() {
     test("flat-only behavior rejects the glass path", () {
       expect(
         () => PregoAnchorMenu(
+          acquireOpenLease: null,
           reverseScroll: true,
           entriesBuilder: () => [],
           triggerBuilder: (context, toggle) => const SizedBox.shrink(),
@@ -267,6 +268,7 @@ void main() {
             body: Center(
               child: PregoAnchorMenu(
                 menuWidth: 320,
+                acquireOpenLease: null,
                 menuScreenPadding: const EdgeInsets.all(12),
                 entriesBuilder: () => [
                   PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: () {}),
@@ -309,6 +311,7 @@ void main() {
                             top: 60,
                             child: PregoAnchorMenu(
                               menuMaxHeight: 120,
+                              acquireOpenLease: null,
                               entriesBuilder: () => [
                                 PregoMenuCustom(
                                   height: 48,
@@ -697,6 +700,7 @@ void main() {
     test("cannot be paired with the glass path, which hides its own trigger", () {
       expect(
         () => PregoAnchorMenu(
+          acquireOpenLease: null,
           entriesBuilder: () => entries,
           spotlight: const PregoMenuSpotlight(borderRadius: 16),
           triggerBuilder: (context, toggle) => const SizedBox.shrink(),

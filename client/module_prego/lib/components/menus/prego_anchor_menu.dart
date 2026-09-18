@@ -186,7 +186,7 @@ class const PregoAnchorMenu({
 
   /// Retains caller-owned state from immediately before a flat menu opens until
   /// its modal route completes after selection or dismissal.
-  final PregoMenuOpenLease? acquireOpenLease,
+  required final PregoMenuOpenLease? acquireOpenLease,
 }) extends StatefulWidget {
   this
     : assert(
