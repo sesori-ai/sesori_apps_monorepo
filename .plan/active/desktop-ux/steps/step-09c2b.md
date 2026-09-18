@@ -85,6 +85,18 @@ The initial provider fixture mixed Flutter's fake and real async zones; the corr
 Inventory stream assertions skip the new service's retained replay when awaiting the next publication; its standalone
 21-case rerun passes. Four owning/affected analyzers pass. Core generation changes only the factory registration.
 
+Saved desktop execution report: `/tmp/rose-elephant-recent-inventory-desktop-final-tests.jsonl`, SHA-256
+`db5e16b174ab7ad9573d1f721fda0cd7cdcd80a3e869122edb64fcea05f39ee3`.
+Its 38 successful non-hidden `testDone` events map to 37 cockpit cases and one provider case; `done.success` is true.
+The cockpit's 33 registration sites expand by two loop-generated cases and two extra platform-variant cases:
+`project toggle edge and scrollbar thumb remain usable` and `running and unread project signals update in expanded
+and compact modes` each execute for Linux and macOS. Reconciled from the saved run, not a rerun or declaration count.
+
+The first PR review corrected stale owner/count descriptions in `PLAN.md` and added the execution receipt above.
+It also clarified the existing one-attempt-per-signal comment: failures retain loaded rows until a later trigger.
+No executable behavior changes or autonomous retry policy were added; these documentation/comment fixes need no
+new architecture review or repetition of unchanged passing suites.
+
 ## Boundaries
 
 Internal refactor only: no intended user-visible or database change. Explicit refresh and its winning-result API

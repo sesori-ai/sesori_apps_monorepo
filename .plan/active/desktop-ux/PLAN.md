@@ -122,16 +122,11 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   the only navigation surface. The main pane hosts one routed page: home,
   session detail, all sessions of a project, new session, diffs. The desktop
   no longer mounts `SessionSplitShell`; mobile keeps it.
-- **D2 — Sidebar data comes from existing cubits plus one small new cubit.**
-  `ProjectListCubit` moves up to the cockpit shell (created once per signed-in
-  shell). Recent sessions per project come from a new surface-neutral
-  `RecentSessionsCubit` in `module_core` that holds one entry per project and
-  delegates every fetch, filter, ordering and patch step to the existing
-  `SessionListService` methods `SessionListCubit` already uses. The cubit adds
-  no list-mutation logic of its own. It takes no project-view claim, so
-  viewing semantics (`ProjectViewingService`) stay exactly as today: the
-  sessions route and the detail route declare the viewed project, the sidebar
-  never does.
+- **D2 — Sidebar inventory has a scoped business owner.** `ProjectListCubit` is created once per signed-in
+  cockpit. `RecentSessionInventoryService` owns recent-session execution and immutable results in `module_core`,
+  using the existing `SessionListService` fetch/filter/order/patch methods. `RecentSessionsCubit` only mirrors
+  that service and forwards retry. The cockpit owns one factory instance, not a singleton or a second cache.
+  Neither owner takes a project-view claim: sessions/detail routes declare the viewed project; the sidebar never does.
 - **D3 — Activity first, then ordinary recents.** Step 9.c.2 adds an upfront
   section for every running or unseen non-archived session, including collapsed
   projects, with project context and no duplicate session rows. Existing
@@ -316,16 +311,15 @@ Row
   `RecentSessionsLoaded` via its resolver extension, right-click opens the shared `SessionTile` actions
   (rename, archive, delete…). Left-click navigates to session detail.
 - "All sessions · N" row navigates to the project's sessions route.
-- Collapsed projects keep fetched data. Step 9.c.2 requests inventory through the
-  existing `RecentSessionsCubit.ensureLoaded(projectId:)` owner for all sidebar
-  projects, so priority activity is not limited to mounted or expanded groups.
+- Collapsed projects keep fetched data. `ProjectListService.listedProjects` admits every listed project through
+  `RecentSessionInventoryService`, so priority activity is not limited to mounted or expanded groups.
 
-### `RecentSessionsCubit` (module_core, Layer 4)
+### Recent inventory (module_core service and Layer-4 adapter)
 
-State: `Map<String projectId, RecentSessionsEntry>` where the entry is a sealed
+`RecentSessionInventoryService` owns `Map<String projectId, RecentSessionsEntry>` with sealed entries:
 `loading | failed | loaded(sourceSessions, visibleSessions, activityBySessionId, listStateBySessionId)`.
-The state is data-only; `RecentSessionsResolvers` derives the head-plus-open rows
-and status presentation, following the existing session-list resolver boundary.
+`RecentSessionsCubit` mirrors those immutable values through one subscription and delegates explicit retry.
+`RecentSessionsResolvers` derives head-plus-open rows and status presentation at the existing Layer-4 boundary.
 
 - `ensureLoaded(projectId:)` fetches via `SessionListService.listSessions(
   projectId:, waitForPrData: false)` and seeds `SessionUnseenTracker` exactly
@@ -334,24 +328,21 @@ and status presentation, following the existing session-list resolver boundary.
 - Rows are derived, not stored: `SessionListService.visibleSessions(sessions:,
   filter: SessionListFilter.active, activityBySessionId:,
   listStateBySessionId:)` at emit time, then the head-plus-open-session rule.
-- Subscriptions: `ConnectionService.events` (session created/updated/deleted
-  → `SessionListService.upsertSession` / `applySessionUpdatedEvent` /
-  `removeSession` on the entry's stored list, the same calls
-  `SessionListCubit` makes), `SseEventTracker.sessionActivity`,
-  `SessionUnseenTracker.sessionUnseen`, `ConnectionService.dataMayBeStale`
-  (refetch every requested project), `CatalogRescanService.catalogChanged`
-  (refetch every requested project, including failed/in-flight reads). No ordering, filtering or patching code is
-  written in the cubit.
-- A failed fetch keeps the entry `failed` with a retry row; it never blocks
-  other projects. Retry reads through `SessionListService`; transport recovery
-  remains outside this cubit.
+- The service owns six subscriptions: `ProjectListService.listedProjects`, `ConnectionService.events`,
+  `SseEventTracker.sessionActivity`, `SessionUnseenTracker.sessionUnseen`, `ConnectionService.dataMayBeStale`,
+  and `CatalogRescanService.catalogChanged`. Session events use the same upsert/update/remove helpers as
+  `SessionListCubit`; reconnect/catalog signals refresh every known project, including failed/in-flight entries.
+- A failed initial fetch exposes a project-local retry row. A background failure logs the error and retains loaded
+  rows until an explicit retry or a later refresh signal; it does not schedule its own retries.
+  Transport recovery stays outside this service.
 - Shared session menus use a lazy per-project `SessionListMode.actions` scope,
   seeded from the recent inventory, with no initial read, project-view claim,
   or route-navigation refresh. Normal pages use `SessionListMode.view`;
   existing mutation/refresh behavior remains shared. Each menu synchronizes its
   named session from the current recent inventory without replacing other rows.
-- Created directly in `DesktopCockpitCubitProvider`, resolving service dependencies
-  inside `BlocProvider(create:)`.
+- `DesktopCockpitCubitProvider` owns one injectable service factory through `RepositoryProvider` and eagerly creates
+  its Cubit before initial project publication. Adapter close only cancels its subscription; cockpit teardown disposes
+  the service. A replacement consumer sees retained data, while a new signed-in scope starts empty.
 
 ### Main pane pages
 
@@ -472,9 +463,9 @@ the modal.
 - Sidebar persistence read failure → defaults (260 px, expanded, nothing
   collapsed) and a warning log. Write failure → warning log; the in-memory
   layout still applies for the session.
-- `RecentSessionsCubit` fetch failure → that project's entry is `failed`; a
-  retry row re-runs `ensureLoaded`. Reconnect (`dataMayBeStale`) refetches
-  every loaded project.
+- `RecentSessionInventoryService` initial-fetch failure → that project's entry is `failed`; its retry row delegates
+  to service `retry`. Background failure retains loaded/live-patched rows and logs the error. A later explicit retry,
+  reconnect (`dataMayBeStale`), catalog commit, or relevant session event can refresh it; no autonomous retry is added.
 - First-run defaults: a failed `LaunchAtLogin.enable()` leaves the bridge On
   and logs a warning; General preferences show the real launch-at-login state. If the
   bridge cannot start (login required, contention), the existing process
@@ -516,8 +507,8 @@ New persistent state:
 New in-memory mutable parts:
 
 - `DesktopSidebarCubit` state (three fields) and its write future.
-- `RecentSessionsCubit` map plus five stream subscriptions (all mutation
-  delegated to `SessionListService`).
+- `RecentSessionInventoryService`: one inventory subject and six event subscriptions, with list operations delegated
+  to `SessionListService`. `RecentSessionsCubit`: one adapter subscription, cancelled independently of the service.
 - `FileAccessCubit` status + per-run dismissed flag, one subscription and probe generation.
 - `DesktopStartupOrchestrator`: one added auth subscription and disposal bit.
   First-run persistence reuses the existing service write queue/restore generation.
@@ -525,9 +516,9 @@ New in-memory mutable parts:
   append future and failure bit plus its helper's queue/directory/file preparation
   state; mobile queue and failure bit. Bridge helper state is moved, not duplicated.
 - Step 9.b: one ephemeral drag-origin value (initial width/global pointer position).
-- Step 9.c.1: one pending-read identity map plus one lifecycle-generation map in
-  `RecentSessionsCubit`; the latter replaces the earlier changed-during-read set.
-  Usable data and an in-flight read coexist, and staleness retires only after snapshot application.
+- One pending-read identity map plus one lifecycle-generation map, introduced in 9.c.1 and now owned by
+  `RecentSessionInventoryService`. Usable data and an in-flight read coexist; lifecycle staleness retires only after
+  snapshot application.
 - Step 9.c.2a adds a state-free priority projection and Prego consumer without another data cache, timer or
   persistence. Step 9.c.2b.1 moves its two maps and subscriptions into a scoped factory service; one BehaviorSubject
   replaces Bloc's inventory storage and the Cubit only mirrors immutable values. The signed-in cockpit owns disposal.
@@ -610,9 +601,10 @@ Completed implementation specifics live in the linked evidence; this matrix summ
 9.c.1 extracts the observed loading-placeholder replacement from the larger UI slice.
 It keeps current loaded data through automatic refresh/failure, continues live patches,
 and separates private request identity from a retained lifecycle generation; supersession
-and coalescing stay in `RecentSessionsCubit`. No new API/model/DI or Flutter production change. Its scoped plan review
-is approved; later 9.c.2 composition needs its own review. Measured implementation size first split 9.c.2 into
-pure-Dart foundations and Flutter composition. PR #1533 review then proved that a request bus still made lower-layer
+and coalescing stayed in `RecentSessionsCubit` in that slice. It added no API/model/DI or Flutter production changes.
+Its scoped plan review is approved; later 9.c.2 composition needs its own review.
+Measured implementation size first split 9.c.2 into pure-Dart foundations and Flutter composition.
+PR #1533 review then proved that a request bus still made lower-layer
 refresh execution depend on mounted presentation Cubits. Keep 9.c.2a to the independent activity projection, move
 true lower-layer execution into 9.c.2b. A later review required the projection to land with its production Activity
 consumer, so 9.c.2a retains that prepared subset while refresh/control composition stays in 9.c.2c. Its final measured

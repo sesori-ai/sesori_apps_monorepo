@@ -140,8 +140,8 @@ class RecentSessionInventoryService({
 
   void _refreshKnownProjects() {
     if (_state.isClosed) return;
-    // Includes failed/in-flight entries, so a subsequent reconnect or catalog
-    // commit retries them rather than consuming the invalidation unsuccessfully.
+    // Each reconnect or catalog commit attempts one refresh per known entry,
+    // including failed/in-flight reads. Failures wait for the next trigger.
     for (final projectId in _state.value.keys) {
       unawaited(_load(projectId: projectId));
     }
