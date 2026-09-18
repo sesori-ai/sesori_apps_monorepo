@@ -45,8 +45,9 @@ Do not claim step 6 shipped from preparation. Remaining gates:
   consumers and removal of repository copies, into protected environments.
 - Both native macOS manual upgrade/data-preservation gates and parent desktop-app
   prerequisites; existing private package probes do not establish these.
-- Live `https://sesori.com/desktop/` and verified public download links. The URL was
-  explicitly selected by the user before the page existed.
+- Verified public download links on `https://sesori.com/desktop/`. The page itself went
+  live on 2026-09-18 (sesori-ai/landingpage#107) with all eight build anchors and
+  `linux-package-managers`; every row is still an unshipped placeholder.
 - Actual immutable publication and public retrieval/signature checks, then channel
   metadata last. No publication credentials or hosted resources are provisioned here.
 

@@ -1,9 +1,11 @@
 # Sesori desktop downloads
 
-Publication content specification for **https://sesori.com/desktop/** (not yet live).
-The app opens that website, not this repository document. Preserve the channel/OS/CPU
-heading anchors below when publishing the page; missing fragments do not prevent
-opening the page itself.
+Publication content specification for **https://sesori.com/desktop/**, which is live
+and built from the `sesori-ai/landingpage` repository. The app opens that website, not
+this repository document. The page renders every channel/OS/CPU heading anchor below
+plus `linux-package-managers`, and its contract checks fail when one is renamed or
+removed. Publishing a row means registering the verified public artifact in that
+repository's `src/lib/desktop-downloads.ts` and updating the matching section here.
 
 Desktop packages are undergoing private qualification. **No public desktop release
 is available yet.** Private CI artifacts are not supported public downloads. This

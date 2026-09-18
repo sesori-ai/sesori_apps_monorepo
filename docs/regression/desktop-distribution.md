@@ -7,7 +7,8 @@ Desktop Settings includes update guidance. Packaged macOS/Windows builds expose
 stable/internal channel, OS and CPU section. This does not claim an available
 update or published installer. Unshipped sections explicitly contain no public
 download; they never link private CI artifacts or infer desktop assets from Latest.
-The website is not live yet; the user explicitly selected this destination anyway.
+The website page renders all eight channel/OS/CPU anchors and `linux-package-managers`,
+so every generated fragment lands on its own section.
 The repository download document is a content/anchor specification, not an alternate
 user-facing destination. Source builds show development guidance; Linux shows
 package-manager guidance.
@@ -115,8 +116,8 @@ or same-version reinstall cannot close those gates.
   Staging parser/default/invalid-channel and exact dotenv tests; Settings
   composition retains attention controls. Generated fragments match specification headings.
 - **L3:** Real Settings navigation and external-browser dispatch on a packaged native
-  build. Verify the correct website section once live; until then record page availability
-  separately. No published installer is needed to check browser dispatch.
+  build. Verify the browser lands on the website section matching the build's channel,
+  OS and CPU. No published installer is needed to check browser dispatch.
 - **L4:** Actual publisher verification and signed N→N+1 manual replacement with
   helper On/Off, failed-stop refusal, normal Quit/no relaunch, and data preservation.
 - **L5:** All recorded native platform/package/host gates in the active distribution
