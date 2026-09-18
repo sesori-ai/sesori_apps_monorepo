@@ -351,12 +351,27 @@ class MacosUpgradeWorkflowTests(unittest.TestCase):
             "        ), let quitItem = quitItem(in: trayMenu, ownedBy: pid)",
             quitter,
         )
-        self.assertNotIn("CGEvent(", quitter)
+        self.assertIn("mouseType: .leftMouseDown", quitter)
+        self.assertIn("mouseType: .leftMouseUp", quitter)
+        self.assertIn("processIdentifier(statusItem) == pid", quitter)
+        self.assertIn("statusFrame.width >= 4", quitter)
+        self.assertIn("statusFrame.width <= 100", quitter)
+        self.assertIn("statusFrame.height >= 4", quitter)
+        self.assertIn("statusFrame.height <= 64", quitter)
+        self.assertIn("statusFrame.minY >= 0", quitter)
+        self.assertIn("statusFrame.maxY <= 80", quitter)
+        self.assertIn("CGPoint(x: statusFrame.midX, y: statusFrame.midY)", quitter)
+        self.assertIn(
+            "guard actions.contains(kAXPressAction),\n"
+            "          let statusFrame = clickStatusItem(statusItem, ownedBy: pid)",
+            quitter,
+        )
+        self.assertNotIn("keyboardEventSource", quitter)
         self.assertNotIn("postKey(", quitter)
         self.assertNotIn("quitItems(from:", quitter)
         self.assertNotIn("menus(from:", quitter)
-        press = quitter.index("AXUIElementPerformAction(statusItem")
-        self.assertLess(press, quitter.rindex("visibleTrayMenu("))
+        click = quitter.index("clickStatusItem(statusItem, ownedBy: pid)")
+        self.assertLess(click, quitter.rindex("visibleTrayMenu("))
 
 
 class MacosUpgradeSafetyTests(unittest.TestCase):

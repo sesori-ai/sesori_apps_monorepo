@@ -5,9 +5,9 @@
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
 - **Status:** Active — steps 1–5 and the private portions of steps 6, 7 and 9
-  merged. The macOS signing-secret migration is complete. Three main-only native
+  merged. The macOS signing-secret migration is complete. Four main-only native
   x64/arm64 helper-Off `1.8.4+24 → 1.9.0+62` runs failed safely at tray Quit; a
-  system-wide, process-constrained hit-test fix and accepted rerun are pending. Public
+  bounded real-click fix and accepted rerun are pending. Public
   macOS/Windows/Linux publication
   and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
   releases. The independently executable private portion of step 11 is in progress;
@@ -415,6 +415,13 @@ The third main-only run showed that application-scoped AX hit testing does not s
 the transient status-bar menu. The correction uses system-wide z-order hit testing but
 still accepts only the exact PID's AXMenu anchored to the clicked status-item frame,
 searching for Quit only inside that menu.
+
+**Step 6 real-click correction PR:**
+`⚙️ [desktop-distribution] Click real macOS tray target [step 8/14]`.
+The fourth main-only run showed system-wide hit tests still saw only groups/windows,
+confirming AXPress did not expose the custom-view popup. The correction sends one mouse
+click to the verified process-owned 4–100 × 4–64 point frame within the top 80 points,
+then retains the exact PID/AXMenu/frame/bounded-Quit admission checks.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
