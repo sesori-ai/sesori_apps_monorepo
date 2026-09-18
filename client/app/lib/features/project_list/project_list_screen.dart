@@ -27,40 +27,44 @@ part "widgets/bridge_offline_view.dart";
 class const ProjectListScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (_) => createProjectListCubit(locator: getIt),
-        ),
-        BlocProvider(
-          create: (_) => BridgeIdentityCubit(
-            registeredBridgesService: getIt<RegisteredBridgesService>(),
-            connectionService: getIt<ConnectionService>(),
+    return RepositoryProvider<ProjectInventoryService>(
+      create: (_) => getIt<ProjectInventoryService>(),
+      dispose: (inventory) => unawaited(inventory.dispose()),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (context) => ProjectListCubit(inventoryService: context.read<ProjectInventoryService>()),
           ),
-        ),
-      ],
-      child: ProjectListView(
-        onAddProject: _showAddProject,
-        onOpenSettings: ({required context}) => context.pushRoute(const AppRoute.settings()),
-        onOpenProject: ({required context, required project, required displayName}) {
-          context.pushRoute(
-            AppRoute.sessions(
-              projectId: project.id,
-              projectName: displayName,
+          BlocProvider(
+            create: (_) => BridgeIdentityCubit(
+              registeredBridgesService: getIt<RegisteredBridgesService>(),
+              connectionService: getIt<ConnectionService>(),
             ),
-          );
-        },
-        disconnectedViewBuilder: ({required context, required state, required bridge}) =>
-            state.hasRegisteredBridges ? _BridgeOfflineView(bridge: bridge) : const _ConnectBridgeChecklist(),
-        disconnectedActionBuilder: ({required context, required state}) => _NeedHelpMenu(
-          surface: state.hasRegisteredBridges ? OnboardingSurface.bridgeOffline : OnboardingSurface.connectSetup,
+          ),
+        ],
+        child: ProjectListView(
+          onAddProject: _showAddProject,
+          onOpenSettings: ({required context}) => context.pushRoute(const AppRoute.settings()),
+          onOpenProject: ({required context, required project, required displayName}) {
+            context.pushRoute(
+              AppRoute.sessions(
+                projectId: project.id,
+                projectName: displayName,
+              ),
+            );
+          },
+          disconnectedViewBuilder: ({required context, required state, required bridge}) =>
+              state.hasRegisteredBridges ? _BridgeOfflineView(bridge: bridge) : const _ConnectBridgeChecklist(),
+          disconnectedActionBuilder: ({required context, required state}) => _NeedHelpMenu(
+            surface: state.hasRegisteredBridges ? OnboardingSurface.bridgeOffline : OnboardingSurface.connectSetup,
+          ),
+          connectedEmptyViewBuilder: ({required context}) => _ConnectedEmptyView(
+            onAddProject: () => _showAddProject(context: context),
+          ),
+          connectionBannerBuilder: ({required context}) => ConnectionBanner.maybeFor(context),
+          onRefreshDisconnected: ({required context, required state}) =>
+              context.read<ProjectListCubit>().reconnectBridge(),
         ),
-        connectedEmptyViewBuilder: ({required context}) => _ConnectedEmptyView(
-          onAddProject: () => _showAddProject(context: context),
-        ),
-        connectionBannerBuilder: ({required context}) => ConnectionBanner.maybeFor(context),
-        onRefreshDisconnected: ({required context, required state}) =>
-            context.read<ProjectListCubit>().reconnectBridge(),
       ),
     );
   }

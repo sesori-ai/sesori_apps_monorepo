@@ -154,6 +154,11 @@ state.
   wait. A stale superseded read cannot rearm a failed change. Cancelling hides
   the progress row immediately, but a transaction already in progress that
   completes after that cancellation still drives the same list refresh.
+- Project inventory reads, mutations, live projection and catalog/reconnect behavior run in a scoped
+  `ProjectInventoryService`, without a mounted Cubit. Its thin adapter preserves immediate optimistic state and
+  completed-read visibility. Mobile owns one factory instance per project route; desktop owns one per signed-in
+  cockpit. Replacing a consumer replays retained data, while exiting the owning scope disposes the inventory and
+  fences late state application/unseen seeding. Onboarding and loaded-inventory analytics retain their existing policy.
 - Project and session inventory presentation is shared by the mobile and
   desktop shells, while each shell owns its routes and recovery policy. Mobile
   keeps CLI bridge installation, command sharing, and relay reconnect guidance.
@@ -540,7 +545,9 @@ started one. Restore harness eligibility afterwards.
   `client/desktop/lib/features/sessions/`,
   `client/module_app_ui/lib/src/widgets/catalog_scan_row.dart`,
   `client/app/test/playbook/catalog_scan_row_playbook.dart`,
-  `client/module_core/lib/src/services/catalog_rescan_service.dart`, and
+  `client/module_core/lib/src/services/catalog_rescan_service.dart`,
+  `client/module_core/lib/src/services/project_inventory_service.dart`,
+  `client/module_core/lib/src/cubits/project_inventory/project_list_cubit.dart`, and
   `client/module_prego/lib/components/navigation/prego_sliver_refresh_control.dart`
 - Pi metadata catalog: `bridge/sesori_plugin_pi/lib/src/api/pi_session_storage_api.dart`,
   `bridge/sesori_plugin_pi/lib/src/repositories/pi_session_catalog_repository.dart`

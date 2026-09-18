@@ -18,7 +18,7 @@ class ProjectListService({
   int _listGeneration = 0;
 
   /// Every winning successful authoritative project snapshot, without retaining a
-  /// second project inventory alongside the owning Cubit.
+  /// second project inventory alongside ProjectInventoryService.
   Stream<List<ProjectSummary>> get listedProjects => _listedProjects.stream;
 
   Future<ApiResponse<Projects>> listProjects() async {

@@ -4,6 +4,17 @@ Delivery 17/22; branch `desktop-ux/sidebar-refresh-ownership`.
 Base: #1533 squash `d530a19ec993b295a058f6ff0ae0316bb5ef0bd5`, tree
 `d50ffff0e019ed579d2e362f6b83b185ffef2268`.
 
+## Merge
+
+PR #1540 merged on 2026-09-18T21:01:32Z. Accepted publication head:
+`6548b98888d462200d761d9c54942a7dfbe9a902`; distinct squash:
+`41e019da8bb5af9e23d76888a3a50912a308f26f`, tree `b5ee109cc3b170700c4697a6390400baf523687a`.
+Readiness assessment: CI 12/12 passing, Cubic approval, completed automated reviews and no unresolved feedback.
+Final publication after review documentation: 1,223 lines (771 additions/452 deletions) across 19 paths;
+498 production, 273 tests, 440 documentation and 12 generated. The original reviewed implementation remains
+`538ba831a45145ca3be7d3b9037ab4fc00449849` below; publication and squash are not that source checkpoint.
+The terminal monitor's later running check was not a failure. Native qualification remains outstanding.
+
 ## Scope and ownership
 
 `RecentSessionInventoryService` replaces the business owner formerly inside `RecentSessionsCubit`.
@@ -26,7 +37,8 @@ Old Cubit business methods/model paths are removed rather than shimmed. Core DI 
 ## Split and review
 
 The lower-owner delivery splits at its two existing inventories: this slice moves recent ownership and its consumer;
-9.c.2b.2 / 18/22 moves project ownership and the typed desktop workflow. Controls remain 9.c.2c / 19/22.
+9.c.2b.2 / 18/22 moves project ownership; its code-informed plan moves the typed desktop workflow alongside its first
+control in 9.c.2c / 19/22. The 22-step series total is unchanged.
 The series now has 22 PRs. Existing published Git history stays intact; current PR title metadata follows the tracker.
 Published-title receipts: `/tmp/rose-elephant-series-22-title-receipts.json`.
 
@@ -114,6 +126,7 @@ new architecture review or repetition of unchanged passing suites.
 ## Boundaries
 
 Internal refactor only: no intended user-visible or database change. Explicit refresh and its winning-result API
-remain the next slice; no unused public refresh API is introduced here. Native/live qualification remains outstanding.
+land with the 19/22 control after 18/22's project owner; no unused public refresh API is introduced here.
+Native/live qualification remains outstanding.
 No real app, bridge/helper, auth/preferences, secure storage, device, registration,
 or production database operation ran.

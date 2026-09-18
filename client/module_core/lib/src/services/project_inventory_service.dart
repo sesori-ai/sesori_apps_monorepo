@@ -1,32 +1,32 @@
 import "dart:async";
 
-import "package:bloc/bloc.dart";
+import "package:injectable/injectable.dart";
 import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../capabilities/server_connection/connection_service.dart";
-import "../../capabilities/server_connection/models/connection_status.dart";
-import "../../errors/api_error_remote_failure_x.dart";
-import "../../foundation/models/product_analytics/product_analytics_event.dart";
-import "../../logging/logging.dart";
-import "../../platform/route_source.dart";
-import "../../repositories/models/analytics_delivery_result.dart";
-import "../../repositories/project_repository.dart";
-import "../../routing/app_routes.dart";
-import "../../services/catalog_rescan_service.dart";
-import "../../services/loaded_state_analytics_reporter.dart";
-import "../../services/models/catalog_rescan_state.dart";
-import "../../services/models/session_activity_info.dart";
-import "../../services/product_analytics_service.dart";
-import "../../services/project_list_service.dart";
-import "../../services/registered_bridges_service.dart";
-import "../../services/session_unseen_tracker.dart";
-import "../../services/sse_event_tracker.dart";
-import "../shared/optimistic_rename_tracker.dart";
-import "add_project_outcome.dart";
-import "project_list_state.dart";
+import "../capabilities/server_connection/connection_service.dart";
+import "../capabilities/server_connection/models/connection_status.dart";
+import "../errors/api_error_remote_failure_x.dart";
+import "../foundation/models/product_analytics/product_analytics_event.dart";
+import "../logging/logging.dart";
+import "../platform/route_source.dart";
+import "../repositories/models/analytics_delivery_result.dart";
+import "../repositories/project_repository.dart";
+import "../routing/app_routes.dart";
+import "catalog_rescan_service.dart";
+import "loaded_state_analytics_reporter.dart";
+import "models/add_project_outcome.dart";
+import "models/catalog_rescan_state.dart";
+import "models/optimistic_rename_tracker.dart";
+import "models/project_list_state.dart";
+import "models/session_activity_info.dart";
+import "product_analytics_service.dart";
+import "project_list_service.dart";
+import "registered_bridges_service.dart";
+import "session_unseen_tracker.dart";
+import "sse_event_tracker.dart";
 
 /// How long to wait after an activity event before auto-refreshing project
 /// data. Events during this window are coalesced into a single refresh.
@@ -42,28 +42,38 @@ enum _ProjectFetchOutcome() {
   superseded,
 }
 
-class ProjectListCubit(
-  final ProjectRepository _projectRepository,
-  final ConnectionService _connectionService,
-  final SseEventTracker _sseEventTracker,
-  RouteSource routeSource, {
+/// Project inventory and its existing operations, scoped to a route or cockpit.
+/// The caller owns this factory instance; presentation adapters only observe it.
+@injectable
+class ProjectInventoryService({
+  required final ProjectRepository _projectRepository,
+  required final ConnectionService _connectionService,
+  required final SseEventTracker _sseEventTracker,
+  required RouteSource routeSource,
   required final ProjectListService _projectListService,
   required final SessionUnseenTracker _sessionUnseenTracker,
   required final RegisteredBridgesService _registeredBridgesService,
   required final ProductAnalyticsService _productAnalyticsService,
-  required final LoadedStateAnalyticsReporter _loadedStateAnalyticsReporter,
   required final FailureReporter _failureReporter,
   required final CatalogRescanService _catalogRescanService,
-}) extends Cubit<ProjectListState> {
+}) {
+  // Keep optimistic intents and completed reads visible before their callers resume.
+  final BehaviorSubject<ProjectListState> _state = BehaviorSubject.seeded(const ProjectListState.loading(), sync: true);
   final CompositeSubscription _subscriptions = CompositeSubscription();
+  late final LoadedStateAnalyticsReporter _loadedStateAnalyticsReporter;
+
+  ProjectListState get state => _state.value;
+  ValueStream<ProjectListState> get stateStream => _state.stream;
 
   /// Keeps pre-rename list responses from repainting an old name while the
   /// mutation is still pending.
   final Map<String, OptimisticRenameTracker> _renameStateByProjectId = {};
   int _nextRenameToken = 0;
 
-  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  this : super(const ProjectListState.loading()) {
+  this {
+    _loadedStateAnalyticsReporter = LoadedStateAnalyticsReporter.projectInventory(
+      productAnalyticsService: _productAnalyticsService,
+    );
     unawaited(_loadInitialProjects());
 
     // 1. Immediate activity badge updates (no API call).
@@ -107,7 +117,7 @@ class ProjectListCubit(
             );
           })
           .listen((_) {
-            if (isClosed) return;
+            if (_state.isClosed) return;
             unawaited(refreshProjects());
           }),
     );
@@ -121,7 +131,7 @@ class ProjectListCubit(
           .pairwise()
           .where((pair) => pair.first != AppRouteDef.projects && pair.last == AppRouteDef.projects)
           .listen((_) {
-            if (isClosed) return;
+            if (_state.isClosed) return;
             unawaited(refreshProjects());
           }),
     );
@@ -192,15 +202,17 @@ class ProjectListCubit(
   }
 
   void _onUnseenUpdated() {
-    if (isClosed) return;
+    if (_state.isClosed) return;
     if (state case final ProjectListLoaded loaded) {
-      emit(loaded.copyWith(unseenByProjectId: _unseenByProjectId(loaded.projects)));
+      _emit(
+        state: loaded.copyWith(unseenByProjectId: _unseenByProjectId(projects: loaded.projects)),
+      );
     }
   }
 
   /// Merges the REST-loaded `Project.hasUnseenChanges` with the live tracker
   /// map (the tracker takes precedence once it has an entry).
-  Map<String, bool> _unseenByProjectId(List<ProjectSummary> projects) {
+  Map<String, bool> _unseenByProjectId({required List<ProjectSummary> projects}) {
     final live = _sessionUnseenTracker.currentProjectUnseen;
     return {
       for (final project in projects) project.id: live[project.id] ?? project.hasUnseenChanges,
@@ -210,8 +222,8 @@ class ProjectListCubit(
   void _onActivityUpdated(Map<String, int> activityById) {
     try {
       if (state case final ProjectListLoaded loaded) {
-        if (isClosed) return;
-        emit(loaded.copyWith(activityById: activityById));
+        if (_state.isClosed) return;
+        _emit(state: loaded.copyWith(activityById: activityById));
       }
     } catch (e, st) {
       loge("Activity update handler error", e, st);
@@ -233,14 +245,14 @@ class ProjectListCubit(
   }
 
   void _onSessionActivityUpdated(Map<String, Map<String, SessionActivityInfo>> activityByProjectId) {
-    if (isClosed) return;
+    if (_state.isClosed) return;
     if (state case final ProjectListLoaded loaded) {
       _emitOrdered(loaded: loaded, projects: loaded.projects, activityByProjectId: activityByProjectId);
     }
   }
 
   void _onSessionListStateUpdated() {
-    if (isClosed) return;
+    if (_state.isClosed) return;
     if (state case final ProjectListLoaded loaded) {
       _emitOrdered(
         loaded: loaded,
@@ -252,7 +264,7 @@ class ProjectListCubit(
 
   void _onProjectTimestampUpdated(Map<String, int> timestampByProjectId) {
     try {
-      if (isClosed) return;
+      if (_state.isClosed) return;
       if (state case final ProjectListLoaded loaded) {
         final merged = _projectListService.mergeTimestampUpdates(
           projects: loaded.projects,
@@ -297,7 +309,7 @@ class ProjectListCubit(
 
   void _onConnectionStatusChanged(ConnectionStatus status) {
     logd("[ProjectList] connection status: ${status.runtimeType}");
-    if (isClosed) return;
+    if (_state.isClosed) return;
     switch (status) {
       case ConnectionConnected():
         // A reconnect driven by reconnectBridge (the onboarding pull-to-
@@ -342,30 +354,29 @@ class ProjectListCubit(
   ///
   /// The lookup is async, so the bridge may have come back while it was in
   /// flight — in that case the connected transition owns the next state and
-  /// this emit is skipped. Re-emitting an unchanged state is harmless (bloc
-  /// dedupes equal states).
+  /// this emit is skipped. Presentation adapters deduplicate equal states.
   ///
   /// Which machine the recovery view is trying to reach is resolved separately
   /// by `BridgeIdentityCubit`, so this state is never held back by that fetch.
   Future<void> _emitBridgeDisconnected({required int? fetchGeneration}) async {
     final hasRegisteredBridges = await _registeredBridgesService.hasRegisteredBridges();
-    if (isClosed) return;
+    if (_state.isClosed) return;
     if (fetchGeneration != null && fetchGeneration != _fetchGeneration) return;
     if (!_isBridgeUnavailable) return;
     _loadedStateAnalyticsReporter.clearCurrentOccurrence();
-    emit(ProjectListState.bridgeDisconnected(hasRegisteredBridges: hasRegisteredBridges));
+    _emit(state: ProjectListState.bridgeDisconnected(hasRegisteredBridges: hasRegisteredBridges));
   }
 
   void _onStaleReconnect() {
-    if (isClosed) return;
+    if (_state.isClosed) return;
     if (state case final ProjectListLoaded loaded) {
-      emit(loaded.copyWith(isRefreshing: true));
+      _emit(state: loaded.copyWith(isRefreshing: true));
       unawaited(
         refreshProjects().whenComplete(() {
-          if (isClosed) return;
+          if (_state.isClosed) return;
           final current = state;
           if (current is ProjectListLoaded) {
-            emit(current.copyWith(isRefreshing: false));
+            _emit(state: current.copyWith(isRefreshing: false));
           }
         }),
       );
@@ -374,13 +385,13 @@ class ProjectListCubit(
 
   Future<void> loadProjects() async {
     _loadedStateAnalyticsReporter.clearCurrentOccurrence();
-    emit(const ProjectListState.loading());
+    _emit(state: const ProjectListState.loading());
     await _fetchProjects(silent: false, catalogRefresh: false);
   }
 
   Future<void> _loadInitialProjects() async {
     await _prepareInitialConnection();
-    if (isClosed) return;
+    if (_state.isClosed) return;
     if (_isBridgeUnavailable) {
       await _emitBridgeDisconnected(fetchGeneration: null);
       return;
@@ -432,14 +443,14 @@ class ProjectListCubit(
   /// of failing immediately with a "not connected" error.
   Future<void> retryLoadProjects() async {
     _loadedStateAnalyticsReporter.clearCurrentOccurrence();
-    emit(const ProjectListState.loading());
+    _emit(state: const ProjectListState.loading());
     // Yield to the event loop so the loading indicator renders before
     // the reconnection / fetch attempt (which may resolve synchronously
     // when the relay is disconnected).
     await Future<void>.delayed(Duration.zero);
-    if (isClosed) return;
+    if (_state.isClosed) return;
     await _connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15));
-    if (isClosed) return;
+    if (_state.isClosed) return;
     await _fetchProjects(silent: false, catalogRefresh: false);
   }
 
@@ -483,7 +494,7 @@ class ProjectListCubit(
         // An existing config dropped (e.g. bridge offline) — reconnect it.
         await _connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15));
       }
-      if (isClosed) return;
+      if (_state.isClosed) return;
       if (_isBridgeUnavailable) {
         await _emitBridgeDisconnected(fetchGeneration: null);
         return;
@@ -505,7 +516,7 @@ class ProjectListCubit(
   /// snapshot requested after it.
   int _fetchGeneration = 0;
 
-  /// Durable catalog commits observed by this cubit, and the newest commit a
+  /// Durable catalog commits observed by this owner, and the newest commit a
   /// successfully applied list snapshot has covered.
   int _catalogChangeGeneration = 0;
   int _catalogChangeConsumedGeneration = 0;
@@ -554,9 +565,9 @@ class ProjectListCubit(
   /// Calls the bridge API to hide the project, then removes it from the
   /// current state on success. Returns whether the bridge accepted the hide,
   /// so the UI can report a rejected hide instead of claiming success.
-  Future<bool> hideProject(String projectId) async {
+  Future<bool> hideProject({required String projectId}) async {
     final response = await _projectRepository.hideProject(projectId: projectId);
-    if (isClosed) return false;
+    if (_state.isClosed) return false;
     if (response case ErrorResponse(:final error)) {
       loge("Failed to hide project: ${error.toString()}");
       return false;
@@ -588,10 +599,10 @@ class ProjectListCubit(
       activityByProjectId: activityByProjectId,
       listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
     );
-    emit(
-      loaded.copyWith(
+    _emit(
+      state: loaded.copyWith(
         projects: ordered,
-        unseenByProjectId: _unseenByProjectId(ordered),
+        unseenByProjectId: _unseenByProjectId(projects: ordered),
       ),
     );
   }
@@ -615,13 +626,13 @@ class ProjectListCubit(
       parentPath: parentPath,
       name: name,
     );
-    if (isClosed) return AddProjectOutcome.otherError;
+    if (_state.isClosed) return AddProjectOutcome.otherError;
     switch (response) {
       case SuccessResponse():
         await refreshProjects();
         return AddProjectOutcome.success;
       case ErrorResponse(:final error):
-        return _addProjectFailureOutcome(error);
+        return _addProjectFailureOutcome(error: error);
     }
   }
 
@@ -641,7 +652,7 @@ class ProjectListCubit(
       case SuccessResponse(:final data):
         return CreateDirectorySuccess(directory: data);
       case ErrorResponse(:final error):
-        if (_isPermissionDenied(error)) return const CreateDirectoryPermissionDenied();
+        if (_isPermissionDenied(error: error)) return const CreateDirectoryPermissionDenied();
         if (error is NonSuccessCodeError && error.errorCode == 409) {
           return const CreateDirectoryAlreadyExists();
         }
@@ -701,7 +712,7 @@ class ProjectListCubit(
           name: name,
           succeeded: true,
         );
-        if (!isClosed) {
+        if (!_state.isClosed) {
           unawaited(
             _refreshProjects(
               force: true,
@@ -732,7 +743,7 @@ class ProjectListCubit(
     renameState.complete(token: token, value: name, succeeded: succeeded);
     if (!renameState.isSettled) {
       final currentState = state;
-      if (!isClosed && currentState is ProjectListLoaded) {
+      if (!_state.isClosed && currentState is ProjectListLoaded) {
         _emitOrdered(
           loaded: currentState,
           projects: currentState.projects,
@@ -744,7 +755,7 @@ class ProjectListCubit(
 
     _renameStateByProjectId.remove(projectId);
     final currentState = state;
-    if (isClosed || currentState is! ProjectListLoaded) return;
+    if (_state.isClosed || currentState is! ProjectListLoaded) return;
     final index = currentState.projects.indexWhere((project) => project.id == projectId);
     final projects = [...currentState.projects];
     if (index >= 0) {
@@ -769,7 +780,7 @@ class ProjectListCubit(
       path: path,
       gitAction: gitAction,
     );
-    if (isClosed) return OpenProjectOutcome.otherError;
+    if (_state.isClosed) return OpenProjectOutcome.otherError;
     switch (response) {
       case SuccessResponse(:final data):
         await refreshProjects();
@@ -781,7 +792,7 @@ class ProjectListCubit(
         if (error is NonSuccessCodeError && error.errorCode == 428) {
           return OpenProjectOutcome.gitChoiceRequired;
         }
-        if (_isPermissionDenied(error)) {
+        if (_isPermissionDenied(error: error)) {
           return OpenProjectOutcome.permissionDenied;
         }
         return OpenProjectOutcome.otherError;
@@ -798,21 +809,21 @@ class ProjectListCubit(
       case SuccessResponse(:final data):
         return FilesystemSuggestionsSuccess(suggestions: data);
       case ErrorResponse(:final error):
-        if (_isPermissionDenied(error)) {
+        if (_isPermissionDenied(error: error)) {
           return const FilesystemSuggestionsPermissionDenied();
         }
         return const FilesystemSuggestionsError();
     }
   }
 
-  AddProjectOutcome _addProjectFailureOutcome(ApiError error) {
-    if (_isPermissionDenied(error)) {
+  AddProjectOutcome _addProjectFailureOutcome({required ApiError error}) {
+    if (_isPermissionDenied(error: error)) {
       return AddProjectOutcome.permissionDenied;
     }
     return AddProjectOutcome.otherError;
   }
 
-  bool _isPermissionDenied(ApiError error) {
+  bool _isPermissionDenied({required ApiError error}) {
     return error is NonSuccessCodeError && error.errorCode == 403;
   }
 
@@ -844,7 +855,7 @@ class ProjectListCubit(
       // that arrives while the request is in flight.
       final unseenTick = _sessionUnseenTracker.tick;
       final projectResponse = await _projectListService.listProjects();
-      if (isClosed) return _ProjectFetchOutcome.superseded;
+      if (_state.isClosed) return _ProjectFetchOutcome.superseded;
       if (requestGeneration != _fetchGeneration) {
         if (projectResponse case ErrorResponse(:final error)) {
           logw(
@@ -876,11 +887,11 @@ class ProjectListCubit(
             {for (final p in sortedProjects) p.id: p.hasUnseenChanges},
             sinceTick: unseenTick,
           );
-          emit(
-            ProjectListState.loaded(
+          _emit(
+            state: ProjectListState.loaded(
               projects: sortedProjects,
               activityById: _sseEventTracker.currentProjectActivity,
-              unseenByProjectId: _unseenByProjectId(sortedProjects),
+              unseenByProjectId: _unseenByProjectId(projects: sortedProjects),
               catalogScan: _catalogRescanService.state.value,
             ),
           );
@@ -899,13 +910,13 @@ class ProjectListCubit(
             // The fetch failed because the bridge isn't connected — show the
             // bridge-disconnected flow rather than a generic error.
             await _emitBridgeDisconnected(fetchGeneration: requestGeneration);
-            if (isClosed || requestGeneration != _fetchGeneration) {
+            if (_state.isClosed || requestGeneration != _fetchGeneration) {
               return _ProjectFetchOutcome.superseded;
             }
           } else {
             loge("Project list load failed", error);
             _loadedStateAnalyticsReporter.clearCurrentOccurrence();
-            emit(ProjectListState.failed(reason: error.remoteFailureReason));
+            _emit(state: ProjectListState.failed(reason: error.remoteFailureReason));
           }
           return _ProjectFetchOutcome.failed;
       }
@@ -915,7 +926,7 @@ class ProjectListCubit(
   }
 
   void _onCatalogChanged() {
-    if (isClosed) return;
+    if (_state.isClosed) return;
     _catalogChangeGeneration++;
     _catalogRefreshPausedAfterFailure = false;
     _ensureCatalogRefresh();
@@ -928,7 +939,7 @@ class ProjectListCubit(
   }
 
   void _ensureCatalogRefresh() {
-    if (isClosed ||
+    if (_state.isClosed ||
         _catalogRefresh != null ||
         _catalogRefreshPausedAfterFailure ||
         _catalogChangeConsumedGeneration >= _catalogChangeGeneration) {
@@ -946,7 +957,7 @@ class ProjectListCubit(
   }
 
   Future<void> _drainCatalogRefreshes() async {
-    while (!isClosed && _catalogChangeConsumedGeneration < _catalogChangeGeneration) {
+    while (!_state.isClosed && _catalogChangeConsumedGeneration < _catalogChangeGeneration) {
       final targetGeneration = _catalogChangeGeneration;
       late final _ProjectFetchOutcome outcome;
       try {
@@ -971,7 +982,7 @@ class ProjectListCubit(
   }
 
   void _rearmCatalogRefreshAfterOrdinaryFetch() {
-    if (isClosed || !_catalogRefreshPausedAfterFailure) return;
+    if (_state.isClosed || !_catalogRefreshPausedAfterFailure) return;
     _catalogRefreshPausedAfterFailure = false;
     _ensureCatalogRefresh();
   }
@@ -986,16 +997,17 @@ class ProjectListCubit(
   void dismissCatalogScan() => _catalogRescanService.dismiss();
 
   void _onCatalogScanState(CatalogRescanState scan) {
-    if (isClosed) return;
+    if (_state.isClosed) return;
     if (state case final ProjectListLoaded loaded) {
-      emit(loaded.copyWith(catalogScan: scan));
+      _emit(state: loaded.copyWith(catalogScan: scan));
     }
   }
 
-  @override
-  Future<void> close() async {
+  void _emit({required ProjectListState state}) => _state.add(state);
+
+  Future<void> dispose() async {
+    await _state.close();
     await _subscriptions.dispose();
     await _loadedStateAnalyticsReporter.close();
-    return await super.close();
   }
 }
