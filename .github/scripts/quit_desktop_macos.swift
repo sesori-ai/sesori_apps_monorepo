@@ -112,7 +112,7 @@ for (index, statusItem) in statusItems.enumerated() {
         continue
     }
     for _ in 0..<100 {
-        if let quitItem = findQuitItem(from: [statusItem, extras, appElement]) {
+        if let quitItem = findQuitItem(from: [statusItem]) {
             print("QUIT_ITEM \(description(quitItem))")
             if AXUIElementPerformAction(quitItem, kAXPressAction as CFString) == .success {
                 print("PASS invoked the accessible Sesori tray Quit command")

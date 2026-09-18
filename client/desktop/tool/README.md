@@ -118,9 +118,10 @@ gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo 
 ```
 
 For a private manual-replacement probe, select two retained successful package runs
-whose sealed identities increase strictly. The current run must contain the requested
-compiled channel; an older unpublished baseline may predate channel metadata. This mode
-uses no signing credentials and never republishes either package:
+whose sealed identities increase strictly. Dispatch only from `main`. Both packages
+must contain the requested compiled channel; the sole exception is the exact pinned
+retained 1.8.4 baseline that predates channel metadata. This mode uses no signing
+credentials and never republishes either package:
 
 ```bash
 gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \

@@ -30,6 +30,14 @@ PROCESS_PATTERN = (
     r"/Sesori\.app/Contents/MacOS/|/bridge/app/build/cli/bundle/bin/bridge|"
     r"/Contents/Helpers/bridge/bin/bridge|sesori-bridge"
 )
+PINNED_RETAINED_BASELINES = {
+    35042335424: {
+        "sourceSha": "efefcbcff7e7b75bdde271c1c670333987530212",
+        "sourceTree": "d0f1d0e3cfb31090d0ddb6d5b8321604e7e65730",
+        "pullRequest": 1503,
+        "mergeCommitSha": "d1813409e3c0a8e053c3a28068d574e24fb70730",
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -105,6 +113,7 @@ def load_candidate(
     evidence: Path,
     architecture: str,
     expected_channel: str | None,
+    allow_missing_channel: bool = False,
 ) -> Candidate:
     selected_run = read_json(run_json)
     run_id = selected_run.get("id")
@@ -147,11 +156,19 @@ def load_candidate(
             f"{label}: producer source was not clean")
 
     if expected_channel is not None:
-        defines = parse_defines(evidence / "desktop-bundle/dart-defines.env")
-        require(defines.get("SESORI_DESKTOP_RELEASE_CHANNEL") == expected_channel,
-                f"{label}: compiled channel differs")
-        require(json.loads(defines["SESORI_DESKTOP_BUNDLE_IDENTITY"]) == identity,
-                f"{label}: compiled identity differs from sealed identity")
+        defines_path = evidence / "desktop-bundle/dart-defines.env"
+        pinned_without_channel = (
+            allow_missing_channel
+            and PINNED_RETAINED_BASELINES.get(run_id, {}).get("sourceSha") == source_sha
+        )
+        require(defines_path.exists() or pinned_without_channel,
+                f"{label}: compiled channel evidence is missing")
+        if defines_path.exists():
+            defines = parse_defines(defines_path)
+            require(defines.get("SESORI_DESKTOP_RELEASE_CHANNEL") == expected_channel,
+                    f"{label}: compiled channel differs")
+            require(json.loads(defines["SESORI_DESKTOP_BUNDLE_IDENTITY"]) == identity,
+                    f"{label}: compiled identity differs from sealed identity")
 
     return Candidate(
         label=label,
@@ -172,9 +189,9 @@ def validate_upgrade(*, previous: Candidate, current: Candidate) -> None:
             "Current package must have a strictly newer semantic version/build identity")
 
 
-def git_is_ancestor(*, source_sha: str) -> bool:
+def git_is_main_ancestor(*, source_sha: str) -> bool:
     result = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", source_sha, "HEAD"],
+        ["git", "merge-base", "--is-ancestor", source_sha, "origin/main"],
         cwd=ROOT,
         check=False,
         stdout=subprocess.DEVNULL,
@@ -183,32 +200,28 @@ def git_is_ancestor(*, source_sha: str) -> bool:
     return result.returncode == 0
 
 
-def require_trusted_source(*, source_sha: str, associated_pulls: list[dict]) -> dict:
-    if git_is_ancestor(source_sha=source_sha):
-        return {"kind": "toolingAncestor"}
-    accepted_pulls = []
-    for pull in associated_pulls:
-        merge_sha = pull.get("merge_commit_sha")
-        base = pull.get("base", {})
-        base_repository = base.get("repo", {}) if isinstance(base, dict) else {}
-        if (
-            pull.get("state") == "closed"
-            and isinstance(pull.get("merged_at"), str)
-            and type(pull.get("number")) is int
-            and isinstance(merge_sha, str)
-            and bool(re.fullmatch(r"[0-9a-f]{40}", merge_sha))
-            and base.get("ref") == "main"
-            and base_repository.get("full_name") == REPOSITORY
-            and git_is_ancestor(source_sha=merge_sha)
-        ):
-            accepted_pulls.append(pull)
-    require(accepted_pulls,
-            f"Selected source is neither in trusted tooling history nor associated with a merged main PR: {source_sha}")
-    accepted = min(accepted_pulls, key=lambda pull: pull["number"])
+def require_trusted_source(*, run_id: int, source_sha: str, associated_pulls: list[dict]) -> dict:
+    if git_is_main_ancestor(source_sha=source_sha):
+        return {"kind": "mainAncestor"}
+    baseline = PINNED_RETAINED_BASELINES.get(run_id)
+    require(baseline is not None and baseline["sourceSha"] == source_sha,
+            f"Selected source is neither in main history nor an exact pinned retained baseline: {source_sha}")
+    accepted = next((
+        pull for pull in associated_pulls
+        if pull.get("number") == baseline["pullRequest"]
+        and pull.get("state") == "closed"
+        and isinstance(pull.get("merged_at"), str)
+        and pull.get("merge_commit_sha") == baseline["mergeCommitSha"]
+        and pull.get("base", {}).get("ref") == "main"
+        and pull.get("base", {}).get("repo", {}).get("full_name") == REPOSITORY
+        and git_is_main_ancestor(source_sha=baseline["mergeCommitSha"])
+    ), None)
+    require(accepted is not None, f"Pinned retained baseline has no accepted merged-main provenance: {source_sha}")
     return {
-        "kind": "mergedMainPullRequest",
-        "pullRequest": accepted["number"],
-        "mergeCommitSha": accepted["merge_commit_sha"],
+        "kind": "pinnedRetainedBaseline",
+        "sourceTree": baseline["sourceTree"],
+        "pullRequest": baseline["pullRequest"],
+        "mergeCommitSha": baseline["mergeCommitSha"],
     }
 
 
@@ -436,7 +449,8 @@ def qualify(
         packages=previous_packages,
         evidence=previous_evidence,
         architecture=architecture,
-        expected_channel=None,
+        expected_channel=channel,
+        allow_missing_channel=True,
     )
     current = load_candidate(
         label="current",
@@ -448,10 +462,12 @@ def qualify(
     )
     validate_upgrade(previous=previous, current=current)
     previous_source_acceptance = require_trusted_source(
+        run_id=previous.run_id,
         source_sha=previous.source_sha,
         associated_pulls=read_json_array(previous_pulls_json),
     )
     current_source_acceptance = require_trusted_source(
+        run_id=current.run_id,
         source_sha=current.source_sha,
         associated_pulls=read_json_array(current_pulls_json),
     )
@@ -462,10 +478,8 @@ def qualify(
     shared_sentinel = SHARED_DATA_ROOT / "upgrade-probe/preserved-state"
     attachment_sentinel = ATTACHMENTS_ROOT / "upgrade-probe-preserved-state"
     sentinel_value = "sesori-private-macos-upgrade-probe\n"
-    installed = False
     try:
         install_candidate(candidate=previous, mount=output / "previous-volume", log=log)
-        installed = True
         sentinel.parent.mkdir(parents=True)
         sentinel.write_text(sentinel_value, encoding="utf-8")
         desired_state.write_text("off\n", encoding="utf-8")
@@ -485,9 +499,7 @@ def qualify(
                 "Previous launch changed login registration")
 
         shutil.rmtree(APPLICATION)
-        installed = False
         install_candidate(candidate=current, mount=output / "current-volume", log=log)
-        installed = True
         require(sentinel.read_text(encoding="utf-8") == sentinel_value, "Replacement changed upgrade sentinel")
         require(desired_state.read_text(encoding="utf-8").strip() == "off", "Replacement changed Off intent")
         require(shared_sentinel.read_text(encoding="utf-8") == sentinel_value,
@@ -549,7 +561,9 @@ def qualify(
         print(f"PASS private macOS/{architecture} {previous.version}+{previous.build_number} "
               f"→ {current.version}+{current.build_number} manual replacement")
     finally:
-        if installed and APPLICATION.exists():
+        # The fresh-run guard proved this path absent, so any copy is probe-owned even
+        # when installation or post-copy verification fails before returning.
+        if APPLICATION.exists():
             shutil.rmtree(APPLICATION)
         if REGISTRATION.exists():
             REGISTRATION.unlink()

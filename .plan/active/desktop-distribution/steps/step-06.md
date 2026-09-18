@@ -56,71 +56,61 @@ from public release authority. Windows/Linux publication remains disabled.
 
 ## Post-migration continuation
 
-Fresh stable package run `35206885114` passed both native package jobs at source
-`7aecbd943671290eca53506949a9c38f2d8da4d0`: x64 job `105154787465` and arm64 job
-`105154787487` both completed signing/notarization, helper E2E, installed GUI/platform
-fixture probes and private artifact upload. Read-only preparation run `35359083211`
-then validated those packages as proposed `desktop-v1.9.0`, build 62. Its tooling
-source was `beb99dc35e18ecbe596753ba7353237a817acf87`; package source remained the exact
-prior SHA. The four prepared package hashes are retained in that run's private
-metadata; neither run published a tag, release, feed or website.
+Stable package run `35206885114` used source
+`7aecbd943671290eca53506949a9c38f2d8da4d0`, tree
+`497c66e6407b9ca25a998fc60dab4679377ad233`, and passed x64 job `105154787465`
+and arm64 job `105154787487`. Read-only preparation run `35359083211` used tooling
+source `beb99dc35e18ecbe596753ba7353237a817acf87`, tree
+`8b5fd10865a37ae2e5f0b1a10642e02b98981ca6`, while retaining that exact package
+source/tree. It proposed `desktop-v1.9.0`, build 62, without publishing.
 
-The next bounded continuation adds credential-free `macos-upgrade-probe` qualification.
-It consumes retained successful 1.8.4 and stable 1.9.0 package runs, verifies producer
-provenance, clean source, strict identity ordering, notarization, DMG hashes, Developer
-ID identity, tickets and Gatekeeper, then exercises actual DMG installation, accessible
-tray Quit, no relaunch/orphan and bounded desktop/shared-state plus valid
-login-registration preservation on both native CPUs. This closes only the private
-signed helper-Off replacement slice. Authenticated
-helper-On/failed-stop, real account/Keychain/TCC, minimum OS, public download and parent
-Gate C remain explicit blockers rather than inferred passes.
+The continuation adds credential-free, main-only `macos-upgrade-probe` qualification.
+It accepts ordinary sources only from `origin/main`; the sole older exception is exact
+retained run `35042335424`, source
+`efefcbcff7e7b75bdde271c1c670333987530212`, tree
+`d0f1d0e3cfb31090d0ddb6d5b8321604e7e65730`, with pinned merged-PR provenance.
+It verifies package trust, performs actual DMG replacement and tray Quit, rejects
+relaunch/orphans, and checks bounded desktop/shared-state plus login registration.
 
-Initial branch run `35361626933` stopped on both CPUs before mounting or executing a
-package: retained 1.8.4 source `efefcbcff7e7b75bdde271c1c670333987530212`
-was a reviewed commit in squash-merged PR #1503 rather than a direct `main` ancestor.
-The corrected trust rule accepts either direct tooling ancestry or GitHub's association
-with a merged-to-main PR whose merge commit is an ancestor, and records which path
-accepted each source. It does not weaken producer, hash, identity, notarization or
-native package checks.
+Branch diagnostics converged without being reclassified as accepted evidence:
 
-Second branch run `35362043592` passed the corrected source gate and all DMG trust
-checks, then stopped before copying either prior app into Applications. Both retained
-packages intentionally contain a universal Flutter GUI (`x64` + `arm64`) and a
-package-native bridge helper; the probe had incorrectly required the GUI itself to be
-single-architecture. The corrected check requires the selected CPU in the GUI slices
-and requires the helper to be exactly package-native, matching the trusted producer
-inventory instead of weakening architecture validation.
+- `35361626933` rejected the squash-merged retained source before package execution.
+- `35362043592` exposed the universal-GUI/package-native-helper topology before copy.
+- `35362624156` reached the prior visible app but refused to infer an unobserved Quit.
+- `35363132033`, source `2f036ea94fed5f485d8f63c36ba9b948b98db8ae`,
+  tree `713b3844b0f1c204b996ed80f3182bb921f509bf`, passed x64 job
+  `105659084181` and arm64 job `105659084218`. It rendered all four windows, used the
+  process-owned AX tray item, rejected relaunch/orphans and preserved bounded state.
 
-Third branch run `35362624156` passed trust, installation, visible-window and screenshot
-checks for the prior app on both CPUs, then refused to infer Quit when the first AX
-helper could not find the menu command. It did not install the current package and its
-failure cleanup left no owned process or state. The corrected helper restricts status
-items to the exact app PID, prefers `AXPress` so `tray_manager` receives its real icon
-click callback, searches the status item/menu-bar/app accessibility roots, and retains
-bounded element/action diagnostics on another refusal.
-
-Final branch run `35363132033` passed at qualification source
-`2f036ea94fed5f485d8f63c36ba9b948b98db8ae`: native x64 job `105659084181` and
-arm64 job `105659084218`. Each job reverified the retained successful producer runs,
-accepted the 1.8.4 source through squash-merged PR #1503, validated exact DMG digests,
-Developer ID identity, tickets, Gatekeeper, sealed versions/builds and package-native
-helper CPU, then performed real `1.8.4+24 → 1.9.0+62` replacement in Applications.
-Both prior/current launches rendered the signed-out window, invoked the exact app-owned
-AX menu item `Quit Sesori`, exited without relaunch/orphans, and preserved Bridge Off,
-desktop/shared-data/attachment sentinels and a valid login registration. The four
-screenshots were inspected as rendered rather than inferred from window existence.
-
-Evidence artifacts `10554589107` (x64) and `10554949003` (arm64) expire on
+Run `35363132033` artifacts `10554589107` (x64) and `10554949003` (arm64) expire
 2026-10-02. Prior/current DMG hashes were respectively
 `e0ee205da412828e667cd63653e92005986e926275b9fcc992e05d78415bbe7f` /
 `54eab0a8fa1538401ce49820c92edd449e9b59df9aaef8ae9c4f6a38586e67a3`
 for x64 and `27de5e5c8cfc15ed707c199d193b202fe0aec45c69abd5985f7c23ea129fda16` /
 `ae287512772a4c2dd313f68f52eec14526222704b3a67ba50c7c6ed9af724e24`
-for arm64. Locally downloaded evidence was independently checked in
-`build/desktop-macos-upgrade-evidence/native-2f036ea/verified-summary.json`.
-This closes only private signed helper-Off replacement; authenticated helper-On,
-failed-stop refusal, real-account/Keychain/TCC, minimum-OS, public retrieval and parent
-Gate C remain open.
+for arm64. The branch run proves implementation behavior only; accepted evidence requires a
+post-merge `main` rerun. Authenticated helper-On, failed-stop, real-account/Keychain/TCC,
+minimum-OS, public retrieval and parent Gate C remain open.
+
+Dispatches and expanded logs were run from
+`/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
+
+```bash
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-packaging -f channel=stable
+gh workflow run desktop-release.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f source_sha=7aecbd943671290eca53506949a9c38f2d8da4d0 \
+  -f packaging_run=35206885114 -f channel=stable
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref desktop-distribution-macos-upgrade-probe -f mode=macos-upgrade-probe \
+  -f channel=stable -f previous_packaging_run=35042335424 \
+  -f packaging_run=35206885114
+gh run view 35206885114 --repo sesori-ai/sesori_apps_monorepo --job 105154787465 --log
+gh run view 35206885114 --repo sesori-ai/sesori_apps_monorepo --job 105154787487 --log
+gh run view 35359083211 --repo sesori-ai/sesori_apps_monorepo --job 105645579449 --log
+gh run view 35363132033 --repo sesori-ai/sesori_apps_monorepo --job 105659084181 --log
+gh run view 35363132033 --repo sesori-ai/sesori_apps_monorepo --job 105659084218 --log
+```
 
 ## Verification
 

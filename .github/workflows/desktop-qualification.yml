@@ -261,6 +261,10 @@ jobs:
           CURRENT_RUN: ${{ inputs.packaging_run }}
         run: |
           set -euo pipefail
+          [[ "$GITHUB_REF" == 'refs/heads/main' ]] || {
+            echo 'macOS upgrade qualification must be dispatched from main.' >&2
+            exit 1
+          }
           [[ "$PREVIOUS_RUN" =~ ^[1-9][0-9]*$ ]] || { echo 'Select a previous packaging run.' >&2; exit 1; }
           [[ "$CURRENT_RUN" =~ ^[1-9][0-9]*$ ]] || { echo 'Select a current packaging run.' >&2; exit 1; }
           [[ "$PREVIOUS_RUN" != "$CURRENT_RUN" ]] || { echo 'Upgrade runs must differ.' >&2; exit 1; }

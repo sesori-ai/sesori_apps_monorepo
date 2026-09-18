@@ -87,11 +87,11 @@ or permission to ship. Public release and full native upgrade gates remain outst
 ## Private macOS manual-replacement qualification
 
 Manual `macos-upgrade-probe` qualification is credential-free and consumes two
-retained successful macOS packaging runs on each package's native CPU. It accepts a
-source only when it is in the trusted tooling history or associated with a merged-main
-PR whose merge commit is in that history. It verifies exact DMG hashes against producer
-evidence and rechecks clean source, sealed identities, accepted notarization, Developer
-ID identity, tickets and Gatekeeper. The current
+retained successful macOS packaging runs on each package's native CPU. It runs only
+from `main` and accepts a source only from `origin/main` or the exact pinned retained
+1.8.4 run/source/tree. It verifies that baseline's merged-PR provenance, exact DMG
+hashes, clean producers, sealed identities, accepted notarization, Developer ID
+identity, tickets and Gatekeeper. The current
 package must have a strictly newer semantic-version/build identity and the requested
 compiled channel; an older unpublished baseline may predate channel metadata.
 
@@ -101,9 +101,9 @@ launches a visible window with persisted Bridge Off, invokes the app's accessibl
 **Quit Sesori** command, and rejects relaunch or orphan processes. It then replaces the
 complete app from the current DMG and repeats, preserving bounded desktop, shared
 CLI-data, attachment and valid login-registration sentinels. Cleanup removes only
-probe-owned paths. Native run `35363132033` passed this exact `1.8.4+24 → 1.9.0+62`
-slice on x64 job `105659084181` and arm64 job `105659084218`; all four prior/current
-screenshots were inspected as rendered. This does not prove an
+probe-owned paths. Pre-merge run `35363132033` passed this exact
+`1.8.4+24 → 1.9.0+62` behavior on both CPUs, but accepted qualification requires a
+post-merge `main` run. This does not prove an
 authenticated helper-On or failed-stop path, real-account/Keychain/TCC behavior,
 minimum-OS support, public retrieval, or release readiness.
 

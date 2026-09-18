@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from qualify_desktop_macos_upgrade import (
+    PINNED_RETAINED_BASELINES,
     load_candidate,
     normalized_lipo_architectures,
     require_fresh_native_runner,
@@ -17,6 +18,7 @@ from qualify_desktop_macos_upgrade import (
 
 
 WORKFLOW = Path(__file__).resolve().parents[1] / "workflows/desktop-qualification.yml"
+QUITTER = Path(__file__).with_name("quit_desktop_macos.swift")
 
 
 class MacosUpgradeValidationTests(unittest.TestCase):
@@ -155,6 +157,67 @@ class MacosUpgradeValidationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "compiled channel differs"):
                 load_candidate(**fixture)
 
+    def test_accepts_missing_channel_only_for_retained_baseline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            baseline = PINNED_RETAINED_BASELINES[35042335424]
+            fixture = self._fixture(
+                root=Path(directory),
+                label="previous",
+                version="1.8.4",
+                build_number=24,
+                source_sha=baseline["sourceSha"],
+            )
+            selected_run = json.loads(fixture["run_json"].read_text())
+            selected_run["id"] = 35042335424
+            fixture["run_json"].write_text(json.dumps(selected_run))
+            fixture["expected_channel"] = "stable"
+            fixture["allow_missing_channel"] = True
+            load_candidate(**fixture)
+
+            unpinned = self._fixture(
+                root=Path(directory),
+                label="unpinned",
+                version="1.8.4",
+                build_number=24,
+                source_sha="a" * 40,
+            )
+            unpinned["expected_channel"] = "stable"
+            unpinned["allow_missing_channel"] = True
+            with self.assertRaisesRegex(ValueError, "channel evidence is missing"):
+                load_candidate(**unpinned)
+
+    def test_rejects_notarization_or_identity_mismatch(self):
+        for mismatch in ("notarization", "source", "compiled"):
+            with self.subTest(mismatch=mismatch), tempfile.TemporaryDirectory() as directory:
+                fixture = self._fixture(
+                    root=Path(directory),
+                    label="current",
+                    version="1.9.0",
+                    build_number=62,
+                    source_sha="b" * 40,
+                    channel="stable",
+                )
+                if mismatch == "notarization":
+                    packaging = fixture["evidence"] / "desktop-macos-packaging"
+                    (packaging / "app-notarization.json").write_text('{"status":"Rejected"}')
+                    message = "app notarization was not accepted"
+                elif mismatch == "source":
+                    identity_path = fixture["evidence"] / "desktop-macos-packaging/desktop-bundle.json"
+                    identity = json.loads(identity_path.read_text())
+                    identity["sourceSha"] = "c" * 40
+                    identity_path.write_text(json.dumps(identity))
+                    message = "identity source differs from run"
+                else:
+                    defines_path = fixture["evidence"] / "desktop-bundle/dart-defines.env"
+                    lines = defines_path.read_text().splitlines()
+                    compiled = json.loads(lines[0].split("=", 1)[1])
+                    compiled["buildNumber"] = 63
+                    lines[0] = "SESORI_DESKTOP_BUNDLE_IDENTITY=" + json.dumps(compiled, separators=(",", ":"))
+                    defines_path.write_text("\n".join(lines) + "\n")
+                    message = "compiled identity differs"
+                with self.assertRaisesRegex(ValueError, message):
+                    load_candidate(**fixture)
+
     def test_rejects_dirty_producer_source(self):
         with tempfile.TemporaryDirectory() as directory:
             fixture = self._fixture(
@@ -211,42 +274,47 @@ class MacosUpgradeArchitectureTests(unittest.TestCase):
 
 
 class MacosUpgradeSourceTrustTests(unittest.TestCase):
-    def test_accepts_source_in_tooling_history(self):
-        with patch("qualify_desktop_macos_upgrade.git_is_ancestor", return_value=True):
+    def test_accepts_source_in_main_history(self):
+        with patch("qualify_desktop_macos_upgrade.git_is_main_ancestor", return_value=True):
             self.assertEqual(
-                require_trusted_source(source_sha="a" * 40, associated_pulls=[]),
-                {"kind": "toolingAncestor"},
+                require_trusted_source(run_id=200, source_sha="a" * 40, associated_pulls=[]),
+                {"kind": "mainAncestor"},
             )
 
-    def test_accepts_source_from_merged_main_pull_request(self):
-        merge_sha = "c" * 40
+    def test_accepts_only_exact_pinned_retained_baseline(self):
+        baseline = PINNED_RETAINED_BASELINES[35042335424]
         associated_pulls = [{
-            "number": 1503,
+            "number": baseline["pullRequest"],
             "state": "closed",
             "merged_at": "2026-09-16T01:40:57Z",
-            "merge_commit_sha": merge_sha,
+            "merge_commit_sha": baseline["mergeCommitSha"],
             "base": {
                 "ref": "main",
                 "repo": {"full_name": "sesori-ai/sesori_apps_monorepo"},
             },
         }]
         with patch(
-            "qualify_desktop_macos_upgrade.git_is_ancestor",
-            side_effect=lambda *, source_sha: source_sha == merge_sha,
+            "qualify_desktop_macos_upgrade.git_is_main_ancestor",
+            side_effect=lambda *, source_sha: source_sha == baseline["mergeCommitSha"],
         ):
             self.assertEqual(
-                require_trusted_source(source_sha="a" * 40, associated_pulls=associated_pulls),
+                require_trusted_source(
+                    run_id=35042335424,
+                    source_sha=baseline["sourceSha"],
+                    associated_pulls=associated_pulls,
+                ),
                 {
-                    "kind": "mergedMainPullRequest",
+                    "kind": "pinnedRetainedBaseline",
+                    "sourceTree": baseline["sourceTree"],
                     "pullRequest": 1503,
-                    "mergeCommitSha": merge_sha,
+                    "mergeCommitSha": baseline["mergeCommitSha"],
                 },
             )
 
-    def test_rejects_source_without_merged_main_acceptance(self):
-        with patch("qualify_desktop_macos_upgrade.git_is_ancestor", return_value=False):
-            with self.assertRaisesRegex(ValueError, "neither in trusted tooling history"):
-                require_trusted_source(source_sha="a" * 40, associated_pulls=[])
+    def test_rejects_arbitrary_intermediate_pull_request_source(self):
+        with patch("qualify_desktop_macos_upgrade.git_is_main_ancestor", return_value=False):
+            with self.assertRaisesRegex(ValueError, "neither in main history nor an exact pinned"):
+                require_trusted_source(run_id=42, source_sha="a" * 40, associated_pulls=[])
 
 
 class MacosUpgradeWorkflowTests(unittest.TestCase):
@@ -261,9 +329,15 @@ class MacosUpgradeWorkflowTests(unittest.TestCase):
         self.assertIn("desktop-macos-packages-${{ matrix.arch }}", job)
         self.assertIn("desktop-macos-evidence-${{ matrix.arch }}", job)
         self.assertIn("qualify_desktop_macos_upgrade.py", job)
+        self.assertIn("macOS upgrade qualification must be dispatched from main", job)
         self.assertNotIn("environment:", job)
         self.assertNotIn("secrets.", job)
         self.assertNotIn("contents: write", job)
+
+    def test_quit_lookup_stays_inside_pressed_status_item(self):
+        quitter = QUITTER.read_text()
+        self.assertIn("findQuitItem(from: [statusItem])", quitter)
+        self.assertNotIn("findQuitItem(from: [statusItem, extras, appElement])", quitter)
 
 
 class MacosUpgradeSafetyTests(unittest.TestCase):
