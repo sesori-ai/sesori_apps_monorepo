@@ -62,7 +62,7 @@ private func description(_ element: AXUIElement) -> String {
     return attributes.joined(separator: " ")
 }
 
-private func findQuitItem(from roots: [AXUIElement]) -> AXUIElement? {
+private func descendants(from roots: [AXUIElement]) -> [AXUIElement] {
     var queue = roots
     var visited: [AXUIElement] = []
     while !queue.isEmpty && visited.count < 1_024 {
@@ -71,13 +71,69 @@ private func findQuitItem(from roots: [AXUIElement]) -> AXUIElement? {
             continue
         }
         visited.append(element)
-        if stringAttribute(element, kAXRoleAttribute as CFString) == kAXMenuItemRole,
-           stringAttribute(element, kAXTitleAttribute as CFString) == quitTitle {
-            return element
-        }
         queue.append(contentsOf: children(element))
     }
-    return nil
+    return visited
+}
+
+private func quitItems(from roots: [AXUIElement], ownedBy pid: pid_t) -> [AXUIElement] {
+    descendants(from: roots).filter {
+        processIdentifier($0) == pid
+            && stringAttribute($0, kAXRoleAttribute as CFString) == kAXMenuItemRole
+            && stringAttribute($0, kAXTitleAttribute as CFString) == quitTitle
+    }
+}
+
+private func menus(from roots: [AXUIElement], ownedBy pid: pid_t) -> [AXUIElement] {
+    descendants(from: roots).filter {
+        processIdentifier($0) == pid
+            && stringAttribute($0, kAXRoleAttribute as CFString) == kAXMenuRole
+    }
+}
+
+private func frame(of element: AXUIElement) -> CGRect? {
+    guard let positionReference = attribute(element, kAXPositionAttribute as CFString),
+          let sizeReference = attribute(element, kAXSizeAttribute as CFString),
+          CFGetTypeID(positionReference) == AXValueGetTypeID(),
+          CFGetTypeID(sizeReference) == AXValueGetTypeID() else {
+        return nil
+    }
+    var position = CGPoint.zero
+    var size = CGSize.zero
+    guard AXValueGetValue(positionReference as! AXValue, .cgPoint, &position),
+          AXValueGetValue(sizeReference as! AXValue, .cgSize, &size) else {
+        return nil
+    }
+    return CGRect(origin: position, size: size)
+}
+
+private func isAnchored(_ menu: AXUIElement, to statusItem: AXUIElement) -> Bool {
+    guard let menuFrame = frame(of: menu),
+          let statusFrame = frame(of: statusItem),
+          menuFrame.width > 0,
+          menuFrame.height > 0 else {
+        return false
+    }
+    let tolerance: CGFloat = 16
+    let containsStatusCenter = menuFrame.minX - tolerance <= statusFrame.midX
+        && statusFrame.midX <= menuFrame.maxX + tolerance
+    let verticalEdgeDistance = min(
+        abs(menuFrame.minY - statusFrame.maxY),
+        abs(menuFrame.maxY - statusFrame.minY)
+    )
+    return containsStatusCenter && verticalEdgeDistance <= max(32, statusFrame.height + tolerance)
+}
+
+private func newlyPresentedTrayMenu(
+    from roots: [AXUIElement],
+    ownedBy pid: pid_t,
+    anchoredTo statusItem: AXUIElement,
+    comparedWith baseline: [AXUIElement]
+) -> AXUIElement? {
+    menus(from: roots, ownedBy: pid).first { candidate in
+        !baseline.contains(where: { CFEqual($0, candidate) })
+            && isAnchored(candidate, to: statusItem)
+    }
 }
 
 guard CommandLine.arguments.count == 2, let pid = pid_t(CommandLine.arguments[1]) else {
@@ -100,8 +156,14 @@ guard !statusItems.isEmpty else {
     fail("Sesori has no process-owned accessible status item")
 }
 
+let menuSearchRoots = statusItems + [extras, appElement]
 for (index, statusItem) in statusItems.enumerated() {
     print("STATUS_ITEM \(index) \(description(statusItem))")
+    // AppKit exposes tray_manager's transient NSMenu under the application hierarchy,
+    // not as a status-item child. Accept only a new process-owned AXMenu whose frame is
+    // anchored to the clicked status item, then search exclusively inside that menu.
+    let baseline = menus(from: menuSearchRoots, ownedBy: pid)
+    print("MENU_BASELINE count=\(baseline.count)")
     let actions = actionNames(statusItem)
     // tray_manager opens its context menu from the icon mouse-down callback. AXPress
     // follows that real click path; AXShowMenu may bypass the callback because the
@@ -112,7 +174,13 @@ for (index, statusItem) in statusItems.enumerated() {
         continue
     }
     for _ in 0..<100 {
-        if let quitItem = findQuitItem(from: [statusItem]) {
+        if let trayMenu = newlyPresentedTrayMenu(
+            from: menuSearchRoots,
+            ownedBy: pid,
+            anchoredTo: statusItem,
+            comparedWith: baseline
+        ), let quitItem = quitItems(from: [trayMenu], ownedBy: pid).first {
+            print("TRAY_MENU \(description(trayMenu))")
             print("QUIT_ITEM \(description(quitItem))")
             if AXUIElementPerformAction(quitItem, kAXPressAction as CFString) == .success {
                 print("PASS invoked the accessible Sesori tray Quit command")

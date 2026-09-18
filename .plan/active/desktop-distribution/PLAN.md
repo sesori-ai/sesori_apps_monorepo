@@ -5,9 +5,10 @@
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
 - **Status:** Active — steps 1–5 and the private portions of steps 6, 7 and 9
-  merged. The macOS signing-secret migration is complete. A private native x64/arm64
-  helper-Off `1.8.4+24 → 1.9.0+62` branch probe passed; accepted main-only evidence is
-  pending this tooling PR's merge. Public macOS/Windows/Linux publication
+  merged. The macOS signing-secret migration is complete. The first main-only native
+  x64/arm64 helper-Off `1.8.4+24 → 1.9.0+62` run failed safely at tray Quit; a
+  delta-scoped Accessibility fix and accepted rerun are pending. Public
+  macOS/Windows/Linux publication
   and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
   releases. The independently executable private portion of step 11 is in progress;
   its public-release reconciliation and final plan retirement remain blocked. Shipping
@@ -392,8 +393,14 @@ Credential migration is complete, but parent and native/public ship gates still 
 **Step 6 continuation PR:**
 `🚧 [desktop-distribution] Qualify signed macOS manual replacement [step 8/14]`.
 This credential-free continuation adds the private native replacement probe. It closes
-only after its reviewed tooling is merged and rerun from `main`; no tag, release,
-website write or database change is included.
+only after reviewed tooling passes from `main`; no tag, release, website write or
+database change is included.
+
+**Step 6 tray-evidence correction PR:**
+`⚙️ [desktop-distribution] Bind macOS upgrade Quit to tray popup [step 8/14]`.
+The first main-only run showed that AppKit does not expose the transient tray menu as a
+status-item child. The correction admits only a new process-owned AXMenu whose frame is
+anchored to the pressed status item, then searches for Quit only inside that menu.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.

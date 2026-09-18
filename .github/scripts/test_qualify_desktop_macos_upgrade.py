@@ -334,10 +334,22 @@ class MacosUpgradeWorkflowTests(unittest.TestCase):
         self.assertNotIn("secrets.", job)
         self.assertNotIn("contents: write", job)
 
-    def test_quit_lookup_stays_inside_pressed_status_item(self):
+    def test_quit_lookup_requires_new_anchored_menu_after_status_press(self):
         quitter = QUITTER.read_text()
-        self.assertIn("findQuitItem(from: [statusItem])", quitter)
-        self.assertNotIn("findQuitItem(from: [statusItem, extras, appElement])", quitter)
+        self.assertIn("let baseline = menus(from: menuSearchRoots", quitter)
+        self.assertIn("let menuSearchRoots = statusItems + [extras, appElement]", quitter)
+        self.assertIn("&& isAnchored(candidate, to: statusItem)", quitter)
+        self.assertIn(
+            "if let trayMenu = newlyPresentedTrayMenu(\n"
+            "            from: menuSearchRoots,\n"
+            "            ownedBy: pid,\n"
+            "            anchoredTo: statusItem,\n"
+            "            comparedWith: baseline\n"
+            "        ), let quitItem = quitItems(from: [trayMenu]",
+            quitter,
+        )
+        self.assertLess(quitter.index("let baseline = menus"), quitter.index("AXUIElementPerformAction(statusItem"))
+        self.assertLess(quitter.index("AXUIElementPerformAction(statusItem"), quitter.rindex("newlyPresentedTrayMenu("))
 
 
 class MacosUpgradeSafetyTests(unittest.TestCase):
