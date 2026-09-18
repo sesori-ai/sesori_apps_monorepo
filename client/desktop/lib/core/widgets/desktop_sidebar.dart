@@ -19,6 +19,11 @@ typedef SidebarSessionOpenedCallback = void Function({
   required Session session,
 });
 
+typedef _SidebarSessionMenuEntriesBuilder = List<PregoMenuEntry> Function({
+  required SessionListCubit cubit,
+  required Session session,
+});
+
 /// Desktop navigation frame. Its project inventory is shared with the main pane.
 class const DesktopSidebar({
   super.key,
@@ -191,36 +196,19 @@ class const DesktopSidebar({
                     child: const PregoActivityIndicator(color: null),
                   ),
                 ),
-                ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) => ListView.builder(
-                  // Keep trailing controls outside the interactive desktop scrollbar.
-                  padding: EdgeInsetsDirectional.only(end: PregoSpacing.xl * expansion),
-                  itemCount: projects.length,
-                  findChildIndexCallback: (key) {
-                    final index = projects.indexWhere((project) => ValueKey(project.id) == key);
-                    return index < 0 ? null : index;
-                  },
-                  itemBuilder: (context, index) {
-                    final project = projects[index];
-                    final basename = projectDirectoryBasename(project);
-                    final name = project.name ?? (basename.isEmpty ? loc.projectListDefaultName : basename);
-                    final active = activityById[project.id] ?? 0;
-                    final unseen = unseenByProjectId[project.id] ?? project.hasUnseenChanges;
-                    return _SidebarProjectGroup(
-                      key: ValueKey(project.id),
-                      project: project,
-                      name: name,
-                      active: active,
-                      unseen: unseen,
-                      expansion: expansion,
-                      expanded: !collapsedProjects.contains(project.id),
-                      selected: project.id == selectedProjectId,
-                      selectedSessionId: project.id == selectedProjectId ? selectedSessionId : null,
-                      onOpenProject: onOpenProject,
-                      onOpenSession: onOpenSession,
-                      onNewSession: onNewSession,
-                      sessionActions: sessionActions,
-                    );
-                  },
+                ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) => _SidebarInventory(
+                  key: const Key("desktop-sidebar-inventory"),
+                  projects: projects,
+                  activityById: activityById,
+                  unseenByProjectId: unseenByProjectId,
+                  collapsedProjectIds: collapsedProjects,
+                  expansion: expansion,
+                  selectedProjectId: selectedProjectId,
+                  selectedSessionId: selectedSessionId,
+                  onOpenProject: onOpenProject,
+                  onOpenSession: onOpenSession,
+                  onNewSession: onNewSession,
+                  sessionActions: sessionActions,
                 ),
                 ProjectListFailed() => _SidebarButton(
                   label: loc.projectListRetry,
@@ -276,12 +264,167 @@ class const DesktopSidebar({
   }
 }
 
+class const _SidebarInventory({
+  super.key,
+  required final List<ProjectSummary> projects,
+  required final Map<String, int> activityById,
+  required final Map<String, bool> unseenByProjectId,
+  required final Set<String> collapsedProjectIds,
+  required final double expansion,
+  required final String? selectedProjectId,
+  required final String? selectedSessionId,
+  required final SidebarSessionOpenedCallback onOpenSession,
+  required final ProjectOpenedCallback onNewSession,
+  required final SessionListActionDispatcher sessionActions,
+  required final ProjectOpenedCallback onOpenProject,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final entries = context.watch<RecentSessionsCubit>().state;
+    final projection = DesktopSidebarSessionProjection.from(projects: projects, entries: entries);
+    List<PregoMenuEntry> buildSessionMenuEntries({
+      required SessionListCubit cubit,
+      required Session session,
+    }) => sessionActions.sessionMenuEntries(context: context, cubit: cubit, session: session);
+    final gutter = PregoSpacing.xl * expansion;
+    final activityHeaderExpansion = projection.activityGroups.isEmpty ? 0.0 : expansion;
+    return CustomScrollView(
+      key: const Key("desktop-sidebar-project-list"),
+      slivers: [
+        SliverPadding(
+          padding: EdgeInsetsDirectional.only(end: gutter),
+          sliver: SliverToBoxAdapter(
+            key: const Key("desktop-sidebar-activity-header"),
+            child: ClipRect(
+              child: Align(
+                heightFactor: activityHeaderExpansion,
+                child: Opacity(
+                  opacity: activityHeaderExpansion,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(20, PregoSpacing.sm, 8, PregoSpacing.xs),
+                    child: Text(
+                      context.loc.desktopSidebarActivity,
+                      style: context.prego.textTheme.textXs.bold.copyWith(
+                        color: context.prego.colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: EdgeInsetsDirectional.only(end: gutter),
+          sliver: PregoAnimatedSliverList<DesktopSidebarActivityGroup>(
+            key: const Key("desktop-sidebar-activity-list"),
+            items: projection.activityGroups,
+            itemKey: (group) => ValueKey(group.project.id),
+            itemBuilder: (context, _, group) {
+              final projectName = _projectName(context: context, project: group.project);
+              return _SidebarActivityProjectGroup(
+                key: ValueKey("sidebar-activity-${group.project.id}"),
+                group: group,
+                projectName: projectName,
+                expansion: expansion,
+                selectedSessionId: group.project.id == selectedProjectId ? selectedSessionId : null,
+                onOpenSession: onOpenSession,
+                sessionMenuEntries: buildSessionMenuEntries,
+              );
+            },
+          ),
+        ),
+        SliverPadding(
+          padding: EdgeInsetsDirectional.only(end: gutter),
+          sliver: PregoAnimatedSliverList<ProjectSummary>(
+            key: const Key("desktop-sidebar-project-groups"),
+            items: projects,
+            itemKey: (project) => ValueKey(project.id),
+            itemBuilder: (context, _, project) {
+              final projectName = _projectName(context: context, project: project);
+              final entry = entries[project.id];
+              return _SidebarProjectGroup(
+                key: ValueKey(project.id),
+                project: project,
+                name: projectName,
+                active: activityById[project.id] ?? 0,
+                unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
+                entry: entry,
+                ordinarySessions: entry is RecentSessionsLoaded
+                    ? projection.ordinaryRows(
+                        projectId: project.id,
+                        loaded: entry,
+                        selectedSessionId: project.id == selectedProjectId ? selectedSessionId : null,
+                      )
+                    : const [],
+                expansion: expansion,
+                expanded: !collapsedProjectIds.contains(project.id),
+                selected: project.id == selectedProjectId,
+                selectedSessionId: project.id == selectedProjectId ? selectedSessionId : null,
+                onOpenProject: onOpenProject,
+                onOpenSession: onOpenSession,
+                onNewSession: onNewSession,
+                sessionMenuEntries: buildSessionMenuEntries,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class const _SidebarActivityProjectGroup({
+  super.key,
+  required final DesktopSidebarActivityGroup group,
+  required final String projectName,
+  required final double expansion,
+  required final String? selectedSessionId,
+  required final SidebarSessionOpenedCallback onOpenSession,
+  required final _SidebarSessionMenuEntriesBuilder sessionMenuEntries,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => BlocProvider<SessionListCubit>(
+    create: (_) => createSessionListCubit(
+      locator: getIt,
+      projectId: group.project.id,
+      mode: SessionListMode.actions(sessions: group.sourceSessions),
+    ),
+    child: Builder(
+      builder: (actionContext) => PregoAnimatedList<DesktopSidebarActivitySession>(
+        items: group.sessions,
+        itemKey: (item) => ValueKey(item.session.id),
+        itemBuilder: (context, _, item) => _SidebarActivitySessionRow(
+          key: ValueKey("sidebar-activity-session-${group.project.id}-${item.session.id}"),
+          item: item,
+          projectName: projectName,
+          selected: item.session.id == selectedSessionId,
+          expansion: expansion,
+          onPressed: () => onOpenSession(
+            context: actionContext,
+            project: group.project,
+            displayName: projectName,
+            session: item.session,
+          ),
+          acquireMenuLease: () => actionContext.read<SessionListCubit>().retainActionScope(),
+          menuEntries: () {
+            final cubit = actionContext.read<SessionListCubit>()..updateActionSession(session: item.session);
+            return sessionMenuEntries(cubit: cubit, session: item.session);
+          },
+        ),
+      ),
+    ),
+  );
+}
+
 class const _SidebarProjectGroup({
   super.key,
   required final ProjectSummary project,
   required final String name,
   required final int active,
   required final bool unseen,
+  required final RecentSessionsEntry? entry,
+  required final List<Session> ordinarySessions,
   required final double expansion,
   required final bool expanded,
   required final bool selected,
@@ -289,7 +432,7 @@ class const _SidebarProjectGroup({
   required final ProjectOpenedCallback onOpenProject,
   required final SidebarSessionOpenedCallback onOpenSession,
   required final ProjectOpenedCallback onNewSession,
-  required final SessionListActionDispatcher sessionActions,
+  required final _SidebarSessionMenuEntriesBuilder sessionMenuEntries,
 }) extends StatefulWidget {
   @override
   State<_SidebarProjectGroup> createState() => _SidebarProjectGroupState();
@@ -300,28 +443,8 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
   bool _focused = false;
 
   @override
-  void initState() {
-    super.initState();
-    _loadExpanded();
-  }
-
-  @override
-  void didUpdateWidget(covariant _SidebarProjectGroup oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if ((!oldWidget.expanded && widget.expanded) || (oldWidget.expansion == 0 && widget.expansion > 0)) {
-      _loadExpanded();
-    }
-  }
-
-  void _loadExpanded() {
-    if (widget.expanded && widget.expansion > 0) {
-      unawaited(context.read<RecentSessionsCubit>().ensureLoaded(projectId: widget.project.id));
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final entry = context.select((RecentSessionsCubit cubit) => cubit.state[widget.project.id]);
+    final entry = widget.entry;
     final loc = context.loc;
     final detailStyle = context.prego.textTheme.textXs.regular;
     // Created only if a session menu reads it. Keep this scope above the rows:
@@ -348,6 +471,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                       child: PregoAnchorMenu(
                         flat: true,
                         menuWidth: 200,
+                        acquireOpenLease: null,
                         entriesBuilder: () => ProjectTile.menuEntries(context: actionContext, project: widget.project),
                         triggerBuilder: (_, openMenu) => GestureDetector(
                           onSecondaryTap: openMenu,
@@ -446,9 +570,11 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                             RecentSessionsLoaded() => Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                for (final session in entry.rows(selectedSessionId: widget.selectedSessionId))
-                                  _SidebarSessionRow(
-                                    key: ValueKey(session.id),
+                                PregoAnimatedList<Session>(
+                                  items: widget.ordinarySessions,
+                                  itemKey: (session) => ValueKey(session.id),
+                                  itemBuilder: (context, _, session) => _SidebarSessionRow(
+                                    key: ValueKey("sidebar-session-${widget.project.id}-${session.id}"),
                                     session: session,
                                     entry: entry,
                                     selected: session.id == widget.selectedSessionId,
@@ -459,14 +585,14 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                                       displayName: widget.name,
                                       session: session,
                                     ),
+                                    acquireMenuLease: () => actionContext.read<SessionListCubit>().retainActionScope(),
                                     menuEntries: () {
-                                      actionContext.read<SessionListCubit>().updateActionSession(session: session);
-                                      return widget.sessionActions.sessionMenuEntries(
-                                        context: actionContext,
-                                        session: session,
-                                      );
+                                      final cubit = actionContext.read<SessionListCubit>()
+                                        ..updateActionSession(session: session);
+                                      return widget.sessionMenuEntries(cubit: cubit, session: session);
                                     },
                                   ),
+                                ),
                                 Padding(
                                   padding: const EdgeInsetsDirectional.only(start: 44, end: 8),
                                   child: TextButton(
@@ -518,6 +644,139 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
   }
 }
 
+class const _SidebarActivitySessionRow({
+  super.key,
+  required final DesktopSidebarActivitySession item,
+  required final String projectName,
+  required final bool selected,
+  required final double expansion,
+  required final VoidCallback onPressed,
+  required final PregoMenuOpenLease acquireMenuLease,
+  required final List<PregoMenuEntry> Function() menuEntries,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final title = item.session.title ?? context.loc.sessionListUntitled;
+    final identity = context.loc.desktopSidebarActivitySession(title, projectName);
+    final statuses = _sessionStatusLabels(
+      context: context,
+      isAwaitingInput: item.isAwaitingInput,
+      isRunning: item.isRunning,
+      isUnseen: item.isUnseen,
+    );
+    final description = [identity, ...statuses].join(", ");
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(14 - 2 * expansion, 0, 14 - 6 * expansion, 0),
+      child: PregoAnchorMenu(
+        flat: true,
+        menuWidth: 220,
+        acquireOpenLease: acquireMenuLease,
+        entriesBuilder: menuEntries,
+        triggerBuilder: (_, openMenu) => GestureDetector(
+          onSecondaryTap: openMenu,
+          child: Semantics(
+            button: true,
+            selected: selected,
+            label: description,
+            onTap: onPressed,
+            onLongPress: openMenu,
+            excludeSemantics: true,
+            child: _ConditionalTooltip(
+              enabled: expansion < 1,
+              message: description,
+              child: InkWell(
+                onTap: onPressed,
+                onLongPress: openMenu,
+                borderRadius: BorderRadius.circular(PregoRadius.md),
+                child: Ink(
+                  padding: EdgeInsets.symmetric(horizontal: 8 * expansion, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: selected ? prego.colors.textBrandPrimary.withValues(alpha: 0.14) : null,
+                    borderRadius: BorderRadius.circular(PregoRadius.md),
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => Row(
+                      children: [
+                        SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.center,
+                            children: [
+                              PregoAvatarInitials(label: projectName, size: 26),
+                              if (expansion < 1)
+                                PositionedDirectional(
+                                  end: -4,
+                                  top: -4,
+                                  child: Opacity(
+                                    opacity: 1 - expansion,
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        color: prego.colors.bgSecondary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: PregoAiLoader(size: 12, animate: item.isRunning),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        if (expansion > 0)
+                          Expanded(
+                            child: ClipRect(
+                              child: Opacity(
+                                opacity: expansion,
+                                child: Padding(
+                                  padding: EdgeInsetsDirectional.only(start: PregoSpacing.md * expansion),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      _TooltipWhenTruncated(
+                                        message: title,
+                                        style: item.isUnseen
+                                            ? prego.textTheme.textXs.bold
+                                            : prego.textTheme.textXs.regular,
+                                      ),
+                                      _TooltipWhenTruncated(
+                                        message: projectName,
+                                        style: prego.textTheme.textXs.regular.copyWith(
+                                          color: prego.colors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (expansion > 0 && constraints.maxWidth >= 104)
+                          ClipRect(
+                            child: Opacity(
+                              opacity: expansion,
+                              child: _SessionSignals(
+                                isAwaitingInput: item.isAwaitingInput,
+                                isRunning: item.isRunning,
+                                isUnseen: item.isUnseen,
+                                size: 14,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class const _SidebarSessionRow({
   super.key,
   required final Session session,
@@ -525,6 +784,7 @@ class const _SidebarSessionRow({
   required final bool selected,
   required final double expansion,
   required final VoidCallback onPressed,
+  required final PregoMenuOpenLease acquireMenuLease,
   required final List<PregoMenuEntry> Function() menuEntries,
 }) extends StatelessWidget {
   @override
@@ -551,6 +811,7 @@ class const _SidebarSessionRow({
       child: PregoAnchorMenu(
         flat: true,
         menuWidth: 220,
+        acquireOpenLease: acquireMenuLease,
         entriesBuilder: menuEntries,
         triggerBuilder: (_, openMenu) => GestureDetector(
           onSecondaryTap: openMenu,
@@ -613,6 +874,38 @@ class const _SidebarSessionRow({
       ),
     );
   }
+}
+
+class const _SessionSignals({
+  required final bool isAwaitingInput,
+  required final bool isRunning,
+  required final bool isUnseen,
+  required final double size,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (isAwaitingInput)
+        Tooltip(
+          message: context.loc.sessionListAwaitingInput,
+          child: Icon(
+            TablerRegular.message_circle,
+            size: size,
+            color: context.prego.colors.textWarningPrimary,
+          ),
+        ),
+      if (isRunning || isUnseen)
+        Tooltip(
+          message: isRunning
+              ? isUnseen
+                    ? "${context.loc.projectListRunning(1)}, ${context.loc.projectListNewActivity}"
+                    : context.loc.projectListRunning(1)
+              : context.loc.projectListNewActivity,
+          child: PregoAiLoader(size: size, animate: isRunning),
+        ),
+    ],
+  );
 }
 
 class const _SidebarButton({
@@ -715,4 +1008,50 @@ class const _SidebarButton({
       ),
     );
   }
+}
+
+class const _TooltipWhenTruncated({
+  required final String message,
+  required final TextStyle style,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final text = Text(message, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
+      if (!constraints.maxWidth.isFinite) return text;
+      final painter = TextPainter(
+        text: TextSpan(text: message, style: style),
+        maxLines: 1,
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        locale: Localizations.maybeLocaleOf(context),
+      )..layout(maxWidth: constraints.maxWidth);
+      return painter.didExceedMaxLines ? Tooltip(message: message, child: text) : text;
+    },
+  );
+}
+
+class const _ConditionalTooltip({
+  required final bool enabled,
+  required final String message,
+  required final Widget child,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => enabled ? Tooltip(message: message, child: child) : child;
+}
+
+List<String> _sessionStatusLabels({
+  required BuildContext context,
+  required bool isAwaitingInput,
+  required bool isRunning,
+  required bool isUnseen,
+}) => [
+  if (isAwaitingInput) context.loc.sessionListAwaitingInput,
+  if (isRunning) context.loc.projectListRunning(1),
+  if (isUnseen) context.loc.projectListNewActivity,
+];
+
+String _projectName({required BuildContext context, required ProjectSummary project}) {
+  final basename = projectDirectoryBasename(project);
+  return project.name ?? (basename.isEmpty ? context.loc.projectListDefaultName : basename);
 }

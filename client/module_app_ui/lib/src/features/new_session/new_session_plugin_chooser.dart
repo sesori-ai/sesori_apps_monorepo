@@ -48,6 +48,7 @@ class const NewSessionPluginChooser({
         // chrome-less row would read as belonging to something else.
         flat: true,
         menuWidth: _menuWidth,
+        acquireOpenLease: null,
         triggerBuilder: (context, toggle) => _HarnessTrigger(
           pluginId: selected?.id,
           label: selected?.displayName ?? loc.newSessionPluginChooserLabel,

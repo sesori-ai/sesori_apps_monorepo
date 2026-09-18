@@ -84,6 +84,9 @@ class const PregoMenuCustom({
 /// path, toggles) the popup — wire it to the trigger's tap handler.
 typedef PregoMenuTriggerBuilder = Widget Function(BuildContext context, VoidCallback toggle);
 
+/// Acquires ownership needed for one open menu and returns its release callback.
+typedef PregoMenuOpenLease = VoidCallback Function();
+
 /// Blurs and dims the page behind an open [PregoAnchorMenu], cutting a sharp
 /// hole around the trigger so it stays legible and reads as lifted out of the
 /// blur — the iOS context-menu treatment for a long-pressed list row.
@@ -180,6 +183,10 @@ class const PregoAnchorMenu({
   /// a menu hung off a button, where the page behind it is not the subject.
   /// Requires [flat]; see [PregoMenuSpotlight].
   final PregoMenuSpotlight? spotlight,
+
+  /// Retains caller-owned state from immediately before a flat menu opens until
+  /// its modal route completes after selection or dismissal.
+  required final PregoMenuOpenLease? acquireOpenLease,
 }) extends StatefulWidget {
   this
     : assert(
@@ -187,7 +194,8 @@ class const PregoAnchorMenu({
         "A spotlight needs the flat path (flat: true): GlassMenu hides its trigger while the "
         "popup is up, so there is no trigger left to keep sharp.",
       ),
-      assert(!reverseScroll || flat, "Reverse scrolling requires the flat menu path (flat: true).");
+      assert(!reverseScroll || flat, "Reverse scrolling requires the flat menu path (flat: true)."),
+      assert(acquireOpenLease == null || flat, "An open-menu lease requires the flat menu path.");
 
   @override
   State<PregoAnchorMenu> createState() => _PregoAnchorMenuState();
@@ -315,7 +323,11 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         reverseMotion: const Spring.snappy(),
         // No alignment: the panel positions itself from the trigger rect so it can
         // clamp to the screen edges, mirroring GlassMenu.autoAdjustToScreen.
-        triggerBuilder: (context, showModal) => widget.triggerBuilder(context, () => unawaited(showModal())),
+        triggerBuilder: (context, showModal) => widget.triggerBuilder(context, () {
+          final release = widget.acquireOpenLease?.call();
+          final menu = showModal();
+          unawaited(release == null ? menu : menu.whenComplete(release));
+        }),
         builder: (context, triggerRect) {
           final panel = _flatPanel(context, triggerRect: triggerRect);
           if (spotlight == null) return panel;

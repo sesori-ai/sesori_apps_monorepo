@@ -850,7 +850,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "hideProject: removes project from state and calls repository.hideProject",
+      "hideProject: removes and publishes the accepted local inventory",
       build: () {
         when(() => mockProjectRepository.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
@@ -862,7 +862,9 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        await cubit.hideProject("B");
+        final published = projectListService.listedProjects.first;
+        expect(await cubit.hideProject("B"), isTrue);
+        expect((await published).map((project) => project.id), ["A", "C"]);
       },
       skip: 1,
       expect: () => [
@@ -887,6 +889,53 @@ void main() {
         verify(() => mockProjectRepository.hideProject(projectId: "B")).called(1);
       },
     );
+
+    test("hideProject starts a winning successor when accepted during a full load", () async {
+      final hideResponse = Completer<ApiResponse<void>>();
+      final staleLoadResponse = Completer<ApiResponse<Projects>>();
+      final successorResponse = Completer<ApiResponse<Projects>>();
+      var projectRead = 0;
+      when(() => mockProjectRepository.listProjects()).thenAnswer((_) {
+        projectRead++;
+        return switch (projectRead) {
+          1 => Future.value(ApiResponse.success(Projects(data: [projectA, projectB]))),
+          2 => staleLoadResponse.future,
+          _ => successorResponse.future,
+        };
+      });
+      when(
+        () => mockProjectRepository.hideProject(projectId: any(named: "projectId")),
+      ).thenAnswer((_) => hideResponse.future);
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      if (cubit.state is! ProjectListLoaded) {
+        await cubit.stream.firstWhere((state) => state is ProjectListLoaded);
+      }
+      final published = <List<ProjectSummary>>[];
+      final subscription = projectListService.listedProjects.listen(published.add);
+      addTearDown(subscription.cancel);
+
+      final hide = cubit.hideProject("B");
+      final staleLoad = cubit.loadProjects();
+      expect(cubit.state, isA<ProjectListLoading>());
+      hideResponse.complete(ApiResponse.success(null));
+      expect(await hide, isTrue);
+      expect(projectRead, 3);
+      final refresh = cubit.refreshProjects();
+      expect(projectRead, 3);
+
+      staleLoadResponse.complete(ApiResponse.success(Projects(data: [projectA, projectB])));
+      await staleLoad;
+      expect(cubit.state, isA<ProjectListLoading>());
+      expect(published, isEmpty);
+
+      successorResponse.complete(ApiResponse.success(Projects(data: [projectA])));
+      expect(await refresh, isTrue);
+      expect((cubit.state as ProjectListLoaded).projects.map((project) => project.id), ["A"]);
+      expect(published.map((projects) => projects.map((project) => project.id)), [
+        ["A"],
+      ]);
+    });
 
     blocTest<ProjectListCubit, ProjectListState>(
       "hideProject: reports failure and keeps the project when the bridge rejects the hide",

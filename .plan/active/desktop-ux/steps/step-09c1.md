@@ -1,7 +1,7 @@
 # Step 9.c.1 — sidebar refresh continuity
 
-Delivery 15/19; branch `desktop-ux/sidebar-refresh-continuity`.
-Implementation and focused verification complete; publication/merge recorded separately in the tracker/PR.
+Delivery 15/21; branch `desktop-ux/sidebar-refresh-continuity`. The merged PR was published as 15/19.
+Implementation and focused verification complete; merged as PR #1526.
 The original 9.c is split without added scope: this existing-owner lifecycle fix, then 9.c.2 UI composition.
 
 ## Immutable scope
@@ -129,8 +129,24 @@ or the later 9.c.2 composition.
 
 ## Delivery and qualification boundaries
 
-Series titles now use 19 slots; the fourteen already-merged PR metadata titles were updated without rewriting Git
-subjects or published history. Receipt: `/tmp/rose-elephant-series-19-title-receipts.json`.
+PR #1526 merged from accepted head `95db0573ff4c54d3c8094563fd3b000681957c14` as squash
+`a6b32359f028151649cc4553297bc60ace1c0383`, tree `4d52ad1899e1de87690bc3fb4593f66a03eb82b0`.
+The final publication measured 617 changed lines: 521 additions and 96 deletions across seven files, with 58
+production, 197 test and 362 documentation lines and no generated output. Reproduce the all-path total from the
+repository root with:
+
+```bash
+git diff --numstat ed09171665995b98d1e010b9b5bd340c3c50a605..95db0573ff4c54d3c8094563fd3b000681957c14 --
+```
+
+The 617 total is self-inclusive through accepted head `95db0573ff4c54d3c8094563fd3b000681957c14`, including
+this evidence file as published; later series-denominator edits are outside that historical measurement. CI passed
+12/12 and automated review was resolved before readiness. Publication manifest:
+`/tmp/rose-elephant-sidebar-refresh-final-publication.json`.
+
+Series titles now use 21 slots after PR review split lower-layer refresh ownership from the activity projection; the
+fifteen already-merged PR metadata titles were updated without rewriting Git subjects or published history. Earlier
+19- and 20-slot receipts remain outside the repository; the 21-slot update is recorded with 9.c.2a.
 No protected GUI, bridge/helper, production DI, app smoke, auth/preferences, registration, bundle or device operation.
 No new visual fixtures were needed for this pure-Dart owner change. Native scrolling/indicator efficiency, relaunch
 persistence and broader live/packaged/backup qualification remain required but unexecuted.

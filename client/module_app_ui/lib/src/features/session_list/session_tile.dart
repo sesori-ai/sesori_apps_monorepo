@@ -82,6 +82,7 @@ class const SessionTile({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: _menuWidth,
+      acquireOpenLease: null,
       // Holds this row sharp while the rest of the list blurs back, so which
       // session the actions will hit is unambiguous.
       spotlight: PregoMenuSpotlight.listRow,

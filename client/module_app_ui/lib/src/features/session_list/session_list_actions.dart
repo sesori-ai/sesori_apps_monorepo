@@ -12,21 +12,26 @@ void _showArchiveSheet({
   required SessionListCubit cubit,
   required Session session,
 }) {
-  showPregoBottomSheet<void>(
+  final release = cubit.retainActionScope();
+  final sheet = showPregoBottomSheet<void>(
     context: context,
     title: context.loc.sessionListArchiveConfirmTitle,
     builder: (_) => _ArchiveSessionSheet(
       session: session,
       onConfirm: ({required bool deleteWorktree}) {
-        _archiveSession(
-          context: context,
-          cubit: cubit,
-          sessionId: session.id,
-          deleteWorktree: deleteWorktree,
+        final release = cubit.retainActionScope();
+        unawaited(
+          _archiveSession(
+            context: context,
+            cubit: cubit,
+            sessionId: session.id,
+            deleteWorktree: deleteWorktree,
+          ).whenComplete(release),
         );
       },
     ),
   );
+  unawaited(sheet.whenComplete(release));
 }
 
 Future<void> _archiveSession({
@@ -55,7 +60,7 @@ Future<void> _archiveSession({
   // Check for cleanup rejection (409).
   final rejection = cubit.lastCleanupRejection;
   if (rejection != null) {
-    _showForceDialog(
+    await _showForceDialog(
       context: context,
       cubit: cubit,
       sessionId: sessionId,
@@ -86,22 +91,27 @@ void _showDeleteSheet({
   required Session session,
   required SessionDeletedRouteHandler? onSessionDeleted,
 }) {
-  showPregoBottomSheet<void>(
+  final release = cubit.retainActionScope();
+  final sheet = showPregoBottomSheet<void>(
     context: context,
     title: context.loc.sessionListDeleteConfirmTitle,
     builder: (_) => _DeleteSessionSheet(
       session: session,
       onConfirm: ({required bool deleteWorktree}) {
-        _deleteSession(
-          context: context,
-          cubit: cubit,
-          sessionId: session.id,
-          deleteWorktree: deleteWorktree,
-          onSessionDeleted: onSessionDeleted,
+        final release = cubit.retainActionScope();
+        unawaited(
+          _deleteSession(
+            context: context,
+            cubit: cubit,
+            sessionId: session.id,
+            deleteWorktree: deleteWorktree,
+            onSessionDeleted: onSessionDeleted,
+          ).whenComplete(release),
         );
       },
     ),
   );
+  unawaited(sheet.whenComplete(release));
 }
 
 Future<void> _deleteSession({
@@ -132,7 +142,7 @@ Future<void> _deleteSession({
   // Check for cleanup rejection (409).
   final rejection = cubit.lastCleanupRejection;
   if (rejection != null) {
-    _showForceDialog(
+    await _showForceDialog(
       context: context,
       cubit: cubit,
       sessionId: sessionId,

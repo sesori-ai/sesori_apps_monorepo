@@ -591,6 +591,7 @@ extension GetItInjectableX on _i174.GetIt {
         repository: gh<_i80.ProjectRepository>(),
         activityCalculator: gh<_i84.SessionActivityCalculator>(),
       ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i763.SessionListService>(
       () => _i763.SessionListService(

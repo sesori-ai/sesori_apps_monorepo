@@ -2491,6 +2491,67 @@ void main() {
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
     });
 
+    test("action scope close retains a dialog through rename, mark recovery and delete", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projects);
+      final session = testSession(id: "s1", unseen: true);
+      final renameReply = Completer<ApiResponse<Session>>();
+      final markReply = Completer<ApiResponse<void>>();
+      final deleteReply = Completer<ApiResponse<void>>();
+      when(
+        () => mockSessionService.renameSession(sessionId: session.id, title: "Renamed"),
+      ).thenAnswer((_) => renameReply.future);
+      when(
+        () => mockSessionService.markSessionSeen(sessionId: session.id, read: true),
+      ).thenAnswer((_) => markReply.future);
+      when(
+        () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
+      ).thenAnswer((_) => deleteReply.future);
+      when(
+        () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
+      final cubit = SessionListCubit(
+        mode: SessionListMode.actions(sessions: [session]),
+        sessionRepository: mockSessionService,
+        sessionListService: sessionListService,
+        projectRepository: mockProjectRepository,
+        connectionService: mockConnectionService,
+        sseEventTracker: mockSseEventTracker,
+        sessionUnseenTracker: fakeSessionUnseenTracker,
+        projectViewingService: mockProjectViewingService,
+        routeSource: mockRouteSource,
+        projectId: projectId,
+        failureReporter: mockFailureReporter,
+        catalogRescanService: fakeCatalogRescanService,
+      );
+
+      final releaseDialog = cubit.retainActionScope();
+      final close = cubit.close();
+      expect(cubit.isClosed, isFalse);
+      final rename = cubit.renameSession(sessionId: session.id, title: "Renamed");
+      final mutation = cubit.markSessionSeen(sessionId: session.id, read: true);
+      final deletion = cubit.deleteSession(sessionId: session.id, deleteWorktree: true, force: false);
+      releaseDialog();
+      releaseDialog();
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isFalse);
+
+      markReply.complete(ApiResponse.error(ApiError.generic()));
+      await mutation;
+      expect(cubit.isClosed, isFalse);
+      deleteReply.complete(ApiResponse.success(null));
+      expect(await deletion, isTrue);
+      expect(cubit.isClosed, isFalse);
+      renameReply.complete(ApiResponse.error(ApiError.generic()));
+      expect(await rename, isFalse);
+      await close;
+
+      expect(cubit.isClosed, isTrue);
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isTrue);
+      verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
+      verify(
+        () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
+      ).called(1);
+    });
+
     group("catalog scan", () {
       void stubSessions() {
         when(

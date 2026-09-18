@@ -193,6 +193,18 @@ abstract class AppLocalizations {
   /// **'All sessions · {count}'**
   String desktopSidebarAllSessions(int count);
 
+  /// Heading above running or unseen sessions prioritized across every desktop sidebar project.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get desktopSidebarActivity;
+
+  /// Accessible identity of a priority sidebar session with its project context.
+  ///
+  /// In en, this message translates to:
+  /// **'{sessionTitle} in {projectName}'**
+  String desktopSidebarActivitySession(String sessionTitle, String projectName);
+
   /// Tooltip for the sidebar project's new-session button, revealed on hover or keyboard focus.
   ///
   /// In en, this message translates to:

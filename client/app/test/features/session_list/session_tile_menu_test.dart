@@ -26,6 +26,7 @@ void main() {
 
   setUp(() {
     cubit = _MockSessionListCubit();
+    when(() => cubit.retainActionScope()).thenReturn(() {});
   });
 
   /// Renders the real panel with the real action dispatcher behind the rows.

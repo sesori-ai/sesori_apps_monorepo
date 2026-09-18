@@ -561,15 +561,19 @@ class ProjectListCubit(
       loge("Failed to hide project: ${error.toString()}");
       return false;
     }
+    // The accepted mutation supersedes any list snapshot started before it.
+    _fetchGeneration++;
     if (state case final ProjectListLoaded loaded) {
       _emitOrdered(
         loaded: loaded,
-        projects: _projectListService.removeProject(
+        projects: _projectListService.removeProjectAndPublish(
           projects: loaded.projects,
           projectId: projectId,
         ),
         activityByProjectId: _sseEventTracker.currentSessionActivity,
       );
+    } else {
+      unawaited(_refreshProjects(force: true, catalogRefresh: false));
     }
     return true;
   }

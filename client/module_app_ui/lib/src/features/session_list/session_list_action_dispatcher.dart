@@ -20,16 +20,28 @@ typedef SessionDeletedRouteHandler = void Function({
   required String sessionId,
 });
 
+void _showRetainedActionDialog({
+  required SessionListCubit cubit,
+  required Future<void> Function() show,
+}) {
+  final release = cubit.retainActionScope();
+  unawaited(show().whenComplete(release));
+}
+
 class const SessionListActionDispatcher({required final SessionDeletedRouteHandler? onSessionDeleted}) {
   /// The long-press actions for [session], rendered by [SessionTile] in a
   /// [PregoAnchorMenu] anchored to the row.
   ///
-  /// [PregoAnchorMenu] dismisses the menu before running an entry's `onTap`, so
-  /// each of these acts against the still-mounted row rather than a popped
-  /// route — the sheets they raise (archive, delete) push on top of the list.
-  List<PregoMenuEntry> sessionMenuEntries({required BuildContext context, required Session session}) {
+  /// [context] must belong to the stable list/sidebar owner rather than the
+  /// row: archive/delete can remove that row before their follow-up UI runs.
+  /// [cubit] may be scoped more narrowly and is retained while confirmation
+  /// UI is open and while the resulting operation settles.
+  List<PregoMenuEntry> sessionMenuEntries({
+    required BuildContext context,
+    required SessionListCubit cubit,
+    required Session session,
+  }) {
     final loc = context.loc;
-    final cubit = context.read<SessionListCubit>();
     final isArchived = session.time?.archived != null;
     final isUnseen = _isUnseen(cubit: cubit, session: session);
 
@@ -40,14 +52,17 @@ class const SessionListActionDispatcher({required final SessionDeletedRouteHandl
           title: loc.rename,
           subtitle: null,
           isSelected: false,
-          onTap: () => showRenameSessionDialog(context: context, session: session, cubit: cubit),
+          onTap: () => _showRetainedActionDialog(
+            cubit: cubit,
+            show: () => showRenameSessionDialog(context: context, session: session, cubit: cubit),
+          ),
         ),
       PregoMenuItem(
         leadingIcon: isUnseen ? TablerRegular.mail_opened : TablerRegular.mail,
         title: isUnseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
         subtitle: null,
         isSelected: false,
-        onTap: () => handleSessionToggleUnread(context: context, session: session),
+        onTap: () => unawaited(cubit.markSessionSeen(sessionId: session.id, read: isUnseen)),
       ),
       // Archiving is permanent, so an already-archived row has no archive
       // action left to offer.
@@ -57,7 +72,7 @@ class const SessionListActionDispatcher({required final SessionDeletedRouteHandl
           title: loc.sessionListArchive,
           subtitle: null,
           isSelected: false,
-          onTap: () => handleSessionArchive(context: context, session: session),
+          onTap: () => _showArchiveSheet(context: context, cubit: cubit, session: session),
         ),
       // Delete is the only entry here that also destroys the work itself —
       // archiving is permanent but keeps the session readable — so it is set
@@ -69,7 +84,12 @@ class const SessionListActionDispatcher({required final SessionDeletedRouteHandl
         subtitle: null,
         isSelected: false,
         isDestructive: true,
-        onTap: () => handleSessionDelete(context: context, session: session),
+        onTap: () => _showDeleteSheet(
+          context: context,
+          cubit: cubit,
+          session: session,
+          onSessionDeleted: onSessionDeleted,
+        ),
       ),
     ];
   }

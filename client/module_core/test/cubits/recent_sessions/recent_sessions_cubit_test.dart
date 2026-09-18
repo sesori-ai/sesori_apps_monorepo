@@ -15,6 +15,7 @@ void main() {
   late FakeSessionUnseenTracker unseen;
   late FakeCatalogRescanService catalog;
   late StreamController<SseEvent> events;
+  late ProjectListService projectListService;
   late RecentSessionsCubit cubit;
   const projectId = "project-1";
 
@@ -29,11 +30,16 @@ void main() {
     when(() => connection.events).thenAnswer((_) => events.stream);
     when(() => repository.listSessions(projectId: any(named: "projectId"), waitForPrData: false))
         .thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
+    projectListService = ProjectListService(
+      repository: repository,
+      activityCalculator: const SessionActivityCalculator(),
+    );
     cubit = RecentSessionsCubit(
       sessionListService: SessionListService(
         repository: repository,
         activityCalculator: const SessionActivityCalculator(),
       ),
+      projectListService: projectListService,
       connectionService: connection,
       sseEventTracker: activity,
       sessionUnseenTracker: unseen,
@@ -42,6 +48,7 @@ void main() {
   });
   tearDown(() async {
     await cubit.close();
+    await projectListService.dispose();
     await events.close();
     await activity.onDispose();
     await unseen.onDispose();
@@ -53,6 +60,84 @@ void main() {
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
         .thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: sessions)));
   }
+
+  test("successful project snapshots admit every project without duplicate reads", () async {
+    const projects = Projects(
+      data: [
+        ProjectSummary(id: "project-1", name: "One", path: "/one", time: null),
+        ProjectSummary(id: "project-2", name: "Two", path: "/two", time: null),
+      ],
+    );
+    when(() => repository.listProjects()).thenAnswer((_) async => ApiResponse.success(projects));
+
+    await projectListService.listProjects();
+    await cubit.stream.firstWhere((state) => state.length == 2);
+    await projectListService.listProjects();
+    await Future<void>.delayed(Duration.zero);
+
+    verify(() => repository.listSessions(projectId: "project-1", waitForPrData: false)).called(1);
+    verify(() => repository.listSessions(projectId: "project-2", waitForPrData: false)).called(1);
+  });
+
+  test("winning snapshots remove absent projects and fence their pending reads", () async {
+    const current = ProjectSummary(id: "current", name: "Current", path: "/current", time: null);
+    const removed = ProjectSummary(id: "removed", name: "Removed", path: "/removed", time: null);
+    const stale = ProjectSummary(id: "stale", name: "Stale", path: "/stale", time: null);
+    final staleProjects = Completer<ApiResponse<Projects>>();
+    final removedSessions = Completer<ApiResponse<SessionListResponse>>();
+    var projectRead = 0;
+    when(() => repository.listProjects()).thenAnswer((_) {
+      projectRead++;
+      return switch (projectRead) {
+        1 => staleProjects.future,
+        2 => Future.value(ApiResponse.success(const Projects(data: [current, removed]))),
+        _ => Future.value(ApiResponse.success(const Projects(data: [current]))),
+      };
+    });
+    when(() => repository.listSessions(projectId: removed.id, waitForPrData: false))
+        .thenAnswer((_) => removedSessions.future);
+    final staleRead = projectListService.listProjects();
+    await projectListService.listProjects();
+    if (cubit.state.length != 2) await cubit.stream.firstWhere((state) => state.length == 2);
+
+    await projectListService.listProjects();
+    expect(cubit.state.keys.toSet(), {current.id});
+    removedSessions.complete(ApiResponse.success(const SessionListResponse(items: [])));
+    staleProjects.complete(ApiResponse.success(const Projects(data: [stale])));
+    await staleRead;
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.keys.toSet(), {current.id});
+    final previousCurrent = cubit.state[current.id];
+    connection.emitDataMayBeStale();
+    await cubit.stream.firstWhere((state) => !identical(state[current.id], previousCurrent));
+    verify(() => repository.listSessions(projectId: current.id, waitForPrData: false)).called(2);
+    verify(() => repository.listSessions(projectId: removed.id, waitForPrData: false)).called(1);
+    verifyNever(() => repository.listSessions(projectId: stale.id, waitForPrData: false));
+  });
+
+  test("accepted local project removal evicts its entry and fences its pending read", () async {
+    const kept = ProjectSummary(id: "kept", name: "Kept", path: "/kept", time: null);
+    const hidden = ProjectSummary(id: "hidden", name: "Hidden", path: "/hidden", time: null);
+    final hiddenSessions = Completer<ApiResponse<SessionListResponse>>();
+    when(() => repository.listProjects()).thenAnswer(
+      (_) async => ApiResponse.success(const Projects(data: [kept, hidden])),
+    );
+    when(() => repository.listSessions(projectId: hidden.id, waitForPrData: false))
+        .thenAnswer((_) => hiddenSessions.future);
+
+    await projectListService.listProjects();
+    if (cubit.state.length != 2) await cubit.stream.firstWhere((state) => state.length == 2);
+    projectListService.removeProjectAndPublish(projects: const [kept, hidden], projectId: hidden.id);
+    expect(cubit.state.keys, [kept.id]);
+
+    hiddenSessions.complete(ApiResponse.success(const SessionListResponse(items: [])));
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.keys, [kept.id]);
+    connection.emitDataMayBeStale();
+    await Future<void>.delayed(Duration.zero);
+    verify(() => repository.listSessions(projectId: kept.id, waitForPrData: false)).called(2);
+    verify(() => repository.listSessions(projectId: hidden.id, waitForPrData: false)).called(1);
+  });
 
   test("lazy reads deduplicate, use active ordering, and pin the open row only once", () async {
     expect(cubit.state, isEmpty);
@@ -74,9 +159,15 @@ void main() {
     await pending;
     await cubit.ensureLoaded(projectId: projectId);
     expect(loaded().visibleSessions.map((session) => session.id), ["4", "3", "2", "1"]);
-    expect(loaded().rows(selectedSessionId: "1").map((session) => session.id), ["4", "3", "2", "1"]);
-    expect(loaded().rows(selectedSessionId: "4").length, 3);
-    expect(loaded().rows(selectedSessionId: "archived").map((session) => session.id), ["4", "3", "2"]);
+    expect(
+      loaded().rows(selectedSessionId: "1", excludingSessionIds: const {}).map((session) => session.id),
+      ["4", "3", "2", "1"],
+    );
+    expect(loaded().rows(selectedSessionId: "4", excludingSessionIds: const {}).length, 3);
+    expect(
+      loaded().rows(selectedSessionId: "archived", excludingSessionIds: const {}).map((session) => session.id),
+      ["4", "3", "2"],
+    );
     expect(() => loaded().sourceSessions.clear(), throwsUnsupportedError);
     expect(() => loaded().visibleSessions.clear(), throwsUnsupportedError);
     expect(() => loaded().activityBySessionId.clear(), throwsUnsupportedError);
@@ -137,7 +228,7 @@ void main() {
       ),
     );
     expect(loaded().visibleSessions, isEmpty);
-    expect(loaded().rows(selectedSessionId: "created"), isEmpty);
+    expect(loaded().rows(selectedSessionId: "created", excludingSessionIds: const {}), isEmpty);
     expect(loaded().sourceSessions, hasLength(1));
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: session)));
     expect(loaded().sourceSessions, isEmpty);
@@ -274,7 +365,7 @@ void main() {
     events.add(SseEvent(data: SesoriSseEvent.sessionUpdated(info: archivedUpdate)));
     expect(cubit.state[projectId], isA<RecentSessionsLoaded>());
     expect(loaded().visibleSessions.single, renamed);
-    expect(loaded().rows(selectedSessionId: "archived"), [renamed]);
+    expect(loaded().rows(selectedSessionId: "archived", excludingSessionIds: const {}), [renamed]);
     stubSessions(sessions: [renamed, archivedUpdate]);
     reply.complete(ApiResponse.success(SessionListResponse(items: [deleted, archived])));
     await pending;

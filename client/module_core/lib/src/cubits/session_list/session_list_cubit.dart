@@ -50,7 +50,10 @@ class SessionListCubit({
   required final CatalogRescanService _catalogRescanService,
 }) extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
+  int _pendingActionOperations = 0;
+  Completer<void>? _actionOperationsDrained;
 
+  final bool _waitForActionOperationsOnClose = mode is SessionListActionsMode;
   final ProjectViewClaim? _projectViewClaim = mode is SessionListViewMode && mode.filter != SessionListFilter.archived
       ? _projectViewingService.beginListClaim(projectId: _projectId)
       : null;
@@ -218,7 +221,11 @@ class SessionListCubit({
   /// echo delivers the authoritative state (including the project aggregate)
   /// within the round trip. On failure, a silent refetch re-seeds the
   /// authoritative flags instead of local rollback bookkeeping.
-  Future<void> markSessionSeen({required String sessionId, required bool read}) async {
+  Future<void> markSessionSeen({required String sessionId, required bool read}) => _runActionScopeOperation(
+    operation: () => _markSessionSeen(sessionId: sessionId, read: read),
+  );
+
+  Future<void> _markSessionSeen({required String sessionId, required bool read}) async {
     _sessionUnseenTracker.applyLocalSessionUnseen(
       projectId: _projectId,
       sessionId: sessionId,
@@ -252,6 +259,30 @@ class SessionListCubit({
         await _fetchSessions(silent: true, catalogRefresh: false, waitForPrData: false);
       }
     }
+  }
+
+  /// Keeps an action-only owner usable while its confirmation UI is open.
+  void Function() retainActionScope() {
+    if (!_waitForActionOperationsOnClose) return () {};
+    var released = false;
+    _pendingActionOperations++;
+    return () {
+      if (released) return;
+      released = true;
+      _completeActionOperation();
+    };
+  }
+
+  Future<T> _runActionScopeOperation<T>({required Future<T> Function() operation}) {
+    final release = retainActionScope();
+    return operation().whenComplete(release);
+  }
+
+  void _completeActionOperation() {
+    _pendingActionOperations--;
+    if (_pendingActionOperations != 0) return;
+    _actionOperationsDrained?.complete();
+    _actionOperationsDrained = null;
   }
 
   void _onSessionCreated(Session session) {
@@ -375,6 +406,18 @@ class SessionListCubit({
     required String sessionId,
     required bool deleteWorktree,
     required bool force,
+  }) => _runActionScopeOperation(
+    operation: () => _archiveSession(
+      sessionId: sessionId,
+      deleteWorktree: deleteWorktree,
+      force: force,
+    ),
+  );
+
+  Future<bool> _archiveSession({
+    required String sessionId,
+    required bool deleteWorktree,
+    required bool force,
   }) async {
     if (state is! SessionListLoaded) return false;
 
@@ -426,7 +469,11 @@ class SessionListCubit({
 
   /// Renames a session optimistically. Returns `false` after restoring the
   /// prior title when the bridge rejects the rename.
-  Future<bool> renameSession({required String sessionId, required String title}) async {
+  Future<bool> renameSession({required String sessionId, required String title}) => _runActionScopeOperation(
+    operation: () => _renameSession(sessionId: sessionId, title: title),
+  );
+
+  Future<bool> _renameSession({required String sessionId, required String title}) async {
     if (state is! SessionListLoaded) return false;
 
     final index = _allSessions.indexWhere((session) => session.id == sessionId);
@@ -514,6 +561,18 @@ class SessionListCubit({
 
   /// Deletes a session permanently.
   Future<bool> deleteSession({
+    required String sessionId,
+    required bool deleteWorktree,
+    required bool force,
+  }) => _runActionScopeOperation(
+    operation: () => _deleteSession(
+      sessionId: sessionId,
+      deleteWorktree: deleteWorktree,
+      force: force,
+    ),
+  );
+
+  Future<bool> _deleteSession({
     required String sessionId,
     required bool deleteWorktree,
     required bool force,
@@ -904,9 +963,15 @@ class SessionListCubit({
   }
 
   @override
-  Future<void> close() {
+  Future<void> close() async {
+    // A local change or bridge event can remove an action-only sidebar row.
+    // Let its admitted operation and response handling finish before closing.
+    if (_waitForActionOperationsOnClose && _pendingActionOperations > 0) {
+      final drained = _actionOperationsDrained ??= Completer<void>();
+      await drained.future;
+    }
     if (_projectViewClaim case final claim?) _projectViewingService.releaseClaim(claim: claim);
-    _subscriptions.dispose();
-    return super.close();
+    await _subscriptions.dispose();
+    await super.close();
   }
 }

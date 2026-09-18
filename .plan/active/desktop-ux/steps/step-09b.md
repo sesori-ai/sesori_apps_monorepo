@@ -1,6 +1,6 @@
 # Step 9.b — Anchored sidebar resizing and scrollbar hit targets
 
-Delivery 14/19 after the 9.c split; originally published as 14/18.
+Delivery 14/21 after the measured 9.c.2 split; originally published as 14/18.
 Branch `desktop-ux/sidebar-interactions`.
 Merged #1524 at accepted head `bf273d272e0ffff4191f870919760e686fb80446`;
 squash `ed09171665995b98d1e010b9b5bd340c3c50a605`, tree `53e40902232a807cd91f83beaec669f95c084b9f`.

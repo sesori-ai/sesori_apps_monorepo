@@ -264,16 +264,18 @@ navigation or repeated settings links. Inspect the actual rendered result.
   Refine the oversized footer into compact purposeful controls, using plain-language
   local-computer wording rather than unexplained “Bridge”. Keep local supervision
   distinct from a connected remote computer and keep Quit app-scoped.
-- Add subtle refresh/resync by reusing `ProjectListCubit.refreshProjects()` and
-  the existing catalog/recent-session refresh owners; show busy/failure honestly.
-  Placement belongs in the footer or header, not a new pull gesture.
+- In 9.c.2b, move authoritative project/recent-session fetch execution and retained result state below presentation
+  Cubits, then expose one typed explicit refresh workflow to desktop-core. In 9.c.2c, show that workflow's
+  busy/failure state honestly in the footer or header, not through a new pull gesture.
 - Inspect flashing before attributing it to absent animation: preserve stable row
   identity and useful loaded data during refresh. Reuse `PregoAnimatedSliverList`
   for the scrolling inventory and `PregoAnimatedList` where nested rows fit;
   retain reduced motion and native Apple indicators. Do not build another animator.
 - Apply the hover-hint rule above throughout the sidebar and in step 11's wider
-  desktop audit. Obtain a scoped architecture plan review for 9.c.2's concrete
-  projection/refresh composition before implementation; 9.c.1 approval does not cover it.
+  desktop audit. The scoped 9.c.2 architecture plan review rejected a foundation-layer
+  projection and widget-owned refresh sequencing. Delivery 9.c.2a keeps the Layer-4 projection with its sidebar
+  consumer. Delivery 9.c.2b will add authoritative lower-layer refresh ownership, and 9.c.2c will consume its
+  registered desktop workflow; neither service exists in 9.c.2a.
 
 ### Cockpit shell
 
@@ -526,8 +528,9 @@ New in-memory mutable parts:
 - Step 9.c.1: one pending-read identity map plus one lifecycle-generation map in
   `RecentSessionsCubit`; the latter replaces the earlier changed-during-read set.
   Usable data and an in-flight read coexist, and staleness retires only after snapshot application.
-- Step 9.c.2 reuses inventory/refresh owners and Prego animation state;
-  derive priority rows without another cache, subscription, timer or persistence.
+- Step 9.c.2a adds a state-free priority projection and Prego consumer without another data cache, timer or
+  persistence. Step 9.c.2b may add lower-layer refresh state only by replacing presentation-owned fetch execution,
+  not by publishing requests back to Cubits. Step 9.c.2c consumes that service in Flutter.
 
 Deliberately not added: per-project refetch debounce timers (patching replaces
 them), a "last open session" record, a settings deep-link route scheme, a
@@ -561,10 +564,10 @@ Deferred: none. No obsolete wire or database artifacts result from this plan.
 
 ## Delivery Plan
 
-Series slug `desktop-ux`: 12 logical steps, 19 PRs. Steps 2.a/2.b map to
+Series slug `desktop-ux`: 12 logical steps, 21 PRs. Steps 2.a/2.b map to
 ordinals 2/3; original 3–6 to 4–7; 7.a/7.b/7.c to 8/9/10; step 8 to 11.
-Logging 9.a.1/9.a.2 are 12/13; sidebar 9.b/9.c.1/9.c.2 are 14/15/16.
-Steps 10–12 map to 17–19. Targets count additions plus deletions across every path.
+Logging 9.a.1/9.a.2 are 12/13; sidebar 9.b/9.c.1/9.c.2a/9.c.2b/9.c.2c are 14–18.
+Steps 10–12 map to 19–21. Targets count additions plus deletions across every path.
 Exact titles and branches are in [TRACKER](TRACKER.md#pr-titles); historical Git subjects are preserved.
 
 On 2026-09-15 the user explicitly requested keeping additional styling out of
@@ -580,31 +583,38 @@ Completed implementation specifics live in the linked evidence; this matrix summ
 
 | Step | Delivery | Target | Scope |
 |---|---|---|---|
-| 1 | 1/19 | ≤ 900 | This plan, tracker and roadmap cross-references. |
-| 2.a | 2/19 | ≤ 1,400 | [Resizable/collapsible sidebar frame and layout persistence](steps/step-02.md). |
-| 2.b | 3/19 | ≤ 900 | [Sidebar styling, motion and project activity](steps/step-02b.md). |
-| 3 | 4/19 | ≤ 1,200 | [Shared recent-session inventory and project actions](steps/step-03.md). |
-| 4 | 5/19 | ≤ 1,400 | [Main-pane routing, home and shared fonts](steps/step-04.md). |
-| 5 | 6/19 | ≤ 700 | [Connection overlay without layout shift](steps/step-05.md). |
-| 6 | 7/19 | ≤ 1,500 | [Contextual bridge popover and canonical home](steps/step-06.md). |
-| 7.a | 8/19 | ≤ 500 | [Shared Settings composition and native preference commands](steps/step-07a.md). |
-| 7.b | 9/19 | ≤ 700 | [Viewed-session ownership across root overlays](steps/step-07b.md). |
-| 7.c | 10/19 | ≤ 1,750 | [Settings modal and route retirement](steps/step-07c.md). |
-| 8 | 11/19 | ≤ 1,000 | [First-run defaults and optional file-access guidance](steps/step-08.md). |
-| 9.a.1 | 12/19 | ≤ 1,300 | [Safe diagnostics and bounded Quit completion](steps/step-09a1.md). |
-| 9.a.2 | 13/19 | ≤ 1,300 | [Rotating app files and prepared logs directory](steps/step-09a.md). |
-| 9.b | 14/19 | ≤ 500 | [Anchored resizing and scrollbar hit targets](steps/step-09b.md). |
-| 9.c.1 | 15/19 | ≤ 650 | [Loaded/live inventory and request ownership](steps/step-09c1.md). |
-| 9.c.2 | 16/19 | ≤ 1,200 | Priority activity, purposeful controls, refresh, Prego transitions and useful hints. |
-| 10 | 17/19 | ≤ 600 | Keyboard shortcuts and macOS title-bar/drag integration. |
-| 11 | 18/19 | ≤ 600 | Control-content audit and regression reconciliation. |
-| 12 | 19/19 | ≤ 300 | Recorded coverage, phase-2 handoff and plan retirement. |
+| 1 | 1/21 | ≤ 900 | This plan, tracker and roadmap cross-references. |
+| 2.a | 2/21 | ≤ 1,400 | [Resizable/collapsible sidebar frame and layout persistence](steps/step-02.md). |
+| 2.b | 3/21 | ≤ 900 | [Sidebar styling, motion and project activity](steps/step-02b.md). |
+| 3 | 4/21 | ≤ 1,200 | [Shared recent-session inventory and project actions](steps/step-03.md). |
+| 4 | 5/21 | ≤ 1,400 | [Main-pane routing, home and shared fonts](steps/step-04.md). |
+| 5 | 6/21 | ≤ 700 | [Connection overlay without layout shift](steps/step-05.md). |
+| 6 | 7/21 | ≤ 1,500 | [Contextual bridge popover and canonical home](steps/step-06.md). |
+| 7.a | 8/21 | ≤ 500 | [Shared Settings composition and native preference commands](steps/step-07a.md). |
+| 7.b | 9/21 | ≤ 700 | [Viewed-session ownership across root overlays](steps/step-07b.md). |
+| 7.c | 10/21 | ≤ 1,750 | [Settings modal and route retirement](steps/step-07c.md). |
+| 8 | 11/21 | ≤ 1,000 | [First-run defaults and optional file-access guidance](steps/step-08.md). |
+| 9.a.1 | 12/21 | ≤ 1,300 | [Safe diagnostics and bounded Quit completion](steps/step-09a1.md). |
+| 9.a.2 | 13/21 | ≤ 1,300 | [Rotating app files and prepared logs directory](steps/step-09a.md). |
+| 9.b | 14/21 | ≤ 500 | [Anchored resizing and scrollbar hit targets](steps/step-09b.md). |
+| 9.c.1 | 15/21 | ≤ 650 | [Loaded/live inventory and request ownership](steps/step-09c1.md). |
+| 9.c.2a | 16/21 | ≤ 1,400 | All-project Activity projection and sidebar presentation with priority exclusion. |
+| 9.c.2b | 17/21 | ≤ 1,400 | Authoritative inventory refresh below presentation owners. |
+| 9.c.2c | 18/21 | ≤ 1,450 | Explicit refresh presentation, purposeful controls and useful hints. |
+| 10 | 19/21 | ≤ 600 | Keyboard shortcuts and macOS title-bar/drag integration. |
+| 11 | 20/21 | ≤ 600 | Control-content audit and regression reconciliation. |
+| 12 | 21/21 | ≤ 300 | Recorded coverage, phase-2 handoff and plan retirement. |
 
 9.c.1 extracts the observed loading-placeholder replacement from the larger UI slice.
 It keeps current loaded data through automatic refresh/failure, continues live patches,
 and separates private request identity from a retained lifecycle generation; supersession
 and coalescing stay in `RecentSessionsCubit`. No new API/model/DI or Flutter production change. Its scoped plan review
-is approved; later 9.c.2 composition needs its own review. The split adds no feature scope.
+is approved; later 9.c.2 composition needs its own review. Measured implementation size first split 9.c.2 into
+pure-Dart foundations and Flutter composition. PR #1533 review then proved that a request bus still made lower-layer
+refresh execution depend on mounted presentation Cubits. Keep 9.c.2a to the independent activity projection, move
+true lower-layer execution into 9.c.2b. A later review required the projection to land with its production Activity
+consumer, so 9.c.2a retains that prepared subset while refresh/control composition stays in 9.c.2c. This adds no feature
+scope and keeps the reviewed PR below the repository soft cap.
 
 Step 10 retains ⌘N, ⌘, and ⌘B via cockpit `CallbackShortcuts`, shortcut hints, and macOS hidden
 chrome/drag region behind the single D12 switch in `FlutterWindowHost.initialize`.
@@ -640,8 +650,9 @@ overrides. This small shared typography fix adds no state or renderer changes;
 mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 
 Logging 9.a.1–9.a.2 is merged, preserving #1509's published history through forward integration.
-9.b interactions merged as #1524. Continue with 9.c.1 refresh continuity, then 9.c.2 activity/controls
-and 10 shortcuts/title bar; publish each successor only after its predecessor merges.
+9.b interactions merged as #1524 and 9.c.1 refresh continuity merged as #1526. Continue with 9.c.2a
+activity projection/presentation, 9.c.2b lower refresh ownership, 9.c.2c refresh/controls UI and 10 shortcuts/title bar;
+publish each successor only after its predecessor merges.
 Steps 11 and 12 remain the final audit and qualification.
 Step 8 must land after
 step 7.c (General startup preferences and Bridge/FDA settings). Step 7.a follows
@@ -801,12 +812,15 @@ The code-informed D10 plan review rejected underspecified helper ownership,
 DI timing and diagnostic representation. Those findings were applied directly,
 not re-reviewed as a plan. The preserved #1509 implementation was approved at
 `f37931dd4ab9b0c6dceb38a18a9907d5fed0c1ed`; that verdict does not cover review fixes.
-Publication measurements remain owned by [preserved PR #1509](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1509).
+Publication measurements remain owned by
+[preserved PR #1509](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1509).
 Review then identified concrete URI/cause/ordinary-Quit gaps. Rather than expand
 that review loop, 9.a.1 landed separately as #1514; file output remains 9.a.2. A fresh architecture
 plan review (`e973a005-01ab-43fe-aaf8-eb43ebc854f6`) approved the two-slice ownership;
 see [prerequisite evidence](steps/step-09a1.md). Sidebar 9.c.1 received its separate
-refresh-continuity plan approval; 9.c.2 still needs its concrete projection/refresh architecture plan review.
+refresh-continuity plan approval. The scoped 9.c.2 review rejected foundation placement and widget
+orchestration. Delivery 9.c.2a uses the Layer-4 projection from the desktop shell; 9.c.2b will move authoritative
+refresh execution/state below presentation owners; 9.c.2c will add the DI-registered desktop workflow consumer.
 
 ## Relation To Other Plans
 

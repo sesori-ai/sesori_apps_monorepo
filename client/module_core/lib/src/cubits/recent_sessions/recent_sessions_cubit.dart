@@ -14,6 +14,7 @@ import "../../services/catalog_rescan_service.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/models/session_list_filter.dart";
 import "../../services/models/session_list_item_state.dart";
+import "../../services/project_list_service.dart";
 import "../../services/session_list_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
@@ -22,6 +23,7 @@ import "recent_sessions_state.dart";
 /// Sidebar inventory only: never acquires a project-view claim.
 class RecentSessionsCubit({
   required final SessionListService _sessionListService,
+  required final ProjectListService projectListService,
   required final ConnectionService _connectionService,
   required final SseEventTracker _sseEventTracker,
   required final SessionUnseenTracker _sessionUnseenTracker,
@@ -34,11 +36,29 @@ class RecentSessionsCubit({
   final Map<String, int> _lifecycleChangeGenerations = {};
 
   this : super(const {}) {
+    _subscriptions.add(projectListService.listedProjects.listen(_admitProjects));
     _subscriptions.add(_connectionService.events.listen((event) => _onEvent(event: event)));
     _subscriptions.add(_sseEventTracker.sessionActivity.listen((_) => _projectLiveState()));
     _subscriptions.add(_sessionUnseenTracker.sessionUnseen.listen((_) => _projectLiveState()));
     _subscriptions.add(_connectionService.dataMayBeStale.listen((_) => _refreshKnownProjects()));
     _subscriptions.add(catalogRescanService.catalogChanged.listen((_) => _refreshKnownProjects()));
+  }
+
+  void _admitProjects(List<ProjectSummary> projects) {
+    if (isClosed) return;
+    final projectIds = projects.map((project) => project.id).toSet();
+    final removedProjectIds = state.keys.where((projectId) => !projectIds.contains(projectId)).toList();
+    if (removedProjectIds.isNotEmpty) {
+      for (final projectId in removedProjectIds) {
+        // Removing the request identity fences any completion already in flight.
+        _pendingReads.remove(projectId);
+        _lifecycleChangeGenerations.remove(projectId);
+      }
+      emit(Map.unmodifiable({...state}..removeWhere((projectId, _) => !projectIds.contains(projectId))));
+    }
+    for (final project in projects) {
+      unawaited(ensureLoaded(projectId: project.id));
+    }
   }
 
   Future<void> ensureLoaded({required String projectId}) async {

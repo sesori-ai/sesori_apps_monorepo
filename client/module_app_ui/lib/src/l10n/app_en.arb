@@ -25,6 +25,18 @@
     "description": "Sidebar link to a project's full session list, with its active visible session count.",
     "placeholders": {"count": {"type": "int"}}
   },
+  "desktopSidebarActivity": "Activity",
+  "@desktopSidebarActivity": {
+    "description": "Heading above running or unseen sessions prioritized across every desktop sidebar project."
+  },
+  "desktopSidebarActivitySession": "{sessionTitle} in {projectName}",
+  "@desktopSidebarActivitySession": {
+    "description": "Accessible identity of a priority sidebar session with its project context.",
+    "placeholders": {
+      "sessionTitle": {"type": "String"},
+      "projectName": {"type": "String"}
+    }
+  },
   "desktopSidebarNewSession": "New session in {projectName}",
   "@desktopSidebarNewSession": {
     "description": "Tooltip for the sidebar project's new-session button, revealed on hover or keyboard focus.",
