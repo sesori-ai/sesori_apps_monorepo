@@ -361,7 +361,11 @@ class MacosUpgradeWorkflowTests(unittest.TestCase):
         self.assertIn("statusFrame.minY >= 0", quitter)
         self.assertIn("statusFrame.maxY <= 80", quitter)
         self.assertIn("CGPoint(x: statusFrame.midX, y: statusFrame.midY)", quitter)
-        self.assertIn("let statusFrame = clickStatusItem(statusItem, ownedBy: pid)", quitter)
+        self.assertIn(
+            "guard actions.contains(kAXPressAction),\n"
+            "          let statusFrame = clickStatusItem(statusItem, ownedBy: pid)",
+            quitter,
+        )
         self.assertNotIn("keyboardEventSource", quitter)
         self.assertNotIn("postKey(", quitter)
         self.assertNotIn("quitItems(from:", quitter)
