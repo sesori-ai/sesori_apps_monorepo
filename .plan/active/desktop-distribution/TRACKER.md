@@ -254,7 +254,7 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update path | Helper-Off passed both CPUs | Authenticated/helper-On and public gates pending. |
+| macOS update path | Signed replacement + Off intent passed both CPUs | Live helper-Off, authenticated helper-On and public gates pending. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Migration complete | Public hosting gates pending. |
 | macOS public gate | Pending | See checkpoint above. |
