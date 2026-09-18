@@ -7,7 +7,7 @@
 - **Status:** Active — steps 1–5 and the private portions of steps 6, 7 and 9
   merged. The macOS signing-secret migration is complete. Two main-only native
   x64/arm64 helper-Off `1.8.4+24 → 1.9.0+62` runs failed safely at tray Quit; a
-  focused-menu Accessibility fix and accepted rerun are pending. Public
+  hit-tested-menu Accessibility fix and accepted rerun are pending. Public
   macOS/Windows/Linux publication
   and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
   releases. The independently executable private portion of step 11 is in progress;
@@ -402,12 +402,12 @@ The first main-only run showed that AppKit does not expose the transient tray me
 status-item child. The correction admits only a new process-owned AXMenu whose frame is
 anchored to the pressed status item, then searches for Quit only inside that menu.
 
-**Step 6 focused-menu correction PR:**
-`⚙️ [desktop-distribution] Target focused macOS tray Quit [step 8/14]`.
+**Step 6 hit-tested-menu correction PR:**
+`⚙️ [desktop-distribution] Bind macOS Quit to hit-tested tray menu [step 8/14]`.
 The second main-only run found 16 pre-existing arm64 menu elements without a new
 accepted popup, while broad traversal invalidated an x64 status-item reference. This
-correction presses the status item first, type-selects Quit, and accepts only the focused exact
-PID/title menu item whose parent menu is anchored to the recorded status-item frame.
+correction requires AXPress first, hit-tests beside the recorded status-item frame,
+accepts only an anchored process-owned menu and searches for Quit only inside it.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.

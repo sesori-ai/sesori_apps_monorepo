@@ -99,9 +99,9 @@ compiled channel; an older unpublished baseline may predate channel metadata.
 On a fresh Actions host with no existing app, bridge, login registration or relevant
 state root, the probe copies the previous app from its real DMG into Applications,
 launches a visible window with persisted Bridge Off and presses its process-owned
-status item, then type-selects Quit. It accepts only a focused `Quit Sesori` menu item
-owned by the exact PID whose parent menu is anchored to the recorded status-item frame.
-The probe rejects relaunch or
+status item with AXPress, then hit-tests beside its recorded frame. It accepts only a
+process-owned menu anchored to that frame and invokes `Quit Sesori` only inside the
+accepted menu. The probe rejects relaunch or
 orphan processes, replaces the complete app from the current DMG and repeats while
 preserving bounded desktop, shared CLI-data, attachment and valid login-registration
 sentinels. Cleanup removes only probe-owned paths. Pre-merge run `35363132033` is not
@@ -110,7 +110,7 @@ safely on both CPUs when status-item-only traversal could not observe AppKit's t
 menu. Second main-only run `35375073067` also failed safely: arm64 exposed 16 menus
 before the press without a new accepted popup, while x64 traversal invalidated its
 status-item reference. The
-focused-menu correction awaits a new main run. This does not prove an
+hit-tested-menu correction awaits a new main run. This does not prove an
 authenticated helper-On or failed-stop path, real-account/Keychain/TCC behavior,
 minimum-OS support, public retrieval, or release readiness.
 

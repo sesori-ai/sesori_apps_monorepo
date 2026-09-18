@@ -107,8 +107,8 @@ follow-up snapshots process-owned AXMenu elements before AXPress. Second main-on
 `91964b2e117ec314a4a79ebbe8b85f48d1d588be`, failed safely on arm64 job
 `105697793343` and x64 job `105697793591`: arm64 had 16 pre-existing menu elements but
 no new accepted popup, while traversal invalidated x64's status-item reference before press. The
-next correction presses first, type-selects Quit and accepts only the focused exact
-PID/title item whose parent menu is anchored to the recorded status frame.
+next correction requires AXPress first, hit-tests beside the recorded status frame,
+accepts only an anchored process-owned menu and searches for Quit only inside it.
 Authenticated helper-On, failed-stop, real-account/TCC, minimum-OS and public artifact
 retrieval remain open; the download page itself is live.
 
@@ -233,7 +233,7 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update path | Two main probes failed safely | Focused-menu rerun and full gates pending. |
+| macOS update path | Two main probes failed safely | Hit-tested-menu rerun and full gates pending. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Migration complete | Public hosting gates pending. |
 | macOS public gate | Pending | See checkpoint above. |

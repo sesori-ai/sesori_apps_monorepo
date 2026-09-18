@@ -97,8 +97,9 @@ First main-only run `35367589565` used accepted source
 job `105673774047` both failed safely at the prior-version Quit step: AppKit exposes
 `tray_manager`'s transient menu outside the status item's child tree. Neither job
 installed the current package, and final cleanup removed its probe-owned app/state.
-The first correction snapshot process-owned AXMenu elements before AXPress. Second
-main-only run `35375073067` used accepted source
+The first correction snapshot process-owned AXMenu elements before AXPress and accepted
+only a newly appeared menu anchored to the clicked status item, then searched for Quit
+only inside it. Second main-only run `35375073067` used accepted source
 `db12c5df7e1dff2a62c10b036c75fdcc13e6a727`, tree
 `91964b2e117ec314a4a79ebbe8b85f48d1d588be`. Arm64 job `105697793343` and x64 job
 `105697793591` both failed safely at prior-version Quit. Arm64 already exposed 16 menu
@@ -106,10 +107,10 @@ elements before the press, so novelty could not identify the tray menu. On x64 t
 hierarchy traversal invalidated the status-item reference before its action was read.
 Neither job installed the current package; cleanup removed probe-owned app/state.
 
-The next correction records the status-item frame and action immediately, performs
-AXPress before any menu traversal, and keyboard-selects the exact Quit title. It accepts
-only a focused menu item with the exact PID/role/title whose parent AXMenu is anchored
-to the recorded status frame. No application/extras traversal supplies a Quit item.
+The next correction records the status-item frame and actions immediately and requires
+AXPress before menu lookup. It then hit-tests screen points beside that frame, accepts
+only a process-owned parent AXMenu anchored to the frame, and searches for the exact
+Quit title only inside that visible menu. It posts no synthetic keyboard events.
 A new main run is required. Authenticated helper-On, failed-stop,
 real-account/Keychain/TCC, minimum-OS, public retrieval and parent Gate C remain open.
 
