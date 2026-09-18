@@ -274,8 +274,8 @@ navigation or repeated settings links. Inspect the actual rendered result.
 - Apply the hover-hint rule above throughout the sidebar and in step 11's wider
   desktop audit. The scoped 9.c.2 architecture plan review rejected a foundation-layer
   projection and widget-owned refresh sequencing. The implementation addresses those
-  required findings with a Layer-4 projection, lower-layer refresh operation contracts
-  and service, and a refresh Cubit that depends only on that service boundary.
+  required findings with a Layer-4 projection, a DI-registered lower-layer refresh request
+  owner consumed by the inventory Cubits, and a registered desktop workflow service.
 
 ### Cockpit shell
 
@@ -528,8 +528,8 @@ New in-memory mutable parts:
 - Step 9.c.1: one pending-read identity map plus one lifecycle-generation map in
   `RecentSessionsCubit`; the latter replaces the earlier changed-during-read set.
   Usable data and an in-flight read coexist, and staleness retires only after snapshot application.
-- Step 9.c.2 reuses inventory/refresh owners and Prego animation state;
-  derive priority rows without another cache, subscription, timer or persistence.
+- Step 9.c.2 reuses inventory owners and Prego animation state; a lower service owns the two explicit request streams;
+  derive priority rows without another data cache, timer or persistence.
 
 Deliberately not added: per-project refetch debounce timers (patching replaces
 them), a "last open session" record, a settings deep-link route scheme, a
@@ -597,7 +597,7 @@ Completed implementation specifics live in the linked evidence; this matrix summ
 | 9.a.2 | 13/20 | ≤ 1,300 | [Rotating app files and prepared logs directory](steps/step-09a.md). |
 | 9.b | 14/20 | ≤ 500 | [Anchored resizing and scrollbar hit targets](steps/step-09b.md). |
 | 9.c.1 | 15/20 | ≤ 650 | [Loaded/live inventory and request ownership](steps/step-09c1.md). |
-| 9.c.2a | 16/20 | ≤ 1,000 | Activity projection and explicit refresh ownership in pure Dart. |
+| 9.c.2a | 16/20 | ≤ 1,200 | Activity projection and explicit refresh ownership in pure Dart. |
 | 9.c.2b | 17/20 | ≤ 1,450 | Priority activity, purposeful controls, Prego transitions and useful hints. |
 | 10 | 18/20 | ≤ 600 | Keyboard shortcuts and macOS title-bar/drag integration. |
 | 11 | 19/20 | ≤ 600 | Control-content audit and regression reconciliation. |
@@ -814,8 +814,8 @@ that review loop, 9.a.1 landed separately as #1514; file output remains 9.a.2. A
 plan review (`e973a005-01ab-43fe-aaf8-eb43ebc854f6`) approved the two-slice ownership;
 see [prerequisite evidence](steps/step-09a1.md). Sidebar 9.c.1 received its separate
 refresh-continuity plan approval. The scoped 9.c.2 review rejected foundation placement and widget
-orchestration; the required corrections use Layer-4 projection/presentation owners over lower-layer refresh
-operation contracts and a service.
+orchestration; the required corrections use a Layer-4 projection, lower-layer refresh request ownership consumed by
+independent inventory Cubits, and a DI-registered desktop workflow service.
 
 ## Relation To Other Plans
 

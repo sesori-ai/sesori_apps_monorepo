@@ -32,7 +32,7 @@ keeps the architectural owners separate from Flutter composition, and adds no sc
 | [x] | 9.a.2 | `desktop-ux/app-logs` | [13/20](#pr-titles) | ≤ 1,300 | done |
 | [x] | 9.b | `desktop-ux/sidebar-interactions` | [14/20](#pr-titles) | ≤ 500 | done |
 | [x] | 9.c.1 | `desktop-ux/sidebar-refresh-continuity` | [15/20](#pr-titles) | ≤ 650 | done |
-| [x] | 9.c.2a | `desktop-ux/sidebar-activity-foundation` | [16/20](#pr-titles) | ≤ 1,000 | done |
+| [x] | 9.c.2a | `desktop-ux/sidebar-activity-foundation` | [16/20](#pr-titles) | ≤ 1,200 | done |
 | [ ] | 9.c.2b | `desktop-ux/sidebar-activity-controls` | [17/20](#pr-titles) | ≤ 1,450 | in-progress |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | [18/20](#pr-titles) | ≤ 600 | pending |
 | [ ] | 11 | `desktop-ux/regression-docs` | [19/20](#pr-titles) | ≤ 600 | pending |
