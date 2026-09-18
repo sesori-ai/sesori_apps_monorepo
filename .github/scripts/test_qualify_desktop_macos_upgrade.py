@@ -337,14 +337,17 @@ class MacosUpgradeWorkflowTests(unittest.TestCase):
     def test_quit_lookup_uses_hit_tested_status_anchored_menu(self):
         quitter = QUITTER.read_text()
         self.assertIn("AXUIElementCopyElementAtPosition(", quitter)
-        self.assertIn("hitTest(application, at: point)", quitter)
+        self.assertIn("AXUIElementCreateSystemWide()", quitter)
+        self.assertIn("hitTest(at: point)", quitter)
+        self.assertIn("processIdentifier(candidate) == pid", quitter)
         self.assertIn("stringAttribute(candidate, kAXRoleAttribute as CFString) == kAXMenuRole", quitter)
         self.assertIn("isAnchored(candidate, to: statusFrame)", quitter)
+        self.assertIn("processIdentifier($0) == pid", quitter)
         self.assertIn(
             "if let trayMenu = visibleTrayMenu(\n"
-            "            in: appElement,\n"
             "            ownedBy: pid,\n"
-            "            anchoredTo: statusFrame\n"
+            "            anchoredTo: statusFrame,\n"
+            "            reportHits: attempt == 0 || attempt == 50\n"
             "        ), let quitItem = quitItem(in: trayMenu, ownedBy: pid)",
             quitter,
         )

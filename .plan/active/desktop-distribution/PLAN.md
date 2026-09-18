@@ -5,9 +5,9 @@
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
 - **Status:** Active — steps 1–5 and the private portions of steps 6, 7 and 9
-  merged. The macOS signing-secret migration is complete. Two main-only native
+  merged. The macOS signing-secret migration is complete. Three main-only native
   x64/arm64 helper-Off `1.8.4+24 → 1.9.0+62` runs failed safely at tray Quit; a
-  hit-tested-menu Accessibility fix and accepted rerun are pending. Public
+  system-wide, process-constrained hit-test fix and accepted rerun are pending. Public
   macOS/Windows/Linux publication
   and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
   releases. The independently executable private portion of step 11 is in progress;
@@ -408,6 +408,13 @@ The second main-only run found 16 pre-existing arm64 menu elements without a new
 accepted popup, while broad traversal invalidated an x64 status-item reference. This
 correction requires AXPress first, hit-tests beside the recorded status-item frame,
 accepts only an anchored process-owned menu and searches for Quit only inside it.
+
+**Step 6 status-bar hit-test correction PR:**
+`⚙️ [desktop-distribution] Include status-bar menu in macOS hit test [step 8/14]`.
+The third main-only run showed that application-scoped AX hit testing does not surface
+the transient status-bar menu. The correction uses system-wide z-order hit testing but
+still accepts only the exact PID's AXMenu anchored to the clicked status-item frame,
+searching for Quit only inside that menu.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
