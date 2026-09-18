@@ -63,13 +63,18 @@ git diff --check
 ```
 
 Results: 18 recent-session cases, 2 projection cases, and all 11 previously failing app session-split cases pass;
-module-core, module-desktop-core, and desktop analyzers are clean; diff check is clean. The app failures at published
+module-core, module-desktop-core, and desktop analyzers are clean; diff check is clean. Evidence checkpoint
+`787e9a6227410e6f6aac96956fdbb7e07c92be10`, tree `10fcca6b8d9f558482f7a7cf299e4034744b4b53`, measures 504
+all-path changed lines (407 additions, 97 deletions) across 13 files: 85 production, 110 tests, 309 documentation,
+and zero generated. This measurement includes the checkpoint version of this file; this evidence-only paragraph is
+outside it. The app failures at published
 head `43af1265c1` were `type 'Null' is not a subtype of type 'ProjectListCubit' in type cast` after the discarded DI
 constructor change; removing that incomplete refresh wiring restores the established composition.
 
 ## Boundaries
 
-Series-title metadata receipts are stored outside the repository. This prerequisite has no user-visible, generated,
+Series-title metadata receipt: `/tmp/rose-elephant-series-21-title-receipts.json`. This prerequisite has no
+user-visible, generated,
 database, wire or bridge/plugin impact. 9.c.2b owns lower-layer refresh execution; 9.c.2c owns Flutter composition,
 localization, regression docs and synthetic renders. No app smoke, GUI/helper/bridge, auth/preferences, registration,
 secure storage or device operation ran. Native/live qualification remains required and unexecuted.
