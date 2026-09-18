@@ -102,8 +102,8 @@ correctly rejected its broad Quit-item lookup as final evidence. First main-only
 `c070c5520b11cfde1f6b5596697c4fd2f37360a9`, then failed safely at prior-version Quit
 on arm64 job `105673774002` and x64 job `105673774047`: AppKit did not expose the
 transient tray menu as a status-item child. Cleanup removed probe-owned app/state. The
-follow-up snapshots process-owned Quit items before AXPress and accepts only a newly
-exposed item afterward, preventing fallback to the pre-existing application main menu.
+follow-up snapshots process-owned AXMenu elements before AXPress, accepts only a new
+menu anchored to the clicked status item's frame and searches for Quit only inside it.
 Authenticated helper-On, failed-stop, real-account/TCC, minimum-OS and public
 artifact retrieval remain open; the download page itself is live.
 

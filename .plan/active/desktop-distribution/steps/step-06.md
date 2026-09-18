@@ -97,10 +97,10 @@ First main-only run `35367589565` used accepted source
 job `105673774047` both failed safely at the prior-version Quit step: AppKit exposes
 `tray_manager`'s transient menu outside the status item's child tree. Neither job
 installed the current package, and final cleanup removed its probe-owned app/state.
-The follow-up snapshots exact process-owned Quit items before AXPress, traverses the
-bounded app/extras/status hierarchy afterward and accepts only a newly exposed item.
-That preserves causal tray-menu proof while excluding the pre-existing application
-main menu. A new main run is required. Authenticated helper-On, failed-stop,
+The follow-up snapshots process-owned AXMenu elements before AXPress, then accepts only
+a new menu whose frame is anchored to the clicked status item and searches for Quit
+only inside that menu. This excludes the application main menu and unrelated app
+popups. A new main run is required. Authenticated helper-On, failed-stop,
 real-account/Keychain/TCC, minimum-OS, public retrieval and parent Gate C remain open.
 
 Dispatches and expanded logs were run from

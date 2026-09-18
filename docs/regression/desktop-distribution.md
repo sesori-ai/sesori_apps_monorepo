@@ -98,9 +98,9 @@ compiled channel; an older unpublished baseline may predate channel metadata.
 
 On a fresh Actions host with no existing app, bridge, login registration or relevant
 state root, the probe copies the previous app from its real DMG into Applications,
-launches a visible window with persisted Bridge Off, presses the process-owned status
-item and invokes only a process-owned `Quit Sesori` item newly exposed by that press.
-This excludes the pre-existing application main menu. The probe rejects relaunch or
+launches a visible window with persisted Bridge Off and presses its process-owned
+status item. It accepts only a new process-owned AXMenu anchored to that item's frame,
+then invokes `Quit Sesori` only inside the accepted menu. The probe rejects relaunch or
 orphan processes, replaces the complete app from the current DMG and repeats while
 preserving bounded desktop, shared CLI-data, attachment and valid login-registration
 sentinels. Cleanup removes only probe-owned paths. Pre-merge run `35363132033` is not

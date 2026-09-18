@@ -399,8 +399,8 @@ database change is included.
 **Step 6 tray-evidence correction PR:**
 `⚙️ [desktop-distribution] Bind macOS upgrade Quit to tray popup [step 8/14]`.
 The first main-only run showed that AppKit does not expose the transient tray menu as a
-status-item child. The correction admits only a process-owned Quit item newly exposed
-by the status-item press, then requires another main run.
+status-item child. The correction admits only a new process-owned AXMenu whose frame is
+anchored to the pressed status item, then searches for Quit only inside that menu.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.

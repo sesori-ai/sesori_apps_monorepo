@@ -334,13 +334,22 @@ class MacosUpgradeWorkflowTests(unittest.TestCase):
         self.assertNotIn("secrets.", job)
         self.assertNotIn("contents: write", job)
 
-    def test_quit_lookup_requires_new_presentation_after_status_press(self):
+    def test_quit_lookup_requires_new_anchored_menu_after_status_press(self):
         quitter = QUITTER.read_text()
-        self.assertIn("let baseline = quitItems(from: quitSearchRoots", quitter)
-        self.assertIn("newlyPresentedQuitItem(", quitter)
-        self.assertIn("let quitSearchRoots = statusItems + [extras, appElement]", quitter)
-        self.assertLess(quitter.index("let baseline = quitItems"), quitter.index("AXUIElementPerformAction(statusItem"))
-        self.assertLess(quitter.index("AXUIElementPerformAction(statusItem"), quitter.rindex("newlyPresentedQuitItem("))
+        self.assertIn("let baseline = menus(from: menuSearchRoots", quitter)
+        self.assertIn("let menuSearchRoots = statusItems + [extras, appElement]", quitter)
+        self.assertIn("&& isAnchored(candidate, to: statusItem)", quitter)
+        self.assertIn(
+            "if let trayMenu = newlyPresentedTrayMenu(\n"
+            "            from: menuSearchRoots,\n"
+            "            ownedBy: pid,\n"
+            "            anchoredTo: statusItem,\n"
+            "            comparedWith: baseline\n"
+            "        ), let quitItem = quitItems(from: [trayMenu]",
+            quitter,
+        )
+        self.assertLess(quitter.index("let baseline = menus"), quitter.index("AXUIElementPerformAction(statusItem"))
+        self.assertLess(quitter.index("AXUIElementPerformAction(statusItem"), quitter.rindex("newlyPresentedTrayMenu("))
 
 
 class MacosUpgradeSafetyTests(unittest.TestCase):
