@@ -102,10 +102,15 @@ correctly rejected its broad Quit-item lookup as final evidence. First main-only
 `c070c5520b11cfde1f6b5596697c4fd2f37360a9`, then failed safely at prior-version Quit
 on arm64 job `105673774002` and x64 job `105673774047`: AppKit did not expose the
 transient tray menu as a status-item child. Cleanup removed probe-owned app/state. The
-follow-up snapshots process-owned AXMenu elements before AXPress, accepts only a new
-menu anchored to the clicked status item's frame and searches for Quit only inside it.
-Authenticated helper-On, failed-stop, real-account/TCC, minimum-OS and public
-artifact retrieval remain open; the download page itself is live.
+follow-up snapshots process-owned AXMenu elements before AXPress. Second main-only run
+`35375073067` at source `db12c5df7e1dff2a62c10b036c75fdcc13e6a727`, tree
+`91964b2e117ec314a4a79ebbe8b85f48d1d588be`, failed safely on arm64 job
+`105697793343` and x64 job `105697793591`: arm64 had 16 pre-existing menu elements but
+no new accepted popup, while traversal invalidated x64's status-item reference before press. The
+next correction requires AXPress first, hit-tests beside the recorded status frame,
+accepts only an anchored process-owned menu and searches for Quit only inside it.
+Authenticated helper-On, failed-stop, real-account/TCC, minimum-OS and public artifact
+retrieval remain open; the download page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
 private-package documentation portion can proceed independently, so its dependency
@@ -228,7 +233,7 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update path | Main probe failed safely | Delta-scoped Quit rerun and full gates pending. |
+| macOS update path | Two main probes failed safely | Hit-tested-menu rerun and full gates pending. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Migration complete | Public hosting gates pending. |
 | macOS public gate | Pending | See checkpoint above. |

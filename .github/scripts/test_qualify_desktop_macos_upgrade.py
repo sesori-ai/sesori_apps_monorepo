@@ -334,22 +334,26 @@ class MacosUpgradeWorkflowTests(unittest.TestCase):
         self.assertNotIn("secrets.", job)
         self.assertNotIn("contents: write", job)
 
-    def test_quit_lookup_requires_new_anchored_menu_after_status_press(self):
+    def test_quit_lookup_uses_hit_tested_status_anchored_menu(self):
         quitter = QUITTER.read_text()
-        self.assertIn("let baseline = menus(from: menuSearchRoots", quitter)
-        self.assertIn("let menuSearchRoots = statusItems + [extras, appElement]", quitter)
-        self.assertIn("&& isAnchored(candidate, to: statusItem)", quitter)
+        self.assertIn("AXUIElementCopyElementAtPosition(", quitter)
+        self.assertIn("hitTest(application, at: point)", quitter)
+        self.assertIn("stringAttribute(candidate, kAXRoleAttribute as CFString) == kAXMenuRole", quitter)
+        self.assertIn("isAnchored(candidate, to: statusFrame)", quitter)
         self.assertIn(
-            "if let trayMenu = newlyPresentedTrayMenu(\n"
-            "            from: menuSearchRoots,\n"
+            "if let trayMenu = visibleTrayMenu(\n"
+            "            in: appElement,\n"
             "            ownedBy: pid,\n"
-            "            anchoredTo: statusItem,\n"
-            "            comparedWith: baseline\n"
-            "        ), let quitItem = quitItems(from: [trayMenu]",
+            "            anchoredTo: statusFrame\n"
+            "        ), let quitItem = quitItem(in: trayMenu, ownedBy: pid)",
             quitter,
         )
-        self.assertLess(quitter.index("let baseline = menus"), quitter.index("AXUIElementPerformAction(statusItem"))
-        self.assertLess(quitter.index("AXUIElementPerformAction(statusItem"), quitter.rindex("newlyPresentedTrayMenu("))
+        self.assertNotIn("CGEvent(", quitter)
+        self.assertNotIn("postKey(", quitter)
+        self.assertNotIn("quitItems(from:", quitter)
+        self.assertNotIn("menus(from:", quitter)
+        press = quitter.index("AXUIElementPerformAction(statusItem")
+        self.assertLess(press, quitter.rindex("visibleTrayMenu("))
 
 
 class MacosUpgradeSafetyTests(unittest.TestCase):
