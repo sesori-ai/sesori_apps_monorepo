@@ -134,7 +134,18 @@ Machine receipts: `/tmp/rose-elephant-project-visibility-tests.json` and
 `/tmp/rose-elephant-project-visibility-analyzers.json`; these bind cwd, exact command, execution checkpoint,
 exit and report hashes. The added shared-router case proves false/true replay to new subscribers and visibility
 transitions through pushed settings and nested session routes, then popping back to projects. Existing project
-throttle/return tests remain intact. The complete corrected branch receives the second implementation-review pass.
+throttle/return tests remain intact.
+
+## Approved implementation checkpoint
+
+Second review `7b180614-85ea-4297-a927-b7f73847182f` approved the complete 34-path range from the base above to
+`cde8c241b42d94c19d44be2bbfa2ed6c57543fe1`, tree `c36b245bc960acc60f5bdb8eeab81890c0ea0cc7`, with no findings.
+Reviewed source: 950 all-path lines (691 additions/259 deletions): 442 production, 202 tests, 290 docs and 16 generated.
+The route-boundary correction was explicitly verified. Preserved report:
+`/tmp/rose-elephant-project-inventory-implementation-review-2.md`, SHA-256
+`bfa0412157820ad7604261042a7ae19d2bdcf0e0c2b052ee1279487aaff4a18f`.
+Later publication documentation records this approval without changing executable code; it is not a fresh test run.
+The source commit above was created after the recorded uncommitted follow-up commands completed.
 
 ## Boundaries
 
