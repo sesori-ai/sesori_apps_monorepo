@@ -15,6 +15,7 @@ void main() {
   late FakeSessionUnseenTracker unseen;
   late FakeCatalogRescanService catalog;
   late StreamController<SseEvent> events;
+  late ProjectListService projectListService;
   late RecentSessionsCubit cubit;
   const projectId = "project-1";
 
@@ -29,11 +30,16 @@ void main() {
     when(() => connection.events).thenAnswer((_) => events.stream);
     when(() => repository.listSessions(projectId: any(named: "projectId"), waitForPrData: false))
         .thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
+    projectListService = ProjectListService(
+      repository: repository,
+      activityCalculator: const SessionActivityCalculator(),
+    );
     cubit = RecentSessionsCubit(
       sessionListService: SessionListService(
         repository: repository,
         activityCalculator: const SessionActivityCalculator(),
       ),
+      projectListService: projectListService,
       connectionService: connection,
       sseEventTracker: activity,
       sessionUnseenTracker: unseen,
@@ -42,6 +48,7 @@ void main() {
   });
   tearDown(() async {
     await cubit.close();
+    await projectListService.dispose();
     await events.close();
     await activity.onDispose();
     await unseen.onDispose();
@@ -53,6 +60,24 @@ void main() {
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
         .thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: sessions)));
   }
+
+  test("successful project snapshots admit every project without duplicate reads", () async {
+    const projects = Projects(
+      data: [
+        ProjectSummary(id: "project-1", name: "One", path: "/one", time: null),
+        ProjectSummary(id: "project-2", name: "Two", path: "/two", time: null),
+      ],
+    );
+    when(() => repository.listProjects()).thenAnswer((_) async => ApiResponse.success(projects));
+
+    await projectListService.listProjects();
+    await cubit.stream.firstWhere((state) => state.length == 2);
+    await projectListService.listProjects();
+    await Future<void>.delayed(Duration.zero);
+
+    verify(() => repository.listSessions(projectId: "project-1", waitForPrData: false)).called(1);
+    verify(() => repository.listSessions(projectId: "project-2", waitForPrData: false)).called(1);
+  });
 
   test("lazy reads deduplicate, use active ordering, and pin the open row only once", () async {
     expect(cubit.state, isEmpty);

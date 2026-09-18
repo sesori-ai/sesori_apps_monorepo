@@ -272,38 +272,13 @@ class const _SidebarInventory({
   required final ProjectOpenedCallback onNewSession,
   required final SessionListActionDispatcher sessionActions,
   required final ProjectOpenedCallback onOpenProject,
-}) extends StatefulWidget {
-  @override
-  State<_SidebarInventory> createState() => _SidebarInventoryState();
-}
-
-class _SidebarInventoryState() extends State<_SidebarInventory> {
-  @override
-  void initState() {
-    super.initState();
-    _admitProjects(projects: widget.projects);
-  }
-
-  @override
-  void didUpdateWidget(covariant _SidebarInventory oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final previousIds = oldWidget.projects.map((project) => project.id).toSet();
-    _admitProjects(projects: widget.projects.where((project) => !previousIds.contains(project.id)));
-  }
-
-  void _admitProjects({required Iterable<ProjectSummary> projects}) {
-    final recentSessions = context.read<RecentSessionsCubit>();
-    for (final project in projects) {
-      unawaited(recentSessions.ensureLoaded(projectId: project.id));
-    }
-  }
-
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entries = context.watch<RecentSessionsCubit>().state;
-    final projection = DesktopSidebarSessionProjection.from(projects: widget.projects, entries: entries);
-    final gutter = PregoSpacing.xl * widget.expansion;
-    final activityHeaderExpansion = projection.activityGroups.isEmpty ? 0.0 : widget.expansion;
+    final projection = DesktopSidebarSessionProjection.from(projects: projects, entries: entries);
+    final gutter = PregoSpacing.xl * expansion;
+    final activityHeaderExpansion = projection.activityGroups.isEmpty ? 0.0 : expansion;
     return CustomScrollView(
       key: const Key("desktop-sidebar-project-list"),
       slivers: [
@@ -342,10 +317,10 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                 key: ValueKey("sidebar-activity-${group.project.id}"),
                 group: group,
                 projectName: projectName,
-                expansion: widget.expansion,
-                selectedSessionId: group.project.id == widget.selectedProjectId ? widget.selectedSessionId : null,
-                onOpenSession: widget.onOpenSession,
-                sessionActions: widget.sessionActions,
+                expansion: expansion,
+                selectedSessionId: group.project.id == selectedProjectId ? selectedSessionId : null,
+                onOpenSession: onOpenSession,
+                sessionActions: sessionActions,
               );
             },
           ),
@@ -354,7 +329,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
           padding: EdgeInsetsDirectional.only(end: gutter),
           sliver: PregoAnimatedSliverList<ProjectSummary>(
             key: const Key("desktop-sidebar-project-groups"),
-            items: widget.projects,
+            items: projects,
             itemKey: (project) => ValueKey(project.id),
             itemBuilder: (context, _, project) {
               final projectName = _projectName(context: context, project: project);
@@ -363,24 +338,24 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                 key: ValueKey(project.id),
                 project: project,
                 name: projectName,
-                active: widget.activityById[project.id] ?? 0,
-                unseen: widget.unseenByProjectId[project.id] ?? project.hasUnseenChanges,
+                active: activityById[project.id] ?? 0,
+                unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
                 entry: entry,
                 ordinarySessions: entry is RecentSessionsLoaded
                     ? projection.ordinaryRows(
                         projectId: project.id,
                         loaded: entry,
-                        selectedSessionId: project.id == widget.selectedProjectId ? widget.selectedSessionId : null,
+                        selectedSessionId: project.id == selectedProjectId ? selectedSessionId : null,
                       )
                     : const [],
-                expansion: widget.expansion,
-                expanded: !widget.collapsedProjectIds.contains(project.id),
-                selected: project.id == widget.selectedProjectId,
-                selectedSessionId: project.id == widget.selectedProjectId ? widget.selectedSessionId : null,
-                onOpenProject: widget.onOpenProject,
-                onOpenSession: widget.onOpenSession,
-                onNewSession: widget.onNewSession,
-                sessionActions: widget.sessionActions,
+                expansion: expansion,
+                expanded: !collapsedProjectIds.contains(project.id),
+                selected: project.id == selectedProjectId,
+                selectedSessionId: project.id == selectedProjectId ? selectedSessionId : null,
+                onOpenProject: onOpenProject,
+                onOpenSession: onOpenSession,
+                onNewSession: onNewSession,
+                sessionActions: sessionActions,
               );
             },
           ),

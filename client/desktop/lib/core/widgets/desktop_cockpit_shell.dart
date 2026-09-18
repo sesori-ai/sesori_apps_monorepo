@@ -19,8 +19,10 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
     providers: [
       BlocProvider(create: (_) => createProjectListCubit(locator: getIt)),
       BlocProvider(
+        lazy: false,
         create: (_) => RecentSessionsCubit(
           sessionListService: getIt<SessionListService>(),
+          projectListService: getIt<ProjectListService>(),
           connectionService: getIt<ConnectionService>(),
           sseEventTracker: getIt<SseEventTracker>(),
           sessionUnseenTracker: getIt<SessionUnseenTracker>(),

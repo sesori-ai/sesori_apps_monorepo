@@ -60,12 +60,14 @@ The main pane hosts one full-width routed page.
   them with the row instead of overflowing it.
 - Opening the sidebar or its session action menu never claims project viewing.
   The main list/detail routes retain viewing ownership. Session mutations use
-  the existing action controller; its context survives removal of a session row.
-- The sidebar inventory admits every current project to the shared recent-session Cubit when its ID enters the
-  inventory, independent of expansion or viewport position. It is the sole automatic sidebar admission trigger;
-  unchanged rebuilds and project expansion do not dispatch another path. The Cubit owns requests/results and caches
-  them per signed-in shell. Live session/activity/unread events update its projection; reconnect/catalog invalidation refreshes known
-  projects, including failed reads. Initial loading/failure stays project-local.
+  the existing action controller; an in-flight mark-read owner completes failure recovery even if its optimistic
+  update removes the final Activity row.
+- Each successful project snapshot admits every current project to the shared recent-session Cubit, independent of
+  expansion or viewport position. The pure-Dart Cubit is the sole automatic admission owner; the Flutter shell only
+  constructs it eagerly and renders its state, so rebuilds and project expansion dispatch no reads. The Cubit owns
+  requests/results per signed-in shell. Live session/activity/unread events update its projection;
+  reconnect/catalog invalidation refreshes known projects, including failed reads. Initial loading/failure stays
+  project-local.
   Loaded rows remain visible during refresh and logged refresh failures; live
   activity/unread and root lifecycle patches continue against that useful data.
   Lifecycle changes overlapping a returned snapshot trigger a coalesced fresh read before seeding.

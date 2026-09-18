@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -12,10 +14,20 @@ class ProjectListService({
   required final ProjectRepository _repository,
   required final SessionActivityCalculator _activityCalculator,
 }) {
+  final StreamController<List<ProjectSummary>> _listedProjects = StreamController.broadcast(sync: true);
+
+  /// Every successful authoritative project snapshot, without retaining a
+  /// second project inventory alongside the owning Cubit.
+  Stream<List<ProjectSummary>> get listedProjects => _listedProjects.stream;
+
   Future<ApiResponse<Projects>> listProjects() async {
     final response = await _repository.listProjects();
     return switch (response) {
-      SuccessResponse(:final data) => ApiResponse.success(Projects(data: _sortProjects(data.data))),
+      SuccessResponse(:final data) => () {
+        final projects = List<ProjectSummary>.unmodifiable(_sortProjects(data.data));
+        if (!_listedProjects.isClosed) _listedProjects.add(projects);
+        return ApiResponse.success(Projects(data: projects));
+      }(),
       ErrorResponse(:final error) => ApiResponse.error(error),
     };
   }
@@ -106,4 +118,7 @@ class ProjectListService({
   }
 
   String _effectiveName(ProjectSummary project) => project.name ?? project.path;
+
+  @disposeMethod
+  Future<void> dispose() => _listedProjects.close();
 }

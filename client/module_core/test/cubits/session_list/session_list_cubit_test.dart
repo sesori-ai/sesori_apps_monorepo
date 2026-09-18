@@ -2491,6 +2491,45 @@ void main() {
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
     });
 
+    test("action scope close waits for mark-seen failure recovery", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projects);
+      final session = testSession(id: "s1", unseen: true);
+      final markReply = Completer<ApiResponse<void>>();
+      when(
+        () => mockSessionService.markSessionSeen(sessionId: session.id, read: true),
+      ).thenAnswer((_) => markReply.future);
+      when(
+        () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
+      final cubit = SessionListCubit(
+        mode: SessionListMode.actions(sessions: [session]),
+        sessionRepository: mockSessionService,
+        sessionListService: sessionListService,
+        projectRepository: mockProjectRepository,
+        connectionService: mockConnectionService,
+        sseEventTracker: mockSseEventTracker,
+        sessionUnseenTracker: fakeSessionUnseenTracker,
+        projectViewingService: mockProjectViewingService,
+        routeSource: mockRouteSource,
+        projectId: projectId,
+        failureReporter: mockFailureReporter,
+        catalogRescanService: fakeCatalogRescanService,
+      );
+
+      final mutation = cubit.markSessionSeen(sessionId: session.id, read: true);
+      final close = cubit.close();
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isFalse);
+      expect(cubit.isClosed, isFalse);
+
+      markReply.complete(ApiResponse.error(ApiError.generic()));
+      await mutation;
+      await close;
+
+      expect(cubit.isClosed, isTrue);
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isTrue);
+      verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
+    });
+
     group("catalog scan", () {
       void stubSessions() {
         when(

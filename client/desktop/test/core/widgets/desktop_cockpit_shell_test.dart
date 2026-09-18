@@ -211,46 +211,20 @@ void main() {
     await updates.close();
   });
 
-  testWidgets("admits every project once as IDs enter, independent of expansion", (tester) async {
+  testWidgets("project rendering never dispatches recent-session loads", (tester) async {
     final updates = StreamController<ProjectListState>();
-    final initialProjects = [
-      for (var index = 0; index < 20; index++)
-        ProjectSummary(id: "project-$index", name: "Project $index", path: "/fixture/$index", time: null),
-    ];
-    when(repository.readSidebarLayout).thenAnswer(
-      (_) async => const DesktopSidebarLayout(collapsedProjectIds: {"project-0", "project-19"}),
-    );
+    const added = ProjectSummary(id: "project-2", name: "Two", path: "/two", time: null);
     whenListen(
       projects,
       updates.stream,
-      initialState: ProjectListState.loaded(projects: initialProjects, activityById: const {}),
+      initialState: projects.state,
     );
 
     await tester.pumpWidget(app(state: running));
-    await tester.pump();
-    for (final project in initialProjects) {
-      verify(() => recent.ensureLoaded(projectId: project.id)).called(1);
-    }
-    expect(sidebar.state.collapsedProjectIds, {"project-0", "project-19"});
+    updates.add(const ProjectListState.loaded(projects: [added], activityById: {}));
+    await tester.pumpAndSettle();
 
-    clearInteractions(recent);
-    updates.add(ProjectListState.loaded(projects: initialProjects.reversed.toList(), activityById: const {}));
-    await tester.pumpAndSettle();
-    await tester.tap(toggle);
-    await tester.pumpAndSettle();
-    await tester.tap(toggle);
-    await tester.pumpAndSettle();
-    for (final project in initialProjects) {
-      verifyNever(() => recent.ensureLoaded(projectId: project.id));
-    }
-
-    const added = ProjectSummary(id: "project-20", name: "Project 20", path: "/fixture/20", time: null);
-    updates.add(ProjectListState.loaded(projects: [...initialProjects, added], activityById: const {}));
-    await tester.pumpAndSettle();
-    verify(() => recent.ensureLoaded(projectId: added.id)).called(1);
-    for (final project in initialProjects) {
-      verifyNever(() => recent.ensureLoaded(projectId: project.id));
-    }
+    verifyNever(() => recent.ensureLoaded(projectId: any(named: "projectId")));
     await tester.pumpWidget(const SizedBox.shrink());
     await updates.close();
   });

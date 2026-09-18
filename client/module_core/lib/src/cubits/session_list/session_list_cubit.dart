@@ -50,7 +50,10 @@ class SessionListCubit({
   required final CatalogRescanService _catalogRescanService,
 }) extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
+  int _pendingMarkSeenOperations = 0;
+  Completer<void>? _markSeenOperationsDrained;
 
+  final bool _waitForMarkSeenOnClose = mode is SessionListActionsMode;
   final ProjectViewClaim? _projectViewClaim = mode is SessionListViewMode && mode.filter != SessionListFilter.archived
       ? _projectViewingService.beginListClaim(projectId: _projectId)
       : null;
@@ -218,7 +221,12 @@ class SessionListCubit({
   /// echo delivers the authoritative state (including the project aggregate)
   /// within the round trip. On failure, a silent refetch re-seeds the
   /// authoritative flags instead of local rollback bookkeeping.
-  Future<void> markSessionSeen({required String sessionId, required bool read}) async {
+  Future<void> markSessionSeen({required String sessionId, required bool read}) {
+    _pendingMarkSeenOperations++;
+    return _markSessionSeen(sessionId: sessionId, read: read).whenComplete(_completeMarkSeenOperation);
+  }
+
+  Future<void> _markSessionSeen({required String sessionId, required bool read}) async {
     _sessionUnseenTracker.applyLocalSessionUnseen(
       projectId: _projectId,
       sessionId: sessionId,
@@ -252,6 +260,13 @@ class SessionListCubit({
         await _fetchSessions(silent: true, catalogRefresh: false, waitForPrData: false);
       }
     }
+  }
+
+  void _completeMarkSeenOperation() {
+    _pendingMarkSeenOperations--;
+    if (_pendingMarkSeenOperations != 0) return;
+    _markSeenOperationsDrained?.complete();
+    _markSeenOperationsDrained = null;
   }
 
   void _onSessionCreated(Session session) {
@@ -904,9 +919,15 @@ class SessionListCubit({
   }
 
   @override
-  Future<void> close() {
+  Future<void> close() async {
+    // An optimistic read-state change can remove an action-only sidebar row.
+    // Let its request finish failure recovery before closing this owner.
+    if (_waitForMarkSeenOnClose && _pendingMarkSeenOperations > 0) {
+      final drained = _markSeenOperationsDrained ??= Completer<void>();
+      await drained.future;
+    }
     if (_projectViewClaim case final claim?) _projectViewingService.releaseClaim(claim: claim);
-    _subscriptions.dispose();
-    return super.close();
+    await _subscriptions.dispose();
+    await super.close();
   }
 }
