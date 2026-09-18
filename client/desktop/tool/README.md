@@ -141,7 +141,8 @@ item found only inside that menu, then rejects relaunch/orphans,
 replaces the complete app from the newer DMG, and repeats while checking bounded
 desktop, shared CLI-data, attachment and valid login-registration sentinels. Existing
 app, bridge, registration or relevant state root causes refusal; cleanup is limited to
-probe-owned paths on the fresh Actions host.
+probe-owned paths on the fresh Actions host. Main-only run `35405646668` passed this
+private helper-Off boundary on native x64 and arm64.
 
 This pipeline does not publish a release/feed or prove installed GUI authentication,
 authenticated helper-On/failed-stop behavior, real-account Keychain/TCC, minimum-OS

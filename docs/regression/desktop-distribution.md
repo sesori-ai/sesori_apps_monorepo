@@ -123,8 +123,10 @@ Fourth main-only run `35391748404` also refused because AXPress left only groups
 at the system-wide sample points. The bounded real-click correction then merged. Runs
 `35399491087` and `35399933745` passed arm64 completely. Both x64 jobs passed prior-app
 Quit and current installation/launch but found no current window at the single sample
-15 seconds after launch. The bounded visible-window wait awaits a new main run. This does not prove an
-authenticated helper-On or failed-stop path, real-account/Keychain/TCC behavior,
+15 seconds after launch. After the bounded-wait correction, main-only run `35405646668`
+passed x64 job `105794893362` and arm64 job `105794893463`, with every helper-Off
+replacement check true. This does not prove an authenticated helper-On or failed-stop
+path, real-account/Keychain/TCC behavior,
 minimum-OS support, public retrieval, or release readiness.
 
 ## Current evidence boundary
