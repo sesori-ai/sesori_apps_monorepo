@@ -339,8 +339,10 @@ class MacosUpgradeWorkflowTests(unittest.TestCase):
         self.assertIn("AXUIElementCopyElementAtPosition(", quitter)
         self.assertIn("AXUIElementCreateSystemWide()", quitter)
         self.assertIn("hitTest(at: point)", quitter)
+        self.assertIn("processIdentifier(candidate) == pid", quitter)
         self.assertIn("stringAttribute(candidate, kAXRoleAttribute as CFString) == kAXMenuRole", quitter)
         self.assertIn("isAnchored(candidate, to: statusFrame)", quitter)
+        self.assertIn("processIdentifier($0) == pid", quitter)
         self.assertIn(
             "if let trayMenu = visibleTrayMenu(\n"
             "            ownedBy: pid,\n"

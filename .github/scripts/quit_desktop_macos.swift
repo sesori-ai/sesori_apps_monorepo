@@ -163,7 +163,11 @@ private func visibleTrayMenu(
         for point in points {
             let element = hitTest(at: point)
             if reportHits {
-                let result = element.map(description) ?? "<none>"
+                let result = element.map {
+                    let hitPid = processIdentifier($0).map(String.init) ?? "<none>"
+                    let role = stringAttribute($0, kAXRoleAttribute as CFString) ?? "<none>"
+                    return "pid=\(hitPid) role=\(role)"
+                } ?? "<none>"
                 print("HIT_TEST x=\(point.x) y=\(point.y) \(result)")
             }
             guard let element,

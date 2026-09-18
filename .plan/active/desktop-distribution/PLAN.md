@@ -413,7 +413,8 @@ accepts only an anchored process-owned menu and searches for Quit only inside it
 `⚙️ [desktop-distribution] Include status-bar menu in macOS hit test [step 8/14]`.
 The third main-only run showed that application-scoped AX hit testing does not surface
 the transient status-bar menu. The correction uses system-wide z-order hit testing but
-still accepts only the exact PID's menu anchored to the clicked status-item frame.
+still accepts only the exact PID's AXMenu anchored to the clicked status-item frame,
+searching for Quit only inside that menu.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
