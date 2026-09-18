@@ -35,8 +35,8 @@ packaging capability does not imply public downloads or an updater have shipped.
   Developer ID identity, tickets and Gatekeeper before
   installation. The universal GUI must include the selected CPU while the bundled
   helper must be exactly package-native. On a fresh host, install from the prior DMG,
-  record the process-owned status-item frame, require AXPress and use system-wide z-order
-  hit testing beside the frame. Require exact PID ownership and frame anchoring, then
+  require AXPress capability, validate and click the small process-owned menu-bar frame,
+  then use system-wide z-order hit testing beside it. Require exact PID ownership and frame anchoring, then
   invoke Quit only inside that menu. Reject relaunch/orphans,
   replace the complete app from the newer DMG, and preserve bounded desktop, shared
   CLI-data, attachment and valid login-registration sentinels. Existing app, bridge,

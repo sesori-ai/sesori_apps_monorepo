@@ -99,8 +99,9 @@ compiled channel; an older unpublished baseline may predate channel metadata.
 On a fresh Actions host with no existing app, bridge, login registration or relevant
 state root, the probe copies the previous app from its real DMG into Applications,
 launches a visible window with persisted Bridge Off and presses its process-owned
-status item with AXPress, then performs a system-wide z-order hit test beside its
-recorded frame. It accepts only a menu owned by the exact PID and anchored to that frame,
+status item with AXPress capability, validates its small menu-bar frame and clicks that
+exact frame. It then performs a system-wide z-order hit test beside the frame and
+accepts only a menu owned by the exact PID and anchored to that frame,
 then invokes `Quit Sesori` only inside the
 accepted menu. The probe rejects relaunch or
 orphan processes, replaces the complete app from the current DMG and repeats while
@@ -111,8 +112,10 @@ safely on both CPUs when status-item-only traversal could not observe AppKit's t
 menu. Second main-only run `35375073067` also failed safely: arm64 exposed 16 menus
 before the press without a new accepted popup, while x64 traversal invalidated its
 status-item reference. Third main-only run `35384845467` failed safely because
-application-scoped hit testing did not surface the status-bar menu on either CPU. The
-system-wide, process-constrained correction awaits a new main run. This does not prove an
+application-scoped hit testing did not surface the status-bar menu on either CPU.
+Fourth main-only run `35391748404` also refused because AXPress left only groups/windows
+at the system-wide sample points. The bounded real-click correction awaits a new main
+run. This does not prove an
 authenticated helper-On or failed-stop path, real-account/Keychain/TCC behavior,
 minimum-OS support, public retrieval, or release readiness.
 

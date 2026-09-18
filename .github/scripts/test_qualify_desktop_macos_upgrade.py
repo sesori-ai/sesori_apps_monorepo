@@ -351,12 +351,16 @@ class MacosUpgradeWorkflowTests(unittest.TestCase):
             "        ), let quitItem = quitItem(in: trayMenu, ownedBy: pid)",
             quitter,
         )
-        self.assertNotIn("CGEvent(", quitter)
+        self.assertIn("mouseType: .leftMouseDown", quitter)
+        self.assertIn("mouseType: .leftMouseUp", quitter)
+        self.assertIn("statusFrame.maxY <= 80", quitter)
+        self.assertIn("guard actions.contains(kAXPressAction), clickStatusItem(in: statusFrame)", quitter)
+        self.assertNotIn("keyboardEventSource", quitter)
         self.assertNotIn("postKey(", quitter)
         self.assertNotIn("quitItems(from:", quitter)
         self.assertNotIn("menus(from:", quitter)
-        press = quitter.index("AXUIElementPerformAction(statusItem")
-        self.assertLess(press, quitter.rindex("visibleTrayMenu("))
+        click = quitter.index("clickStatusItem(in: statusFrame)")
+        self.assertLess(click, quitter.rindex("visibleTrayMenu("))
 
 
 class MacosUpgradeSafetyTests(unittest.TestCase):
