@@ -132,9 +132,9 @@ gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo 
 Each native job verifies producer provenance, clean source, accepted notarization,
 DMG hashes, Developer ID identity, tickets and Gatekeeper before copying the prior app
 from its DMG into Applications. It launches the real signed app with persisted Bridge
-Off, snapshots process-owned menus, presses the process-owned status item and admits
-only a new menu anchored to that item's frame. It invokes Quit only inside that menu,
-then rejects relaunch/orphans,
+Off, records the process-owned status item's frame, presses it, and type-selects Quit.
+It accepts only the focused exact PID/title menu item whose parent menu is anchored to
+that recorded frame, invokes it, then rejects relaunch/orphans,
 replaces the complete app from the newer DMG, and repeats while checking bounded
 desktop, shared CLI-data, attachment and valid login-registration sentinels. Existing
 app, bridge, registration or relevant state root causes refusal; cleanup is limited to

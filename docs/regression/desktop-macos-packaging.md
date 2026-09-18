@@ -35,8 +35,8 @@ packaging capability does not imply public downloads or an updater have shipped.
   Developer ID identity, tickets and Gatekeeper before
   installation. The universal GUI must include the selected CPU while the bundled
   helper must be exactly package-native. On a fresh host, install from the prior DMG,
-  press its process-owned status item, accept only a new process-owned menu anchored to
-  that item's frame, invoke Quit only inside that menu, reject relaunch/orphans,
+  record the process-owned status-item frame, press it, type-select Quit and invoke only
+  the focused exact PID/title item in a menu anchored to that frame. Reject relaunch/orphans,
   replace the complete app from the newer DMG, and preserve bounded desktop, shared
   CLI-data, attachment and valid login-registration sentinels. Existing app, bridge,
   registration or relevant state root causes refusal; the probe owns only its installed
