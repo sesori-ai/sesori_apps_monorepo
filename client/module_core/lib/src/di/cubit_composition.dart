@@ -15,7 +15,6 @@ import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/catalog_rescan_service.dart";
-import "../services/inventory_refresh_service.dart";
 import "../services/loaded_state_analytics_reporter.dart";
 import "../services/new_session_options_service.dart";
 import "../services/new_session_plugin_service.dart";
@@ -82,7 +81,6 @@ ProjectListCubit createProjectListCubit({required GetIt locator}) {
     ),
     failureReporter: locator<FailureReporter>(),
     catalogRescanService: locator<CatalogRescanService>(),
-    inventoryRefreshService: locator<InventoryRefreshService>(),
   );
 }
 

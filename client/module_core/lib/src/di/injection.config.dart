@@ -120,7 +120,7 @@ import 'package:sesori_dart_core/src/repositories/permission_repository.dart'
 import 'package:sesori_dart_core/src/repositories/plugin_preference_repository.dart'
     as _i594;
 import 'package:sesori_dart_core/src/repositories/plugin_repository.dart'
-    as _i338;
+    as _i337;
 import 'package:sesori_dart_core/src/repositories/product_analytics_preference_repository.dart'
     as _i804;
 import 'package:sesori_dart_core/src/repositories/project_repository.dart'
@@ -151,8 +151,6 @@ import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
     as _i285;
-import 'package:sesori_dart_core/src/services/inventory_refresh_service.dart'
-    as _i337;
 import 'package:sesori_dart_core/src/services/message_thumbnail_cache_service.dart'
     as _i72;
 import 'package:sesori_dart_core/src/services/new_session_options_service.dart'
@@ -210,10 +208,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i456.PluginAuthenticationLoopbackServer>(
       () => _i456.PluginAuthenticationLoopbackServer(),
-    );
-    gh.lazySingleton<_i337.InventoryRefreshService>(
-      () => _i337.InventoryRefreshService(),
-      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i913.NewSessionSelectionTracker>(
       () => _i913.NewSessionSelectionTracker(),
@@ -521,13 +515,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i7.SessionRepository>(
       () => _i7.SessionRepository(api: gh<_i603.SessionApi>()),
     );
-    gh.lazySingleton<_i338.PluginRepository>(
-      () => _i338.PluginRepository(api: gh<_i546.PluginApi>()),
+    gh.lazySingleton<_i337.PluginRepository>(
+      () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
       () => _i709.SessionDetailLoadService(
         repository: gh<_i7.SessionRepository>(),
-        pluginRepository: gh<_i338.PluginRepository>(),
+        pluginRepository: gh<_i337.PluginRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
       ),
     );
@@ -541,7 +535,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i110.PluginManagementService>(
       () => _i110.PluginManagementService(
-        pluginRepository: gh<_i338.PluginRepository>(),
+        pluginRepository: gh<_i337.PluginRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
         productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
         authenticationBrowserService:
@@ -588,7 +582,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i177.NewSessionPluginService>(
       () => _i177.NewSessionPluginService(
-        pluginRepository: gh<_i338.PluginRepository>(),
+        pluginRepository: gh<_i337.PluginRepository>(),
         pluginPreferenceRepository: gh<_i594.PluginPreferenceRepository>(),
       ),
     );
@@ -620,7 +614,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i572.CatalogRescanService>(
       () => _i572.CatalogRescanService(
-        pluginRepository: gh<_i338.PluginRepository>(),
+        pluginRepository: gh<_i337.PluginRepository>(),
         managementService: gh<_i110.PluginManagementService>(),
         connectionService: gh<_i369.ConnectionService>(),
       ),

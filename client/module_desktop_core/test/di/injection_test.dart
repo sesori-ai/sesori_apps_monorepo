@@ -23,7 +23,6 @@ void main() {
     expect(getIt.isRegistered<DesktopInstanceRepository>(), isTrue);
     expect(getIt.isRegistered<DesktopInstanceService>(), isTrue);
     expect(getIt.isRegistered<DesktopRelayConnectionService>(), isTrue);
-    expect(getIt.isRegistered<DesktopSidebarRefreshService>(), isTrue);
     expect(getIt.isRegistered<DesktopStartupOrchestrator>(), isTrue);
     expect(getIt.isRegistered<DesktopBridgeTakeoverOrchestrator>(), isTrue);
     expect(getIt.isRegistered<DesktopLogoutOrchestrator>(), isTrue);

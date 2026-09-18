@@ -25,7 +25,6 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
           sseEventTracker: getIt<SseEventTracker>(),
           sessionUnseenTracker: getIt<SessionUnseenTracker>(),
           catalogRescanService: getIt<CatalogRescanService>(),
-          inventoryRefreshService: getIt<InventoryRefreshService>(),
         ),
       ),
       BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),

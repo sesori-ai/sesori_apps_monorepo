@@ -14,7 +14,6 @@ import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
-import "package:sesori_dart_core/src/services/inventory_refresh_service.dart";
 import "package:sesori_dart_core/src/services/loaded_state_analytics_reporter.dart";
 import "package:sesori_dart_core/src/services/models/catalog_rescan_state.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
@@ -65,7 +64,6 @@ void main() {
     late MockProjectRepository mockProjectRepository;
     late FakeCatalogRescanService fakeCatalogRescanService;
     late ProjectListService projectListService;
-    late InventoryRefreshService inventoryRefreshService;
     late MockConnectionService mockConnectionService;
     late MockSseEventTracker mockSseEventTracker;
     late MockRouteSource mockRouteSource;
@@ -84,7 +82,6 @@ void main() {
         repository: mockProjectRepository,
         activityCalculator: const SessionActivityCalculator(),
       );
-      inventoryRefreshService = InventoryRefreshService();
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
       mockRouteSource = MockRouteSource();
@@ -127,7 +124,6 @@ void main() {
     });
 
     tearDown(() async {
-      await inventoryRefreshService.dispose();
       await statusController.close();
       await analyticsStateController.close();
     });
@@ -149,7 +145,6 @@ void main() {
       ),
       failureReporter: mockFailureReporter,
       catalogRescanService: fakeCatalogRescanService,
-      inventoryRefreshService: inventoryRefreshService,
     );
 
     test("onboarding outcome intents report the seven bounded events", () async {
@@ -1613,26 +1608,6 @@ void main() {
         when(() => mockProjectRepository.listProjects()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         final result = await cubit.refreshProjects();
         expect(result, isFalse);
-      },
-      skip: 1,
-      expect: () => <ProjectListState>[],
-    );
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "refreshProjectInventory: reports retained project ids when refresh fails",
-      build: () {
-        when(
-          () => mockProjectRepository.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        when(() => mockProjectRepository.listProjects()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-        final result = await inventoryRefreshService.refreshProjectInventory();
-        expect(result.succeeded, isFalse);
-        expect(result.projectIds, ["A"]);
-        expect(result.projectIds.clear, throwsUnsupportedError);
       },
       skip: 1,
       expect: () => <ProjectListState>[],
