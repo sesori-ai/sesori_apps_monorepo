@@ -26,7 +26,6 @@ export "package:sesori_auth/sesori_auth.dart"
         JsonParsingError,
         NonSuccessCodeError,
         NotAuthenticatedError;
-
 export "package:sesori_auth/sesori_auth.dart" show ApiResponse, ErrorResponse, SuccessResponse;
 export "package:sesori_auth/sesori_auth.dart" show HttpApiClient;
 export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
@@ -84,9 +83,7 @@ export "src/cubits/notification_preferences/notification_preferences_state.dart"
 export "src/cubits/plugin_management/plugin_management_cubit.dart";
 export "src/cubits/plugin_management/plugin_management_state.dart";
 export "src/cubits/product_analytics_preference/product_analytics_preference_cubit.dart";
-export "src/cubits/project_list/add_project_outcome.dart";
-export "src/cubits/project_list/project_list_cubit.dart";
-export "src/cubits/project_list/project_list_state.dart";
+export "src/cubits/project_inventory/project_list_cubit.dart";
 export "src/cubits/recent_sessions/recent_sessions_cubit.dart";
 export "src/cubits/recent_sessions/recent_sessions_resolvers.dart";
 export "src/cubits/session_detail/queued_session_submission.dart";
@@ -191,12 +188,14 @@ export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/installation_analytics_service.dart";
 export "src/services/loaded_state_analytics_reporter.dart";
 export "src/services/message_thumbnail_cache_service.dart";
+export "src/services/models/add_project_outcome.dart";
 export "src/services/models/catalog_rescan_state.dart";
 export "src/services/models/new_session_backend_scope.dart";
 export "src/services/models/new_session_options_source.dart";
 export "src/services/models/new_session_selection_intent.dart";
 export "src/services/models/plugin_install_state.dart";
 export "src/services/models/product_analytics_state.dart";
+export "src/services/models/project_list_state.dart";
 export "src/services/models/recent_sessions_entry.dart";
 export "src/services/models/session_activity_info.dart";
 export "src/services/models/session_list_filter.dart";
@@ -208,6 +207,7 @@ export "src/services/notification_registration_service.dart";
 export "src/services/plugin_authentication_browser_service.dart";
 export "src/services/plugin_management_service.dart";
 export "src/services/product_analytics_service.dart";
+export "src/services/project_inventory_service.dart";
 export "src/services/project_list_service.dart";
 export "src/services/project_viewing_service.dart";
 export "src/services/recent_session_inventory_service.dart";

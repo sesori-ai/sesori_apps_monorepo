@@ -122,11 +122,13 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   the only navigation surface. The main pane hosts one routed page: home,
   session detail, all sessions of a project, new session, diffs. The desktop
   no longer mounts `SessionSplitShell`; mobile keeps it.
-- **D2 — Sidebar inventory has a scoped business owner.** `ProjectListCubit` is created once per signed-in
-  cockpit. `RecentSessionInventoryService` owns recent-session execution and immutable results in `module_core`,
-  using the existing `SessionListService` fetch/filter/order/patch methods. `RecentSessionsCubit` only mirrors
-  that service and forwards retry. The cockpit owns one factory instance, not a singleton or a second cache.
-  Neither owner takes a project-view claim: sessions/detail routes declare the viewed project; the sidebar never does.
+- **D2 — Inventories have scoped business owners.** `ProjectInventoryService` owns project execution/results;
+  `RecentSessionInventoryService` owns recent-session execution/results. Their Cubits mirror immutable state and
+  forward intents. The desktop cockpit owns one factory instance of each, creating recent admission before project
+  startup; mobile owns only the project service for its project-route lifetime. Existing list helpers retain ordering
+  and patching policy. Neither inventory takes a project-view claim: sessions/detail routes own viewing.
+  Visibility-gated project refresh consumes `RouteSource.projectPageVisibility`; the shared router adapter,
+  not the business service, classifies route definitions.
 - **D3 — Activity first, then ordinary recents.** Step 9.c.2 adds an upfront
   section for every running or unseen non-archived session, including collapsed
   projects, with project context and no duplicate session rows. Existing
@@ -259,9 +261,9 @@ navigation or repeated settings links. Inspect the actual rendered result.
   Refine the oversized footer into compact purposeful controls, using plain-language
   local-computer wording rather than unexplained “Bridge”. Keep local supervision
   distinct from a connected remote computer and keep Quit app-scoped.
-- In 9.c.2b.1, move recent-session execution/results into a scoped service with a thin Cubit consumer. In 9.c.2b.2,
-  move project ownership and expose one typed explicit refresh workflow to desktop-core. In 9.c.2c, show that workflow's
-  busy/failure state honestly in the footer or header, not through a new pull gesture.
+- Deliveries 9.c.2b.1 and 9.c.2b.2 move recent/project execution and results into scoped services with thin consumers.
+  In 9.c.2c, add the typed desktop refresh workflow together with its first production control and honest busy/failure
+  state in the footer or header, not through a new pull gesture. No unused intermediate workflow API is required.
 - Inspect flashing before attributing it to absent animation: preserve stable row
   identity and useful loaded data during refresh. Reuse `PregoAnimatedSliverList`
   for the scrolling inventory and `PregoAnimatedList` where nested rows fit;
@@ -269,8 +271,8 @@ navigation or repeated settings links. Inspect the actual rendered result.
 - Apply the hover-hint rule above throughout the sidebar and in step 11's wider
   desktop audit. The scoped 9.c.2 architecture plan review rejected a foundation-layer
   projection and widget-owned refresh sequencing. Delivery 9.c.2a keeps the Layer-4 projection with its sidebar
-  consumer. Deliveries 9.c.2b.1/9.c.2b.2 add lower-layer inventory ownership, and 9.c.2c consumes the registered
-  desktop workflow. Neither lower-layer owner existed in 9.c.2a.
+  consumer. Deliveries 9.c.2b.1/9.c.2b.2 add lower-layer inventory ownership; 9.c.2c registers the desktop workflow
+  with its UI consumer. Neither lower-layer owner existed in 9.c.2a.
 
 ### Cockpit shell
 
@@ -522,7 +524,10 @@ New in-memory mutable parts:
 - Step 9.c.2a adds a state-free priority projection and Prego consumer without another data cache, timer or
   persistence. Step 9.c.2b.1 moves its two maps and subscriptions into a scoped factory service; one BehaviorSubject
   replaces Bloc's inventory storage and the Cubit only mirrors immutable values. The signed-in cockpit owns disposal.
-  Step 9.c.2b.2 replaces project-owned execution, never dispatching requests back to Cubits; 9.c.2c adds its UI.
+  Step 9.c.2b.2 moves project execution, rename/reconnect/read/catalog fields, eleven event subscriptions and the owned
+  analytics reporter into `ProjectInventoryService`. One synchronous subject replaces Bloc storage, preserving immediate
+  optimistic updates and awaited results; `ProjectListCubit` adds only its adapter subscription. Providers own disposal.
+  Step 9.c.2c adds the typed desktop refresh workflow with its first control, never dispatching work back to Cubits.
 
 Deliberately not added: per-project refetch debounce timers (patching replaces
 them), a "last open session" record, a settings deep-link route scheme, a
@@ -592,8 +597,8 @@ Completed implementation specifics live in the linked evidence; this matrix summ
 | 9.c.1 | 15/22 | ≤ 650 | [Loaded/live inventory and request ownership](steps/step-09c1.md). |
 | 9.c.2a | 16/22 | ≤ 1,400 | All-project Activity projection and sidebar presentation with priority exclusion. |
 | 9.c.2b.1 | 17/22 | ≤ 1,200 | Scoped recent-session inventory below its presentation adapter. |
-| 9.c.2b.2 | 18/22 | ≤ 1,400 | Project inventory ownership and typed lower-layer refresh workflow. |
-| 9.c.2c | 19/22 | ≤ 1,450 | Explicit refresh presentation, purposeful controls and useful hints. |
+| 9.c.2b.2 | 18/22 | ≤ 1,400 | Scoped project inventory with both mobile/desktop adapters. |
+| 9.c.2c | 19/22 | ≤ 1,450 | Typed desktop refresh workflow, control presentation and useful hints. |
 | 10 | 20/22 | ≤ 600 | Keyboard shortcuts and macOS title-bar/drag integration. |
 | 11 | 21/22 | ≤ 600 | Control-content audit and regression reconciliation. |
 | 12 | 22/22 | ≤ 300 | Recorded coverage, phase-2 handoff and plan retirement. |
@@ -609,8 +614,9 @@ refresh execution depend on mounted presentation Cubits. Keep 9.c.2a to the inde
 true lower-layer execution into 9.c.2b. A later review required the projection to land with its production Activity
 consumer, so 9.c.2a retains that prepared subset while refresh/control composition stays in 9.c.2c. Its final measured
 soft-cap exception is recorded in the step evidence. The follow-up now splits at the existing recent/project inventory
-boundary: 9.c.2b.1 moves recent ownership and its consumer; 9.c.2b.2 moves project ownership and the refresh workflow.
-This adds no feature scope, temporary compatibility API, or presentation-driven request bus.
+boundary: 9.c.2b.1 moves recent ownership and its consumer; 9.c.2b.2 moves project ownership and both shell consumers.
+The code-informed 18/22 plan places the desktop refresh workflow with its first control in 19/22, keeping the same
+22-step total without an unused intermediate API. This adds no feature scope, compatibility shim, or request bus.
 
 Step 10 retains ⌘N, ⌘, and ⌘B via cockpit `CallbackShortcuts`, shortcut hints, and macOS hidden
 chrome/drag region behind the single D12 switch in `FlutterWindowHost.initialize`.
@@ -647,7 +653,7 @@ mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 
 Logging 9.a.1–9.a.2 is merged, preserving #1509's published history through forward integration.
 9.b interactions merged as #1524, 9.c.1 refresh continuity as #1526, and 9.c.2a Activity presentation as #1533.
-Continue with 9.c.2b.1 recent ownership, 9.c.2b.2 project ownership/workflow, 9.c.2c controls,
+9.c.2b.1 recent ownership merged as #1540. Continue with 9.c.2b.2 project ownership, 9.c.2c refresh workflow/controls,
 and 10 shortcuts/title bar; publish each successor only after its predecessor merges.
 Steps 11 and 12 remain the final audit and qualification.
 Step 8 must land after
@@ -817,7 +823,8 @@ see [prerequisite evidence](steps/step-09a1.md). Sidebar 9.c.1 received its sepa
 refresh-continuity plan approval. The scoped 9.c.2 review rejected foundation placement and widget
 orchestration. Delivery 9.c.2a uses the Layer-4 projection from the desktop shell. Scoped plan review
 `46845cb8-150d-481a-a6c0-d9589a9bf170` approves 9.c.2b.1's factory-owned recent inventory and thin Cubit.
-9.c.2b.2 will move project ownership and the refresh workflow; 9.c.2c adds the registered workflow's UI consumer.
+Scoped plan review `3d4e415b-df9f-44c8-a354-319bdb50d41d` approves 9.c.2b.2's project owner and both shell adapters.
+The typed desktop workflow lands with its first control in 9.c.2c; see `steps/step-09c2b2.md` for scoped evidence.
 
 ## Relation To Other Plans
 

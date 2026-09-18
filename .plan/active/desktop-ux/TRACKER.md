@@ -13,8 +13,9 @@ Logging 9.a.1/9.a.2 are 12/13; sidebar 9.b/9.c.1/9.c.2a are 14–16;
 Earlier evidence filenames stay unchanged.
 Logging uses `step-09a1.md` and `step-09a.md`; sidebar uses `step-09b.md`,
 `step-09c1.md` (refresh continuity), `step-09c2.md` (activity projection/presentation),
-`step-09c2b.md` (recent inventory ownership), `step-09c2b2.md` (project ownership/workflow),
-and `step-09c.md` (refresh/controls UI). The lower-layer follow-up splits at its existing recent/project inventory
+`step-09c2b.md` (recent inventory ownership), `step-09c2b2.md` (project inventory ownership),
+and `step-09c.md` (typed refresh workflow and controls UI).
+The lower-layer follow-up splits at its existing recent/project inventory
 boundary so each owner lands with its production consumer. No request bus, second inventory, or interim shim.
 
 | Done | Step | Branch | Title | Target | State |
@@ -36,14 +37,14 @@ boundary so each owner lands with its production consumer. No request bus, secon
 | [x] | 9.c.1 | `desktop-ux/sidebar-refresh-continuity` | [15/22](#pr-titles) | ≤ 650 | done |
 | [x] | 9.c.2a | `desktop-ux/sidebar-activity-foundation` | [16/22](#pr-titles) | ≤ 1,400 | done |
 | [x] | 9.c.2b.1 | `desktop-ux/sidebar-refresh-ownership` | [17/22](#pr-titles) | ≤ 1,200 | done |
-| [ ] | 9.c.2b.2 | `desktop-ux/project-refresh-ownership` | [18/22](#pr-titles) | ≤ 1,400 | pending |
+| [x] | 9.c.2b.2 | `desktop-ux/project-refresh-ownership` | [18/22](#pr-titles) | ≤ 1,400 | done |
 | [ ] | 9.c.2c | `desktop-ux/sidebar-activity-controls` | [19/22](#pr-titles) | ≤ 1,450 | pending |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | [20/22](#pr-titles) | ≤ 600 | pending |
 | [ ] | 11 | `desktop-ux/regression-docs` | [21/22](#pr-titles) | ≤ 600 | pending |
 | [ ] | 12 | `desktop-ux/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | pending |
 
-Current: publish 9.c.2b.1, then 9.c.2b.2 project ownership/workflow → prepared 9.c.2c UI → 10 → 11 → 12.
-9.c.1 merged as #1526 and 9.c.2a as #1533; native qualification remains outstanding.
+Current: publish 9.c.2b.2 project ownership → 9.c.2c typed refresh workflow/prepared controls → 10 → 11 → 12.
+9.c.1 merged as #1526, 9.c.2a as #1533, and 9.c.2b.1 as #1540; native qualification remains outstanding.
 One PR at a time; prepare at most one local successor and publish after its predecessor merges.
 
 ### PR titles
@@ -67,8 +68,8 @@ These are current series titles; historical Git/squash subjects remain unchanged
 - 15/22: `⚙️ [desktop-ux] Preserve sidebar sessions during refresh [step 15/22]`
 - 16/22: `⚙️ [desktop-ux] Prioritize activity in the sidebar [step 16/22]`
 - 17/22: `🚧 [desktop-ux] Move recent inventory below its Cubit [step 17/22]`
-- 18/22: `🚧 [desktop-ux] Move project inventory and refresh below Cubits [step 18/22]`
-- 19/22: `⚙️ [desktop-ux] Add sidebar refresh and simplify controls [step 19/22]`
+- 18/22: `🚧 [desktop-ux] Move project inventory below its Cubit [step 18/22]`
+- 19/22: `🚧 [desktop-ux] Add sidebar refresh and simplify controls [step 19/22]`
 - 20/22: `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 20/22]`
 - 21/22: `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 21/22]`
 - 22/22: `🌿 [desktop-ux] Run coverage and retire the plan [step 22/22]`
@@ -113,6 +114,13 @@ These are current series titles; historical Git/squash subjects remain unchanged
   `d50ffff0e019ed579d2e362f6b83b185ffef2268`. Current-head CI passed 13/13 before merge;
   Cubic approved with zero issues and Codex completed without new findings. The final source range measured
   1,849 all-path lines; 225 focused cases and five analyzers passed. See `steps/step-09c2.md`.
+
+- Step 9.c.2b.1: [PR #1540](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1540),
+  merged at accepted head `6548b98888d462200d761d9c54942a7dfbe9a902`;
+  squash `41e019da8bb5af9e23d76888a3a50912a308f26f`, tree
+  `b5ee109cc3b170700c4697a6390400baf523687a`. Before merge, CI passed 12/12, Cubic approved with zero issues,
+  and Codex completed without findings. Final publication: 1,223 all-path lines; 77 focused cases/four analyzers passed.
+  Scope, source checkpoint, and uncommitted-run provenance: `steps/step-09c2b.md`.
 
 - Standalone user-requested sidebar correction:
   [PR #1513](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1513) merged.

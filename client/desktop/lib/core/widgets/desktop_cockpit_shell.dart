@@ -16,18 +16,25 @@ import "desktop_sidebar.dart";
 class const DesktopCockpitCubitProvider({super.key, required final Widget child}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => RepositoryProvider<RecentSessionInventoryService>(
+    lazy: false,
     create: (_) => getIt<RecentSessionInventoryService>(),
     dispose: (inventory) => unawaited(inventory.dispose()),
-    child: MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (_) => createProjectListCubit(locator: getIt)),
-        BlocProvider(
-          lazy: false,
-          create: (context) => RecentSessionsCubit(inventoryService: context.read<RecentSessionInventoryService>()),
-        ),
-        BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
-      ],
-      child: child,
+    child: RepositoryProvider<ProjectInventoryService>(
+      create: (_) => getIt<ProjectInventoryService>(),
+      dispose: (inventory) => unawaited(inventory.dispose()),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (context) => ProjectListCubit(inventoryService: context.read<ProjectInventoryService>()),
+          ),
+          BlocProvider(
+            lazy: false,
+            create: (context) => RecentSessionsCubit(inventoryService: context.read<RecentSessionInventoryService>()),
+          ),
+          BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
+        ],
+        child: child,
+      ),
     ),
   );
 }

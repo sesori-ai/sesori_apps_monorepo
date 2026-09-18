@@ -171,6 +171,8 @@ import 'package:sesori_dart_core/src/services/product_analytics_preference_servi
     as _i555;
 import 'package:sesori_dart_core/src/services/product_analytics_service.dart'
     as _i204;
+import 'package:sesori_dart_core/src/services/project_inventory_service.dart'
+    as _i870;
 import 'package:sesori_dart_core/src/services/project_list_service.dart'
     as _i703;
 import 'package:sesori_dart_core/src/services/project_viewing_service.dart'
@@ -620,6 +622,20 @@ extension GetItInjectableX on _i174.GetIt {
         pluginRepository: gh<_i337.PluginRepository>(),
         managementService: gh<_i110.PluginManagementService>(),
         connectionService: gh<_i369.ConnectionService>(),
+      ),
+    );
+    gh.factory<_i870.ProjectInventoryService>(
+      () => _i870.ProjectInventoryService(
+        projectRepository: gh<_i80.ProjectRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        sseEventTracker: gh<_i508.SseEventTracker>(),
+        routeSource: gh<_i366.RouteSource>(),
+        projectListService: gh<_i703.ProjectListService>(),
+        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
+        registeredBridgesService: gh<_i699.RegisteredBridgesService>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+        failureReporter: gh<_i553.FailureReporter>(),
+        catalogRescanService: gh<_i572.CatalogRescanService>(),
       ),
     );
     gh.lazySingleton<_i72.MessageThumbnailCacheService>(

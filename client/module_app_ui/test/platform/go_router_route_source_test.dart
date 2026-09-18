@@ -71,6 +71,36 @@ void main() {
     expect(routeSource.currentRouteStream.value, AppRouteDef.projects);
   });
 
+  testWidgets("replays project-page visibility and follows topmost navigation", (tester) async {
+    await pumpRouter(tester);
+    final initialVisibility = <bool>[];
+    final initialSubscription = routeSource.projectPageVisibility.listen(initialVisibility.add);
+    addTearDown(initialSubscription.cancel);
+    await tester.pump();
+    expect(initialVisibility, [false]);
+
+    router.go(const AppRoute.projects().buildPath());
+    await tester.pumpAndSettle();
+    final lateVisibility = <bool>[];
+    final lateSubscription = routeSource.projectPageVisibility.listen(lateVisibility.add);
+    addTearDown(lateSubscription.cancel);
+    await tester.pump();
+    expect(lateVisibility, [true]);
+
+    unawaited(router.push<void>(const AppRoute.settings().buildPath()));
+    await tester.pumpAndSettle();
+    router.pop<void>();
+    await tester.pumpAndSettle();
+
+    unawaited(router.push<void>(const AppRoute.sessions(projectId: "p1", projectName: null).buildPath()));
+    await tester.pumpAndSettle();
+    router.pop<void>();
+    await tester.pumpAndSettle();
+
+    expect(lateVisibility, [true, false, true, false, true]);
+    expect(initialVisibility, [false, true, false, true, false, true]);
+  });
+
   testWidgets("reports imperatively pushed screens", (tester) async {
     await pumpRouter(tester);
     router.go(const AppRoute.projects().buildPath());

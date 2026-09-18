@@ -63,6 +63,12 @@ The main pane hosts one full-width routed page.
   the existing action controller and a stable sidebar presentation context. Opening a session menu first retains its
   action owner even if reconciliation removes the row/group; dismissal releases it, while selection transfers to the
   confirmation or admitted operation lease. Mark-read, rename, archive and delete finish handling before disposal.
+- `ProjectInventoryService` owns project loading, refresh, mutations, live projection and catalog/reconnect handling
+  independently of its presentation Cubit. The cockpit owns one factory instance; consumer replacement replays current
+  data without a second load. Optimistic changes and awaited results remain synchronously visible. Disposing the
+  cockpit closes the owner and fences late project-state application/unseen seeding, not merely its adapter.
+  Throttled activity refresh runs only while the projects page is current; returning from another page triggers
+  one immediate read without recreating a Cubit. Both shells use the shared router's topmost-page observation.
 - Each winning successful project snapshot admits every current project to the scoped pure-Dart recent inventory,
   independent of expansion or viewport position. `RecentSessionInventoryService` owns admission, reads and live state;
   its Cubit only mirrors immutable snapshots and delegates explicit retry. The signed-in cockpit resolves one factory

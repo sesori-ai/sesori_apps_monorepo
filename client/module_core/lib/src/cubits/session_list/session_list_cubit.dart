@@ -18,6 +18,7 @@ import "../../repositories/session_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/catalog_rescan_service.dart";
 import "../../services/models/catalog_rescan_state.dart";
+import "../../services/models/optimistic_rename_tracker.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/models/session_list_filter.dart";
 import "../../services/models/session_list_item_state.dart";
@@ -25,7 +26,6 @@ import "../../services/project_viewing_service.dart";
 import "../../services/session_list_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
-import "../shared/optimistic_rename_tracker.dart";
 import "session_list_mode.dart";
 import "session_list_state.dart";
 

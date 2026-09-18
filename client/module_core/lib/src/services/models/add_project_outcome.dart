@@ -4,7 +4,11 @@ import "package:sesori_shared/sesori_shared.dart";
 ///
 /// Distinguishes a permission denial (so the UI can show an actionable macOS
 /// Full Disk Access message) from other failures.
-enum AddProjectOutcome() { success, permissionDenied, otherError }
+enum AddProjectOutcome() {
+  success,
+  permissionDenied,
+  otherError,
+}
 
 enum OpenProjectOutcome() {
   success,
@@ -18,7 +22,8 @@ enum OpenProjectOutcome() {
 sealed class const FilesystemSuggestionsOutcome();
 
 /// Suggestions were fetched successfully.
-class const FilesystemSuggestionsSuccess({required final FilesystemSuggestions suggestions}) extends FilesystemSuggestionsOutcome;
+class const FilesystemSuggestionsSuccess({required final FilesystemSuggestions suggestions})
+    extends FilesystemSuggestionsOutcome;
 
 /// The bridge denied access to the directory (macOS permission / Full Disk Access).
 class const FilesystemSuggestionsPermissionDenied() extends FilesystemSuggestionsOutcome;

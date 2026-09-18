@@ -1,4 +1,4 @@
-import "package:sesori_dart_core/src/cubits/shared/optimistic_rename_tracker.dart";
+import "package:sesori_dart_core/src/services/models/optimistic_rename_tracker.dart";
 import "package:test/test.dart";
 
 void main() {

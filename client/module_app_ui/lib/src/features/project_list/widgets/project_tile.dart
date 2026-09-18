@@ -132,7 +132,7 @@ class const ProjectTile({
   static Future<void> _hideProject({required BuildContext context, required ProjectSummary project}) async {
     final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
     final loc = context.loc;
-    final hidden = await context.read<ProjectListCubit>().hideProject(project.id);
+    final hidden = await context.read<ProjectListCubit>().hideProject(projectId: project.id);
     popupAlertPresenter.show(
       title: hidden ? loc.projectHidden : loc.projectHideFailed,
       variant: hidden ? PregoPopupAlertsNotificationsVariant.success : PregoPopupAlertsNotificationsVariant.error,
