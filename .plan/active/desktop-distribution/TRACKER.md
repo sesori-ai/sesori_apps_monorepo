@@ -138,9 +138,20 @@ accepted on both CPUs. PR #1547 recorded the boundary and merged as
 helper-On replacement probe merged in PR #1548 as
 `cb23a7fc5d1f5b4fcedd1de2d591f88fd4074d43`. A dedicated `qa@sesori.com` production
 account now exists, and its email/password are stored as repository Actions secrets.
-The owner-requested `8.b/14` follow-up removes the obsolete environment binding so no
-approval gate remains. Both native CPUs must then pass from merged `main`.
-Failed-stop, interactive user-account/TCC, minimum-OS and public artifact
+The owner-requested `8.b/14` follow-up removed the obsolete environment binding and
+merged as `8a22b16014966560f32819f1663ff6f81c9b4db8`. Merged-main run `35443816334`
+measured source `8a22b16014966560f32819f1663ff6f81c9b4db8`, tree
+`71c856139aadd86b88f0824d9cc838d885054023`, and passed tooling job `105899205055`,
+but both serialized native jobs consumed their full 35-minute timeout in
+the credential exercise immediately after prior-app installation (x64 `105899225214`,
+arm64 `105899225125`). Bounded artifacts `10584848537`
+(`sha256:cd20b47d9b0889a3e9ac1fe83a8f80741b4c287d5a91ad0f6c22dccd738bb0bd`) and
+`10586555281`
+(`sha256:b56678eb1c4938bedc90d6f95b1ed68aa53705ec8ba500c18c321e53fd3523c8`) contain no
+Keychain/session/report success evidence, so the run is rejected. The `8.c/14` follow-up
+atomically creates the classic-Keychain ACL and bounds each native Keychain command
+before both CPUs retry from merged `main`. Failed-stop, interactive user-account/TCC,
+minimum-OS and public artifact
 retrieval remain open; the download page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
