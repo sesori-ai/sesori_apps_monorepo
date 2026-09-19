@@ -330,7 +330,11 @@ def require_auth_keychain_session(*, expected: KeychainSession, label: str, outp
 def delete_auth_keychain(*, created_accounts: list[str]) -> None:
     failures: list[str] = []
     for account in reversed(created_accounts):
-        result = _security(arguments=["delete-generic-password", "-a", account, "-s", KEYCHAIN_SERVICE])
+        try:
+            result = _security(arguments=["delete-generic-password", "-a", account, "-s", KEYCHAIN_SERVICE])
+        except RuntimeError as error:
+            failures.append(f"{account}: {error}")
+            continue
         if result.returncode not in (0, 44):
             failures.append(f"{account}: {_security_failure(result=result)}")
     if failures:

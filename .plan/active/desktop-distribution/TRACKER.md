@@ -140,7 +140,9 @@ helper-On replacement probe merged in PR #1548 as
 account now exists, and its email/password are stored as repository Actions secrets.
 The owner-requested `8.b/14` follow-up removed the obsolete environment binding and
 merged as `8a22b16014966560f32819f1663ff6f81c9b4db8`. Merged-main run `35443816334`
-passed tooling but both serialized native jobs consumed their full 35-minute timeout in
+measured source `8a22b16014966560f32819f1663ff6f81c9b4db8`, tree
+`71c856139aadd86b88f0824d9cc838d885054023`, and passed tooling job `105899205055`,
+but both serialized native jobs consumed their full 35-minute timeout in
 the credential exercise immediately after prior-app installation (x64 `105899225214`,
 arm64 `105899225125`). Bounded artifacts `10584848537`
 (`sha256:cd20b47d9b0889a3e9ac1fe83a8f80741b4c287d5a91ad0f6c22dccd738bb0bd`) and
