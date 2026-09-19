@@ -135,3 +135,19 @@ The recorded locked-GUI, profile-AOT and device-tool limitations remain; no new 
 Native keyboard/accessibility/compositing/energy, relaunch persistence, FDA grant/deny/focus and helper inheritance,
 login items, packaged startup/termination, live session actions and mobile backup/restore remain unqualified.
 Step 12 must record these boundaries honestly; this audit neither retires the plan nor waives its final matrix.
+
+## Source and size receipt
+
+Initial source commit: `5b2dbba7425f47b8af3ac30447196ccb5a45187b`, tree
+`d2f3e155210b3428342fc20587a8b2ad1adce144`. Its complete range is **408 changed lines**,
+336 additions/72 deletions across 18 paths: 60 production, 76 tests, 272 documentation, zero generated.
+Reproduce this immutable measurement, which excludes this later receipt:
+
+```bash
+git diff --numstat 201cdcc51205edd88d615618894c2dafd8e75df6..5b2dbba7425f47b8af3ac30447196ccb5a45187b --
+```
+
+Precommit validation checked whitespace, local Markdown targets and both 120-character/120-byte added-line limits.
+It also confirmed the executable diff still matches the final General checkpoint above. Initial wrapping failures
+remain in `/tmp/rose-elephant-controls-audit-validation.json`; the corrected result is
+`/tmp/rose-elephant-controls-audit-precommit-validation.json`. No unchanged suite was rerun for documentation.
