@@ -330,8 +330,7 @@ jobs:
           retention-days: 14
 
   macos-authenticated-upgrade:
-    # QA credentials stay behind a separate main-only environment and are exposed only to the exercise step.
-    environment: desktop-qa
+    # Repository QA credentials are exposed only to the exercise step after the trusted-main guard passes.
     needs: tooling
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'macos-authenticated-upgrade-probe'
     permissions:
@@ -419,8 +418,8 @@ jobs:
       - name: Exercise authenticated helper-On replacement and tray Quit
         env:
           CHANNEL: ${{ inputs.channel }}
-          SESORI_DESKTOP_QA_EMAIL: ${{ secrets.DESKTOP_QA_EMAIL }}
-          SESORI_DESKTOP_QA_PASSWORD: ${{ secrets.DESKTOP_QA_PASSWORD }}
+          SESORI_DESKTOP_QA_EMAIL: ${{ secrets.SESORI_DESKTOP_QA_EMAIL }}
+          SESORI_DESKTOP_QA_PASSWORD: ${{ secrets.SESORI_DESKTOP_QA_PASSWORD }}
         run: |
           python .github/scripts/qualify_desktop_macos_authenticated_upgrade.py \
             --previous-run-json build/desktop-macos-authenticated-upgrade/previous/run.json \
