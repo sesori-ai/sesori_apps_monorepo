@@ -3502,6 +3502,285 @@ class NewSessionDefaultsTableCompanion
   }
 }
 
+mixin $AcceptedPromptsTableTableToColumns
+    implements Insertable<AcceptedPromptsTableData> {
+  String get sessionId;
+  String get promptId;
+  int get acceptedAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['session_id'] = Variable<String>(sessionId);
+    map['prompt_id'] = Variable<String>(promptId);
+    map['accepted_at'] = Variable<int>(acceptedAt);
+    return map;
+  }
+}
+
+class $AcceptedPromptsTableTable extends AcceptedPromptsTable
+    with TableInfo<$AcceptedPromptsTableTable, AcceptedPromptsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AcceptedPromptsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _promptIdMeta = const VerificationMeta(
+    'promptId',
+  );
+  @override
+  late final GeneratedColumn<String> promptId = GeneratedColumn<String>(
+    'prompt_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _acceptedAtMeta = const VerificationMeta(
+    'acceptedAt',
+  );
+  @override
+  late final GeneratedColumn<int> acceptedAt = GeneratedColumn<int>(
+    'accepted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [sessionId, promptId, acceptedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'accepted_prompts_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AcceptedPromptsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('prompt_id')) {
+      context.handle(
+        _promptIdMeta,
+        promptId.isAcceptableOrUnknown(data['prompt_id']!, _promptIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_promptIdMeta);
+    }
+    if (data.containsKey('accepted_at')) {
+      context.handle(
+        _acceptedAtMeta,
+        acceptedAt.isAcceptableOrUnknown(data['accepted_at']!, _acceptedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_acceptedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sessionId, promptId};
+  @override
+  AcceptedPromptsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AcceptedPromptsTableData(
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      promptId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prompt_id'],
+      )!,
+      acceptedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}accepted_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AcceptedPromptsTableTable createAlias(String alias) {
+    return $AcceptedPromptsTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class AcceptedPromptsTableData extends DataClass
+    with $AcceptedPromptsTableTableToColumns {
+  @override
+  final String sessionId;
+  @override
+  final String promptId;
+  @override
+  final int acceptedAt;
+  const AcceptedPromptsTableData({
+    required this.sessionId,
+    required this.promptId,
+    required this.acceptedAt,
+  });
+  AcceptedPromptsTableCompanion toCompanion(bool nullToAbsent) {
+    return AcceptedPromptsTableCompanion(
+      sessionId: Value(sessionId),
+      promptId: Value(promptId),
+      acceptedAt: Value(acceptedAt),
+    );
+  }
+
+  factory AcceptedPromptsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AcceptedPromptsTableData(
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      promptId: serializer.fromJson<String>(json['promptId']),
+      acceptedAt: serializer.fromJson<int>(json['acceptedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'sessionId': serializer.toJson<String>(sessionId),
+      'promptId': serializer.toJson<String>(promptId),
+      'acceptedAt': serializer.toJson<int>(acceptedAt),
+    };
+  }
+
+  AcceptedPromptsTableData copyWith({
+    String? sessionId,
+    String? promptId,
+    int? acceptedAt,
+  }) => AcceptedPromptsTableData(
+    sessionId: sessionId ?? this.sessionId,
+    promptId: promptId ?? this.promptId,
+    acceptedAt: acceptedAt ?? this.acceptedAt,
+  );
+  AcceptedPromptsTableData copyWithCompanion(
+    AcceptedPromptsTableCompanion data,
+  ) {
+    return AcceptedPromptsTableData(
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      promptId: data.promptId.present ? data.promptId.value : this.promptId,
+      acceptedAt: data.acceptedAt.present
+          ? data.acceptedAt.value
+          : this.acceptedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AcceptedPromptsTableData(')
+          ..write('sessionId: $sessionId, ')
+          ..write('promptId: $promptId, ')
+          ..write('acceptedAt: $acceptedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(sessionId, promptId, acceptedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AcceptedPromptsTableData &&
+          other.sessionId == this.sessionId &&
+          other.promptId == this.promptId &&
+          other.acceptedAt == this.acceptedAt);
+}
+
+class AcceptedPromptsTableCompanion
+    extends UpdateCompanion<AcceptedPromptsTableData> {
+  final Value<String> sessionId;
+  final Value<String> promptId;
+  final Value<int> acceptedAt;
+  const AcceptedPromptsTableCompanion({
+    this.sessionId = const Value.absent(),
+    this.promptId = const Value.absent(),
+    this.acceptedAt = const Value.absent(),
+  });
+  AcceptedPromptsTableCompanion.insert({
+    required String sessionId,
+    required String promptId,
+    required int acceptedAt,
+  }) : sessionId = Value(sessionId),
+       promptId = Value(promptId),
+       acceptedAt = Value(acceptedAt);
+  static Insertable<AcceptedPromptsTableData> custom({
+    Expression<String>? sessionId,
+    Expression<String>? promptId,
+    Expression<int>? acceptedAt,
+  }) {
+    return RawValuesInsertable({
+      if (sessionId != null) 'session_id': sessionId,
+      if (promptId != null) 'prompt_id': promptId,
+      if (acceptedAt != null) 'accepted_at': acceptedAt,
+    });
+  }
+
+  AcceptedPromptsTableCompanion copyWith({
+    Value<String>? sessionId,
+    Value<String>? promptId,
+    Value<int>? acceptedAt,
+  }) {
+    return AcceptedPromptsTableCompanion(
+      sessionId: sessionId ?? this.sessionId,
+      promptId: promptId ?? this.promptId,
+      acceptedAt: acceptedAt ?? this.acceptedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (promptId.present) {
+      map['prompt_id'] = Variable<String>(promptId.value);
+    }
+    if (acceptedAt.present) {
+      map['accepted_at'] = Variable<int>(acceptedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AcceptedPromptsTableCompanion(')
+          ..write('sessionId: $sessionId, ')
+          ..write('promptId: $promptId, ')
+          ..write('acceptedAt: $acceptedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3517,6 +3796,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $SessionOptionsCacheTableTable(this);
   late final $NewSessionDefaultsTableTable newSessionDefaultsTable =
       $NewSessionDefaultsTableTable(this);
+  late final $AcceptedPromptsTableTable acceptedPromptsTable =
+      $AcceptedPromptsTableTable(this);
   late final Index idxProjectsPath = Index(
     'idx_projects_path',
     'CREATE INDEX idx_projects_path ON projects_table (path)',
@@ -3565,6 +3846,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     catalogHydrationsTable,
     sessionOptionsCacheTable,
     newSessionDefaultsTable,
+    acceptedPromptsTable,
     idxProjectsPath,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
@@ -6310,6 +6592,192 @@ typedef $$NewSessionDefaultsTableTableProcessedTableManager =
       NewSessionDefaultsTableData,
       PrefetchHooks Function()
     >;
+typedef $$AcceptedPromptsTableTableCreateCompanionBuilder =
+    AcceptedPromptsTableCompanion Function({
+      required String sessionId,
+      required String promptId,
+      required int acceptedAt,
+    });
+typedef $$AcceptedPromptsTableTableUpdateCompanionBuilder =
+    AcceptedPromptsTableCompanion Function({
+      Value<String> sessionId,
+      Value<String> promptId,
+      Value<int> acceptedAt,
+    });
+
+class $$AcceptedPromptsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AcceptedPromptsTableTable> {
+  $$AcceptedPromptsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get sessionId => $composableBuilder(
+    column: $table.sessionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get promptId => $composableBuilder(
+    column: $table.promptId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get acceptedAt => $composableBuilder(
+    column: $table.acceptedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AcceptedPromptsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AcceptedPromptsTableTable> {
+  $$AcceptedPromptsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get sessionId => $composableBuilder(
+    column: $table.sessionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get promptId => $composableBuilder(
+    column: $table.promptId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get acceptedAt => $composableBuilder(
+    column: $table.acceptedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AcceptedPromptsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AcceptedPromptsTableTable> {
+  $$AcceptedPromptsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get sessionId =>
+      $composableBuilder(column: $table.sessionId, builder: (column) => column);
+
+  GeneratedColumn<String> get promptId =>
+      $composableBuilder(column: $table.promptId, builder: (column) => column);
+
+  GeneratedColumn<int> get acceptedAt => $composableBuilder(
+    column: $table.acceptedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$AcceptedPromptsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AcceptedPromptsTableTable,
+          AcceptedPromptsTableData,
+          $$AcceptedPromptsTableTableFilterComposer,
+          $$AcceptedPromptsTableTableOrderingComposer,
+          $$AcceptedPromptsTableTableAnnotationComposer,
+          $$AcceptedPromptsTableTableCreateCompanionBuilder,
+          $$AcceptedPromptsTableTableUpdateCompanionBuilder,
+          (
+            AcceptedPromptsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $AcceptedPromptsTableTable,
+              AcceptedPromptsTableData
+            >,
+          ),
+          AcceptedPromptsTableData,
+          PrefetchHooks Function()
+        > {
+  $$AcceptedPromptsTableTableTableManager(
+    _$AppDatabase db,
+    $AcceptedPromptsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AcceptedPromptsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AcceptedPromptsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AcceptedPromptsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> sessionId = const Value.absent(),
+                Value<String> promptId = const Value.absent(),
+                Value<int> acceptedAt = const Value.absent(),
+              }) => AcceptedPromptsTableCompanion(
+                sessionId: sessionId,
+                promptId: promptId,
+                acceptedAt: acceptedAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String sessionId,
+                required String promptId,
+                required int acceptedAt,
+              }) => AcceptedPromptsTableCompanion.insert(
+                sessionId: sessionId,
+                promptId: promptId,
+                acceptedAt: acceptedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $AcceptedPromptsTableTable,
+                    AcceptedPromptsTableData
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $AcceptedPromptsTableTable,
+                    AcceptedPromptsTableData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AcceptedPromptsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AcceptedPromptsTableTable,
+      AcceptedPromptsTableData,
+      $$AcceptedPromptsTableTableFilterComposer,
+      $$AcceptedPromptsTableTableOrderingComposer,
+      $$AcceptedPromptsTableTableAnnotationComposer,
+      $$AcceptedPromptsTableTableCreateCompanionBuilder,
+      $$AcceptedPromptsTableTableUpdateCompanionBuilder,
+      (
+        AcceptedPromptsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $AcceptedPromptsTableTable,
+          AcceptedPromptsTableData
+        >,
+      ),
+      AcceptedPromptsTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6337,4 +6805,6 @@ class $AppDatabaseManager {
         _db,
         _db.newSessionDefaultsTable,
       );
+  $$AcceptedPromptsTableTableTableManager get acceptedPromptsTable =>
+      $$AcceptedPromptsTableTableTableManager(_db, _db.acceptedPromptsTable);
 }

@@ -1,6 +1,8 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
@@ -45,6 +47,7 @@ void main() {
       optionsService = FakeSessionOptionsService();
       service = SessionPromptService(
         sessionRepository: sessionRepository,
+        acceptedPromptsRepository: AcceptedPromptsRepository(dao: AcceptedPromptsDao(database: db)),
         dispatcher: dispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
         sessionOptionsService: optionsService,
@@ -248,7 +251,7 @@ void main() {
         useAtomicStop: false,
       );
       final prompt = service.sendPrompt(
-        promptId: "prompt-1",
+        promptId: "prompt-2",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "later")],
         variant: null,
@@ -280,6 +283,45 @@ void main() {
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
       expect(plugin.lastSendCommand, isNull);
+    });
+
+    test("a repeated prompt or command id succeeds without reaching the plugin again", () async {
+      Future<void> sendHello() => service.sendPrompt(
+        promptId: "prompt-2",
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "Hello")],
+        variant: null,
+        agent: null,
+        model: null,
+        command: null,
+      );
+      await sendCommand();
+      await sendHello();
+      // Reaching the plugin again would now fail the send.
+      plugin
+        ..sendCommandError = StateError("command sent twice")
+        ..sendPromptError = StateError("prompt sent twice");
+
+      await sendCommand();
+      await sendHello();
+    });
+
+    test("a send the plugin rejects stays retryable with the same prompt id", () async {
+      Future<void> sendHello() => service.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "Hello")],
+        variant: null,
+        agent: null,
+        model: null,
+        command: null,
+      );
+      plugin.sendPromptError = StateError("backend unavailable");
+      await expectLater(sendHello(), throwsA(isA<StateError>()));
+
+      plugin.sendPromptError = null;
+      await sendHello();
+      expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
     });
 
     test("invalidates the options cache when a command leaves the plugin catalog", () async {

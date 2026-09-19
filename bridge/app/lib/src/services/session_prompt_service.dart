@@ -4,6 +4,7 @@ import "dart:math";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/accepted_prompts_repository.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/random_hex_id.dart";
 import "../repositories/session_repository.dart";
@@ -19,6 +20,7 @@ class const SessionPromptDefaultsChange({
 
 class SessionPromptService({
   required final SessionRepository _sessionRepository,
+  required final AcceptedPromptsRepository _acceptedPromptsRepository,
   required final SessionOperationDispatcher _dispatcher,
   required final ArchivedSessionValidator _archivedSessionValidator,
   required final SessionOptionsService _sessionOptionsService,
@@ -69,6 +71,14 @@ class SessionPromptService({
     // Inside the dispatched body, so this cannot race a concurrent archive on
     // the same family lane.
     await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
+    // A client retries a send whose response was lost with the same id,
+    // possibly hours later, when the plugin's own dedup may be gone (idle
+    // reap, bridge restart). The lane keeps this check and the record below
+    // atomic, and the repeat succeeds as the first send did.
+    if (await _acceptedPromptsRepository.isAccepted(sessionId: sessionId, promptId: promptId)) {
+      Log.i("Ignoring repeated prompt $promptId for session $sessionId: it was already accepted");
+      return;
+    }
     if (normalizedCommand == null || normalizedCommand.isEmpty) {
       await _sendInvalidatingStaleOptionsCache(
         sessionId: sessionId,
@@ -81,34 +91,34 @@ class SessionPromptService({
           model: model,
         ),
       );
-      await _updatePromptDefaults(
+    } else {
+      final textPart = parts.whereType<PromptPartText>().firstOrNull;
+      final arguments = textPart?.text;
+      // Per the BridgePluginApi contract, sendCommand completes once the
+      // backend has accepted the command — not when its run finishes — so
+      // awaiting it here never holds the phone's relay request open for the
+      // duration of the command's agent run.
+      await _sendInvalidatingStaleOptionsCache(
         sessionId: sessionId,
-        variant: variant,
-        agent: agent,
-        model: model,
+        send: () => _sessionRepository.sendCommand(
+          sessionId: sessionId,
+          promptId: promptId,
+          command: normalizedCommand,
+          arguments: arguments ?? '',
+          userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
+          variant: variant,
+          agent: agent,
+          model: model,
+        ),
       );
-      return;
     }
-
-    final textPart = parts.whereType<PromptPartText>().firstOrNull;
-    final arguments = textPart?.text;
-    // Per the BridgePluginApi contract, sendCommand completes once the
-    // backend has accepted the command — not when its run finishes — so
-    // awaiting it here never holds the phone's relay request open for the
-    // duration of the command's agent run.
-    await _sendInvalidatingStaleOptionsCache(
-      sessionId: sessionId,
-      send: () => _sessionRepository.sendCommand(
-        sessionId: sessionId,
-        promptId: promptId,
-        command: normalizedCommand,
-        arguments: arguments ?? '',
-        userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
-        variant: variant,
-        agent: agent,
-        model: model,
-      ),
-    );
+    try {
+      await _acceptedPromptsRepository.recordAccepted(sessionId: sessionId, promptId: promptId);
+    } catch (error, stackTrace) {
+      // The plugin already owns the prompt; failing the send would only make
+      // the client retry it.
+      Log.w("Failed to record accepted prompt $promptId for session $sessionId", error, stackTrace);
+    }
     await _updatePromptDefaults(
       sessionId: sessionId,
       variant: variant,
