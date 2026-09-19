@@ -223,6 +223,12 @@ abstract class AppLocalizations {
   /// **'Expand {projectName}'**
   String desktopSidebarExpandProject(String projectName);
 
+  /// Desktop control tooltip with its available platform-specific keyboard shortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} ({shortcut})'**
+  String desktopShortcutHint(String label, String shortcut);
+
   /// Tooltip for switching desktop navigation to the compact project rail.
   ///
   /// In en, this message translates to:

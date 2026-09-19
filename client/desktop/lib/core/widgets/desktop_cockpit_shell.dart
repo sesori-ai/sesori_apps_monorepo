@@ -1,6 +1,8 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
+import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -84,7 +86,7 @@ class const DesktopCockpitShell({
       builder: (context, constraints) {
         final autoCollapsed = constraints.maxWidth < autoCollapseBreakpoint;
         final collapsed = layout.collapsed || autoCollapsed;
-        return Scaffold(
+        final scaffold = Scaffold(
           body: TweenAnimationBuilder<double>(
             tween: Tween(begin: collapsed ? 0 : 1, end: collapsed ? 0 : 1),
             duration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 220),
@@ -126,6 +128,19 @@ class const DesktopCockpitShell({
               ],
             ),
           ),
+        );
+        return CallbackShortcuts(
+          bindings: {
+            SingleActivator(
+              LogicalKeyboardKey.keyB,
+              meta: defaultTargetPlatform == TargetPlatform.macOS,
+              control: defaultTargetPlatform != TargetPlatform.macOS,
+              includeRepeats: false,
+            ): () {
+              if (!autoCollapsed) unawaited(sidebar.toggleCollapsed());
+            },
+          },
+          child: Focus(autofocus: true, child: scaffold),
         );
       },
     );

@@ -1,5 +1,7 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart";
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -93,6 +95,104 @@ void main() {
       isA<DesktopHomePane>(),
     );
   });
+
+  for (final projectName in ["Typed & Workspace", null]) {
+    testWidgets("new-session shortcut follows route context with name $projectName", (tester) async {
+      final shell = buildDesktopRoutes().single as ShellRoute;
+      final controller = TextEditingController(text: "retained draft");
+      addTearDown(controller.dispose);
+      final router = GoRouter(
+        initialLocation: const AppRoute.projects().buildPath(),
+        routes: [
+          ShellRoute(
+            builder: (context, state, child) {
+              // Exercise production bindings with inert routes, never production DI.
+              final gate = shell.builder!(context, state, child) as AuthGate;
+              final shortcuts = (gate.child as Builder).builder(context) as CallbackShortcuts;
+              return CallbackShortcuts(
+                bindings: shortcuts.bindings,
+                child: Focus(autofocus: true, child: child),
+              );
+            },
+            routes: [
+              GoRoute(
+                path: AppRouteDef.projects.path,
+                builder: (_, _) => const Scaffold(body: Text("home")),
+              ),
+              GoRoute(
+                path: AppRouteDef.newSession.path,
+                builder: (_, _) => const Scaffold(body: Text("new session")),
+              ),
+              GoRoute(
+                path: AppRouteDef.sessionDetail.path,
+                builder: (_, _) => Scaffold(body: TextField(autofocus: true, controller: controller)),
+              ),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      final modifier = defaultTargetPlatform == TargetPlatform.macOS
+          ? LogicalKeyboardKey.metaLeft
+          : LogicalKeyboardKey.controlLeft;
+      Future<void> pressNew({required LogicalKeyboardKey modifier}) async {
+        await tester.sendKeyDownEvent(modifier);
+        await tester.sendKeyEvent(LogicalKeyboardKey.keyN);
+        await tester.sendKeyUpEvent(modifier);
+        await tester.pumpAndSettle();
+      }
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+      await pressNew(modifier: modifier);
+      expect(router.state.uri.path, AppRouteDef.projects.path);
+      final detail = AppRoute.sessionDetail(
+        projectId: "current-project",
+        projectName: projectName,
+        sessionId: "open-session",
+        sessionTitle: "Existing session",
+        readOnly: false,
+      );
+      router.go(detail.buildPath());
+      await tester.pumpAndSettle();
+      final editor = tester.element(find.byType(TextField));
+      final wrongModifier = modifier == LogicalKeyboardKey.metaLeft
+          ? LogicalKeyboardKey.controlLeft
+          : LogicalKeyboardKey.metaLeft;
+      await pressNew(modifier: wrongModifier);
+      expect(router.state.uri.toString(), detail.buildPath());
+      unawaited(
+        showDialog<void>(
+          context: editor,
+          builder: (_) => const Dialog(child: Focus(autofocus: true, child: Text("popup"))),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await pressNew(modifier: modifier);
+      expect(router.state.uri.toString(), detail.buildPath());
+      Navigator.of(tester.element(find.text("popup"))).pop();
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(modifier);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyN);
+      await tester.pumpAndSettle();
+      await tester.sendKeyRepeatEvent(LogicalKeyboardKey.keyN);
+      await tester.pumpAndSettle();
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.keyN);
+      await tester.sendKeyUpEvent(modifier);
+      expect(
+        router.state.uri.toString(),
+        AppRoute.newSession(
+          projectId: "current-project",
+          projectName: projectName,
+        ).buildPath(),
+      );
+      expect(controller.text, "retained draft");
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(router.state.uri.toString(), detail.buildPath());
+      expect(tester.element(find.byType(TextField)), same(editor));
+    }, variant: TargetPlatformVariant.desktop());
+  }
 
   testWidgets("the actual cockpit boundary tracks root popups above retained nested pages", (tester) async {
     final shell = buildDesktopRoutes().single as ShellRoute;

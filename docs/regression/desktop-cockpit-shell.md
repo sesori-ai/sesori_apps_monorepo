@@ -63,6 +63,12 @@ The main pane hosts one full-width routed page.
   “All sessions · N” link counts the full active visible inventory, including sessions currently prioritized in
   Activity, and opens the existing sessions page. Compact/project collapse hides ordinary rows without clearing
   cached data or hiding that project's Activity rows; per-project collapse preferences survive layout restore.
+- Cmd+N (Ctrl+N on Windows/Linux) opens New Session for the current route's project and preserves its nullable name.
+  Without a project context it does nothing. Cmd/Ctrl+B toggles the saved sidebar choice except during automatic
+  narrow-window collapse, where it does nothing like the disabled control. Cmd/Ctrl+, opens Settings.
+  Held-key repeats do not repeat these commands; text-field focus remains usable and root popups own their focus.
+  Hints use the platform modifier; only the selected project's New session button advertises the project shortcut.
+  All platforms retain native window chrome.
 - Project hover/keyboard focus reveals New session. Right-click project and
   session menus reuse the shared rename/hide and session action flows.
   Session title tooltips, selection, running/awaiting/unread signals and
@@ -181,6 +187,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 ### Automated checks (L2)
 
 - Optional file-access card/dismissal, narrow layout, local Settings statuses and unsupported omission.
+- Project/no-project keyboard entry, nullable route-name propagation, platform modifiers, held-key repeat suppression,
+  text-field/popup precedence, layout persistence, narrow-window no-op and truthful per-project hints.
 - Modal tab/entry selection, keyboard entry, route/element/draft preservation, nested Back/Close,
   text-edit/sheet Escape order, logout failure/late completion/auth rejection, minimum size/large text.
 - Root-popup activity visibility across nested navigators; notification popup dismissal,

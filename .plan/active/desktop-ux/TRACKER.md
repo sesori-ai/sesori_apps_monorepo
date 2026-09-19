@@ -39,12 +39,12 @@ boundary so each owner lands with its production consumer. No request bus, secon
 | [x] | 9.c.2b.1 | `desktop-ux/sidebar-refresh-ownership` | [17/22](#pr-titles) | ≤ 1,200 | done |
 | [x] | 9.c.2b.2 | `desktop-ux/project-refresh-ownership` | [18/22](#pr-titles) | ≤ 1,400 | done |
 | [x] | 9.c.2c | `desktop-ux/sidebar-refresh-controls` | [19/22](#pr-titles) | ≤ 1,450 | done |
-| [ ] | 10 | `desktop-ux/shortcuts-title-bar` | [20/22](#pr-titles) | ≤ 600 | pending |
+| [x] | 10 | `desktop-ux/shortcuts-title-bar` | [20/22](#pr-titles) | ≤ 600 | done |
 | [ ] | 11 | `desktop-ux/regression-docs` | [21/22](#pr-titles) | ≤ 600 | pending |
 | [ ] | 12 | `desktop-ux/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | pending |
 
-Current: resolve #1545 feedback for 9.c.2c typed refresh workflow/controls → 10 → 11 → 12.
-9.c.1 merged as #1526, 9.c.2a as #1533, 9.c.2b.1 as #1540, and 9.c.2b.2 as #1543.
+Current: publish/monitor 10 contextual keyboard shortcuts → 11 → 12.
+9.c.1 merged as #1526, 9.c.2a as #1533, 9.c.2b.1 as #1540, 9.c.2b.2 as #1543, and 9.c.2c as #1545.
 Native qualification remains outstanding.
 One PR at a time; prepare at most one local successor and publish after its predecessor merges.
 
@@ -71,7 +71,7 @@ These are current series titles; historical Git/squash subjects remain unchanged
 - 17/22: `🚧 [desktop-ux] Move recent inventory below its Cubit [step 17/22]`
 - 18/22: `🚧 [desktop-ux] Move project inventory below its Cubit [step 18/22]`
 - 19/22: `🚧 [desktop-ux] Add sidebar refresh and simplify controls [step 19/22]`
-- 20/22: `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 20/22]`
+- 20/22: `🌿 [desktop-ux] Add contextual desktop keyboard shortcuts [step 20/22]`
 - 21/22: `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 21/22]`
 - 22/22: `🌿 [desktop-ux] Run coverage and retire the plan [step 22/22]`
 
@@ -130,6 +130,14 @@ These are current series titles; historical Git/squash subjects remain unchanged
   Cubic approved, Codex completed without findings, and all four comment/docs threads were resolved.
   Final publication: 1,000 all-path lines; initial 263-case and follow-up 145-case receipts remain distinct.
   Four analyzers and architecture implementation review passed. See `steps/step-09c2b2.md`.
+
+- Step 9.c.2c: [PR #1545](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1545),
+  merged at accepted head `b4890ac202d24aade8ddfa8407488fe59c4b2170`;
+  squash `354e67ea5c8d9c513326c1c82c48b7597060acae`, tree
+  `2378cc6638d5a630f43140ead186df28b60e387c`. Readiness CI passed 12/12; terminal report passed 13/13.
+  Cubic approved with zero issues, Codex completed without new findings, and all seven threads were resolved.
+  Final publication: 1,260 all-path lines. The 177-, 30- and 50-case checkpoints overlap, not add together.
+  Layer-3 architecture approval supersedes earlier placement approvals. See `steps/step-09c.md`.
 
 - Standalone user-requested sidebar correction:
   [PR #1513](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1513) merged.
