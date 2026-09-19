@@ -63,6 +63,8 @@ import 'package:sesori_desktop_core/src/services/desktop_instance_service.dart'
     as _i494;
 import 'package:sesori_desktop_core/src/services/desktop_relay_connection_service.dart'
     as _i314;
+import 'package:sesori_desktop_core/src/services/desktop_sidebar_refresh_service.dart'
+    as _i983;
 import 'package:sesori_desktop_core/src/services/window_bounds_service.dart'
     as _i68;
 import 'package:sesori_desktop_core/src/trackers/bridge_process_log_tracker.dart'
@@ -92,6 +94,16 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i786.DesktopLogoutTracker>(
       () => _i786.DesktopLogoutTracker(),
       dispose: (i) => i.dispose(),
+    );
+    gh.factoryParam<
+      _i983.DesktopSidebarRefreshService,
+      _i948.ProjectInventoryService,
+      _i948.RecentSessionInventoryService
+    >(
+      (projectInventory, recentInventory) => _i983.DesktopSidebarRefreshService(
+        projectInventory: projectInventory,
+        recentInventory: recentInventory,
+      ),
     );
     gh.lazySingleton<_i798.LogSink>(
       () => _i1024.AppLogStorage(

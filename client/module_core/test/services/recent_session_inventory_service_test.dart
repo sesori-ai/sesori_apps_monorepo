@@ -144,6 +144,7 @@ void main() {
     final reply = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
     final pending = inventory.ensureLoaded(projectId: projectId);
+    final refresh = inventory.refresh();
     await inventory.ensureLoaded(projectId: projectId);
     expect(inventory.state.value[projectId], isA<RecentSessionsLoading>());
     reply.complete(
@@ -157,6 +158,7 @@ void main() {
       ),
     );
     await pending;
+    expect(await refresh, isTrue);
     await inventory.ensureLoaded(projectId: projectId);
     expect(loaded().visibleSessions.map((session) => session.id), ["4", "3", "2", "1"]);
     expect(
@@ -330,7 +332,7 @@ void main() {
       await inventory.ensureLoaded(projectId: projectId);
       final reply = Completer<ApiResponse<SessionListResponse>>();
       when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
-      final pending = inventory.retry(projectId: projectId);
+      final pending = inventory.refresh();
       unseen.applyLocalSessionUnseen(projectId: projectId, sessionId: session.id, unseen: false);
       await Future<void>.delayed(Duration.zero);
       switch (failure) {
@@ -339,7 +341,7 @@ void main() {
         case _RefreshFailure.exception:
           reply.completeError(StateError("read failed"), StackTrace.current);
       }
-      await pending;
+      expect(await pending, isFalse);
       expect(inventory.state.value[projectId], isA<RecentSessionsLoaded>());
       expect(loaded().sourceSessions, [session]);
       expect(loaded().isUnseen(session: session), isFalse);
@@ -358,7 +360,7 @@ void main() {
     await inventory.ensureLoaded(projectId: projectId);
     final reply = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
-    final pending = inventory.retry(projectId: projectId);
+    final pending = inventory.refresh();
     events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
     events.add(SseEvent(data: SesoriSseEvent.sessionUpdated(info: renamed)));
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: deleted)));
@@ -368,7 +370,7 @@ void main() {
     expect(loaded().rows(selectedSessionId: "archived", excludingSessionIds: const {}), [renamed]);
     stubSessions(sessions: [renamed, archivedUpdate]);
     reply.complete(ApiResponse.success(SessionListResponse(items: [deleted, archived])));
-    await pending;
+    expect(await pending, isTrue);
     expect(loaded().visibleSessions.single, renamed);
     expect(loaded().sourceSessions, unorderedEquals([renamed, archivedUpdate]));
     expect(unseen.seededSessions, hasLength(2));
@@ -473,15 +475,143 @@ void main() {
     verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(3);
   });
 
+  test("empty explicit refresh succeeds without starting reads", () async {
+    expect(await inventory.refresh(), isTrue);
+    verifyNever(() => repository.listSessions(projectId: any(named: "projectId"), waitForPrData: false));
+  });
+
+  test("explicit refresh waits for every admitted project and reports partial failure", () async {
+    await inventory.ensureLoaded(projectId: projectId);
+    await inventory.ensureLoaded(projectId: "other");
+    final otherReply = Completer<ApiResponse<SessionListResponse>>();
+    when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+        .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+    when(() => repository.listSessions(projectId: "other", waitForPrData: false)).thenAnswer((_) => otherReply.future);
+    var settled = false;
+    final refresh = inventory.refresh().then((result) {
+      settled = true;
+      return result;
+    });
+    await Future<void>.delayed(Duration.zero);
+    expect(settled, isFalse);
+    final otherSession = testSession(id: "new").copyWith(projectID: "other");
+    otherReply.complete(ApiResponse.success(SessionListResponse(items: [otherSession])));
+    expect(await refresh, isFalse);
+    expect((inventory.state.value["other"]! as RecentSessionsLoaded).sourceSessions, [otherSession]);
+    verify(() => repository.listSessions(projectId: "other", waitForPrData: false)).called(2);
+  });
+
+  test("explicit refresh follows a completed failed successor despite retained rows", () async {
+    final known = testSession(id: "known");
+    stubSessions(sessions: [known]);
+    await inventory.ensureLoaded(projectId: projectId);
+    final older = Completer<ApiResponse<SessionListResponse>>();
+    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => older.future);
+    bool? reported;
+    final refresh = inventory.refresh().then((result) {
+      reported = result;
+      return result;
+    });
+    when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+        .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+    await inventory.retry(projectId: projectId);
+    await Future<void>.delayed(Duration.zero);
+    expect(reported, isFalse, reason: "the obsolete read must not delay the winning failure");
+    older.complete(ApiResponse.success(SessionListResponse(items: [testSession(id: "stale")])));
+    expect(await refresh, isFalse);
+    await Future<void>.delayed(Duration.zero);
+    expect(loaded().sourceSessions, [known]);
+    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(3);
+  });
+
+  test("explicit refresh follows a later owner after its awaited successor applied", () async {
+    stubSessions(sessions: [testSession(id: "known")]);
+    await inventory.ensureLoaded(projectId: projectId);
+    final replies = List.generate(3, (_) => Completer<ApiResponse<SessionListResponse>>());
+    var reads = 0;
+    when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+        .thenAnswer((_) => replies[reads++].future);
+    var settled = false;
+    final refresh = inventory.refresh().then((result) {
+      settled = true;
+      return result;
+    });
+    unawaited(inventory.retry(projectId: projectId));
+    replies[0].complete(ApiResponse.success(const SessionListResponse(items: [])));
+    await Future<void>.delayed(Duration.zero);
+    final subscription = inventory.state
+        .skip(1)
+        .where((state) {
+          final entry = state[projectId];
+          return entry is RecentSessionsLoaded && entry.sourceSessions.single.id == "successor";
+        })
+        .take(1)
+        .listen((_) => unawaited(inventory.retry(projectId: projectId)));
+    addTearDown(subscription.cancel);
+    replies[1].complete(ApiResponse.success(SessionListResponse(items: [testSession(id: "successor")])));
+    await Future<void>.delayed(Duration.zero);
+    expect(reads, 3);
+    expect(settled, isFalse);
+    replies[2].complete(ApiResponse.error(ApiError.generic()));
+    expect(await refresh, isFalse);
+    expect(loaded().sourceSessions.single.id, "successor");
+  });
+
+  for (final replacement in [false, true]) {
+    test("removal settles refresh before retired I/O (replacement: $replacement)", () async {
+      await inventory.ensureLoaded(projectId: projectId);
+      final replies = List.generate(replacement ? 2 : 1, (_) => Completer<ApiResponse<SessionListResponse>>());
+      var reads = 0;
+      when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+          .thenAnswer((_) => replies[reads++].future);
+      bool? reported;
+      final refresh = inventory.refresh().then((result) {
+        reported = result;
+        return result;
+      });
+      var driverSettled = false;
+      final replacementDriver = replacement
+          ? inventory.retry(projectId: projectId).then((_) => driverSettled = true)
+          : null;
+      projectListService.removeProjectAndPublish(
+        projects: const [ProjectSummary(id: projectId, name: "One", path: "/one", time: null)],
+        projectId: projectId,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(reported, isTrue, reason: "no response has completed but the obligation is retired");
+      expect(driverSettled, isFalse);
+      expect(await refresh, isTrue);
+      replies.first.complete(ApiResponse.success(SessionListResponse(items: [testSession(unseen: true)])));
+      if (replacement) replies.last.completeError(StateError("retired read failed"), StackTrace.current);
+      await replacementDriver;
+      await Future<void>.delayed(Duration.zero);
+      expect(inventory.state.value, isEmpty);
+      expect(unseen.seededSessions, hasLength(1));
+      verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(replacement ? 3 : 2);
+    });
+  }
+
   test("dispose cancels listeners and late reads cannot seed shared unseen state", () async {
     final reply = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
-    final pending = inventory.ensureLoaded(projectId: projectId);
+    var driverSettled = false;
+    final pending = inventory.ensureLoaded(projectId: projectId).then((_) => driverSettled = true);
+    bool? reported;
+    final refresh = inventory.refresh().then((result) {
+      reported = result;
+      return result;
+    });
     await inventory.dispose();
+    await Future<void>.delayed(Duration.zero);
+    expect(reported, isFalse);
+    expect(driverSettled, isFalse);
     expect(events.hasListener, isFalse);
     reply.complete(ApiResponse.success(SessionListResponse(items: [testSession()])));
     await pending;
+    expect(await refresh, isFalse);
+    expect(await inventory.refresh(), isFalse);
     expect(unseen.seededSessions, isEmpty);
+    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
   });
 }
 

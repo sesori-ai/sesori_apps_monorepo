@@ -167,6 +167,45 @@ void main() {
       verify(mockProjectRepository.listProjects).called(1);
     });
 
+    for (final succeeds in [true, false]) {
+      test("headless refresh follows the later owner after its successor applied: $succeeds", () async {
+        final replies = List.generate(3, (_) => Completer<ApiResponse<Projects>>());
+        var reads = 0;
+        when(mockProjectRepository.listProjects).thenAnswer((_) {
+          final index = reads++;
+          return index == 0 ? Future.value(ApiResponse.success(Projects(data: [projectA]))) : replies[index - 1].future;
+        });
+        final inventory = buildInventory();
+        await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded);
+        var settled = false;
+        final refresh = inventory.refreshProjects().then((result) {
+          settled = true;
+          return result;
+        });
+        unawaited(inventory.loadProjects());
+        replies[0].complete(ApiResponse.success(Projects(data: [projectA])));
+        await Future<void>.delayed(Duration.zero);
+        final subscription = inventory.stateStream
+            .where(
+              (state) => state is ProjectListLoaded && state.projects.single.id == projectB.id,
+            )
+            .take(1)
+            .listen((_) => unawaited(inventory.refreshProjects()));
+        addTearDown(subscription.cancel);
+        // Attach the retained-stream observer before the successor publishes.
+        await Future<void>.delayed(Duration.zero);
+        replies[1].complete(ApiResponse.success(Projects(data: [projectB])));
+        await Future<void>.delayed(Duration.zero);
+        expect(reads, 4);
+        expect(settled, isFalse);
+        replies[2].complete(
+          succeeds ? ApiResponse.success(Projects(data: [projectC])) : ApiResponse.error(ApiError.generic()),
+        );
+        expect(await refresh, succeeds);
+        expect(reads, 4);
+      });
+    }
+
     test("disposing a headless inventory fences a pending result and unseen seeding", () async {
       final response = Completer<ApiResponse<Projects>>();
       when(mockProjectRepository.listProjects).thenAnswer((_) => response.future);

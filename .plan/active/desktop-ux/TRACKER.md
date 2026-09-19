@@ -38,13 +38,14 @@ boundary so each owner lands with its production consumer. No request bus, secon
 | [x] | 9.c.2a | `desktop-ux/sidebar-activity-foundation` | [16/22](#pr-titles) | ≤ 1,400 | done |
 | [x] | 9.c.2b.1 | `desktop-ux/sidebar-refresh-ownership` | [17/22](#pr-titles) | ≤ 1,200 | done |
 | [x] | 9.c.2b.2 | `desktop-ux/project-refresh-ownership` | [18/22](#pr-titles) | ≤ 1,400 | done |
-| [ ] | 9.c.2c | `desktop-ux/sidebar-activity-controls` | [19/22](#pr-titles) | ≤ 1,450 | pending |
+| [x] | 9.c.2c | `desktop-ux/sidebar-refresh-controls` | [19/22](#pr-titles) | ≤ 1,450 | done |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | [20/22](#pr-titles) | ≤ 600 | pending |
 | [ ] | 11 | `desktop-ux/regression-docs` | [21/22](#pr-titles) | ≤ 600 | pending |
 | [ ] | 12 | `desktop-ux/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | pending |
 
-Current: publish 9.c.2b.2 project ownership → 9.c.2c typed refresh workflow/prepared controls → 10 → 11 → 12.
-9.c.1 merged as #1526, 9.c.2a as #1533, and 9.c.2b.1 as #1540; native qualification remains outstanding.
+Current: resolve #1545 feedback for 9.c.2c typed refresh workflow/controls → 10 → 11 → 12.
+9.c.1 merged as #1526, 9.c.2a as #1533, 9.c.2b.1 as #1540, and 9.c.2b.2 as #1543.
+Native qualification remains outstanding.
 One PR at a time; prepare at most one local successor and publish after its predecessor merges.
 
 ### PR titles
@@ -121,6 +122,14 @@ These are current series titles; historical Git/squash subjects remain unchanged
   `b5ee109cc3b170700c4697a6390400baf523687a`. Before merge, CI passed 12/12, Cubic approved with zero issues,
   and Codex completed without findings. Final publication: 1,223 all-path lines; 77 focused cases/four analyzers passed.
   Scope, source checkpoint, and uncommitted-run provenance: `steps/step-09c2b.md`.
+
+- Step 9.c.2b.2: [PR #1543](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1543),
+  merged at accepted head `937adb9114041794777c38afbfc81acff65b1e8d`;
+  squash `a772a85a141b617f0d766d0d6a7d6aa11b654a30`, tree
+  `cee8b57a727f3f5dad3677194b61c1b4b2e1e6e9`. Readiness CI passed 12/12; terminal report passed 13/13.
+  Cubic approved, Codex completed without findings, and all four comment/docs threads were resolved.
+  Final publication: 1,000 all-path lines; initial 263-case and follow-up 145-case receipts remain distinct.
+  Four analyzers and architecture implementation review passed. See `steps/step-09c2b2.md`.
 
 - Standalone user-requested sidebar correction:
   [PR #1513](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1513) merged.

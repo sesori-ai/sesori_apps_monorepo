@@ -4,6 +4,7 @@ import "package:bloc_test/bloc_test.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/semantics.dart";
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -24,6 +25,7 @@ void main() {
   late _MockRecentSessionsCubit recent;
   late _MockRepository repository;
   late DesktopSidebarCubit sidebar;
+  late _MockRefreshService refreshService;
 
   setUpAll(() => registerFallbackValue(const DesktopSidebarLayout()));
   setUp(() {
@@ -51,6 +53,8 @@ void main() {
         activityById: {},
       ),
     );
+    refreshService = _MockRefreshService();
+    when(refreshService.refresh).thenAnswer((_) async => DesktopSidebarRefreshOutcome.succeeded);
     repository = _MockRepository();
     when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout());
     when(() => repository.writeSidebarLayout(layout: any(named: "layout"))).thenAnswer((_) async {});
@@ -64,6 +68,7 @@ void main() {
         BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
         BlocProvider<ProjectListCubit>.value(value: projects),
         BlocProvider<RecentSessionsCubit>.value(value: recent),
+        BlocProvider(create: (_) => DesktopSidebarRefreshCubit(service: refreshService)),
         BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
       ],
       child: MaterialApp(
@@ -98,7 +103,11 @@ void main() {
   final resize = find.byKey(const Key("desktop-sidebar-resize"));
   final toggle = find.byKey(const Key("desktop-sidebar-toggle"));
 
-  testWidgets("home selection and screen-reader activation distinguish Settings as an action", (tester) async {
+  testWidgets("compact home and Settings remain screen-reader actions", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(700, 600);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final semantics = tester.ensureSemantics();
     try {
       var opens = 0;
@@ -119,10 +128,13 @@ void main() {
           ),
         ),
       );
-      for (final label in ["Projects", "Settings"]) {
-        final finder = find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.label == label);
-        expect(tester.widget<Semantics>(finder).properties.selected, label == "Projects");
+      final projectsAction = find.byWidgetPredicate(
+        (widget) => widget is Semantics && widget.properties.label == "Projects",
+      );
+      expect(tester.widget<Semantics>(projectsAction).properties.selected, isTrue);
+      for (final finder in [projectsAction, find.byKey(const Key("desktop-sidebar-settings"))]) {
         final node = tester.getSemantics(finder);
+        expect(node.label, finder == projectsAction ? "Projects" : "Settings");
         tester.platformDispatcher.onSemanticsActionEvent!(
           SemanticsActionEvent(type: SemanticsAction.tap, nodeId: node.id, viewId: tester.view.viewId),
         );
@@ -144,7 +156,7 @@ void main() {
       final page = tester.element(find.byKey(const Key("cockpit-content")));
       await tester.tap(
         find.byWidgetPredicate(
-          (widget) => widget is Semantics && widget.properties.label == "Bridge, Bridge status",
+          (widget) => widget is Semantics && widget.properties.label == "This computer, Bridge status",
         ),
       );
       await tester.pumpAndSettle();
@@ -181,9 +193,65 @@ void main() {
     );
     when(projects.retryLoadProjects).thenAnswer((_) async {});
     await tester.pumpWidget(app(state: running));
-    await tester.tap(find.byTooltip("Retry"));
+    expect(tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-refresh"))).onPressed, isNull);
+    await tester.tap(find.text("Retry"));
     verify(projects.retryLoadProjects).called(1);
     verifyNever(projects.refreshProjects);
+  });
+
+  for (final outcome in DesktopSidebarRefreshOutcome.values) {
+    testWidgets("keyboard refresh stays busy until ${outcome.name} and retains useful rows", (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        final reply = Completer<DesktopSidebarRefreshOutcome>();
+        when(refreshService.refresh).thenAnswer((_) => reply.future);
+        await tester.pumpWidget(app(state: running));
+        await tester.pumpAndSettle();
+        expect(find.byTooltip("New project"), findsNothing);
+        expect(find.byTooltip("This computer, Bridge status"), findsOneWidget);
+        final refresh = find.byKey(const Key("desktop-sidebar-refresh"));
+        final icon = find.descendant(of: refresh, matching: find.byType(Icon));
+        Focus.of(tester.element(icon)).requestFocus();
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+        expect(tester.widget<IconButton>(refresh).onPressed, isNull);
+        expect(find.bySemanticsLabel("Refreshing projects and sessions"), findsOneWidget);
+        expect(find.descendant(of: refresh, matching: find.byType(PregoActivityIndicator)), findsOneWidget);
+        expect(find.text("Sesori Desktop"), findsOneWidget);
+        expect(tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-settings"))).onPressed, isNotNull);
+        verify(refreshService.refresh).called(1);
+        verifyNever(projects.refreshProjects);
+        reply.complete(outcome);
+        await tester.pumpAndSettle();
+        expect(tester.widget<IconButton>(refresh).onPressed, isNotNull);
+        expect(find.text("Sesori Desktop"), findsOneWidget);
+        expect(
+          find.text(
+            outcome == DesktopSidebarRefreshOutcome.succeeded
+                ? "Projects and sessions updated"
+                : "Could not refresh projects and sessions",
+          ),
+          findsOneWidget,
+        );
+      } finally {
+        semantics.dispose();
+      }
+    });
+  }
+
+  testWidgets("refresh is disabled during initial load, disconnection and existing project refresh", (tester) async {
+    for (final state in <ProjectListState>[
+      const ProjectListState.loading(),
+      const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
+      const ProjectListState.loaded(projects: [], activityById: {}, isRefreshing: true),
+    ]) {
+      whenListen(projects, const Stream<ProjectListState>.empty(), initialState: state);
+      await tester.pumpWidget(app(state: running));
+      await tester.pump();
+      expect(tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-refresh"))).onPressed, isNull);
+    }
+    verifyNever(refreshService.refresh);
   });
 
   testWidgets("project row identity follows live reordering and removal", (tester) async {
@@ -417,16 +485,16 @@ void main() {
     );
     expect(find.byType(NavigationRail), findsNothing);
     expect(tester.getSize(rail).width, 260);
-    await tester.tap(find.text("Bridge"));
+    await tester.tap(find.text("This computer"));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key("desktop-bridge-popover")), findsOneWidget);
     expect(bridgeOpens, 0);
     await tester.tap(find.text("Bridge settings…"));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("Projects"));
-    await tester.tap(find.text("Settings"));
+    expect(find.text("Projects"), findsNothing);
+    await tester.tap(find.byKey(const Key("desktop-sidebar-settings")));
     await tester.tap(find.text("Sesori Desktop"));
-    expect((bridgeOpens, projectOpens, settingsOpens, openedProject), (1, 1, 1, "project-1"));
+    expect((bridgeOpens, projectOpens, settingsOpens, openedProject), (1, 0, 1, "project-1"));
   });
 
   testWidgets("recent tree pins selection, keeps route actions, and persists project collapse", (tester) async {
@@ -778,7 +846,7 @@ void main() {
   testWidgets("new project is labeled and the pinned footer has its own surface", (tester) async {
     await tester.pumpWidget(app(state: running));
     expect(find.text("Sesori"), findsNothing);
-    expect(find.text("Projects"), findsOneWidget);
+    expect(find.text("Projects"), findsNothing);
     expect(find.text("New project"), findsOneWidget);
     expect(tester.widget<FilledButton>(find.byKey(const Key("desktop-sidebar-new-project"))).onPressed, isNotNull);
     final footer = tester.widget<Container>(find.byKey(const Key("desktop-sidebar-footer")));
@@ -1059,6 +1127,8 @@ void _openSession({
 }) {}
 void _noOp() {}
 void _openProject({required BuildContext context, required ProjectSummary project, required String displayName}) {}
+
+class _MockRefreshService() extends Mock implements DesktopSidebarRefreshService;
 
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;

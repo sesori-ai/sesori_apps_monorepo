@@ -159,6 +159,10 @@ state.
   completed-read visibility. Mobile owns one factory instance per project route; desktop owns one per signed-in
   cockpit. Replacing a consumer replays retained data, while exiting the owning scope disposes the inventory and
   fences late state application/unseen seeding. Onboarding and loaded-inventory analytics retain their existing policy.
+  Explicit refresh follows the latest owning read after each result, even when an awaited successor applied before
+  another read started. Desktop coordinates project and recent services without presentation dependencies; recent
+  refresh joins pending admission reads, waits for its admitted cohort and reports failures despite retained rows.
+  Removal retires an entry's refresh obligation; disposal prevents further reads or late unseen seeding.
 - Project and session inventory presentation is shared by the mobile and
   desktop shells, while each shell owns its routes and recovery policy. Mobile
   keeps CLI bridge installation, command sharing, and relay reconnect guidance.

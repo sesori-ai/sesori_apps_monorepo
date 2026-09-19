@@ -241,6 +241,30 @@ abstract class AppLocalizations {
   /// **'Resize sidebar; double-click to reset'**
   String get desktopSidebarResize;
 
+  /// Tooltip for explicitly refreshing both desktop sidebar inventories.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh projects and sessions'**
+  String get desktopSidebarRefresh;
+
+  /// Accessible busy label while both desktop sidebar inventories refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing projects and sessions'**
+  String get desktopSidebarRefreshing;
+
+  /// Confirmation after both desktop sidebar inventories refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects and sessions updated'**
+  String get desktopSidebarRefreshSuccess;
+
+  /// Failure notice when either desktop sidebar inventory could not refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh projects and sessions'**
+  String get desktopSidebarRefreshFailed;
+
   /// Sidebar recovery notice when bridge ownership can be reclaimed.
   ///
   /// In en, this message translates to:
@@ -330,12 +354,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This computer'**
   String get desktopSettingsThisComputer;
-
-  /// Label of the pinned desktop navigation entry for local bridge controls.
-  ///
-  /// In en, this message translates to:
-  /// **'Bridge'**
-  String get desktopBridgeTitle;
 
   /// No description provided for @projectListTitle.
   ///

@@ -20,6 +20,12 @@ import "session_list_service.dart";
 import "session_unseen_tracker.dart";
 import "sse_event_tracker.dart";
 
+enum _RecentReadOutcome() {
+  applied,
+  failed,
+  superseded,
+}
+
 /// Scoped recent-session inventory: never acquires a project-view claim.
 /// The caller owns this factory instance and disposes it with its signed-in scope.
 @injectable
@@ -33,8 +39,9 @@ class RecentSessionInventoryService({
 }) {
   final BehaviorSubject<Map<String, RecentSessionsEntry>> _state = BehaviorSubject.seeded(const {});
   final CompositeSubscription _subscriptions = CompositeSubscription();
-  // Refresh ownership is separate from the usable, live-patched display data.
-  final Map<String, RecentSessionsLoading> _pendingReads = {};
+  // Retain the latest result as well as its identity: useful rows alone cannot
+  // tell an explicit refresh caller whether the owning read failed.
+  final Map<String, Completer<_RecentReadOutcome>> _latestReads = {};
   // Retained until a snapshot covering this lifecycle generation is applied.
   final Map<String, int> _lifecycleChangeGenerations = {};
 
@@ -55,8 +62,8 @@ class RecentSessionInventoryService({
     final removedProjectIds = _state.value.keys.where((projectId) => !projectIds.contains(projectId)).toList();
     if (removedProjectIds.isNotEmpty) {
       for (final projectId in removedProjectIds) {
-        // Removing the request identity fences any completion already in flight.
-        _pendingReads.remove(projectId);
+        // Retire both application ownership and waiters without waiting for I/O.
+        _completeRead(request: _latestReads.remove(projectId), outcome: _RecentReadOutcome.superseded);
         _lifecycleChangeGenerations.remove(projectId);
       }
       _state.add(Map.unmodifiable({..._state.value}..removeWhere((projectId, _) => !projectIds.contains(projectId))));
@@ -67,7 +74,7 @@ class RecentSessionInventoryService({
   }
 
   Future<void> ensureLoaded({required String projectId}) async {
-    if (_state.isClosed || _pendingReads.containsKey(projectId)) return;
+    if (_state.isClosed || _latestReads[projectId]?.isCompleted == false) return;
     final entry = _state.value[projectId];
     if (entry != null && !(entry is RecentSessionsLoaded && _lifecycleChangeGenerations.containsKey(projectId))) {
       return;
@@ -77,13 +84,53 @@ class RecentSessionInventoryService({
 
   Future<void> retry({required String projectId}) => _load(projectId: projectId);
 
-  Future<void> _load({required String projectId}) async {
-    if (_state.isClosed) return;
-    final request = RecentSessionsLoading();
-    _pendingReads[projectId] = request;
+  /// Refresh the currently admitted inventory, joining reads already in flight.
+  /// This reports read outcomes, not whether older useful rows remain visible.
+  Future<bool> refresh() async {
+    if (_state.isClosed) return false;
+    final results = await Future.wait(
+      _state.value.keys.map((projectId) => _refreshProject(projectId: projectId)),
+    );
+    return results.every((succeeded) => succeeded);
+  }
+
+  Future<bool> _refreshProject({required String projectId}) async {
+    final pending = _latestReads[projectId];
+    if (pending == null || pending.isCompleted) unawaited(_load(projectId: projectId));
+    var latest = _latestReads[projectId];
+    while (latest != null) {
+      final outcome = await latest.future;
+      if (_state.isClosed) return false;
+      final current = _latestReads[projectId];
+      if (!identical(current, latest)) {
+        latest = current;
+        continue;
+      }
+      return outcome == _RecentReadOutcome.applied;
+    }
+    // A removed project no longer belongs to this inventory's refresh.
+    return true;
+  }
+
+  Future<void> _load({required String projectId}) {
+    if (_state.isClosed) return Future.value();
+    final request = Completer<_RecentReadOutcome>();
+    final previous = _latestReads[projectId];
+    _latestReads[projectId] = request;
+    _completeRead(request: previous, outcome: _RecentReadOutcome.superseded);
+    // Load/retry callers await the driver, not its retireable receipt.
+    return _runLoad(projectId: projectId, request: request);
+  }
+
+  Future<void> _runLoad({
+    required String projectId,
+    required Completer<_RecentReadOutcome> request,
+  }) async {
     final lifecycleChangeGeneration = _lifecycleChangeGenerations[projectId];
-    if (_state.value[projectId] is! RecentSessionsLoaded) _put(projectId: projectId, entry: request);
     try {
+      if (_state.value[projectId] is! RecentSessionsLoaded) {
+        _put(projectId: projectId, entry: RecentSessionsLoading());
+      }
       final unseenTick = _sessionUnseenTracker.tick;
       final response = await _sessionListService.listSessions(projectId: projectId, waitForPrData: false);
       if (response case ErrorResponse(:final error)) {
@@ -91,11 +138,15 @@ class RecentSessionInventoryService({
       }
       // A reconnect/catalog event can request a newer snapshot while this read
       // is in flight. Its result, not this older one, owns the project entry.
-      if (_state.isClosed || !identical(_pendingReads[projectId], request)) return;
+      if (_state.isClosed || !identical(_latestReads[projectId], request)) {
+        _completeRead(request: request, outcome: _RecentReadOutcome.superseded);
+        return;
+      }
       // A phone/backend mutation may commit after the server took this list's
       // snapshot. Coalesce those events into one follow-up read before seeding.
       if (_lifecycleChangeGenerations[projectId] != lifecycleChangeGeneration) {
         await _load(projectId: projectId);
+        _completeRead(request: request, outcome: _RecentReadOutcome.superseded);
         return;
       }
       switch (response) {
@@ -115,6 +166,7 @@ class RecentSessionInventoryService({
           if (_lifecycleChangeGenerations[projectId] == lifecycleChangeGeneration) {
             _lifecycleChangeGenerations.remove(projectId);
           }
+          _completeRead(request: request, outcome: _RecentReadOutcome.applied);
         case ErrorResponse(:final error):
           if (_state.value[projectId] is! RecentSessionsLoaded) {
             _put(
@@ -122,10 +174,11 @@ class RecentSessionInventoryService({
               entry: RecentSessionsFailed(reason: error.remoteFailureReason),
             );
           }
+          _completeRead(request: request, outcome: _RecentReadOutcome.failed);
       }
     } catch (error, stackTrace) {
       loge("Failed to load recent sessions for project $projectId", error, stackTrace);
-      if (!_state.isClosed && identical(_pendingReads[projectId], request)) {
+      if (!_state.isClosed && identical(_latestReads[projectId], request)) {
         if (_state.value[projectId] is! RecentSessionsLoaded) {
           _put(
             projectId: projectId,
@@ -133,9 +186,15 @@ class RecentSessionInventoryService({
           );
         }
       }
-    } finally {
-      if (identical(_pendingReads[projectId], request)) _pendingReads.remove(projectId);
+      _completeRead(request: request, outcome: _RecentReadOutcome.failed);
     }
+  }
+
+  void _completeRead({
+    required Completer<_RecentReadOutcome>? request,
+    required _RecentReadOutcome outcome,
+  }) {
+    if (request != null && !request.isCompleted) request.complete(outcome);
   }
 
   void _refreshKnownProjects() {
@@ -159,7 +218,7 @@ class RecentSessionInventoryService({
       final projectId = info.projectID;
       final entry = _state.value[projectId];
       if (info.parentID != null) return;
-      final hasPendingRead = _pendingReads.containsKey(projectId);
+      final hasPendingRead = _latestReads[projectId]?.isCompleted == false;
       final hasRetainedLifecycleChange = _lifecycleChangeGenerations.containsKey(projectId);
       if (hasPendingRead || hasRetainedLifecycleChange) {
         _lifecycleChangeGenerations[projectId] = (_lifecycleChangeGenerations[projectId] ?? 0) + 1;
@@ -227,7 +286,12 @@ class RecentSessionInventoryService({
   }
 
   Future<void> dispose() async {
-    await _state.close();
+    final closing = _state.close();
+    for (final request in _latestReads.values) {
+      _completeRead(request: request, outcome: _RecentReadOutcome.superseded);
+    }
+    _latestReads.clear();
+    await closing;
     await _subscriptions.dispose();
   }
 }

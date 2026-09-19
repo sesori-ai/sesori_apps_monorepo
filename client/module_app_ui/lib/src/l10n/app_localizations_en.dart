@@ -96,6 +96,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSidebarResize => 'Resize sidebar; double-click to reset';
 
   @override
+  String get desktopSidebarRefresh => 'Refresh projects and sessions';
+
+  @override
+  String get desktopSidebarRefreshing => 'Refreshing projects and sessions';
+
+  @override
+  String get desktopSidebarRefreshSuccess => 'Projects and sessions updated';
+
+  @override
+  String get desktopSidebarRefreshFailed => 'Could not refresh projects and sessions';
+
+  @override
   String get desktopBridgeTakenOver => 'Another bridge currently owns this account connection.';
 
   @override
@@ -141,9 +153,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get desktopSettingsThisComputer => 'This computer';
-
-  @override
-  String get desktopBridgeTitle => 'Bridge';
 
   @override
   String get projectListTitle => 'Projects';

@@ -7,7 +7,7 @@ import "session_list_item_state.dart";
 /// Absence from the inventory means this project has not been requested.
 sealed class const RecentSessionsEntry();
 
-/// Also identifies the current request; each refresh gets its own instance.
+/// Loading without useful retained rows, including an initial read or retry.
 final class RecentSessionsLoading() extends RecentSessionsEntry;
 
 final class const RecentSessionsFailed({required final RemoteFailureReason reason}) extends RecentSessionsEntry;
