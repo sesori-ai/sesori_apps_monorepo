@@ -25,7 +25,7 @@ void main() {
   late _MockRecentSessionsCubit recent;
   late _MockRepository repository;
   late DesktopSidebarCubit sidebar;
-  late _MockRefreshOrchestrator refreshOrchestrator;
+  late _MockRefreshService refreshService;
 
   setUpAll(() => registerFallbackValue(const DesktopSidebarLayout()));
   setUp(() {
@@ -53,8 +53,8 @@ void main() {
         activityById: {},
       ),
     );
-    refreshOrchestrator = _MockRefreshOrchestrator();
-    when(refreshOrchestrator.refresh).thenAnswer((_) async => DesktopSidebarRefreshOutcome.succeeded);
+    refreshService = _MockRefreshService();
+    when(refreshService.refresh).thenAnswer((_) async => DesktopSidebarRefreshOutcome.succeeded);
     repository = _MockRepository();
     when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout());
     when(() => repository.writeSidebarLayout(layout: any(named: "layout"))).thenAnswer((_) async {});
@@ -68,7 +68,7 @@ void main() {
         BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
         BlocProvider<ProjectListCubit>.value(value: projects),
         BlocProvider<RecentSessionsCubit>.value(value: recent),
-        BlocProvider(create: (_) => DesktopSidebarRefreshCubit(orchestrator: refreshOrchestrator)),
+        BlocProvider(create: (_) => DesktopSidebarRefreshCubit(service: refreshService)),
         BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
       ],
       child: MaterialApp(
@@ -204,7 +204,7 @@ void main() {
       final semantics = tester.ensureSemantics();
       try {
         final reply = Completer<DesktopSidebarRefreshOutcome>();
-        when(refreshOrchestrator.refresh).thenAnswer((_) => reply.future);
+        when(refreshService.refresh).thenAnswer((_) => reply.future);
         await tester.pumpWidget(app(state: running));
         await tester.pumpAndSettle();
         expect(find.byTooltip("New project"), findsNothing);
@@ -220,7 +220,7 @@ void main() {
         expect(find.descendant(of: refresh, matching: find.byType(PregoActivityIndicator)), findsOneWidget);
         expect(find.text("Sesori Desktop"), findsOneWidget);
         expect(tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-settings"))).onPressed, isNotNull);
-        verify(refreshOrchestrator.refresh).called(1);
+        verify(refreshService.refresh).called(1);
         verifyNever(projects.refreshProjects);
         reply.complete(outcome);
         await tester.pumpAndSettle();
@@ -251,7 +251,7 @@ void main() {
       await tester.pump();
       expect(tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-refresh"))).onPressed, isNull);
     }
-    verifyNever(refreshOrchestrator.refresh);
+    verifyNever(refreshService.refresh);
   });
 
   testWidgets("project row identity follows live reordering and removal", (tester) async {
@@ -1128,7 +1128,7 @@ void _openSession({
 void _noOp() {}
 void _openProject({required BuildContext context, required ProjectSummary project, required String displayName}) {}
 
-class _MockRefreshOrchestrator() extends Mock implements DesktopSidebarRefreshOrchestrator;
+class _MockRefreshService() extends Mock implements DesktopSidebarRefreshService;
 
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;

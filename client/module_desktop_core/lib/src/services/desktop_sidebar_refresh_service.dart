@@ -8,7 +8,7 @@ enum DesktopSidebarRefreshOutcome() {
 
 /// Explicit sidebar refresh over the cockpit's existing scoped inventories.
 @injectable
-class DesktopSidebarRefreshOrchestrator({
+class DesktopSidebarRefreshService({
   @factoryParam required final ProjectInventoryService _projectInventory,
   @factoryParam required final RecentSessionInventoryService _recentInventory,
 }) {

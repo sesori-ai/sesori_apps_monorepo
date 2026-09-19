@@ -10,7 +10,7 @@ void main() {
       final workflow = _Workflow();
       final reply = Completer<DesktopSidebarRefreshOutcome>();
       when(workflow.refresh).thenAnswer((_) => reply.future);
-      final cubit = DesktopSidebarRefreshCubit(orchestrator: workflow);
+      final cubit = DesktopSidebarRefreshCubit(service: workflow);
       addTearDown(cubit.close);
       expect(cubit.state, DesktopSidebarRefreshState.idle);
       final refresh = cubit.refresh();
@@ -34,7 +34,7 @@ void main() {
     final workflow = _Workflow();
     final reply = Completer<DesktopSidebarRefreshOutcome>();
     when(workflow.refresh).thenAnswer((_) => reply.future);
-    final cubit = DesktopSidebarRefreshCubit(orchestrator: workflow);
+    final cubit = DesktopSidebarRefreshCubit(service: workflow);
     final refresh = cubit.refresh();
     await cubit.close();
     reply.complete(DesktopSidebarRefreshOutcome.succeeded);
@@ -45,4 +45,4 @@ void main() {
   });
 }
 
-class _Workflow() extends Mock implements DesktopSidebarRefreshOrchestrator;
+class _Workflow() extends Mock implements DesktopSidebarRefreshService;

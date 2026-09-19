@@ -29,7 +29,7 @@ The main pane hosts one full-width routed page.
   shortcut opens home, including empty/recovery states when the window is too narrow to expand.
   The separated footer groups This computer with refresh and Settings icon controls. Icon/status hints and
   truncated-label hints remain useful, while fully visible labels need no duplicate tooltip.
-- Explicit sidebar refresh runs through `DesktopSidebarRefreshOrchestrator` over the same scoped project and recent
+- Explicit sidebar refresh runs through Layer-3 `DesktopSidebarRefreshService` over the same scoped project and recent
   inventory services. It awaits the project phase before refreshing admitted recent entries, joining initial reads
   already in flight. An ordinary project failure still allows retained recent entries to update; either phase failing
   produces failure feedback. Useful rows stay visible. Busy controls cannot dispatch duplicate intent, and busy/idle
@@ -236,7 +236,7 @@ bridge during UI-only checks.
 
 - `client/desktop/lib/core/widgets/desktop_cockpit_shell.dart`
 - `client/desktop/lib/core/widgets/desktop_sidebar.dart`
-- `client/module_desktop_core/lib/src/orchestration/desktop_sidebar_refresh_orchestrator.dart`
+- `client/module_desktop_core/lib/src/services/desktop_sidebar_refresh_service.dart`
 - `client/module_desktop_core/lib/src/cubits/desktop_sidebar/desktop_sidebar_refresh_cubit.dart`
 - `client/desktop/lib/core/widgets/desktop_connection_pill.dart`
 - `client/desktop/lib/core/widgets/desktop_bridge_recovery_card.dart`

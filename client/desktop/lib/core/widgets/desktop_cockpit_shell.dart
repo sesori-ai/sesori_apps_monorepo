@@ -34,7 +34,7 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
           BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
           BlocProvider(
             create: (context) => DesktopSidebarRefreshCubit(
-              orchestrator: getIt<DesktopSidebarRefreshOrchestrator>(
+              service: getIt<DesktopSidebarRefreshService>(
                 param1: context.read<ProjectInventoryService>(),
                 param2: context.read<RecentSessionInventoryService>(),
               ),

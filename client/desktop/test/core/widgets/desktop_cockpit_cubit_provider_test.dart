@@ -73,18 +73,17 @@ void main() {
       unawaited(projects.listProjects());
       return inventory;
     });
-    getIt.registerFactoryParam<
-      DesktopSidebarRefreshOrchestrator,
-      ProjectInventoryService,
-      RecentSessionInventoryService
-    >((project, recent) {
+    getIt.registerFactoryParam<DesktopSidebarRefreshService, ProjectInventoryService, RecentSessionInventoryService>((
+      project,
+      recent,
+    ) {
       expect(project, same(projectInstances.last));
       expect(recent, same(instances.last));
       workflowCount++;
-      return DesktopSidebarRefreshOrchestrator(projectInventory: project, recentInventory: recent);
+      return DesktopSidebarRefreshService(projectInventory: project, recentInventory: recent);
     });
     addTearDown(() async {
-      await getIt.unregister<DesktopSidebarRefreshOrchestrator>();
+      await getIt.unregister<DesktopSidebarRefreshService>();
       await getIt.unregister<ProjectInventoryService>();
       await getIt.unregister<RecentSessionInventoryService>();
       await projects.dispose();

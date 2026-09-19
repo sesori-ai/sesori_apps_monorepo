@@ -20,7 +20,7 @@ import 'package:sesori_desktop_core/src/api/bridge_process_api.dart' as _i874;
 import 'package:sesori_desktop_core/src/api/bridge_process_log_storage.dart'
     as _i570;
 import 'package:sesori_desktop_core/src/api/control_channel_api.dart' as _i639;
-import 'package:sesori_desktop_core/src/api/desktop_instance_api.dart' as _i829;
+import 'package:sesori_desktop_core/src/api/desktop_instance_api.dart' as _i828;
 import 'package:sesori_desktop_core/src/api/desktop_instance_storage.dart'
     as _i155;
 import 'package:sesori_desktop_core/src/control/control_message_dispatcher.dart'
@@ -43,8 +43,6 @@ import 'package:sesori_desktop_core/src/orchestration/desktop_bridge_takeover_or
     as _i850;
 import 'package:sesori_desktop_core/src/orchestration/desktop_logout_orchestrator.dart'
     as _i165;
-import 'package:sesori_desktop_core/src/orchestration/desktop_sidebar_refresh_orchestrator.dart'
-    as _i828;
 import 'package:sesori_desktop_core/src/orchestration/desktop_startup_orchestrator.dart'
     as _i455;
 import 'package:sesori_desktop_core/src/repositories/bridge_process_log_repository.dart'
@@ -65,6 +63,8 @@ import 'package:sesori_desktop_core/src/services/desktop_instance_service.dart'
     as _i494;
 import 'package:sesori_desktop_core/src/services/desktop_relay_connection_service.dart'
     as _i314;
+import 'package:sesori_desktop_core/src/services/desktop_sidebar_refresh_service.dart'
+    as _i983;
 import 'package:sesori_desktop_core/src/services/window_bounds_service.dart'
     as _i68;
 import 'package:sesori_desktop_core/src/trackers/bridge_process_log_tracker.dart'
@@ -96,15 +96,14 @@ extension GetItInjectableX on _i174.GetIt {
       dispose: (i) => i.dispose(),
     );
     gh.factoryParam<
-      _i828.DesktopSidebarRefreshOrchestrator,
+      _i983.DesktopSidebarRefreshService,
       _i948.ProjectInventoryService,
       _i948.RecentSessionInventoryService
     >(
-      (projectInventory, recentInventory) =>
-          _i828.DesktopSidebarRefreshOrchestrator(
-            projectInventory: projectInventory,
-            recentInventory: recentInventory,
-          ),
+      (projectInventory, recentInventory) => _i983.DesktopSidebarRefreshService(
+        projectInventory: projectInventory,
+        recentInventory: recentInventory,
+      ),
     );
     gh.lazySingleton<_i798.LogSink>(
       () => _i1024.AppLogStorage(
@@ -129,8 +128,8 @@ extension GetItInjectableX on _i174.GetIt {
             gh<_i695.DesktopApplicationSupportDirectory>(),
       ),
     );
-    gh.lazySingleton<_i829.DesktopInstanceApi>(
-      () => _i829.DesktopInstanceApi(
+    gh.lazySingleton<_i828.DesktopInstanceApi>(
+      () => _i828.DesktopInstanceApi(
         applicationSupportDirectory:
             gh<_i695.DesktopApplicationSupportDirectory>(),
       ),
@@ -160,7 +159,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i210.DesktopInstanceRepository>(
       () => _i210.DesktopInstanceRepository(
-        api: gh<_i829.DesktopInstanceApi>(),
+        api: gh<_i828.DesktopInstanceApi>(),
         storage: gh<_i155.DesktopInstanceStorage>(),
       ),
     );

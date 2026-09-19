@@ -8,11 +8,11 @@ import "package:test/test.dart";
 void main() {
   late _Projects projects;
   late _Recent recent;
-  late DesktopSidebarRefreshOrchestrator workflow;
+  late DesktopSidebarRefreshService workflow;
   setUp(() {
     projects = _Projects();
     recent = _Recent();
-    workflow = DesktopSidebarRefreshOrchestrator(projectInventory: projects, recentInventory: recent);
+    workflow = DesktopSidebarRefreshService(projectInventory: projects, recentInventory: recent);
   });
 
   test("headless workflow waits for projects and then the admitted recent inventory", () async {
