@@ -31,10 +31,6 @@ enum _PiQueueState() {
 }
 
 final class _PiSessionTurnState({required final String initialDirectory}) {
-  /// See [recentPromptIds]. 64 comfortably exceeds any realistic gap between
-  /// a lost acceptance response and its retry.
-  static const int _recentPromptIdLimit = 64;
-
   String directory = initialDirectory;
 
   /// Admitted turns waiting for their FIFO dispatch attempt.
@@ -54,12 +50,6 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   int generation = 0;
   int idleGeneration = 0;
 
-  /// Settled turns' prompt ids, retained so the retry of a send whose
-  /// response was lost is an idempotent no-op instead of a duplicate turn.
-  /// Active and queued turns carry their id and are checked live, so only
-  /// settled ids need this bounded window.
-  final Queue<String> recentPromptIds = Queue<String>();
-
   List<_PiTurn> get turns {
     final result = List<_PiTurn>.of(inFlight);
     final activeTurn = active;
@@ -70,20 +60,6 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
 
   bool get hasAdmittedWork => active != null || inFlight.isNotEmpty || queue.isNotEmpty;
   bool get hasWork => agentRunning || hasAdmittedWork;
-
-  bool isAdmitted({required String promptId}) =>
-      turns.any(
-        (turn) =>
-            turn.promptId == promptId && (turn is! _PiQueuedPromptTurn || turn.queueState != _PiQueueState.cancelled),
-      ) ||
-      recentPromptIds.contains(promptId);
-
-  void recordSettledPromptId({required String promptId}) {
-    recentPromptIds.addLast(promptId);
-    while (recentPromptIds.length > _recentPromptIdLimit) {
-      recentPromptIds.removeFirst();
-    }
-  }
 }
 
 sealed class _PiTurn({
@@ -441,9 +417,7 @@ final class PiSessionService({
     required _PiCommandTurn turn,
   }) {
     if (_disposed) return Future.error(const PiRpcDisposedException());
-    final state = _sessions[sessionId];
-    if (state != null && state.isAdmitted(promptId: turn.promptId)) return Future.value();
-    if (state?.hasWork ?? false) {
+    if (_sessions[sessionId]?.hasWork ?? false) {
       return Future.error(PiSessionBusyException(sessionId: sessionId));
     }
     _admit(sessionId: sessionId, directory: directory, turn: turn);
@@ -465,12 +439,6 @@ final class PiSessionService({
 
   void _admit({required String sessionId, required String directory, required _PiTurn turn}) {
     final state = _sessions.putIfAbsent(sessionId, () => _PiSessionTurnState(initialDirectory: directory));
-    if (state.isAdmitted(promptId: turn.promptId)) {
-      // The retry of a send whose response was lost: the turn is already
-      // admitted (queued, running, or finished), so accept idempotently.
-      if (turn is _PiCommandTurn) _acceptCommand(turn);
-      return;
-    }
     state.directory = directory;
     state.idleGeneration++;
     final wasIdle = !state.hasWork;
@@ -990,9 +958,6 @@ final class PiSessionService({
     final owned = identical(state.active, turn) || state.inFlight.contains(turn) || state.queue.contains(turn);
     if (!owned) return;
     turn.settled = true;
-    if (turn.promptDispatched) {
-      state.recordSettledPromptId(promptId: turn.promptId);
-    }
     if (turn is _PiCommandTurn && !turn.acceptance.isCompleted && failed) {
       turn.acceptance.completeError(
         failure ?? StateError("Pi command failed before acceptance"),
@@ -1129,7 +1094,6 @@ final class PiSessionService({
       ..queue.clear()
       ..status = const PluginSessionStatus.idle();
     for (final turn in cancelled) {
-      if (turn.promptDispatched) state.recordSettledPromptId(promptId: turn.promptId);
       _settleTurnPresentation(sessionId: sessionId, turn: turn, failed: true);
       if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
         turn.acceptance.completeError(PiTurnCancelledException(sessionId: sessionId), StackTrace.current);

@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:collection";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations;
@@ -79,11 +78,6 @@ final class _SessionTurnState() {
   bool get hasWork => pending > 0 || selfStartedTurn != null || runningTaskIds.isNotEmpty;
 
   final List<_QueuedPrompt> queue = [];
-
-  /// Prompt ids dispatched most recently, newest last. Bounds the idempotent
-  /// retry window: a client that lost the acceptance response can re-send the
-  /// same prompt id and be refused as an already-done no-op.
-  final Queue<String> recentlyDispatched = Queue<String>();
 }
 
 /// Serializes Claude dispatch and selection changes while allowing ordinary
@@ -103,11 +97,6 @@ final class ClaudeSessionService({
     _processes.events.listen(_handleProcessEvent).addTo(_subscriptions);
     _idleTimeoutChanges.listen(_handleIdleTimeoutChange).addTo(_subscriptions);
   }
-
-  /// See [_SessionTurnState.recentlyDispatched]. 64 comfortably exceeds any
-  /// realistic gap between a lost acceptance response and its retry (the
-  /// retry fires on the next reconnect/refresh drain).
-  static const int _recentlyDispatchedLimit = 64;
 
   final Map<String, _SessionTurnState> _turns = {};
   final Map<String, PluginSessionStatus> _retryStatuses = {};
@@ -192,9 +181,7 @@ final class ClaudeSessionService({
   /// Queues a prompt or command turn and accepts it immediately.
   ///
   /// The returned future completes at enqueue — never after the turns ahead
-  /// of it — so callers holding a client request open respond instantly. A
-  /// [promptId] already queued or recently dispatched is an idempotent
-  /// success no-op (the retry of a send whose response was lost).
+  /// of it — so callers holding a client request open respond instantly.
   ///
   /// Ordinary prompts are written with Claude's steering priority as soon as
   /// the resident process is ready. Commands and selection changes retain a
@@ -218,9 +205,6 @@ final class ClaudeSessionService({
       return Future.error(StateError("Claude session cannot accept the turn"));
     }
     final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
-    final isDuplicate = state.queue.any((entry) => entry.id == promptId) || state.recentlyDispatched.contains(promptId);
-    if (isDuplicate) return Future.value();
-
     final entry = _QueuedPrompt(
       id: promptId,
       displayText: displayText,
@@ -364,7 +348,6 @@ final class ClaudeSessionService({
         case _QueuedTurnMode(:final entry):
           entry.dispatched = true;
           _emitQueueUpdate(sessionId: sessionId, state: state);
-          _recordDispatched(state: state, promptId: entry.id);
           if (!_dispatches.isClosed) {
             _dispatches.add(
               ClaudeTurnDispatched(
@@ -461,13 +444,6 @@ final class ClaudeSessionService({
   /// link must settle without dispatching.
   bool _isCancelled(_TurnMode mode, _SessionTurnState state) =>
       mode is _QueuedTurnMode && !state.queue.contains(mode.entry) && !mode.entry.dispatched;
-
-  void _recordDispatched({required _SessionTurnState state, required String promptId}) {
-    state.recentlyDispatched.addLast(promptId);
-    while (state.recentlyDispatched.length > _recentlyDispatchedLimit) {
-      state.recentlyDispatched.removeFirst();
-    }
-  }
 
   /// Removes a queued entry that never became a visible message (interrupt or
   /// failure between dispatch and echo, or a dispatch that threw).

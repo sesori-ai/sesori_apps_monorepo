@@ -476,31 +476,6 @@ void main() {
       expect(finalUpdate.prompts, isEmpty);
     });
 
-    test("refuses a duplicate prompt id as an accepted no-op", () async {
-      unawaited(harness.enqueue("first", promptId: "prm_dup"));
-      final process = await harness.firstProcess;
-      await waitForFrame(process, "user");
-
-      await harness.enqueue("first-again", promptId: "prm_dup");
-      process.emit(_result());
-      await harness.waitForIdle();
-
-      expect(_userFrames(process), hasLength(1), reason: "the retry must not become a second turn");
-    });
-
-    test("refuses a recently dispatched prompt id after its turn completed", () async {
-      unawaited(harness.enqueue("first", promptId: "prm_done"));
-      final process = await harness.firstProcess;
-      await waitForFrame(process, "user");
-      process.emit(_result());
-      await harness.waitForIdle();
-
-      await harness.enqueue("first-retry", promptId: "prm_done");
-      await pump();
-
-      expect(_userFrames(process), hasLength(1));
-    });
-
     test("cancels a pending entry before dispatch and refuses a dispatched one", () async {
       unawaited(harness.enqueue("first"));
       unawaited(harness.enqueue("second"));
