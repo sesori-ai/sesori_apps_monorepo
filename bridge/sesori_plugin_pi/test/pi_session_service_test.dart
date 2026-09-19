@@ -1363,6 +1363,64 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
+  test("setter thinking echoes keep a fresh resident's run steerable", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "max");
+
+    // Pi writes a setter's thinking_level_changed immediately before its
+    // response, so both usually arrive in one stdout read.
+    void answerWithEcho({required Map<String, Object?> command, required String level}) {
+      final echo = {"type": "thinking_level_changed", "level": level};
+      final response = {"type": "response", "id": command["id"], "command": command["type"], "success": true};
+      process.emitRaw(bytes: utf8.encode("${jsonEncode(echo)}\n${jsonEncode(response)}\n"));
+    }
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "echo-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: variant,
+      model: model,
+    );
+    await _answerEntries(process);
+    answerWithEcho(
+      command: await waitForCommand(process: process, type: "set_model"),
+      level: "high",
+    );
+    answerWithEcho(
+      command: await waitForCommand(process: process, type: "set_thinking_level"),
+      level: "max",
+    );
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    await pump();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "echo-second",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "second")],
+      userVisibleText: "second",
+      variant: variant,
+      model: model,
+    );
+
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    expect(steeringPrompt["message"], "second");
+    expect(steeringPrompt["streamingBehavior"], "steer");
+
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
   for (final failModelUpdate in [true, false]) {
     test(
       "a failed ${failModelUpdate ? "model" : "post-model"} operation cannot leave stale cached selection",
