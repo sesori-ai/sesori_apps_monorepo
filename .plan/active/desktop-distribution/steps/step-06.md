@@ -153,8 +153,8 @@ state/login-registration preservation. Evidence artifacts are `10571804180` (x64
 digest `bc9ac73ebf451a400280a8b8e3c478eba3e67013d64a2a79e77e6877b47a7fc4`) and
 `10571709031` (arm64, digest
 `c7663919c1da5ff531c7103834c6e292f0b962d8ad0a73519f429a58f378876d`), expiring
-2026-10-02. This accepted private signed replacement with persisted Bridge Off intent
-on both CPUs, but did not inspect helper absence while either GUI was running.
+2026-10-02. That run accepted private signed replacement with persisted Bridge Off
+intent on both CPUs, but did not inspect helper absence while either GUI was running.
 
 The live helper-Off correction checks the exact
 `/Applications/Sesori.app/Contents/Helpers/bridge/bin/bridge` process after each
