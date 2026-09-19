@@ -1,6 +1,7 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart" as material;
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_motion_tuning/sesori_motion_tuning.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "catalog_scan_row_playbook.dart";
@@ -20,11 +21,61 @@ void main() {
   test("Widgetbook exposes the action example, matrix, state picker, and each curated variant", () {
     final component = buildCatalogScanRowComponent();
 
-    expect(component.useCases, hasLength(catalogScanRowScenarios.length + 3));
+    expect(component.useCases, hasLength(catalogScanRowScenarios.length + 4));
     expect(
-      component.useCases.take(3).map((useCase) => useCase.name),
-      ["In action · Pull to scan", "All states and variants", "State picker"],
+      component.useCases.take(4).map((useCase) => useCase.name),
+      ["In action · Pull to scan", "All states and variants", "State picker", "Motion tuning"],
     );
+  });
+
+  testWidgets("the shared editor replays scan entrance and collapse using captured settings", (tester) async {
+    await tester.pumpWidget(
+      CatalogScanRowMotionPreview(
+        designSystem: PregoDesignSystem.light,
+        reducedMotion: false,
+      ),
+    );
+    final host = tester.widget<MotionTuningHost>(find.byType(MotionTuningHost));
+    final values = const MotionSnapshot()
+        .withInput(parameter: scanEntranceDuration, input: 1000)
+        .withInput(parameter: scanEntranceCurve, input: "linear")
+        .withInput(parameter: scanEntranceScale, input: 0.8)
+        .withInput(parameter: scanCollapseDuration, input: 800)
+        .withInput(parameter: scanCollapseCurve, input: "linear");
+
+    host.onReplay(target: scanEntranceTarget, values: values);
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    final size = tester.widget<material.SizeTransition>(
+      find.descendant(of: find.byType(CatalogScanRow), matching: find.byType(material.SizeTransition)),
+    );
+    expect(size.sizeFactor.value, closeTo(0.5, 0.001));
+    final entrance = tester.widget<material.Transform>(
+      find.byKey(const material.ValueKey("catalog-scan-row-entrance")),
+    );
+    expect(entrance.transform.storage[0], closeTo(0.9, 0.001));
+
+    host.onReplay(target: scanCollapseTarget, values: values);
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    final collapsing = tester.widget<material.SizeTransition>(
+      find.descendant(of: find.byType(CatalogScanRow), matching: find.byType(material.SizeTransition)),
+    );
+    expect(collapsing.sizeFactor.value, closeTo(0.5, 0.001));
+    await tester.pump(const Duration(milliseconds: 416));
+    expect(find.byKey(const material.ValueKey("prego-deep-scan-card")), findsNothing);
+
+    host.onReplay(target: scanEntranceTarget, values: const MotionSnapshot());
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 260));
+    final restored = tester.widget<material.Transform>(
+      find.byKey(const material.ValueKey("catalog-scan-row-entrance")),
+    );
+    expect(restored.transform.storage[0], 1);
+    expect(tester.takeException(), isNull);
   });
 
   test("the action example offers the gesture demo and every curated static state", () {

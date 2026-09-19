@@ -1,0 +1,21 @@
+name: sesori_motion_tuning
+description: Local animation controls for Flutter component playbooks.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.2
+  flutter: ">=3.47.2 <3.48.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  material_ui: ^1.1.0
+  theme_prego:
+    path: ../module_prego
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  no_slop_linter:
+    path: ../../shared/no_slop_linter

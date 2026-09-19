@@ -1,9 +1,10 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart";
 import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
-import "package:universal_platform/universal_platform.dart";
 
+import "../motion/prego_reduced_motion.dart";
 import "../theme/prego_theme.dart";
 
 void tapUpFeedback() => HapticFeedback.lightImpact();
@@ -110,9 +111,6 @@ class PregoTappable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Can hardcode value to test different platform interactions.
-    final UniversalPlatformType platform = UniversalPlatform.value;
-
     // Unwrap sealed builders into unified types.
     final Widget Function({required Set<WidgetState> state}) childBuilder;
     final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder;
@@ -125,14 +123,6 @@ class PregoTappable extends StatelessWidget {
         containerBuilder = ccb;
     }
 
-    final onTap = this.onTap;
-    if (onTap == null) {
-      return containerBuilder(
-        state: const {WidgetState.disabled},
-        child: childBuilder(state: const {WidgetState.disabled}),
-      );
-    }
-
     final resolvedOverlayColor =
         overlayColor ??
         WidgetStateProperty.resolveWith<Color?>((states) {
@@ -142,28 +132,33 @@ class PregoTappable extends StatelessWidget {
           return null;
         });
 
+    final onTap = this.onTap;
+    // Preserve the iOS controller when a tap changes its button to loading or
+    // disabled, so the active press can finish releasing from its current scale.
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      return _IosTappable(
+        onTap: onTap,
+        containerBuilder: containerBuilder,
+        overlayColor: resolvedOverlayColor,
+        borderRadius: borderRadius,
+        useSuperellipse: useSuperellipse,
+        overlayInset: overlayInset,
+        childBuilder: childBuilder,
+      );
+    }
+
+    if (onTap == null) {
+      return containerBuilder(
+        state: const {WidgetState.disabled},
+        child: childBuilder(state: const {WidgetState.disabled}),
+      );
+    }
+
     // iOS/Web: interaction wraps container wraps content.
     // Android: container wraps interaction wraps content.
-    return switch (platform) {
-      .Web || .Windows || .Linux || .MacOS => _WebTappable(
-        onTap: onTap,
-        overlayColor: resolvedOverlayColor,
-        borderRadius: borderRadius,
-        useSuperellipse: useSuperellipse,
-        overlayInset: overlayInset,
-        childBuilder: childBuilder,
-        containerBuilder: containerBuilder,
-      ),
-      .IOS => _IosTappable(
-        onTap: onTap,
-        containerBuilder: containerBuilder,
-        overlayColor: resolvedOverlayColor,
-        borderRadius: borderRadius,
-        useSuperellipse: useSuperellipse,
-        overlayInset: overlayInset,
-        childBuilder: childBuilder,
-      ),
-      .Android || .Fuchsia => _AndroidTappable(
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.fuchsia)) {
+      return _AndroidTappable(
         onTap: onTap,
         color: resolvedOverlayColor,
         borderRadius: borderRadius,
@@ -171,8 +166,17 @@ class PregoTappable extends StatelessWidget {
         overlayInset: overlayInset,
         childBuilder: childBuilder,
         containerBuilder: containerBuilder,
-      ),
-    };
+      );
+    }
+    return _WebTappable(
+      onTap: onTap,
+      overlayColor: resolvedOverlayColor,
+      borderRadius: borderRadius,
+      useSuperellipse: useSuperellipse,
+      overlayInset: overlayInset,
+      childBuilder: childBuilder,
+      containerBuilder: containerBuilder,
+    );
   }
 }
 
@@ -524,7 +528,7 @@ mixin _ScalePulseMixin<T extends StatefulWidget> on State<T>, TickerProvider {
 class const _IosTappable({
   required final Widget Function({required Set<WidgetState> state}) childBuilder,
   required final Widget Function({required Widget child, required Set<WidgetState> state}) containerBuilder,
-  required final VoidCallback onTap,
+  required final VoidCallback? onTap,
   required final WidgetStateProperty<Color?> overlayColor,
   required final BorderRadius borderRadius,
   required final bool useSuperellipse,
@@ -536,11 +540,12 @@ class const _IosTappable({
 
 class _IosTappableState()
     extends State<_IosTappable>
-    with SingleTickerProviderStateMixin, _ScalePulseMixin<_IosTappable> {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver, _ScalePulseMixin<_IosTappable> {
   /// Border radius for the overlay, used to align it with the inner edge of the border when
   /// [PregoTappable.overlayInset] is set. Will be set in [initState] and [didUpdateWidget].
   BorderRadius _overlayBorderRadius = .zero;
   final Set<WidgetState> _state = {};
+  bool _reducedMotion = false;
 
   @override
   bool get isScalePulseActive => _state.contains(WidgetState.pressed);
@@ -548,7 +553,26 @@ class _IosTappableState()
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _overlayBorderRadius = _insetBorderRadius(widget.borderRadius, widget.overlayInset);
+    if (widget.onTap == null) _state.add(WidgetState.disabled);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncReducedMotionPreference();
+  }
+
+  void _syncReducedMotionPreference() {
+    _reducedMotion = prefersReducedMotion(context);
+    if (_reducedMotion) scalePulseController.value = 0;
+  }
+
+  @override
+  void didChangeAccessibilityFeatures() {
+    super.didChangeAccessibilityFeatures();
+    setState(_syncReducedMotionPreference);
   }
 
   @override
@@ -557,24 +581,39 @@ class _IosTappableState()
     if (oldWidget.borderRadius != widget.borderRadius || oldWidget.overlayInset != widget.overlayInset) {
       _overlayBorderRadius = _insetBorderRadius(widget.borderRadius, widget.overlayInset);
     }
+    if (widget.onTap == null) {
+      _state.add(WidgetState.disabled);
+      if (_state.remove(WidgetState.pressed) && !_reducedMotion) animateCancel();
+    } else {
+      _state.remove(WidgetState.disabled);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   void _handleTapDown() {
     setState(() => _state.add(WidgetState.pressed));
     tapDownFeedback();
-    animatePress();
+    if (!_reducedMotion) animatePress();
   }
 
   void _handleTapUp() {
     setState(() => _state.remove(WidgetState.pressed));
     tapUpFeedback();
-    widget.onTap();
-    animateRelease();
+    widget.onTap?.call();
+    if (!_reducedMotion) animateRelease();
   }
 
   void _handleTapCancel() {
+    // Removing the recognizer while disabling calls its old cancel handler
+    // during build. didUpdateWidget has already cleared and released that press.
+    if (!isScalePulseActive) return;
     setState(() => _state.remove(WidgetState.pressed));
-    animateCancel();
+    if (!_reducedMotion) animateCancel();
   }
 
   @override
@@ -584,9 +623,9 @@ class _IosTappableState()
 
     return GestureDetector(
       behavior: .opaque,
-      onTapDown: (_) => _handleTapDown(),
-      onTapUp: (_) => _handleTapUp(),
-      onTapCancel: _handleTapCancel,
+      onTapDown: widget.onTap == null ? null : (_) => _handleTapDown(),
+      onTapUp: widget.onTap == null ? null : (_) => _handleTapUp(),
+      onTapCancel: widget.onTap == null ? null : _handleTapCancel,
       child: AnimatedBuilder(
         animation: scalePulseController,
         builder: (context, _) {

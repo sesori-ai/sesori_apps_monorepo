@@ -8,6 +8,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../widgets/catalog_scan_row.dart";
+import "../../widgets/catalog_scan_row_motion.dart";
 import "../../widgets/remote_failure_view.dart";
 import "widgets/project_tile.dart";
 
@@ -299,6 +300,7 @@ class _ProjectListViewState() extends State<ProjectListView> {
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         SliverToBoxAdapter(
           child: CatalogScanRow(
+            motion: CatalogScanRowMotion.standard,
             scan: catalogScan,
             onCancel: () => context.read<ProjectListCubit>().cancelCatalogScan(),
             onDismiss: () => context.read<ProjectListCubit>().dismissCatalogScan(),
