@@ -524,21 +524,19 @@ class ProjectInventoryService({
     return _awaitRefreshResult(refresh: _refreshProjects(force: false, catalogRefresh: false));
   }
 
-  /// A catalog refresh can supersede an explicit pull. Wait for the newer read
-  /// so the caller reports that read's outcome rather than premature success.
+  /// Follow ownership after every completion, including a successor that applied
+  /// before another read started but before this waiter resumed.
   Future<bool> _awaitRefreshResult({required Future<_ProjectFetchOutcome> refresh}) async {
     var latest = refresh;
     while (true) {
-      switch (await latest) {
-        case _ProjectFetchOutcome.applied:
-          return true;
-        case _ProjectFetchOutcome.failed:
-          return false;
-        case _ProjectFetchOutcome.superseded:
-          final winningFetch = _latestFetch;
-          if (winningFetch == null || identical(winningFetch, latest)) return false;
-          latest = winningFetch;
+      final outcome = await latest;
+      if (_state.isClosed) return false;
+      final winningFetch = _latestFetch;
+      if (winningFetch != null && !identical(winningFetch, latest)) {
+        latest = winningFetch;
+        continue;
       }
+      return outcome == _ProjectFetchOutcome.applied;
     }
   }
 

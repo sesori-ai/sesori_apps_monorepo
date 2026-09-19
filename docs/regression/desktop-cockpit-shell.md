@@ -24,11 +24,19 @@ The main pane hosts one full-width routed page.
 - Windows narrower than 760 pixels temporarily collapse the sidebar without
   changing saved preferences. Widening restores the user's expanded/collapsed
   choice. The native minimum window remains 560 × 480.
-- Project shortcuts open the existing sessions route. The Projects header opens
-  home pane. The labeled New project button uses the shared folder
-  dialog and project-list cubit. Pinned Bridge and Settings remain available
-  in a visually separated footer. A compact Projects shortcut remains available
-  in empty/recovery states even when the window is too narrow to expand.
+- Project shortcuts open the existing sessions route. The labeled New project button uses the shared folder
+  dialog and project-list cubit; the adjacent collapse control owns sidebar presentation. The compact Projects
+  shortcut opens home, including empty/recovery states when the window is too narrow to expand.
+  The separated footer groups This computer with refresh and Settings icon controls. Icon/status hints and
+  truncated-label hints remain useful, while fully visible labels need no duplicate tooltip.
+- Explicit sidebar refresh runs through `DesktopSidebarRefreshOrchestrator` over the same scoped project and recent
+  inventory services. It awaits the project phase before refreshing admitted recent entries, joining initial reads
+  already in flight. An ordinary project failure still allows retained recent entries to update; either phase failing
+  produces failure feedback. Useful rows stay visible. Busy controls cannot dispatch duplicate intent, and busy/idle
+  refresh plus Settings expose accessible names and keyboard actions.
+  A superseded caller follows the current owning read after every completion, including an already-completed successor
+  followed by a newer owner. Completed failures stay observable despite retained rows; removed entries leave the
+  refresh scope. A batch does not wait for future catalog activity or a globally quiet inventory.
 - Running projects show the shared rotating outline sparkle; unread projects
   show its static filled state. On macOS, preserve Prego's native platform-view
   path so spinning does not schedule recurring Flutter frames. Verify its
@@ -77,7 +85,7 @@ The main pane hosts one full-width routed page.
   A superseded project response cannot admit stale IDs. A successful local project hide publishes the accepted
   post-hide inventory through that same seam and fences older list responses. If a connection/reload has replaced loaded
   state before hide acceptance, one forced successor fetch replaces the superseded load and publishes its winning
-  inventory. Absent IDs and pending reads are removed; reconnect/catalog invalidation refreshes only retained entries,
+  inventory. Absent IDs and their read metadata are removed; reconnect/catalog invalidation refreshes retained entries,
   including failures. Initial loading/failure stays
   project-local. Live session/activity/unread events update loaded projections.
   Loaded rows remain visible during refresh and logged refresh failures; live
@@ -109,11 +117,11 @@ The main pane hosts one full-width routed page.
   clients using another bridge. Recovery hides the pill with a
   short fade; reduced motion disables it. Departing content neither intercepts
   input nor remains in accessibility announcements.
-- The Bridge row always exposes its supervised status through a dot and an
+- The This computer row always exposes its supervised status through a dot and an
   accessible description. Takeover, login, start failure and crash-give-up
   recovery lives in the sidebar footer. Long repair guidance scrolls within a
   bounded card; compact mode keeps the primary action and full tooltip. Open
-  Logs is also available in the Bridge popover. Command locks still disable
+  Logs is also available in the This computer popover. Command locks still disable
   recovery mutations, and start failures do not offer nonexistent child logs.
 - The canonical `/projects` home receives startup via `/splash` redirect and
   anchors notification route stacks; returning home retains shared inventory
@@ -123,7 +131,7 @@ The main pane hosts one full-width routed page.
   visibility without replacing the session controller, element or composer.
   Notification activation dismisses root popups before revealing its session:
   the same session retains its page and Back stack; another gets the typed stack.
-- Bridge opens a flat, screen-clamped popover in expanded and compact modes
+- This computer opens a flat, screen-clamped popover in expanded and compact modes
   without replacing the main pane. A Local bridge heading and process status
   precede one clear Start/Stop/Retry/Take Over action; logs/configuration are
   secondary. A crashed helper offers Retry despite retained On intent. A
@@ -133,7 +141,7 @@ The main pane hosts one full-width routed page.
   Outside click and Escape dismiss without an action. App Quit and startup
   preferences belong to application controls, not local bridge controls.
 - Settings is a root modal, preserving the current route, session element and
-  live composer. Sidebar/⌘, (Ctrl+, elsewhere) open General; the Bridge popover
+  live composer. Sidebar/⌘, (Ctrl+, elsewhere) open General; the This computer popover
   opens Bridge; session setup opens Harnesses. All tabs and Close remain usable
   at 560 × 480, with independently scrollable tabs/content at large text scales. Escape/outside dismiss;
   active text editing and owned sheets retain their closer dismissal order.
@@ -189,6 +197,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   failures, including live unread false, lifecycle patches, failed-reread rearming and superseded-read completion.
   Execute those inventory cases without a mounted Cubit. Verify adapter replay/retry, independent consumer close,
   one eager factory instance per signed-in scope, and disposal before a fresh scope admits data.
+- Headless explicit refresh ordering, shared-instance factory parameters, admission joining, completed failed winners,
+  later owning reads, partial failure, removal/disposal and useful diagnostic causes. Presentation covers keyboard
+  activation, accessible busy/idle names, disabled states, useful-row retention and success/failure notices.
 - Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel and reset-only persistence,
   visible-scrollbar edge hit tests and thumb dragging, intermediate collapse/expand frames with cramped
   session-row signals, both reduced-motion signals, temporary narrow-window mode, running/unread updates
@@ -212,8 +223,9 @@ width jumping on reversal beyond a bound, scrollbars intercepting project toggle
 automatic collapse overwriting user preferences, missing/stale activity marks,
 duplicate project inventories or Activity/ordinary session rows, repeated admission on rebuild/expansion, lost project
 context, a shifting empty Activity header, a second session-list pane, sidebar browsing clearing unread state,
-stale/missing recent rows,
-covered transcripts marked viewed, notification opens stranded behind a popup,
+stale/missing recent rows, a refresh reporting success from old retained data, an indicator settling before its
+owning reads, duplicate refresh dispatch, unnamed icon controls, covered transcripts marked viewed,
+notification opens stranded behind a popup,
 wrong session-action targets, or lost navigation after switching projects. Vary project-name lengths and
 Unicode, window sizes, theme, and sidebar width; preserve any already-running
 bridge during UI-only checks.
@@ -222,6 +234,8 @@ bridge during UI-only checks.
 
 - `client/desktop/lib/core/widgets/desktop_cockpit_shell.dart`
 - `client/desktop/lib/core/widgets/desktop_sidebar.dart`
+- `client/module_desktop_core/lib/src/orchestration/desktop_sidebar_refresh_orchestrator.dart`
+- `client/module_desktop_core/lib/src/cubits/desktop_sidebar/desktop_sidebar_refresh_cubit.dart`
 - `client/desktop/lib/core/widgets/desktop_connection_pill.dart`
 - `client/desktop/lib/core/widgets/desktop_bridge_recovery_card.dart`
 - `client/desktop/lib/core/widgets/desktop_bridge_popover.dart`

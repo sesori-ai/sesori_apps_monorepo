@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class _MockProjectInventoryService() extends Mock implements ProjectInventoryService;
@@ -27,6 +28,7 @@ void main() {
     final closed = <RecentSessionInventoryService>[];
     final projectInstances = <ProjectInventoryService>[];
     final closedProjects = <ProjectInventoryService>[];
+    var workflowCount = 0;
     when(() => connection.events).thenAnswer((_) => events.stream);
     when(repository.listProjects).thenAnswer(
       (_) async => ApiResponse.success(
@@ -71,7 +73,18 @@ void main() {
       unawaited(projects.listProjects());
       return inventory;
     });
+    getIt.registerFactoryParam<
+      DesktopSidebarRefreshOrchestrator,
+      ProjectInventoryService,
+      RecentSessionInventoryService
+    >((project, recent) {
+      expect(project, same(projectInstances.last));
+      expect(recent, same(instances.last));
+      workflowCount++;
+      return DesktopSidebarRefreshOrchestrator(projectInventory: project, recentInventory: recent);
+    });
     addTearDown(() async {
+      await getIt.unregister<DesktopSidebarRefreshOrchestrator>();
       await getIt.unregister<ProjectInventoryService>();
       await getIt.unregister<RecentSessionInventoryService>();
       await projects.dispose();
@@ -84,6 +97,7 @@ void main() {
     final child = Builder(
       builder: (context) {
         context.read<ProjectListCubit>();
+        context.read<DesktopSidebarRefreshCubit>();
         return const SizedBox.shrink();
       },
     );
@@ -98,6 +112,8 @@ void main() {
     expect(context.read<ProjectInventoryService>(), same(projectInstances.single));
     final consumer = context.read<RecentSessionsCubit>();
     final projectConsumer = context.read<ProjectListCubit>();
+    final refreshConsumer = context.read<DesktopSidebarRefreshCubit>();
+    expect(workflowCount, 1);
     expect(consumer.state, same(first.state.value));
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -106,6 +122,7 @@ void main() {
     await tester.pump();
     expect(consumer.isClosed, isTrue);
     expect(projectConsumer.isClosed, isTrue);
+    expect(refreshConsumer.isClosed, isTrue);
     expect(events.hasListener, isFalse);
     expect(closed, [first]);
     expect(closedProjects, projectInstances);
@@ -113,6 +130,7 @@ void main() {
     await tester.pumpWidget(DesktopCockpitCubitProvider(child: child));
     expect(instances, hasLength(2));
     expect(projectInstances, hasLength(2));
+    expect(workflowCount, 2);
     expect(instances.last, isNot(same(first)));
     expect(projectInstances.last, isNot(same(projectInstances.first)));
     await tester.pumpWidget(const SizedBox.shrink());

@@ -653,8 +653,9 @@ mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 
 Logging 9.a.1–9.a.2 is merged, preserving #1509's published history through forward integration.
 9.b interactions merged as #1524, 9.c.1 refresh continuity as #1526, and 9.c.2a Activity presentation as #1533.
-9.c.2b.1 recent ownership merged as #1540. Continue with 9.c.2b.2 project ownership, 9.c.2c refresh workflow/controls,
-and 10 shortcuts/title bar; publish each successor only after its predecessor merges.
+9.c.2b.1 recent ownership merged as #1540 and 9.c.2b.2 project ownership as #1543.
+Continue with 9.c.2c refresh workflow/controls and 10 shortcuts/title bar; publish each successor only after its
+predecessor merges.
 Steps 11 and 12 remain the final audit and qualification.
 Step 8 must land after
 step 7.c (General startup preferences and Bridge/FDA settings). Step 7.a follows

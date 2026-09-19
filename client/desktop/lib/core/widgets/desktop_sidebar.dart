@@ -74,65 +74,30 @@ class const DesktopSidebar({
           children: [
             Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 12, 8),
-              child: Row(
-                children: [
-                  if (expansion > 0)
-                    Expanded(
-                      child: ClipRect(
-                        child: Opacity(
-                          opacity: expansion,
-                          child: SizedBox(
-                            height: 32,
-                            child: OverflowBox(
-                              alignment: AlignmentDirectional.centerStart,
-                              minWidth: 130,
-                              maxWidth: 130,
-                              child: Semantics(
-                                button: true,
-                                label: loc.projectListTitle,
-                                onTap: onOpenProjects,
-                                excludeSemantics: true,
-                                selected: selectedProjectId == null,
-                                child: TextButton(
-                                  onPressed: onOpenProjects,
-                                  style: TextButton.styleFrom(
-                                    alignment: AlignmentDirectional.centerStart,
-                                    padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
-                                  ),
-                                  child: Text(
-                                    loc.projectListTitle,
-                                    style: prego.textTheme.textSm.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  SizedBox(
-                    width: 32,
-                    height: 32,
-                    child: IconButton(
-                      key: const Key("desktop-sidebar-toggle"),
-                      tooltip: expansion < 0.5 ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse,
-                      padding: const EdgeInsets.all(PregoSpacing.sm),
-                      onPressed: autoCollapsed ? null : onToggleCollapsed,
-                      icon: Icon(
-                        expansion < 0.5
-                            ? TablerRegular.layout_sidebar_left_expand
-                            : TablerRegular.layout_sidebar_left_collapse,
-                        size: 18,
-                        color: autoCollapsed ? prego.colors.textDisabled : prego.colors.textSecondary,
-                      ),
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: SizedBox.square(
+                  dimension: 32,
+                  child: IconButton(
+                    key: const Key("desktop-sidebar-toggle"),
+                    tooltip: expansion < 0.5 ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse,
+                    padding: const EdgeInsets.all(PregoSpacing.sm),
+                    onPressed: autoCollapsed ? null : onToggleCollapsed,
+                    icon: Icon(
+                      expansion < 0.5
+                          ? TablerRegular.layout_sidebar_left_expand
+                          : TablerRegular.layout_sidebar_left_collapse,
+                      size: 18,
+                      color: autoCollapsed ? prego.colors.textDisabled : prego.colors.textSecondary,
                     ),
                   ),
-                ],
+                ),
               ),
             ),
             Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 16),
-              child: Tooltip(
+              child: _ConditionalTooltip(
+                enabled: expansion < 1,
                 message: loc.desktopSidebarNewProject,
                 child: FilledButton(
                   key: const Key("desktop-sidebar-new-project"),
@@ -154,13 +119,9 @@ class const DesktopSidebar({
                             opacity: expansion,
                             child: Padding(
                               padding: EdgeInsetsDirectional.only(start: PregoSpacing.md * expansion),
-                              child: Text(
-                                loc.desktopSidebarNewProject,
-                                maxLines: 1,
-                                overflow: TextOverflow.clip,
-                                style: prego.textTheme.textSm.medium.copyWith(
-                                  color: prego.colors.textWhite,
-                                ),
+                              child: _TooltipWhenTruncated(
+                                message: loc.desktopSidebarNewProject,
+                                style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textWhite),
                               ),
                             ),
                           ),
@@ -221,41 +182,110 @@ class const DesktopSidebar({
                 ProjectListBridgeDisconnected() => const SizedBox.shrink(),
               },
             ),
-            Container(
-              key: const Key("desktop-sidebar-footer"),
-              padding: const EdgeInsets.symmetric(vertical: PregoSpacing.md),
-              decoration: BoxDecoration(
-                color: prego.colors.bgSurface1,
-                border: Border(top: BorderSide(color: prego.colors.borderPrimary)),
+            _SidebarFooter(
+              projectState: state,
+              expansion: expansion,
+              bridge: bridge,
+              bridgeColor: bridgeColor,
+              onOpenBridgeSettings: onOpenBridgeSettings,
+              onOpenSettings: onOpenSettings,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class const _SidebarFooter({
+  required final ProjectListState projectState,
+  required final double expansion,
+  required final BridgeControlState bridge,
+  required final Color bridgeColor,
+  required final VoidCallback onOpenBridgeSettings,
+  required final VoidCallback onOpenSettings,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+    final refresh = context.watch<DesktopSidebarRefreshCubit>();
+    final refreshing =
+        refresh.state == DesktopSidebarRefreshState.refreshing ||
+        switch (projectState) {
+          ProjectListLoaded(:final isRefreshing) => isRefreshing,
+          ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => false,
+        };
+    final canRefresh = projectState is ProjectListLoaded && !refreshing;
+    final controlSize = 28 + 8 * expansion;
+    return BlocListener<DesktopSidebarRefreshCubit, DesktopSidebarRefreshState>(
+      listenWhen: (_, current) =>
+          current == DesktopSidebarRefreshState.succeeded || current == DesktopSidebarRefreshState.failed,
+      listener: (context, state) {
+        final succeeded = state == DesktopSidebarRefreshState.succeeded;
+        PregoPopupAlertPresenter.of(context).show(
+          title: succeeded ? loc.desktopSidebarRefreshSuccess : loc.desktopSidebarRefreshFailed,
+          variant: succeeded
+              ? PregoPopupAlertsNotificationsVariant.success
+              : PregoPopupAlertsNotificationsVariant.error,
+        );
+      },
+      child: Container(
+        key: const Key("desktop-sidebar-footer"),
+        padding: const EdgeInsets.symmetric(vertical: PregoSpacing.xs),
+        decoration: BoxDecoration(
+          color: prego.colors.bgSurface1,
+          border: Border(top: BorderSide(color: prego.colors.borderPrimary)),
+        ),
+        child: Column(
+          children: [
+            DesktopBridgeRecoveryCard(expansion: expansion),
+            PregoPopover(
+              popoverWidth: 300,
+              triggerBuilder: (context, toggle) => _SidebarButton(
+                label: loc.desktopSettingsThisComputer,
+                icon: const Icon(TablerRegular.server, size: 20),
+                expansion: expansion,
+                selected: false,
+                status: (icon: Icon(Icons.circle, size: 8, color: bridgeColor), label: bridge.statusLabel),
+                onPressed: toggle,
               ),
-              child: Column(
-                children: [
-                  DesktopBridgeRecoveryCard(expansion: expansion),
-                  PregoPopover(
-                    popoverWidth: 300,
-                    triggerBuilder: (context, toggle) => _SidebarButton(
-                      label: loc.desktopBridgeTitle,
-                      icon: const Icon(TablerRegular.server, size: 20),
-                      expansion: expansion,
-                      selected: false,
-                      status: (icon: Icon(Icons.circle, size: 8, color: bridgeColor), label: bridge.statusLabel),
-                      onPressed: toggle,
-                    ),
-                    contentBuilder: (context, close) => DesktopBridgePopover(
-                      close: close,
-                      onOpenSettings: onOpenBridgeSettings,
-                    ),
+              contentBuilder: (context, close) => DesktopBridgePopover(
+                close: close,
+                onOpenSettings: onOpenBridgeSettings,
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox.square(
+                  dimension: controlSize,
+                  child: IconButton(
+                    key: const Key("desktop-sidebar-refresh"),
+                    tooltip: refreshing ? loc.desktopSidebarRefreshing : loc.desktopSidebarRefresh,
+                    padding: const EdgeInsets.all(PregoSpacing.sm),
+                    onPressed: canRefresh ? () => unawaited(refresh.refresh()) : null,
+                    icon: refreshing
+                        ? Semantics(
+                            label: loc.desktopSidebarRefreshing,
+                            child: const ExcludeSemantics(
+                              child: SizedBox.square(dimension: 20, child: PregoActivityIndicator(color: null)),
+                            ),
+                          )
+                        : Icon(TablerRegular.refresh, size: 18, semanticLabel: loc.desktopSidebarRefresh),
                   ),
-                  _SidebarButton(
-                    label: loc.settingsTitle,
-                    icon: const Icon(TablerRegular.settings, size: 20),
-                    expansion: expansion,
-                    selected: false,
-                    status: null,
+                ),
+                SizedBox.square(
+                  dimension: controlSize,
+                  child: IconButton(
+                    key: const Key("desktop-sidebar-settings"),
+                    tooltip: loc.settingsTitle,
+                    padding: const EdgeInsets.all(PregoSpacing.sm),
                     onPressed: onOpenSettings,
+                    icon: Icon(TablerRegular.settings, size: 18, semanticLabel: loc.settingsTitle),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
@@ -924,9 +954,13 @@ class const _SidebarButton({
     final description = status == null ? label : "$label, ${status.label}";
     final emphasized = selected || status != null;
     final color = emphasized ? prego.colors.textPrimary : prego.colors.textSecondary;
+    final textStyle = (emphasized ? prego.textTheme.textSm.medium : prego.textTheme.textSm.regular).copyWith(
+      color: color,
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.xxs),
-      child: Tooltip(
+      child: _ConditionalTooltip(
+        enabled: expansion < 1 || status != null,
         message: description,
         child: Semantics(
           button: true,
@@ -979,13 +1013,9 @@ class const _SidebarButton({
                         opacity: expansion,
                         child: Padding(
                           padding: EdgeInsetsDirectional.only(start: PregoSpacing.md * expansion),
-                          child: Text(
-                            label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: (emphasized ? prego.textTheme.textSm.medium : prego.textTheme.textSm.regular)
-                                .copyWith(color: color),
-                          ),
+                          child: status == null
+                              ? _TooltipWhenTruncated(message: label, style: textStyle)
+                              : Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle),
                         ),
                       ),
                     ),

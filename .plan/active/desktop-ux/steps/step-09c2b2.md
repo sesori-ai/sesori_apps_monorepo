@@ -4,6 +4,17 @@ Delivery 18/22; branch `desktop-ux/project-refresh-ownership`.
 Base: #1540 squash `41e019da8bb5af9e23d76888a3a50912a308f26f`, tree
 `b5ee109cc3b170700c4697a6390400baf523687a`.
 
+## Merge
+
+PR #1543 merged on 2026-09-18T22:50:30Z. Accepted publication head:
+`937adb9114041794777c38afbfc81acff65b1e8d`; distinct squash:
+`a772a85a141b617f0d766d0d6a7d6aa11b654a30`, tree `cee8b57a727f3f5dad3677194b61c1b4b2e1e6e9`.
+Readiness CI passed 12/12, Cubic approved, Codex completed without findings and all four threads were resolved.
+The terminal report later showed 13/13 passing. Final publication: 1,000 lines (741 additions/259 deletions),
+34 paths: 442 production, 202 tests, 340 documentation and 16 generated. Reviewed executable source remains
+`cde8c241b42d94c19d44be2bbfa2ed6c57543fe1`; follow-up publication changed only documentation and a class-doc comment.
+Native/live qualification remains outstanding.
+
 ## Scope and ownership
 
 `ProjectInventoryService` owns the existing project reads, retained results, mutations, live projection,
