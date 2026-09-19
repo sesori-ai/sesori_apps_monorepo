@@ -87,6 +87,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String desktopShortcutHint(String label, String shortcut) {
+    return '$label ($shortcut)';
+  }
+
+  @override
   String get desktopSidebarCollapse => 'Collapse sidebar';
 
   @override

@@ -103,6 +103,102 @@ void main() {
   final resize = find.byKey(const Key("desktop-sidebar-resize"));
   final toggle = find.byKey(const Key("desktop-sidebar-toggle"));
 
+  testWidgets("sidebar shortcut preserves focus, ignores repeats and respects automatic collapse", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(900, 600);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final focus = FocusNode();
+    addTearDown(focus.dispose);
+    await tester.pumpWidget(
+      app(
+        state: running,
+        child: DesktopCockpitShell(
+          selectedProjectId: "project-1",
+          selectedSessionId: null,
+          onOpenSession: _openSession,
+          onNewSession: _openProject,
+          sessionActions: _sessionActions,
+          onOpenProject: _openProject,
+          onOpenBridgeSettings: _noOp,
+          onOpenProjects: _noOp,
+          onOpenSettings: _noOp,
+          child: TextField(focusNode: focus),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final macOS = defaultTargetPlatform == TargetPlatform.macOS;
+    final modifier = macOS ? LogicalKeyboardKey.metaLeft : LogicalKeyboardKey.controlLeft;
+    final hint = macOS ? "⌘" : "Ctrl+";
+    expect(find.byTooltip("Collapse sidebar (${hint}B)"), findsOneWidget);
+    expect(find.byTooltip("Settings ($hint,)"), findsOneWidget);
+    expect(find.byTooltip("New session in Sesori Desktop (${hint}N)"), findsOneWidget);
+    // The cockpit admits shortcuts before a child requests focus.
+    await tester.sendKeyDownEvent(modifier);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.keyB);
+    await tester.pumpAndSettle();
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(modifier);
+    await tester.pumpAndSettle();
+    expect(sidebar.state.collapsed, isTrue);
+    expect(tester.getSize(rail).width, 56);
+    expect(find.byTooltip("Expand sidebar (${hint}B)"), findsOneWidget);
+    focus.requestFocus();
+    await tester.pump();
+    final wrongModifier = macOS ? LogicalKeyboardKey.controlLeft : LogicalKeyboardKey.metaLeft;
+    await tester.sendKeyDownEvent(wrongModifier);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(wrongModifier);
+    expect(sidebar.state.collapsed, isTrue);
+    await tester.sendKeyDownEvent(modifier);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(modifier);
+    await tester.pumpAndSettle();
+    expect(sidebar.state.collapsed, isFalse);
+    expect(tester.getSize(rail).width, 260);
+    expect(focus.hasFocus, isTrue);
+    verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(2);
+    tester.view.physicalSize = const Size(700, 600);
+    await tester.pump();
+    expect(find.byTooltip("Collapse sidebar"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.layout_sidebar_left_collapse), findsOneWidget);
+    expect(tester.widget<IconButton>(toggle).onPressed, isNull);
+    await tester.pumpAndSettle();
+    expect(find.byTooltip("Expand sidebar"), findsOneWidget);
+    await tester.sendKeyDownEvent(modifier);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(modifier);
+    await tester.pumpAndSettle();
+    expect(sidebar.state.collapsed, isFalse);
+    expect(tester.getSize(rail).width, 56);
+    verifyNever(() => repository.writeSidebarLayout(layout: any(named: "layout")));
+    tester.view.physicalSize = const Size(900, 600);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(rail).width, 260);
+    expect(focus.hasFocus, isTrue);
+  }, variant: TargetPlatformVariant.desktop());
+
+  testWidgets("only the selected project's New session control advertises the shortcut", (tester) async {
+    whenListen(
+      projects,
+      const Stream<ProjectListState>.empty(),
+      initialState: const ProjectListState.loaded(
+        projects: [
+          ProjectSummary(id: "project-1", name: "Selected", path: "/work/selected", time: null),
+          ProjectSummary(id: "project-2", name: "Another", path: "/work/another", time: null),
+        ],
+        activityById: {},
+      ),
+    );
+    await tester.pumpWidget(app(state: running));
+    await tester.pumpAndSettle();
+    final hint = defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N";
+    expect(find.byTooltip("New session in Selected ($hint)"), findsOneWidget);
+    expect(find.byTooltip("New session in Another"), findsOneWidget);
+  });
+
   testWidgets("compact home and Settings remain screen-reader actions", (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(700, 600);

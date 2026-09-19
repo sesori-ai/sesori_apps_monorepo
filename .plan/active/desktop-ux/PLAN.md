@@ -223,6 +223,8 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   it (window_manager `TitleBarStyle.hidden` + drag region). If it fights the
   toolkit or breaks window restore, the step ships without it and records why.
   Windows and Linux keep native chrome in phase 1.
+  Execution decision (2026-09-19): omit this optional integration. Protected-session constraints prevent safe
+  drag/traffic-light/relaunch qualification; no toolkit failure is claimed. All platforms retain native chrome.
 
 ## Design
 
@@ -348,8 +350,8 @@ Row
 
 ### Main pane pages
 
-- `/splash` → `/projects` → `DesktopHomePane`: connected empty state ("Pick a session or
-  press ⌘N", "Add a project" when the inventory is empty), the existing
+- `/splash` → `/projects` → `DesktopHomePane`: connected empty state (pick a session from the sidebar,
+  "Add a project" when the inventory is empty), the existing
   `DesktopBridgeRecoveryView` (moved out of the deleted project-list screen)
   for disconnected states, and the macOS file-access card.
 - `/projects/:id/sessions` → the shared `SessionListScaffold` (mobile styling,
@@ -599,7 +601,7 @@ Completed implementation specifics live in the linked evidence; this matrix summ
 | 9.c.2b.1 | 17/22 | ≤ 1,200 | Scoped recent-session inventory below its presentation adapter. |
 | 9.c.2b.2 | 18/22 | ≤ 1,400 | Scoped project inventory with both mobile/desktop adapters. |
 | 9.c.2c | 19/22 | ≤ 1,450 | Typed desktop refresh workflow, control presentation and useful hints. |
-| 10 | 20/22 | ≤ 600 | Keyboard shortcuts and macOS title-bar/drag integration. |
+| 10 | 20/22 | ≤ 600 | Contextual keyboard shortcuts; native chrome unchanged. |
 | 11 | 21/22 | ≤ 600 | Control-content audit and regression reconciliation. |
 | 12 | 22/22 | ≤ 300 | Recorded coverage, phase-2 handoff and plan retirement. |
 
@@ -618,8 +620,9 @@ boundary: 9.c.2b.1 moves recent ownership and its consumer; 9.c.2b.2 moves proje
 The code-informed 18/22 plan places the desktop refresh workflow with its first control in 19/22, keeping the same
 22-step total without an unused intermediate API. This adds no feature scope, compatibility shim, or request bus.
 
-Step 10 retains ⌘N, ⌘, and ⌘B via cockpit `CallbackShortcuts`, shortcut hints, and macOS hidden
-chrome/drag region behind the single D12 switch in `FlutterWindowHost.initialize`.
+Step 10 adds Cmd/Ctrl+N beside the existing Settings binding in the router, and Cmd/Ctrl+B in the cockpit.
+They use existing typed navigation/layout commands, ignore held-key repeats and show truthful platform hints.
+The optional D12 hidden-chrome experiment is omitted; no dormant native switch or drag region is added.
 Step 11 audits labels, grouping, scope, redundancy and state-specific actions.
 Step 12 records the full matrix and handoff, then moves the plan to `.plan/completed/desktop-ux/`.
 
@@ -654,8 +657,8 @@ mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 Logging 9.a.1–9.a.2 is merged, preserving #1509's published history through forward integration.
 9.b interactions merged as #1524, 9.c.1 refresh continuity as #1526, and 9.c.2a Activity presentation as #1533.
 9.c.2b.1 recent ownership merged as #1540 and 9.c.2b.2 project ownership as #1543.
-Continue with 9.c.2c refresh workflow/controls and 10 shortcuts/title bar; publish each successor only after its
-predecessor merges.
+9.c.2c refresh workflow/controls merged as #1545. Continue with 10 contextual shortcuts, then 11 and 12;
+publish each successor only after its predecessor merges.
 Steps 11 and 12 remain the final audit and qualification.
 Step 8 must land after
 step 7.c (General startup preferences and Bridge/FDA settings). Step 7.a follows
@@ -733,9 +736,9 @@ later slices against the repository's actual-change rule.
   refresh success/failure, stable insertion/removal and reduced motion. Inspect real-font
   expanded/compact/light/dark renders and useful-versus-redundant tooltip cases.
   Native interaction/compositing coverage remains required, not inferred from fixtures.
-- **Step 10:** widget tests for the three shortcuts; manual macOS: hidden
-  title bar drag, traffic lights, window restore after relaunch; if the title
-  bar is cut, the PR body says so and why.
+- **Step 10:** fake-backed widget tests for project/no-project routing, modifier keys, held-key repeats,
+  focus/popup precedence, sidebar persistence/narrow-window intent and shortcut hints. Existing Settings entry stays
+  covered. The optional hidden title bar is omitted under D12; native keyboard/window-restore checks remain unexecuted.
 - **Step 11:** audit completed control contents against the table above; inspect
   relevant renders, fix small presentation issues, and validate docs. Native or
   user-dependent checks remain in the final testing handoff.

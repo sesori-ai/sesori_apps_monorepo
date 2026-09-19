@@ -52,6 +52,14 @@
     "description": "Tooltip for showing a project's recent-session rows in the desktop sidebar.",
     "placeholders": {"projectName": {"type": "String"}}
   },
+  "desktopShortcutHint": "{label} ({shortcut})",
+  "@desktopShortcutHint": {
+    "description": "Desktop control tooltip with its available platform-specific keyboard shortcut.",
+    "placeholders": {
+      "label": {"type": "String"},
+      "shortcut": {"type": "String"}
+    }
+  },
   "desktopSidebarCollapse": "Collapse sidebar",
   "@desktopSidebarCollapse": {"description": "Tooltip for switching desktop navigation to the compact project rail."},
   "desktopSidebarExpand": "Expand sidebar",

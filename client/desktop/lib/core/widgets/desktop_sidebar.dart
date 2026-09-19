@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -46,6 +47,7 @@ class const DesktopSidebar({
     final state = context.watch<ProjectListCubit>().state;
     final collapsedProjects = context.select((DesktopSidebarCubit cubit) => cubit.state.collapsedProjectIds);
     final loc = context.loc;
+    final toggleLabel = expansion < 0.5 ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse;
     final prego = context.prego;
     final bridge = context.watch<BridgeControlCubit>().state;
     final bridgeColor = bridge.canTakeOver
@@ -80,7 +82,12 @@ class const DesktopSidebar({
                   dimension: 32,
                   child: IconButton(
                     key: const Key("desktop-sidebar-toggle"),
-                    tooltip: expansion < 0.5 ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse,
+                    tooltip: autoCollapsed
+                        ? toggleLabel
+                        : loc.desktopShortcutHint(
+                            toggleLabel,
+                            defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B",
+                          ),
                     padding: const EdgeInsets.all(PregoSpacing.sm),
                     onPressed: autoCollapsed ? null : onToggleCollapsed,
                     icon: Icon(
@@ -279,7 +286,10 @@ class const _SidebarFooter({
                   dimension: controlSize,
                   child: IconButton(
                     key: const Key("desktop-sidebar-settings"),
-                    tooltip: loc.settingsTitle,
+                    tooltip: loc.desktopShortcutHint(
+                      loc.settingsTitle,
+                      defaultTargetPlatform == TargetPlatform.macOS ? "⌘," : "Ctrl+,",
+                    ),
                     padding: const EdgeInsets.all(PregoSpacing.sm),
                     onPressed: onOpenSettings,
                     icon: Icon(TablerRegular.settings, size: 18, semanticLabel: loc.settingsTitle),
@@ -550,7 +560,12 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                                       child: IconButton(
                                         key: ValueKey("sidebar-new-session-${widget.project.id}"),
                                         padding: EdgeInsets.zero,
-                                        tooltip: loc.desktopSidebarNewSession(widget.name),
+                                        tooltip: widget.selected
+                                            ? loc.desktopShortcutHint(
+                                                loc.desktopSidebarNewSession(widget.name),
+                                                defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N",
+                                              )
+                                            : loc.desktopSidebarNewSession(widget.name),
                                         icon: const Icon(TablerRegular.plus, size: 16),
                                         onPressed: () => widget.onNewSession(
                                           context: actionContext,

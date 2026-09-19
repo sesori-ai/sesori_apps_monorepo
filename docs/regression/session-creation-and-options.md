@@ -8,6 +8,9 @@ variant, and worktree mode, and creating the session with its first input.
 
 ## Required Behavior
 
+- Desktop's project New session action and Cmd+N (Ctrl+N on Windows/Linux) open the same typed setup route.
+  The shortcut uses the current route's project and nullable display name; without project context it is a no-op.
+  It opens setup rather than creating a backend session, ignores held-key repeats and respects root popup focus.
 - Options are discovered per plugin and cached under the plugin's declared
   coherence scope; retention and replacement are bridge-owned.
 - Claude's plugin-scoped discovery runs in its host-created state directory,

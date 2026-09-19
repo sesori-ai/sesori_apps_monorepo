@@ -288,6 +288,25 @@ Preserved report: `/tmp/rose-elephant-1545-layer3-implementation-review.md`, SHA
 The correction plan's SHA-256 is `808a4e172bf3e605c10c38b15d6d98553214f179035c98b1dd6148a4c9dc1655`.
 Publication adds only this record; the complete publication range is measured separately before pushing.
 
+## Accepted publication and merge
+
+[PR #1545](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1545) merged at `2026-09-19T05:13:27Z`.
+Accepted head: `b4890ac202d24aade8ddfa8407488fe59c4b2170`, tree
+`cc39b307924b2585737d035e6b81b14af8d769ed`. Its final range is 1,260 lines (1,085 additions/175 deletions),
+24 paths: 421 production, 420 tests, 362 documentation and 57 generated. The only change after reviewed
+source `4ef0b8b` was the 17-line approval record above; these later merge records are outside that measurement.
+
+```bash
+git diff --numstat a772a85a141b617f0d766d0d6a7d6aa11b654a30..b4890ac202d24aade8ddfa8407488fe59c4b2170 --
+```
+
+Distinct squash: `354e67ea5c8d9c513326c1c82c48b7597060acae`, tree
+`2378cc6638d5a630f43140ead186df28b60e387c`. Current-head CI passed 12/12 at readiness and 13/13 in the terminal
+monitor report. Cubic approved with zero issues, Codex completed without new findings, and all seven threads were
+resolved. The final clean review summary required no code change; readiness was accepted explicitly.
+Receipts: `/tmp/rose-elephant-1545-b4890ac-ready-assessment.json`, `/tmp/rose-elephant-1545-merged.json`, and
+`/tmp/rose-elephant-1545-layer3-publication.json`. The recorded 177-, 30- and 50-case sets overlap across checkpoints.
+
 ## Rendering and remaining qualification
 
 Four synthetic views passed using the actual sidebar and packaged fonts, with fake state and no production DI:
