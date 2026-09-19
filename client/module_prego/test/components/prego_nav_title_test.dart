@@ -1,3 +1,4 @@
+import "package:flutter/rendering.dart" show RenderParagraph;
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
@@ -28,6 +29,19 @@ void main() {
       final title = find.text("Bridge");
       expect(MediaQuery.textScalerOf(tester.element(title)).scale(18), 45);
       expect(tester.getSize(title).height, lessThanOrEqualTo(PregoTopNavigation.barHeight));
+      final paragraph = tester.renderObject<RenderParagraph>(title);
+      final naturalText = TextPainter(
+        text: paragraph.text,
+        textDirection: paragraph.textDirection,
+        textScaler: paragraph.textScaler,
+        maxLines: paragraph.maxLines,
+      )..layout(maxWidth: paragraph.size.width);
+      try {
+        expect(naturalText.didExceedMaxLines, isFalse);
+        expect(naturalText.height, lessThanOrEqualTo(paragraph.size.height));
+      } finally {
+        naturalText.dispose();
+      }
       expect(tester.widget<Text>(title).maxLines, 1);
       expect(tester.widget<Text>(title).overflow, TextOverflow.ellipsis);
     });

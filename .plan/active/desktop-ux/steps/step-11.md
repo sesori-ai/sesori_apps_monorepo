@@ -7,8 +7,9 @@ Base: #1549 squash `201cdcc51205edd88d615618894c2dafd8e75df6`, tree
 ## Delivered corrections
 
 - A title-only `PregoNavTitle` returns its single-line Text directly, letting the toolbar constrain it instead of
-  introducing an unconstrained-height Column child. Requested text scaling and ellipsis remain unchanged;
-  a nonempty subtitle retains its two-line layout. This corrects step 7.c's reproduced 250% toolbar overflow.
+  introducing an unconstrained-height Column child. Single-line leading is 1.2 so the natural 45pt title at 250%
+  fits the 54pt bar rather than clipping. Requested scaling/ellipsis and nonempty subtitle leading/layout remain
+  unchanged. The review follow-up below corrects the initial size-only check as well as step 7.c's overflow.
 - Existing desktop app-update guidance moves from Bridge to General, after launch-at-login. Compiled destination
   selection, external opening, source/package-manager guidance and distribution behavior are unchanged.
 - General stops offering Voice/Text selection: `DesktopComposerPresentationScope` explicitly declares voice unsupported
@@ -110,7 +111,8 @@ SIDEBAR_PREVIEW_DIR=/tmp/rose-elephant-controls-audit-sidebar.j9pi2ils \
 "$SDK/flutter" test --no-pub --reporter=json .dart_tool/control_audit_access_preview_test.dart
 ```
 
-All captures below were opened and inspected; later General/Bridge images supersede their earlier versions:
+All pre-review captures below were opened and inspected; later General/Bridge images supersede earlier versions.
+The typography follow-up's final minimum-window captures are recorded below, separately from these checkpoints:
 
 - `/tmp/rose-elephant-controls-audit-general.y9yi13dk/`: final General light/dark after removing the dead picker.
 - `/tmp/rose-elephant-controls-audit-settings.nn1d2yu0/`: Bridge ordinary and 250% minimum-window after regrouping.
@@ -123,7 +125,7 @@ All captures below were opened and inspected; later General/Bridge images supers
   Earlier step-8 PNG paths were unavailable, so the unchanged fake-only fixture was regenerated for this audit.
 
 Receipts: `...-previews.json`, `...-qualified-verification.json`, `...-general-verification.json` and `...-access.json`.
-The latest render batches passed: General two images plus one reused pure configuration case; Bridge regrouping
+The pre-review render batches passed: General two images plus one reused pure configuration case; Bridge regrouping
 three images plus that same configuration case; sidebar four; popover four; access two. These are separate render
 probes, not extra product-test coverage. An optional contact-sheet helper lacked Pillow; originals were inspected.
 
@@ -151,3 +153,45 @@ Precommit validation checked whitespace, local Markdown targets and both 120-cha
 It also confirmed the executable diff still matches the final General checkpoint above. Initial wrapping failures
 remain in `/tmp/rose-elephant-controls-audit-validation.json`; the corrected result is
 `/tmp/rose-elephant-controls-audit-precommit-validation.json`. No unchanged suite was rerun for documentation.
+
+## PR #1550 review follow-up
+
+Initial publication `180288e82e63b25d93ca52045e8b905348a2243c`, tree
+`0054f311182c37ed267ae7287d370719dfabe4b3`, measured 424 all-path lines, 352 additions/72 deletions, 18 paths:
+60 production, 76 tests, 288 docs, zero generated. CI passed 13/13; Codex completed without findings.
+Cubic's two findings were assessed from `/tmp/rose-elephant-1550-review1-feedback.json`:
+
+- Modal-size claim declined: `SizedBox(860, 640)` requests dimensions within the finite constraints passed by
+  Center/Padding; at 560 × 480, the material is constrained to 536 × 456. Existing tests assert its actual on-screen
+  bounds and hit-testable Close in every tab at all three scales. No responsive-layout workaround is needed.
+- Title clipping accepted: the original direct Text fixed RenderFlex overflow but its natural line still measured
+  56 pixels in a 54-pixel box. A new independent `TextPainter` height assertion reproduced this for null and empty
+  subtitles before the fix. Single-line leading changes from 1.25 to 1.2; nonempty subtitle layout stays at 1.25.
+  The test now checks natural line height, requested scaling and the rendered box instead of box size alone.
+
+Execution was on an uncommitted tree based on `180288e`, not the later follow-up commit. Checkpoint
+`/tmp/rose-elephant-1550-review1-checkpoint.patch`, SHA-256
+`ff8331b0410f8667116a512f480578f8cb65f931fa0c48ec3040028b5651d796`.
+
+```bash
+cd "$ROOT"
+"$SDK/dart" format client/module_prego/lib/components/navigation/prego_nav_title.dart \
+  client/module_prego/test/components/prego_nav_title_test.dart
+(cd client/module_prego && "$SDK/flutter" test --no-pub --reporter=json \
+  test/components/prego_nav_title_test.dart)
+(cd client/module_prego && "$SDK/dart" analyze --fatal-infos)
+(cd client/desktop && "$SDK/flutter" test --no-pub --reporter=json \
+  test/features/settings/desktop_settings_screens_test.dart --plain-name 'minimum window')
+(cd client/desktop && "$SDK/flutter" test --no-pub --reporter=json \
+  .dart_tool/control_audit_review1_preview_test.dart --plain-name 'minimum-250')
+```
+
+Three Prego cases passed `2026-09-19T07:20:20.714Z`–`07:20:22.990Z`; Prego analysis ended `07:20:37.855Z`, exit 0.
+Six minimum-window platform/scale variants passed `07:20:37.855Z`–`07:20:44.401Z`. These nine overlap the original 28.
+Two packaged-font 250% Bridge/Account renders passed through `07:20:47.988Z`; both PNGs were inspected under
+`/tmp/rose-elephant-1550-title-previews.jkfot2h5/`. These remain synthetic, not native qualification.
+Format processed two files with zero changes. Exact receipts: `/tmp/rose-elephant-1550-review1-verification.json`;
+Logs share that prefix with `-prego-tests`, `-prego-analyze`, `-minimum-settings` and `-title-preview`,
+plus `.log`/`.stderr`.
+The expected failing regression (two failures, one pass) remains in `...-review1-repro.json`, `.log` and `.patch`,
+where `...` is `/tmp/rose-elephant-1550`. No failure receipt or published history was overwritten.
