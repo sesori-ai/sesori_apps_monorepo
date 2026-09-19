@@ -585,7 +585,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             bridge_log = root / "bridge.log"
             with patch(
                 "qualify_desktop_macos_authenticated_upgrade.installed_helper_processes",
-                return_value="",
+                return_value="501 exact-helper",
             ):
                 write_missing_authenticated_helper_observation(
                     label="previous",
@@ -595,7 +595,8 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
                 )
 
             observation = json.loads((root / "previous-authenticated-helper.json").read_text(encoding="utf-8"))
-            self.assertEqual(observation["helperProcessCount"], 0)
+            self.assertEqual(observation["helperProcessCount"], 1)
+            self.assertEqual(observation["helperPid"], 501)
             self.assertFalse(observation["helperObservedDuringWait"])
             self.assertFalse(observation["bridgeLogActivityObserved"])
 

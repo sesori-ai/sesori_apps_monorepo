@@ -558,7 +558,7 @@ def write_missing_authenticated_helper_observation(
         helper_pid=helper_pid,
         authenticated_profile=False,
         relay_serving=False,
-        helper_observed_during_wait=helper_process_count > 0,
+        helper_observed_during_wait=False,
         bridge_log_activity_observed=_bridge_log_has_fresh_activity(
             path=bridge_log,
             baseline=bridge_log_cursor,
