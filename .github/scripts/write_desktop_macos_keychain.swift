@@ -57,7 +57,8 @@ private func addGenericPassword(
             kSecAttrService: service,
             kSecAttrAccount: account,
             kSecValueData: password,
-            // Match FlutterSecureStorage's classic-Keychain query envelope exactly.
+            // Pinned FlutterSecureStorage classic mode skips only the entitlement-requiring
+            // synchronizable=true branch; its base query still fixes these two attributes.
             kSecAttrSynchronizable: false,
             kSecAttrAccessible: kSecAttrAccessibleWhenUnlocked,
             kSecAttrAccess: access,

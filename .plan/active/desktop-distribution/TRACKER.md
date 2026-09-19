@@ -159,8 +159,9 @@ processes and no authenticated/relay markers. Bounded artifacts `10587393605`
 `10588086362`
 (`sha256:828eea306fec4d0e4d9a6942bddb462a2051fba5ca44bfa3956ec7786419fa5e`) contain no
 session/report success evidence, so this run is also rejected. The concrete remaining
-mismatch is that the writer's broad classic-Keychain insert did not carry the fixed
-synchronizable/accessibility attributes present in FlutterSecureStorage's read query.
+mismatch is that the writer's broad classic-Keychain insert did not carry the explicit
+non-synchronizable (`kSecAttrSynchronizable: false`) and when-unlocked attributes
+present in the pinned FlutterSecureStorage read query.
 The `8.d/14` follow-up creates and self-verifies the item through that exact query
 envelope before both CPUs retry from merged `main`. Failed-stop, interactive
 user-account/TCC, minimum-OS and public artifact retrieval remain open; the download

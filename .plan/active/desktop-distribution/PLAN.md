@@ -493,8 +493,9 @@ merged as `55547f26c8a9f59747987f1b7a65fc473e76e9c2`.
 `⚙️ [desktop-distribution] Match macOS QA Keychain query [step 8.d/14]`.
 Merged-main run `35454870471` proved the atomic writer no longer hangs, but both CPUs
 reached the bounded prior-app helper deadline with zero installed-helper processes. The
-writer's classic-Keychain insert omitted the synchronizable/accessibility attributes
-that FlutterSecureStorage includes in its fixed read query, so a broad `security` lookup
+writer's classic-Keychain insert omitted the explicit non-synchronizable
+(`kSecAttrSynchronizable: false`) and when-unlocked attributes that the pinned
+FlutterSecureStorage includes in its fixed read query, so a broad `security` lookup
 was not sufficient proof that the app could match the item. Create the item with that
 exact query envelope and immediately self-verify it through `SecItemCopyMatching` without
 printing its value. Retry both CPUs from merged `main`; the failed run is not

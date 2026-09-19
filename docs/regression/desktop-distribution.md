@@ -140,9 +140,9 @@ No environment approval gate is required; workflow review plus the runtime main 
 the credential-access boundary. It requests phase-fresh tokens in memory, creates the
 three established classic-Keychain values with their trusted ACL atomically through stdin,
 retains that ACL while refreshing values, and gives every native Keychain command a fixed
-deadline. The writer must also create and self-verify each item through the exact
-synchronizable/accessibility query envelope used by FlutterSecureStorage; a broad
-`security` lookup is not equivalent. Merged-main run `35454870471` is rejected because
+deadline. The writer must also create and self-verify each item through the pinned
+FlutterSecureStorage query's explicit non-synchronizable (`kSecAttrSynchronizable:
+false`) and when-unlocked envelope; a broad `security` lookup is not equivalent. Merged-main run `35454870471` is rejected because
 both native CPUs reached the bounded prior-app helper deadline with zero helper processes
 before that envelope correction. The probe persists Bridge On and requires the
 exact packaged helper, an authenticated profile lookup and relay-serving readiness

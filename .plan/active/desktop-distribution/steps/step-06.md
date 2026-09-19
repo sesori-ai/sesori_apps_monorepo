@@ -204,8 +204,9 @@ are `10587393605` (x64, digest
 `10588086362` (arm64, digest
 `sha256:828eea306fec4d0e4d9a6942bddb462a2051fba5ca44bfa3956ec7786419fa5e`);
 the run is rejected. The `8.d/14` correction matches the writer's item attributes to
-FlutterSecureStorage's fixed synchronizable/accessibility query and self-verifies that
-exact lookup before launch. Only a both-CPU retry dispatched from merged `main` can
+the pinned FlutterSecureStorage query's explicit non-synchronizable
+(`kSecAttrSynchronizable: false`) and when-unlocked values, then self-verifies that exact
+lookup before launch. Only a both-CPU retry dispatched from merged `main` can
 become evidence. Failed-stop, interactive browser/user-account/TCC, minimum-OS, public
 retrieval and parent Gate C remain open.
 
