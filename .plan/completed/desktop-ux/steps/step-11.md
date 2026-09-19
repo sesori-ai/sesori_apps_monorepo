@@ -195,3 +195,25 @@ Logs share that prefix with `-prego-tests`, `-prego-analyze`, `-minimum-settings
 plus `.log`/`.stderr`.
 The expected failing regression (two failures, one pass) remains in `...-review1-repro.json`, `.log` and `.patch`,
 where `...` is `/tmp/rose-elephant-1550`. No failure receipt or published history was overwritten.
+
+## Merge record
+
+PR #1550 merged `2026-09-19T07:52:05Z`. Accepted head `c92ced39a99230963ee13f671586ef54e78d131a` differs from
+squash `776c4a9ee0c793b99a32c459b3490422039aee32`; both have tree `289e0b747e6c0bf4a1f01995940d2cc92dd1b67b`.
+Current-head readiness checks settled 13/13 (11 success, two skipped), Cubic approved and Codex completed without
+findings. All three threads were resolved: modal bounds declined with evidence, natural title height corrected,
+then rail-scrolling wording clarified. The terminal monitor still reported 13/14 running, not a terminal pass.
+
+Final immutable range: **491 changed lines**, 418 additions/73 deletions, 18 paths:
+68 production, 90 tests, 333 docs, zero generated.
+
+```bash
+git diff --numstat 201cdcc51205edd88d615618894c2dafd8e75df6..c92ced39a99230963ee13f671586ef54e78d131a --
+```
+
+`10b910e4efe7aa52337589ba76d1f900cebfac5d` published the verified typography correction;
+`c92ced3` changed only the scrolling sentence in `desktop-cockpit-shell.md`. Executable files remained identical,
+so documentation validation ran without rerunning unchanged suites/renders. Receipts:
+`/tmp/rose-elephant-1550-review1-wording-validation.json`, `...-c92ced3-ready-assessment.json`, `...-merged.json`,
+where `...` is `/tmp/rose-elephant-1550`. This merge does not establish the native/live coverage
+in [step 12](step-12.md).

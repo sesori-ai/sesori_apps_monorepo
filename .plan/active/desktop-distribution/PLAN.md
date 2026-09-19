@@ -36,7 +36,7 @@ that has not been recorded. Planning and non-public packaging can proceed; the f
 public desktop gate requires the parent closeout or an explicit user-accepted change
 to that prerequisite. The parent keeps its own step numbering and ownership.
 
-[Desktop UX](../desktop-ux/PLAN.md) is a parallel workstream, merged into `main`
+[Desktop UX](../../completed/desktop-ux/PLAN.md) is a parallel workstream, merged into `main`
 during this plan's review. It owns cockpit/navigation, autostart defaults, permission
 UX and app logging; distribution owns signing/Keychain identity, packaging and
 updates. Keep those responsibilities separate and integrate against its current
@@ -44,6 +44,7 @@ startup/control surfaces before steps 3–5, rather than restoring superseded UI
 first-run behavior. Follow the parent's updated Gate C routing: shell/navigation
 C2/C5 move to the UX step-12 checklist; the other parent sections remain applicable
 on a build after UX step 7. A merged UX plan is not passing coverage evidence.
+Its 2026-09-19 retirement accepts remaining QA gaps; it does not qualify these distribution gates.
 
 ### Unattended execution direction — 2026-09-15
 
