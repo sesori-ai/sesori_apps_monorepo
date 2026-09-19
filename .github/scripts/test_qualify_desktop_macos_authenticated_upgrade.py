@@ -16,6 +16,7 @@ from qualify_desktop_macos_authenticated_upgrade import (
     AUTH_PASSWORD_ENVIRONMENT_KEY,
     KEYCHAIN_ACCOUNTS,
     KEYCHAIN_SERVICE,
+    BridgeLogCursor,
     KeychainSession,
     QaCredentials,
     _keychain_writer,
@@ -89,6 +90,11 @@ def find_event(
             continue
         return event
     raise AssertionError(f"Missing call event for {name}")
+
+
+def bridge_log_cursor(*, path: Path, offset: int) -> BridgeLogCursor:
+    status = path.stat()
+    return BridgeLogCursor(device=status.st_dev, inode=status.st_ino, offset=offset)
 
 
 def jwt(*, expiration: int) -> str:
@@ -411,7 +417,10 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
                     launcher=launcher,
                     output=root,
                     bridge_log=bridge_log,
-                    bridge_log_offset=len(stale.encode("utf-8")),
+                    bridge_log_cursor=bridge_log_cursor(
+                        path=bridge_log,
+                        offset=len(stale.encode("utf-8")),
+                    ),
                 )
 
             recorded = (root / "current-authenticated-helper.json").read_text(encoding="utf-8")
@@ -431,11 +440,16 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             bridge_log = root / "bridge.log"
-            pre_rotation_size = 512
-            bridge_log.write_text(
-                "Authenticated as current-user\nWaiting for relay events...\n",
+            bridge_log.write_text("old\n", encoding="utf-8")
+            pre_rotation_cursor = bridge_log_cursor(path=bridge_log, offset=bridge_log.stat().st_size)
+            replacement = root / "bridge.log.replacement"
+            replacement.write_text(
+                "Authenticated as current-user\nWaiting for relay events...\nnew file exceeds old offset\n",
                 encoding="utf-8",
             )
+            replacement.replace(bridge_log)
+            self.assertGreater(bridge_log.stat().st_size, pre_rotation_cursor.offset)
+            self.assertNotEqual(bridge_log.stat().st_ino, pre_rotation_cursor.inode)
             launcher = Mock()
             launcher.poll.return_value = None
             with patch(
@@ -447,7 +461,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
                     launcher=launcher,
                     output=root,
                     bridge_log=bridge_log,
-                    bridge_log_offset=pre_rotation_size,
+                    bridge_log_cursor=pre_rotation_cursor,
                 )
 
             self.assertEqual(helper_pid, 501)
@@ -492,7 +506,10 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
                         launcher=launcher,
                         output=root,
                         bridge_log=bridge_log,
-                        bridge_log_offset=len(stale.encode("utf-8")),
+                        bridge_log_cursor=bridge_log_cursor(
+                            path=bridge_log,
+                            offset=len(stale.encode("utf-8")),
+                        ),
                     )
 
             recorded = json.loads((root / "current-authenticated-helper.json").read_text(encoding="utf-8"))
@@ -545,13 +562,13 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         window = find_event(events=events, name="wait_for_visible_window")
         current_process = find_event(events=events, name="_helper_pid")
         tray_quit = find_event(events=events, name="subprocess.run", assigned_to="quit_result")
-        self.assertEqual(observation["keywords"]["bridge_log_offset"], "bridge_log_offset")
+        self.assertEqual(observation["keywords"]["bridge_log_cursor"], "bridge_log_cursor")
         tree = ast.parse(textwrap.dedent(inspect.getsource(launch_authenticated_and_quit)))
         baseline = next(
             node
             for node in ast.walk(tree)
             if isinstance(node, ast.Assign)
-            and any(dotted_name(target) == "bridge_log_offset" for target in node.targets)
+            and any(dotted_name(target) == "bridge_log_cursor" for target in node.targets)
         )
         self.assertLess(baseline.lineno, launch["line"])
         self.assertLess(launch["line"], observation["line"])

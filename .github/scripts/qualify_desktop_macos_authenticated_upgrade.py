@@ -74,6 +74,21 @@ class KeychainSession:
         )
 
 
+@dataclass(frozen=True)
+class BridgeLogCursor:
+    device: int
+    inode: int
+    offset: int
+
+
+def capture_bridge_log_cursor(*, path: Path) -> BridgeLogCursor | None:
+    try:
+        status = path.stat()
+    except FileNotFoundError:
+        return None
+    return BridgeLogCursor(device=status.st_dev, inode=status.st_ino, offset=status.st_size)
+
+
 def load_qa_credentials() -> QaCredentials:
     # Consume once, then remove both values before any child process is launched.
     email = os.environ.pop(AUTH_EMAIL_ENVIRONMENT_KEY, "")
@@ -350,12 +365,13 @@ def wait_for_authenticated_helper(
     launcher: subprocess.Popen[str],
     output: Path,
     bridge_log: Path = BRIDGE_LOG,
-    bridge_log_offset: int = 0,
+    bridge_log_cursor: BridgeLogCursor | None = None,
 ) -> int:
     deadline = time.monotonic() + HELPER_WAIT_SECONDS
     active_helper_pid: int | None = None
     observed_helper_generation = False
-    generation_log_offset = bridge_log_offset
+    generation_log_cursor = bridge_log_cursor
+    generation_log_offset = bridge_log_cursor.offset if bridge_log_cursor is not None else 0
     while True:
         if launcher.poll() is not None:
             raise RuntimeError(f"{label}: desktop exited before its authenticated helper became ready")
@@ -372,18 +388,31 @@ def wait_for_authenticated_helper(
             raise RuntimeError(f"{label}: expected at most one installed helper process")
         if helper_pid != active_helper_pid:
             if observed_helper_generation:
-                generation_log_offset = bridge_log.stat().st_size if bridge_log.is_file() else 0
+                generation_log_cursor = capture_bridge_log_cursor(path=bridge_log)
+                generation_log_offset = generation_log_cursor.offset if generation_log_cursor is not None else 0
             active_helper_pid = helper_pid
             if helper_pid is not None:
                 observed_helper_generation = True
         bridge_output = ""
-        if active_helper_pid is not None and bridge_log.is_file():
-            bridge_log_size = bridge_log.stat().st_size
-            if bridge_log_size < generation_log_offset:
-                generation_log_offset = 0
-            with bridge_log.open("rb") as stream:
-                stream.seek(generation_log_offset)
-                bridge_output = stream.read().decode("utf-8", errors="replace")
+        if active_helper_pid is not None:
+            try:
+                stream = bridge_log.open("rb")
+            except FileNotFoundError:
+                stream = None
+            if stream is not None:
+                with stream:
+                    status = os.fstat(stream.fileno())
+                    active_cursor = BridgeLogCursor(device=status.st_dev, inode=status.st_ino, offset=status.st_size)
+                    if (
+                        generation_log_cursor is None
+                        or (active_cursor.device, active_cursor.inode)
+                        != (generation_log_cursor.device, generation_log_cursor.inode)
+                        or active_cursor.offset < generation_log_offset
+                    ):
+                        generation_log_cursor = active_cursor
+                        generation_log_offset = 0
+                    stream.seek(generation_log_offset)
+                    bridge_output = stream.read().decode("utf-8", errors="replace")
         authenticated_profile = "Authenticated as " in bridge_output
         relay_serving = "Waiting for relay events..." in bridge_output
         if active_helper_pid is not None and authenticated_profile and relay_serving:
@@ -507,7 +536,7 @@ def launch_authenticated_and_quit(
     launcher_log = output / f"{label}-launcher.log"
     # Authenticated app output stays in the exact probe-owned support root and is never uploaded.
     private_app_log = SUPPORT_ROOT / "desktop-instance" / f"{label}-authenticated-app.log"
-    bridge_log_offset = BRIDGE_LOG.stat().st_size if BRIDGE_LOG.is_file() else 0
+    bridge_log_cursor = capture_bridge_log_cursor(path=BRIDGE_LOG)
     launch_started_at = time.monotonic()
     with launcher_log.open("w", encoding="utf-8") as stream:
         launcher = subprocess.Popen(
@@ -531,7 +560,7 @@ def launch_authenticated_and_quit(
             label=label,
             launcher=launcher,
             output=output,
-            bridge_log_offset=bridge_log_offset,
+            bridge_log_cursor=bridge_log_cursor,
         )
         startup_interval_remaining = 15 - (time.monotonic() - launch_started_at)
         if startup_interval_remaining > 0:
