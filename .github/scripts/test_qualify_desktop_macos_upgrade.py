@@ -1,4 +1,5 @@
 import hashlib
+import inspect
 import json
 import os
 import subprocess
@@ -11,6 +12,7 @@ from qualify_desktop_macos_upgrade import (
     INSTALLED_HELPER,
     PINNED_RETAINED_BASELINES,
     installed_helper_processes,
+    launch_and_quit,
     load_candidate,
     normalized_lipo_architectures,
     record_helper_off_observation,
@@ -446,6 +448,13 @@ class MacosUpgradeWindowTests(unittest.TestCase):
 
 
 class MacosUpgradeHelperProcessTests(unittest.TestCase):
+    def test_launch_observes_helper_before_invoking_quit(self):
+        source = inspect.getsource(launch_and_quit)
+        observation = source.index("record_helper_off_observation(label=label, output=output)")
+        quit_invocation = source.index("quit_result = subprocess.run")
+
+        self.assertLess(observation, quit_invocation)
+
     def test_live_observation_matches_only_exact_installed_helper(self):
         helper = f"124 {INSTALLED_HELPER} --control-url=http://127.0.0.1:9000"
         processes = "\n".join([
