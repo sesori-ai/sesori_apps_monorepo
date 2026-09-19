@@ -8,9 +8,10 @@
   merged. The macOS signing-secret migration is complete. Main-only run
   `35411687826` accepted private signed helper-Off `1.8.4+24 → 1.9.0+62`
   replacement on native x64 and arm64, including exact pre-Quit helper absence.
-  Authenticated helper-On, failed-stop, real-account/TCC, minimum-OS and public gates
-  remain open. Public macOS/Windows/Linux publication
-  and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
+  A credential-scoped successor is implementing authenticated helper-On/Keychain
+  replacement qualification; no authenticated result is accepted yet. Failed-stop,
+  interactive user-account/TCC, minimum-OS and public gates remain open. Public
+  macOS/Windows/Linux publication and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
   releases. The independently executable private portion of step 11 is in progress;
   its public-release reconciliation and final plan retirement remain blocked. Shipping
   order remains macOS, Windows, Linux. No blocked publication step is claimed completed.
@@ -447,8 +448,29 @@ Evidence artifacts `10574093842` (x64, digest
 `sha256:ff848668381813e9318d97a572eb3520f4c6267b0bb39d8abb668f486d2a207e`) expire
 2026-10-03. Both prior/current `*-helper-off.log` files on both CPUs record
 `NO_INSTALLED_HELPER`, and every implemented `upgrade.json` check is true, including
-`helperAbsentBeforeQuit`. Private helper-Off replacement is accepted on both CPUs;
-authenticated helper-On, failed-stop and the other unchanged macOS gates remain open.
+`helperAbsentBeforeQuit`. Private helper-Off replacement is accepted on both CPUs.
+PR #1547 recorded that accepted boundary and merged as
+`1ff3780b0b9244f5dada842c9e7735a28712fb2d`.
+
+**Step 6 authenticated helper-On qualification PR:**
+`🚧 [desktop-distribution] Qualify authenticated macOS replacement [step 8/14]`.
+Add a separate `macos-authenticated-upgrade-probe` job rather than widening the
+credential-free accepted probe. It is main-only, uses a dedicated `desktop-qa`
+environment, exposes an approved production-compatible QA email/password only to the
+exercise step, consumes/removes them before child processes, and serializes native
+x64/arm64 so one relay bridge slot is never shared. The probe requests a fresh session
+in memory and writes only the three established
+classic-Keychain values through stdin with the installed signed app trusted, persists
+Bridge On, and performs prior/current real tray Quit. It requires the exact packaged
+helper, authenticated profile lookup, relay-serving readiness, Keychain preservation,
+On intent, bounded state and no relaunch/orphan. Raw auth responses, token values,
+bridge/app output and authenticated screenshots never enter artifacts; only bounded
+boolean/coordinate evidence does. The implementation PR does not provision or consume
+the environment before review. After merge, configure the environment for exact
+`main`; credential-backed dispatch remains blocked until the owner securely provisions
+an approved account. The local development-account credentials are not eligible for
+this production-endpoint probe. Accept nothing until both CPUs pass from merged `main`.
+Failed-stop, interactive browser/TCC, minimum-OS and public gates remain separate.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.

@@ -133,8 +133,15 @@ merged in #1546 as `8d99cd2925c9866dc121323ed348b0d130bc6aca`. Main-only run
 `105812432480`, x64 job `105812464127` and arm64 job `105812464132`. Artifacts
 `10574093842` and `10574368671` record `NO_INSTALLED_HELPER` before both prior/current
 Quit operations and every implemented `upgrade.json` check true. Private helper-Off is
-accepted on both CPUs. Authenticated helper-On, failed-stop, real-account/TCC,
-minimum-OS and public artifact retrieval remain open; the download page itself is live.
+accepted on both CPUs. PR #1547 recorded the boundary and merged as
+`1ff3780b0b9244f5dada842c9e7735a28712fb2d`. A successor now adds a separate
+main-only, `desktop-qa`-scoped authenticated helper-On replacement probe. Its reviewed
+implementation must merge before the environment is configured. Credential-backed
+execution remains blocked until the owner securely provisions approved
+production-compatible QA credentials; local development accounts are not eligible.
+Both native CPUs must then pass from merged `main`. Failed-stop, interactive
+user-account/TCC, minimum-OS and public artifact
+retrieval remain open; the download page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
 private-package documentation portion can proceed independently, so its dependency
@@ -257,7 +264,7 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update path | Private helper-Off passed both CPUs | Authenticated helper-On and public gates pending. |
+| macOS update path | Helper-Off passed; helper-On tooling in progress | Helper-On run, failed-stop and public gates pending. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Migration complete | Public hosting gates pending. |
 | macOS public gate | Pending | See checkpoint above. |

@@ -170,8 +170,28 @@ Evidence artifacts are `10574093842` (x64, digest
 `sha256:ff848668381813e9318d97a572eb3520f4c6267b0bb39d8abb668f486d2a207e`, expiring
 2026-10-03T01:10:24Z). Both prior/current helper logs on both CPUs record
 `NO_INSTALLED_HELPER`; every implemented report check is true. Private helper-Off is
-accepted on both CPUs. Authenticated helper-On, failed-stop, real-account/Keychain/TCC,
-minimum-OS, public retrieval and parent Gate C remain open.
+accepted on both CPUs. PR #1547 recorded that accepted boundary and merged as
+`1ff3780b0b9244f5dada842c9e7735a28712fb2d`.
+
+The next implementation adds a separate `macos-authenticated-upgrade-probe` behind a
+new `desktop-qa` environment restricted to `main`. Its two encrypted values must hold
+one owner-approved production-compatible QA account; the existing local development
+accounts are not eligible for this production-endpoint probe. Native CPU jobs are
+serialized so they cannot compete for that account's one relay bridge slot. Credentials
+are provided only to the exercise step, then consumed and removed from the environment
+before any child process. The script requests fresh tokens in memory, writes
+`access_token`, `refresh_token` and `auth_user` to the established
+`com.sesori.desktop` classic-Keychain service
+through stdin, and trusts only the installed signed app plus `/usr/bin/security`.
+It persists Bridge On, requires the exact packaged helper plus authenticated-profile and
+relay-serving markers before each real tray Quit, and verifies Keychain/On intent and
+bounded state through replacement with no relaunch or orphan. Raw auth responses,
+Keychain values, bridge/app output and authenticated screenshots are excluded from
+artifacts. The implementation must merge before the environment is configured, and
+credential-backed execution remains blocked until the owner securely provisions the
+approved account. Only a both-CPU run dispatched from merged `main` can become evidence.
+Failed-stop, interactive browser/user-account/TCC, minimum-OS, public retrieval and
+parent Gate C remain open.
 
 Dispatches and expanded logs were run from
 `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
