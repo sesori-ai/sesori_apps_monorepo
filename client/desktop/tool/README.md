@@ -141,16 +141,16 @@ item found only inside that menu, then rejects relaunch/orphans,
 replaces the complete app from the newer DMG, and repeats while checking bounded
 desktop, shared CLI-data, attachment and valid login-registration sentinels. Existing
 app, bridge, registration or relevant state root causes refusal; cleanup is limited to
-probe-owned paths on the fresh Actions host. Main-only run `35405646668`, source
-`305998d689d13051ac0fb58f9d970dfffe319bf0`, tree
-`a6f358647c559b840f1c3ecade88be1502632a57`, passed x64 job `105794893362` and
-arm64 job `105794893463`. Exact artifact IDs, digests and retention are in the
+probe-owned paths on the fresh Actions host. Main-only run `35405646668` accepted
+signed replacement with persisted Bridge Off intent but did not inspect live helper
+absence. After the correction merged, main-only run `35411687826`, source
+`8d99cd2925c9866dc121323ed348b0d130bc6aca`, tree
+`777f3a353ff04eaeab29f6a6ff3f81e514b04cf1`, passed x64 job `105812464127` and
+arm64 job `105812464132`. Both prior/current `*-helper-off.log` files on both CPUs
+record `NO_INSTALLED_HELPER`, and every implemented report check is true. Exact
+artifact IDs, digests and retention are in the
 [step 6 evidence](../../../.plan/active/desktop-distribution/steps/step-06.md).
-This accepts signed replacement with persisted Bridge Off intent, not live helper
-absence while either GUI is running. Current tooling now records exact installed-helper
-absence after each visible launch and before tray Quit in `*-helper-off.log`, refusing
-the run if that helper exists. The helper-Off gate remains open until the reviewed
-check passes from `main` on both native CPUs.
+This accepts the private helper-Off boundary on both native CPUs.
 
 This pipeline does not publish a release/feed or prove installed GUI authentication,
 authenticated helper-On/failed-stop behavior, real-account Keychain/TCC, minimum-OS

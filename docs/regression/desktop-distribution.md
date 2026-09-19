@@ -124,14 +124,14 @@ at the system-wide sample points. The bounded real-click correction then merged.
 `35399491087` and `35399933745` passed arm64 completely. Both x64 jobs passed prior-app
 Quit and current installation/launch but found no current window at the single sample
 15 seconds after launch. After the bounded-wait correction, main-only run `35405646668`
-passed x64 job `105794893362` and arm64 job `105794893463`, with every implemented
-check true for signed replacement, persisted Bridge Off intent and post-Quit process
-absence. The probe did not inspect helper absence while either GUI was running, so
-helper-Off remains open alongside authenticated helper-On, failed-stop,
-real-account/Keychain/TCC, minimum-OS support, public retrieval and release readiness.
-Current tooling now records and requires absence of the exact installed helper after
-each visible launch and before tray Quit; helper-Off remains open until that reviewed
-check passes from `main` on both native CPUs.
+passed signed replacement, persisted Bridge Off intent and post-Quit process absence,
+but did not inspect a live helper. The helper-observation correction then merged.
+Main-only run `35411687826` passed x64 job `105812464127` and arm64 job
+`105812464132`; both prior/current helper logs on both CPUs record
+`NO_INSTALLED_HELPER`, and every implemented check is true, including
+`helperAbsentBeforeQuit`. Private helper-Off is accepted on both CPUs. This does not
+prove authenticated helper-On, failed-stop, real-account/Keychain/TCC, minimum-OS
+support, public retrieval or release readiness.
 
 ## Current evidence boundary
 
@@ -148,8 +148,8 @@ in the active distribution plan's [macOS](../../.plan/active/desktop-distributio
 Still unproved: public retrieval and trust, real-account restoration, declared minimum
 OS, full interactive GUI/keyring/tray/login behavior, authenticated helper-On and
 failed-stop macOS replacement, signed Windows N→N+1 manual replacement, and
-signed-repository Linux N→N+1 updates. A private Off-intent probe, silent fixture or
-same-version reinstall cannot close those gates.
+signed-repository Linux N→N+1 updates. A private helper-Off probe, silent fixture or
+same-version reinstall cannot close those remaining gates.
 
 ## Coverage
 
