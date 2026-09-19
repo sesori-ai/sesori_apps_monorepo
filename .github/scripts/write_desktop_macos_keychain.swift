@@ -47,26 +47,22 @@ private func genericPasswordItem(service: String, account: String) -> (OSStatus,
 private func addGenericPassword(
     service: String,
     account: String,
-    password: Data
+    password: Data,
+    access: SecAccess
 ) -> (OSStatus, SecKeychainItem?) {
-    var item: SecKeychainItem?
-    let status = service.withCString { serviceBytes in
-        account.withCString { accountBytes in
-            password.withUnsafeBytes { passwordBytes in
-                SecKeychainAddGenericPassword(
-                    nil,
-                    UInt32(service.utf8.count),
-                    serviceBytes,
-                    UInt32(account.utf8.count),
-                    accountBytes,
-                    UInt32(passwordBytes.count),
-                    passwordBytes.baseAddress!,
-                    &item
-                )
-            }
-        }
-    }
-    return (status, item)
+    var result: CFTypeRef?
+    let status = SecItemAdd(
+        [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: account,
+            kSecValueData: password,
+            kSecAttrAccess: access,
+            kSecReturnRef: true,
+        ] as CFDictionary,
+        &result
+    )
+    return (status, result as! SecKeychainItem?)
 }
 
 private func updateGenericPassword(item: SecKeychainItem, password: Data) -> OSStatus {
@@ -120,16 +116,17 @@ guard accessStatus == errSecSuccess, let access else {
     fail("Could not create Keychain access policy: \(describe(accessStatus))")
 }
 
-let item: SecKeychainItem
-let created: Bool
 switch operation {
 case .create:
-    let (status, addedItem) = addGenericPassword(service: service, account: account, password: password)
-    guard status == errSecSuccess, let addedItem else {
+    let (status, addedItem) = addGenericPassword(
+        service: service,
+        account: account,
+        password: password,
+        access: access
+    )
+    guard status == errSecSuccess, addedItem != nil else {
         fail("Could not create Keychain item: \(describe(status))")
     }
-    item = addedItem
-    created = true
 case .update:
     let (findStatus, existingItem) = genericPasswordItem(service: service, account: account)
     guard findStatus == errSecSuccess, let existingItem else {
@@ -139,20 +136,4 @@ case .update:
     guard updateStatus == errSecSuccess else {
         fail("Could not update Keychain item: \(describe(updateStatus))")
     }
-    item = existingItem
-    created = false
-}
-
-let itemAccessStatus = SecKeychainItemSetAccess(item, access)
-if itemAccessStatus != errSecSuccess {
-    if created {
-        let rollbackStatus = SecKeychainItemDelete(item)
-        if rollbackStatus != errSecSuccess {
-            fail(
-                "Could not apply Keychain access policy: \(describe(itemAccessStatus)); "
-                    + "rollback also failed: \(describe(rollbackStatus))"
-            )
-        }
-    }
-    fail("Could not apply Keychain access policy: \(describe(itemAccessStatus))")
 }

@@ -48,6 +48,7 @@ KEYCHAIN_WRITER_SOURCE = Path(__file__).with_name("write_desktop_macos_keychain.
 BRIDGE_LOG = SUPPORT_ROOT / "logs/bridge.log"
 HELPER_WAIT_SECONDS = 60.0
 HELPER_POLL_INTERVAL_SECONDS = 0.1
+KEYCHAIN_COMMAND_TIMEOUT_SECONDS = 15
 MIN_SESSION_VALIDITY_SECONDS = 600
 # Covers 15s process admission + 60s helper + 45s window + 30s Quit + 5s absence, with margin.
 MIN_LAUNCH_VALIDITY_SECONDS = 180
@@ -201,12 +202,16 @@ def compile_keychain_writer(*, output: Path, log: Path) -> Path:
 
 
 def _security(*, arguments: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["security", *arguments],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        return subprocess.run(
+            ["security", *arguments],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=KEYCHAIN_COMMAND_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"security timed out during {arguments[0]}") from None
 
 
 def _keychain_writer(
@@ -217,13 +222,17 @@ def _keychain_writer(
     secret_input: str,
 ) -> subprocess.CompletedProcess[str]:
     executable = APPLICATION / "Contents/MacOS/Sesori"
-    result = subprocess.run(
-        [str(writer), operation, account, KEYCHAIN_SERVICE, str(executable), "/usr/bin/security"],
-        input=f"{secret_input}\n",
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            [str(writer), operation, account, KEYCHAIN_SERVICE, str(executable), "/usr/bin/security"],
+            input=f"{secret_input}\n",
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=KEYCHAIN_COMMAND_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"Keychain writer timed out during {operation} for {account}") from None
     return subprocess.CompletedProcess(
         args=result.args,
         returncode=result.returncode,

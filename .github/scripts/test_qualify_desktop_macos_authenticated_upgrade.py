@@ -20,6 +20,7 @@ from qualify_desktop_macos_authenticated_upgrade import (
     KeychainSession,
     QaCredentials,
     _keychain_writer,
+    _security,
     cleanup_qualification,
     delete_auth_keychain,
     launch_authenticated_and_quit,
@@ -195,6 +196,9 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         source = KEYCHAIN_WRITER.read_text(encoding="utf-8")
         self.assertIn("FileHandle.standardInput.readDataToEndOfFile()", source)
         self.assertIn("FileManager.default.currentDirectoryPath", source)
+        self.assertIn("SecItemAdd", source)
+        self.assertIn("kSecAttrAccess: access", source)
+        self.assertNotIn("SecKeychainItemSetAccess", source)
         self.assertNotIn("let password = CommandLine.arguments", source)
         self.assertNotIn("add-generic-password", source)
 
@@ -268,9 +272,29 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         arguments = run.call_args.args[0]
         self.assertNotIn("private-token", arguments)
         self.assertEqual(run.call_args.kwargs["input"], "private-token\n")
+        self.assertEqual(run.call_args.kwargs["timeout"], 15)
         self.assertEqual(result.returncode, 36)
         self.assertIn("Keychain locked", result.stderr)
         self.assertNotIn("private-token", result.stderr)
+
+    def test_keychain_commands_fail_safely_on_deadline(self):
+        timeout = subprocess.TimeoutExpired(cmd=["keychain-writer"], timeout=15, stderr="private-token")
+        writer = Path(tempfile.gettempdir()) / "keychain-writer"
+        with patch(
+            "qualify_desktop_macos_authenticated_upgrade.subprocess.run",
+            side_effect=timeout,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Keychain writer timed out") as writer_error:
+                _keychain_writer(
+                    writer=writer,
+                    operation="create",
+                    account="access_token",
+                    secret_input="private-token",
+                )
+            with self.assertRaisesRegex(RuntimeError, "security timed out during find-generic-password"):
+                _security(arguments=["find-generic-password", "-s", KEYCHAIN_SERVICE])
+
+        self.assertNotIn("private-token", str(writer_error.exception))
 
     def test_keychain_write_failure_surfaces_safe_native_diagnostics(self):
         session = KeychainSession(access_token="secret", refresh_token="refresh", auth_user="user")

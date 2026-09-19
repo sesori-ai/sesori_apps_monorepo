@@ -479,6 +479,15 @@ Apply the owner's post-merge credential policy: remove the unused environment bi
 read the provisioned account from repository Actions secrets, and keep the existing
 main-only runtime guard, step-only exposure and serialized native matrix.
 
+**Step 6 Keychain-bound follow-up PR:**
+`⚙️ [desktop-distribution] Bound macOS QA Keychain setup [step 8.c/14]`.
+Merged-main run `35443816334` reached the credential exercise on both CPUs but each
+consumed the job's full 35-minute timeout immediately after prior-app installation. The
+native writer's create-then-change-ACL sequence was the only unbounded operation at that
+boundary. Create each classic item with its trusted ACL atomically, retain that ACL while
+refreshing values, add privacy-safe deadlines to every native Keychain command, and retry
+from merged `main`; the cancelled run is not qualification evidence.
+
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
 Private-package reconciliation can proceed after step 9 while step 10 is blocked.

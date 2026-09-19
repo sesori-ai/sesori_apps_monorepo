@@ -137,8 +137,10 @@ continuation. It is restricted to `main`, serializes the CPU jobs around the ded
 `qa@sesori.com` production account, and reads its email/password from repository Actions
 secrets only in the exercise step, then consumes/removes both before any child process.
 No environment approval gate is required; workflow review plus the runtime main guard is
-the credential-access boundary. It requests phase-fresh tokens in memory, seeds only the
-three established classic-Keychain values through stdin, persists Bridge On and requires the
+the credential-access boundary. It requests phase-fresh tokens in memory, creates the
+three established classic-Keychain values with their trusted ACL atomically through stdin,
+retains that ACL while refreshing values, and gives every native Keychain command a fixed
+deadline. It persists Bridge On and requires the
 exact packaged helper, an authenticated profile lookup and relay-serving readiness
 before each real tray Quit. It then verifies Keychain, On intent, bounded state and
 helper absence through replacement. Artifacts exclude raw auth responses, token values,

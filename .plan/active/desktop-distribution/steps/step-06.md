@@ -188,9 +188,14 @@ It persists Bridge On, requires the exact packaged helper plus authenticated-pro
 relay-serving markers before each real tray Quit, and verifies Keychain/On intent and
 bounded state through replacement with no relaunch or orphan. Raw auth responses,
 Keychain values, bridge/app output and authenticated screenshots are excluded from
-artifacts. The account and repository secrets are provisioned. Only a both-CPU run
-dispatched from merged `main` can become evidence.
-Failed-stop, interactive browser/user-account/TCC, minimum-OS, public retrieval and
+artifacts. The account and repository secrets are provisioned. Run `35443816334` reached
+this exercise on both CPUs but each native job consumed the full 35-minute timeout after
+prior-app installation, before any Keychain/session/report success evidence. Its bounded
+artifacts are `10584848537` (x64) and `10586555281` (arm64); the run is rejected. The
+`8.c/14` follow-up replaces create-then-change-ACL with atomic classic-Keychain creation,
+retains the ACL during token refresh and bounds every native Keychain command. Only a
+both-CPU retry dispatched from merged `main` can become evidence. Failed-stop,
+interactive browser/user-account/TCC, minimum-OS, public retrieval and
 parent Gate C remain open.
 
 Dispatches and expanded logs were run from
