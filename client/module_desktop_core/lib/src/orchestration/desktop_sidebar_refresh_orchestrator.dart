@@ -15,7 +15,7 @@ class DesktopSidebarRefreshOrchestrator({
   Future<DesktopSidebarRefreshOutcome> refresh() async {
     try {
       final projectsUpdated = await _projectInventory.refreshProjects();
-      // Even a failed project read may leave useful admitted projects to refresh.
+      // Ordinary API failure still permits recent work; unexpected throws abort.
       final sessionsUpdated = await _recentInventory.refresh();
       return projectsUpdated && sessionsUpdated
           ? DesktopSidebarRefreshOutcome.succeeded

@@ -7,7 +7,7 @@ import "session_list_item_state.dart";
 /// Absence from the inventory means this project has not been requested.
 sealed class const RecentSessionsEntry();
 
-/// Initial loading when this project has no useful retained rows.
+/// Loading without useful retained rows, including an initial read or retry.
 final class RecentSessionsLoading() extends RecentSessionsEntry;
 
 final class const RecentSessionsFailed({required final RemoteFailureReason reason}) extends RecentSessionsEntry;

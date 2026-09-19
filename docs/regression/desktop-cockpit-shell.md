@@ -35,8 +35,10 @@ The main pane hosts one full-width routed page.
   produces failure feedback. Useful rows stay visible. Busy controls cannot dispatch duplicate intent, and busy/idle
   refresh plus Settings expose accessible names and keyboard actions.
   A superseded caller follows the current owning read after every completion, including an already-completed successor
-  followed by a newer owner. Completed failures stay observable despite retained rows; removed entries leave the
-  refresh scope. A batch does not wait for future catalog activity or a globally quiet inventory.
+  followed by a newer owner. Completed failures stay observable despite retained rows. During the recent-session phase,
+  removal or disposal retires pending receipts without waiting for obsolete I/O; late successes/errors cannot restore
+  entries, reseed unseen state or complete a receipt twice. A batch does not wait for future catalog activity or a
+  globally quiet inventory.
 - Running projects show the shared rotating outline sparkle; unread projects
   show its static filled state. On macOS, preserve Prego's native platform-view
   path so spinning does not schedule recurring Flutter frames. Verify its

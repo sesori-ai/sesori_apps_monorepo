@@ -43,7 +43,7 @@ boundary so each owner lands with its production consumer. No request bus, secon
 | [ ] | 11 | `desktop-ux/regression-docs` | [21/22](#pr-titles) | ≤ 600 | pending |
 | [ ] | 12 | `desktop-ux/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | pending |
 
-Current: publish 9.c.2c typed refresh workflow/controls → 10 → 11 → 12.
+Current: resolve #1545 feedback for 9.c.2c typed refresh workflow/controls → 10 → 11 → 12.
 9.c.1 merged as #1526, 9.c.2a as #1533, 9.c.2b.1 as #1540, and 9.c.2b.2 as #1543.
 Native qualification remains outstanding.
 One PR at a time; prepare at most one local successor and publish after its predecessor merges.

@@ -15,6 +15,17 @@ The terminal report later showed 13/13 passing. Final publication: 1,000 lines (
 `cde8c241b42d94c19d44be2bbfa2ed6c57543fe1`; follow-up publication changed only documentation and a class-doc comment.
 Native/live qualification remains outstanding.
 
+The 1,000-line figure measures the accepted publication head, not squash `a772a85` or today's working tree:
+
+```bash
+git diff --numstat 41e019da8bb5af9e23d76888a3a50912a308f26f..937adb9114041794777c38afbfc81acff65b1e8d --
+```
+
+Against initial publication `782e7e34f0ee5b180d637220ef1a66046122c051`, the full-range total increases from
+961 to 1,000: `steps/step-09c.md` adds three lines and this step document adds 36. Tracker churn remains
+15 additions/seven deletions in both ranges; the class-doc wording change leaves full-range production churn unchanged.
+This merge record and delivery-19 tracker updates belong to the successor's diff, not that immutable 1,000-line total.
+
 ## Scope and ownership
 
 `ProjectInventoryService` owns the existing project reads, retained results, mutations, live projection,

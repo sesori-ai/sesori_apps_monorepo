@@ -507,12 +507,19 @@ void main() {
     await inventory.ensureLoaded(projectId: projectId);
     final older = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => older.future);
-    final refresh = inventory.refresh();
+    bool? reported;
+    final refresh = inventory.refresh().then((result) {
+      reported = result;
+      return result;
+    });
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
         .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
     await inventory.retry(projectId: projectId);
+    await Future<void>.delayed(Duration.zero);
+    expect(reported, isFalse, reason: "the obsolete read must not delay the winning failure");
     older.complete(ApiResponse.success(SessionListResponse(items: [testSession(id: "stale")])));
     expect(await refresh, isFalse);
+    await Future<void>.delayed(Duration.zero);
     expect(loaded().sourceSessions, [known]);
     verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(3);
   });
@@ -550,27 +557,54 @@ void main() {
     expect(loaded().sourceSessions.single.id, "successor");
   });
 
-  test("removal retires an explicit refresh obligation without reseeding unseen state", () async {
-    await inventory.ensureLoaded(projectId: projectId);
-    final reply = Completer<ApiResponse<SessionListResponse>>();
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
-    final refresh = inventory.refresh();
-    projectListService.removeProjectAndPublish(
-      projects: const [ProjectSummary(id: projectId, name: "One", path: "/one", time: null)],
-      projectId: projectId,
-    );
-    reply.complete(ApiResponse.success(SessionListResponse(items: [testSession(unseen: true)])));
-    expect(await refresh, isTrue);
-    expect(inventory.state.value, isEmpty);
-    expect(unseen.seededSessions, hasLength(1));
-  });
+  for (final replacement in [false, true]) {
+    test("removal settles refresh before retired I/O (replacement: $replacement)", () async {
+      await inventory.ensureLoaded(projectId: projectId);
+      final replies = List.generate(replacement ? 2 : 1, (_) => Completer<ApiResponse<SessionListResponse>>());
+      var reads = 0;
+      when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+          .thenAnswer((_) => replies[reads++].future);
+      bool? reported;
+      final refresh = inventory.refresh().then((result) {
+        reported = result;
+        return result;
+      });
+      var driverSettled = false;
+      final replacementDriver = replacement
+          ? inventory.retry(projectId: projectId).then((_) => driverSettled = true)
+          : null;
+      projectListService.removeProjectAndPublish(
+        projects: const [ProjectSummary(id: projectId, name: "One", path: "/one", time: null)],
+        projectId: projectId,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(reported, isTrue, reason: "no response has completed but the obligation is retired");
+      expect(driverSettled, isFalse);
+      expect(await refresh, isTrue);
+      replies.first.complete(ApiResponse.success(SessionListResponse(items: [testSession(unseen: true)])));
+      if (replacement) replies.last.completeError(StateError("retired read failed"), StackTrace.current);
+      await replacementDriver;
+      await Future<void>.delayed(Duration.zero);
+      expect(inventory.state.value, isEmpty);
+      expect(unseen.seededSessions, hasLength(1));
+      verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(replacement ? 3 : 2);
+    });
+  }
 
   test("dispose cancels listeners and late reads cannot seed shared unseen state", () async {
     final reply = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
-    final pending = inventory.ensureLoaded(projectId: projectId);
-    final refresh = inventory.refresh();
+    var driverSettled = false;
+    final pending = inventory.ensureLoaded(projectId: projectId).then((_) => driverSettled = true);
+    bool? reported;
+    final refresh = inventory.refresh().then((result) {
+      reported = result;
+      return result;
+    });
     await inventory.dispose();
+    await Future<void>.delayed(Duration.zero);
+    expect(reported, isFalse);
+    expect(driverSettled, isFalse);
     expect(events.hasListener, isFalse);
     reply.complete(ApiResponse.success(SessionListResponse(items: [testSession()])));
     await pending;
