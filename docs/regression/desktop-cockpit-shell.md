@@ -151,10 +151,13 @@ The main pane hosts one full-width routed page.
 - Settings is a root modal, preserving the current route, session element and
   live composer. Sidebar/⌘, (Ctrl+, elsewhere) open General; the This computer popover
   opens Bridge; session setup opens Harnesses. All tabs and Close remain usable
-  at 560 × 480, with independently scrollable tabs/content at large text scales. Escape/outside dismiss;
+  at 560 × 480, with independently scrollable tabs/content through 250% text scale and no scale reduction.
+  The title-only toolbar respects its height constraint; longer tab labels wrap and the rail scrolls.
+  Escape/outside dismiss;
   active text editing and owned sheets retain their closer dismissal order.
-- General contains appearance, default input, launch-at-login and support/legal
-  information. Bridge distinguishes connected-bridge configuration from local
+- General contains appearance, launch-at-login, desktop app-update guidance and support/legal information.
+  Desktop's composer is text-only, so General does not advertise an ineffective Voice/Text preference.
+  Bridge distinguishes connected-bridge configuration from local
   status/logs. Notifications exposes desktop attention, not mobile push options.
   Account owns supervised logout; failed logout stays open, and delayed success
   cannot pop the opener. External auth rejection also dismisses the root modal.
@@ -190,7 +193,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Project/no-project keyboard entry, nullable route-name propagation, platform modifiers, held-key repeat suppression,
   text-field/popup precedence, layout persistence, narrow-window no-op and truthful per-project hints.
 - Modal tab/entry selection, keyboard entry, route/element/draft preservation, nested Back/Close,
-  text-edit/sheet Escape order, logout failure/late completion/auth rejection, minimum size/large text.
+  text-edit/sheet Escape order, logout failure/late completion/auth rejection, every tab and Close at minimum size
+  with 100%/200%/250% text. Use packaged fonts for geometry checks; preserve the requested text scaler.
 - Root-popup activity visibility across nested navigators; notification popup dismissal,
   same-page/Back preservation, different-session replacement, readiness and logged-failure ordering.
 - Popover scope/contextual actions, locks/live updates, explicit Stop intent, expanded/compact anchoring,
@@ -228,6 +232,11 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 
 ## Failure Signals And Exploration
 
+Audit rendered content as well as action availability: purpose, concise labels, grouping, scope and state-correct
+primary actions. Inspect light/dark, compact/expanded and minimum-window output with the actual packaged fonts.
+Keep app preferences and updates in General, local supervision in This computer, and remote configuration distinct.
+Synthetic rendering does not qualify native accessibility, compositing, keyboard handling or live bridge operations.
+
 Look for overflow at minimum width, drag updates that stall or write per frame,
 width jumping on reversal beyond a bound, scrollbars intercepting project toggles,
 automatic collapse overwriting user preferences, missing/stale activity marks,
@@ -255,6 +264,8 @@ bridge during UI-only checks.
 - `client/desktop/lib/features/home/desktop_home_pane.dart`
 - `client/desktop/lib/features/settings/desktop_settings_modal.dart`
 - `client/desktop/test/features/settings/desktop_settings_screens_test.dart`
+- `client/module_prego/lib/components/navigation/prego_nav_title.dart`
+- `client/module_prego/test/components/prego_nav_title_test.dart`
 - `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`
 - `client/module_core/lib/src/cubits/recent_sessions/`
 - `client/module_core/lib/src/cubits/session_list/session_list_mode.dart`

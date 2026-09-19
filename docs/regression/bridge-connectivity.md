@@ -46,13 +46,14 @@ explicit restart, and the connection states the app presents.
 - The client distinguishes connected, reconnecting, connection lost, bridge offline, and
   disconnected, and returns to connected when the bridge is back. The desktop shell
   roots the same `ConnectionService` beside the supervised control channel, shows
-  its relay-client state separately from helper relay status, and hosts the typed
-  connection banner at the window root. When project loading reports either no
+  its relay-client state separately from helper relay status, and overlays a connection pill on the main pane
+  without moving its contents. The sidebar's This computer popover describes only the supervised local helper.
+  When project loading reports either no
   registered bridge or a registered-but-offline bridge, desktop recovery asks
   the supervisor to Start and establishes an authenticated relay client; it
   never falls through to mobile CLI installation or relay-only reconnect
   guidance.
-- Inline connection alerts use a theme-aware rounded card: 16px outer and inner
+- Mobile inline connection alerts use a theme-aware rounded card: 16px outer and inner
   padding, 16px corners, a subtle border and status tint, and a readable medium
   title. The bridge-disconnected warning remains informational, with its
   broadcast-off icon and live-region announcement. Its entire padded height
@@ -66,9 +67,10 @@ explicit restart, and the connection states the app presents.
   (Wi-Fi drop, VPN toggle, sleep/wake) surfaces as a socket close and enters
   reconnect within roughly two ping intervals instead of waiting on request
   timeouts or relay-side reaping.
-- A reconnect that outlasts the overlay grace window surfaces the reconnecting
-  banner on all surfaces; reconnects that resolve within the window (foreground
-  resume, bridge handover) stay bannerless.
+- A reconnect that outlasts the overlay grace window surfaces the mobile banner or desktop pill;
+  reconnects that resolve within the window (foreground resume, bridge handover) stay quiet.
+  Desktop recovery, intentional-Off behavior and local-control scope follow the
+  [cockpit contract](desktop-cockpit-shell.md).
 - The desktop root constructs `ConnectionOverlayCubit` and `SseToastCubit` outside
   the auth-gated content. Backend `tui.toast.show` events reach the desktop Prego
   popup listener rather than being silently consumed; handled shared failures are

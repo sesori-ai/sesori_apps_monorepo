@@ -8,7 +8,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../core/desktop_update_configuration.dart";
 import "../../core/external_link.dart";
+import "desktop_update_section.dart";
 
 /// App-wide preferences, without the mobile settings navigation rows.
 class const DesktopGeneralSettingsScreen({super.key, required final VoidCallback onClose}) extends StatefulWidget {
@@ -44,17 +46,6 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
               spacing: PregoSpacing.xl,
               children: [
                 SettingsSection(title: loc.settingsSectionAppearance, child: const AppearancePicker()),
-                SettingsSection(
-                  title: loc.settingsDefaultInputTitle,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    spacing: PregoSpacing.lg,
-                    children: [
-                      Text(loc.settingsDefaultInputDescription, style: context.prego.textTheme.textSm.regular),
-                      const ChatInputModePicker(),
-                    ],
-                  ),
-                ),
                 PregoGroupedRows(
                   children: [
                     MergeSemantics(
@@ -71,6 +62,17 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
                       ),
                     ),
                   ],
+                ),
+                DesktopUpdateSection(
+                  destination: resolveDesktopUpdateDestination(
+                    encodedIdentity: const bool.hasEnvironment(DesktopBundleIdentity.defineName)
+                        ? const String.fromEnvironment(DesktopBundleIdentity.defineName)
+                        : null,
+                    encodedChannel: const String.fromEnvironment(
+                      DesktopReleaseChannel.defineName,
+                      defaultValue: "stable",
+                    ),
+                  ),
                 ),
                 SettingsAppInfo(
                   openSupportLink: ({required url}) =>

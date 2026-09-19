@@ -182,7 +182,8 @@ state.
   reachable. One main pane hosts home, all sessions, new session, detail, or
   diffs at every desktop width. Only all sessions owns a full session-list
   cubit; the sidebar never claims project viewing. Archived rows open read-only.
-  Mobile retains its adaptive session split.
+  Mobile retains its adaptive session split. Desktop Activity, ordinary recents, contextual shortcuts and local
+  controls follow the [cockpit contract](desktop-cockpit-shell.md); the sidebar is not another full session-list pane.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are

@@ -1,7 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
-import "package:flutter/services.dart" show LogicalKeyboardKey;
+import "package:flutter/services.dart" show FontLoader, LogicalKeyboardKey, rootBundle;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -87,7 +87,13 @@ const _bridgeState = BridgeControlState(
 );
 
 void main() {
-  setUpAll(() {
+  setUpAll(() async {
+    // Ahem's uniform advances do not represent the packaged settings font at large text scales.
+    final font = FontLoader("packages/theme_prego/Satoshi Prego");
+    for (final weight in ["Regular", "Medium", "Bold"]) {
+      font.addFont(rootBundle.load("packages/theme_prego/assets/fonts/SatoshiPrego/SatoshiPrego-$weight.otf"));
+    }
+    await font.load();
     registerFallbackValue(AppearanceMode.system);
     registerFallbackValue(ChatInputMode.voiceFirst);
     registerFallbackValue(DesktopAttentionPreference.enabled);
@@ -381,7 +387,10 @@ void main() {
     expect(router.state.uri.path, "/session");
     expect(find.byType(SettingsView), findsNothing);
     expect(find.byType(AppearancePicker), findsOneWidget);
-    expect(find.byType(ChatInputModePicker), findsOneWidget);
+    expect(find.byType(ChatInputModePicker), findsNothing);
+    expect(find.text("Default input"), findsNothing);
+    expect(find.text("Desktop updates"), findsOneWidget);
+    expect(find.text("Development build"), findsOneWidget);
     expect(find.text("alex"), findsNothing);
     expect(find.text("Warm harness on session open"), findsNothing);
     expect(find.text("AI Interactions"), findsNothing);
@@ -401,8 +410,7 @@ void main() {
 
   testWidgets("Bridge distinguishes connected configuration from local diagnostics", (tester) async {
     await open(tester: tester, tab: DesktopSettingsTab.bridge);
-    expect(find.text("Desktop updates"), findsOneWidget);
-    expect(find.text("Development build"), findsOneWidget);
+    expect(find.text("Desktop updates"), findsNothing);
     expect(find.text("Connected bridge"), findsOneWidget);
     expect(find.text("This computer"), findsOneWidget);
     expect(find.text("Local bridge"), findsOneWidget);
@@ -493,7 +501,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  for (final scale in [1.0, 2.0]) {
+  for (final scale in [1.0, 2.0, 2.5]) {
     testWidgets("minimum window at ${scale}x keeps tabs reachable and preserves the route", (tester) async {
       tester.platformDispatcher.textScaleFactorTestValue = scale;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
@@ -514,6 +522,17 @@ void main() {
         expect(target.hitTestable(), findsOneWidget);
         expect(MediaQuery.textScalerOf(tester.element(target)).scale(10), 10 * scale);
         if (scale > 1) expect(Scrollable.of(tester.element(target)).position.maxScrollExtent, greaterThan(0));
+        await tester.tap(target);
+        await tester.pumpAndSettle();
+        expect(
+          find
+              .byWidgetPredicate(
+                (widget) => widget is PregoButtonsIconGlass && widget.semanticLabel == "Close settings",
+              )
+              .hitTestable(),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull, reason: "${tab.name} at scale $scale");
       }
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();

@@ -27,9 +27,12 @@ participates.
 - Auth-server URLs behave identically with or without trailing slashes, and
   deadline expiry actively aborts registration and token-refresh transport,
   including response-body consumption.
-- With no bridge, Projects shows install and start commands, the explainer, and
-  support links, and copy/share hand off the command unchanged; connected with no
-  projects shows the add-project call to action instead.
+- With no bridge, mobile Projects shows install/start commands, the explainer and support links; copy/share
+  hand off the command unchanged. Desktop home instead offers supervised local bridge recovery.
+  Connected with no projects shows the add-project call to action on either surface.
+- Desktop first-run startup preferences and optional macOS file-access guidance follow the
+  [cockpit contract](desktop-cockpit-shell.md) and [supervision contract](desktop-bridge-supervision.md).
+  Dismissing guidance does not grant permission or block ordinary project navigation.
 - Copying install or start commands on onboarding or bridge-disconnected pages
   shows the informational "Command copied to clipboard" popup, not the success
   variant.
@@ -81,7 +84,7 @@ the prompt and a reused one when testing suppression.
   prove relay acceptance.
 - The prompt's QR and link are account-generic and cannot prove pairing with one bridge.
 - An app installed during a bridge run is marked only at a later start.
-- The desktop shell is not shipped; supervised starts never show this prompt.
+- Supervised desktop starts do not show the standalone bridge's install/open-app prompt.
 
 ## Sources
 

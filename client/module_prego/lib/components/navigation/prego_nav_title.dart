@@ -43,26 +43,29 @@ class const PregoNavTitle({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final subtitle = this.subtitle;
+    final titleText = Text(
+      title,
+      style: prego.textTheme.textLg.medium.copyWith(color: prego.colors.textPrimary, height: _lineHeight),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+    );
+    // A single line should receive the toolbar's bounds directly, rather than
+    // an unbounded vertical constraint from a Column at large text scales.
+    if (subtitle == null || subtitle.isEmpty) return titleText;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        titleText,
         Text(
-          title,
-          style: prego.textTheme.textLg.medium.copyWith(color: prego.colors.textPrimary, height: _lineHeight),
+          subtitle,
+          style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary, height: _lineHeight),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
         ),
-        if (subtitle != null && subtitle.isNotEmpty)
-          Text(
-            subtitle,
-            style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary, height: _lineHeight),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
       ],
     );
   }
