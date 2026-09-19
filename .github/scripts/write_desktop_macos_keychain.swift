@@ -57,6 +57,10 @@ private func addGenericPassword(
             kSecAttrService: service,
             kSecAttrAccount: account,
             kSecValueData: password,
+            // Pinned FlutterSecureStorage classic mode skips only the entitlement-requiring
+            // synchronizable=true branch; its base query still fixes these two attributes.
+            kSecAttrSynchronizable: false,
+            kSecAttrAccessible: kSecAttrAccessibleWhenUnlocked,
             kSecAttrAccess: access,
             kSecReturnRef: true,
         ] as CFDictionary,
@@ -74,6 +78,22 @@ private func updateGenericPassword(item: SecKeychainItem, password: Data) -> OSS
             passwordBytes.baseAddress!
         )
     }
+}
+
+private func flutterSecureStorageItemStatus(service: String, account: String) -> OSStatus {
+    var value: CFTypeRef?
+    return SecItemCopyMatching(
+        [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: account,
+            kSecAttrSynchronizable: false,
+            kSecAttrAccessible: kSecAttrAccessibleWhenUnlocked,
+            kSecReturnData: true,
+            kSecMatchLimit: kSecMatchLimitOne,
+        ] as CFDictionary,
+        &value
+    )
 }
 
 guard CommandLine.arguments.count == 6 else {
@@ -127,6 +147,10 @@ case .create:
     guard status == errSecSuccess, addedItem != nil else {
         fail("Could not create Keychain item: \(describe(status))")
     }
+    let readStatus = flutterSecureStorageItemStatus(service: service, account: account)
+    guard readStatus == errSecSuccess else {
+        fail("Created Keychain item does not match Flutter secure-storage query: \(describe(readStatus))")
+    }
 case .update:
     let (findStatus, existingItem) = genericPasswordItem(service: service, account: account)
     guard findStatus == errSecSuccess, let existingItem else {
@@ -135,5 +159,9 @@ case .update:
     let updateStatus = updateGenericPassword(item: existingItem, password: password)
     guard updateStatus == errSecSuccess else {
         fail("Could not update Keychain item: \(describe(updateStatus))")
+    }
+    let readStatus = flutterSecureStorageItemStatus(service: service, account: account)
+    guard readStatus == errSecSuccess else {
+        fail("Updated Keychain item does not match Flutter secure-storage query: \(describe(readStatus))")
     }
 }

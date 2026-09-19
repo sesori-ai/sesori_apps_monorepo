@@ -486,7 +486,20 @@ consumed the job's full 35-minute timeout immediately after prior-app installati
 native writer's create-then-change-ACL sequence was the only unbounded operation at that
 boundary. Create each classic item with its trusted ACL atomically, retain that ACL while
 refreshing values, add privacy-safe deadlines to every native Keychain command, and retry
-from merged `main`; the cancelled run is not qualification evidence.
+from merged `main`; the cancelled run is not qualification evidence. This follow-up
+merged as `55547f26c8a9f59747987f1b7a65fc473e76e9c2`.
+
+**Step 6 Keychain-envelope follow-up PR:**
+`⚙️ [desktop-distribution] Match macOS QA Keychain query [step 8.d/14]`.
+Merged-main run `35454870471` proved the atomic writer no longer hangs, but both CPUs
+reached the bounded prior-app helper deadline with zero installed-helper processes. The
+writer's classic-Keychain insert omitted the explicit non-synchronizable
+(`kSecAttrSynchronizable: false`) and when-unlocked attributes that the pinned
+FlutterSecureStorage includes in its fixed read query, so a broad `security` lookup
+was not sufficient proof that the app could match the item. Create the item with that
+exact query envelope and immediately self-verify it through `SecItemCopyMatching` without
+printing its value. Retry both CPUs from merged `main`; the failed run is not
+qualification evidence.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
