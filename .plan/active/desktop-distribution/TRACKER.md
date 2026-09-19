@@ -124,17 +124,17 @@ merged as `75a3e8c49be647ff663ea05207ed1badaa14db28`. Runs `35399491087` and
 passed the prior app's replacement/Quit and installed/launched the current app, but the
 single inspector call 15 seconds after launch found no visible current window. PR #1542
 added a bounded 45-second read-only window wait with per-attempt evidence and merged as
-`305998d689d13051ac0fb58f9d970dfffe319bf0`. Main-only run `35405646668` at that
-source, tree `a6f358647c559b840f1c3ecade88be1502632a57`, passed x64 job `105794893362`
-and arm64 job `105794893463`. Artifacts `10571804180` and `10571709031` record every
-implemented `upgrade.json` check true. Private signed replacement with persisted Bridge
-Off intent is accepted on both CPUs. The probe did not inspect helper absence while
-either GUI was running, so helper-Off, authenticated helper-On, failed-stop,
-real-account/TCC, minimum-OS and public artifact retrieval remain open; the download
-page itself is live. The successor correction
+`305998d689d13051ac0fb58f9d970dfffe319bf0`. Main-only run `35405646668` then
+accepted signed replacement with persisted Bridge Off intent on both CPUs, but did not
+inspect live helper absence. The successor correction
 `🌿 [desktop-distribution] Observe helper-Off during macOS replacement [step 8/14]`
-is in progress. It records exact installed-helper absence while each GUI is live;
-helper-Off remains open pending a reviewed `main` run on both native CPUs.
+merged in #1546 as `8d99cd2925c9866dc121323ed348b0d130bc6aca`. Main-only run
+`35411687826`, tree `777f3a353ff04eaeab29f6a6ff3f81e514b04cf1`, passed tooling job
+`105812432480`, x64 job `105812464127` and arm64 job `105812464132`. Artifacts
+`10574093842` and `10574368671` record `NO_INSTALLED_HELPER` before both prior/current
+Quit operations and every implemented `upgrade.json` check true. Private helper-Off is
+accepted on both CPUs. Authenticated helper-On, failed-stop, real-account/TCC,
+minimum-OS and public artifact retrieval remain open; the download page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
 private-package documentation portion can proceed independently, so its dependency
@@ -257,7 +257,7 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update path | Signed replacement + Off intent passed both CPUs | Live helper-Off, authenticated helper-On and public gates pending. |
+| macOS update path | Private helper-Off passed both CPUs | Authenticated helper-On and public gates pending. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Migration complete | Public hosting gates pending. |
 | macOS public gate | Pending | See checkpoint above. |

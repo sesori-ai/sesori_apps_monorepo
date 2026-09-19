@@ -153,18 +153,25 @@ state/login-registration preservation. Evidence artifacts are `10571804180` (x64
 digest `bc9ac73ebf451a400280a8b8e3c478eba3e67013d64a2a79e77e6877b47a7fc4`) and
 `10571709031` (arm64, digest
 `c7663919c1da5ff531c7103834c6e292f0b962d8ad0a73519f429a58f378876d`), expiring
-2026-10-02. Private signed replacement with persisted Bridge Off intent is accepted
-on both CPUs. The probe did not inspect helper absence while either GUI was running,
-so helper-Off, authenticated helper-On, failed-stop, real-account/Keychain/TCC,
-minimum-OS, public retrieval and parent Gate C remain open.
+2026-10-02. That run accepted private signed replacement with persisted Bridge Off
+intent on both CPUs, but did not inspect helper absence while either GUI was running.
 
 The live helper-Off correction checks the exact
 `/Applications/Sesori.app/Contents/Helpers/bridge/bin/bridge` process after each
 visible prior/current launch and before tray Quit. It preserves an explicit
-`*-helper-off.log`, refuses a running helper, and adds
-`helperAbsentBeforeQuit` to successful evidence. This check is credential-free
-and does not poll, signal or replace the helper. Helper-Off remains open until this
-reviewed tooling passes from `main` on both native CPUs.
+`*-helper-off.log`, refuses a running helper, and adds `helperAbsentBeforeQuit` to
+successful evidence. This credential-free check merged in PR #1546 as source
+`8d99cd2925c9866dc121323ed348b0d130bc6aca`, tree
+`777f3a353ff04eaeab29f6a6ff3f81e514b04cf1`. Main-only run `35411687826` passed
+tooling job `105812432480`, x64 job `105812464127` and arm64 job `105812464132`.
+Evidence artifacts are `10574093842` (x64, digest
+`sha256:a2016249efcc4aa3edda7d6a5e0097a1e5904c15cd78975bb8437fb7e055a6a2`, expiring
+2026-10-03T01:11:05Z) and `10574368671` (arm64, digest
+`sha256:ff848668381813e9318d97a572eb3520f4c6267b0bb39d8abb668f486d2a207e`, expiring
+2026-10-03T01:10:24Z). Both prior/current helper logs on both CPUs record
+`NO_INSTALLED_HELPER`; every implemented report check is true. Private helper-Off is
+accepted on both CPUs. Authenticated helper-On, failed-stop, real-account/Keychain/TCC,
+minimum-OS, public retrieval and parent Gate C remain open.
 
 Dispatches and expanded logs were run from
 `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
@@ -219,6 +226,11 @@ gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo 
   -f previous_packaging_run=35042335424 -f packaging_run=35206885114
 gh run view 35405646668 --repo sesori-ai/sesori_apps_monorepo --job 105794893362 --log
 gh run view 35405646668 --repo sesori-ai/sesori_apps_monorepo --job 105794893463 --log
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-upgrade-probe -f channel=stable \
+  -f previous_packaging_run=35042335424 -f packaging_run=35206885114
+gh run view 35411687826 --repo sesori-ai/sesori_apps_monorepo --job 105812464127 --log
+gh run view 35411687826 --repo sesori-ai/sesori_apps_monorepo --job 105812464132 --log
 ```
 
 ## Verification
