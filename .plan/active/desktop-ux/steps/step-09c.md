@@ -105,6 +105,24 @@ Receipt manifests under `/tmp/rose-elephant-controls-`: `initial-tests.json`, `c
 not declarations or accumulated reruns. The unchanged passing workflow/provider/mobile cases were not rerun merely
 for reassurance. Generated registration/localization evidence is `generation.json` with the same prefix.
 
+## Reviewed source checkpoint
+
+Source commit: `96213b62ef51b76a511696ee4ee030d27c584c83`, tree
+`447ef59ce1b100ec78ef759d66a87468fa62df38`. Full range: 1,019 lines (843 additions/176 deletions), 24 paths;
+402 production, 385 tests, 166 documentation and 66 generated (953 authored lines).
+The measurement includes this document and tracker exactly as they existed at that source commit, not this
+later approval record. Reproduce with:
+
+```bash
+git diff --numstat a772a85a141b617f0d766d0d6a7d6aa11b654a30..96213b62ef51b76a511696ee4ee030d27c584c83 --
+```
+
+Implementation architecture review `5716b51b-b3a5-40e3-9a07-82f90bb219c7` approved the full committed range without
+findings. Preserved report: `/tmp/rose-elephant-sidebar-refresh-controls-implementation-review.md`, SHA-256
+`6444fa2b550aebc4409a7b58053b19e2b58ecdd594efb2af05da8921e27e0900`.
+Publication adds only this documentation record; its complete range is measured separately before pushing.
+No passing executable verification was rerun for the documentation-only publication follow-up.
+
 ## Rendering and remaining qualification
 
 Four synthetic views passed using the actual sidebar and packaged fonts, with fake state and no production DI:
