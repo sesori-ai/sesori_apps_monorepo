@@ -10,13 +10,11 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/desktop_update_configuration.dart";
 import "../../core/di/injection.dart";
 import "desktop_attention_preference_section.dart";
 import "desktop_general_settings_screen.dart";
 import "desktop_harnesses_settings_screen.dart";
 import "desktop_profile_screen.dart";
-import "desktop_update_section.dart";
 
 enum DesktopSettingsTab() {
   general,
@@ -238,17 +236,6 @@ class const _DesktopBridgeSettingsPage({required final VoidCallback onClose}) ex
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: PregoSpacing.xl,
               children: [
-                DesktopUpdateSection(
-                  destination: resolveDesktopUpdateDestination(
-                    encodedIdentity: const bool.hasEnvironment(DesktopBundleIdentity.defineName)
-                        ? const String.fromEnvironment(DesktopBundleIdentity.defineName)
-                        : null,
-                    encodedChannel: const String.fromEnvironment(
-                      DesktopReleaseChannel.defineName,
-                      defaultValue: "stable",
-                    ),
-                  ),
-                ),
                 Text(loc.desktopSettingsConnectedBridgeDescription, style: context.prego.textTheme.textSm.regular),
                 BridgeSettingsSection(title: loc.desktopSettingsConnectedBridge),
                 SettingsSection(

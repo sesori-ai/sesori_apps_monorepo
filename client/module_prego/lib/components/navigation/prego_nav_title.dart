@@ -26,7 +26,7 @@ class const PregoNavTitle({
   /// its own.
   final String? subtitle,
 }) extends StatelessWidget {
-  /// Line-height multiplier for the bar's title and subtitle, overriding the
+  /// Line-height multiplier for a two-line title/subtitle block, overriding the
   /// design tokens' body-text leading (`text-lg` 1.56×, `text-md` 1.5×).
   ///
   /// Those tokens are tuned for paragraph spacing; in this fixed-height bar they
@@ -39,30 +39,39 @@ class const PregoNavTitle({
   /// the bar with margin on every platform.
   static const double _lineHeight = 1.25;
 
+  /// Fits the 18pt title at 250% text scale into the 54pt inline toolbar.
+  static const double _singleLineHeight = 1.2;
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final subtitle = this.subtitle;
+    final titleText = Text(
+      title,
+      style: prego.textTheme.textLg.medium.copyWith(
+        color: prego.colors.textPrimary,
+        height: subtitle == null || subtitle.isEmpty ? _singleLineHeight : _lineHeight,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+    );
+    // A single line should receive the toolbar's bounds directly, rather than
+    // an unbounded vertical constraint from a Column at large text scales.
+    if (subtitle == null || subtitle.isEmpty) return titleText;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        titleText,
         Text(
-          title,
-          style: prego.textTheme.textLg.medium.copyWith(color: prego.colors.textPrimary, height: _lineHeight),
+          subtitle,
+          style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary, height: _lineHeight),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
         ),
-        if (subtitle != null && subtitle.isNotEmpty)
-          Text(
-            subtitle,
-            style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary, height: _lineHeight),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
       ],
     );
   }

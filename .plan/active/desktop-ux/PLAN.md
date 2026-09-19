@@ -2,9 +2,9 @@
 
 ## Status
 
-Planned 2026-09-15; logical steps 1–8, logging 9.a.1–9.a.2 and sidebar interactions 9.b
-have landed (see `TRACKER.md`). After #1524, 9.c is split into refresh continuity (9.c.1)
-and activity/controls (9.c.2), keeping lifecycle and larger UI review separate.
+Planned 2026-09-15; deliveries 1–20 have landed through #1549 (see `TRACKER.md`).
+Step 11 reconciles the control-content audit and regression contracts; step 12 records final coverage and handoff.
+The 22-PR total includes the independent activity, inventory-owner and refresh/control deliveries.
 Native qualification remains outstanding, not waived by implementation delivery.
 This is phase 1 of the desktop UX work: the changes that
 remove the release-blocking UX problems with client-only work. Later phases
@@ -243,7 +243,7 @@ navigation or repeated settings links. Inspect the actual rendered result.
 | Bridge logs / configuration | Keep as secondary troubleshooting/configuration actions, visually below the primary control. Configuration opens the Bridge tab once step 7 lands. |
 | Quit Sesori | App-scoped: belongs to application/tray controls and safe native window-close behavior, not a bridge popover or bridge settings section. |
 | Launch Sesori at login | App-startup preference in Settings → General. The precise label describes what the OS launches. Native registration remains accessible through the tray during the step-6/7 transition. |
-| Settings tabs | General: appearance/input/app startup; Harnesses: runtime management; Bridge: distinguish connected-bridge configuration from this computer's supervision; Notifications: desktop attention; Account: identity/sign-out. Avoid duplicating these destinations inside General. |
+| Settings tabs | Give each section one scope; avoid duplicating destinations inside General. |
 | First-run/FDA cards | Explain the agent benefit, scope and consequence. Offer one clear next action plus a quiet dismissal; never imply that access is mandatory or grant it automatically. |
 | Shortcuts and final content pass | Hints must match real bindings. Step 11 audits labels, grouping, conditional availability and redundant options across the completed cockpit—not just documentation. |
 | Hover hints | Keep icon hints, actually truncated labels and useful extra information; remove hints repeating fully visible text. Preserve accessibility semantics. |
@@ -379,7 +379,7 @@ mutations, not diagnostics. App preferences and Quit stay outside.
 
 | Tab | Content (existing views) |
 |---|---|
-| General | appearance, default input, Launch Sesori at login and account-neutral app preferences |
+| General | appearance, Launch Sesori at login, app updates and support/legal |
 | Harnesses | harness list + detail pushed inside the modal's nested `Navigator` |
 | Bridge | connected-bridge `BridgeSettingsSection` (YOLO, warm-up, PR interval), clearly separated local supervision, logs and File access status; no app Quit or launch-at-login |
 | Notifications | `DesktopAttentionPreferenceSection` |
@@ -623,7 +623,10 @@ The code-informed 18/22 plan places the desktop refresh workflow with its first 
 Step 10 adds Cmd/Ctrl+N beside the existing Settings binding in the router, and Cmd/Ctrl+B in the cockpit.
 They use existing typed navigation/layout commands, ignore held-key repeats and show truthful platform hints.
 The optional D12 hidden-chrome experiment is omitted; no dormant native switch or drag region is added.
-Step 11 audits labels, grouping, scope, redundancy and state-specific actions.
+Step 11 audits rendered labels, grouping, scope, redundancy and state-specific actions.
+Its localized fixes put app-update guidance in General, remove the ineffective desktop Voice/Text preference,
+and constrain title-only toolbars at large text. Mobile preference behavior and stored values remain unchanged.
+See [audit and regression reconciliation](steps/step-11.md); no update/distribution behavior changes.
 Step 12 records the full matrix and handoff, then moves the plan to `.plan/completed/desktop-ux/`.
 
 Shared composition, copy and native preference commands landed separately in 7.a;

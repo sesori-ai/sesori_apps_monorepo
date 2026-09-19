@@ -2,7 +2,8 @@
 
 ## Supported behavior
 
-Desktop Settings includes update guidance. Packaged macOS/Windows builds expose
+Desktop Settings → General includes app-update guidance, separate from bridge configuration and supervision.
+Packaged macOS/Windows builds expose
 **View downloads**, opening `https://sesori.com/desktop/` with the compiled build's
 stable/internal channel, OS and CPU section. The page is live; this does not claim an
 available update or published installer. Unshipped sections explicitly contain no public

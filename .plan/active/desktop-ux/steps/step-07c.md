@@ -29,7 +29,8 @@ Each test path below is an argument to `flutter test --no-pub --reporter json`:
 **61 distinct desktop cases**, not accumulated reruns. A ran all six suites together: exit 1,
 59 passed/two failed. Its 12 modal passes are superseded by B's 14-case modal-only run, exit 0.
 The failures exposed a pre-existing 2px `PregoNavTitle` toolbar overflow at 250% text, not rail overflow.
-That cosmetic limit remains for step 11's audit; it is not fixed or passed. B tests 100%/200% at 560×480,
+That checkpoint did not fix or pass the cosmetic limit. The later [step 11 audit](step-11.md) records its correction
+and separate 250% evidence; these historical runs remain unchanged. B tests 100%/200% at 560×480,
 asserting actual rail scrolling, unchanged text scale, popup visibility gating and retained opener identity.
 `dart analyze --fatal-infos` in the same cwd at B: exit 0. No unchanged suite was repeated for provenance.
 Logs/manifests: `/tmp/rose-elephant-settings-modal-{integrated-tests,rail-tests,integrated-analyze}.*`

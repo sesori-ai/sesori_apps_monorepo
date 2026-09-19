@@ -117,3 +117,20 @@ Follow-up validation and publication receipts use that prefix plus `validation.j
 No production DI/bootstrap, desktop app-smoke, real app/helper launch, bridge operation, secure-storage prompt,
 native registration, real preference/auth/database mutation, screen capture or relaunch occurred. Synthetic tests and
 platform variants do not establish native or live qualification. Steps 11 and 12 retain that final handoff.
+
+## Merge record
+
+Accepted head `6f22133b3c9d06ac4ae02d4602651f113f04bd5c` merged at `2026-09-19T06:12:02Z`.
+GitHub's distinct squash is `201cdcc51205edd88d615618894c2dafd8e75df6`; both trees are
+`eb9bccd00af1d2548e1999b7a550089f7e1dc6e7`. Readiness CI passed 12/12, Cubic approved with zero issues,
+Codex completed without new findings, and both threads were resolved. The post-merge monitor reported 12/13 still
+running; no terminal 13/13 result is claimed. The configured monitor performed the title-only squash attempt.
+
+The accepted range is 464 all-path lines, 446 additions/18 deletions across 14 paths;
+production/tests/docs/generated: 63/196/194/11. This immutable measurement excludes later merge-record additions:
+
+```bash
+git diff --numstat 354e67ea5c8d9c513326c1c82c48b7597060acae..6f22133b3c9d06ac4ae02d4602651f113f04bd5c --
+```
+
+Receipts: `/tmp/rose-elephant-1549-6f22133-ready-assessment.json` and `/tmp/rose-elephant-1549-merged.json`.

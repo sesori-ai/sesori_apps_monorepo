@@ -53,7 +53,8 @@ external.
   login.
 - Desktop attention listens directly to relay SSE without registering a push token. A permission-asked or
   question-asked event uses `displaySessionId` when present, resolves that session's title/project, and shows only while
-  the desktop window is hidden or unfocused and the desktop-owned switch is enabled. Requests blocked by focus,
+  the desktop window is hidden or unfocused and the desktop-owned Settings → Notifications switch is enabled.
+  Requests blocked by focus,
   preference, or restoring authentication remain pending and are reconsidered when that gate opens. Requests are
   tracked independently under the display session: per-session native writes are serialized, a matching reply or
   rejection cancels the session-scoped notification only after its last outstanding request settles, and a resolved

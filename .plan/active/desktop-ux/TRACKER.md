@@ -40,10 +40,11 @@ boundary so each owner lands with its production consumer. No request bus, secon
 | [x] | 9.c.2b.2 | `desktop-ux/project-refresh-ownership` | [18/22](#pr-titles) | ≤ 1,400 | done |
 | [x] | 9.c.2c | `desktop-ux/sidebar-refresh-controls` | [19/22](#pr-titles) | ≤ 1,450 | done |
 | [x] | 10 | `desktop-ux/shortcuts-title-bar` | [20/22](#pr-titles) | ≤ 600 | done |
-| [ ] | 11 | `desktop-ux/regression-docs` | [21/22](#pr-titles) | ≤ 600 | pending |
+| [x] | 11 | `desktop-ux/regression-docs` | [21/22](#pr-titles) | ≤ 600 | done |
 | [ ] | 12 | `desktop-ux/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | pending |
 
-Current: monitor #1549 for 10 contextual keyboard shortcuts → 11 → 12.
+Current: publish/monitor 11 control-content audit and regression reconciliation → 12.
+Step 10 merged as #1549; implementation completion does not waive final native/live qualification.
 9.c.1 merged as #1526, 9.c.2a as #1533, 9.c.2b.1 as #1540, 9.c.2b.2 as #1543, and 9.c.2c as #1545.
 Native qualification remains outstanding.
 One PR at a time; prepare at most one local successor and publish after its predecessor merges.
@@ -145,6 +146,21 @@ These are current series titles; historical Git/squash subjects remain unchanged
   The 177-, 30- and 50-case checkpoints overlap, not add together.
   Layer-3 architecture approval supersedes earlier placement approvals. See `steps/step-09c.md`.
 
+- Step 10: [PR #1549](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1549),
+  merged at accepted head `6f22133b3c9d06ac4ae02d4602651f113f04bd5c`;
+  distinct squash `201cdcc51205edd88d615618894c2dafd8e75df6`, shared tree
+  `eb9bccd00af1d2548e1999b7a550089f7e1dc6e7`, merged `2026-09-19T06:12:02Z`.
+  Readiness CI passed 12/12; the post-merge report still showed 12/13 running, not a terminal pass.
+  Cubic approved with zero issues, Codex completed without new findings, and both threads were resolved.
+  Final publication: 464 all-path lines (446 additions/18 deletions), 14 paths;
+  production/tests/docs/generated: 63/196/194/11. Reproduce the immutable range:
+
+  ```bash
+  git diff --numstat 354e67ea5c8d9c513326c1c82c48b7597060acae..6f22133b3c9d06ac4ae02d4602651f113f04bd5c --
+  ```
+
+  Initial 85 cases and the overlapping three-case correction remain separate. See `steps/step-10.md`.
+
 - Standalone user-requested sidebar correction:
   [PR #1513](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1513) merged.
   Selected-session pinning now uses the non-archived projection, including live archive updates.
@@ -238,3 +254,8 @@ or waive shipping qualification.
   and scoped architecture plan/implementation approval. Anchored drags preserve both-bound overshoot;
   visible scrollbars no longer intercept expanded project toggles. Existing core ownership is unchanged.
   See [interaction evidence](steps/step-09b.md); native/protected-state qualification remains outstanding.
+- Step 11: 25 desktop Settings cases and three Prego title cases pass at their recorded uncommitted checkpoints;
+  both owning analyzers pass. Inspected packaged-font Settings, sidebar and local-popover renders informed the audit.
+  App updates now belong to General; the single-title toolbar respects large-text constraints without lowering scale.
+  Regression contracts distinguish mobile/desktop connection and onboarding surfaces. See `steps/step-11.md`.
+  Synthetic platform variants and renders do not establish native/live or packaged coverage.
