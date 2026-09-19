@@ -500,7 +500,7 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
-  test("an active undispatched Pi prompt can be cancelled and immediately retried", () async {
+  test("an active undispatched Pi prompt can be cancelled before a follow-up runs", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
@@ -524,19 +524,19 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
-      promptId: "cancel-queued",
+      promptId: "follow-up",
       directory: "/project",
-      parts: [const PluginPromptPart.text(text: "retry me")],
-      userVisibleText: "retry me",
+      parts: [const PluginPromptPart.text(text: "follow up")],
+      userVisibleText: "follow up",
       variant: null,
       model: null,
     );
     expect(service.queuedPrompts(sessionId: "session"), hasLength(1));
 
     await _answerEntries(process);
-    final retried = await waitForCommand(process: process, type: "prompt");
-    expect(retried["message"], "retry me");
-    process.emitResponse(id: retried["id"]! as String, command: "prompt");
+    final followUp = await waitForCommand(process: process, type: "prompt");
+    expect(followUp["message"], "follow up");
+    process.emitResponse(id: followUp["id"]! as String, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
@@ -570,56 +570,6 @@ void main() {
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     expect(process.written.where((frame) => frame["type"] == "prompt").map((frame) => frame["message"]), ["first"]);
-  });
-
-  test("a cancelled undispatched prompt id remains retryable", () async {
-    final process = FakePiProcess();
-    final fixture = _Fixture(processes: [process]);
-    addTearDown(fixture.dispose);
-    final service = fixture.service();
-
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "first",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "first")],
-      userVisibleText: "first",
-      variant: null,
-      model: null,
-    );
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "retryable",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "retry me")],
-      userVisibleText: "retry me",
-      variant: null,
-      model: null,
-    );
-
-    expect(
-      service.cancelQueuedPrompt(sessionId: "session", promptId: "retryable"),
-      isTrue,
-    );
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "retryable",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "retry me")],
-      userVisibleText: "retry me",
-      variant: null,
-      model: null,
-    );
-
-    await _answerEntries(process);
-    final first = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: first["id"]! as String, command: "prompt");
-    process.emit(frame: {"type": "agent_settled"});
-    final retried = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-    expect(retried["message"], "retry me");
-    process.emitResponse(id: retried["id"]! as String, command: "prompt");
-    process.emit(frame: {"type": "agent_settled"});
-    await _waitForIdle(service: service, sessionId: "session");
   });
 
   test("a cancelled prompt settles when its selecting process exits", () async {
@@ -1762,52 +1712,6 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
-  test("a retried prompt id is an idempotent no-op instead of a duplicate turn", () async {
-    final process = FakePiProcess();
-    final fixture = _Fixture(processes: [process]);
-    addTearDown(fixture.dispose);
-    final service = fixture.service();
-
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "prm_retry",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "once")],
-      userVisibleText: "once",
-      variant: null,
-      model: null,
-    );
-    // The retry of a send whose response was lost.
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "prm_retry",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "once")],
-      userVisibleText: "once",
-      variant: null,
-      model: null,
-    );
-    final retriedCommand = service.sendCommand(
-      sessionId: "session",
-      promptId: "prm_retry",
-      directory: "/project",
-      command: "deploy",
-      arguments: "",
-      userVisibleArguments: null,
-      variant: null,
-      model: null,
-    );
-    await expectLater(retriedCommand, completes);
-
-    await _answerEntries(process);
-    final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
-    process.emit(frame: {"type": "agent_settled"});
-    await _waitForIdle(service: service, sessionId: "session");
-
-    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
-  });
-
   test("slash command keeps exact backend text and privacy-safe live presentation", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -2524,7 +2428,7 @@ void main() {
     await _waitForIdle(service: service, sessionId: "child");
   });
 
-  test("abort settles and deduplicates a command already accepted by an extension dialog", () async {
+  test("abort settles a command already accepted by an extension dialog", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
@@ -2561,21 +2465,6 @@ void main() {
 
     final settlement = events.whereType<BridgeSsePromptSettled>().single;
     expect(settlement.promptID, "accepted-before-abort");
-
-    await expectLater(
-      service.sendCommand(
-        sessionId: "session",
-        promptId: "accepted-before-abort",
-        directory: "/project",
-        command: "configure",
-        arguments: "",
-        userVisibleArguments: null,
-        variant: null,
-        model: null,
-      ),
-      completes,
-    );
-    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
   });
 
   test("abort invalidates queue, removes compaction, sends abort, and tears down process", () async {

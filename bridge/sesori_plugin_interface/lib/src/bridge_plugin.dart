@@ -125,10 +125,9 @@ sealed class BridgePluginApi() {
   /// and the client can refresh and retry.
   ///
   /// [promptId] is the prompt's stable identity: queue-owning plugins key
-  /// their queued entries by it, refuse a duplicate (already queued or
-  /// recently dispatched) as an idempotent success, and stamp it on the
-  /// resulting user message's `promptId`. Plugins without a queue may
-  /// ignore it.
+  /// their queued entries by it and stamp it on the resulting user message's
+  /// `promptId`. Plugins without a queue may ignore it. The bridge answers a
+  /// repeated id itself, so each call is a new prompt.
   Future<void> sendPrompt({
     required String sessionId,
     required String promptId,

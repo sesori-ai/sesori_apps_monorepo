@@ -984,51 +984,6 @@ void main() {
       );
     });
 
-    test("a retried ACP prompt id remains one turn while disconnected", () async {
-      await connect();
-      final sessionId = await createSession(cwd, "s1");
-
-      await sendPrompt(sessionId, "first");
-      final firstPrompt = await waitForFrame("session/prompt");
-      Future<void> sendRetry() => plugin.sendPrompt(
-        promptId: "retry-id",
-        sessionId: sessionId,
-        parts: const [PluginPromptPart.text(text: "only once")],
-        variant: null,
-        agent: null,
-        model: null,
-      );
-
-      await sendRetry();
-      await sendRetry();
-      expect(await plugin.getQueuedPrompts(sessionId: sessionId), hasLength(1));
-
-      respondTo(firstPrompt, {"stopReason": "end_turn"});
-      final retriedPrompt = await waitForFrameCount("session/prompt", 2);
-      await sendRetry();
-      await pump();
-      expect(frames("session/prompt"), hasLength(2));
-
-      respondTo(retriedPrompt, {"stopReason": "end_turn"});
-      for (var i = 0; i < 10; i++) {
-        await pump();
-      }
-      expect(plugin.currentWorkState, PluginWorkState.idle);
-      await plugin.resetConnectionAfterExit();
-      await sendRetry();
-      await plugin.sendCommand(
-        sessionId: sessionId,
-        promptId: "retry-id",
-        command: "deploy",
-        arguments: "",
-        userVisibleArguments: null,
-        variant: null,
-        agent: null,
-        model: null,
-      );
-      expect(frames("initialize"), hasLength(1));
-    });
-
     test("queued reconnect authentication failure surfaces on the event stream", () async {
       var processStarts = 0;
       await plugin.dispose();
