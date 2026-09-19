@@ -41,7 +41,8 @@
   and platform ship gates. Planning began early at the user's request; it does
   not waive the parent verification. The parallel release-readiness UX overhaul
   (two-pane sidebar cockpit, settings modal, bridge popover, autostart defaults,
-  app log files) is `.plan/active/desktop-ux/PLAN.md`, phase 1 of several.
+  app log files) is recorded in `.plan/completed/desktop-ux/PLAN.md`, phase 1 of several.
+  Its 2026-09-19 retirement accepts native/live coverage gaps; it does not qualify a native release.
 - **Later consideration (recorded, not planned):** a loopback local data path
   for the desktop cockpit. The cockpit reuses the relay like the phone; a
   bridge-hosted loopback data transport (the `--debug-port` `DebugServer` is

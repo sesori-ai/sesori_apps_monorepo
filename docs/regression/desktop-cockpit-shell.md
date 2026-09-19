@@ -273,4 +273,4 @@ bridge during UI-only checks.
 - `client/module_desktop_core/lib/src/cubits/desktop_sidebar/desktop_sidebar_cubit.dart`
 - `client/module_desktop_core/test/cubits/desktop_sidebar_cubit_test.dart`
 - `client/desktop/test/core/widgets/desktop_cockpit_shell_test.dart`
-- `.plan/active/desktop-ux/PLAN.md`
+- `.plan/completed/desktop-ux/PLAN.md`

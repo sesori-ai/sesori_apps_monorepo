@@ -5,6 +5,7 @@ finished step lives in `steps/step-NN.md` (created when the step executes);
 this table records state only and never mirrors PR review status.
 `done` means the step's implementation and focused verification are complete;
 merge history and outstanding native qualification are recorded separately.
+Step 12 is done through explicit acceptance of coverage gaps, not a claim that every matrix cell passed.
 
 There are 22 PRs across 12 logical steps. Step 2.a/2.b map to ordinals 2/3;
 original 3–6 to 4–7; 7.a/7.b/7.c to 8/9/10; step 8 to 11.
@@ -41,10 +42,10 @@ boundary so each owner lands with its production consumer. No request bus, secon
 | [x] | 9.c.2c | `desktop-ux/sidebar-refresh-controls` | [19/22](#pr-titles) | ≤ 1,450 | done |
 | [x] | 10 | `desktop-ux/shortcuts-title-bar` | [20/22](#pr-titles) | ≤ 600 | done |
 | [x] | 11 | `desktop-ux/regression-docs` | [21/22](#pr-titles) | ≤ 600 | done |
-| [ ] | 12 | `desktop-ux/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | blocked |
+| [x] | 12 | `desktop-ux/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | done |
 
-Current: step 12 coverage/handoff report prepared; required native/live qualification blocks retirement.
-Steps 10 and 11 merged as #1549 and #1550; implementation completion does not waive final qualification.
+Current: step 12 records accepted coverage gaps and retires this plan in PR #1551, the same final 22/22 delivery.
+Steps 10 and 11 merged as #1549 and #1550. The 2026-09-19 acceptance permits retirement, not native qualification.
 9.c.1 merged as #1526, 9.c.2a as #1533, 9.c.2b.1 as #1540, 9.c.2b.2 as #1543, and 9.c.2c as #1545.
 Native qualification remains outstanding.
 One PR at a time; prepare at most one local successor and publish after its predecessor merges.
@@ -74,7 +75,7 @@ These are current series titles; historical Git/squash subjects remain unchanged
 - 19/22: `🚧 [desktop-ux] Add sidebar refresh and simplify controls [step 19/22]`
 - 20/22: `🌿 [desktop-ux] Add contextual desktop keyboard shortcuts [step 20/22]`
 - 21/22: `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 21/22]`
-- 22/22: `🌱 [desktop-ux] Record coverage and qualification handoff [step 22/22]`
+- 22/22: `🌱 [desktop-ux] Record accepted coverage gaps and retire the plan [step 22/22]`
 
 ## Delivery history
 
@@ -175,7 +176,8 @@ These are current series titles; historical Git/squash subjects remain unchanged
   ```
 
   The 28-case inventory and overlapping nine-case correction retain separate checkpoints. See `steps/step-11.md`.
-  Step 12's [coverage report](steps/step-12.md) keeps the plan active pending required native/live work.
+- Step 12: [PR #1551](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1551),
+  [coverage report and accepted retirement](steps/step-12.md). No merge receipt is claimed before that PR merges.
 
 - Standalone user-requested sidebar correction:
   [PR #1513](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1513) merged.
@@ -192,8 +194,10 @@ or waive shipping qualification.
 
 ## Accepted reductions
 
-- Windows/Linux smoke-only final matrix: accepted by the user on 2026-09-15
-  (recorded in `PLAN.md`, "Regression Documentation And Final Matrix").
+- Windows/Linux smoke-only final matrix: accepted by the user on 2026-09-15.
+- On 2026-09-19 the user selected "Accept gaps and retire": unexecuted macOS native/live and packaged checks,
+  iOS device/backup checks and Windows/Linux interactive smoke are accepted for this plan's retirement.
+  See `PLAN.md`, "Accepted retirement coverage". Separate parent/distribution gates remain unchanged.
 
 ## Verification Log
 

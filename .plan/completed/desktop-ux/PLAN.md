@@ -3,10 +3,11 @@
 ## Status
 
 Planned 2026-09-15; deliveries 1–21 have landed through #1550 (see `TRACKER.md`).
-Step 11 completed the control-content audit and regression reconciliation. Step 12 records partial coverage and handoff;
-its required native/live qualification is blocked, so the plan remains active. No new reduction has been accepted.
-The 22-PR total includes the independent activity, inventory-owner and refresh/control deliveries.
-See [the final matrix disposition and retirement gate](steps/step-12.md). Implementation delivery is not qualification.
+Step 11 completed the control-content audit and regression reconciliation. Step 12 retires this plan in delivery 22
+with the user's explicit 2026-09-19 acceptance of remaining coverage gaps, recorded below. Original coverage is Partial.
+The 22-PR total includes qualification disposition and retirement in the same final PR.
+No later retirement PR is needed.
+See [the final matrix disposition and retirement decision](steps/step-12.md). Retirement is not native qualification.
 This is phase 1 of the desktop UX work: the changes that
 remove the release-blocking UX problems with client-only work. Later phases
 are listed at the end as rough intent only and get their own plans when they
@@ -604,7 +605,7 @@ Completed implementation specifics live in the linked evidence; this matrix summ
 | 9.c.2c | 19/22 | ≤ 1,450 | Typed desktop refresh workflow, control presentation and useful hints. |
 | 10 | 20/22 | ≤ 600 | Contextual keyboard shortcuts; native chrome unchanged. |
 | 11 | 21/22 | ≤ 600 | Control-content audit and regression reconciliation. |
-| 12 | 22/22 | ≤ 300 | Recorded coverage and phase-2 handoff; retirement remains gated. |
+| 12 | 22/22 | ≤ 300 | Recorded coverage, accepted limitations, phase-2 handoff and retirement. |
 
 9.c.1 extracts the observed loading-placeholder replacement from the larger UI slice.
 It keeps current loaded data through automatic refresh/failure, continues live patches,
@@ -628,9 +629,9 @@ Step 11 audits rendered labels, grouping, scope, redundancy and state-specific a
 Its localized fixes put app-update guidance in General, remove the ineffective desktop Voice/Text preference,
 and constrain title-only toolbars at large text. Mobile preference behavior and stored values remain unchanged.
 See [audit and regression reconciliation](steps/step-11.md); no update/distribution behavior changes.
-Step 12 records the full matrix and handoff. Its documentation-only report is now rated trivial (🌱), not a
-qualification pass. Move the plan to `.plan/completed/desktop-ux/` only after required coverage passes or the user
-explicitly accepts and records the remaining reductions; current blocked coverage does not meet that gate.
+Step 12's documentation-only retirement is trivial (🌱), not a qualification pass. The user's explicit 2026-09-19
+acceptance permits moving the plan to `.plan/completed/desktop-ux/` in delivery 22,
+while preserving the unexecuted matrix.
 
 Shared composition, copy and native preference commands landed separately in 7.a;
 its historical measurements are in [the preparation evidence](steps/step-07a.md).
@@ -664,7 +665,7 @@ Logging 9.a.1–9.a.2 is merged, preserving #1509's published history through fo
 9.b interactions merged as #1524, 9.c.1 refresh continuity as #1526, and 9.c.2a Activity presentation as #1533.
 9.c.2b.1 recent ownership merged as #1540 and 9.c.2b.2 project ownership as #1543.
 9.c.2c refresh workflow/controls merged as #1545, step 10 shortcuts as #1549, and step 11 audit as #1550.
-Step 12 records the remaining qualification and phase-two handoff; it does not waive or retire the blocked matrix.
+Step 12 records the remaining qualification and phase-two handoff, then retires the plan under explicit acceptance.
 Step 8 must land after
 step 7.c (General startup preferences and Bridge/FDA settings). Step 7.a follows
 step 6; step 7.b follows 7.a; step 7.c follows 7.b and replaces the existing
@@ -780,9 +781,16 @@ smoke for the log file and the unchanged banner.
 
 Accepted reduction: Windows and Linux run a smoke pass rather than the full L3
 checklist, carrying over the reduction the user accepted for `desktop-app`.
-The user accepted this on 2026-09-15 when approving the plan; step 12 may
-retire the plan only after this matrix passes. It is not permission to skip smoke or substitute builds for interaction.
-The [2026-09-19 reconciliation](steps/step-12.md) is Partial; retirement is Blocked. No further reduction is accepted.
+The user accepted this initial reduction on 2026-09-15 when approving the plan.
+
+### Accepted retirement coverage — 2026-09-19
+
+At the final testing decision, the user explicitly selected **"Accept gaps and retire"** rather than keeping PR #1551
+open for native QA. This accepts the unexecuted macOS native/live and packaged checks, iOS device/log/banner and
+backup/restore checks, and Windows/Linux interactive smoke listed in [step 12](steps/step-12.md).
+It permits retirement in this same final 22/22 PR; these checks remain unexecuted, not passed. Original coverage is
+Partial. No native release-qualification claim is made, and no permission to mutate protected app/bridge state is added.
+This decision does not complete or waive the separate `desktop-app` or `desktop-distribution` gates.
 
 ## Risks And Accepted Limits
 
@@ -861,7 +869,7 @@ The typed desktop workflow lands with its first control in 9.c.2c; see `steps/st
 
 ## Expected Result
 
-The delivered implementation opens on a two-pane cockpit; release qualification remains gated by step 12.
+The delivered implementation opens on a two-pane cockpit; retirement does not certify native release qualification.
 The intended experience is a resizable sidebar
 listing projects and their recent sessions with a pinned Bridge control and a
 Settings button at the bottom, a themed connection pill that never moves the
