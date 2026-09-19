@@ -136,9 +136,11 @@ UI state, tests, and docs. Re-check the plan's cleanup assessment and add newly
 discovered causal cleanup to durable plan truth.
 
 Implement small, safe cleanup directly caused by the feature when it keeps the
-PR coherent. Ask before expanding scope into a considerable refactor, not before
-splitting approved work into coherent PRs. Defer with an explicit compatibility/
-migration/risk reason when removal is not yet safe. Do not retain dead artifacts solely as an audit trail when Git history is
+PR coherent, and land larger causal cleanup as its own PR without asking. Ask
+before expanding scope into a considerable refactor of code the feature does not
+make obsolete, not before splitting approved work into coherent PRs. Defer only
+with an explicit compatibility, migration, or rollout reason when removal is not
+yet safe. Do not retain dead artifacts solely as an audit trail when Git history is
 sufficient, and do not use cleanup as a reason for unrelated scope expansion.
 
 ## Plan Review

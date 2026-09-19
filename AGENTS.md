@@ -203,6 +203,13 @@ eagerly "just in case."
   requested work first and propose the refactor separately with its
   approximate size, as the refactor rule under Verification And Review
   requires.
+- Remove what your change makes obsolete. When new code supersedes existing
+  code — a replaced mechanism, a guard or dedup that a new owner now enforces,
+  or a dead branch, parameter, model, test, or document — delete it as part of
+  the same task without asking. This completes the change rather than widening
+  it: keep the removal in the same PR when it stays small, otherwise land it as
+  the next PR of the same task. Before deleting, confirm that nothing live
+  still depends on it, including a released peer's wire contract.
 - Low risk means small diffs, reusable code, and classes with few mutable
   fields and one clear owner of each piece of state. Prefer composing small
   immutable values and sealed types over adding coordination fields to an
@@ -271,7 +278,8 @@ eagerly "just in case."
 - Cleanup and refactoring are acceptable when the value is clear. Before a
   considerable refactor, explain its approximate size and ask the user to
   approve it. Prefer a dedicated PR without unrelated functionality changes
-  when practical.
+  when practical. Removing code that your own change made obsolete never needs
+  this approval.
 
 ## Repeated Pitfalls
 

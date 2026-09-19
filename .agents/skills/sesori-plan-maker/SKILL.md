@@ -206,15 +206,16 @@ that no longer needs to be generated, persisted, transported, or rendered.
 Record one honest outcome in the plan:
 
 - include small, safe, directly caused cleanup in the appropriate feature PR;
-- place a larger but valuable cleanup in its own coherent planned PR;
-- defer cleanup when migration, compatibility, rollout, or risk requires it and
-  state the reason; or
+- place a larger cleanup in its own coherent PR of the same plan;
+- defer cleanup only while migration, compatibility, or rollout makes removal
+  unsafe, and state the reason; or
 - state that no relevant cleanup was found.
 
 Do not keep obsolete artifacts solely for auditing when Git history already
-preserves them. Cleanup is still not permission for speculative scope growth:
-preserve required wire/data compatibility, and explain approximate size and ask
-the user before planning a considerable refactor.
+preserves them. Removing what the change makes obsolete needs no approval.
+Cleanup is still not permission for speculative scope growth: preserve required
+wire/data compatibility, and explain approximate size and ask the user before
+planning a considerable refactor of code the change does not make obsolete.
 
 ## Plan Review
 
