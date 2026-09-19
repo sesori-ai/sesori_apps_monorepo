@@ -146,3 +146,20 @@ node /tmp/rose-elephant-1551-retirement-validate.js \
 That receipt records cwd, checkpoint SHA, all-path size including zero-churn renames, local targets, both width limits,
 whitespace and unchanged executable/workflow paths. The initial wrapping failure remains in
 `/tmp/rose-elephant-1551-retirement-validation.json`. Parent/distribution pointers move without changing their gates.
+
+## Immutable retirement range
+
+Final retirement checkpoint `a5161b57804ff24cee8179631962429f1e747e7f`, tree
+`83cf7d559a78cd80689286f491df2852bfdd72c2`: **265 changed lines**, 236 additions and 29 deletions across 28 paths.
+All churn is documentation. The range includes the complete migration, acceptance, updated pointers and parent-history
+clarification, with 22 rename rows including 19 zero-churn renames. Reproduce it without temporary artifacts:
+
+```bash
+git diff --find-renames --numstat 776c4a9ee0c793b99a32c459b3490422039aee32..a5161b57804ff24cee8179631962429f1e747e7f --
+```
+
+This frozen range excludes only this later receipt. For the entire current PR, including this receipt, use:
+
+```bash
+git diff --find-renames --numstat 776c4a9ee0c793b99a32c459b3490422039aee32..HEAD --
+```
