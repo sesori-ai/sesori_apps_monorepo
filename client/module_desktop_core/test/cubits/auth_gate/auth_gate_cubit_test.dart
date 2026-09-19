@@ -13,6 +13,16 @@ class _MockDesktopLogoutOrchestrator() extends Mock implements DesktopLogoutOrch
 
 class _MockDesktopRelayConnectionService() extends Mock implements DesktopRelayConnectionService;
 
+class _RecordingLogSink() implements LogSink {
+  final List<LogRecord> records = <LogRecord>[];
+
+  @override
+  void write({required LogRecord record}) => records.add(record);
+
+  @override
+  Future<void> flush() => Future<void>.value();
+}
+
 const AuthUser _user = AuthUser(
   id: "user-1",
   provider: AuthProvider.github,
@@ -62,10 +72,15 @@ void main() {
     return cubit;
   }
 
-  test("cold start with no local session lands on signedOut", () async {
+  test("cold start with no local session lands on signedOut and records its bounded outcome", () async {
+    final _RecordingLogSink sink = _RecordingLogSink();
+    setLogSink(sink: sink);
+    addTearDown(() => setLogSink(sink: const StdoutLogSink()));
+
     final AuthGateCubit cubit = await pumpCubit();
 
     expect(cubit.state, const AuthGateState.signedOut());
+    expect(sink.records.map((record) => record.message), contains("Desktop auth gate found no locally valid session"));
   });
 
   test("cold start with a locally valid session lands on signedIn", () async {
@@ -102,6 +117,9 @@ void main() {
   });
 
   test("valid tokens with a missing cached user stay signed in and recover in the background", () async {
+    final _RecordingLogSink sink = _RecordingLogSink();
+    setLogSink(sink: sink);
+    addTearDown(() => setLogSink(sink: const StdoutLogSink()));
     when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => true);
     // Local restore cannot emit: the user record is missing.
     when(() => authSession.restoreLocalSession()).thenAnswer((_) async => false);
@@ -124,6 +142,10 @@ void main() {
     // No signedOut flash for a returning user: provisional signedIn(null)
     // first, then the recovered account.
     expect(emitted, const [AuthGateState.signedIn(user: null), AuthGateState.signedIn(user: _user)]);
+    expect(
+      sink.records.map((record) => record.message),
+      contains("Desktop auth gate could not restore the local session"),
+    );
     verify(() => authSession.restoreSession()).called(1);
   });
 

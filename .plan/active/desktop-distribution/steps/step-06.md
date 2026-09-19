@@ -216,11 +216,14 @@ prior-app helper deadline with zero final helper processes. Evidence artifacts a
 `sha256:96e4895178bb2f98b7ea93a57dc05b5662727518fc0b8fc905981f275d83dd03`) and
 `10589833036` (arm64, digest
 `sha256:62159a3eefe8f3cec3bac361212de3ea8f294a6dc462ddbafdd241388ee9edd6`); the run is
-rejected. The `8.e/14` correction adds bounded boolean-only classification of known
-private app-log failures and records whether any helper generation or fresh bridge-log
-activity appeared. Raw authenticated app/bridge output remains excluded and cleanup
-removes it. Only a both-CPU retry dispatched from merged `main` can become evidence.
-Failed-stop, interactive browser/user-account/TCC, minimum-OS, public retrieval and
+rejected. The `8.e/14` correction classifies a closed startup marker set from at most
+1 MiB of phase-scoped private app output and records whether any helper generation or
+fresh bridge-log activity appeared. The auth gate emits privacy-safe local-session
+outcomes through the captured production log sink rather than relying on
+`dart:developer`. Raw authenticated app/bridge output remains excluded and cleanup
+removes it. Only a both-CPU retry
+dispatched from merged `main` can become evidence. Failed-stop, interactive
+browser/user-account/TCC, minimum-OS, public retrieval and
 parent Gate C remain open.
 
 Dispatches and expanded logs were run from

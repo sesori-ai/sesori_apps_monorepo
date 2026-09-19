@@ -506,10 +506,11 @@ qualification evidence. This follow-up merged as
 `🌿 [desktop-distribution] Classify macOS authenticated startup [step 8.e/14]`.
 Merged-main run `35460239311` passed the exact Keychain self-check on both CPUs but again
 reached the prior-app helper deadline with zero final helper processes. Preserve the
-privacy boundary while distinguishing app auth-storage/restore failures, desired-state
-or bridge-start failures, and transient helper/log activity: scan at most 1 MiB of the
-private app log for a closed marker set, emit booleans only, and retain whether any exact
-helper generation or fresh bridge-log bytes appeared. Raw authenticated logs remain
+privacy boundary while distinguishing local-session/restore failures, desired-state or
+bridge-start failures, and transient helper/log activity: scan at most 1 MiB of
+phase-scoped private app output for a closed marker set, emit auth-gate outcomes through
+the captured production log sink rather than `dart:developer`, and retain whether any
+exact helper generation or fresh bridge-log bytes appeared. Raw authenticated logs remain
 outside artifacts and are removed during cleanup. Retry both CPUs from merged `main`;
 the failed run is not qualification evidence.
 

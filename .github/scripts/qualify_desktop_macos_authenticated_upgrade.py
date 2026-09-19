@@ -55,13 +55,13 @@ MIN_LAUNCH_VALIDITY_SECONDS = 180
 PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES = 1024 * 1024
 PRIVATE_APP_LOG_DIAGNOSTIC_MARKERS = (
     ("desktopStartupRendered", ("Desktop startup: rendering the application",)),
+    ("localSessionUnavailable", ("Desktop auth gate found no locally valid session",)),
     (
-        "authStorageReadFailure",
-        ("Failed to read access token", "Failed to read refresh token", "Failed to read user"),
-    ),
-    (
-        "localAuthRestoreFailure",
-        ("Failed to restore local session", "Failed to restore the local auth session"),
+        "localUserRestoreIncomplete",
+        (
+            "Desktop auth gate could not restore the local session",
+            "Failed to restore the local auth session",
+        ),
     ),
     ("desiredStateRestoreFailure", ("Failed to restore the desktop bridge's desired On state",)),
     (
@@ -70,11 +70,9 @@ PRIVATE_APP_LOG_DIAGNOSTIC_MARKERS = (
             "Bridge start after successful authentication",
             "Failed to start the desktop bridge after first sign-in",
             "BridgeExecutableResolutionException",
-            "BridgeProcessExitedDuringStartException",
+            "Bridge startup failed after its process exit was already claimed",
         ),
     ),
-    ("keychainMissingEntitlement", ("errSecMissingEntitlement", "-34018")),
-    ("keychainInteractionDenied", ("User interaction is not allowed", "-25308")),
 )
 
 
@@ -455,8 +453,7 @@ def wait_for_authenticated_helper(
     generation_log_cursor = bridge_log_cursor
     generation_log_offset = bridge_log_cursor.offset if bridge_log_cursor is not None else 0
     while True:
-        if launcher.poll() is not None:
-            raise RuntimeError(f"{label}: desktop exited before its authenticated helper became ready")
+        launcher_returncode = launcher.poll()
         bridge_log_activity_observed = bridge_log_activity_observed or _bridge_log_has_fresh_activity(
             path=bridge_log,
             baseline=bridge_log_cursor,
@@ -504,6 +501,18 @@ def wait_for_authenticated_helper(
                     bridge_log_activity_observed = bridge_log_activity_observed or bool(bridge_output)
         authenticated_profile = "Authenticated as " in bridge_output
         relay_serving = "Waiting for relay events..." in bridge_output
+        if launcher_returncode is not None:
+            _write_authenticated_helper_observation(
+                label=label,
+                output=output,
+                helper_process_count=helper_process_count,
+                helper_pid=active_helper_pid,
+                authenticated_profile=authenticated_profile,
+                relay_serving=relay_serving,
+                helper_observed_during_wait=observed_helper_generation,
+                bridge_log_activity_observed=bridge_log_activity_observed,
+            )
+            raise RuntimeError(f"{label}: desktop exited before its authenticated helper became ready")
         if active_helper_pid is not None and authenticated_profile and relay_serving:
             _write_authenticated_helper_observation(
                 label=label,
@@ -530,6 +539,63 @@ def wait_for_authenticated_helper(
             )
             raise RuntimeError(f"{label}: authenticated helper did not become ready")
         time.sleep(min(HELPER_POLL_INTERVAL_SECONDS, remaining))
+
+
+def write_missing_authenticated_helper_observation(
+    *,
+    label: str,
+    output: Path,
+    bridge_log: Path,
+    bridge_log_cursor: BridgeLogCursor | None,
+) -> None:
+    if (output / f"{label}-authenticated-helper.json").exists():
+        return
+    helper_pid, helper_process_count = _helper_pid(processes=installed_helper_processes())
+    _write_authenticated_helper_observation(
+        label=label,
+        output=output,
+        helper_process_count=helper_process_count,
+        helper_pid=helper_pid,
+        authenticated_profile=False,
+        relay_serving=False,
+        helper_observed_during_wait=helper_process_count > 0,
+        bridge_log_activity_observed=_bridge_log_has_fresh_activity(
+            path=bridge_log,
+            baseline=bridge_log_cursor,
+        ),
+    )
+
+
+def capture_authenticated_launch_diagnostics(
+    *,
+    label: str,
+    private_app_log: Path,
+    output: Path,
+    bridge_log: Path,
+    bridge_log_cursor: BridgeLogCursor | None,
+) -> None:
+    failures: list[BaseException] = []
+    try:
+        write_missing_authenticated_helper_observation(
+            label=label,
+            output=output,
+            bridge_log=bridge_log,
+            bridge_log_cursor=bridge_log_cursor,
+        )
+    except BaseException as error:
+        failures.append(error)
+    try:
+        write_private_app_startup_diagnostics(
+            label=label,
+            private_app_log=private_app_log,
+            output=output,
+        )
+    except BaseException as error:
+        failures.append(error)
+    if len(failures) == 1:
+        raise failures[0]
+    if failures:
+        raise BaseExceptionGroup(f"{label}: bounded diagnostic captures failed", failures)
 
 
 def wait_for_installed_app_pid(*, label: str, launcher: subprocess.Popen[str]) -> int:
@@ -691,10 +757,12 @@ def launch_authenticated_and_quit(
         completed = True
     except BaseException as launch_error:
         try:
-            write_private_app_startup_diagnostics(
+            capture_authenticated_launch_diagnostics(
                 label=label,
                 private_app_log=private_app_log,
                 output=output,
+                bridge_log=BRIDGE_LOG,
+                bridge_log_cursor=bridge_log_cursor,
             )
         except BaseException as diagnostic_error:
             raise BaseExceptionGroup(

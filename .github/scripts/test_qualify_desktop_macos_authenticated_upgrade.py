@@ -16,6 +16,7 @@ from qualify_desktop_macos_authenticated_upgrade import (
     AUTH_PASSWORD_ENVIRONMENT_KEY,
     KEYCHAIN_ACCOUNTS,
     KEYCHAIN_SERVICE,
+    PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES,
     BridgeLogCursor,
     KeychainSession,
     QaCredentials,
@@ -34,6 +35,7 @@ from qualify_desktop_macos_authenticated_upgrade import (
     update_auth_keychain,
     wait_for_authenticated_helper,
     write_auth_keychain,
+    write_missing_authenticated_helper_observation,
     write_private_app_startup_diagnostics,
 )
 
@@ -543,18 +545,71 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             self.assertFalse(observation["helperObservedDuringWait"])
             self.assertTrue(observation["bridgeLogActivityObserved"])
 
+    def test_helper_observation_survives_launcher_exit_during_wait(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bridge_log = root / "bridge.log"
+            bridge_log.write_text("", encoding="utf-8")
+            baseline = bridge_log_cursor(path=bridge_log, offset=0)
+            launcher = Mock()
+            launcher.poll.side_effect = [None, 17]
+
+            def record_bridge_activity(_seconds: float) -> None:
+                bridge_log.write_text("helper exited before readiness\n", encoding="utf-8")
+
+            with patch(
+                "qualify_desktop_macos_authenticated_upgrade.installed_helper_processes",
+                side_effect=["501 exact-helper", ""],
+            ), patch(
+                "qualify_desktop_macos_authenticated_upgrade.time.sleep",
+                side_effect=record_bridge_activity,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "desktop exited before"):
+                    wait_for_authenticated_helper(
+                        label="previous",
+                        launcher=launcher,
+                        output=root,
+                        bridge_log=bridge_log,
+                        bridge_log_cursor=baseline,
+                    )
+
+            observation = json.loads((root / "previous-authenticated-helper.json").read_text(encoding="utf-8"))
+            self.assertEqual(observation["helperProcessCount"], 0)
+            self.assertIsNone(observation["helperPid"])
+            self.assertTrue(observation["helperObservedDuringWait"])
+            self.assertTrue(observation["bridgeLogActivityObserved"])
+
+    def test_missing_helper_observation_is_created_for_pre_wait_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bridge_log = root / "bridge.log"
+            with patch(
+                "qualify_desktop_macos_authenticated_upgrade.installed_helper_processes",
+                return_value="",
+            ):
+                write_missing_authenticated_helper_observation(
+                    label="previous",
+                    output=root,
+                    bridge_log=bridge_log,
+                    bridge_log_cursor=None,
+                )
+
+            observation = json.loads((root / "previous-authenticated-helper.json").read_text(encoding="utf-8"))
+            self.assertEqual(observation["helperProcessCount"], 0)
+            self.assertFalse(observation["helperObservedDuringWait"])
+            self.assertFalse(observation["bridgeLogActivityObserved"])
+
     def test_private_app_startup_diagnostics_expose_only_closed_markers(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             private_app_log = root / "private-authenticated-app.log"
             private_app_log.write_text(
                 "Desktop startup: rendering the application\n"
-                "Failed to read refresh token: private-token-value\n"
-                "Failed to restore local session\n"
+                "Desktop auth gate found no locally valid session\n"
+                "Desktop auth gate could not restore the local session\n"
                 "Failed to restore the desktop bridge's desired On state\n"
-                "BridgeExecutableResolutionException: /private/user/path\n"
-                "errSecMissingEntitlement -34018\n"
-                "User interaction is not allowed -25308\n",
+                "Bridge startup failed after its process exit was already claimed: /private/user/path\n"
+                "private-token-value\n",
                 encoding="utf-8",
             )
             write_private_app_startup_diagnostics(
@@ -572,14 +627,46 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
                     "appLogPresent": True,
                     "appLogTruncated": False,
                     "desktopStartupRendered": True,
-                    "authStorageReadFailure": True,
-                    "localAuthRestoreFailure": True,
+                    "localSessionUnavailable": True,
+                    "localUserRestoreIncomplete": True,
                     "desiredStateRestoreFailure": True,
                     "bridgeStartFailure": True,
-                    "keychainMissingEntitlement": True,
-                    "keychainInteractionDenied": True,
                 },
             )
+
+    def test_private_app_startup_diagnostics_report_missing_log_without_markers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_private_app_startup_diagnostics(
+                label="previous",
+                private_app_log=root / "missing-app.log",
+                output=root,
+            )
+
+            diagnostics = json.loads((root / "previous-startup-diagnostics.json").read_text(encoding="utf-8"))
+            self.assertFalse(diagnostics.pop("appLogPresent"))
+            self.assertFalse(diagnostics.pop("appLogTruncated"))
+            self.assertEqual(set(diagnostics.values()), {False})
+
+    def test_private_app_startup_diagnostics_bound_private_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            private_app_log = root / "private-authenticated-app.log"
+            private_app_log.write_bytes(
+                b"x" * (PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES + 1)
+                + b"Desktop auth gate found no locally valid session: private-token-value\n"
+            )
+            write_private_app_startup_diagnostics(
+                label="previous",
+                private_app_log=private_app_log,
+                output=root,
+            )
+
+            recorded = (root / "previous-startup-diagnostics.json").read_text(encoding="utf-8")
+            diagnostics = json.loads(recorded)
+            self.assertTrue(diagnostics["appLogTruncated"])
+            self.assertFalse(diagnostics["localSessionUnavailable"])
+            self.assertNotIn("private-token-value", recorded)
 
     def test_current_launch_ignores_authenticated_markers_from_previous_log_segment(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -655,7 +742,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         window = find_event(events=events, name="wait_for_visible_window")
         current_process = find_event(events=events, name="_helper_pid")
         tray_quit = find_event(events=events, name="subprocess.run", assigned_to="quit_result")
-        diagnostics = find_event(events=events, name="write_private_app_startup_diagnostics")
+        diagnostics = find_event(events=events, name="capture_authenticated_launch_diagnostics")
         termination = find_event(events=events, name="_terminate_probe_processes")
         self.assertEqual(observation["keywords"]["bridge_log_cursor"], "bridge_log_cursor")
         self.assertEqual(diagnostics["keywords"]["private_app_log"], "private_app_log")

@@ -173,9 +173,11 @@ bounded prior-app helper deadline with zero final helper processes. Bounded arti
 `10589833036`
 (`sha256:62159a3eefe8f3cec3bac361212de3ea8f294a6dc462ddbafdd241388ee9edd6`) contain no
 session/report success evidence, so the run is rejected. The `8.e/14` follow-up records
-only closed startup-log classifications plus whether any helper generation or fresh
-bridge-log activity appeared; raw authenticated app/bridge output remains private and is
-removed during cleanup. Failed-stop, interactive user-account/TCC, minimum-OS and public
+only closed startup classifications from at most 1 MiB of phase-scoped private app
+output, plus whether any helper generation or fresh bridge-log activity appeared. The
+auth gate emits privacy-safe outcomes through the captured production log sink instead
+of relying on `dart:developer`. Raw authenticated app/bridge output remains private and
+is removed during cleanup. Failed-stop, interactive user-account/TCC, minimum-OS and public
 artifact retrieval remain open; the download page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's

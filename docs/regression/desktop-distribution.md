@@ -146,9 +146,11 @@ false`) and when-unlocked envelope; a broad `security` lookup is not equivalent.
 Merged-main runs `35454870471` and `35460239311` are rejected because both native CPUs
 reached the bounded prior-app helper deadline with zero final helper processes; the later
 run first passed the exact Keychain self-check. On failure, the probe may inspect at most
-1 MiB of the private app log for a closed set of auth-storage, local-restore,
-desired-state, bridge-start and known Keychain OSStatus markers. It uploads only booleans
-plus whether any helper generation or fresh bridge-log activity appeared. The probe
+1 MiB of phase-scoped private app output for a closed set of startup, local-session,
+local-restore, desired-state and bridge-start markers. The auth gate emits privacy-safe
+outcome markers through the captured production log sink rather than relying on
+`dart:developer` output. The probe uploads only booleans plus whether any helper
+generation or fresh bridge-log activity appeared. The probe
 persists Bridge On and requires the exact packaged helper, an authenticated profile lookup
 and relay-serving readiness before each real tray Quit. It then verifies Keychain, On
 intent, bounded state and helper absence through replacement. Artifacts exclude raw auth
