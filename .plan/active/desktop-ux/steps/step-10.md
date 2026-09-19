@@ -1,6 +1,7 @@
 # Step 10 — Contextual desktop keyboard shortcuts
 
 Delivery 20/22; branch `desktop-ux/shortcuts-title-bar`.
+[PR #1549](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1549).
 Base: #1545 squash `354e67ea5c8d9c513326c1c82c48b7597060acae`, tree
 `2378cc6638d5a630f43140ead186df28b60e387c`. Target: at most 600 all-path changed lines.
 
@@ -75,6 +76,43 @@ Publication validation covers whitespace, added Markdown's 120-character/120-byt
 The executable diff matches the recorded checkpoint; initial Markdown validation identified six lines for wrapping.
 Final validation is recorded in `/tmp/rose-elephant-shortcuts-final-validation.json`. Publication measurement and
 source/tree identity are in the PR body and `/tmp/rose-elephant-shortcuts-publication.json` once the commit exists.
+
+## Initial publication and review follow-up
+
+Initial publication `1c523df5fbf11764ae8ca09d7aab17fe7d020247`, tree
+`be9c10126a1c5473feda5b74059b3e44aebda756`: 415 lines (397 additions/18 deletions), 14 paths;
+62 production, 192 tests, 150 documentation and 11 generated. This immutable range excludes follow-up records:
+
+```bash
+git diff --numstat 354e67ea5c8d9c513326c1c82c48b7597060acae..1c523df5fbf11764ae8ca09d7aab17fe7d020247 --
+```
+
+Cubic's two P3 comments prompted localized corrections. The tracker now repeats #1545's canonical immutable numstat
+and additions/deletions/path split, already present in its owning evidence. The sidebar derives one toggle label from
+visual expansion in both branches; automatic collapse omits only the shortcut, so the disabled transition label matches
+its icon. No state, timing, focus, persistence or command-policy change was added. Codex completed without findings.
+
+The existing shortcut test now inspects the first automatic-collapse frame before settling, across all three desktop
+variants. The focused run passed **three cases**, and desktop analysis passed. These overlap the original 85 cases;
+they are not three additional distinct cases or a rerun of the whole matrix.
+Both ran on the uncommitted tree based on `1c523df...`, before the follow-up source commit existed:
+
+```bash
+cd "$ROOT"
+"$SDK/dart" format client/desktop/lib/core/widgets/desktop_sidebar.dart \
+  client/desktop/test/core/widgets/desktop_cockpit_shell_test.dart
+(cd client/desktop && "$SDK/flutter" test --no-pub --reporter=json \
+  test/core/widgets/desktop_cockpit_shell_test.dart \
+  --plain-name 'sidebar shortcut preserves focus, ignores repeats and respects automatic collapse')
+(cd client/desktop && "$SDK/dart" analyze --fatal-infos)
+```
+
+Format exited 0, two files/zero changes. Tests ran `2026-09-19T05:57:25.301Z`–`05:57:30.754Z`, exit 0;
+analysis finished `05:57:48.756Z`, exit 0. `/tmp/rose-elephant-1549-review1-verification.json` stores exact receipts.
+Checkpoint `/tmp/rose-elephant-1549-review1-checkpoint.patch`, SHA-256
+`056dde77dc552e26d92b6fcb86b5709d9d139bdf6a7e68c7603f30f95375c892`.
+Logs use `/tmp/rose-elephant-1549-review1-` plus `sidebar-tests.log` or `desktop-analyze.log`, with `.stderr` files.
+Follow-up validation and publication receipts use that prefix plus `validation.json` and `publication.json`.
 
 No production DI/bootstrap, desktop app-smoke, real app/helper launch, bridge operation, secure-storage prompt,
 native registration, real preference/auth/database mutation, screen capture or relaunch occurred. Synthetic tests and

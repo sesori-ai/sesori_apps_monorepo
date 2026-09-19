@@ -47,6 +47,7 @@ class const DesktopSidebar({
     final state = context.watch<ProjectListCubit>().state;
     final collapsedProjects = context.select((DesktopSidebarCubit cubit) => cubit.state.collapsedProjectIds);
     final loc = context.loc;
+    final toggleLabel = expansion < 0.5 ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse;
     final prego = context.prego;
     final bridge = context.watch<BridgeControlCubit>().state;
     final bridgeColor = bridge.canTakeOver
@@ -82,9 +83,9 @@ class const DesktopSidebar({
                   child: IconButton(
                     key: const Key("desktop-sidebar-toggle"),
                     tooltip: autoCollapsed
-                        ? loc.desktopSidebarExpand
+                        ? toggleLabel
                         : loc.desktopShortcutHint(
-                            expansion < 0.5 ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse,
+                            toggleLabel,
                             defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B",
                           ),
                     padding: const EdgeInsets.all(PregoSpacing.sm),

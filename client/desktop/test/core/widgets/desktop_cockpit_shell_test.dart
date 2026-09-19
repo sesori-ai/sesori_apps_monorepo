@@ -161,6 +161,10 @@ void main() {
     expect(focus.hasFocus, isTrue);
     verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(2);
     tester.view.physicalSize = const Size(700, 600);
+    await tester.pump();
+    expect(find.byTooltip("Collapse sidebar"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.layout_sidebar_left_collapse), findsOneWidget);
+    expect(tester.widget<IconButton>(toggle).onPressed, isNull);
     await tester.pumpAndSettle();
     expect(find.byTooltip("Expand sidebar"), findsOneWidget);
     await tester.sendKeyDownEvent(modifier);

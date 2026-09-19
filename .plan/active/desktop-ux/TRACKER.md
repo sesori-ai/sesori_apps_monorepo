@@ -43,7 +43,7 @@ boundary so each owner lands with its production consumer. No request bus, secon
 | [ ] | 11 | `desktop-ux/regression-docs` | [21/22](#pr-titles) | ≤ 600 | pending |
 | [ ] | 12 | `desktop-ux/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | pending |
 
-Current: publish/monitor 10 contextual keyboard shortcuts → 11 → 12.
+Current: monitor #1549 for 10 contextual keyboard shortcuts → 11 → 12.
 9.c.1 merged as #1526, 9.c.2a as #1533, 9.c.2b.1 as #1540, 9.c.2b.2 as #1543, and 9.c.2c as #1545.
 Native qualification remains outstanding.
 One PR at a time; prepare at most one local successor and publish after its predecessor merges.
@@ -136,7 +136,13 @@ These are current series titles; historical Git/squash subjects remain unchanged
   squash `354e67ea5c8d9c513326c1c82c48b7597060acae`, tree
   `2378cc6638d5a630f43140ead186df28b60e387c`. Readiness CI passed 12/12; terminal report passed 13/13.
   Cubic approved with zero issues, Codex completed without new findings, and all seven threads were resolved.
-  Final publication: 1,260 all-path lines. The 177-, 30- and 50-case checkpoints overlap, not add together.
+  Final publication: 1,260 all-path lines (1,085 additions/175 deletions), 24 paths. Reproduce the immutable range:
+
+  ```bash
+  git diff --numstat a772a85a141b617f0d766d0d6a7d6aa11b654a30..b4890ac202d24aade8ddfa8407488fe59c4b2170 --
+  ```
+
+  The 177-, 30- and 50-case checkpoints overlap, not add together.
   Layer-3 architecture approval supersedes earlier placement approvals. See `steps/step-09c.md`.
 
 - Standalone user-requested sidebar correction:
