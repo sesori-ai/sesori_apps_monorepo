@@ -1654,6 +1654,23 @@ void main() {
     },
   );
 
+  test(
+    'migration v15 → v16 creates empty accepted prompt ids',
+    () async {
+      final connection = await verifier.startAt(15);
+      final db = AppDatabase(connection);
+
+      await verifier.migrateAndValidate(
+        db,
+        16,
+        options: const ValidationOptions(validateDropped: true),
+      );
+
+      expect(await db.select(db.acceptedPromptsTable).get(), isEmpty);
+      await db.close();
+    },
+  );
+
   test('v13 PR key, scope index, and project FK remain enforced', () async {
     final db = await _migrateFromV12(verifier: verifier);
     addTearDown(db.close);

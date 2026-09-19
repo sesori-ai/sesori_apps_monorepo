@@ -14,6 +14,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "api/archived_session_storage.dart";
 import "api/attachment_spill_storage.dart";
+import "api/database/daos/accepted_prompts_dao.dart";
 import "api/database/daos/new_session_defaults_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
 import "api/database/database.dart";
@@ -54,6 +55,7 @@ import "push/push_notification_client.dart";
 import "push/push_notification_content_builder.dart";
 import "push/push_rate_limiter.dart";
 import "push/push_session_state_tracker.dart";
+import "repositories/accepted_prompts_repository.dart";
 import "repositories/agent_repository.dart";
 import "repositories/attachment_thumbnail_builder.dart";
 import "repositories/bridge_settings_repository.dart";
@@ -512,6 +514,9 @@ class Orchestrator({
     );
     final sessionPromptService = SessionPromptService(
       sessionRepository: sessionRepository,
+      acceptedPromptsRepository: AcceptedPromptsRepository(
+        dao: AcceptedPromptsDao(database: _database),
+      ),
       dispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
       sessionOptionsService: sessionOptionsService,

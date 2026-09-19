@@ -13,6 +13,7 @@ import "daos/projects_dao.dart";
 import "daos/pull_request_dao.dart";
 import "daos/session_dao.dart";
 import "database.steps.dart";
+import "tables/accepted_prompts_table.dart";
 import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
 import "tables/new_session_defaults_table.dart";
@@ -35,6 +36,7 @@ part "database.g.dart";
     CatalogHydrationsTable,
     SessionOptionsCacheTable,
     NewSessionDefaultsTable,
+    AcceptedPromptsTable,
   ],
   daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
 )
@@ -42,7 +44,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -293,6 +295,9 @@ class AppDatabase(super.e) extends _$AppDatabase {
         // without that column, copying every remaining column by name in SQL
         // so the migration never deserializes the removed value.
         await m.alterTable(TableMigration(schema.sessionOptionsCacheTable));
+      },
+      from15To16: (m, schema) async {
+        await m.createTable(schema.acceptedPromptsTable);
       },
     ),
     beforeOpen: (details) async {
