@@ -1,0 +1,778 @@
+# Desktop UI Polish — one coherent, delimited cockpit
+
+## Status
+
+- **Plan slug:** `desktop-ui-polish`
+- **Status:** Proposed
+- **Plan date:** 2026-09-19
+- **Repository:** `sesori-ai/sesori_apps_monorepo`
+- **Implementation base:** `main` at `bf14d7c0f3`
+- **Delivery:** 17 numbered PRs; step 1 raises this plan before production
+  work. State lives in [TRACKER](TRACKER.md).
+- **Architecture review:** rejected 2026-09-19 on one seam (ownership and
+  commit path of the pending-archive cubit); the findings were applied
+  directly. See [Plan Review](#plan-review).
+
+Planned directly after `desktop-ux` retired (#1551). The design was agreed
+with the user over a four-round UI review on 2026-09-19 (a local HTML page
+with real screenshots next to mockups; it contains private screenshots and is
+deliberately not committed). Every agreed outcome is restated here in words,
+so this plan does not depend on that file.
+
+One part is deliberately **not** designed yet and carries an explicit approval
+gate: the look of the composer's model/effort selectors and the redesign of the
+sub-agents bar. See [Approval Gate](#approval-gate-composer-selectors-and-sub-agents-bar).
+
+## Goal
+
+Make the desktop app read as one designed product instead of a phone UI in a
+window:
+
+- a sidebar whose Activity list means exactly one thing and never moves
+  sessions around;
+- surfaces that are visibly delimited: a floating sidebar panel and a unified
+  macOS title bar;
+- pointer-sized pages that share one toolbar anatomy;
+- right-click menus and confirmations that follow desktop conventions;
+- a composer strip without pseudo-agents.
+
+The work is client-side except one bridge-plugin change (harness modes stop
+being presented as agents). No wire, relay, or database change.
+
+## User Report
+
+After `desktop-ux` shipped the user called the app "confusing and not
+attractive as a whole… simply ugly, not properly delimited" and asked for a
+UI-first review before any plan. Statements that shaped the design:
+
+- The Running/Today split on the project page and the Activity/"All sessions"
+  behaviour in the sidebar are confusing: sessions appear to move around.
+- "Loudest button = rarest action — SPOT ON. Literally I keep on pressing it by
+  mistake when I want new session" (the blue **New project** button).
+- The sidebar should look like a floating, elevated panel.
+- Keep the current loading/finished indicators ("the star shaped things").
+- The archive/delete confirmation "feels wrong on desktop".
+- The first composer dropdown (agent) "is often not needed… unless the user
+  explicitly has more available let's not even show that entry"; "plan mode and
+  question mode that we mapped as agents shouldn't be shown at all anymore".
+- The "All tasks completed" bar should be "a lot less intrusive and lower
+  width. That's actually covering subagents, rather than tasks. A subagent can
+  get back alive."
+- The File changes screen is out of scope entirely.
+
+## Current Behavior And Findings
+
+Verified in code on 2026-09-19 (paths relative to the repository root).
+
+### Sidebar and Activity
+
+- The whole sidebar is `client/desktop/lib/core/widgets/desktop_sidebar.dart`
+  (one file, private widgets). Its only header button is a `FilledButton`
+  **New project**. There is no sidebar-level "New session": creation is a
+  hover-revealed `+` per project row, plus a "New task" floating button on the
+  project page (`SessionListScaffold`, `sessionListNewTask`).
+- Activity membership is a pure projection,
+  `DesktopSidebarSessionProjection.from`
+  (`client/module_desktop_core/lib/src/cubits/desktop_sidebar/desktop_sidebar_session_projection.dart`):
+  a session is in Activity iff `isRunning || isUnseen`. Sessions placed in
+  Activity are **removed** from their project's nested rows
+  (`ordinaryRows` → `RecentSessionsResolvers.rows(excludingSessionIds:)`). That
+  is the relocation the user sees.
+- "Unread" is one bridge-authoritative boolean (`Session.unseen`, live through
+  `SesoriSessionUnseenChanged`, mirrored by `SessionUnseenTracker`). The bridge
+  computes it from timestamps; nothing on the wire says *why* a session is
+  unseen. "The agent just finished" and "I marked it unread to keep it for
+  later" are indistinguishable today, so both are pinned on top.
+- Opening a session marks it seen through the view declaration
+  (`SessionViewingService.setViewingSession`), so a clicked Activity row
+  vanishes from under the cursor.
+- Nested rows are capped at three plus the selected session by the shared
+  resolver `RecentSessionsResolvers.rows` (`take(3)`); its only consumer is the
+  desktop sidebar. "All sessions · N" is a `TextButton` that navigates to the
+  same page the project name opens.
+- The collapsed rail is the same widget at `expansion: 0`; Activity sessions
+  render as their project's initials, so the rail shows rows of identical
+  chips.
+- The sidebar is a flush `Material(color: bgSecondary)` with no border, radius
+  or elevation; a `VerticalDivider` resize handle abuts it
+  (`desktop_cockpit_shell.dart`, `compactWidth = 56`, width 200–420, default
+  260, auto-collapse under 760).
+
+### Window chrome and shortcuts
+
+- No title-bar customisation exists on any platform.
+  `client/desktop/lib/core/platform/flutter_window_host.dart` builds
+  `WindowOptions` without a `titleBarStyle`; `MainFlutterWindow.swift` only
+  supports hidden launch. `window_manager ^0.5.2` is already a dependency.
+- The in-app theme (`AppearanceCubit` → `MaterialApp.themeMode`) is never
+  pushed to the native window, so the native title bar disagrees with the
+  content whenever the in-app theme differs from the OS appearance.
+- `Cmd/Ctrl+N` is registered in `desktop_router.dart` and silently does
+  nothing without a project in the route. Other bindings: `Cmd/Ctrl+,`,
+  `Cmd/Ctrl+B`, Escape dismissal.
+
+### Pages, menus and confirmations
+
+- The project page, session page and new-session page are phone screens from
+  `client/module_app_ui` hosted by thin desktop screens
+  (`DesktopSessionListScreen`, `DesktopSessionDetailScreen`,
+  `DesktopNewSessionScreen`): phone row heights, a floating "New task" button,
+  a session title drawn over the transcript without a backing surface,
+  full-width text lines, and right-click menus that dim the window and lift
+  the row (the iOS long-press pattern).
+- Session actions come from one seam, `SessionListActionDispatcher`
+  (`client/module_app_ui/lib/src/features/session_list/`); desktop holds one
+  instance in `desktop_router.dart` (`_desktopSessionActions`) and the sidebar
+  reuses it. The session page has no session actions besides the diff button.
+- Archive and delete confirm through a phone bottom sheet
+  (`session_cleanup_dialogs.dart` via `showPregoBottomSheet`) with a "Delete
+  worktree" checkbox, no default button, then a success toast. Archiving is
+  permanent. When the bridge refuses worktree cleanup (409, unsafe worktree)
+  the only choices offered are Cancel or **Force**.
+
+### Composer, agents and the sub-agents bar
+
+- `PromptInput` is shared by phone and desktop. It has two modes (voice-first,
+  text-first) and three layouts; desktop is forced to text-first with voice
+  unsupported by `DesktopComposerPresentationScope`
+  (`client/desktop/lib/core/widgets/`), the desktop widget that feeds the
+  shared `ComposerPresentationScope`. The strip above the input
+  (`_buildComposerTopSlot`) is the only region present in every mode and state:
+  it holds the selectors, becomes the "Release to transcribe" hint while
+  recording and the `/command` chip when one is staged.
+- `AgentModelButtons` lays the selectors out as three `Expanded` dropdowns and
+  shows the agent dropdown whenever the list is non-empty, so a single
+  placeholder agent still gets a full-width dropdown.
+- What the eleven harnesses put in that dropdown:
+
+  | Harness | Entries today | Nature |
+  |---|---|---|
+  | Pi, DeepSeek, Hermes, Grok, Antigravity | one, named after the harness | placeholder |
+  | Claude Code, Codex | Agent, Plan | harness mode mapped as an agent |
+  | Cursor | Agent, Plan, Ask | harness modes mapped as agents |
+  | OMP, Copilot | modes reported by the CLI at runtime | harness modes mapped as agents |
+  | OpenCode | the user's real agents (build, plan, custom) | genuine agents |
+
+  Bridge core passes `PluginAgent` through unfiltered; the client already hides
+  `hidden` and `subagent` entries (`session_selection_calculator.dart`) and
+  falls back to the first selectable agent when a stored name disappears. OMP
+  and Copilot currently **throw** when asked for a mode they do not know.
+- `BackgroundTasksBar` sits above the composer at full width. It lists child
+  sessions (sub-agents) but speaks of "tasks", and its resting label "All tasks
+  completed" claims a final state that is not final: a finished sub-agent can
+  resume and new ones appear and finish during a turn. Inline sub-agent tiles
+  already exist for the harnesses that expose them
+  (`docs/HARNESS_CAPABILITIES.md`, Sub-agents).
+
+## Design Decisions
+
+All agreed with the user on 2026-09-19 unless marked otherwise.
+
+- **D1 Activity means "in motion".** Activity = running sessions plus sessions
+  with agent output the user has not looked at yet. A session the user marks
+  unread on purpose stays quietly inside its project (bold, blue sparkle,
+  counted on the project row) and does not return to Activity until the agent
+  produces something new. No bridge or wire change: a desktop-local deferral
+  marker.
+- **D2 Sessions never relocate.** A session is always listed under its project;
+  Activity is a shortcut list on top. The opened session stays in Activity,
+  drawn as selected, until the user opens something else.
+- **D3 Tree things happen in the tree.** "All sessions · N" becomes an
+  in-place **Show more**. The project name is the one door to the project page.
+- **D4 One primary action.** "New session ⌘N" is the sidebar's primary header
+  button. "New project" becomes a small `+` on the Projects section header.
+  `Cmd/Ctrl+N` works from anywhere: the current project, else the most recently
+  active one; with no projects it opens the New project dialog.
+- **D5 One noun.** "Session" everywhere; "task" is never used for a session.
+  The strings are shared, so the phone inherits the wording.
+- **D6 The sparkles stay.** `PregoAiLoader` is unchanged (hollow and turning
+  while working, solid blue when finished and unread). It moves to one leading
+  status column on every list; the time keeps its own trailing slot.
+- **D7 Depth delimits.** The page content is the window's base surface; the
+  sidebar (and the rail) is an inset, rounded, elevated panel on top of it.
+- **D8 Unified macOS title bar.** The sidebar panel runs to the top edge and
+  the traffic lights sit on it, using the already-installed `window_manager`
+  (no custom Swift). Windows and Linux keep native chrome. The native
+  brightness follows the in-app theme so chrome and content never disagree.
+- **D9 Every rail button means one thing.** One Activity button with a count
+  (the list pops out beside it), then one chip per project with a small sparkle
+  when something in it is running or unread.
+- **D10 Project page is one timeline.** No Running section: running sessions
+  are simply the first rows of Today, with "Running" where the time would be.
+  Filter chips All / Running / Unread; hover reveals Mark read/unread and
+  Archive; about 44 pt rows in a width-capped column; "New session" lives in
+  the page toolbar.
+- **D11 Session page.** A solid toolbar with a hairline: title and context on
+  the left; **Mark unread** (`Shift+Cmd/Ctrl+U`, returns to the project page,
+  Gmail-style), **Changes**, and a `…` menu (Rename, Archive, Delete) on the
+  right. Transcript and bottom controls share a centred column of about 760 pt.
+- **D12 Right-click menus** are compact, open at the cursor, do not dim the
+  window, and show shortcuts.
+- **D13 Archive and delete on desktop.** Archive happens at once with an
+  **Undo** toast (a client-side delayed commit; nothing is sent until the
+  window closes). "Archive, keep worktree" is a separate menu item. Archive
+  asks only when unusual: the session is still running, or the bridge refuses
+  worktree cleanup — and then the default button is **Archive, keep worktree**,
+  with "Delete it anyway" and Cancel beside it. Delete keeps a compact centred
+  alert that names the session, offers the worktree checkbox ("the branch is
+  kept"), cancels on Escape/Return, and needs a deliberate click on the red
+  button. The phone keeps its sheets.
+- **D14 New session page.** Centred "What should we work on?", a project
+  selector, the same selector strip as the session page with the harness in
+  front, the input, then "Dedicated workspace" and "Refresh options".
+- **D15 Agents.** The agent entry appears only when more than one agent exists
+  — one rule for every harness, OpenCode included. Harness modes are no longer
+  presented as agents: Sesori stops offering Plan/Ask for Claude Code, Codex,
+  Cursor, OMP and Copilot (user-confirmed consequence). The phone follows,
+  because the widget and the bridge are shared.
+- **D16 Composer.** Selectors stay in the strip above the input in every mode
+  and state. On desktop `+` and `/` are always visible and the box grows
+  instead of opening the phone editor sheet. The **look** of the selectors is
+  gated (D18).
+- **D17 Sub-agents bar.** It speaks about sub-agents, never claims a final
+  state, and becomes much narrower and less intrusive. Its design is gated
+  (D18).
+- **D18 Approval gate.** D16's selector look and D17 are built towards the end
+  of the series, shown to the user as screenshots of the running app, and no
+  PR is opened for them until the user explicitly approves.
+- **D19 Out of scope.** The File changes screen and voice input on desktop.
+- **D20 The phone does not change by default** (planning default, not yet
+  confirmed by the user). The review covered the desktop. Shared widgets get
+  their desktop look through a closed input whose phone value is today's
+  behaviour, so phone rows, grouping, menus and sheets stay as they are. The
+  two exceptions are D5 (shared strings) and D15 (shared widget and bridge).
+
+## Design
+
+### Activity and the sidebar model (steps 3–5)
+
+`DesktopSidebarSessionProjection.from` stays a pure function and gains two
+inputs.
+
+- **Deferral marker.** `DesktopSidebarLayout` (already persisted through
+  `DesktopSidebarCubit`'s write queue) gains
+  `deferredSessions: Map<String, int>` — session id → the session's
+  `time.updated` when the user marked it unread on this desktop. A session is
+  *deferred* while it is unseen and its `time.updated` still equals the
+  recorded stamp. New agent output advances the stamp, so the session becomes
+  news again without a subscription or timer. The rule becomes
+  `isRunning || (isUnseen && !isDeferred)`. The marker is written through a
+  new `onSessionMarkedUnread` hook on the desktop's
+  `SessionListActionDispatcher` instance (next to the existing
+  `onSessionDeleted`). On each write, entries whose session is no longer unseen
+  are dropped and the map is capped at 200 (oldest first).
+  Step 3 first verifies that `time.updated` advances with agent output for the
+  registered plugins and that marking unread does not advance it; if either
+  fails, the fallback is clearing the marker when the owner observes the
+  session running.
+- **Sticky selection.** The sidebar keeps one widget-local
+  `String? stickyActivitySessionId`: set when the selection changes to a
+  session that is in Activity at that moment, cleared when the selection
+  changes again. The projection keeps that one session in Activity while it is
+  selected.
+- **No relocation.** `RecentSessionsResolvers.rows` loses
+  `excludingSessionIds`; the projection stops tracking activity ids per
+  project.
+- **Show more.** `rows` takes a `limit`; `_SidebarProjectGroupState` owns the
+  limit (3, +10 per click, reset when the group collapses). The "All sessions"
+  button and string are deleted.
+- **Sections and rows.** "Activity · N" and "Projects" become labelled,
+  collapsible section headers (collapsed flags live in the same layout model);
+  the Projects header carries the small `+`. Activity rows lead with the
+  sparkle; project rows lead with the avatar; nested rows get the leading
+  status column and a trailing compact time.
+- **Rail.** One Activity button (sparkle + count) whose click opens the
+  Activity list in an anchored popout, then one chip per project with a sparkle
+  badge. The per-session chips disappear.
+
+### Shell surfaces (steps 6–7)
+
+- **Floating panel.** In `desktop_cockpit_shell.dart` the sidebar is wrapped in
+  an 8 pt margin with a 14 pt radius, hairline border and soft shadow; the main
+  pane paints the base surface. The visible divider goes away and the resize
+  hit-area moves into the gap. Width bounds keep meaning the panel's width;
+  the rail math includes the margin; the footer border is clipped by the
+  panel; the connection pill is re-anchored. The pixel invariants in
+  `desktop-cockpit-shell.md` are updated in the same PR.
+- **Title bar.** macOS only:
+  `WindowOptions(titleBarStyle: TitleBarStyle.hidden, windowButtonVisibility: true)`.
+  The panel reserves a top inset for the traffic lights; `DragToMoveArea`
+  covers the panel's top strip and the page toolbar background so the window
+  still drags and zooms on double-click. With the rail collapsed the traffic
+  lights are wider than the rail, so the page toolbar takes a leading inset.
+  `windowManager.setBrightness` follows `AppearanceCubit` (macOS and Windows).
+  Full-screen, zoom and dragging are verified live before the PR opens; the
+  step is independently revertible.
+
+### Pages (steps 8–13)
+
+**One pointer input (introduced by step 8).** `client/module_prego` gains a
+closed `PregoInteractionMode { touch, pointer }` and a small
+`PregoInteractionScope` inherited widget. `PregoInteractionScope.of(context)`
+answers `touch` when no scope exists (the fallback posture of
+`DefaultTextStyle`), so the phone and the existing widget tests change
+nothing. The desktop app installs one scope in `app.dart`. Only shared widgets
+with an agreed pointer presentation read it, in one place each:
+`PregoAnchorMenu` (step 8) and `SessionTile` (steps 9–10). It is not a density
+system: no spacing tokens and no theme fields, and a further reader needs a
+plan amendment.
+
+**Compact menus (step 8).** In pointer mode `PregoAnchorMenu` ignores
+`spotlight` (no dimming, no lifted row), opens at the pointer for a secondary
+click and at its anchor for a button, draws about 30 pt rows at `textSm`, and
+renders a trailing shortcut label. Menu entries gain a required nullable
+shortcut; the label comes from Flutter's `LocalizedShortcutLabeler` and the
+same `SingleActivator` the desktop router registers, passed in by the desktop
+host, so shared code never formats key names or checks the platform. Only real
+bindings are shown (`Cmd/Ctrl+N`, and `Shift+Cmd/Ctrl+U` from step 11). Every
+desktop call site inherits the look without a per-call-site flag.
+
+**Project page (steps 9–10).** `DesktopSessionListScreen` stops hosting the
+phone's `SessionListScaffold` and composes the page itself: a new
+`DesktopPageToolbar` (`client/desktop/lib/core/widgets/`, reused by steps 11
+and 13) over a scroll view holding the refresh progress bar, `CatalogScanRow`
+and the shared `SessionListContent`, in a centred column capped at about
+760 pt. The toolbar carries the project name and repository slug, an
+**Archived** toggle (today's `toggleArchived`), **New session** as the page's
+primary button, and an overflow menu that keeps today's two refresh actions
+reachable (Refresh, Scan for sessions), because the pull gesture that owns
+them has no mouse equivalent. The floating "New task" button is not part of
+the desktop page.
+
+- *One timeline.* `SessionListContent` takes a required closed
+  `SessionListGrouping { runningSection, timeline }`. The phone passes
+  `runningSection` and is unchanged. With `timeline`, a running session is
+  bucketed under **Today** whatever its stored time, and its trailing slot
+  reads "Running" (`sessionListRunning`). The service-owned ordering (running
+  first) does not change.
+- *Pointer rows.* In pointer mode `SessionTile` is about 44 pt tall with a
+  13.5 pt title, a fixed leading status column holding the unchanged
+  `PregoAiLoader` sparkle, the time always in the trailing slot, and a hover
+  highlight.
+- *Filter chips (step 10).* All · N, Running · N, Unread · N above the list.
+  The session list is fully loaded client-side, so the counts are exact and
+  the filter is a widget-local value applied to `SessionListLoaded.sessions`
+  through the existing `isSessionRunning` / `isSessionUnseen` resolvers — no
+  cubit state and no request. The chips hide while Archived is on. Unread is
+  where "kept for later" sessions live.
+- *Hover actions (step 10).* Hovering a row swaps the time for Mark
+  read/unread and Archive buttons wired to the existing dispatcher handlers;
+  keyboard focus reveals them too.
+
+**Session page (step 11).** `SessionDetailBody` keeps computing the title,
+subtitle, busy state and diff availability, and gains one required nullable
+input in the style of its existing `bottomControlsBuilder`: a small value
+carrying a `headerBuilder` (which receives those computed values) and a
+`maxContentWidth`, both non-null, so "a toolbar without a width cap" cannot be
+expressed. The phone passes null and keeps its floating glass bar. The desktop
+passes 760 and a builder returning a `DesktopPageToolbar` — title and context on the left; **Mark
+unread**, **Changes** and a `…` menu (Rename, Archive, Archive keep worktree,
+Delete) on the right — laid out above the transcript instead of over it. The
+width is applied as symmetric padding computed from the available width inside
+the transcript and the bottom controls, so the scrollbar and wheel area stay
+full-width. The `…` menu reuses the sidebar's precedent: a throwaway
+`SessionListCubit` in `SessionListMode.actions(sessions: [session])` driven by
+the one desktop dispatcher. Mark unread calls `handleSessionToggleUnread`,
+then navigates to the project page; `Shift+Cmd/Ctrl+U` is registered beside
+the existing bindings in `desktop_router.dart` and acts only while a session
+route is open.
+
+**Archive with Undo and compact alerts (step 12).**
+`SessionListActionDispatcher` takes a required sealed `SessionCleanupFlow`.
+`sheets` is the phone: today's confirmation sheets, unchanged. `immediate` is
+the desktop: it carries an archive callback (session, deleteWorktree) and a
+delete-confirmation callback, and makes the dispatcher offer **Archive** and
+**Archive, keep worktree** as separate entries instead of opening a sheet.
+After a confirmed delete the dispatcher's existing delete operation and
+refusal handling run unchanged.
+
+- `PendingSessionArchiveCubit` (`client/module_desktop_core`) depends on
+  `SessionRepository` only — never on a `SessionListCubit`, which may be
+  unmounted by the time the window closes. It is not DI-registered: the
+  cockpit shell creates it with `BlocProvider(create:)` beside
+  `DesktopSidebarCubit` (`desktop_cockpit_shell.dart`), so it outlives every
+  page and the sidebar. Its sealed state is idle, pending(session,
+  deleteWorktree), refused(session, rejection) or failed(session), and it owns
+  one `Timer` of about five seconds. Closing the cubit cancels the timer and
+  sends nothing.
+- The desktop archive callback asks first only when the session is running,
+  then starts the pending archive. The row hides at once: the sidebar
+  projection and `SessionListContent` take the pending id as a required
+  nullable hidden session id. An open page for that session returns to its
+  project page. One `BlocListener` in the cockpit shell shows the existing
+  top-anchored `PregoPopupAlertPresenter` alert "Archived" with an **Undo**
+  action, and later the refusal alert or the error toast.
+- Undo returns to idle and the row comes back; nothing was sent. When the
+  timer fires the cubit calls `SessionRepository.archiveSession`. Both session
+  inventories already apply the bridge's `SesoriSessionUpdated` event, so the
+  row stays gone once the hidden id clears. A second archive commits the first
+  immediately: one pending archive at a time, no queue.
+- `SessionCleanupRejectedException` (the 409 worktree refusal) becomes
+  `refused`: a compact alert with **Archive, keep worktree** as the default,
+  "Delete it anyway" and Cancel beside it. Any other failure becomes `failed`:
+  the row returns, an error toast shows, and the cubit logs the original error
+  with the session id.
+- Delete uses a compact centred alert (`showDialog`, about 420 pt) naming the
+  session, with the worktree checkbox, Cancel on Escape/Return, and a red
+  button that is never the default.
+
+**New session page (step 13).** `NewSessionView` gains one required nullable
+value carrying a top bar and a header, both non-null. When the host passes it,
+the view draws that top bar instead of the glass bar and lays the header and
+the composer block out as one centred, width-capped column instead of
+anchoring the composer to the bottom. The desktop passes a
+`DesktopPageToolbar` titled "New session" and the "What should we work on?"
+heading plus a project selector; choosing another project replaces the route
+with that project's new-session route. New-session drafts are already stored
+per project (`ComposerDraftRepository.saveForNewSession`), so text typed
+before switching stays with the project it was typed in rather than being
+lost, and nothing carries it across. The harness chooser sits left-aligned
+directly above the selector strip, with "Dedicated workspace" and "Refresh
+options" below the input. Folding the harness into the strip itself belongs to
+the gated step.
+
+### Agents (step 14)
+
+- Client: `AgentModelButtons` shows the agent entry only when more than one
+  selectable agent exists.
+- Plugins (Claude, Codex, Cursor, OMP, Copilot): stop mapping modes to
+  `PluginAgent`; each emits the single placeholder agent the other harnesses
+  already emit, and **ignores** the prompt's `agent` value instead of resolving
+  or rejecting it, so a stale "Plan" from an older app or a stored selection
+  runs in the harness's default mode rather than failing — exactly what the
+  placeholder harnesses already do. Deleted with their tests:
+  `ClaudeAgentSelection` and the agent reset it emits on plan exit
+  (`BridgeSseSessionPromptDefaultsChanged` in `replyToQuestion`; the exit-plan
+  question handling and the applied permission-mode bookkeeping stay),
+  `CodexCollaborationMode.fromAgent` with its aliases, Cursor's
+  `resolveModeId(agent)`, OMP's `_resolveMode`, Copilot's mode resolution.
+- OpenCode is untouched; its chip follows the same "more than one" rule.
+- `docs/HARNESS_CAPABILITIES.md` gains a short "Agent selection and harness
+  modes" section; `session-creation-and-options.md` is updated.
+
+### Approval Gate: composer selectors and sub-agents bar
+
+Step 15 is different from every other step.
+
+1. Build locally on top of step 14: a single closed desktop presentation value
+   on the existing `ComposerPresentationScope` (not three booleans) that drives
+   compact left-aligned selectors, always-visible `+` and `/`, and a growing
+   text box without the editor sheet. The composer's state machine, the phone,
+   and the recording/staged-command behaviour of the top slot do not change.
+2. Build the sub-agents presentation: sub-agent vocabulary, no final-state
+   claim (a count and a running signal, not "completed"), much narrower and
+   visually quiet. Two real variants are prepared for comparison: a small pill
+   sharing the selector strip's trailing edge, and a session-toolbar item with
+   a count that opens the same list as a popover.
+3. Send the user screenshots of the **running app** (light and dark, resting,
+   typing, a running sub-agent, a finished sub-agent that resumes).
+4. Iterate on feedback. **No PR is opened until the user explicitly approves
+   the actual UI.** On approval the step may split into 15.a (composer) and
+   15.b (sub-agents) if the diff warrants it.
+
+## Failure Semantics
+
+- **Deferral marker.** The projection stays pure. A failed layout write is
+  already logged by the sidebar cubit's write queue; the only effect is that a
+  deferred session shows in Activity again after a restart. Markers for
+  sessions that are no longer unseen are pruned on the next write.
+- **Pending archive.** Undo, or quitting inside the window, sends nothing and
+  the session stays. A commit failure is never silent: a worktree refusal
+  opens the refusal alert; anything else (a lost connection included) restores
+  the row and shows an error toast, and the cubit logs the original error with
+  the session id. Signing out inside the window closes the cubit and sends
+  nothing.
+- **Stale agent value.** The five plugins run the turn in the harness default
+  mode, as the placeholder harnesses already do with any agent value. This is
+  the contract, not a recovered failure, so it adds no log line.
+- **Title bar.** macOS only. If live verification shows a regression in
+  dragging, zoom or full screen, the step does not ship; nothing else depends
+  on it except the panel's top inset, which is zero under native chrome.
+- **Widget-local state** (sticky Activity id, Show more limit, filter chip,
+  hover) has no failure mode beyond resetting when its widget goes away.
+
+## Compatibility
+
+- No wire shape, relay or database change.
+- **Newer app, older bridge:** the bridge still lists Agent/Plan(/Ask); that is
+  more than one agent, so the entry shows and the old bridge honours it.
+- **Older app, newer bridge:** the five harnesses list one placeholder agent,
+  as Pi does today, and the older app draws its one-entry dropdown. A stored or
+  in-flight "Plan" value is ignored, not rejected.
+- **Persisted selections** that name a removed mode (`lastAgent`, new-session
+  defaults) get no migration: the client already falls back to the first
+  selectable agent and the plugins ignore the value.
+- **Layout file.** `DesktopSidebarLayout` is a desktop-local file, not a
+  transport contract, and no public production desktop release exists at the
+  plan date; the new fields default honestly (empty map, sections expanded)
+  with no compatibility marker.
+- **Strings.** `sessionListNewTask` is deleted; the phone's button reads "New
+  session" (D5).
+
+## Non-Goals
+
+- The File changes screen and voice input on desktop (D19).
+- Phone layout changes beyond D5 and D15 (D20).
+- A bridge-level "why is this unread" signal, or syncing deferral between
+  devices.
+- An unarchive endpoint: Undo is a delayed commit.
+- A density or spacing token system, or a desktop theme fork.
+- Custom title bars on Windows and Linux; custom Swift or C++ runner code.
+- Stacked, queued or bottom-anchored toasts.
+- A replacement control for Plan/Ask.
+- New analytics events: the series restyles existing actions, and
+  `new_session` / `session_created_with_message` keep firing from the same
+  authoritative outcomes.
+
+## Complexity Budget
+
+New persistent state, all inside the existing desktop-local layout file (no
+new file, table or wire field):
+
+- `deferredSessions` (session id → stamp; capped at 200; pruned on write);
+- two section-collapsed flags.
+
+New in-memory mutable state, each with exactly one owner:
+
+| State | Owner | Lifetime |
+|---|---|---|
+| Sticky Activity session id | sidebar widget state | until the selection changes |
+| Show more limit per project | `_SidebarProjectGroupState` | until the group collapses |
+| Rail Activity popout open | the popout's anchor controller | until dismissed |
+| Filter chip selection | desktop project page state | page lifetime |
+| Row hover | row widget state | pointer presence |
+| Pending archive + one `Timer` | `PendingSessionArchiveCubit` | about five seconds |
+
+New types: `PregoInteractionMode` / `PregoInteractionScope`,
+`SessionListGrouping`, `SessionCleanupFlow`, `DesktopPageToolbar`,
+`PendingSessionArchiveCubit`, and the two small presentation values on
+`SessionDetailBody` and `NewSessionView`. No new DI registration (the cubit is
+created by `BlocProvider` in the cockpit shell), route, repository, service,
+stream or subscription.
+
+Deliberately not added: everything under Non-Goals, a per-call-site "compact"
+flag on menus, a desktop fork of any shared widget, and carrying typed text
+between projects.
+
+## Cleanup Assessment
+
+Removed by the series:
+
+- `excludingSessionIds` and the projection's per-project activity-id tracking
+  (step 3);
+- the "All sessions · N" button and its string (step 4);
+- per-session rail chips (step 5);
+- the `VerticalDivider` resize presentation (step 6);
+- `sessionListNewTask`, and the desktop's use of the floating button and of
+  `SessionListScaffold`, which stays as the phone's scaffold (steps 2, 9);
+- mode-as-agent mapping and its tests in five plugins (step 14);
+- the sub-agents bar's "tasks" strings (step 15).
+
+Declined, because it would widen the series: splitting the 1,100-line
+`desktop_sidebar.dart`. Steps 2–6 touch it one at a time; widgets that steps
+4–5 introduce (section header, rail Activity popout) go in their own files
+beside it, and the existing private widgets are not moved.
+
+## Delivery Plan
+
+Series slug `desktop-ui-polish`, 17 PRs, one at a time in order. Targets count
+additions plus deletions across every path. Exact titles and branches are in
+[TRACKER](TRACKER.md#pr-titles). Each behaviour-changing step updates the
+regression lines it invalidates in the same PR; step 16 reconciles the whole.
+
+| Step | Delivery | Target | Scope |
+|---|---|---|---|
+| 1 | 1/17 | ≤ 1,100 | This plan, tracker and the roadmap cross-reference. |
+| 2 | 2/17 | ≤ 350 | "New session" is the sidebar's primary button with "New project" as a small `+` beside it (step 4 moves it onto the Projects header); `Cmd/Ctrl+N` works anywhere (D4); `sessionListNewTask` deleted (D5). |
+| 3 | 3/17 | ≤ 600 | Activity in motion: `time.updated` verification, deferral marker, sticky selection, no relocation (D1, D2). |
+| 4 | 4/17 | ≤ 700 | Labelled collapsible sections, leading status column, trailing time, Show more (D3, D6). |
+| 5 | 5/17 | ≤ 400 | Rail: one Activity button with a popout, one chip per project (D9). |
+| 6 | 6/17 | ≤ 450 | Floating sidebar panel and base-surface main pane (D7). |
+| 7 | 7/17 | ≤ 350 | Unified macOS title bar; native brightness follows the in-app theme (D8). |
+| 8 | 8/17 | ≤ 500 | `PregoInteractionScope` and compact pointer menus (D12). |
+| 9 | 9/17 | ≤ 800 | Desktop project page: `DesktopPageToolbar`, one timeline, pointer rows (D10). |
+| 10 | 10/17 | ≤ 500 | Filter chips and hover actions (D10). |
+| 11 | 11/17 | ≤ 700 | Session toolbar, centred column, Mark unread and its shortcut (D11). |
+| 12 | 12/17 | ≤ 900 | Archive with Undo, refusal alert, compact delete alert (D13). |
+| 13 | 13/17 | ≤ 500 | New session page (D14). |
+| 14 | 14/17 | ≤ 1,000 | Agent entry rule; harness modes no longer agents in five plugins; `HARNESS_CAPABILITIES.md` (D15). Mostly deletions; may split by plugin family. |
+| 15 | 15/17 | set at approval | **Gated.** Composer selector look and the sub-agents bar (D16–D18). No PR before explicit approval of real screenshots. |
+| 16 | 16/17 | ≤ 400 | Reconcile `docs/regression/`. |
+| 17 | 17/17 | ≤ 200 | Record the matrix result; retire to `.plan/completed/`. |
+
+Steps 16 and 17 wait for step 15's approval, or for the user's explicit
+decision to drop or defer it.
+
+## Per-Step Verification
+
+Every step analyzes its owning packages and runs the directly relevant tests;
+CI runs the full matrix. Evidence goes in `steps/step-NN.md`, written by that
+step's own PR.
+
+- **2:** sidebar header widget test; shortcut test for the three cases
+  (project in the route, none, no projects at all).
+- **3:** projection unit tests — running; unseen; deferred stays out; deferred
+  with a newer `time.updated` comes back; the sticky selected session stays;
+  Activity sessions also appear under their project. Layout JSON round-trip
+  with defaults. The `time.updated` finding is recorded before any code.
+- **4:** resolver `limit` tests; Show more (+10, reset on collapse); section
+  collapse persists.
+- **5:** rail shows one Activity button with its count and one chip per
+  project; the popout lists the Activity rows.
+- **6:** layout test for the margin and the resize hit-area; live check of
+  resize, collapse and persisted width.
+- **7:** live on macOS — drag, double-click zoom, full screen in and out,
+  traffic lights with the rail collapsed, and light/dark/system switching the
+  native brightness. Windows and Linux still build with native chrome.
+- **8:** `module_prego` widget tests — pointer mode has no barrier or
+  spotlight, opens at the pointer, shows the shortcut label; touch-mode tests
+  pass untouched.
+- **9:** `SessionListContent` under both groupings; `SessionTile` in pointer
+  mode; the first desktop project page widget test (toolbar, Archived toggle,
+  no floating button).
+- **10:** counts and filtering; chips hidden under Archived; hover and focus
+  reveal actions that call the dispatcher.
+- **11:** `SessionDetailBody` with and without `headerBuilder`; width maths;
+  Mark unread lands on the project page; the shortcut is inert off a session
+  route.
+- **12:** cubit tests under fake time — Undo sends nothing, the timer commits
+  through `SessionRepository` with no list cubit mounted, a second archive
+  flushes the first, 409 → refused, other failure → failed, close sends
+  nothing; the first dispatcher test covers both `SessionCleanupFlow`
+  variants; phone sheets unchanged.
+- **13:** header-slot layout; project switch replaces the route; phone tests
+  pass untouched.
+- **14:** per-plugin catalog tests (one placeholder agent); a prompt carrying a
+  stale agent runs in default mode, with OMP and Copilot no longer throwing;
+  `AgentModelButtons` with zero, one and two agents; one live Claude Code turn
+  from a stored "Plan" selection.
+- **15:** the approval gate first; then tests for the approved design.
+- **16–17:** documentation validation only.
+
+A phone test that needs editing in steps 8–13 is a review signal: D20 says the
+phone value of every new input is today's behaviour.
+
+## Regression Documentation And Final Matrix
+
+Affected feature documents:
+
+- `desktop-cockpit-shell.md` — panel and rail invariants, the Activity rule,
+  the three-row cap becoming Show more, the header's primary action, the
+  shortcut list (`Cmd/Ctrl+N` anywhere, `Shift+Cmd/Ctrl+U`), and "All
+  platforms retain native window chrome" becoming the macOS unified title bar.
+- `projects-and-sessions.md` — the Running-first contract gains the desktop
+  one-timeline presentation, filter chips and hover actions.
+- `session-archiving-and-deletion.md` — the desktop Undo flow, the refusal
+  alert's default, the compact delete alert; phone sheets unchanged.
+- `session-creation-and-options.md` — the agent entry rule, modes no longer
+  offered, the desktop new-session page, `Cmd/Ctrl+N` anywhere.
+- `popup-alerts.md` — an alert carrying an Undo action.
+- `native-activity-indicators.md` and `voice-input.md` — only if they state
+  the sparkle's position or describe the composer presentation step 15
+  changes.
+- `docs/HARNESS_CAPABILITIES.md` — a new "Agent selection and harness modes"
+  section; Sub-agents wording if step 15 changes what the bar claims.
+
+Highest coverage level: **L3, client end to end** on macOS desktop against a
+live bridge with a representative plugin. Step 14 adds the **Live plugin**
+boundary: one real Claude Code turn from a stored "Plan" selection.
+
+| Platform | Level | Boundary | Scope |
+|---|---|---|---|
+| macOS desktop | L3 | Client end to end, live bridge, representative plugin | Sidebar and Activity, rail, panel, title bar and theme, menus, project page, session page, archive/Undo/delete, new session page, agent entry |
+| Bridge plugins (5 touched) | L2 + one live turn | Automated for all five; Live plugin for Claude Code | One placeholder agent; stale agent ignored |
+| iOS, Android | L2 + one smoke | Automated + release-target device | Wording, agent entry rule; list, menus and sheets unchanged |
+| Windows, Linux | smoke | Client end to end | Build, native chrome intact, floating panel, compact menus |
+
+Proposed reductions, to be accepted with this plan: Windows and Linux run a
+smoke pass (the reduction accepted for `desktop-ux`), and four of the five
+touched plugins are proven by automated tests rather than a live turn each.
+
+## Risks And Accepted Limits
+
+- **Deferral is per desktop.** Marking unread on the phone shows as news on
+  the desktop. Fixing it needs a bridge-level reason (Later Phases).
+- **`time.updated` may not mean "agent output" for every plugin.** Step 3
+  verifies first and has a defined fallback.
+- **Hidden title bar.** Dragging, zoom and full screen can regress; verified
+  live, independently revertible.
+- **Undo toast.** It is top-anchored and the presenter does not stack, so
+  another toast can replace it inside the window; the archive then commits on
+  time without a visible Undo. Accepted: archiving is what the user asked for.
+  A pending archive is also dropped by quitting (the session simply stays).
+- **OMP and Copilot keep their mode in the live harness process.** A session
+  already in plan mode may stay there until that process restarts. Recorded in
+  `HARNESS_CAPABILITIES.md`.
+- **Plan/Ask are no longer offered from Sesori** (user-confirmed).
+- **Shared-widget edits can regress the phone.** Every one sits behind a
+  closed input whose phone value is today's behaviour, and phone tests must
+  pass unmodified.
+- **One large file.** Steps 2–6 all touch `desktop_sidebar.dart`; they are
+  serialized and add new widgets in new files.
+- **Step 15 can take several rounds.** It blocks only steps 16–17.
+
+## Plan Review
+
+`architecture-plan-review` ran once through a sub-agent on 2026-09-19 and
+**rejected** the draft on one seam; the valid findings were applied directly
+without a re-review, as the process requires.
+
+- **Applied — cubit ownership.** The draft budgeted "one new DI registration"
+  for `PendingSessionArchiveCubit`; cubits are never DI-registered. It is now
+  created by `BlocProvider` in the cockpit shell beside `DesktopSidebarCubit`.
+- **Applied — commit path.** The draft committed "through the existing
+  `SessionListCubit` path", which may be unmounted inside the Undo window and
+  would have been a cubit depending on a cubit. The cubit now depends on
+  `SessionRepository` only and owns the refused/failed outcomes itself.
+- **Checked and not applied.** The review reported that
+  `DesktopComposerPresentationScope` does not exist. It does
+  (`client/desktop/lib/core/widgets/desktop_composer_presentation_scope.dart`)
+  and wraps the shared `ComposerPresentationScope`; the finding's path was
+  added to the text for clarity.
+- **Optional suggestions applied.** The confirmation strategy is named (the
+  sealed `SessionCleanupFlow`); the new-session page's use of
+  `DesktopPageToolbar` is stated; Claude's plan-exit reset was located and the
+  deletion narrowed to the emitted agent reset. The paired nullable inputs on
+  `SessionDetailBody` and `NewSessionView` were each folded into one value so
+  half-configured states cannot be expressed.
+
+The review found the rest compliant: plugin-boundary hygiene (the agent entry
+is a pure count rule, never a backend check), the closed-input mechanism for
+D20, the placeholder-agent pattern, naming, and no abstraction without a
+current consumer.
+
+## Relation To Other Plans
+
+- `desktop-ux` (completed) built the cockpit this plan restyles. This plan
+  supersedes its sidebar rules (Activity = running ∪ unseen, the three-row cap
+  with "All sessions") and the matching `desktop-cockpit-shell.md` invariants.
+- `desktop-app` and `desktop-distribution` (active) are independent; nothing
+  here completes or waives their gates. Packaged macOS QA that runs after
+  step 7 sees the unified title bar.
+- `instant-session-launch` (proposed) also edits `NewSessionView`; step 13
+  changes only its layout and header slot, and whichever lands second rebases.
+- `claude-inline-subtasks` (completed) supplies the inline sub-agent tiles the
+  step 15 bar builds on.
+
+## Later Phases (rough intent only; planned when they start)
+
+- Voice input on desktop: the composer already has the modes; it needs a
+  desktop capture implementation.
+- The File changes screen.
+- Phone adoption of whatever proves itself on desktop (one timeline, leading
+  sparkle).
+- A bridge-level unread reason, so "kept for later" follows the user across
+  devices.
+- Custom title bars on Windows and Linux.
+- A real per-harness mode control, if Plan/Ask are missed.
+
+## Expected Result
+
+The desktop app reads as one designed product. The sidebar is a floating panel
+under a unified title bar, with one obvious "New session" button. Activity
+lists only what is in motion, and no session ever jumps between lists. Pages
+share one toolbar and pointer-sized rows; menus and confirmations behave the
+way desktop users expect; the composer strip shows an agent entry only when
+there is a real choice. The phone looks the same apart from saying "session"
+everywhere and losing pseudo-agents. There is no wire, relay or database
+impact.
