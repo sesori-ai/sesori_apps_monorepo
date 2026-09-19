@@ -129,6 +129,9 @@ check true for signed replacement, persisted Bridge Off intent and post-Quit pro
 absence. The probe did not inspect helper absence while either GUI was running, so
 helper-Off remains open alongside authenticated helper-On, failed-stop,
 real-account/Keychain/TCC, minimum-OS support, public retrieval and release readiness.
+Current tooling now records and requires absence of the exact installed helper after
+each visible launch and before tray Quit; helper-Off remains open until that reviewed
+check passes from `main` on both native CPUs.
 
 ## Current evidence boundary
 

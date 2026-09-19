@@ -158,6 +158,14 @@ on both CPUs. The probe did not inspect helper absence while either GUI was runn
 so helper-Off, authenticated helper-On, failed-stop, real-account/Keychain/TCC,
 minimum-OS, public retrieval and parent Gate C remain open.
 
+The live helper-Off correction checks the exact
+`/Applications/Sesori.app/Contents/Helpers/bridge/bin/bridge` process after each
+visible prior/current launch and before tray Quit. It preserves an explicit
+`*-helper-off.log`, refuses a running helper, and adds
+`helperAbsentBeforeQuit` to successful evidence. This check is credential-free
+and does not poll, signal or replace the helper. Helper-Off remains open until this
+reviewed tooling passes from `main` on both native CPUs.
+
 Dispatches and expanded logs were run from
 `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
 

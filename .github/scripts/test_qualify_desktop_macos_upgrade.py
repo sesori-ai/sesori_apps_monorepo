@@ -1,4 +1,5 @@
 import hashlib
+import inspect
 import json
 import os
 import subprocess
@@ -8,9 +9,13 @@ import unittest
 from unittest.mock import Mock, patch
 
 from qualify_desktop_macos_upgrade import (
+    INSTALLED_HELPER,
     PINNED_RETAINED_BASELINES,
+    installed_helper_processes,
+    launch_and_quit,
     load_candidate,
     normalized_lipo_architectures,
+    record_helper_off_observation,
     require_fresh_native_runner,
     require_trusted_source,
     validate_installed_architectures,
@@ -440,6 +445,40 @@ class MacosUpgradeWindowTests(unittest.TestCase):
             self.assertIn("partial stderr", window_log)
             launcher.poll.assert_not_called()
             sleep.assert_not_called()
+
+
+class MacosUpgradeHelperProcessTests(unittest.TestCase):
+    def test_launch_observes_helper_before_invoking_quit(self):
+        source = inspect.getsource(launch_and_quit)
+        observation = source.index("record_helper_off_observation(label=label, output=output)")
+        quit_invocation = source.index("quit_result = subprocess.run")
+
+        self.assertLess(observation, quit_invocation)
+
+    def test_live_observation_matches_only_exact_installed_helper(self):
+        helper = f"124 {INSTALLED_HELPER} --control-url=http://127.0.0.1:9000"
+        processes = "\n".join([
+            "123 /Applications/Sesori.app/Contents/MacOS/Sesori",
+            helper,
+            "125 /workspace/bridge/app/build/cli/bundle/bin/bridge",
+            f"126 {INSTALLED_HELPER}-copy",
+        ])
+
+        with patch("qualify_desktop_macos_upgrade.subprocess.check_output", return_value=processes):
+            self.assertEqual(installed_helper_processes(), helper)
+
+    def test_live_observation_records_absence_and_refuses_running_helper(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            with patch("qualify_desktop_macos_upgrade.subprocess.check_output", return_value=""):
+                record_helper_off_observation(label="previous", output=output)
+            self.assertEqual((output / "previous-helper-off.log").read_text(), "NO_INSTALLED_HELPER\n")
+
+            helper = f"124 {INSTALLED_HELPER} --control-url=http://127.0.0.1:9000"
+            with patch("qualify_desktop_macos_upgrade.subprocess.check_output", return_value=helper), \
+                    self.assertRaisesRegex(RuntimeError, "helper ran despite persisted Bridge Off intent"):
+                record_helper_off_observation(label="current", output=output)
+            self.assertEqual((output / "current-helper-off.log").read_text(), f"{helper}\n")
 
 
 class MacosUpgradeWorkflowTests(unittest.TestCase):

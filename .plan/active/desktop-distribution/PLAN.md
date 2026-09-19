@@ -447,6 +447,14 @@ and bounded state preservation. The probe did not inspect helper absence while e
 GUI was running, so the helper-Off gate remains open with authenticated helper-On,
 failed-stop and the other unchanged macOS gates.
 
+**Step 6 live helper-Off correction PR:**
+`🌿 [desktop-distribution] Observe helper-Off during macOS replacement [step 8/14]`.
+Review of the accepted run found that persisted Off intent and post-Quit absence did
+not establish helper absence while either GUI was live. The correction records and
+requires absence of the exact installed package helper after each visible launch and
+before tray Quit. It adds no credentials, polling, process mutation or product state;
+the gate closes only after reviewed tooling passes from `main` on both native CPUs.
+
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
 Private-package reconciliation can proceed after step 9 while step 10 is blocked.

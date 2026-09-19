@@ -22,6 +22,7 @@ from qualify_desktop import ROOT
 REPOSITORY = "sesori-ai/sesori_apps_monorepo"
 RUN_WORKFLOW = ".github/workflows/desktop-qualification.yml"
 APPLICATION = Path("/Applications/Sesori.app")
+INSTALLED_HELPER = APPLICATION / "Contents/Helpers/bridge/bin/bridge"
 REGISTRATION = Path.home() / "Library/LaunchAgents/com.sesori.desktop.plist"
 SUPPORT_ROOT = Path.home() / "Library/Application Support/com.sesori.desktop"
 SHARED_DATA_ROOT = Path.home() / ".local/share/sesori"
@@ -340,6 +341,22 @@ def owned_processes() -> str:
     return "\n".join(line for line in processes.splitlines() if re.search(PROCESS_PATTERN, line))
 
 
+def installed_helper_processes() -> str:
+    processes = subprocess.check_output(["ps", "ax", "-o", "pid=,command="], text=True)
+    pattern = re.compile(rf"(?:^|\s){re.escape(str(INSTALLED_HELPER))}(?:\s|$)")
+    return "\n".join(line for line in processes.splitlines() if pattern.search(line))
+
+
+def record_helper_off_observation(*, label: str, output: Path) -> None:
+    running = installed_helper_processes()
+    (output / f"{label}-helper-off.log").write_text(
+        f"{running}\n" if running else "NO_INSTALLED_HELPER\n",
+        encoding="utf-8",
+    )
+    if running:
+        raise RuntimeError(f"{label}: helper ran despite persisted Bridge Off intent:\n{running}")
+
+
 def seed_login_registration() -> str:
     registration = "\n".join([
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -451,6 +468,7 @@ def launch_and_quit(*, label: str, inspector: Path, quitter: Path, output: Path,
             command=["screencapture", "-x", "-l", window_id, str(output / f"{label}-installed-gui.png")],
             log=log,
         )
+        record_helper_off_observation(label=label, output=output)
         quit_result = subprocess.run([str(quitter), str(app_pid)], text=True, capture_output=True, check=False)
         (output / f"{label}-quit.log").write_text(quit_result.stdout + quit_result.stderr, encoding="utf-8")
         if quit_result.returncode == 2:
@@ -592,6 +610,7 @@ def qualify(
                 "nativeSignaturesAndGatekeeper": True,
                 "applicationsLink": True,
                 "visibleStartup": True,
+                "helperAbsentBeforeQuit": True,
                 "trayQuit": True,
                 "noRelaunchOrOrphan": True,
                 "desktopStateSentinelPreserved": True,
@@ -602,8 +621,8 @@ def qualify(
             },
             "proofBoundary": (
                 "Private signed manual replacement with the helper Off: native package trust, visible startup, "
-                "actual tray Quit, no relaunch/orphan, and bounded desktop/shared-state preservation. Not "
-                "authenticated "
+                "live helper absence before Quit, actual tray Quit, no relaunch/orphan, and bounded "
+                "desktop/shared-state preservation. Not authenticated "
                 "helper-On, failed-stop refusal, real-account/Keychain/TCC, public-download, or minimum-OS QA."
             ),
         }
