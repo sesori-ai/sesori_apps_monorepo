@@ -102,6 +102,7 @@ following the macOS QA process.
 - `.github/scripts/test_qualify_desktop_macos_upgrade.py`
 - `.github/scripts/qualify_desktop_macos_authenticated_upgrade.py`
 - `.github/scripts/test_qualify_desktop_macos_authenticated_upgrade.py`
+- `.github/scripts/write_desktop_macos_keychain.swift`
 - `.github/scripts/quit_desktop_macos.swift`
 - `.github/scripts/inspect_desktop_macos_window.swift`
 - `client/desktop/tool/stage_desktop_bundle.dart`

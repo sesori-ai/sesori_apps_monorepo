@@ -454,13 +454,14 @@ PR #1547 recorded that accepted boundary and merged as
 
 **Step 6 authenticated helper-On qualification PR:**
 `🚧 [desktop-distribution] Qualify authenticated macOS replacement [step 8/14]`.
-Add a separate `macos-authenticated-upgrade-probe` job rather than widening the
-credential-free accepted probe. It is main-only, uses a dedicated `desktop-qa`
+Add a separate `macos-authenticated-upgrade-probe` dispatch mode backed by the
+`macos-authenticated-upgrade` job rather than widening the credential-free accepted
+probe. It is main-only, uses a dedicated `desktop-qa`
 environment, exposes an approved production-compatible QA email/password only to the
 exercise step, consumes/removes them before child processes, and serializes native
-x64/arm64 so one relay bridge slot is never shared. The probe requests a fresh session
-in memory and writes only the three established
-classic-Keychain values through stdin with the installed signed app trusted, persists
+x64/arm64 so one relay bridge slot is never shared. The probe requests phase-fresh
+sessions in memory and writes only the three established classic-Keychain values through
+stdin with the installed signed app trusted, persists
 Bridge On, and performs prior/current real tray Quit. It requires the exact packaged
 helper, authenticated profile lookup, relay-serving readiness, Keychain preservation,
 On intent, bounded state and no relaunch/orphan. Raw auth responses, token values,

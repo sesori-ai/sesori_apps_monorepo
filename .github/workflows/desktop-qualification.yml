@@ -55,6 +55,7 @@ on:
       - '.github/scripts/test_qualify_desktop_macos_upgrade.py'
       - '.github/scripts/qualify_desktop_macos_authenticated_upgrade.py'
       - '.github/scripts/test_qualify_desktop_macos_authenticated_upgrade.py'
+      - '.github/scripts/write_desktop_macos_keychain.swift'
       - '.github/scripts/inspect_desktop_macos_window.swift'
       - '.github/scripts/quit_desktop_macos.swift'
       - 'client/desktop/test/native/packaged_platform_probe.dart'
@@ -417,6 +418,7 @@ jobs:
           path: build/desktop-macos-authenticated-upgrade/current/evidence
       - name: Exercise authenticated helper-On replacement and tray Quit
         env:
+          CHANNEL: ${{ inputs.channel }}
           SESORI_DESKTOP_QA_EMAIL: ${{ secrets.DESKTOP_QA_EMAIL }}
           SESORI_DESKTOP_QA_PASSWORD: ${{ secrets.DESKTOP_QA_PASSWORD }}
         run: |
@@ -429,7 +431,7 @@ jobs:
             --current-packages build/desktop-macos-authenticated-upgrade/current/packages \
             --current-evidence build/desktop-macos-authenticated-upgrade/current/evidence \
             --current-pulls-json build/desktop-macos-authenticated-upgrade/current/pulls.json \
-            --architecture '${{ matrix.architecture }}' --channel '${{ inputs.channel }}' \
+            --architecture '${{ matrix.architecture }}' --channel "$CHANNEL" \
             --output build/desktop-macos-authenticated-upgrade/result
       - name: Upload bounded private authenticated upgrade evidence
         if: always()

@@ -3,7 +3,10 @@
 
 import argparse
 import base64
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
+from functools import partial
 import json
 import os
 from pathlib import Path
@@ -13,6 +16,7 @@ import time
 import urllib.error
 import urllib.request
 
+from package_desktop_macos import execute
 from qualify_desktop_macos_upgrade import (
     APPLICATION,
     ATTACHMENTS_ROOT,
@@ -40,10 +44,13 @@ AUTH_EMAIL_ENVIRONMENT_KEY = "SESORI_DESKTOP_QA_EMAIL"
 AUTH_PASSWORD_ENVIRONMENT_KEY = "SESORI_DESKTOP_QA_PASSWORD"
 KEYCHAIN_SERVICE = "com.sesori.desktop"
 KEYCHAIN_ACCOUNTS = ("access_token", "refresh_token", "auth_user")
+KEYCHAIN_WRITER_SOURCE = Path(__file__).with_name("write_desktop_macos_keychain.swift")
 BRIDGE_LOG = SUPPORT_ROOT / "logs/bridge.log"
 HELPER_WAIT_SECONDS = 60.0
-HELPER_POLL_INTERVAL_SECONDS = 1.0
+HELPER_POLL_INTERVAL_SECONDS = 0.1
 MIN_SESSION_VALIDITY_SECONDS = 600
+# Covers 15s process admission + 60s helper + 45s window + 30s Quit + 5s absence, with margin.
+MIN_LAUNCH_VALIDITY_SECONDS = 180
 
 
 @dataclass(frozen=True)
@@ -91,6 +98,24 @@ def _jwt_expiration(token: str) -> int:
     return expiration
 
 
+def require_session_valid_for(
+    *,
+    session: KeychainSession,
+    minimum_seconds: int,
+    label: str,
+    now: float | None = None,
+) -> None:
+    current_time = time.time() if now is None else now
+    require(
+        _jwt_expiration(session.access_token) > current_time + minimum_seconds,
+        f"{label}: QA access token expires too soon",
+    )
+    require(
+        _jwt_expiration(session.refresh_token) > current_time + minimum_seconds,
+        f"{label}: QA refresh token expires too soon",
+    )
+
+
 def parse_keychain_session(*, payload: object, now: float | None = None) -> KeychainSession:
     require(isinstance(payload, dict), "QA auth response is not an object")
     access_token = payload.get("accessToken")
@@ -109,20 +134,18 @@ def parse_keychain_session(*, payload: object, now: float | None = None) -> Keyc
         user.get("providerUsername") is None or isinstance(user.get("providerUsername"), str),
         "QA auth user has an invalid provider username",
     )
-    current_time = time.time() if now is None else now
-    require(
-        _jwt_expiration(access_token) > current_time + MIN_SESSION_VALIDITY_SECONDS,
-        "QA access token expires too soon",
-    )
-    require(
-        _jwt_expiration(refresh_token) > current_time + MIN_SESSION_VALIDITY_SECONDS,
-        "QA refresh token expires too soon",
-    )
-    return KeychainSession(
+    session = KeychainSession(
         access_token=access_token,
         refresh_token=refresh_token,
         auth_user=json.dumps(user, separators=(",", ":"), sort_keys=True),
     )
+    require_session_valid_for(
+        session=session,
+        minimum_seconds=MIN_SESSION_VALIDITY_SECONDS,
+        label="QA auth response",
+        now=now,
+    )
+    return session
 
 
 def request_qa_session(*, credentials: QaCredentials) -> KeychainSession:
@@ -138,21 +161,66 @@ def request_qa_session(*, credentials: QaCredentials) -> KeychainSession:
             status = response.status
             payload = json.load(response)
     except urllib.error.HTTPError as error:
-        raise RuntimeError(f"QA email login returned HTTP {error.code}") from None
+        raise RuntimeError(f"QA email login returned HTTP {error.code}") from error
     except urllib.error.URLError as error:
         raise RuntimeError("QA email login could not reach the auth service") from error
     require(200 <= status < 300, f"QA email login returned HTTP {status}")
     return parse_keychain_session(payload=payload)
 
 
-def _security(*, arguments: list[str], secret_input: str | None = None) -> subprocess.CompletedProcess[str]:
+def compile_keychain_writer(*, output: Path, log: Path) -> Path:
+    writer = output / "keychain-writer"
+    execute(
+        command=[
+            "xcrun",
+            "swiftc",
+            str(KEYCHAIN_WRITER_SOURCE),
+            "-framework",
+            "Security",
+            "-o",
+            str(writer),
+        ],
+        log=log,
+    )
+    return writer
+
+
+def _security(*, arguments: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["security", *arguments],
-        input=None if secret_input is None else f"{secret_input}\n",
         text=True,
         capture_output=True,
         check=False,
     )
+
+
+def _keychain_writer(
+    *,
+    writer: Path,
+    operation: str,
+    account: str,
+    secret_input: str,
+) -> subprocess.CompletedProcess[str]:
+    executable = APPLICATION / "Contents/MacOS/Sesori"
+    result = subprocess.run(
+        [str(writer), operation, account, KEYCHAIN_SERVICE, str(executable), "/usr/bin/security"],
+        input=f"{secret_input}\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return subprocess.CompletedProcess(
+        args=result.args,
+        returncode=result.returncode,
+        stdout=result.stdout,
+        stderr=result.stderr.replace(secret_input, "<redacted>"),
+    )
+
+
+def _security_failure(*, result: subprocess.CompletedProcess[str]) -> str:
+    stderr = result.stderr.strip()
+    suffix = f": {stderr[:2000]}" if stderr else " (no stderr)"
+    return f"security exited {result.returncode}{suffix}"
 
 
 def require_auth_keychain_absent() -> None:
@@ -161,37 +229,61 @@ def require_auth_keychain_absent() -> None:
         if result.returncode == 0:
             raise RuntimeError(f"Fresh runner already contains the {account} desktop Keychain item")
         if result.returncode != 44:
-            raise RuntimeError(f"Could not inspect the {account} desktop Keychain item")
+            raise RuntimeError(
+                f"Could not inspect the {account} desktop Keychain item: {_security_failure(result=result)}",
+            )
 
 
-def write_auth_keychain(*, session: KeychainSession, created_accounts: list[str]) -> None:
+def _set_auth_keychain(
+    *,
+    writer: Path,
+    session: KeychainSession,
+    update: bool,
+    created_accounts: list[str] | None = None,
+) -> list[str]:
     executable = APPLICATION / "Contents/MacOS/Sesori"
     require(executable.is_file(), "Installed desktop executable is missing before Keychain setup")
+    written_accounts: list[str] = []
+    operation = "update" if update else "create"
     for account, value in session.values:
-        result = _security(
-            arguments=[
-                "add-generic-password",
-                "-a",
-                account,
-                "-s",
-                KEYCHAIN_SERVICE,
-                "-T",
-                str(executable),
-                "-T",
-                "/usr/bin/security",
-                "-w",
-            ],
+        if not update:
+            require(created_accounts is not None, "Created Keychain account tracking is required")
+            created_accounts.append(account)
+        result = _keychain_writer(
+            writer=writer,
+            operation=operation,
+            account=account,
             secret_input=value,
         )
         if result.returncode != 0:
-            raise RuntimeError(f"Could not create the {account} desktop Keychain item")
-        created_accounts.append(account)
+            raise RuntimeError(
+                f"Could not {operation} the {account} desktop Keychain item: {_security_failure(result=result)}",
+            )
+        written_accounts.append(account)
+    return written_accounts
+
+
+def write_auth_keychain(*, writer: Path, session: KeychainSession, created_accounts: list[str]) -> None:
+    written_accounts = _set_auth_keychain(
+        writer=writer,
+        session=session,
+        update=False,
+        created_accounts=created_accounts,
+    )
+    require(tuple(written_accounts) == KEYCHAIN_ACCOUNTS, "Did not create every desktop Keychain item")
+
+
+def update_auth_keychain(*, writer: Path, session: KeychainSession) -> None:
+    written_accounts = _set_auth_keychain(writer=writer, session=session, update=True)
+    require(tuple(written_accounts) == KEYCHAIN_ACCOUNTS, "Did not refresh every desktop Keychain item")
 
 
 def read_auth_keychain(*, account: str) -> str:
     result = _security(arguments=["find-generic-password", "-a", account, "-s", KEYCHAIN_SERVICE, "-w"])
     if result.returncode != 0:
-        raise RuntimeError(f"Could not read the {account} desktop Keychain item")
+        raise RuntimeError(
+            f"Could not read the {account} desktop Keychain item: {_security_failure(result=result)}",
+        )
     return result.stdout.rstrip("\n")
 
 
@@ -216,9 +308,9 @@ def delete_auth_keychain(*, created_accounts: list[str]) -> None:
     for account in reversed(created_accounts):
         result = _security(arguments=["delete-generic-password", "-a", account, "-s", KEYCHAIN_SERVICE])
         if result.returncode not in (0, 44):
-            failures.append(account)
+            failures.append(f"{account}: {_security_failure(result=result)}")
     if failures:
-        raise RuntimeError(f"Could not remove probe-owned desktop Keychain items: {', '.join(failures)}")
+        raise RuntimeError("Could not remove probe-owned desktop Keychain items:\n" + "\n".join(failures))
 
 
 def _write_authenticated_helper_observation(
@@ -226,11 +318,13 @@ def _write_authenticated_helper_observation(
     label: str,
     output: Path,
     helper_process_count: int,
+    helper_pid: int | None,
     authenticated_profile: bool,
     relay_serving: bool,
 ) -> None:
     observation = {
         "helperProcessCount": helper_process_count,
+        "helperPid": helper_pid,
         "authenticatedProfileConfirmed": authenticated_profile,
         "relayServing": relay_serving,
     }
@@ -240,54 +334,96 @@ def _write_authenticated_helper_observation(
     )
 
 
+def _helper_pid(*, processes: str) -> tuple[int | None, int]:
+    lines = processes.splitlines()
+    if len(lines) != 1:
+        return None, len(lines)
+    try:
+        return int(lines[0].split(maxsplit=1)[0]), 1
+    except (IndexError, ValueError) as error:
+        raise RuntimeError("Installed helper process listing has no numeric PID") from error
+
+
 def wait_for_authenticated_helper(
     *,
     label: str,
     launcher: subprocess.Popen[str],
     output: Path,
     bridge_log: Path = BRIDGE_LOG,
-    bridge_log_offset: int = 0,
-) -> None:
+) -> int:
     deadline = time.monotonic() + HELPER_WAIT_SECONDS
+    active_helper_pid: int | None = None
+    generation_log_offset = 0
     while True:
         if launcher.poll() is not None:
             raise RuntimeError(f"{label}: desktop exited before its authenticated helper became ready")
-        helper_process_count = len(installed_helper_processes().splitlines())
+        helper_pid, helper_process_count = _helper_pid(processes=installed_helper_processes())
         if helper_process_count > 1:
             _write_authenticated_helper_observation(
                 label=label,
                 output=output,
                 helper_process_count=helper_process_count,
+                helper_pid=None,
                 authenticated_profile=False,
                 relay_serving=False,
             )
             raise RuntimeError(f"{label}: expected at most one installed helper process")
+        if helper_pid != active_helper_pid:
+            generation_log_offset = bridge_log.stat().st_size if bridge_log.is_file() else 0
+            active_helper_pid = helper_pid
         bridge_output = ""
-        if bridge_log.is_file() and bridge_log.stat().st_size >= bridge_log_offset:
-            with bridge_log.open("rb") as stream:
-                stream.seek(bridge_log_offset)
-                bridge_output = stream.read().decode("utf-8", errors="replace")
+        if active_helper_pid is not None and bridge_log.is_file():
+            bridge_log_size = bridge_log.stat().st_size
+            if bridge_log_size >= generation_log_offset:
+                with bridge_log.open("rb") as stream:
+                    stream.seek(generation_log_offset)
+                    bridge_output = stream.read().decode("utf-8", errors="replace")
         authenticated_profile = "Authenticated as " in bridge_output
         relay_serving = "Waiting for relay events..." in bridge_output
-        if helper_process_count == 1 and authenticated_profile and relay_serving:
+        if active_helper_pid is not None and authenticated_profile and relay_serving:
             _write_authenticated_helper_observation(
                 label=label,
                 output=output,
                 helper_process_count=helper_process_count,
+                helper_pid=active_helper_pid,
                 authenticated_profile=authenticated_profile,
                 relay_serving=relay_serving,
             )
-            return
+            return active_helper_pid
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             _write_authenticated_helper_observation(
                 label=label,
                 output=output,
                 helper_process_count=helper_process_count,
+                helper_pid=active_helper_pid,
                 authenticated_profile=authenticated_profile,
                 relay_serving=relay_serving,
             )
             raise RuntimeError(f"{label}: authenticated helper did not become ready")
+        time.sleep(min(HELPER_POLL_INTERVAL_SECONDS, remaining))
+
+
+def wait_for_installed_app_pid(*, label: str, launcher: subprocess.Popen[str]) -> int:
+    deadline = time.monotonic() + 15
+    while True:
+        if launcher.poll() is not None:
+            raise RuntimeError(f"{label}: installed desktop exited during startup: {launcher.returncode}")
+        result = subprocess.run(
+            ["pgrep", "-f", r"^/Applications/Sesori\.app/Contents/MacOS/Sesori($| )"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode not in (0, 1):
+            raise RuntimeError(f"{label}: could not inspect the installed desktop process")
+        pids = result.stdout.split()
+        if len(pids) == 1:
+            return int(pids[0])
+        require(not pids, f"{label}: expected at most one installed desktop process")
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError(f"{label}: installed desktop process did not appear")
         time.sleep(min(HELPER_POLL_INTERVAL_SECONDS, remaining))
 
 
@@ -338,6 +474,23 @@ def cleanup_qualification(*, created_keychain_accounts: list[str]) -> None:
         raise RuntimeError("Authenticated upgrade cleanup failed:\n" + "\n".join(failures))
 
 
+@contextmanager
+def qualification_cleanup(*, cleanup: Callable[[], None]) -> Iterator[None]:
+    try:
+        yield
+    except Exception as qualification_error:
+        try:
+            cleanup()
+        except Exception as cleanup_error:
+            raise ExceptionGroup(
+                "Authenticated qualification and cleanup both failed",
+                [qualification_error, cleanup_error],
+            ) from None
+        raise
+    else:
+        cleanup()
+
+
 def launch_authenticated_and_quit(
     *,
     label: str,
@@ -348,7 +501,7 @@ def launch_authenticated_and_quit(
     launcher_log = output / f"{label}-launcher.log"
     # Authenticated app output stays in the exact probe-owned support root and is never uploaded.
     private_app_log = SUPPORT_ROOT / "desktop-instance" / f"{label}-authenticated-app.log"
-    bridge_log_offset = BRIDGE_LOG.stat().st_size if BRIDGE_LOG.is_file() else 0
+    launch_started_at = time.monotonic()
     with launcher_log.open("w", encoding="utf-8") as stream:
         launcher = subprocess.Popen(
             [
@@ -366,18 +519,20 @@ def launch_authenticated_and_quit(
         )
     completed = False
     try:
-        try:
-            launcher.wait(timeout=15)
-        except subprocess.TimeoutExpired:
-            pass
-        else:
-            raise RuntimeError(f"{label}: installed desktop exited during startup: {launcher.returncode}")
-        pids = subprocess.check_output(
-            ["pgrep", "-f", r"^/Applications/Sesori\.app/Contents/MacOS/Sesori($| )"],
-            text=True,
-        ).split()
-        require(len(pids) == 1, f"{label}: expected exactly one installed desktop process")
-        app_pid = int(pids[0])
+        app_pid = wait_for_installed_app_pid(label=label, launcher=launcher)
+        authenticated_helper_pid = wait_for_authenticated_helper(
+            label=label,
+            launcher=launcher,
+            output=output,
+        )
+        startup_interval_remaining = 15 - (time.monotonic() - launch_started_at)
+        if startup_interval_remaining > 0:
+            try:
+                launcher.wait(timeout=startup_interval_remaining)
+            except subprocess.TimeoutExpired:
+                pass
+            else:
+                raise RuntimeError(f"{label}: installed desktop exited during startup: {launcher.returncode}")
         wait_for_visible_window(
             label=label,
             inspector=inspector,
@@ -385,11 +540,10 @@ def launch_authenticated_and_quit(
             launcher=launcher,
             output=output,
         )
-        wait_for_authenticated_helper(
-            label=label,
-            launcher=launcher,
-            output=output,
-            bridge_log_offset=bridge_log_offset,
+        current_helper_pid, helper_process_count = _helper_pid(processes=installed_helper_processes())
+        require(
+            helper_process_count == 1 and current_helper_pid == authenticated_helper_pid,
+            f"{label}: authenticated helper exited or was replaced before tray Quit",
         )
         quit_result = subprocess.run([str(quitter), str(app_pid)], text=True, capture_output=True, check=False)
         (output / f"{label}-quit.log").write_text(quit_result.stdout + quit_result.stderr, encoding="utf-8")
@@ -461,6 +615,7 @@ def qualify(
         associated_pulls=read_json_array(current_pulls_json),
     )
     inspector, quitter = compile_native_helpers(output=output, log=log)
+    keychain_writer = compile_keychain_writer(output=output, log=log)
 
     sentinel = SUPPORT_ROOT / "desktop-instance/upgrade-probe-sentinel"
     desired_state = SUPPORT_ROOT / "desktop-instance/bridge-desired-state"
@@ -468,10 +623,20 @@ def qualify(
     attachment_sentinel = ATTACHMENTS_ROOT / "upgrade-probe-preserved-state"
     sentinel_value = "sesori-private-macos-authenticated-upgrade-probe\n"
     created_keychain_accounts: list[str] = []
-    try:
+    cleanup = partial(cleanup_qualification, created_keychain_accounts=created_keychain_accounts)
+    with qualification_cleanup(cleanup=cleanup):
         install_candidate(candidate=previous, mount=output / "previous-volume", log=log)
         session = request_qa_session(credentials=credentials)
-        write_auth_keychain(session=session, created_accounts=created_keychain_accounts)
+        write_auth_keychain(
+            writer=keychain_writer,
+            session=session,
+            created_accounts=created_keychain_accounts,
+        )
+        require_session_valid_for(
+            session=session,
+            minimum_seconds=MIN_LAUNCH_VALIDITY_SECONDS,
+            label="previous launch",
+        )
         sentinel.parent.mkdir(parents=True)
         sentinel.write_text(sentinel_value, encoding="utf-8")
         desired_state.write_text("on\n", encoding="utf-8")
@@ -498,6 +663,9 @@ def qualify(
         )
         require_auth_keychain_session(expected=session, label="previous", output=output)
 
+        replacement_session = request_qa_session(credentials=credentials)
+        update_auth_keychain(writer=keychain_writer, session=replacement_session)
+        require_auth_keychain_session(expected=replacement_session, label="replacement-seed", output=output)
         shutil.rmtree(APPLICATION)
         install_candidate(candidate=current, mount=output / "current-volume", log=log)
         require(sentinel.read_text(encoding="utf-8") == sentinel_value, "Replacement changed upgrade sentinel")
@@ -510,7 +678,12 @@ def qualify(
             REGISTRATION.exists() and sha256(REGISTRATION) == registration_hash,
             "Replacement changed login registration",
         )
-        require_auth_keychain_session(expected=session, label="replacement", output=output)
+        require_session_valid_for(
+            session=replacement_session,
+            minimum_seconds=MIN_LAUNCH_VALIDITY_SECONDS,
+            label="current launch",
+        )
+        require_auth_keychain_session(expected=replacement_session, label="replacement", output=output)
         launch_authenticated_and_quit(
             label="current",
             inspector=inspector,
@@ -527,7 +700,7 @@ def qualify(
             REGISTRATION.exists() and sha256(REGISTRATION) == registration_hash,
             "Current launch changed login registration",
         )
-        require_auth_keychain_session(expected=session, label="current", output=output)
+        require_auth_keychain_session(expected=replacement_session, label="current", output=output)
 
         report = {
             "schemaVersion": 1,
@@ -555,6 +728,7 @@ def qualify(
                 "applicationsLink": True,
                 "visibleStartup": True,
                 "classicKeychainSessionRestored": True,
+                "phaseFreshKeychainSession": True,
                 "authenticatedProfileConfirmed": True,
                 "relayServing": True,
                 "helperRunningBeforeQuit": True,
@@ -576,8 +750,6 @@ def qualify(
         (output / "authenticated-upgrade.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         print(f"PASS private authenticated macOS/{architecture} {previous.version}+{previous.build_number} "
               f"→ {current.version}+{current.build_number} manual replacement")
-    finally:
-        cleanup_qualification(created_keychain_accounts=created_keychain_accounts)
 
 
 def main() -> None:

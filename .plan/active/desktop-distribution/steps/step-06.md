@@ -179,7 +179,7 @@ one owner-approved production-compatible QA account; the existing local developm
 accounts are not eligible for this production-endpoint probe. Native CPU jobs are
 serialized so they cannot compete for that account's one relay bridge slot. Credentials
 are provided only to the exercise step, then consumed and removed from the environment
-before any child process. The script requests fresh tokens in memory, writes
+before any child process. The script requests phase-fresh tokens in memory, writes
 `access_token`, `refresh_token` and `auth_user` to the established
 `com.sesori.desktop` classic-Keychain service
 through stdin, and trusts only the installed signed app plus `/usr/bin/security`.

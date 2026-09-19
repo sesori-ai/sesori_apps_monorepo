@@ -136,8 +136,8 @@ continuation. It is restricted to a dedicated `desktop-qa` environment on `main`
 serializes the CPU jobs around one owner-approved production-compatible QA account, and
 exposes its email/password only to the exercise step, then consumes/removes both before
 any child process. Local development credentials are not eligible for this
-production-endpoint probe. It requests fresh tokens in memory, seeds only the three
-established classic-Keychain values through stdin, persists Bridge On and requires the
+production-endpoint probe. It requests phase-fresh tokens in memory, seeds only the
+three established classic-Keychain values through stdin, persists Bridge On and requires the
 exact packaged helper, an authenticated profile lookup and relay-serving readiness
 before each real tray Quit. It then verifies Keychain, On intent, bounded state and
 helper absence through replacement. Artifacts exclude raw auth responses, token values,
