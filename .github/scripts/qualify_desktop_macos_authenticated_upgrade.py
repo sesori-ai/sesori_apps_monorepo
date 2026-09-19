@@ -379,10 +379,11 @@ def wait_for_authenticated_helper(
         bridge_output = ""
         if active_helper_pid is not None and bridge_log.is_file():
             bridge_log_size = bridge_log.stat().st_size
-            if bridge_log_size >= generation_log_offset:
-                with bridge_log.open("rb") as stream:
-                    stream.seek(generation_log_offset)
-                    bridge_output = stream.read().decode("utf-8", errors="replace")
+            if bridge_log_size < generation_log_offset:
+                generation_log_offset = 0
+            with bridge_log.open("rb") as stream:
+                stream.seek(generation_log_offset)
+                bridge_output = stream.read().decode("utf-8", errors="replace")
         authenticated_profile = "Authenticated as " in bridge_output
         relay_serving = "Waiting for relay events..." in bridge_output
         if active_helper_pid is not None and authenticated_profile and relay_serving:

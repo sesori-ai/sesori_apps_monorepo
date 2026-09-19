@@ -427,6 +427,31 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
                 },
             )
 
+    def test_helper_observation_reanchors_when_active_log_rotates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bridge_log = root / "bridge.log"
+            pre_rotation_size = 512
+            bridge_log.write_text(
+                "Authenticated as current-user\nWaiting for relay events...\n",
+                encoding="utf-8",
+            )
+            launcher = Mock()
+            launcher.poll.return_value = None
+            with patch(
+                "qualify_desktop_macos_authenticated_upgrade.installed_helper_processes",
+                return_value="501 exact-helper",
+            ):
+                helper_pid = wait_for_authenticated_helper(
+                    label="current",
+                    launcher=launcher,
+                    output=root,
+                    bridge_log=bridge_log,
+                    bridge_log_offset=pre_rotation_size,
+                )
+
+            self.assertEqual(helper_pid, 501)
+
     def test_helper_timeout_does_not_copy_raw_bridge_output(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
