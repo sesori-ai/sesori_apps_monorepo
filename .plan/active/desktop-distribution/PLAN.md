@@ -456,22 +456,27 @@ PR #1547 recorded that accepted boundary and merged as
 `🚧 [desktop-distribution] Qualify authenticated macOS replacement [step 8/14]`.
 Add a separate `macos-authenticated-upgrade-probe` dispatch mode backed by the
 `macos-authenticated-upgrade` job rather than widening the credential-free accepted
-probe. It is main-only, uses a dedicated `desktop-qa`
-environment, exposes an approved production-compatible QA email/password only to the
-exercise step, consumes/removes them before child processes, and serializes native
-x64/arm64 so one relay bridge slot is never shared. The probe requests phase-fresh
+probe. It is main-only, reads the dedicated `qa@sesori.com` account from repository
+Actions secrets only in the exercise step, consumes/removes them before child processes,
+and serializes native x64/arm64 so one relay bridge slot is never shared. The probe requests phase-fresh
 sessions in memory and writes only the three established classic-Keychain values through
 stdin with the installed signed app trusted, persists
 Bridge On, and performs prior/current real tray Quit. It requires the exact packaged
 helper, authenticated profile lookup, relay-serving readiness, Keychain preservation,
 On intent, bounded state and no relaunch/orphan. Raw auth responses, token values,
 bridge/app output and authenticated screenshots never enter artifacts; only bounded
-boolean/coordinate evidence does. The implementation PR does not provision or consume
-the environment before review. After merge, configure the environment for exact
-`main`; credential-backed dispatch remains blocked until the owner securely provisions
-an approved account. The local development-account credentials are not eligible for
-this production-endpoint probe. Accept nothing until both CPUs pass from merged `main`.
+boolean/coordinate evidence does. PR #1548 merged as
+`cb23a7fc5d1f5b4fcedd1de2d591f88fd4074d43`; the dedicated production QA account now
+exists and its email/password are repository Actions secrets with no environment approval
+gate. Workflow review plus the runtime `refs/heads/main` guard remains the access boundary.
+Accept nothing until both CPUs pass from merged `main`.
 Failed-stop, interactive browser/TCC, minimum-OS and public gates remain separate.
+
+**Step 6 repository-secret follow-up PR:**
+`🌿 [desktop-distribution] Use repository secrets for macOS QA [step 8.b/14]`.
+Apply the owner's post-merge credential policy: remove the unused environment binding,
+read the provisioned account from repository Actions secrets, and keep the existing
+main-only runtime guard, step-only exposure and serialized native matrix.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.

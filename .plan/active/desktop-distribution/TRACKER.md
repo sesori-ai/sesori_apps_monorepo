@@ -134,13 +134,13 @@ merged in #1546 as `8d99cd2925c9866dc121323ed348b0d130bc6aca`. Main-only run
 `10574093842` and `10574368671` record `NO_INSTALLED_HELPER` before both prior/current
 Quit operations and every implemented `upgrade.json` check true. Private helper-Off is
 accepted on both CPUs. PR #1547 recorded the boundary and merged as
-`1ff3780b0b9244f5dada842c9e7735a28712fb2d`. A successor now adds a separate
-main-only, `desktop-qa`-scoped authenticated helper-On replacement probe. Its reviewed
-implementation must merge before the environment is configured. Credential-backed
-execution remains blocked until the owner securely provisions approved
-production-compatible QA credentials; local development accounts are not eligible.
-Both native CPUs must then pass from merged `main`. Failed-stop, interactive
-user-account/TCC, minimum-OS and public artifact
+`1ff3780b0b9244f5dada842c9e7735a28712fb2d`. The separate main-only authenticated
+helper-On replacement probe merged in PR #1548 as
+`cb23a7fc5d1f5b4fcedd1de2d591f88fd4074d43`. A dedicated `qa@sesori.com` production
+account now exists, and its email/password are stored as repository Actions secrets.
+The owner-requested `8.b/14` follow-up removes the obsolete environment binding so no
+approval gate remains. Both native CPUs must then pass from merged `main`.
+Failed-stop, interactive user-account/TCC, minimum-OS and public artifact
 retrieval remain open; the download page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
