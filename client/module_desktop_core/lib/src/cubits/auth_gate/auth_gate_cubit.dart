@@ -39,8 +39,10 @@ class AuthGateCubit._create({
     bool hasLocalSession = false;
     try {
       hasLocalSession = await _authSession.hasLocallyValidSession();
-      if (hasLocalSession) {
-        await _authSession.restoreLocalSession();
+      if (!hasLocalSession) {
+        logi("Desktop auth gate found no locally valid session");
+      } else if (!await _authSession.restoreLocalSession()) {
+        logi("Desktop auth gate could not restore the local session");
       }
     } on Object catch (error, stackTrace) {
       // Degrade to whatever the live stream says — worst case the user is

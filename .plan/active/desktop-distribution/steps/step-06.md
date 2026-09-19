@@ -206,9 +206,25 @@ are `10587393605` (x64, digest
 the run is rejected. The `8.d/14` correction matches the writer's item attributes to
 the pinned FlutterSecureStorage query's explicit non-synchronizable
 (`kSecAttrSynchronizable: false`) and when-unlocked values, then self-verifies that exact
-lookup before launch. Only a both-CPU retry dispatched from merged `main` can
-become evidence. Failed-stop, interactive browser/user-account/TCC, minimum-OS, public
-retrieval and parent Gate C remain open.
+lookup before launch. It merged as source
+`bf14d7c0f32def581febd1531214bbdd2be9fd74`, tree
+`ee65475efb25a2b0bad8121787fc5e38c37bc6d2`. Merged-main run `35460239311` passed
+tooling job `105942674629`; reaching the helper wait proves exact Keychain self-checks
+passed. X64 job `105942696871` and arm64 job `105942696897` still reached the bounded
+prior-app helper deadline with zero final helper processes. Evidence artifacts are
+`10588818277` (x64, digest
+`sha256:96e4895178bb2f98b7ea93a57dc05b5662727518fc0b8fc905981f275d83dd03`) and
+`10589833036` (arm64, digest
+`sha256:62159a3eefe8f3cec3bac361212de3ea8f294a6dc462ddbafdd241388ee9edd6`); the run is
+rejected. The `8.e/14` correction classifies a closed startup marker set from at most
+1 MiB of phase-scoped private app output and records whether any helper generation or
+fresh bridge-log activity appeared. The auth gate emits privacy-safe local-session
+outcomes through the captured production log sink rather than relying on
+`dart:developer`. Raw authenticated app/bridge output remains excluded and cleanup
+removes it. Only a both-CPU retry
+dispatched from merged `main` can become evidence. Failed-stop, interactive
+browser/user-account/TCC, minimum-OS, public retrieval and
+parent Gate C remain open.
 
 Dispatches and expanded logs were run from
 `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:

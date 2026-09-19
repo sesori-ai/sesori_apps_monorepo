@@ -499,7 +499,20 @@ FlutterSecureStorage includes in its fixed read query, so a broad `security` loo
 was not sufficient proof that the app could match the item. Create the item with that
 exact query envelope and immediately self-verify it through `SecItemCopyMatching` without
 printing its value. Retry both CPUs from merged `main`; the failed run is not
-qualification evidence.
+qualification evidence. This follow-up merged as
+`bf14d7c0f32def581febd1531214bbdd2be9fd74`.
+
+**Step 6 bounded startup-diagnostic follow-up PR:**
+`🌿 [desktop-distribution] Classify macOS authenticated startup [step 8.e/14]`.
+Merged-main run `35460239311` passed the exact Keychain self-check on both CPUs but again
+reached the prior-app helper deadline with zero final helper processes. Preserve the
+privacy boundary while distinguishing local-session/restore failures, desired-state or
+bridge-start failures, and transient helper/log activity: scan at most 1 MiB of
+phase-scoped private app output for a closed marker set, emit auth-gate outcomes through
+the captured production log sink rather than `dart:developer`, and retain whether any
+exact helper generation or fresh bridge-log bytes appeared. Raw authenticated logs remain
+outside artifacts and are removed during cleanup. Retry both CPUs from merged `main`;
+the failed run is not qualification evidence.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
