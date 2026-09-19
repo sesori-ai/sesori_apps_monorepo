@@ -152,7 +152,8 @@ The main pane hosts one full-width routed page.
   live composer. Sidebar/⌘, (Ctrl+, elsewhere) open General; the This computer popover
   opens Bridge; session setup opens Harnesses. All tabs and Close remain usable
   at 560 × 480, with independently scrollable tabs/content through 250% text scale and no scale reduction.
-  A title-only line's natural height fits the toolbar without vertical clipping; longer rail labels wrap and scroll.
+  A title-only line's natural height fits the toolbar without vertical clipping.
+  Longer tab labels wrap while the tab rail itself scrolls.
   Escape/outside dismiss;
   active text editing and owned sheets retain their closer dismissal order.
 - General contains appearance, launch-at-login, desktop app-update guidance and support/legal information.
