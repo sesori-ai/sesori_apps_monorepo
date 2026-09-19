@@ -43,6 +43,8 @@
   (two-pane sidebar cockpit, settings modal, bridge popover, autostart defaults,
   app log files) is recorded in `.plan/completed/desktop-ux/PLAN.md`, phase 1 of several.
   Its 2026-09-19 retirement accepts native/live coverage gaps; it does not qualify a native release.
+  Its visual follow-up (Activity that only lists sessions in motion, a floating sidebar panel, a unified
+  macOS title bar, pointer-sized pages and menus) is planned in `.plan/active/desktop-ui-polish/PLAN.md`.
 - **Later consideration (recorded, not planned):** a loopback local data path
   for the desktop cockpit. The cockpit reuses the relay like the phone; a
   bridge-hosted loopback data transport (the `--debug-port` `DebugServer` is
