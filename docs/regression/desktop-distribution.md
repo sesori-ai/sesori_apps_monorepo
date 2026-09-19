@@ -129,9 +129,22 @@ but did not inspect a live helper. The helper-observation correction then merged
 Main-only run `35411687826` passed x64 job `105812464127` and arm64 job
 `105812464132`; both prior/current helper logs on both CPUs record
 `NO_INSTALLED_HELPER`, and every implemented check is true, including
-`helperAbsentBeforeQuit`. Private helper-Off is accepted on both CPUs. This does not
-prove authenticated helper-On, failed-stop, real-account/Keychain/TCC, minimum-OS
-support, public retrieval or release readiness.
+`helperAbsentBeforeQuit`. Private helper-Off is accepted on both CPUs.
+
+The separate manual `macos-authenticated-upgrade-probe` is the credential-bearing
+continuation. It is restricted to a dedicated `desktop-qa` environment on `main`,
+serializes the CPU jobs around one owner-approved production-compatible QA account, and
+exposes its email/password only to the exercise step, then consumes/removes both before
+any child process. Local development credentials are not eligible for this
+production-endpoint probe. It requests phase-fresh tokens in memory, seeds only the
+three established classic-Keychain values through stdin, persists Bridge On and requires the
+exact packaged helper, an authenticated profile lookup and relay-serving readiness
+before each real tray Quit. It then verifies Keychain, On intent, bounded state and
+helper absence through replacement. Artifacts exclude raw auth responses, token values,
+bridge/app output and authenticated screenshots. The tooling alone is not accepted
+helper-On evidence; both CPUs must pass from merged `main`. Even a pass does not prove
+failed-stop refusal, interactive browser/user-account/TCC, minimum-OS support, public
+retrieval or release readiness.
 
 ## Current evidence boundary
 
@@ -145,11 +158,11 @@ in the active distribution plan's [macOS](../../.plan/active/desktop-distributio
 [Windows](../../.plan/active/desktop-distribution/steps/step-07.md), and
 [Linux](../../.plan/active/desktop-distribution/steps/step-09.md) evidence.
 
-Still unproved: public retrieval and trust, real-account restoration, declared minimum
-OS, full interactive GUI/keyring/tray/login behavior, authenticated helper-On and
-failed-stop macOS replacement, signed Windows N→N+1 manual replacement, and
-signed-repository Linux N→N+1 updates. A private helper-Off probe, silent fixture or
-same-version reinstall cannot close those remaining gates.
+Still unproved: public retrieval and trust, interactive user-account/browser/TCC
+restoration, declared minimum OS, full GUI/keyring/tray/login behavior, authenticated
+helper-On and failed-stop macOS replacement, signed Windows N→N+1 manual replacement,
+and signed-repository Linux N→N+1 updates. Unrun authenticated tooling, a private
+helper-Off probe, silent fixture or same-version reinstall cannot close those gates.
 
 ## Coverage
 
@@ -162,8 +175,10 @@ same-version reinstall cannot close those remaining gates.
   Linux fixtures cover identity/CPU refusal, payload layout and symlink preservation,
   source-derived dynamic-loading audit, generated dependency invocation, bounded
   ownership and absence of package lifecycle scripts. macOS upgrade fixtures cover
-  producer/run/source/channel/identity ordering, altered DMGs and dirty-source refusal.
-  Staging parser/default/invalid-channel and exact dotenv tests; Settings
+  producer/run/source/channel/identity ordering, altered DMGs, dirty-source refusal,
+  credential source isolation, stdin-only Keychain writes, bounded auth evidence and
+  main-only environment scoping. Staging parser/default/invalid-channel and exact
+  dotenv tests; Settings
   composition retains attention controls. Generated fragments match specification headings.
 - **L3:** Real Settings navigation and external-browser dispatch on a packaged native
   build. Verify the browser lands on the website section matching the build's channel,

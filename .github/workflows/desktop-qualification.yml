@@ -17,6 +17,7 @@ on:
           - macos-packaging
           - macos-gui-probe
           - macos-upgrade-probe
+          - macos-authenticated-upgrade-probe
           - windows-packaging
           - linux-packaging
         default: native-builds
@@ -29,7 +30,7 @@ on:
         description: 'Current trusted packaging run (macos GUI/upgrade modes)'
         type: string
       previous_packaging_run:
-        description: 'Strictly older trusted packaging run (macos-upgrade-probe only)'
+        description: 'Strictly older trusted packaging run (macos upgrade modes only)'
         type: string
   pull_request:
     paths:
@@ -52,6 +53,9 @@ on:
       - '.github/scripts/test_probe_desktop_macos.py'
       - '.github/scripts/qualify_desktop_macos_upgrade.py'
       - '.github/scripts/test_qualify_desktop_macos_upgrade.py'
+      - '.github/scripts/qualify_desktop_macos_authenticated_upgrade.py'
+      - '.github/scripts/test_qualify_desktop_macos_authenticated_upgrade.py'
+      - '.github/scripts/write_desktop_macos_keychain.swift'
       - '.github/scripts/inspect_desktop_macos_window.swift'
       - '.github/scripts/quit_desktop_macos.swift'
       - 'client/desktop/test/native/packaged_platform_probe.dart'
@@ -322,6 +326,119 @@ jobs:
         with:
           name: desktop-macos-upgrade-evidence-${{ matrix.arch }}
           path: build/desktop-macos-upgrade/result/
+          if-no-files-found: warn
+          retention-days: 14
+
+  macos-authenticated-upgrade:
+    # QA credentials stay behind a separate main-only environment and are exposed only to the exercise step.
+    environment: desktop-qa
+    needs: tooling
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'macos-authenticated-upgrade-probe'
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      # One dedicated QA account cannot own two simultaneous relay bridge slots.
+      max-parallel: 1
+      matrix:
+        include:
+          - runner: macos-26-intel
+            architecture: x64
+          - runner: macos-26
+            architecture: arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      CI: 'true'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.architecture }}
+      - name: Select qualified Xcode
+        run: echo 'DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer' >> "$GITHUB_ENV"
+      - name: Validate selected runs on trusted main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PREVIOUS_RUN: ${{ inputs.previous_packaging_run }}
+          CURRENT_RUN: ${{ inputs.packaging_run }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo 'Authenticated macOS upgrade qualification must be dispatched from main.' >&2
+            exit 1
+          fi
+          [[ "$PREVIOUS_RUN" =~ ^[1-9][0-9]*$ ]] || { echo 'Select a previous packaging run.' >&2; exit 1; }
+          [[ "$CURRENT_RUN" =~ ^[1-9][0-9]*$ ]] || { echo 'Select a current packaging run.' >&2; exit 1; }
+          [[ "$PREVIOUS_RUN" != "$CURRENT_RUN" ]] || { echo 'Upgrade runs must differ.' >&2; exit 1; }
+          mkdir -p build/desktop-macos-authenticated-upgrade/{previous,current}
+          gh api "repos/$GH_REPO/actions/runs/$PREVIOUS_RUN" \
+            > build/desktop-macos-authenticated-upgrade/previous/run.json
+          gh api "repos/$GH_REPO/actions/runs/$CURRENT_RUN" \
+            > build/desktop-macos-authenticated-upgrade/current/run.json
+          for label in previous current; do
+            source="$(jq -r .head_sha "build/desktop-macos-authenticated-upgrade/$label/run.json")"
+            [[ "$source" =~ ^[0-9a-f]{40}$ ]] || { echo "$label run has an invalid source SHA." >&2; exit 1; }
+            gh api "repos/$GH_REPO/commits/$source/pulls" \
+              > "build/desktop-macos-authenticated-upgrade/$label/pulls.json"
+          done
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.previous_packaging_run }}
+          name: desktop-macos-packages-${{ matrix.architecture }}
+          path: build/desktop-macos-authenticated-upgrade/previous/packages
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.previous_packaging_run }}
+          name: desktop-macos-evidence-${{ matrix.architecture }}
+          path: build/desktop-macos-authenticated-upgrade/previous/evidence
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.packaging_run }}
+          name: desktop-macos-packages-${{ matrix.architecture }}
+          path: build/desktop-macos-authenticated-upgrade/current/packages
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.packaging_run }}
+          name: desktop-macos-evidence-${{ matrix.architecture }}
+          path: build/desktop-macos-authenticated-upgrade/current/evidence
+      - name: Exercise authenticated helper-On replacement and tray Quit
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          SESORI_DESKTOP_QA_EMAIL: ${{ secrets.DESKTOP_QA_EMAIL }}
+          SESORI_DESKTOP_QA_PASSWORD: ${{ secrets.DESKTOP_QA_PASSWORD }}
+        run: |
+          python .github/scripts/qualify_desktop_macos_authenticated_upgrade.py \
+            --previous-run-json build/desktop-macos-authenticated-upgrade/previous/run.json \
+            --previous-packages build/desktop-macos-authenticated-upgrade/previous/packages \
+            --previous-evidence build/desktop-macos-authenticated-upgrade/previous/evidence \
+            --previous-pulls-json build/desktop-macos-authenticated-upgrade/previous/pulls.json \
+            --current-run-json build/desktop-macos-authenticated-upgrade/current/run.json \
+            --current-packages build/desktop-macos-authenticated-upgrade/current/packages \
+            --current-evidence build/desktop-macos-authenticated-upgrade/current/evidence \
+            --current-pulls-json build/desktop-macos-authenticated-upgrade/current/pulls.json \
+            --architecture '${{ matrix.architecture }}' --channel "$CHANNEL" \
+            --output build/desktop-macos-authenticated-upgrade/result
+      - name: Upload bounded private authenticated upgrade evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-authenticated-upgrade-evidence-${{ matrix.architecture }}
+          path: build/desktop-macos-authenticated-upgrade/result/
           if-no-files-found: warn
           retention-days: 14
 

@@ -42,7 +42,13 @@ packaging capability does not imply public downloads or an updater have shipped.
   replace the complete app from the newer DMG, and preserve bounded desktop, shared
   CLI-data, attachment and valid login-registration sentinels. Existing app, bridge,
   registration or relevant state root causes refusal; the probe owns only its installed
-  copy and exact fresh-host state paths.
+  copy and exact fresh-host state paths. Keep authenticated helper-On qualification in
+  a separate main-only environment job: serialize CPUs around one approved
+  production-compatible QA relay slot, pass credentials only to the exercise step,
+  remove them from the environment before child processes, use stdin for
+  classic-Keychain writes, and
+  upload only bounded markers/coordinates rather than raw auth, app/bridge logs or
+  authenticated screenshots.
 - Signing, native-header inventory and fake-service helper E2E cannot stand in for
   installed GUI, account, Keychain, filesystem/TCC, autostart, minimum-OS or update
   evidence. Public-release prerequisites stay independent.
@@ -94,6 +100,9 @@ following the macOS QA process.
 - `.github/scripts/test_package_desktop_macos.py`
 - `.github/scripts/qualify_desktop_macos_upgrade.py`
 - `.github/scripts/test_qualify_desktop_macos_upgrade.py`
+- `.github/scripts/qualify_desktop_macos_authenticated_upgrade.py`
+- `.github/scripts/test_qualify_desktop_macos_authenticated_upgrade.py`
+- `.github/scripts/write_desktop_macos_keychain.swift`
 - `.github/scripts/quit_desktop_macos.swift`
 - `.github/scripts/inspect_desktop_macos_window.swift`
 - `client/desktop/tool/stage_desktop_bundle.dart`

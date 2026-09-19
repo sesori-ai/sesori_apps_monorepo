@@ -484,7 +484,7 @@ class MacosUpgradeHelperProcessTests(unittest.TestCase):
 class MacosUpgradeWorkflowTests(unittest.TestCase):
     def test_upgrade_job_is_credential_free_and_uses_selected_artifacts(self):
         workflow = WORKFLOW.read_text()
-        job = workflow.split("  macos-upgrade:\n", 1)[1].split("\n  windows-distribution:", 1)[0]
+        job = workflow.split("  macos-upgrade:\n", 1)[1].split("\n  macos-authenticated-upgrade:", 1)[0]
         self.assertIn("      actions: read", job)
         self.assertIn("      pull-requests: read", job)
         self.assertIn('commits/$source/pulls', job)
