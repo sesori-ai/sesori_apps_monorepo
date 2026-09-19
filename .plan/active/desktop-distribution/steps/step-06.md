@@ -139,10 +139,23 @@ with artifact `10569088925`, while x64 job `105777334570` again reached current 
 but single-sample window inspection failed. Both failed x64 jobs cleaned probe-owned
 app/state and uploaded evidence artifacts `10568978583` and `10569029230`.
 
-The next correction retains the 15-second process-survival check and retries the
+The next correction retained the 15-second process-survival check and retried the
 read-only owned-window inspector for 45 additional bounded seconds. It records every
-attempt and still refuses an inactive screen, exited process or final absence. A new
-main run is required. Authenticated helper-On, failed-stop, real-account/Keychain/TCC,
+attempt and still refuses an inactive screen, exited process, hung inspector or final
+absence. It merged in PR #1542 as `305998d689d13051ac0fb58f9d970dfffe319bf0`.
+
+Main-only run `35405646668` used that accepted source, tree
+`a6f358647c559b840f1c3ecade88be1502632a57`, and completed successfully. X64 job
+`105794893362` and arm64 job `105794893463` both recorded every `upgrade.json` check
+true for signed/notarized package trust, real prior/current visible startup and tray
+Quit, no relaunch/orphan, complete replacement, Bridge Off intent and bounded
+state/login-registration preservation. Evidence artifacts are `10571804180` (x64,
+digest `bc9ac73ebf451a400280a8b8e3c478eba3e67013d64a2a79e77e6877b47a7fc4`) and
+`10571709031` (arm64, digest
+`c7663919c1da5ff531c7103834c6e292f0b962d8ad0a73519f429a58f378876d`), expiring
+2026-10-02. Private signed replacement with persisted Bridge Off intent is accepted
+on both CPUs. The probe did not inspect helper absence while either GUI was running,
+so helper-Off, authenticated helper-On, failed-stop, real-account/Keychain/TCC,
 minimum-OS, public retrieval and parent Gate C remain open.
 
 Dispatches and expanded logs were run from
@@ -193,6 +206,11 @@ gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo 
   -f previous_packaging_run=35042335424 -f packaging_run=35206885114
 gh run view 35399933745 --repo sesori-ai/sesori_apps_monorepo --job 105777334558 --log
 gh run view 35399933745 --repo sesori-ai/sesori_apps_monorepo --job 105777334570 --log
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-upgrade-probe -f channel=stable \
+  -f previous_packaging_run=35042335424 -f packaging_run=35206885114
+gh run view 35405646668 --repo sesori-ai/sesori_apps_monorepo --job 105794893362 --log
+gh run view 35405646668 --repo sesori-ai/sesori_apps_monorepo --job 105794893463 --log
 ```
 
 ## Verification

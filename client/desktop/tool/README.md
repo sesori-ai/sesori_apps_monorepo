@@ -141,7 +141,13 @@ item found only inside that menu, then rejects relaunch/orphans,
 replaces the complete app from the newer DMG, and repeats while checking bounded
 desktop, shared CLI-data, attachment and valid login-registration sentinels. Existing
 app, bridge, registration or relevant state root causes refusal; cleanup is limited to
-probe-owned paths on the fresh Actions host.
+probe-owned paths on the fresh Actions host. Main-only run `35405646668`, source
+`305998d689d13051ac0fb58f9d970dfffe319bf0`, tree
+`a6f358647c559b840f1c3ecade88be1502632a57`, passed x64 job `105794893362` and
+arm64 job `105794893463`. Exact artifact IDs, digests and retention are in the
+[step 6 evidence](../../../.plan/active/desktop-distribution/steps/step-06.md).
+This accepts signed replacement with persisted Bridge Off intent, not live helper
+absence while either GUI is running.
 
 This pipeline does not publish a release/feed or prove installed GUI authentication,
 authenticated helper-On/failed-stop behavior, real-account Keychain/TCC, minimum-OS

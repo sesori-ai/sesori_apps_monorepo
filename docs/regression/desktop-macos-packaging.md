@@ -61,7 +61,9 @@ These are required checks, not a record that every level has passed.
 
 At L4, install strictly increasing signed DMGs, exercise real tray Quit, reject
 relaunch/orphans and preserve bounded desktop/shared-state and login-registration
-sentinels. Full coverage also exercises paths with spaces, authenticated helper On,
+sentinels. Main-only run `35405646668` passed the private signed replacement and
+persisted Bridge Off-intent portion on native x64 and arm64. It did not inspect helper
+absence while either GUI was running. Full coverage also exercises paths with spaces, authenticated helper On,
 failed-stop, login/autostart and close-to-tray versus Quit with real shared CLI
 credentials, runtimes, history and projects.
 

@@ -5,11 +5,11 @@
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
 - **Status:** Active — steps 1–5 and the private portions of steps 6, 7 and 9
-  merged. The macOS signing-secret migration is complete. Six main-only native
-  x64/arm64 helper-Off `1.8.4+24 → 1.9.0+62` runs have not yet yielded dual-CPU
-  acceptance: the latest two passed arm64 completely but sampled the x64 current
-  window only once before it became visible. A bounded readiness-wait rerun is pending. Public
-  macOS/Windows/Linux publication
+  merged. The macOS signing-secret migration is complete. Main-only run
+  `35405646668` accepted private signed `1.8.4+24 → 1.9.0+62` replacement with
+  persisted Bridge Off intent on native x64 and arm64. Live helper absence during
+  each GUI run, authenticated helper-On, failed-stop, real-account/TCC, minimum-OS
+  and public gates remain open. Public macOS/Windows/Linux publication
   and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
   releases. The independently executable private portion of step 11 is in progress;
   its public-release reconciliation and final plan retirement remain blocked. Shipping
@@ -431,6 +431,21 @@ Two post-merge runs passed arm64 completely and reached current-package startup 
 but each x64 job failed at its only visible-window sample 15 seconds after launch. The
 correction retries that read-only inspector for 45 additional bounded seconds, records
 every attempt, and still refuses an exited process, inactive screen or final absence.
+It merged as `305998d689d13051ac0fb58f9d970dfffe319bf0`.
+
+**Step 6 accepted private replacement evidence:**
+Main-only run `35405646668`, source
+`305998d689d13051ac0fb58f9d970dfffe319bf0`, tree
+`a6f358647c559b840f1c3ecade88be1502632a57`, passed x64 job `105794893362` and
+arm64 job `105794893463`. Evidence artifacts `10571804180` (x64, digest
+`bc9ac73ebf451a400280a8b8e3c478eba3e67013d64a2a79e77e6877b47a7fc4`) and
+`10571709031` (arm64, digest
+`c7663919c1da5ff531c7103834c6e292f0b962d8ad0a73519f429a58f378876d`) expire
+2026-10-02. They record every implemented check true for package trust, visible
+startup, actual tray Quit, no post-Quit relaunch/orphan, persisted Bridge Off intent
+and bounded state preservation. The probe did not inspect helper absence while either
+GUI was running, so the helper-Off gate remains open with authenticated helper-On,
+failed-stop and the other unchanged macOS gates.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
