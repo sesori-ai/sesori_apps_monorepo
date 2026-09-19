@@ -27,7 +27,7 @@ for that approval or for the user's explicit decision to drop or defer it.
 | [ ] | 14 | `desktop-ui-polish/agent-entry` | [14/17](#pr-titles) | ≤ 1,000 | pending |
 | [ ] | 15 | `desktop-ui-polish/composer-and-sub-agents` | [15/17](#pr-titles) | set at approval | pending (gated) |
 | [ ] | 16 | `desktop-ui-polish/regression-docs` | [16/17](#pr-titles) | ≤ 400 | pending |
-| [ ] | 17 | `desktop-ui-polish/coverage-retire` | [17/17](#pr-titles) | ≤ 200 | pending |
+| [ ] | 17 | `desktop-ui-polish/coverage-retire` | [17/17](#pr-titles) | ≤ 300 | pending |
 
 ### PR titles
 
@@ -47,7 +47,7 @@ for that approval or for the user's explicit decision to drop or defer it.
 - 14/17: `⚙️ [desktop-ui-polish] Stop presenting harness modes as agents [step 14/17]`
 - 15/17: `⚙️ [desktop-ui-polish] Restyle composer selectors and the sub-agents bar [step 15/17]`
 - 16/17: `🌿 [desktop-ui-polish] Reconcile regression documents [step 16/17]`
-- 17/17: `🌱 [desktop-ui-polish] Record coverage and retire the plan [step 17/17]`
+- 17/17: `🌱 [desktop-ui-polish] Run final coverage and retire the plan [step 17/17]`
 
 A clean split keeps the series total: a split step takes letter suffixes
 (14.a, 14.b) and the titles above are renumbered once, in the PR that

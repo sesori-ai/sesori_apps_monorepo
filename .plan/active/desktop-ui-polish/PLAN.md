@@ -300,7 +300,12 @@ inputs.
   covers the panel's top strip and the page toolbar background so the window
   still drags and zooms on double-click. With the rail collapsed the traffic
   lights are wider than the rail, so the page toolbar takes a leading inset.
-  `windowManager.setBrightness` follows `AppearanceCubit` (macOS and Windows).
+  The native window brightness follows the app's **effective** brightness —
+  the in-app mode resolved against the platform brightness — through one small
+  widget under `MaterialApp` that calls `windowManager.setBrightness` whenever
+  `Theme.of(context).brightness` changes (macOS and Windows). `window_manager`
+  can only force light or dark (it has no "follow the system" value), so under
+  System the widget re-applies the value on every OS light/dark switch.
   Full-screen, zoom and dragging are verified live before the PR opens; the
   step is independently revertible.
 
@@ -357,7 +362,8 @@ the desktop page.
   where "kept for later" sessions live.
 - *Hover actions (step 10).* Hovering a row swaps the time for Mark
   read/unread and Archive buttons wired to the existing dispatcher handlers;
-  keyboard focus reveals them too.
+  keyboard focus reveals them too. An already archived row offers no Archive
+  action, the same rule the menu follows.
 
 **Session page (step 11).** `SessionDetailBody` keeps computing the title,
 subtitle, busy state and diff availability, and gains one required nullable
@@ -391,27 +397,41 @@ refusal handling run unchanged.
   unmounted by the time the window closes. It is not DI-registered: the
   cockpit shell creates it with `BlocProvider(create:)` beside
   `DesktopSidebarCubit` (`desktop_cockpit_shell.dart`), so it outlives every
-  page and the sidebar. Its sealed state is idle, pending(session,
-  deleteWorktree), refused(session, rejection) or failed(session), and it owns
-  one `Timer` of about five seconds. Closing the cubit cancels the timer and
-  sends nothing.
+  page and the sidebar. Closing the cubit cancels the timer and sends nothing.
+- Its state composes two independent parts. The **Undo window** is sealed:
+  idle, or pending(session, deleteWorktree), with one `Timer` of about five
+  seconds. The **archiving ids** are the sessions whose commit is in flight or
+  has succeeded during this run. Commit outcomes — committed, refused(session,
+  rejection), failed(session) — are one-shot events on a stream, the pattern
+  `SessionDetailCubit.noticeStream` already uses. They are not state, so the
+  late outcome of session A can never overwrite session B's Undo window.
 - The desktop archive callback asks first only when the session is running,
-  then starts the pending archive. The row hides at once: the sidebar
-  projection and `SessionListContent` take the pending id as a required
-  nullable hidden session id. An open page for that session returns to its
-  project page. One `BlocListener` in the cockpit shell shows the existing
-  top-anchored `PregoPopupAlertPresenter` alert "Archived" with an **Undo**
-  action, and later the refusal alert or the error toast.
-- Undo returns to idle and the row comes back; nothing was sent. When the
-  timer fires the cubit calls `SessionRepository.archiveSession`. Both session
-  inventories already apply the bridge's `SesoriSessionUpdated` event, so the
-  row stays gone once the hidden id clears. A second archive commits the first
-  immediately: one pending archive at a time, no queue.
-- `SessionCleanupRejectedException` (the 409 worktree refusal) becomes
-  `refused`: a compact alert with **Archive, keep worktree** as the default,
-  "Delete it anyway" and Cancel beside it. Any other failure becomes `failed`:
-  the row returns, an error toast shows, and the cubit logs the original error
-  with the session id.
+  then opens the Undo window. The sidebar projection and `SessionListContent`
+  take the hidden ids (the pending session plus the archiving ids) and hide
+  those sessions while they still read as unarchived. An open page for that
+  session returns to its project page. One listener in the cockpit shell shows
+  the existing top-anchored `PregoPopupAlertPresenter` alert "Archived" with
+  an **Undo** action, and later the refusal alert or the error toast. The
+  alert's duration is the same constant as the timer, because the presenter's
+  default is shorter.
+- Undo returns the window to idle and the row comes back; nothing was sent.
+  When the timer fires, the session moves to the archiving ids and the cubit
+  calls `SessionRepository.archiveSession`. A second archive commits the first
+  immediately: one Undo window at a time, no queue, and any number of commits
+  in flight.
+- The bridge publishes no session event on archive (its handler returns the
+  session and emits only an unseen change), and plugins such as Claude Code
+  and Pi emit none either, so the inventories are not assumed to converge on
+  their own. A committed id therefore stays in the archiving ids for the rest
+  of the run, which keeps a stale active-looking row hidden in the sidebar and
+  the list. On `committed` the desktop project page also refreshes its list,
+  so the Archived view shows the session at once.
+- `SessionCleanupRejectedException` (the 409 worktree refusal) removes the id
+  and emits `refused`: a compact alert with **Archive, keep worktree** as the
+  default, "Delete it anyway" and Cancel beside it; either choice commits
+  directly, without a second Undo window. Any other failure removes the id and
+  emits `failed`: the row returns, an error toast shows, and the cubit logs
+  the original error with the session id.
 - Delete uses a compact centred alert (`showDialog`, about 420 pt) naming the
   session, with the worktree checkbox, Cancel on Escape/Return, and a red
   button that is never the default.
@@ -477,7 +497,8 @@ Step 15 is different from every other step.
   deferred session shows in Activity again after a restart. Markers for
   sessions that are no longer unseen are pruned on the next write.
 - **Pending archive.** Undo, or quitting inside the window, sends nothing and
-  the session stays. A commit failure is never silent: a worktree refusal
+  the session stays. Outcomes are events, not state, so overlapping archives
+  cannot overwrite each other. A commit failure is never silent: a worktree refusal
   opens the refusal alert; anything else (a lost connection included) restores
   the row and shows an error toast, and the cubit logs the original error with
   the session id. Signing out inside the window closes the cubit and sends
@@ -541,7 +562,8 @@ New in-memory mutable state, each with exactly one owner:
 | Rail Activity popout open | the popout's anchor controller | until dismissed |
 | Filter chip selection | desktop project page state | page lifetime |
 | Row hover | row widget state | pointer presence |
-| Pending archive + one `Timer` | `PendingSessionArchiveCubit` | about five seconds |
+| Undo window + one `Timer` | `PendingSessionArchiveCubit` | about five seconds |
+| Archiving ids | `PendingSessionArchiveCubit` | the app run; one id per archive |
 
 New types: `PregoInteractionMode` / `PregoInteractionScope`,
 `SessionListGrouping`, `SessionCleanupFlow`, `DesktopPageToolbar`,
@@ -598,7 +620,7 @@ regression lines it invalidates in the same PR; step 16 reconciles the whole.
 | 14 | 14/17 | ≤ 1,000 | Agent entry rule; harness modes no longer agents in five plugins; `HARNESS_CAPABILITIES.md` (D15). Mostly deletions; may split by plugin family. |
 | 15 | 15/17 | set at approval | **Gated.** Composer selector look and the sub-agents bar (D16–D18). No PR before explicit approval of real screenshots. |
 | 16 | 16/17 | ≤ 400 | Reconcile `docs/regression/`. |
-| 17 | 17/17 | ≤ 200 | Record the matrix result; retire to `.plan/completed/`. |
+| 17 | 17/17 | ≤ 300 | Execute the final matrix on the merged series, record it, retire to `.plan/completed/`. |
 
 Steps 16 and 17 wait for step 15's approval, or for the user's explicit
 decision to drop or defer it.
@@ -622,8 +644,10 @@ step's own PR.
 - **6:** layout test for the margin and the resize hit-area; live check of
   resize, collapse and persisted width.
 - **7:** live on macOS — drag, double-click zoom, full screen in and out,
-  traffic lights with the rail collapsed, and light/dark/system switching the
-  native brightness. Windows and Linux still build with native chrome.
+  traffic lights with the rail collapsed, light/dark/system switching the
+  native brightness, and an OS appearance switch while System is selected
+  (after a forced value was applied). Windows and Linux still build with
+  native chrome.
 - **8:** `module_prego` widget tests — pointer mode has no barrier or
   spotlight, opens at the pointer, shows the shortcut label; touch-mode tests
   pass untouched.
@@ -631,15 +655,18 @@ step's own PR.
   mode; the first desktop project page widget test (toolbar, Archived toggle,
   no floating button).
 - **10:** counts and filtering; chips hidden under Archived; hover and focus
-  reveal actions that call the dispatcher.
+  reveal actions that call the dispatcher; an archived row has no Archive
+  action.
 - **11:** `SessionDetailBody` with and without `headerBuilder`; width maths;
   Mark unread lands on the project page; the shortcut is inert off a session
   route.
-- **12:** cubit tests under fake time — Undo sends nothing, the timer commits
-  through `SessionRepository` with no list cubit mounted, a second archive
-  flushes the first, 409 → refused, other failure → failed, close sends
-  nothing; the first dispatcher test covers both `SessionCleanupFlow`
-  variants; phone sheets unchanged.
+- **12:** cubit tests under fake time — Undo sends nothing; the timer commits
+  through `SessionRepository` with no list cubit mounted; a second archive
+  flushes the first, and the first one's late refusal or failure leaves the
+  second Undo window intact; a committed id stays hidden without any session
+  event; 409 → refused, other failure → failed and the row returns; close
+  sends nothing. The alert duration equals the timer. The first dispatcher
+  test covers both `SessionCleanupFlow` variants; phone sheets unchanged.
 - **13:** header-slot layout; project switch replaces the route; phone tests
   pass untouched.
 - **14:** per-plugin catalog tests (one placeholder agent); a prompt carrying a
@@ -647,7 +674,11 @@ step's own PR.
   `AgentModelButtons` with zero, one and two agents; one live Claude Code turn
   from a stored "Plan" selection.
 - **15:** the approval gate first; then tests for the approved design.
-- **16–17:** documentation validation only.
+- **16:** documentation validation only.
+- **17:** executes the final matrix below on the merged series and records
+  every cell in `steps/step-17.md`. A cell that was not executed is recorded
+  as unexecuted, never as passed, and needs the user's explicit acceptance
+  before the plan retires.
 
 A phone test that needs editing in steps 8–13 is a review signal: D20 says the
 phone value of every new input is today's behaviour.
@@ -700,6 +731,10 @@ touched plugins are proven by automated tests rather than a live turn each.
   another toast can replace it inside the window; the archive then commits on
   time without a visible Undo. Accepted: archiving is what the user asked for.
   A pending archive is also dropped by quitting (the session simply stays).
+- **Archive is not announced to other devices.** The bridge publishes no
+  session event on archive, so the phone (or a second desktop) drops the row
+  on its next refresh. Pre-existing, and not widened into here; this desktop
+  stays correct through the archiving ids.
 - **OMP and Copilot keep their mode in the live harness process.** A session
   already in plan mode may stay there until that process restarts. Recorded in
   `HARNESS_CAPABILITIES.md`.
@@ -736,7 +771,19 @@ without a re-review, as the process requires.
   `SessionDetailBody` and `NewSessionView` were each folded into one value so
   half-configured states cannot be expressed.
 
-The review found the rest compliant: plugin-boundary hygiene (the agent entry
+**PR review corrections (Codex, 2026-09-19), applied:** commit outcomes
+became one-shot events and the state became an Undo window plus archiving
+ids, so overlapping archives cannot overwrite each other; the Undo alert's
+duration is tied to the timer; a committed id stays hidden because the bridge
+publishes no session event on archive (verified in
+`update_session_archive_status_handler.dart`); the native brightness follows
+the effective brightness, including OS switches under System
+(`window_manager` can only force light or dark); archived rows offer no
+Archive hover action; and step 17 executes the final matrix instead of only
+recording it. cubic's seven line-length findings were declined: the
+repository has no Markdown line-length convention.
+
+The architecture review found the rest compliant: plugin-boundary hygiene (the agent entry
 is a pure count rule, never a backend check), the closed-input mechanism for
 D20, the placeholder-agent pattern, naming, and no abstraction without a
 current consumer.
