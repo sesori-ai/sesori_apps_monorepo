@@ -173,11 +173,12 @@ Evidence artifacts are `10574093842` (x64, digest
 accepted on both CPUs. PR #1547 recorded that accepted boundary and merged as
 `1ff3780b0b9244f5dada842c9e7735a28712fb2d`.
 
-The next implementation adds a separate `macos-authenticated-upgrade-probe` behind a
-new `desktop-qa` environment restricted to `main`. Its two encrypted values must hold
-one owner-approved production-compatible QA account; the existing local development
-accounts are not eligible for this production-endpoint probe. Native CPU jobs are
-serialized so they cannot compete for that account's one relay bridge slot. Credentials
+The separate `macos-authenticated-upgrade-probe` merged in PR #1548 as
+`cb23a7fc5d1f5b4fcedd1de2d591f88fd4074d43`, restricted to `main` and initially bound
+to the `desktop-qa` environment. The owner-requested `8.b/14` follow-up removes that
+environment binding and reads the provisioned `qa@sesori.com` account from repository
+Actions secrets without an approval gate. Native CPU jobs are serialized so they cannot
+compete for that account's one relay bridge slot. Credentials
 are provided only to the exercise step, then consumed and removed from the environment
 before any child process. The script requests phase-fresh tokens in memory, writes
 `access_token`, `refresh_token` and `auth_user` to the established
@@ -187,9 +188,8 @@ It persists Bridge On, requires the exact packaged helper plus authenticated-pro
 relay-serving markers before each real tray Quit, and verifies Keychain/On intent and
 bounded state through replacement with no relaunch or orphan. Raw auth responses,
 Keychain values, bridge/app output and authenticated screenshots are excluded from
-artifacts. The implementation must merge before the environment is configured, and
-credential-backed execution remains blocked until the owner securely provisions the
-approved account. Only a both-CPU run dispatched from merged `main` can become evidence.
+artifacts. The account and repository secrets are provisioned. Only a both-CPU run
+dispatched from merged `main` can become evidence.
 Failed-stop, interactive browser/user-account/TCC, minimum-OS, public retrieval and
 parent Gate C remain open.
 

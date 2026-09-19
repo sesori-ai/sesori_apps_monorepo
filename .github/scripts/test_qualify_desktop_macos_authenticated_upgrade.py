@@ -636,14 +636,14 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             ),
         )
 
-    def test_workflow_scopes_credentials_to_serial_main_only_environment_job(self):
+    def test_workflow_scopes_repository_credentials_to_serial_main_only_job(self):
         workflow = WORKFLOW.read_text(encoding="utf-8")
         job_start = workflow.index("  macos-authenticated-upgrade:")
         job_end = workflow.index("\n  windows-distribution:", job_start)
         job = workflow[job_start:job_end]
 
         self.assertIn("inputs.mode == 'macos-authenticated-upgrade-probe'", job)
-        self.assertIn("environment: desktop-qa", job)
+        self.assertNotIn("environment:", job)
         self.assertIn("max-parallel: 1", job)
         guard = job.index('if [[ "$GITHUB_REF" != "refs/heads/main" ]]')
         exercise = job.index("qualify_desktop_macos_authenticated_upgrade.py")
@@ -651,8 +651,8 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         self.assertIn("CHANNEL: ${{ inputs.channel }}", job)
         self.assertIn(' --channel "$CHANNEL"', job)
         self.assertNotIn("--channel '${{ inputs.channel }}'", job)
-        self.assertIn("SESORI_DESKTOP_QA_EMAIL: ${{ secrets.DESKTOP_QA_EMAIL }}", job)
-        self.assertIn("SESORI_DESKTOP_QA_PASSWORD: ${{ secrets.DESKTOP_QA_PASSWORD }}", job)
+        self.assertIn("SESORI_DESKTOP_QA_EMAIL: ${{ secrets.SESORI_DESKTOP_QA_EMAIL }}", job)
+        self.assertIn("SESORI_DESKTOP_QA_PASSWORD: ${{ secrets.SESORI_DESKTOP_QA_PASSWORD }}", job)
         self.assertNotIn("--email", job)
         self.assertNotIn("--password", job)
         self.assertNotIn("MACOS_CERT", job)
