@@ -52,6 +52,30 @@ KEYCHAIN_COMMAND_TIMEOUT_SECONDS = 15
 MIN_SESSION_VALIDITY_SECONDS = 600
 # Covers 15s process admission + 60s helper + 45s window + 30s Quit + 5s absence, with margin.
 MIN_LAUNCH_VALIDITY_SECONDS = 180
+PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES = 1024 * 1024
+PRIVATE_APP_LOG_DIAGNOSTIC_MARKERS = (
+    ("desktopStartupRendered", ("Desktop startup: rendering the application",)),
+    (
+        "authStorageReadFailure",
+        ("Failed to read access token", "Failed to read refresh token", "Failed to read user"),
+    ),
+    (
+        "localAuthRestoreFailure",
+        ("Failed to restore local session", "Failed to restore the local auth session"),
+    ),
+    ("desiredStateRestoreFailure", ("Failed to restore the desktop bridge's desired On state",)),
+    (
+        "bridgeStartFailure",
+        (
+            "Bridge start after successful authentication",
+            "Failed to start the desktop bridge after first sign-in",
+            "BridgeExecutableResolutionException",
+            "BridgeProcessExitedDuringStartException",
+        ),
+    ),
+    ("keychainMissingEntitlement", ("errSecMissingEntitlement", "-34018")),
+    ("keychainInteractionDenied", ("User interaction is not allowed", "-25308")),
+)
 
 
 @dataclass(frozen=True)
@@ -349,15 +373,59 @@ def _write_authenticated_helper_observation(
     helper_pid: int | None,
     authenticated_profile: bool,
     relay_serving: bool,
+    helper_observed_during_wait: bool,
+    bridge_log_activity_observed: bool,
 ) -> None:
     observation = {
         "helperProcessCount": helper_process_count,
         "helperPid": helper_pid,
+        "helperObservedDuringWait": helper_observed_during_wait,
+        "bridgeLogActivityObserved": bridge_log_activity_observed,
         "authenticatedProfileConfirmed": authenticated_profile,
         "relayServing": relay_serving,
     }
     (output / f"{label}-authenticated-helper.json").write_text(
         json.dumps(observation, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _bridge_log_has_fresh_activity(*, path: Path, baseline: BridgeLogCursor | None) -> bool:
+    try:
+        status = path.stat()
+    except FileNotFoundError:
+        return False
+    if baseline is None:
+        return True
+    return (
+        (status.st_dev, status.st_ino) != (baseline.device, baseline.inode)
+        or status.st_size != baseline.offset
+    )
+
+
+def write_private_app_startup_diagnostics(*, label: str, private_app_log: Path, output: Path) -> None:
+    app_log_present = False
+    app_log_truncated = False
+    app_output = ""
+    try:
+        with private_app_log.open("rb") as stream:
+            app_log_present = True
+            data = stream.read(PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES + 1)
+    except FileNotFoundError:
+        pass
+    else:
+        app_log_truncated = len(data) > PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES
+        app_output = data[:PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES].decode("utf-8", errors="replace")
+    diagnostics = {
+        "appLogPresent": app_log_present,
+        "appLogTruncated": app_log_truncated,
+        **{
+            diagnostic: any(marker in app_output for marker in markers)
+            for diagnostic, markers in PRIVATE_APP_LOG_DIAGNOSTIC_MARKERS
+        },
+    }
+    (output / f"{label}-startup-diagnostics.json").write_text(
+        json.dumps(diagnostics, indent=2) + "\n",
         encoding="utf-8",
     )
 
@@ -383,11 +451,16 @@ def wait_for_authenticated_helper(
     deadline = time.monotonic() + HELPER_WAIT_SECONDS
     active_helper_pid: int | None = None
     observed_helper_generation = False
+    bridge_log_activity_observed = False
     generation_log_cursor = bridge_log_cursor
     generation_log_offset = bridge_log_cursor.offset if bridge_log_cursor is not None else 0
     while True:
         if launcher.poll() is not None:
             raise RuntimeError(f"{label}: desktop exited before its authenticated helper became ready")
+        bridge_log_activity_observed = bridge_log_activity_observed or _bridge_log_has_fresh_activity(
+            path=bridge_log,
+            baseline=bridge_log_cursor,
+        )
         helper_pid, helper_process_count = _helper_pid(processes=installed_helper_processes())
         if helper_process_count > 1:
             _write_authenticated_helper_observation(
@@ -397,6 +470,8 @@ def wait_for_authenticated_helper(
                 helper_pid=None,
                 authenticated_profile=False,
                 relay_serving=False,
+                helper_observed_during_wait=observed_helper_generation or helper_process_count > 0,
+                bridge_log_activity_observed=bridge_log_activity_observed,
             )
             raise RuntimeError(f"{label}: expected at most one installed helper process")
         if helper_pid != active_helper_pid:
@@ -426,6 +501,7 @@ def wait_for_authenticated_helper(
                         generation_log_offset = 0
                     stream.seek(generation_log_offset)
                     bridge_output = stream.read().decode("utf-8", errors="replace")
+                    bridge_log_activity_observed = bridge_log_activity_observed or bool(bridge_output)
         authenticated_profile = "Authenticated as " in bridge_output
         relay_serving = "Waiting for relay events..." in bridge_output
         if active_helper_pid is not None and authenticated_profile and relay_serving:
@@ -436,6 +512,8 @@ def wait_for_authenticated_helper(
                 helper_pid=active_helper_pid,
                 authenticated_profile=authenticated_profile,
                 relay_serving=relay_serving,
+                helper_observed_during_wait=observed_helper_generation,
+                bridge_log_activity_observed=bridge_log_activity_observed,
             )
             return active_helper_pid
         remaining = deadline - time.monotonic()
@@ -447,6 +525,8 @@ def wait_for_authenticated_helper(
                 helper_pid=active_helper_pid,
                 authenticated_profile=authenticated_profile,
                 relay_serving=relay_serving,
+                helper_observed_during_wait=observed_helper_generation,
+                bridge_log_activity_observed=bridge_log_activity_observed,
             )
             raise RuntimeError(f"{label}: authenticated helper did not become ready")
         time.sleep(min(HELPER_POLL_INTERVAL_SECONDS, remaining))
@@ -609,6 +689,19 @@ def launch_authenticated_and_quit(
         remaining = owned_processes()
         require(not remaining, f"{label}: application/helper remained or relaunched after Quit:\n{remaining}")
         completed = True
+    except BaseException as launch_error:
+        try:
+            write_private_app_startup_diagnostics(
+                label=label,
+                private_app_log=private_app_log,
+                output=output,
+            )
+        except BaseException as diagnostic_error:
+            raise BaseExceptionGroup(
+                f"{label}: authenticated launch and bounded diagnostic capture both failed",
+                [launch_error, diagnostic_error],
+            ) from None
+        raise
     finally:
         if not completed:
             _terminate_probe_processes()

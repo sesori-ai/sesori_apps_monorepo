@@ -143,13 +143,16 @@ retains that ACL while refreshing values, and gives every native Keychain comman
 deadline. The writer must also create and self-verify each item through the pinned
 FlutterSecureStorage query's explicit non-synchronizable (`kSecAttrSynchronizable:
 false`) and when-unlocked envelope; a broad `security` lookup is not equivalent.
-Merged-main run `35454870471` is rejected because both native CPUs reached
-the bounded prior-app helper deadline with zero helper processes before that envelope
-correction. The probe persists Bridge On and requires the exact packaged helper,
-an authenticated profile lookup and relay-serving readiness before each real tray
-Quit. It then verifies Keychain, On intent, bounded state and helper absence through
-replacement. Artifacts exclude raw auth responses, token values, bridge/app output and
-authenticated screenshots. The tooling alone is not accepted
+Merged-main runs `35454870471` and `35460239311` are rejected because both native CPUs
+reached the bounded prior-app helper deadline with zero final helper processes; the later
+run first passed the exact Keychain self-check. On failure, the probe may inspect at most
+1 MiB of the private app log for a closed set of auth-storage, local-restore,
+desired-state, bridge-start and known Keychain OSStatus markers. It uploads only booleans
+plus whether any helper generation or fresh bridge-log activity appeared. The probe
+persists Bridge On and requires the exact packaged helper, an authenticated profile lookup
+and relay-serving readiness before each real tray Quit. It then verifies Keychain, On
+intent, bounded state and helper absence through replacement. Artifacts exclude raw auth
+responses, token values, bridge/app output and authenticated screenshots. The tooling alone is not accepted
 helper-On evidence; both CPUs must pass from merged `main`. Even a pass does not prove
 failed-stop refusal, interactive browser/user-account/TCC, minimum-OS support, public
 retrieval or release readiness.
