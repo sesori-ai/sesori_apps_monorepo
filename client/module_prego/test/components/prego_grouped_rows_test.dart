@@ -107,6 +107,29 @@ void main() {
     expect(tester.getSize(find.widgetWithText(Container, "Beta")).height, 68);
   });
 
+  testWidgets("sheet-owned gutters align row content and dividers without extra padding", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        const SizedBox(
+          width: 300,
+          child: PregoGroupedRows(
+            children: [
+              PregoGroupedRow(horizontalPadding: 0, title: Text("Alpha")),
+              PregoGroupedRow(horizontalPadding: 0, title: Text("Beta")),
+            ],
+          ),
+        ),
+      ),
+    );
+    final card = tester.getRect(find.byType(PregoGroupedRows));
+    expect(tester.getRect(find.text("Alpha")).left, card.left);
+    final hairline = find.byWidgetPredicate(
+      (widget) => widget is ColoredBox && widget.color == PregoDesignSystem.light.colors.borderSecondary,
+    );
+    expect(tester.getRect(hairline).left, card.left);
+    expect(tester.getRect(hairline).right, card.right);
+  });
+
   testWidgets("keyed rows retain state when reordered", (tester) async {
     const alphaKey = ValueKey("alpha");
     const betaKey = ValueKey("beta");
