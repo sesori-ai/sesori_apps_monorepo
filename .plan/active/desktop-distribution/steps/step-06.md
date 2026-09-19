@@ -174,10 +174,11 @@ accepted on both CPUs. PR #1547 recorded that accepted boundary and merged as
 `1ff3780b0b9244f5dada842c9e7735a28712fb2d`.
 
 The separate `macos-authenticated-upgrade-probe` merged in PR #1548 as
-`cb23a7fc5d1f5b4fcedd1de2d591f88fd4074d43`. It is restricted to `main` and reads the
-dedicated `qa@sesori.com` production account from repository Actions secrets without an
-environment approval gate. Native CPU jobs are serialized so they cannot compete for
-that account's one relay bridge slot. Credentials
+`cb23a7fc5d1f5b4fcedd1de2d591f88fd4074d43`, restricted to `main` and initially bound
+to the `desktop-qa` environment. The owner-requested `8.b/14` follow-up removes that
+environment binding and reads the provisioned `qa@sesori.com` account from repository
+Actions secrets without an approval gate. Native CPU jobs are serialized so they cannot
+compete for that account's one relay bridge slot. Credentials
 are provided only to the exercise step, then consumed and removed from the environment
 before any child process. The script requests phase-fresh tokens in memory, writes
 `access_token`, `refresh_token` and `auth_user` to the established
