@@ -212,6 +212,23 @@ cd "$ROOT"
 git diff --check HEAD --
 ```
 
+### Corrected source approval
+
+Corrected source `da2e69363210c39b725516a7d04a342ea59c8a57`, tree
+`682dec220f06bcdb789fd2f42fbc87c4c60083a7`: 1,194 lines (1,015 additions/179 deletions), 24 paths;
+421 production, 421 tests, 286 documentation and 66 generated. This includes documents at that checkpoint,
+not this later approval record. Reproduce with:
+
+```bash
+git diff --numstat a772a85a141b617f0d766d0d6a7d6aa11b654a30..da2e69363210c39b725516a7d04a342ea59c8a57 --
+```
+
+Implementation review `240f4ec1-559f-40de-8c0c-f59d993e6e12` approved the full range without findings.
+Its displayed tree is a prefix of the canonical full tree above. Preserved report:
+`/tmp/rose-elephant-1545-review1-implementation-review.md`, SHA-256
+`e75ffa52e3c7cfba9f587e0f234ba0a46f8b2e333322853a7f2ac35b208ec788`.
+The follow-up publication adds only this approval record; its range is measured separately before pushing.
+
 ## Rendering and remaining qualification
 
 Four synthetic views passed using the actual sidebar and packaged fonts, with fake state and no production DI:
