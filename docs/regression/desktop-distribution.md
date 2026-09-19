@@ -142,9 +142,9 @@ three established classic-Keychain values with their trusted ACL atomically thro
 retains that ACL while refreshing values, and gives every native Keychain command a fixed
 deadline. The writer must also create and self-verify each item through the pinned
 FlutterSecureStorage query's explicit non-synchronizable (`kSecAttrSynchronizable:
-false`) and when-unlocked envelope; a broad `security` lookup is not equivalent. Merged-main run `35454870471` is rejected because
-both native CPUs reached the bounded prior-app helper deadline with zero helper processes
-before that envelope correction. The probe persists Bridge On and requires the
+false`) and when-unlocked envelope; a broad `security` lookup is not equivalent.
+Merged-main run `35454870471` is rejected because both native CPUs reached
+the bounded prior-app helper deadline with zero helper processes before that envelope correction. The probe persists Bridge On and requires the
 exact packaged helper, an authenticated profile lookup and relay-serving readiness
 before each real tray Quit. It then verifies Keychain, On intent, bounded state and
 helper absence through replacement. Artifacts exclude raw auth responses, token values,
