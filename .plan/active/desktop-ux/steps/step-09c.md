@@ -271,6 +271,23 @@ cd "$ROOT"
   client/desktop/test/core/widgets/desktop_cockpit_cubit_provider_test.dart
 ```
 
+### Approved Layer-3 source
+
+Source `4ef0b8be502ae90c7c0512f0fe7906089b73b6ab`, tree `ed33d1cf9b303f0838779c8c9fa47acd8678d28a`:
+1,243 lines (1,068 additions/175 deletions), 24 paths; 421 production, 420 tests, 345 documentation and 57 generated.
+That measurement includes documentation at this immutable source, not the approval record added afterward:
+
+```bash
+git diff --numstat a772a85a141b617f0d766d0d6a7d6aa11b654a30..4ef0b8be502ae90c7c0512f0fe7906089b73b6ab --
+```
+
+Authorized implementation review `96ed06b5-4cf6-48c0-a005-51b066ce3a87` approved the complete range without findings,
+including the corrected downward Cubit-to-service dependency and preserved scoped composition.
+Preserved report: `/tmp/rose-elephant-1545-layer3-implementation-review.md`, SHA-256
+`81431df4d0b81afb7c53c80a12237d9a06b44a2c9b2cafe4de3733b26cbed121`.
+The correction plan's SHA-256 is `808a4e172bf3e605c10c38b15d6d98553214f179035c98b1dd6148a4c9dc1655`.
+Publication adds only this record; the complete publication range is measured separately before pushing.
+
 ## Rendering and remaining qualification
 
 Four synthetic views passed using the actual sidebar and packaged fonts, with fake state and no production DI:
