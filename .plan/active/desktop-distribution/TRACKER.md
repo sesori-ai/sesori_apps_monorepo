@@ -131,7 +131,10 @@ implemented `upgrade.json` check true. Private signed replacement with persisted
 Off intent is accepted on both CPUs. The probe did not inspect helper absence while
 either GUI was running, so helper-Off, authenticated helper-On, failed-stop,
 real-account/TCC, minimum-OS and public artifact retrieval remain open; the download
-page itself is live.
+page itself is live. The successor correction
+`🌿 [desktop-distribution] Observe helper-Off during macOS replacement [step 8/14]`
+is in progress. It records exact installed-helper absence while each GUI is live;
+helper-Off remains open pending a reviewed `main` run on both native CPUs.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
 private-package documentation portion can proceed independently, so its dependency

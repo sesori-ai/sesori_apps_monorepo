@@ -147,7 +147,10 @@ probe-owned paths on the fresh Actions host. Main-only run `35405646668`, source
 arm64 job `105794893463`. Exact artifact IDs, digests and retention are in the
 [step 6 evidence](../../../.plan/active/desktop-distribution/steps/step-06.md).
 This accepts signed replacement with persisted Bridge Off intent, not live helper
-absence while either GUI is running.
+absence while either GUI is running. Current tooling now records exact installed-helper
+absence after each visible launch and before tray Quit in `*-helper-off.log`, refusing
+the run if that helper exists. The helper-Off gate remains open until the reviewed
+check passes from `main` on both native CPUs.
 
 This pipeline does not publish a release/feed or prove installed GUI authentication,
 authenticated helper-On/failed-stop behavior, real-account Keychain/TCC, minimum-OS
