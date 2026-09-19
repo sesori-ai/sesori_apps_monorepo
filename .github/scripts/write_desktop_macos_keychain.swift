@@ -89,10 +89,14 @@ guard let operation = Operation(rawValue: CommandLine.arguments[1]) else {
 
 let account = CommandLine.arguments[2]
 let service = CommandLine.arguments[3]
+let rawWriterPath = CommandLine.arguments[0]
+let absoluteWriterPath = rawWriterPath.hasPrefix("/")
+    ? rawWriterPath
+    : (FileManager.default.currentDirectoryPath as NSString).appendingPathComponent(rawWriterPath)
 let trustedPaths = [
     CommandLine.arguments[4],
     CommandLine.arguments[5],
-    URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL.path,
+    URL(fileURLWithPath: absoluteWriterPath).standardizedFileURL.path,
 ]
 var password = FileHandle.standardInput.readDataToEndOfFile()
 if password.last == 0x0A {

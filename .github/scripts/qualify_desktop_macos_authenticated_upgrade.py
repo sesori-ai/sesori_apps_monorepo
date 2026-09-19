@@ -350,10 +350,12 @@ def wait_for_authenticated_helper(
     launcher: subprocess.Popen[str],
     output: Path,
     bridge_log: Path = BRIDGE_LOG,
+    bridge_log_offset: int = 0,
 ) -> int:
     deadline = time.monotonic() + HELPER_WAIT_SECONDS
     active_helper_pid: int | None = None
-    generation_log_offset = 0
+    observed_helper_generation = False
+    generation_log_offset = bridge_log_offset
     while True:
         if launcher.poll() is not None:
             raise RuntimeError(f"{label}: desktop exited before its authenticated helper became ready")
@@ -369,8 +371,11 @@ def wait_for_authenticated_helper(
             )
             raise RuntimeError(f"{label}: expected at most one installed helper process")
         if helper_pid != active_helper_pid:
-            generation_log_offset = bridge_log.stat().st_size if bridge_log.is_file() else 0
+            if observed_helper_generation:
+                generation_log_offset = bridge_log.stat().st_size if bridge_log.is_file() else 0
             active_helper_pid = helper_pid
+            if helper_pid is not None:
+                observed_helper_generation = True
         bridge_output = ""
         if active_helper_pid is not None and bridge_log.is_file():
             bridge_log_size = bridge_log.stat().st_size
@@ -478,11 +483,11 @@ def cleanup_qualification(*, created_keychain_accounts: list[str]) -> None:
 def qualification_cleanup(*, cleanup: Callable[[], None]) -> Iterator[None]:
     try:
         yield
-    except Exception as qualification_error:
+    except BaseException as qualification_error:
         try:
             cleanup()
-        except Exception as cleanup_error:
-            raise ExceptionGroup(
+        except BaseException as cleanup_error:
+            raise BaseExceptionGroup(
                 "Authenticated qualification and cleanup both failed",
                 [qualification_error, cleanup_error],
             ) from None
@@ -501,6 +506,7 @@ def launch_authenticated_and_quit(
     launcher_log = output / f"{label}-launcher.log"
     # Authenticated app output stays in the exact probe-owned support root and is never uploaded.
     private_app_log = SUPPORT_ROOT / "desktop-instance" / f"{label}-authenticated-app.log"
+    bridge_log_offset = BRIDGE_LOG.stat().st_size if BRIDGE_LOG.is_file() else 0
     launch_started_at = time.monotonic()
     with launcher_log.open("w", encoding="utf-8") as stream:
         launcher = subprocess.Popen(
@@ -524,6 +530,7 @@ def launch_authenticated_and_quit(
             label=label,
             launcher=launcher,
             output=output,
+            bridge_log_offset=bridge_log_offset,
         )
         startup_interval_remaining = 15 - (time.monotonic() - launch_started_at)
         if startup_interval_remaining > 0:

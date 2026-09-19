@@ -188,6 +188,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
     def test_native_keychain_writer_reads_secret_only_from_stdin(self):
         source = KEYCHAIN_WRITER.read_text(encoding="utf-8")
         self.assertIn("FileHandle.standardInput.readDataToEndOfFile()", source)
+        self.assertIn("FileManager.default.currentDirectoryPath", source)
         self.assertNotIn("let password = CommandLine.arguments", source)
         self.assertNotIn("add-generic-password", source)
 
@@ -381,35 +382,36 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         self.assertIsInstance(raised.exception.exceptions[1], RuntimeError)
         self.assertEqual(str(raised.exception.exceptions[1]), "cleanup failed")
 
+    def test_cleanup_runs_and_groups_failure_for_base_exceptions(self):
+        cleanup = Mock(side_effect=RuntimeError("cleanup failed"))
+        with self.assertRaises(BaseExceptionGroup) as raised:
+            with qualification_cleanup(cleanup=cleanup):
+                raise KeyboardInterrupt("interrupted")
+
+        self.assertIsInstance(raised.exception.exceptions[0], KeyboardInterrupt)
+        self.assertIsInstance(raised.exception.exceptions[1], RuntimeError)
+
     def test_helper_observation_records_only_bounded_boolean_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             bridge_log = root / "bridge.log"
-            bridge_log.write_text("private-token-value\n", encoding="utf-8")
+            stale = "Authenticated as stale-user\nWaiting for relay events...\n"
+            bridge_log.write_text(
+                stale + "Authenticated as private-user-value\nWaiting for relay events...\nprivate-token-value\n",
+                encoding="utf-8",
+            )
             launcher = Mock()
             launcher.poll.return_value = None
-            markers_written = False
-
-            def write_markers(_seconds: float) -> None:
-                nonlocal markers_written
-                if markers_written:
-                    return
-                markers_written = True
-                with bridge_log.open("a", encoding="utf-8") as stream:
-                    stream.write("Authenticated as private-user-value\nWaiting for relay events...\n")
-
             with patch(
                 "qualify_desktop_macos_authenticated_upgrade.installed_helper_processes",
                 return_value="501 /Applications/Sesori.app/Contents/Helpers/bridge/bin/bridge",
-            ), patch(
-                "qualify_desktop_macos_authenticated_upgrade.time.sleep",
-                side_effect=write_markers,
             ):
                 wait_for_authenticated_helper(
                     label="current",
                     launcher=launcher,
                     output=root,
                     bridge_log=bridge_log,
+                    bridge_log_offset=len(stale.encode("utf-8")),
                 )
 
             recorded = (root / "current-authenticated-helper.json").read_text(encoding="utf-8")
@@ -465,6 +467,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
                         launcher=launcher,
                         output=root,
                         bridge_log=bridge_log,
+                        bridge_log_offset=len(stale.encode("utf-8")),
                     )
 
             recorded = json.loads((root / "current-authenticated-helper.json").read_text(encoding="utf-8"))
@@ -475,7 +478,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             bridge_log = root / "bridge.log"
-            bridge_log.write_text("Authenticated as first-helper\n", encoding="utf-8")
+            bridge_log.write_text("", encoding="utf-8")
             launcher = Mock()
             launcher.poll.return_value = None
             sleep_count = 0
@@ -483,8 +486,10 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             def advance_log(_seconds: float) -> None:
                 nonlocal sleep_count
                 sleep_count += 1
-                if sleep_count == 2:
-                    with bridge_log.open("a", encoding="utf-8") as stream:
+                with bridge_log.open("a", encoding="utf-8") as stream:
+                    if sleep_count == 1:
+                        stream.write("Authenticated as first-helper\nWaiting for relay events...\n")
+                    elif sleep_count == 2:
                         stream.write("Authenticated as second-helper\nWaiting for relay events...\n")
 
             with patch(
@@ -502,6 +507,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
                 )
 
             self.assertEqual(helper_pid, 502)
+            self.assertEqual(sleep_count, 2)
             recorded = json.loads((root / "current-authenticated-helper.json").read_text(encoding="utf-8"))
             self.assertEqual(recorded["helperPid"], 502)
             self.assertTrue(recorded["authenticatedProfileConfirmed"])
@@ -509,13 +515,36 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
 
     def test_authenticated_helper_is_observed_and_remains_same_process_before_real_tray_quit(self):
         events = call_events(launch_authenticated_and_quit)
+        launch = find_event(events=events, name="subprocess.Popen", assigned_to="launcher")
         observation = find_event(events=events, name="wait_for_authenticated_helper")
         window = find_event(events=events, name="wait_for_visible_window")
         current_process = find_event(events=events, name="_helper_pid")
         tray_quit = find_event(events=events, name="subprocess.run", assigned_to="quit_result")
+        self.assertEqual(observation["keywords"]["bridge_log_offset"], "bridge_log_offset")
+        tree = ast.parse(textwrap.dedent(inspect.getsource(launch_authenticated_and_quit)))
+        baseline = next(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Assign)
+            and any(dotted_name(target) == "bridge_log_offset" for target in node.targets)
+        )
+        self.assertLess(baseline.lineno, launch["line"])
+        self.assertLess(launch["line"], observation["line"])
         self.assertLess(observation["line"], window["line"])
         self.assertLess(window["line"], current_process["line"])
         self.assertLess(current_process["line"], tray_quit["line"])
+        tree = ast.parse(textwrap.dedent(inspect.getsource(launch_authenticated_and_quit)))
+        guard = next(
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and dotted_name(node.func) == "require"
+            and "authenticated helper exited or was replaced before tray Quit" in ast.unparse(node)
+        )
+        self.assertEqual(
+            ast.unparse(guard.args[0]),
+            "helper_process_count == 1 and current_helper_pid == authenticated_helper_pid",
+        )
         self.assertFalse(any(event["name"] == "screencapture" for event in events))
 
     def test_qualification_seeds_on_and_phase_fresh_keychain_before_each_launch(self):
