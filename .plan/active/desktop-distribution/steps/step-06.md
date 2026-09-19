@@ -193,10 +193,21 @@ this exercise on both CPUs but each native job consumed the full 35-minute timeo
 prior-app installation, before any Keychain/session/report success evidence. Its bounded
 artifacts are `10584848537` (x64) and `10586555281` (arm64); the run is rejected. The
 `8.c/14` follow-up replaces create-then-change-ACL with atomic classic-Keychain creation,
-retains the ACL during token refresh and bounds every native Keychain command. Only a
-both-CPU retry dispatched from merged `main` can become evidence. Failed-stop,
-interactive browser/user-account/TCC, minimum-OS, public retrieval and
-parent Gate C remain open.
+retains the ACL during token refresh and bounds every native Keychain command. It merged
+as source `55547f26c8a9f59747987f1b7a65fc473e76e9c2`, tree
+`87fb1050b44566f9d456c21af16427823fbf60b2`. Merged-main run `35454870471` passed
+tooling job `105928266878`, then x64 job `105928289095` and arm64 job `105928289036`
+failed at their bounded prior-app helper deadline. Both bounded observations record zero
+helper processes and no authenticated-profile or relay-serving marker. Evidence artifacts
+are `10587393605` (x64, digest
+`sha256:8d1d1f0af67d74bab0df5932aeb70b2d749c4bd5de6c24176fc017d1db184ca1`) and
+`10588086362` (arm64, digest
+`sha256:828eea306fec4d0e4d9a6942bddb462a2051fba5ca44bfa3956ec7786419fa5e`);
+the run is rejected. The `8.d/14` correction matches the writer's item attributes to
+FlutterSecureStorage's fixed synchronizable/accessibility query and self-verifies that
+exact lookup before launch. Only a both-CPU retry dispatched from merged `main` can
+become evidence. Failed-stop, interactive browser/user-account/TCC, minimum-OS, public
+retrieval and parent Gate C remain open.
 
 Dispatches and expanded logs were run from
 `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:

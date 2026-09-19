@@ -149,10 +149,22 @@ arm64 `105899225125`). Bounded artifacts `10584848537`
 `10586555281`
 (`sha256:b56678eb1c4938bedc90d6f95b1ed68aa53705ec8ba500c18c321e53fd3523c8`) contain no
 Keychain/session/report success evidence, so the run is rejected. The `8.c/14` follow-up
-atomically creates the classic-Keychain ACL and bounds each native Keychain command
-before both CPUs retry from merged `main`. Failed-stop, interactive user-account/TCC,
-minimum-OS and public artifact
-retrieval remain open; the download page itself is live.
+atomically created the classic-Keychain ACL, bounded each native Keychain command, and
+merged as `55547f26c8a9f59747987f1b7a65fc473e76e9c2`. Merged-main run `35454870471`,
+tree `87fb1050b44566f9d456c21af16427823fbf60b2`, passed tooling job `105928266878`.
+X64 job `105928289095` and arm64 job `105928289036` then failed within the bounded
+prior-app helper wait rather than hanging; both observations record zero helper
+processes and no authenticated/relay markers. Bounded artifacts `10587393605`
+(`sha256:8d1d1f0af67d74bab0df5932aeb70b2d749c4bd5de6c24176fc017d1db184ca1`) and
+`10588086362`
+(`sha256:828eea306fec4d0e4d9a6942bddb462a2051fba5ca44bfa3956ec7786419fa5e`) contain no
+session/report success evidence, so this run is also rejected. The concrete remaining
+mismatch is that the writer's broad classic-Keychain insert did not carry the fixed
+synchronizable/accessibility attributes present in FlutterSecureStorage's read query.
+The `8.d/14` follow-up creates and self-verifies the item through that exact query
+envelope before both CPUs retry from merged `main`. Failed-stop, interactive
+user-account/TCC, minimum-OS and public artifact retrieval remain open; the download
+page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
 private-package documentation portion can proceed independently, so its dependency
