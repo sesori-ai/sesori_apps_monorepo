@@ -116,3 +116,20 @@ by this handoff, and publishing delivery 22 does not mean its blocked qualificat
 
 For this report, validate only local Markdown targets, whitespace, added-line character/byte limits and the whole
 branch's changed-line count. No architecture review applies to these documentation-only changes.
+
+## Report verification
+
+Source `48289efe049ed5ddb29aa054fbad4ad75c63ad74`, tree `91ed854c5eb5a486f48d144f9684d0ea6d6c384a`, contains
+195 all-path changed lines (+178/−17), four documentation paths, no production/tests/generated changes:
+
+```bash
+git diff --numstat 776c4a9ee0c793b99a32c459b3490422039aee32..48289efe049ed5ddb29aa054fbad4ad75c63ad74 --
+```
+
+Validation ran on the uncommitted source at the base above, not from that later-created commit.
+`node /tmp/rose-elephant-coverage-validate.js /tmp/rose-elephant-coverage-qualified-validation.json`
+passed at `2026-09-19T09:16:17.434Z` from the worktree named above: whitespace, 54 local file targets,
+120-character/120-byte added lines, size and unchanged executable/workflow paths. Its exact zero-context patch SHA-256:
+`0de9cd504a45b4fe1ad97358489ba2d47720190b91e5f1ffb05e110743c605e4`.
+Earlier wrapping failures remain in `/tmp/rose-elephant-coverage-validation.json` and `...-source-validation.json`,
+where `...` is `/tmp/rose-elephant-coverage`. Publication adds this receipt; no product verification is implied.
