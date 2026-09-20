@@ -416,6 +416,8 @@ jobs:
           name: desktop-macos-evidence-${{ matrix.architecture }}
           path: build/desktop-macos-authenticated-upgrade/current/evidence
       - name: Exercise authenticated helper-On replacement and tray Quit
+        # Run 35465783382 reached this step 29s after job start; keep over 14m for timeout evidence upload.
+        timeout-minutes: 20
         env:
           CHANNEL: ${{ inputs.channel }}
           SESORI_DESKTOP_QA_EMAIL: ${{ secrets.SESORI_DESKTOP_QA_EMAIL }}

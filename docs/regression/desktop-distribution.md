@@ -143,14 +143,19 @@ retains that ACL while refreshing values, and gives every native Keychain comman
 deadline. The writer must also create and self-verify each item through the pinned
 FlutterSecureStorage query's explicit non-synchronizable (`kSecAttrSynchronizable:
 false`) and when-unlocked envelope; a broad `security` lookup is not equivalent.
-Merged-main runs `35454870471` and `35460239311` are rejected because both native CPUs
-reached the bounded prior-app helper deadline with zero final helper processes; the later
-run first passed the exact Keychain self-check. On failure, the probe may inspect at most
-1 MiB of phase-scoped private app output for a closed set of startup, local-session,
-local-restore, desired-state and bridge-start markers. The auth gate emits privacy-safe
-outcome markers through the captured production log sink rather than relying on
-`dart:developer` output. The probe uploads only booleans plus whether any helper
-generation or fresh bridge-log activity appeared. The probe
+Merged-main runs `35454870471`, `35460239311` and `35465783382` are rejected. The first
+two reached the bounded prior-app helper deadline with zero final helper processes; the
+second first passed the exact Keychain self-check. The third also timed out one CPU before
+artifact upload and showed that redirected app output alone does not retain production
+log-sink markers. On failure, the probe may inspect at most 1 MiB from each phase-scoped
+redirected app output and authoritative persisted `logs/app.log` for the closed markers
+`desktopStartupRendered`, `localSessionUnavailable`, `localUserRestoreIncomplete`,
+`desiredStateRestoreFailure` and `bridgeStartFailure`. The auth gate emits privacy-safe
+outcome markers through the production log sink rather than relying on `dart:developer`
+output. The probe uploads only booleans, an atomic closed phase/cleanup record, and
+whether any helper generation or fresh bridge-log activity appeared. Run `35465783382`
+reached the exercise step 29 seconds after job start; the 20-minute exercise deadline
+therefore leaves over 14 minutes for always-upload within the 35-minute job. The probe
 persists Bridge On and requires the exact packaged helper, an authenticated profile lookup
 and relay-serving readiness before each real tray Quit. It then verifies Keychain, On
 intent, bounded state and helper absence through replacement. Artifacts exclude raw auth

@@ -17,12 +17,15 @@ from qualify_desktop_macos_authenticated_upgrade import (
     KEYCHAIN_ACCOUNTS,
     KEYCHAIN_SERVICE,
     PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES,
-    BridgeLogCursor,
     KeychainSession,
+    LogCursor,
     QaCredentials,
+    QualificationCandidate,
+    QualificationPhase,
     _keychain_writer,
     _security,
     cleanup_qualification,
+    cleanup_qualification_with_phase,
     delete_auth_keychain,
     launch_authenticated_and_quit,
     load_qa_credentials,
@@ -37,6 +40,7 @@ from qualify_desktop_macos_authenticated_upgrade import (
     write_auth_keychain,
     write_missing_authenticated_helper_observation,
     write_private_app_startup_diagnostics,
+    write_qualification_phase,
 )
 
 
@@ -96,9 +100,9 @@ def find_event(
     raise AssertionError(f"Missing call event for {name}")
 
 
-def bridge_log_cursor(*, path: Path, offset: int) -> BridgeLogCursor:
+def bridge_log_cursor(*, path: Path, offset: int) -> LogCursor:
     status = path.stat()
-    return BridgeLogCursor(device=status.st_dev, inode=status.st_ino, offset=offset)
+    return LogCursor(device=status.st_dev, inode=status.st_ino, offset=offset)
 
 
 def jwt(*, expiration: int) -> str:
@@ -600,22 +604,27 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             self.assertFalse(observation["helperObservedDuringWait"])
             self.assertFalse(observation["bridgeLogActivityObserved"])
 
-    def test_private_app_startup_diagnostics_expose_only_closed_markers(self):
+    def test_private_app_startup_diagnostics_expose_only_closed_markers_from_both_sources(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            private_app_log = root / "private-authenticated-app.log"
-            private_app_log.write_text(
+            redirected_app_output = root / "private-authenticated-app.log"
+            persisted_app_log = root / "app.log"
+            redirected_app_output.write_text(
+                "Desktop auth gate found no locally valid session\nprivate-token-value\n",
+                encoding="utf-8",
+            )
+            persisted_app_log.write_text(
                 "Desktop startup: rendering the application\n"
-                "Desktop auth gate found no locally valid session\n"
                 "Desktop auth gate could not restore the local session\n"
                 "Failed to restore the desktop bridge's desired On state\n"
-                "Bridge startup failed after its process exit was already claimed: /private/user/path\n"
-                "private-token-value\n",
+                "Bridge startup failed after its process exit was already claimed: /private/user/path\n",
                 encoding="utf-8",
             )
             write_private_app_startup_diagnostics(
                 label="previous",
-                private_app_log=private_app_log,
+                redirected_app_output=redirected_app_output,
+                persisted_app_log=persisted_app_log,
+                persisted_app_log_cursor=None,
                 output=root,
             )
 
@@ -625,8 +634,10 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             self.assertEqual(
                 json.loads(recorded),
                 {
-                    "appLogPresent": True,
-                    "appLogTruncated": False,
+                    "redirectedAppOutputPresent": True,
+                    "redirectedAppOutputTruncated": False,
+                    "persistedAppLogPresent": True,
+                    "persistedAppLogTruncated": False,
                     "desktopStartupRendered": True,
                     "localSessionUnavailable": True,
                     "localUserRestoreIncomplete": True,
@@ -635,39 +646,156 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
                 },
             )
 
-    def test_private_app_startup_diagnostics_report_missing_log_without_markers(self):
+    def test_persisted_app_diagnostics_ignore_previous_launch_segment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            persisted_app_log = root / "app.log"
+            stale = "Desktop startup: rendering the application\n"
+            persisted_app_log.write_text(stale, encoding="utf-8")
+            cursor = bridge_log_cursor(path=persisted_app_log, offset=len(stale.encode("utf-8")))
+            with persisted_app_log.open("a", encoding="utf-8") as stream:
+                stream.write("Desktop auth gate found no locally valid session\n")
+
+            write_private_app_startup_diagnostics(
+                label="current",
+                redirected_app_output=root / "missing-output.log",
+                persisted_app_log=persisted_app_log,
+                persisted_app_log_cursor=cursor,
+                output=root,
+            )
+
+            diagnostics = json.loads((root / "current-startup-diagnostics.json").read_text(encoding="utf-8"))
+            self.assertFalse(diagnostics["desktopStartupRendered"])
+            self.assertTrue(diagnostics["localSessionUnavailable"])
+
+    def test_private_app_startup_diagnostics_report_missing_sources_without_markers(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             write_private_app_startup_diagnostics(
                 label="previous",
-                private_app_log=root / "missing-app.log",
+                redirected_app_output=root / "missing-output.log",
+                persisted_app_log=root / "missing-app.log",
+                persisted_app_log_cursor=None,
                 output=root,
             )
 
             diagnostics = json.loads((root / "previous-startup-diagnostics.json").read_text(encoding="utf-8"))
-            self.assertFalse(diagnostics.pop("appLogPresent"))
-            self.assertFalse(diagnostics.pop("appLogTruncated"))
+            self.assertFalse(diagnostics.pop("redirectedAppOutputPresent"))
+            self.assertFalse(diagnostics.pop("redirectedAppOutputTruncated"))
+            self.assertFalse(diagnostics.pop("persistedAppLogPresent"))
+            self.assertFalse(diagnostics.pop("persistedAppLogTruncated"))
             self.assertEqual(set(diagnostics.values()), {False})
 
-    def test_private_app_startup_diagnostics_bound_private_log(self):
+    def test_private_app_startup_diagnostics_bound_each_private_source(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            private_app_log = root / "private-authenticated-app.log"
-            private_app_log.write_bytes(
+            redirected_app_output = root / "private-authenticated-app.log"
+            persisted_app_log = root / "app.log"
+            redirected_app_output.write_bytes(
                 b"x" * (PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES + 1)
                 + b"Desktop auth gate found no locally valid session: private-token-value\n"
             )
+            persisted_app_log.write_bytes(b"y" * (PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES + 1))
             write_private_app_startup_diagnostics(
                 label="previous",
-                private_app_log=private_app_log,
+                redirected_app_output=redirected_app_output,
+                persisted_app_log=persisted_app_log,
+                persisted_app_log_cursor=None,
                 output=root,
             )
 
             recorded = (root / "previous-startup-diagnostics.json").read_text(encoding="utf-8")
             diagnostics = json.loads(recorded)
-            self.assertTrue(diagnostics["appLogTruncated"])
+            self.assertTrue(diagnostics["redirectedAppOutputTruncated"])
+            self.assertTrue(diagnostics["persistedAppLogTruncated"])
             self.assertFalse(diagnostics["localSessionUnavailable"])
             self.assertNotIn("private-token-value", recorded)
+
+    def test_qualification_phase_is_closed_bounded_and_atomically_replaced(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_qualification_phase(
+                output=root,
+                phase=QualificationPhase.HELPER_READINESS,
+                candidate=QualificationCandidate.PREVIOUS,
+            )
+            self.assertEqual(
+                json.loads((root / "qualification-phase.json").read_text(encoding="utf-8")),
+                {
+                    "schemaVersion": 1,
+                    "candidate": "previous",
+                    "phase": "helperReadiness",
+                    "cleanupStarted": False,
+                    "cleanupCompleted": False,
+                },
+            )
+            write_qualification_phase(
+                output=root,
+                phase=QualificationPhase.COMPLETE,
+                candidate=None,
+                cleanup_completed=True,
+            )
+
+            self.assertEqual(
+                json.loads((root / "qualification-phase.json").read_text(encoding="utf-8")),
+                {
+                    "schemaVersion": 1,
+                    "candidate": None,
+                    "phase": "complete",
+                    "cleanupStarted": True,
+                    "cleanupCompleted": True,
+                },
+            )
+            self.assertFalse((root / "qualification-phase.json.tmp").exists())
+
+    def test_cleanup_progress_preserves_the_failing_phase_on_success(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_qualification_phase(
+                output=root,
+                phase=QualificationPhase.HELPER_READINESS,
+                candidate=QualificationCandidate.PREVIOUS,
+            )
+            with patch("qualify_desktop_macos_authenticated_upgrade.cleanup_qualification") as cleanup:
+                cleanup_qualification_with_phase(output=root, created_keychain_accounts=[])
+
+            cleanup.assert_called_once_with(created_keychain_accounts=[])
+            self.assertEqual(
+                json.loads((root / "qualification-phase.json").read_text(encoding="utf-8")),
+                {
+                    "schemaVersion": 1,
+                    "candidate": "previous",
+                    "phase": "helperReadiness",
+                    "cleanupStarted": True,
+                    "cleanupCompleted": True,
+                },
+            )
+
+    def test_cleanup_failure_preserves_the_failing_phase_and_incomplete_cleanup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_qualification_phase(
+                output=root,
+                phase=QualificationPhase.HELPER_READINESS,
+                candidate=QualificationCandidate.PREVIOUS,
+            )
+            with patch(
+                "qualify_desktop_macos_authenticated_upgrade.cleanup_qualification",
+                side_effect=RuntimeError("cleanup failed"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "cleanup failed"):
+                    cleanup_qualification_with_phase(output=root, created_keychain_accounts=[])
+
+            self.assertEqual(
+                json.loads((root / "qualification-phase.json").read_text(encoding="utf-8")),
+                {
+                    "schemaVersion": 1,
+                    "candidate": "previous",
+                    "phase": "helperReadiness",
+                    "cleanupStarted": True,
+                    "cleanupCompleted": False,
+                },
+            )
 
     def test_current_launch_ignores_authenticated_markers_from_previous_log_segment(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -746,7 +874,9 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         diagnostics = find_event(events=events, name="capture_authenticated_launch_diagnostics")
         termination = find_event(events=events, name="_terminate_probe_processes")
         self.assertEqual(observation["keywords"]["bridge_log_cursor"], "bridge_log_cursor")
-        self.assertEqual(diagnostics["keywords"]["private_app_log"], "private_app_log")
+        self.assertEqual(diagnostics["keywords"]["redirected_app_output"], "private_app_log")
+        self.assertEqual(diagnostics["keywords"]["persisted_app_log"], "PERSISTED_APP_LOG")
+        self.assertEqual(diagnostics["keywords"]["persisted_app_log_cursor"], "persisted_app_log_cursor")
         self.assertLess(diagnostics["line"], termination["line"])
         tree = ast.parse(textwrap.dedent(inspect.getsource(launch_authenticated_and_quit)))
         baseline = next(
@@ -830,8 +960,12 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         self.assertIn("inputs.mode == 'macos-authenticated-upgrade-probe'", job)
         self.assertNotIn("environment:", job)
         self.assertIn("max-parallel: 1", job)
+        exercise_step = job.index("- name: Exercise authenticated helper-On replacement and tray Quit")
+        step_timeout = job.index("timeout-minutes: 20", exercise_step)
+        exercise = job.index("qualify_desktop_macos_authenticated_upgrade.py", step_timeout)
+        self.assertLess(exercise_step, step_timeout)
+        self.assertLess(step_timeout, exercise)
         guard = job.index('if [[ "$GITHUB_REF" != "refs/heads/main" ]]')
-        exercise = job.index("qualify_desktop_macos_authenticated_upgrade.py")
         self.assertLess(guard, exercise)
         self.assertIn("CHANNEL: ${{ inputs.channel }}", job)
         self.assertIn(' --channel "$CHANNEL"', job)
