@@ -813,6 +813,36 @@ void main() {
     }
   });
 
+  testWidgets("a row shows its last activity, says it in full, and larger text drops it first", (tester) async {
+    final updated = DateTime.now().subtract(const Duration(hours: 3)).millisecondsSinceEpoch;
+    final sessions = [
+      _session(id: "session-1").copyWith(time: SessionTime(created: 1, updated: updated, archived: null)),
+    ];
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+    expect(find.text("3h"), findsOneWidget);
+    expect(find.byTooltip("session-1, 3h ago"), findsOneWidget);
+    expect(find.bySemanticsLabel("session-1, 3h ago"), findsOneWidget);
+
+    tester.platformDispatcher.textScaleFactorTestValue = 2.5;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pump();
+    expect(find.text("3h"), findsNothing);
+    expect(find.text("session-1"), findsOneWidget);
+    expect(find.bySemanticsLabel("session-1, 3h ago"), findsOneWidget);
+  });
+
   testWidgets("drag resizes immediately, persists on end, and double-click resets", (tester) async {
     await tester.pumpWidget(app(state: running));
     final gesture = await tester.startGesture(tester.getCenter(resize));

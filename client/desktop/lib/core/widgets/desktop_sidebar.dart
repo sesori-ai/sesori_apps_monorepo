@@ -779,9 +779,10 @@ class const _SidebarActivitySessionRow({
       isRunning: item.isRunning,
       isUnseen: item.isUnseen,
     );
-    final description = [identity, ...statuses].join(", ");
     // A running session is happening now; its spinning sparkle says so.
     final updatedAt = item.isRunning ? null : item.session.time?.updated;
+    // The row's "3h" is a glance mark; the label says it in full.
+    final description = [identity, ...statuses, if (updatedAt != null) context.formatTimestamp(updatedAt)].join(", ");
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 14 - 6 * expansion),
       child: PregoAnchorMenu(
@@ -875,7 +876,9 @@ class const _SidebarActivitySessionRow({
                               ),
                             ),
                           ),
-                        if (updatedAt != null && expansion > 0 && constraints.maxWidth >= _timeRevealWidth)
+                        if (updatedAt != null &&
+                            expansion > 0 &&
+                            _rowFitsTime(context: context, width: constraints.maxWidth))
                           Opacity(
                             opacity: expansion,
                             child: Padding(
@@ -900,9 +903,10 @@ class const _SidebarActivitySessionRow({
   }
 }
 
-// Narrower than this, a row keeps its title and drops the time; the collapsing
-// rail passes through it.
-const double _timeRevealWidth = 104;
+/// Whether a row this wide has room for its time beside the title. The
+/// collapsing rail passes through narrower rows, and larger text needs a wider one.
+bool _rowFitsTime({required BuildContext context, required double width}) =>
+    width >= MediaQuery.textScalerOf(context).scale(104);
 
 class const _SidebarSessionRow({
   super.key,
@@ -920,14 +924,16 @@ class const _SidebarSessionRow({
     final unseen = entry.isUnseen(session: session);
     final running = entry.isRunning(session: session);
     final awaiting = entry.isAwaitingInput(session: session);
+    // A running session is happening now; its spinning sparkle says so.
+    final updatedAt = running ? null : session.time?.updated;
     final description = [
       session.title ?? context.loc.sessionListUntitled,
       if (awaiting) context.loc.sessionListAwaitingInput,
       if (running) context.loc.projectListRunning(1),
       if (unseen) context.loc.projectListNewActivity,
+      // The row's "3h" is a glance mark; the label says it in full.
+      if (updatedAt != null) context.formatTimestamp(updatedAt),
     ].join(", ");
-    // A running session is happening now; its spinning sparkle says so.
-    final updatedAt = running ? null : session.time?.updated;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md),
       child: PregoAnchorMenu(
@@ -977,7 +983,7 @@ class const _SidebarSessionRow({
                             style: unseen ? prego.textTheme.textXs.bold : prego.textTheme.textXs.regular,
                           ),
                         ),
-                        if (updatedAt != null && constraints.maxWidth >= _timeRevealWidth)
+                        if (updatedAt != null && _rowFitsTime(context: context, width: constraints.maxWidth))
                           Padding(
                             padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
                             child: Text(

@@ -70,12 +70,13 @@ The main pane hosts one full-width routed page.
   project starts over at three. The project name is the one door to the sessions page. Compact/project collapse
   hides ordinary rows without clearing cached data or hiding that project's Activity rows; per-project collapse
   preferences survive layout restore.
-- “Activity · N” and “Projects” are labelled section headers. Clicking one folds its rows; both choices persist in
-  the desktop layout file, and a file without them reads as unfolded. The collapsed rail has no headers, so it
-  ignores folding and keeps showing both lists.
+- “Activity · N” and “Projects” are labelled section headers. Clicking one folds its rows; both choices
+  persist in the desktop layout file, and a file without them reads as unfolded. The collapsed rail has no
+  headers, so it ignores folding and keeps showing both lists.
 - Every session row leads with a fixed status column (awaiting-input and sparkle signals) aligned under the project
-  avatar and ends with a compact last-activity time. Activity rows add the project name under the title. A running
-  session shows no time, and a narrowing row drops the time before its title.
+  avatar and ends with a compact last-activity time; its tooltip and screen-reader label say that time in full.
+  Activity rows add the project name under the title. A running session shows no time, and a row drops the time
+  before its title as it narrows or as the system text size grows.
 - Cmd+N (Ctrl+N on Windows/Linux) and the sidebar's New session button open New Session for the open project, else the
   most recently active one; with no project yet they open the New project dialog. They do nothing until the project
   inventory has loaded, and never substitute another project for an open one that is missing from the inventory.
@@ -218,15 +219,16 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   sidebar recovery/actions/locks.
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
   new-session replacement, diff/direct-entry Back, home states, package-font resolution.
-- Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal, project-
-  collapse and section-fold persistence, Show more paging and its reset, shared menu/route callbacks. All-project
-  admission happens once per entering ID, including collapsed/offscreen projects; Activity keeps project context,
-  selection/navigation/actions, leaves project rows in place, honors set-aside and just-opened sessions, and
-  reconciles keyed entry/exit under reduced motion. Empty/loading/failed entries preserve the stable header and
-  project-local retry. Keep loaded rows through catalog/reconnect refreshes and failures, including live unread
-  false, lifecycle patches, failed-reread rearming and superseded-read completion. Execute those inventory cases
-  without a mounted Cubit. Verify adapter replay/retry, independent consumer close, one eager factory instance per
-  signed-in scope, and disposal before a fresh scope admits data.
+- Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
+  project-collapse and section-fold persistence, Show more paging and its reset, a row's compact time with its
+  spoken form and its drop under larger text, shared menu/route callbacks. All-project admission happens once per
+  entering ID, including collapsed/offscreen projects; Activity keeps project context, selection/navigation/actions,
+  leaves project rows in place, honors set-aside and just-opened sessions, and reconciles keyed entry/exit under
+  reduced motion. Empty/loading/failed entries preserve the stable header and project-local retry. Keep loaded rows
+  through catalog/reconnect refreshes and failures, including live unread false, lifecycle patches, failed-reread
+  rearming and superseded-read completion. Execute those inventory cases without a mounted Cubit. Verify adapter
+  replay/retry, independent consumer close, one eager factory instance per signed-in scope, and disposal before a
+  fresh scope admits data.
 - Headless explicit refresh ordering, shared-instance factory parameters, admission joining, completed failed winners,
   later owning reads, partial failure, removal/disposal and useful diagnostic causes. Presentation covers keyboard
   activation, accessible busy/idle names, disabled states, useful-row retention and success/failure notices.
