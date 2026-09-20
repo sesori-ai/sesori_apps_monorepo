@@ -204,7 +204,9 @@ persisted app log, and a present non-truncated redirected app output with all cl
 markers false. The `8.g/14` follow-up adds fixed privacy-safe markers before the production
 log sink is installed, emits only a closed furthest startup stage from the same bounded
 private sources, and separately records whether the downloaded package supports no,
-pre-render-only or full pre-sink markers. Baseline run `35042335424` supports only
+pre-render-only or full pre-sink markers. Ordinary sources are inspected from the full Git
+checkout; exact retained baseline `35042335424` uses its existing pinned metadata and
+supports only
 pre-render markers, so `noMarker` cannot claim failure before Dart main. After `8.g/14`
 merges, produce and record a fresh stable `macos-packaging` run from merged `main`; use it
 as the current package with baseline run `35042335424` for the next both-CPU retry. Do not

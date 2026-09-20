@@ -157,8 +157,10 @@ and authoritative persisted `logs/app.log` for the closed markers
 `startupStage`: `noMarker`, `dartMainEntered`, `processAdmissionStarted`,
 `processAdmissionCompleted`, `preferences`, `nativeWindow`, `controlDispatcher`,
 `relayClient`, `desktopAttention`, `analyticsPreferences` or `rendering`. The separate
-`startupMarkerSupport` value is `none`, `preRender` or `preSinkAdmission`, derived from
-the downloaded package's immutable source. `noMarker` means only "before the first
+`startupMarkerSupport` value is `none`, `preRender` or `preSinkAdmission`. Ordinary
+packages derive it from checked-out immutable source; exact retained baseline
+`35042335424` uses pinned metadata because its PR-head object need not be reachable from
+merged `main`. `noMarker` means only "before the first
 supported marker"; it never upgrades a legacy package to pre-sink evidence. Fixed pre-sink
 markers distinguish entry into Dart main and primary-process admission for newly built
 packages; later stages reuse privacy-safe production log messages. After this tooling

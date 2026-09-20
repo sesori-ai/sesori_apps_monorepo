@@ -247,9 +247,10 @@ helper/bridge-log activity, no persisted app log, and present non-truncated redi
 output with all classified markers false. The `8.g/14` correction adds fixed pre-sink
 Dart-main and process-admission markers, emits only the furthest closed startup stage
 observed within the same bounded private sources, and separately records package marker
-support from its immutable source. Baseline run `35042335424` supports `preferences`
-through `rendering`, not the new pre-sink markers; its `noMarker` means only "before the
-first supported marker". After `8.g/14` merges, dispatch and record a fresh stable
+support from checked-out source or exact retained-baseline metadata. Baseline run
+`35042335424` supports `preferences` through `rendering`, not the new pre-sink markers;
+its `noMarker` means only "before the first supported marker". After `8.g/14` merges,
+dispatch and record a fresh stable
 `macos-packaging` run from merged `main`, then pair that current package with baseline run
 `35042335424` for the both-CPU retry. Current-package run `35206885114` predates the new
 markers and must not be reused. Failed-stop, interactive browser/user-account/TCC,

@@ -17,6 +17,7 @@ from qualify_desktop_macos_authenticated_upgrade import (
     KEYCHAIN_ACCOUNTS,
     KEYCHAIN_SERVICE,
     PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES,
+    RETAINED_AUTHENTICATED_BASELINE_SOURCE_SHA,
     DESKTOP_STARTUP_STAGE_MARKERS,
     DesktopStartupMarkerSupport,
     DesktopStartupStage,
@@ -33,6 +34,7 @@ from qualify_desktop_macos_authenticated_upgrade import (
     delete_auth_keychain,
     launch_authenticated_and_quit,
     load_qa_credentials,
+    load_startup_marker_support,
     parse_keychain_session,
     qualification_cleanup,
     qualify,
@@ -723,9 +725,28 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             DesktopStartupMarkerSupport.PRE_RENDER,
         )
         self.assertEqual(
+            _startup_marker_support_from_source(
+                source=full_source.replace(markers[DesktopStartupStage.PREFERENCES], ""),
+            ),
+            DesktopStartupMarkerSupport.NONE,
+        )
+        self.assertEqual(
+            _startup_marker_support_from_source(
+                source=full_source.replace(markers[DesktopStartupStage.DART_MAIN_ENTERED], ""),
+            ),
+            DesktopStartupMarkerSupport.PRE_RENDER,
+        )
+        self.assertEqual(
             _startup_marker_support_from_source(source=full_source),
             DesktopStartupMarkerSupport.PRE_SINK_ADMISSION,
         )
+
+    def test_retained_baseline_marker_support_does_not_require_unreachable_git_object(self):
+        with patch("qualify_desktop_macos_authenticated_upgrade.subprocess.run") as git_show:
+            support = load_startup_marker_support(source_sha=RETAINED_AUTHENTICATED_BASELINE_SOURCE_SHA)
+
+        self.assertEqual(support, DesktopStartupMarkerSupport.PRE_RENDER)
+        git_show.assert_not_called()
 
     def test_private_app_startup_diagnostics_report_missing_sources_without_markers(self):
         with tempfile.TemporaryDirectory() as directory:

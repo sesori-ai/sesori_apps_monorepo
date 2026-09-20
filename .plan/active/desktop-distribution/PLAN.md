@@ -561,9 +561,10 @@ each record `previous` / `helperReadiness`, completed cleanup, zero helper proce
 no helper or bridge-log activity, no persisted app log, and a present non-truncated
 redirected app output with every existing startup classification false. Add privacy-safe
 pre-sink Dart-main and process-admission markers, then emit only the furthest observed
-closed startup stage from either bounded private source. Record the downloaded package
-source's closed marker-support level separately: baseline run `35042335424` supports only
-the existing `preferences` through `rendering` markers, so its `noMarker` result means
+closed startup stage from either bounded private source. Record each package's closed
+marker-support level separately from checked-out source or the exact retained-baseline
+metadata. Baseline run `35042335424` supports only the existing `preferences` through
+`rendering` markers, so its `noMarker` result means
 "before the first supported marker", not "before Dart main". Full pre-sink interpretation
 is valid only for a package whose recorded source contains all new markers.
 

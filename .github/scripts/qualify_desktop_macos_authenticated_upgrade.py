@@ -21,6 +21,7 @@ from package_desktop_macos import execute
 from qualify_desktop_macos_upgrade import (
     APPLICATION,
     ATTACHMENTS_ROOT,
+    PINNED_RETAINED_BASELINES,
     REGISTRATION,
     SHARED_DATA_ROOT,
     SUPPORT_ROOT,
@@ -54,6 +55,7 @@ KEYCHAIN_COMMAND_TIMEOUT_SECONDS = 15
 MIN_SESSION_VALIDITY_SECONDS = 600
 # Covers 15s process admission + 60s helper + 45s window + 30s Quit + 5s absence, with margin.
 MIN_LAUNCH_VALIDITY_SECONDS = 180
+RETAINED_AUTHENTICATED_BASELINE_SOURCE_SHA = PINNED_RETAINED_BASELINES[35042335424]["sourceSha"]
 PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES = 1024 * 1024
 PRIVATE_APP_LOG_DIAGNOSTIC_MARKERS = (
     ("desktopStartupRendered", ("Desktop startup: rendering the application",)),
@@ -149,6 +151,9 @@ def _startup_marker_support_from_source(*, source: str) -> DesktopStartupMarkerS
 
 
 def load_startup_marker_support(*, source_sha: str) -> DesktopStartupMarkerSupport:
+    # The exact retained baseline is a pinned PR head and need not exist in a full main checkout.
+    if source_sha == RETAINED_AUTHENTICATED_BASELINE_SOURCE_SHA:
+        return DesktopStartupMarkerSupport.PRE_RENDER
     result = subprocess.run(
         ["git", "show", f"{source_sha}:client/desktop/lib/main.dart"],
         text=True,
