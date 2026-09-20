@@ -1020,6 +1020,15 @@ void main() {
       expect(started, [("project-recent", "Most recent")]);
     }, variant: TargetPlatformVariant.desktop());
 
+    testWidgets("an open project missing from the inventory is never swapped for another", (tester) async {
+      await tester.pumpWidget(shell(selectedProjectId: "project-hidden", available: const [recentProject]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key("desktop-sidebar-new-session")));
+      await tester.pumpAndSettle();
+      expect(started, isEmpty);
+      expect(find.byType(AddProjectDialog), findsNothing);
+    });
+
     testWidgets("without any project it offers to add one", (tester) async {
       final connection = _MockConnectionService();
       const status = ConnectionStatus.connected(

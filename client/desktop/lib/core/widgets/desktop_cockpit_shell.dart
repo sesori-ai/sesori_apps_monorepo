@@ -91,13 +91,18 @@ class const DesktopCockpitShell({
     );
     // The open project, else the most recently active one (the inventory's
     // order); with no project yet, adding one is the only useful next step.
+    // An open project missing from the inventory (hidden meanwhile) is never
+    // swapped for another one.
     void startNewSession() {
       final projects = context.read<ProjectListCubit>().state;
       if (projects is! ProjectListLoaded) return;
-      final project =
-          projects.projects.where((project) => project.id == selectedProjectId).firstOrNull ??
-          projects.projects.firstOrNull;
-      if (project == null) return addProject();
+      final project = selectedProjectId == null
+          ? projects.projects.firstOrNull
+          : projects.projects.where((project) => project.id == selectedProjectId).firstOrNull;
+      if (project == null) {
+        if (projects.projects.isEmpty) addProject();
+        return;
+      }
       onNewSession(
         context: context,
         project: project,
