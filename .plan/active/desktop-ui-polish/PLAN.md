@@ -269,7 +269,7 @@ inputs.
   `String? stickyActivitySessionId`: set when the selection changes to a
   session that is in Activity at that moment, cleared when the selection
   changes again. The projection keeps that one session in Activity while it is
-  selected.
+  selected, unless the user sets it aside.
 - **No relocation.** `RecentSessionsResolvers.rows` loses
   `excludingSessionIds`; the projection stops tracking activity ids per
   project.
@@ -533,8 +533,10 @@ Step 15 is different from every other step.
 
 - **Deferral marker.** The projection stays pure. A failed layout write is
   already logged by the sidebar cubit's write queue; the only effect is that a
-  deferred session shows in Activity again after a restart. A stale marker
-  is inert: a session that becomes unseen again carries a newer stamp.
+  deferred session shows in Activity again after a restart. A retained marker
+  matters only while the stamp is unchanged: marking the session unread again
+  before the agent moves it, here or on another device, keeps it set aside on
+  this desktop, as D1 asks. Once the agent moves the stamp the marker is inert.
 - **Pending archive.** Undo, or quitting inside the window, sends nothing and
   the session stays. Outcomes are events, not state, so overlapping archives
   cannot overwrite each other. A commit failure is never silent: a worktree refusal
@@ -781,7 +783,8 @@ touched plugins are proven by automated tests rather than a live turn each.
 ## Risks And Accepted Limits
 
 - **Deferral is per desktop.** Marking unread on the phone shows as news on
-  the desktop. Fixing it needs a bridge-level reason (Later Phases).
+  the desktop, unless this desktop still holds a marker at the same stamp.
+  Fixing it needs a bridge-level reason (Later Phases).
 - **`time.updated` also moves without agent output.** Renaming a session
   stamps it, and a cold Claude Code or Pi catalog import reads the transcript
   file's modification time. Either can return a deferred session to Activity

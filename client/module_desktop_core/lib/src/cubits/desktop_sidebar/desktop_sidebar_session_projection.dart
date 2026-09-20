@@ -24,9 +24,11 @@ final class DesktopSidebarSessionProjection._({required final List<DesktopSideba
         final isRunning = entry.isRunning(session: session);
         final isUnseen = entry.isUnseen(session: session);
         final deferredAt = deferredSessions[session.id];
-        final isDeferred = deferredAt != null && deferredAt == session.time?.updated;
-        final inMotion = isRunning || (isUnseen && !isDeferred);
-        if (!inMotion && session.id != stickySessionId) continue;
+        final isSetAside = isUnseen && deferredAt != null && deferredAt == session.time?.updated;
+        final inMotion = isRunning || (isUnseen && !isSetAside);
+        // Setting a session aside is explicit, so it beats the sticky selection too.
+        final isSticky = session.id == stickySessionId && !isSetAside;
+        if (!inMotion && !isSticky) continue;
         sessions.add(
           DesktopSidebarActivitySession(
             session: session,

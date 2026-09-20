@@ -40,8 +40,10 @@ registered plugin, so the plan's running-session fallback was not built.
   write only the unseen columns and never either input of the stamp; their
   `session.unseen_changed` echo carries no time field. Marking unread therefore
   cannot undo its own deferral.
-- A moved stamp reaches the desktop as a `session.updated` event, which
-  `RecentSessionInventoryService` applies to the list the sidebar projects.
+- A moved stamp reaches the desktop as a `session.updated` event. The client
+  decodes it as `SesoriSessionUpdated`; `RecentSessionInventoryService` hands
+  it to `SessionListService.applySessionUpdatedEvent`, which replaces the
+  session, stamp included, in the list the sidebar projects.
 - All eleven plugins (OpenCode, Antigravity, Codex, Copilot, Cursor, Claude
   Code, Hermes, Pi, OMP, DeepSeek, Grok) share this one bridge path, so the
   rule stays backend-neutral.

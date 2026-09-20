@@ -94,6 +94,8 @@ void main() {
     final opened = _session(id: "opened", projectId: "one");
     expect(activity(sessions: [opened, deferred], stickySessionId: null), isEmpty);
     expect(activity(sessions: [opened, deferred], stickySessionId: "opened"), ["opened"]);
+    // Marking the open session unread sets it aside at once.
+    expect(activity(sessions: [opened, deferred], stickySessionId: "deferred"), isEmpty);
   });
 
   test("Activity sessions stay in their project's rows", () {

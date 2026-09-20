@@ -62,8 +62,9 @@ The main pane hosts one full-width routed page.
   records its `time.updated`, and it stays out of Activity, bold under its project, until the agent moves that
   stamp or it runs again. Marking read records nothing. The record is per desktop and holds the newest 200.
 - The Activity session the user opens stays listed and selected after opening marks it seen, until the selection
-  changes. The keyed header remains structurally stable at zero height when Activity is empty, and keyed Prego
-  reconciliation honors reduced motion as rows enter, leave or reorder.
+  changes or the user sets it aside by marking it unread. The keyed header remains structurally stable at zero
+  height when Activity is empty, and keyed Prego reconciliation honors reduced motion as rows enter, leave or
+  reorder.
 - Expanded projects show the first three active visible sessions in the shared
   list's order, plus the open session when present outside that head. The
   “All sessions · N” link counts the full active visible inventory, including sessions currently prioritized in
