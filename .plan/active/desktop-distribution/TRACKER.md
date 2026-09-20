@@ -176,9 +176,21 @@ session/report success evidence, so the run is rejected. The `8.e/14` follow-up 
 only closed startup classifications from at most 1 MiB of phase-scoped private app
 output, plus whether any helper generation or fresh bridge-log activity appeared. The
 auth gate emits privacy-safe outcomes through the captured production log sink instead
-of relying on `dart:developer`. Raw authenticated app/bridge output remains private and
-is removed during cleanup. Failed-stop, interactive user-account/TCC, minimum-OS and public
-artifact retrieval remain open; the download page itself is live.
+of relying on `dart:developer`. It merged as source
+`db9b0cd8bdf0e4b220d3f0fa069ec831e35f2a89`, tree
+`20a3a04d3a3b5399f880cb46f79eb222e6e24f4f`. Merged-main run `35465783382` passed
+tooling job `105957734614` but is rejected with conclusion `cancelled`. X64 job
+`105957752803` stayed in the exercise step until its job deadline and produced no bounded
+artifact. Arm64 job `105957752806` reached `previous: authenticated helper did not become
+ready`; artifact `10591911157`
+(`sha256:e4ee1899b990a5699e4127c86b83f9434a3e39ed90a808d3b6e308f734f03666`)
+records zero helper processes, no helper/log activity and no startup marker while the
+redirected output file is present. The `8.f/14` follow-up also scans the authoritative
+private persisted `logs/app.log`, writes an atomic closed phase record, and gives the
+exercise step a shorter deadline so always-upload can retain timeout evidence. Each
+private source remains capped at 1 MiB; raw authenticated app/bridge output remains
+private and is removed during cleanup. Failed-stop, interactive user-account/TCC,
+minimum-OS and public artifact retrieval remain open; the download page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
 private-package documentation portion can proceed independently, so its dependency

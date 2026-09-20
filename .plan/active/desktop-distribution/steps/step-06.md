@@ -220,11 +220,22 @@ rejected. The `8.e/14` correction classifies a closed startup marker set from at
 1 MiB of phase-scoped private app output and records whether any helper generation or
 fresh bridge-log activity appeared. The auth gate emits privacy-safe local-session
 outcomes through the captured production log sink rather than relying on
-`dart:developer`. Raw authenticated app/bridge output remains excluded and cleanup
-removes it. Only a both-CPU retry
-dispatched from merged `main` can become evidence. Failed-stop, interactive
-browser/user-account/TCC, minimum-OS, public retrieval and
-parent Gate C remain open.
+`dart:developer`. It merged as source
+`db9b0cd8bdf0e4b220d3f0fa069ec831e35f2a89`, tree
+`20a3a04d3a3b5399f880cb46f79eb222e6e24f4f`. Merged-main run `35465783382` passed
+tooling job `105957734614` but is rejected with conclusion `cancelled`. X64 job
+`105957752803` remained in the exercise step through its job deadline and uploaded no
+artifact. Arm64 job `105957752806` reached the prior-app helper deadline. Its artifact
+`10591911157`
+(`sha256:e4ee1899b990a5699e4127c86b83f9434a3e39ed90a808d3b6e308f734f03666`)
+records no helper generation, fresh bridge-log activity or startup marker even though the
+redirected output file exists. The `8.f/14` correction also scans at most 1 MiB of the
+authoritative private persisted `logs/app.log`, writes an atomic closed phase record
+before blocking boundaries, and bounds the exercise step below the job deadline so
+always-upload can retain timeout evidence. Raw authenticated app/bridge output remains
+excluded and cleanup removes it. Only a both-CPU retry dispatched from merged `main` can
+become evidence. Failed-stop, interactive browser/user-account/TCC, minimum-OS, public
+retrieval and parent Gate C remain open.
 
 Dispatches and expanded logs were run from
 `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:

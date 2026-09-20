@@ -512,7 +512,21 @@ phase-scoped private app output for a closed marker set, emit auth-gate outcomes
 the captured production log sink rather than `dart:developer`, and retain whether any
 exact helper generation or fresh bridge-log bytes appeared. Raw authenticated logs remain
 outside artifacts and are removed during cleanup. Retry both CPUs from merged `main`;
-the failed run is not qualification evidence.
+the failed run is not qualification evidence. This follow-up merged as
+`db9b0cd8bdf0e4b220d3f0fa069ec831e35f2a89`.
+
+**Step 6 persisted-log and timeout-evidence follow-up PR:**
+`🌿 [desktop-distribution] Preserve macOS startup evidence [step 8.f/14]`.
+Merged-main run `35465783382` exposed two concrete evidence gaps. The x64 exercise
+remained in progress until the job timeout and therefore never reached its always-upload
+step. Arm64 reached the prior-app helper deadline, but redirected app output contained no
+classified marker even though the production log sink's authoritative file is
+`logs/app.log`. Scan at most 1 MiB from both private sources, upload only booleans, write
+an atomically replaced closed phase record before each potentially blocking boundary,
+and bound the exercise step below the job deadline so the always-upload step retains the
+latest phase after a step timeout. Raw app/bridge output remains private and cleanup still
+removes it. Retry both CPUs from merged `main`; the cancelled run is not qualification
+evidence.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.

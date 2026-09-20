@@ -6,6 +6,7 @@ import base64
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from enum import StrEnum
 from functools import partial
 import json
 import os
@@ -45,6 +46,7 @@ AUTH_PASSWORD_ENVIRONMENT_KEY = "SESORI_DESKTOP_QA_PASSWORD"
 KEYCHAIN_SERVICE = "com.sesori.desktop"
 KEYCHAIN_ACCOUNTS = ("access_token", "refresh_token", "auth_user")
 KEYCHAIN_WRITER_SOURCE = Path(__file__).with_name("write_desktop_macos_keychain.swift")
+PERSISTED_APP_LOG = SUPPORT_ROOT / "logs/app.log"
 BRIDGE_LOG = SUPPORT_ROOT / "logs/bridge.log"
 HELPER_WAIT_SECONDS = 60.0
 HELPER_POLL_INTERVAL_SECONDS = 0.1
@@ -76,6 +78,47 @@ PRIVATE_APP_LOG_DIAGNOSTIC_MARKERS = (
 )
 
 
+class QualificationCandidate(StrEnum):
+    PREVIOUS = "previous"
+    CURRENT = "current"
+
+
+class QualificationPhase(StrEnum):
+    PREPARING = "preparing"
+    INSTALLING = "installing"
+    SEEDING_KEYCHAIN = "seedingKeychain"
+    PROCESS_ADMISSION = "processAdmission"
+    HELPER_READINESS = "helperReadiness"
+    VISIBLE_WINDOW = "visibleWindow"
+    TRAY_QUIT = "trayQuit"
+    POST_QUIT = "postQuit"
+    CLEANUP = "cleanup"
+    COMPLETE = "complete"
+
+
+def write_qualification_phase(
+    *,
+    output: Path,
+    phase: QualificationPhase,
+    candidate: QualificationCandidate | None,
+) -> None:
+    path = output / "qualification-phase.json"
+    temporary = output / "qualification-phase.json.tmp"
+    temporary.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "candidate": candidate.value if candidate is not None else None,
+                "phase": phase.value,
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    temporary.replace(path)
+
+
 @dataclass(frozen=True)
 class QaCredentials:
     email: str
@@ -98,18 +141,18 @@ class KeychainSession:
 
 
 @dataclass(frozen=True)
-class BridgeLogCursor:
+class LogCursor:
     device: int
     inode: int
     offset: int
 
 
-def capture_bridge_log_cursor(*, path: Path) -> BridgeLogCursor | None:
+def capture_log_cursor(*, path: Path) -> LogCursor | None:
     try:
         status = path.stat()
     except FileNotFoundError:
         return None
-    return BridgeLogCursor(device=status.st_dev, inode=status.st_ino, offset=status.st_size)
+    return LogCursor(device=status.st_dev, inode=status.st_ino, offset=status.st_size)
 
 
 def load_qa_credentials() -> QaCredentials:
@@ -388,7 +431,7 @@ def _write_authenticated_helper_observation(
     )
 
 
-def _bridge_log_has_fresh_activity(*, path: Path, baseline: BridgeLogCursor | None) -> bool:
+def _bridge_log_has_fresh_activity(*, path: Path, baseline: LogCursor | None) -> bool:
     try:
         status = path.stat()
     except FileNotFoundError:
@@ -401,24 +444,54 @@ def _bridge_log_has_fresh_activity(*, path: Path, baseline: BridgeLogCursor | No
     )
 
 
-def write_private_app_startup_diagnostics(*, label: str, private_app_log: Path, output: Path) -> None:
-    app_log_present = False
-    app_log_truncated = False
-    app_output = ""
+def _read_bounded_private_log(
+    *,
+    path: Path,
+    baseline: LogCursor | None,
+) -> tuple[bool, bool, str]:
     try:
-        with private_app_log.open("rb") as stream:
-            app_log_present = True
+        with path.open("rb") as stream:
+            status = os.fstat(stream.fileno())
+            if (
+                baseline is not None
+                and (status.st_dev, status.st_ino) == (baseline.device, baseline.inode)
+                and status.st_size >= baseline.offset
+            ):
+                stream.seek(baseline.offset)
             data = stream.read(PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES + 1)
     except FileNotFoundError:
-        pass
-    else:
-        app_log_truncated = len(data) > PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES
-        app_output = data[:PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES].decode("utf-8", errors="replace")
+        return False, False, ""
+    return (
+        True,
+        len(data) > PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES,
+        data[:PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES].decode("utf-8", errors="replace"),
+    )
+
+
+def write_private_app_startup_diagnostics(
+    *,
+    label: str,
+    redirected_app_output: Path,
+    persisted_app_log: Path,
+    persisted_app_log_cursor: LogCursor | None,
+    output: Path,
+) -> None:
+    redirected_present, redirected_truncated, redirected_output = _read_bounded_private_log(
+        path=redirected_app_output,
+        baseline=None,
+    )
+    persisted_present, persisted_truncated, persisted_output = _read_bounded_private_log(
+        path=persisted_app_log,
+        baseline=persisted_app_log_cursor,
+    )
+    private_output = f"{redirected_output}\n{persisted_output}"
     diagnostics = {
-        "appLogPresent": app_log_present,
-        "appLogTruncated": app_log_truncated,
+        "redirectedAppOutputPresent": redirected_present,
+        "redirectedAppOutputTruncated": redirected_truncated,
+        "persistedAppLogPresent": persisted_present,
+        "persistedAppLogTruncated": persisted_truncated,
         **{
-            diagnostic: any(marker in app_output for marker in markers)
+            diagnostic: any(marker in private_output for marker in markers)
             for diagnostic, markers in PRIVATE_APP_LOG_DIAGNOSTIC_MARKERS
         },
     }
@@ -444,7 +517,7 @@ def wait_for_authenticated_helper(
     launcher: subprocess.Popen[str],
     output: Path,
     bridge_log: Path = BRIDGE_LOG,
-    bridge_log_cursor: BridgeLogCursor | None = None,
+    bridge_log_cursor: LogCursor | None = None,
 ) -> int:
     deadline = time.monotonic() + HELPER_WAIT_SECONDS
     active_helper_pid: int | None = None
@@ -473,7 +546,7 @@ def wait_for_authenticated_helper(
             raise RuntimeError(f"{label}: expected at most one installed helper process")
         if helper_pid != active_helper_pid:
             if observed_helper_generation:
-                generation_log_cursor = capture_bridge_log_cursor(path=bridge_log)
+                generation_log_cursor = capture_log_cursor(path=bridge_log)
                 generation_log_offset = generation_log_cursor.offset if generation_log_cursor is not None else 0
             active_helper_pid = helper_pid
             if helper_pid is not None:
@@ -487,7 +560,7 @@ def wait_for_authenticated_helper(
             if stream is not None:
                 with stream:
                     status = os.fstat(stream.fileno())
-                    active_cursor = BridgeLogCursor(device=status.st_dev, inode=status.st_ino, offset=status.st_size)
+                    active_cursor = LogCursor(device=status.st_dev, inode=status.st_ino, offset=status.st_size)
                     if (
                         generation_log_cursor is None
                         or (active_cursor.device, active_cursor.inode)
@@ -546,7 +619,7 @@ def write_missing_authenticated_helper_observation(
     label: str,
     output: Path,
     bridge_log: Path,
-    bridge_log_cursor: BridgeLogCursor | None,
+    bridge_log_cursor: LogCursor | None,
 ) -> None:
     if (output / f"{label}-authenticated-helper.json").exists():
         return
@@ -569,10 +642,12 @@ def write_missing_authenticated_helper_observation(
 def capture_authenticated_launch_diagnostics(
     *,
     label: str,
-    private_app_log: Path,
+    redirected_app_output: Path,
+    persisted_app_log: Path,
+    persisted_app_log_cursor: LogCursor | None,
     output: Path,
     bridge_log: Path,
-    bridge_log_cursor: BridgeLogCursor | None,
+    bridge_log_cursor: LogCursor | None,
 ) -> None:
     failures: list[BaseException] = []
     try:
@@ -587,7 +662,9 @@ def capture_authenticated_launch_diagnostics(
     try:
         write_private_app_startup_diagnostics(
             label=label,
-            private_app_log=private_app_log,
+            redirected_app_output=redirected_app_output,
+            persisted_app_log=persisted_app_log,
+            persisted_app_log_cursor=persisted_app_log_cursor,
             output=output,
         )
     except BaseException as error:
@@ -695,7 +772,14 @@ def launch_authenticated_and_quit(
     launcher_log = output / f"{label}-launcher.log"
     # Authenticated app output stays in the exact probe-owned support root and is never uploaded.
     private_app_log = SUPPORT_ROOT / "desktop-instance" / f"{label}-authenticated-app.log"
-    bridge_log_cursor = capture_bridge_log_cursor(path=BRIDGE_LOG)
+    persisted_app_log_cursor = capture_log_cursor(path=PERSISTED_APP_LOG)
+    bridge_log_cursor = capture_log_cursor(path=BRIDGE_LOG)
+    candidate = QualificationCandidate(label)
+    write_qualification_phase(
+        output=output,
+        phase=QualificationPhase.PROCESS_ADMISSION,
+        candidate=candidate,
+    )
     launch_started_at = time.monotonic()
     with launcher_log.open("w", encoding="utf-8") as stream:
         launcher = subprocess.Popen(
@@ -715,6 +799,11 @@ def launch_authenticated_and_quit(
     completed = False
     try:
         app_pid = wait_for_installed_app_pid(label=label, launcher=launcher)
+        write_qualification_phase(
+            output=output,
+            phase=QualificationPhase.HELPER_READINESS,
+            candidate=candidate,
+        )
         authenticated_helper_pid = wait_for_authenticated_helper(
             label=label,
             launcher=launcher,
@@ -729,6 +818,11 @@ def launch_authenticated_and_quit(
                 pass
             else:
                 raise RuntimeError(f"{label}: installed desktop exited during startup: {launcher.returncode}")
+        write_qualification_phase(
+            output=output,
+            phase=QualificationPhase.VISIBLE_WINDOW,
+            candidate=candidate,
+        )
         wait_for_visible_window(
             label=label,
             inspector=inspector,
@@ -741,6 +835,11 @@ def launch_authenticated_and_quit(
             helper_process_count == 1 and current_helper_pid == authenticated_helper_pid,
             f"{label}: authenticated helper exited or was replaced before tray Quit",
         )
+        write_qualification_phase(
+            output=output,
+            phase=QualificationPhase.TRAY_QUIT,
+            candidate=candidate,
+        )
         quit_result = subprocess.run([str(quitter), str(app_pid)], text=True, capture_output=True, check=False)
         (output / f"{label}-quit.log").write_text(quit_result.stdout + quit_result.stderr, encoding="utf-8")
         if quit_result.returncode == 2:
@@ -751,6 +850,11 @@ def launch_authenticated_and_quit(
         launcher.wait(timeout=30)
         if launcher.returncode != 0:
             raise RuntimeError(f"{label}: tray Quit returned launcher exit {launcher.returncode}")
+        write_qualification_phase(
+            output=output,
+            phase=QualificationPhase.POST_QUIT,
+            candidate=candidate,
+        )
         time.sleep(5)
         remaining = owned_processes()
         require(not remaining, f"{label}: application/helper remained or relaunched after Quit:\n{remaining}")
@@ -759,7 +863,9 @@ def launch_authenticated_and_quit(
         try:
             capture_authenticated_launch_diagnostics(
                 label=label,
-                private_app_log=private_app_log,
+                redirected_app_output=private_app_log,
+                persisted_app_log=PERSISTED_APP_LOG,
+                persisted_app_log_cursor=persisted_app_log_cursor,
                 output=output,
                 bridge_log=BRIDGE_LOG,
                 bridge_log_cursor=bridge_log_cursor,
@@ -793,9 +899,14 @@ def qualify(
     output: Path,
 ) -> None:
     credentials = load_qa_credentials()
+    output.mkdir(parents=True)
+    write_qualification_phase(
+        output=output,
+        phase=QualificationPhase.PREPARING,
+        candidate=None,
+    )
     require_fresh_native_runner()
     require_auth_keychain_absent()
-    output.mkdir(parents=True)
     log = output / "commands.log"
     previous = load_candidate(
         label="previous",
@@ -836,7 +947,17 @@ def qualify(
     created_keychain_accounts: list[str] = []
     cleanup = partial(cleanup_qualification, created_keychain_accounts=created_keychain_accounts)
     with qualification_cleanup(cleanup=cleanup):
+        write_qualification_phase(
+            output=output,
+            phase=QualificationPhase.INSTALLING,
+            candidate=QualificationCandidate.PREVIOUS,
+        )
         install_candidate(candidate=previous, mount=output / "previous-volume", log=log)
+        write_qualification_phase(
+            output=output,
+            phase=QualificationPhase.SEEDING_KEYCHAIN,
+            candidate=QualificationCandidate.PREVIOUS,
+        )
         session = request_qa_session(credentials=credentials)
         write_auth_keychain(
             writer=keychain_writer,
@@ -874,10 +995,20 @@ def qualify(
         )
         require_auth_keychain_session(expected=session, label="previous", output=output)
 
+        write_qualification_phase(
+            output=output,
+            phase=QualificationPhase.SEEDING_KEYCHAIN,
+            candidate=QualificationCandidate.CURRENT,
+        )
         replacement_session = request_qa_session(credentials=credentials)
         update_auth_keychain(writer=keychain_writer, session=replacement_session)
         require_auth_keychain_session(expected=replacement_session, label="replacement-seed", output=output)
         shutil.rmtree(APPLICATION)
+        write_qualification_phase(
+            output=output,
+            phase=QualificationPhase.INSTALLING,
+            candidate=QualificationCandidate.CURRENT,
+        )
         install_candidate(candidate=current, mount=output / "current-volume", log=log)
         require(sentinel.read_text(encoding="utf-8") == sentinel_value, "Replacement changed upgrade sentinel")
         require(desired_state.read_text(encoding="utf-8").strip() == "on", "Replacement changed On intent")
@@ -959,8 +1090,18 @@ def qualify(
             ),
         }
         (output / "authenticated-upgrade.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-        print(f"PASS private authenticated macOS/{architecture} {previous.version}+{previous.build_number} "
-              f"→ {current.version}+{current.build_number} manual replacement")
+        write_qualification_phase(
+            output=output,
+            phase=QualificationPhase.CLEANUP,
+            candidate=None,
+        )
+    write_qualification_phase(
+        output=output,
+        phase=QualificationPhase.COMPLETE,
+        candidate=None,
+    )
+    print(f"PASS private authenticated macOS/{architecture} {previous.version}+{previous.build_number} "
+          f"→ {current.version}+{current.build_number} manual replacement")
 
 
 def main() -> None:
