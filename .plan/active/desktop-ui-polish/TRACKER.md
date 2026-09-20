@@ -24,7 +24,7 @@ for that approval or for the user's explicit decision to drop or defer it.
 | [ ] | 11 | `desktop-ui-polish/session-toolbar` | [11/17](#pr-titles) | ≤ 700 | pending |
 | [ ] | 12 | `desktop-ui-polish/archive-undo` | [12/17](#pr-titles) | ≤ 900 | pending |
 | [ ] | 13 | `desktop-ui-polish/new-session-page` | [13/17](#pr-titles) | ≤ 500 | pending |
-| [ ] | 14 | `desktop-ui-polish/agent-entry` | [14/17](#pr-titles) | ≤ 1,000 | pending |
+| [ ] | 14 | `desktop-ui-polish/agent-entry` | [14/17](#pr-titles) | ≤ 600 | pending |
 | [ ] | 15 | `desktop-ui-polish/composer-and-sub-agents` | [15/17](#pr-titles) | set at approval | pending (gated) |
 | [ ] | 16 | `desktop-ui-polish/regression-docs` | [16/17](#pr-titles) | ≤ 400 | pending |
 | [ ] | 17 | `desktop-ui-polish/coverage-retire` | [17/17](#pr-titles) | ≤ 300 | pending |

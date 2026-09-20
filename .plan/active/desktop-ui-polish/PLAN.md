@@ -223,7 +223,8 @@ All agreed with the user on 2026-09-19 unless marked otherwise.
 - **D15 Agents.** The agent entry appears only when more than one agent exists
   — one rule for every harness, OpenCode included. Harness modes are no longer
   presented as agents: Sesori stops offering Plan/Ask for Claude Code, Codex,
-  Cursor, OMP and Copilot (user-confirmed consequence). The phone follows,
+  Cursor, OMP and Copilot (user-confirmed consequence). A released mode value
+  that still arrives is honoured, never silently downgraded. The phone follows,
   because the widget and the bridge are shared.
 - **D16 Composer.** Selectors stay in the strip above the input in every mode
   and state. On desktop `+` and `/` are always visible and the box grows
@@ -467,7 +468,13 @@ the composer block out as one centred, width-capped column instead of
 anchoring the composer to the bottom. The desktop passes a
 `DesktopPageToolbar` titled "New session" and the "What should we work on?"
 heading plus a project selector; choosing another project replaces the route
-with that project's new-session route. New-session drafts are already stored
+with that project's new-session route. The router's replace reuses the page
+identity (`GoRouter.replace`), and `DesktopNewSessionScreen` creates its
+`NewSessionCubit` once in `BlocProvider(create:)`, so the route builder keys
+the screen by project id — the precedent is `DesktopSessionListCubitProvider`'s
+`ValueKey` on the sessions route — and a switch builds a fresh cubit for the
+chosen project instead of creating the session in the previous one.
+New-session drafts are already stored
 per project (`ComposerDraftRepository.saveForNewSession`), so text typed
 before switching stays with the project it was typed in rather than being
 lost, and nothing carries it across. The harness chooser sits left-aligned
@@ -479,17 +486,26 @@ the gated step.
 
 - Client: `AgentModelButtons` shows the agent entry only when more than one
   selectable agent exists.
-- Plugins (Claude, Codex, Cursor, OMP, Copilot): stop mapping modes to
-  `PluginAgent`; each emits the single placeholder agent the other harnesses
-  already emit, and **ignores** the prompt's `agent` value instead of resolving
-  or rejecting it, so a stale "Plan" from an older app or a stored selection
-  runs in the harness's default mode rather than failing — exactly what the
-  placeholder harnesses already do. Deleted with their tests:
-  `ClaudeAgentSelection` and the agent reset it emits on plan exit
-  (`BridgeSseSessionPromptDefaultsChanged` in `replyToQuestion`; the exit-plan
-  question handling and the applied permission-mode bookkeeping stay),
-  `CodexCollaborationMode.fromAgent` with its aliases, Cursor's
-  `resolveModeId(agent)`, OMP's `_resolveMode`, Copilot's mode resolution.
+- Plugins (Claude, Codex, Cursor, OMP, Copilot): stop **advertising** the
+  non-default modes. Each lists only its default entry — "Agent" for Claude and
+  Codex, and for Cursor, OMP and Copilot the default mode their CLI reports,
+  which they already sort first. The inbound path does not change: a released
+  mode value that still arrives is honoured, and an unknown value keeps each
+  plugin's current behaviour.
+- Why the value is honoured rather than ignored: "Plan" remains a real inbound
+  value after the change. The bridge serves its cached session-options
+  catalogs for up to 30 days (`session_options_service.dart`: stale after a
+  day, retained for 30), clients send the agent by name, and an older app can
+  have the selection in flight. Running such a turn in the default mode would
+  let it edit files although the user chose a non-editing mode.
+- Every client sends the single advertised agent by name and the plugins
+  already resolve that name to the default mode, so a session left in plan
+  mode returns to the default mode with its next prompt in all five harnesses.
+- The retained inbound branches for non-default modes (and the agent reset
+  Claude emits on plan exit, which an honoured "Plan" still needs) carry a dated
+  `COMPATIBILITY` marker whose retiring condition is that no catalog captured
+  before this change can still be served. Their deletion is a later phase, not
+  part of this series.
 - OpenCode is untouched; its chip follows the same "more than one" rule.
 - `docs/HARNESS_CAPABILITIES.md` gains a short "Agent selection and harness
   modes" section; `session-creation-and-options.md` is updated.
@@ -527,9 +543,11 @@ Step 15 is different from every other step.
   the row and shows an error toast, and the cubit logs the original error with
   the session id. Signing out inside the window closes the cubit and sends
   nothing.
-- **Stale agent value.** The five plugins run the turn in the harness default
-  mode, as the placeholder harnesses already do with any agent value. This is
-  the contract, not a recovered failure, so it adds no log line.
+- **Mode value that is no longer advertised.** A released non-default mode
+  that still arrives (cached catalog, older app) runs in that mode, exactly as
+  today. Unknown values keep each plugin's current behaviour, which step 14
+  does not touch: Claude and Copilot reject the request, OMP fails the turn,
+  Codex and Cursor fall back to the default mode.
 - **Title bar.** macOS only. If live verification shows a regression in
   dragging, zoom or full screen, the step does not ship; nothing else depends
   on it except the panel's top inset, which is zero under native chrome.
@@ -541,18 +559,25 @@ Step 15 is different from every other step.
 - No wire shape, relay or database change.
 - **Newer app, older bridge:** the bridge still lists Agent/Plan(/Ask); that is
   more than one agent, so the entry shows and the old bridge honours it.
-- **Older app, newer bridge:** the five harnesses list one placeholder agent,
-  as Pi does today, and the older app draws its one-entry dropdown. A stored or
-  in-flight "Plan" value is ignored, not rejected.
-- **Persisted selections** that name a removed mode (`lastAgent`, new-session
-  defaults) get no migration: the client already falls back to the first
-  selectable agent and the plugins ignore the value.
+- **Older app, newer bridge:** the five harnesses list one agent, as Pi does
+  today, and the older app draws its one-entry dropdown. A "Plan" value that
+  still arrives — from a catalog the bridge cached before the change, or an
+  older app's in-flight selection — is honoured, never ignored or rejected.
+- **Persisted selections** that name a mode no longer advertised (`lastAgent`,
+  new-session defaults) get no migration: once the advertised list no longer
+  contains the stored name, the client already falls back to the first
+  selectable agent.
 - **Layout file.** `DesktopSidebarLayout` is a desktop-local file, not a
   transport contract, and no public production desktop release exists at the
   plan date; the new fields default honestly (empty map, sections expanded)
   with no compatibility marker.
-- **Strings.** `sessionListNewTask` is deleted; the phone's button reads "New
-  session" (D5).
+- **Strings.** Every string that calls a session a task changes in step 2
+  (D5): `sessionListNewTask` is deleted and the phone's button reads "New
+  session"; `sessionListEmptyTitle` ("Start your first task"),
+  `archivedSessionsTitle` ("Archived tasks") and
+  `projectsOnboardingWhyNotifiedSubtitle` ("Know when a task needs you.") say
+  "session". The sub-agents bar's task strings are genuine sub-agent wording
+  and stay with step 15.
 
 ## Non-Goals
 
@@ -613,7 +638,9 @@ Removed by the series:
 - the `VerticalDivider` resize presentation (step 6);
 - `sessionListNewTask`, and the desktop's use of the floating button and of
   `SessionListScaffold`, which stays as the phone's scaffold (steps 2, 9);
-- mode-as-agent mapping and its tests in five plugins (step 14);
+- the non-default mode entries in five plugins' advertised agent lists
+  (step 14); their inbound mapping stays until its compatibility marker
+  retires (Later Phases);
 - the sub-agents bar's "tasks" strings (step 15).
 
 Declined, because it would widen the series: splitting the 1,100-line
@@ -631,7 +658,7 @@ regression lines it invalidates in the same PR; step 16 reconciles the whole.
 | Step | Delivery | Target | Scope |
 |---|---|---|---|
 | 1 | 1/17 | ≤ 1,100 | This plan, tracker and the roadmap cross-reference. |
-| 2 | 2/17 | ≤ 350 | "New session" is the sidebar's primary button with "New project" as a small `+` beside it (step 4 moves it onto the Projects header); `Cmd/Ctrl+N` works anywhere (D4); `sessionListNewTask` deleted (D5). |
+| 2 | 2/17 | ≤ 350 | "New session" is the sidebar's primary button with "New project" as a small `+` beside it (step 4 moves it onto the Projects header); `Cmd/Ctrl+N` works anywhere (D4); every session-facing "task" string says "session" and `sessionListNewTask` is deleted (D5). |
 | 3 | 3/17 | ≤ 600 | Activity in motion: `time.updated` verification, deferral marker, sticky selection, no relocation (D1, D2). |
 | 4 | 4/17 | ≤ 700 | Labelled collapsible sections, leading status column, trailing time, Show more (D3, D6). |
 | 5 | 5/17 | ≤ 400 | Rail: one Activity button with a popout, one chip per project (D9). |
@@ -643,7 +670,7 @@ regression lines it invalidates in the same PR; step 16 reconciles the whole.
 | 11 | 11/17 | ≤ 700 | Session toolbar, centred column, Mark unread and its shortcut (D11). |
 | 12 | 12/17 | ≤ 900 | Archive with Undo, refusal alert, compact delete alert (D13). |
 | 13 | 13/17 | ≤ 500 | New session page (D14). |
-| 14 | 14/17 | ≤ 1,000 | Agent entry rule; harness modes no longer agents in five plugins; `HARNESS_CAPABILITIES.md` (D15). Mostly deletions; may split by plugin family. |
+| 14 | 14/17 | ≤ 600 | Agent entry rule; five plugins advertise only their default agent and keep honouring released mode values; `HARNESS_CAPABILITIES.md` (D15). |
 | 15 | 15/17 | set at approval | **Gated.** Composer selector look and the sub-agents bar (D16–D18). No PR before explicit approval of real screenshots. |
 | 16 | 16/17 | ≤ 400 | Reconcile `docs/regression/`. |
 | 17 | 17/17 | ≤ 300 | Execute the final matrix on the merged series, record it, retire to `.plan/completed/`. |
@@ -697,12 +724,15 @@ step's own PR.
   event; 409 → refused, other failure → failed and the row returns; close
   sends nothing. The alert duration equals the timer. The first dispatcher
   test covers both `SessionCleanupFlow` variants; phone sheets unchanged.
-- **13:** header-slot layout; project switch replaces the route; phone tests
-  pass untouched.
-- **14:** per-plugin catalog tests (one placeholder agent); a prompt carrying a
-  stale agent runs in default mode, with OMP and Copilot no longer throwing;
-  `AgentModelButtons` with zero, one and two agents; one live Claude Code turn
-  from a stored "Plan" selection.
+- **13:** header-slot layout; after a project switch the route, the mounted
+  `NewSessionCubit`'s project and the created session's project are all the
+  chosen one; phone tests pass untouched.
+- **14:** per-plugin catalog tests (only the default entry is advertised); a
+  prompt carrying a released non-default mode still runs in that mode; a prompt
+  carrying the advertised entry returns a plan-mode session to the default
+  mode; `AgentModelButtons` with zero, one and two agents; one live Claude Code
+  turn in which a session left in plan mode runs its next prompt in the default
+  mode.
 - **15:** the approval gate first; then tests for the approved design.
 - **16:** documentation validation only.
 - **17:** executes the final matrix below on the merged series and records
@@ -741,7 +771,7 @@ boundary: one real Claude Code turn from a stored "Plan" selection.
 | Platform | Level | Boundary | Scope |
 |---|---|---|---|
 | macOS desktop | L3 | Client end to end, live bridge, representative plugin | Sidebar and Activity, rail, panel, title bar and theme, menus, project page, session page, archive/Undo/delete, new session page, agent entry |
-| Bridge plugins (5 touched) | L2 + one live turn | Automated for all five; Live plugin for Claude Code | One placeholder agent; stale agent ignored |
+| Bridge plugins (5 touched) | L2 + one live turn | Automated for all five; Live plugin for Claude Code | One advertised agent; released mode values still honoured |
 | iOS, Android | L2 + one smoke | Automated + release-target device | Wording, agent entry rule; list, menus and sheets unchanged |
 | Windows, Linux | smoke | Client end to end | Build, native chrome intact, floating panel, compact menus |
 
@@ -765,9 +795,10 @@ touched plugins are proven by automated tests rather than a live turn each.
   session event on archive, so the phone (or a second desktop) drops the row
   on its next refresh. Pre-existing, and not widened into here; this desktop
   stays correct through the archiving ids.
-- **OMP and Copilot keep their mode in the live harness process.** A session
-  already in plan mode may stay there until that process restarts. Recorded in
-  `HARNESS_CAPABILITIES.md`.
+- **Plan/Ask fade out rather than vanish at once.** The bridge serves cached
+  session-options catalogs for up to 30 days, so the entries disappear as each
+  catalog refreshes. Accepted: a mode chosen from a cached list is still
+  honoured, and nothing is invalidated to hurry it.
 - **Plan/Ask are no longer offered from Sesori** (user-confirmed).
 - **Shared-widget edits can regress the phone.** Every one sits behind a
   closed input whose phone value is today's behaviour, and phone tests must
@@ -815,13 +846,19 @@ drag-region operations through `WindowHost`, so `FlutterWindowHost` stays the
 only `window_manager` import; made the session page's Mark unread an explicit
 `read: false` operation instead of the state-dependent toggle; and gave the
 toolbar's session actions a defined source by exposing the hydrated `Session`
-on `SessionDetailLoaded`. cubic's seven line-length findings were declined: the
+on `SessionDetailLoaded`. A third round (2026-09-20) replaced step 14's
+"emit a placeholder agent and ignore the value" with "advertise only the
+default entry and keep honouring released mode values", after an audit of the
+five plugins and of the bridge's 30-day session-options cache showed that
+"Plan" can still arrive and must not silently run an edit-capable mode; keyed
+the new-session screen by project so a project switch builds a fresh cubit;
+and listed every session-facing "task" string for step 2. cubic's seven line-length findings were declined: the
 repository has no Markdown line-length convention.
 
 The architecture review found the rest compliant: plugin-boundary hygiene (the agent entry
 is a pure count rule, never a backend check), the closed-input mechanism for
-D20, the placeholder-agent pattern, naming, and no abstraction without a
-current consumer.
+D20, the placeholder-agent pattern (since replaced by the third PR review
+round above), naming, and no abstraction without a current consumer.
 
 ## Relation To Other Plans
 
@@ -847,6 +884,9 @@ current consumer.
   devices.
 - Custom title bars on Windows and Linux.
 - A real per-harness mode control, if Plan/Ask are missed.
+- Deleting the five plugins' inbound mapping for modes that are no longer
+  advertised, with Claude's plan-exit agent reset, once no catalog captured
+  before step 14 can still be served.
 
 ## Expected Result
 
