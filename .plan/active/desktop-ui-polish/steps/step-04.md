@@ -88,6 +88,37 @@ flutter analyze --no-pub
   sub-agent on this change's diff, before it was rebased unchanged onto the
   merged step 3, and approved it with no violations and no notes.
 
+### Review follow-up
+
+Measured at commit `aa6f4bb608d648f85b7e38d9ac6ff62b7e05e65d` with a clean
+working tree and the same toolchain. Both commands exited 0; no log files were
+kept. This section was added afterwards as documentation only.
+
+```sh
+cd client/desktop
+flutter test --no-pub
+flutter analyze --no-pub
+```
+
+- The first review wave found that a row's new time never reached a screen
+  reader, because the row's label replaces its children's semantics. The label
+  and tooltip of both row kinds now end with the time in full ("3h ago"),
+  while the row keeps the compact "3h".
+- The time's reveal width was a fixed 104 points. It now grows with the system
+  text scale, so larger text drops the time instead of squeezing the title. At
+  the default scale nothing changes: measured against the bundled font, the
+  longest stamp (a full numeric date, 59 points at 12-point text) and the
+  row's fixed parts (40 points) fit in 104.
+- `desktop`: the full suite, 250 cases, passes. The new shell case proves the
+  compact time, the full phrase in the tooltip and the semantics label, and
+  that a 2.5× text scale drops the time while the title and the spoken phrase
+  stay. With the text-scale term removed the case fails (checked once by
+  hand, then restored). `flutter analyze` reports no issues.
+- One regression-document bullet held multi-byte punctuation and measured 114
+  characters but 123 bytes; it now wraps under 120 by either count.
+- The fix adds 82 changed lines (60 additions + 22 deletions) in three files:
+  `git diff --numstat 21e01cdb71 aa6f4bb608d648f85b7e38d9ac6ff62b7e05e65d`.
+
 ## Size
 
 **631 changed lines = 420 additions + 211 deletions** at the measured
