@@ -57,6 +57,69 @@ void main() {
       expect(payload.data?.eventType, equals(NotificationEventType.questionAsked));
     });
 
+    test("rapid permissions and questions all notify their display session", () {
+      final harness = _newHarness(now: () => DateTime(2026, 1, 1));
+      const events = <SesoriSseEvent>[
+        SesoriSseEvent.permissionAsked(
+          requestID: "perm-1",
+          sessionID: "root",
+          displaySessionId: null,
+          tool: "bash",
+          description: "Run ls",
+        ),
+        SesoriSseEvent.permissionReplied(
+          requestID: "perm-1",
+          sessionID: "root",
+          displaySessionId: null,
+          reply: "once",
+        ),
+        SesoriSseEvent.questionAsked(
+          id: "q-1",
+          sessionID: "root",
+          displaySessionId: null,
+          questions: [QuestionInfo(header: "Target", question: "Which target?")],
+        ),
+        SesoriSseEvent.questionReplied(
+          requestID: "q-1",
+          sessionID: "root",
+          displaySessionId: null,
+        ),
+        SesoriSseEvent.questionAsked(
+          id: "q-2",
+          sessionID: "child",
+          displaySessionId: "root",
+          questions: [QuestionInfo(header: "Mode", question: "Which mode?")],
+        ),
+        SesoriSseEvent.permissionAsked(
+          requestID: "perm-2",
+          sessionID: "child",
+          displaySessionId: "root",
+          tool: "bash",
+          description: "Run tests",
+        ),
+      ];
+
+      events.forEach(harness.completionListener.handleSseEvent);
+
+      expect(
+        harness.client.sentPayloads.map((payload) => payload.data?.eventType),
+        [
+          NotificationEventType.permissionAsked,
+          NotificationEventType.questionAsked,
+          NotificationEventType.questionAsked,
+          NotificationEventType.permissionAsked,
+        ],
+      );
+      expect(
+        harness.client.sentPayloads.map((payload) => payload.data?.sessionId),
+        everyElement("root"),
+      );
+      expect(
+        harness.client.sentPayloads.map((payload) => payload.collapseKey),
+        everyElement(sessionNotificationId(sessionId: "root").toString()),
+      );
+    });
+
     test("permission notification resolves the project from the owner session when the root project is unknown", () {
       final harness = _newHarness();
 
