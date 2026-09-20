@@ -51,9 +51,13 @@ flutter analyze --no-pub
 - Appearance was checked once in rendered output with the packaged fonts and
   real shadows, in light and dark, expanded and as the rail; the images were
   not kept in the repository.
-- Architecture review: not run. The step adds no class, file, dependency,
-  contract or lifecycle; it changes presentation inside the existing shell
-  widget, which the repository's review rules exclude.
+- Architecture review: not run. The step adds no class, file, dependency, DI
+  registration, lifecycle, or wire or persisted contract. Its only signature
+  changes are inside the desktop shell's own widgets: the constant
+  `DesktopSidebar.panelMargin` and the required `railStart` parameter on
+  `DesktopSidebarActivityPopout`, whose single caller is the sidebar. That is
+  presentation within one package, which the repository's review rules
+  exclude.
 
 ## Size
 
