@@ -11,8 +11,8 @@ for that approval or for the user's explicit decision to drop or defer it.
 
 | Done | Step | Branch | Title | Target | State |
 |---|---|---|---|---|---|
-| [ ] | 1 | `ux-review-ui-polish-plan` | [1/17](#pr-titles) | ≤ 1,100 | in-progress |
-| [ ] | 2 | `desktop-ui-polish/new-session-primary` | [2/17](#pr-titles) | ≤ 350 | pending |
+| [x] | 1 | `ux-review-ui-polish-plan` | [1/17](#pr-titles) | ≤ 1,100 | done |
+| [x] | 2 | `desktop-ui-polish/new-session-primary` | [2/17](#pr-titles) | ≤ 350 | done |
 | [ ] | 3 | `desktop-ui-polish/activity-in-motion` | [3/17](#pr-titles) | ≤ 600 | pending |
 | [ ] | 4 | `desktop-ui-polish/sidebar-sections` | [4/17](#pr-titles) | ≤ 700 | pending |
 | [ ] | 5 | `desktop-ui-polish/rail` | [5/17](#pr-titles) | ≤ 400 | pending |

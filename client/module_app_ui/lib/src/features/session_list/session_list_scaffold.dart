@@ -74,7 +74,7 @@ class const SessionListScaffold({
       floatingActionButton: onNewSession == null
           ? null
           : PregoButtonsSolid(
-              label: loc.sessionListNewTask,
+              label: loc.sessionListNewSession,
               leadingIcon: TablerRegular.plus,
               hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
               size: PregoButtonsSolidSize.xl,

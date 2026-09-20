@@ -466,7 +466,7 @@ started one. Restore harness eligibility afterwards.
   toggles an already-On desired state to Off instead of retrying start, or
   starts the helper without establishing the desktop relay connection. A
   desktop session row cannot open its typed detail route, child-session
-  navigation loses project/session/read-only identity, the New task or root
+  navigation loses project/session/read-only identity, the New session or root
   file-changes action cannot reach its typed route, or desktop renders dead
   voice/attachment controls instead of honoring declared capabilities.
 - A title-only session row reserves an empty subtitle line, or a populated

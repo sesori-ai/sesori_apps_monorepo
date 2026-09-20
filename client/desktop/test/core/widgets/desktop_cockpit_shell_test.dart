@@ -7,8 +7,10 @@ import "package:flutter/semantics.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:get_it/get_it.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
@@ -303,7 +305,7 @@ void main() {
         when(refreshService.refresh).thenAnswer((_) => reply.future);
         await tester.pumpWidget(app(state: running));
         await tester.pumpAndSettle();
-        expect(find.byTooltip("New project"), findsNothing);
+        expect(find.byTooltip(RegExp(r"^New session \(")), findsNothing);
         expect(find.byTooltip("This computer, Bridge status"), findsOneWidget);
         final refresh = find.byKey(const Key("desktop-sidebar-refresh"));
         final icon = find.descendant(of: refresh, matching: find.byType(Icon));
@@ -939,14 +941,105 @@ void main() {
     }
   });
 
-  testWidgets("new project is labeled and the pinned footer has its own surface", (tester) async {
+  testWidgets("new session is the labeled primary action beside a small new project button", (tester) async {
     await tester.pumpWidget(app(state: running));
     expect(find.text("Sesori"), findsNothing);
     expect(find.text("Projects"), findsNothing);
-    expect(find.text("New project"), findsOneWidget);
-    expect(tester.widget<FilledButton>(find.byKey(const Key("desktop-sidebar-new-project"))).onPressed, isNotNull);
+    expect(find.text("New session"), findsOneWidget);
+    expect(find.text("New project"), findsNothing);
+    expect(find.text(defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N"), findsOneWidget);
+    expect(tester.widget<FilledButton>(find.byKey(const Key("desktop-sidebar-new-session"))).onPressed, isNotNull);
+    final newProject = tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-new-project")));
+    expect(newProject.tooltip, "New project");
+    expect(newProject.onPressed, isNotNull);
     final footer = tester.widget<Container>(find.byKey(const Key("desktop-sidebar-footer")));
     expect((footer.decoration! as BoxDecoration).border, isNotNull);
+  });
+
+  group("new session", () {
+    const recentProject = ProjectSummary(id: "project-recent", name: "Most recent", path: "/work/recent", time: null);
+    const openProject = ProjectSummary(id: "project-open", name: null, path: "/work/open-one", time: null);
+    late List<(String, String)> started;
+
+    Widget shell({required String? selectedProjectId, required List<ProjectSummary> available}) {
+      whenListen(
+        projects,
+        const Stream<ProjectListState>.empty(),
+        initialState: ProjectListState.loaded(projects: available, activityById: const {}),
+      );
+      return app(
+        state: running,
+        child: DesktopCockpitShell(
+          selectedProjectId: selectedProjectId,
+          selectedSessionId: null,
+          onOpenSession: _openSession,
+          onNewSession: ({required context, required project, required displayName}) =>
+              started.add((project.id, displayName)),
+          sessionActions: _sessionActions,
+          onOpenProject: _openProject,
+          onOpenBridgeSettings: _noOp,
+          onOpenProjects: _noOp,
+          onOpenSettings: _noOp,
+          child: const TextField(autofocus: true),
+        ),
+      );
+    }
+
+    Future<void> pressNew({required WidgetTester tester, required LogicalKeyboardKey modifier}) async {
+      await tester.sendKeyDownEvent(modifier);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyN);
+      await tester.sendKeyRepeatEvent(LogicalKeyboardKey.keyN);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.keyN);
+      await tester.sendKeyUpEvent(modifier);
+      await tester.pump();
+    }
+
+    setUp(() => started = []);
+
+    testWidgets("shortcut and button start in the open project and ignore repeats", (tester) async {
+      await tester.pumpWidget(shell(selectedProjectId: "project-open", available: const [recentProject, openProject]));
+      await tester.pumpAndSettle();
+      final macOS = defaultTargetPlatform == TargetPlatform.macOS;
+      await pressNew(tester: tester, modifier: macOS ? LogicalKeyboardKey.controlLeft : LogicalKeyboardKey.metaLeft);
+      expect(started, isEmpty);
+      await pressNew(tester: tester, modifier: macOS ? LogicalKeyboardKey.metaLeft : LogicalKeyboardKey.controlLeft);
+      expect(started, [("project-open", "open-one")]);
+      await tester.tap(find.byKey(const Key("desktop-sidebar-new-session")));
+      expect(started, [("project-open", "open-one"), ("project-open", "open-one")]);
+    }, variant: TargetPlatformVariant.desktop());
+
+    testWidgets("without an open project the most recently active one is used", (tester) async {
+      await tester.pumpWidget(shell(selectedProjectId: null, available: const [recentProject, openProject]));
+      await tester.pumpAndSettle();
+      await pressNew(
+        tester: tester,
+        modifier: defaultTargetPlatform == TargetPlatform.macOS
+            ? LogicalKeyboardKey.metaLeft
+            : LogicalKeyboardKey.controlLeft,
+      );
+      expect(started, [("project-recent", "Most recent")]);
+    }, variant: TargetPlatformVariant.desktop());
+
+    testWidgets("without any project it offers to add one", (tester) async {
+      final connection = _MockConnectionService();
+      const status = ConnectionStatus.connected(
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
+      );
+      when(() => connection.status).thenAnswer((_) => BehaviorSubject<ConnectionStatus>.seeded(status));
+      when(() => connection.currentStatus).thenReturn(status);
+      when(() => projects.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer(
+        (_) async => const FilesystemSuggestionsSuccess(suggestions: FilesystemSuggestions(data: [], path: "/home")),
+      );
+      GetIt.instance.registerSingleton<ConnectionService>(connection);
+      addTearDown(GetIt.instance.reset);
+      await tester.pumpWidget(shell(selectedProjectId: null, available: const []));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key("desktop-sidebar-new-session")));
+      await tester.pumpAndSettle();
+      expect(started, isEmpty);
+      expect(find.byType(AddProjectDialog), findsOneWidget);
+    });
   });
 
   testWidgets("running and unread project signals update in expanded and compact modes", (tester) async {
@@ -1225,6 +1318,8 @@ void _noOp() {}
 void _openProject({required BuildContext context, required ProjectSummary project, required String displayName}) {}
 
 class _MockRefreshService() extends Mock implements DesktopSidebarRefreshService;
+
+class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;

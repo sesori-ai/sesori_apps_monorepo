@@ -203,10 +203,10 @@ void main() {
 
     final lastTile = find.ancestor(of: find.text("Task 11"), matching: find.byType(SessionTile));
     final loc = AppLocalizations.of(tester.element(find.byType(SessionListScaffold)))!;
-    final newTaskButton = find.widgetWithText(PregoButtonsSolid, loc.sessionListNewTask);
+    final newSessionButton = find.widgetWithText(PregoButtonsSolid, loc.sessionListNewSession);
     expect(lastTile, findsOneWidget);
-    expect(newTaskButton, findsOneWidget);
-    expect(tester.getSize(newTaskButton).height, greaterThan(80));
-    expect(tester.getBottomLeft(lastTile).dy, lessThan(tester.getTopLeft(newTaskButton).dy));
+    expect(newSessionButton, findsOneWidget);
+    expect(tester.getSize(newSessionButton).height, greaterThan(80));
+    expect(tester.getBottomLeft(lastTile).dy, lessThan(tester.getTopLeft(newSessionButton).dy));
   });
 }

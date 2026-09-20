@@ -19,7 +19,7 @@
   "desktopHomePickSession": "Pick a session from the sidebar to get started.",
   "@desktopHomePickSession": {"description": "Desktop home guidance when projects are available but no session is open."},
   "desktopSidebarNewProject": "New project",
-  "@desktopSidebarNewProject": {"description": "Label for the prominent desktop sidebar action that opens the add-project dialog."},
+  "@desktopSidebarNewProject": {"description": "Tooltip and label for the small desktop sidebar action that opens the add-project dialog."},
   "desktopSidebarAllSessions": "All sessions · {count}",
   "@desktopSidebarAllSessions": {
     "description": "Sidebar link to a project's full session list, with its active visible session count.",
@@ -564,7 +564,7 @@
     }
   },
   "sessionListLoadingSemantics": "Loading sessions",
-  "sessionListEmptyTitle": "Start your first task",
+  "sessionListEmptyTitle": "Start your first session",
   "@sessionListEmptyTitle": {
     "description": "Headline on the sessions list when a project has no active sessions yet, inviting the user to begin."
   },
@@ -578,9 +578,8 @@
   "sessionListErrorTitle": "Failed to load sessions",
   "sessionListRetry": "Retry",
   "sessionListNewSession": "New session",
-  "sessionListNewTask": "New task",
-  "@sessionListNewTask": {
-    "description": "Label of the primary button on the sessions list that starts a new task (session)."
+  "@sessionListNewSession": {
+    "description": "Label of the primary action that starts a new session: the sessions list button and the desktop sidebar button."
   },
   "sessionDetailTitle": "Session",
   "sessionDetailLoadingSemantics": "Loading session",
@@ -1248,7 +1247,7 @@
   "@projectsOnboardingWhyNotifiedTitle": {
     "description": "Title of the 'get notified' reassurance row in the 'Why is this needed?' sheet."
   },
-  "projectsOnboardingWhyNotifiedSubtitle": "Know when a task needs you.",
+  "projectsOnboardingWhyNotifiedSubtitle": "Know when a session needs you.",
   "@projectsOnboardingWhyNotifiedSubtitle": {
     "description": "Subtitle of the 'get notified' reassurance row."
   },
@@ -1568,18 +1567,18 @@
   "harnessesForceRestartAction": "Force restart",
   "harnessesStatusIdle": "Idle",
   "harnessesStatusRunning": "Running",
-  "archivedSessionsTitle": "Archived tasks",
+  "archivedSessionsTitle": "Archived sessions",
   "archivedSessionsClose": "Close archived sessions",
   "archivedSessionsToday": "Today",
-  "@archivedSessionsToday": {"description": "Date heading shared by regular and archived task lists."},
+  "@archivedSessionsToday": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsYesterday": "Yesterday",
-  "@archivedSessionsYesterday": {"description": "Date heading shared by regular and archived task lists."},
+  "@archivedSessionsYesterday": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsThisWeek": "This week",
-  "@archivedSessionsThisWeek": {"description": "Date heading shared by regular and archived task lists."},
+  "@archivedSessionsThisWeek": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsLastWeek": "Last week",
-  "@archivedSessionsLastWeek": {"description": "Date heading shared by regular and archived task lists."},
+  "@archivedSessionsLastWeek": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsThisMonth": "This month",
-  "@archivedSessionsThisMonth": {"description": "Date heading shared by regular and archived task lists."},
+  "@archivedSessionsThisMonth": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsLastMonth": "One month ago",
-  "@archivedSessionsLastMonth": {"description": "Date heading shared by regular and archived task lists."}
+  "@archivedSessionsLastMonth": {"description": "Date heading shared by regular and archived session lists."}
 }

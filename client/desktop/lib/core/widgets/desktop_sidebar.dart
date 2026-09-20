@@ -34,6 +34,7 @@ class const DesktopSidebar({
   required final String? selectedSessionId,
   required final SidebarSessionOpenedCallback onOpenSession,
   required final ProjectOpenedCallback onNewSession,
+  required final VoidCallback onStartNewSession,
   required final SessionListActionDispatcher sessionActions,
   required final VoidCallback onToggleCollapsed,
   required final VoidCallback onOpenProjects,
@@ -48,6 +49,7 @@ class const DesktopSidebar({
     final collapsedProjects = context.select((DesktopSidebarCubit cubit) => cubit.state.collapsedProjectIds);
     final loc = context.loc;
     final toggleLabel = expansion < 0.5 ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse;
+    final newSessionShortcut = defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N";
     final prego = context.prego;
     final bridge = context.watch<BridgeControlCubit>().state;
     final bridgeColor = bridge.canTakeOver
@@ -103,39 +105,85 @@ class const DesktopSidebar({
             ),
             Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 16),
-              child: _ConditionalTooltip(
-                enabled: expansion < 1,
-                message: loc.desktopSidebarNewProject,
-                child: FilledButton(
-                  key: const Key("desktop-sidebar-new-project"),
-                  onPressed: state is ProjectListLoaded ? onAddProject : null,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: prego.colors.bgBrandSolid,
-                    foregroundColor: prego.colors.textWhite,
-                    minimumSize: const Size(0, 40),
-                    padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.lg)),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _ConditionalTooltip(
+                      enabled: expansion < 1,
+                      message: loc.desktopShortcutHint(loc.sessionListNewSession, newSessionShortcut),
+                      child: FilledButton(
+                        key: const Key("desktop-sidebar-new-session"),
+                        onPressed: state is ProjectListLoaded ? onStartNewSession : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: prego.colors.bgBrandSolid,
+                          foregroundColor: prego.colors.textWhite,
+                          minimumSize: const Size(0, 40),
+                          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.lg)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(TablerRegular.plus, size: 18),
+                            if (expansion > 0)
+                              Flexible(
+                                child: Opacity(
+                                  opacity: expansion,
+                                  child: Padding(
+                                    padding: EdgeInsetsDirectional.only(start: PregoSpacing.md * expansion),
+                                    child: _TooltipWhenTruncated(
+                                      message: loc.sessionListNewSession,
+                                      style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textWhite),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (expansion == 1)
+                              Padding(
+                                padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
+                                child: ExcludeSemantics(
+                                  child: Text(
+                                    newSessionShortcut,
+                                    style: prego.textTheme.textXs.regular.copyWith(
+                                      color: prego.colors.textWhite.withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(TablerRegular.plus, size: 18),
-                      if (expansion > 0)
-                        Flexible(
-                          child: Opacity(
-                            opacity: expansion,
-                            child: Padding(
-                              padding: EdgeInsetsDirectional.only(start: PregoSpacing.md * expansion),
-                              child: _TooltipWhenTruncated(
-                                message: loc.desktopSidebarNewProject,
-                                style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textWhite),
+                  if (expansion > 0)
+                    ClipRect(
+                      child: Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        widthFactor: expansion,
+                        child: Opacity(
+                          opacity: expansion,
+                          child: Padding(
+                            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.sm),
+                            child: SizedBox.square(
+                              dimension: 40,
+                              child: IconButton(
+                                key: const Key("desktop-sidebar-new-project"),
+                                tooltip: loc.desktopSidebarNewProject,
+                                onPressed: state is ProjectListLoaded ? onAddProject : null,
+                                icon: Icon(
+                                  TablerRegular.folder_plus,
+                                  size: 18,
+                                  color: state is ProjectListLoaded
+                                      ? prego.colors.textSecondary
+                                      : prego.colors.textDisabled,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                ],
               ),
             ),
             if (expansion < 1)
@@ -361,7 +409,7 @@ class const _SidebarInventory({
             items: projection.activityGroups,
             itemKey: (group) => ValueKey(group.project.id),
             itemBuilder: (context, _, group) {
-              final projectName = _projectName(context: context, project: group.project);
+              final projectName = desktopProjectDisplayName(context: context, project: group.project);
               return _SidebarActivityProjectGroup(
                 key: ValueKey("sidebar-activity-${group.project.id}"),
                 group: group,
@@ -381,7 +429,7 @@ class const _SidebarInventory({
             items: projects,
             itemKey: (project) => ValueKey(project.id),
             itemBuilder: (context, _, project) {
-              final projectName = _projectName(context: context, project: project);
+              final projectName = desktopProjectDisplayName(context: context, project: project);
               final entry = entries[project.id];
               return _SidebarProjectGroup(
                 key: ValueKey(project.id),
@@ -1096,7 +1144,8 @@ List<String> _sessionStatusLabels({
   if (isUnseen) context.loc.projectListNewActivity,
 ];
 
-String _projectName({required BuildContext context, required ProjectSummary project}) {
+/// The sidebar's name for [project]: its stored name, else its directory.
+String desktopProjectDisplayName({required BuildContext context, required ProjectSummary project}) {
   final basename = projectDirectoryBasename(project);
   return project.name ?? (basename.isEmpty ? context.loc.projectListDefaultName : basename);
 }

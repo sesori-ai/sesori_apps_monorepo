@@ -82,6 +82,29 @@ class const DesktopCockpitShell({
         ),
       ],
     );
+    void addProject() => unawaited(
+      showAddProjectDialog(
+        context: context,
+        cubit: context.read<ProjectListCubit>(),
+        connectionService: getIt<ConnectionService>(),
+      ),
+    );
+    // The open project, else the most recently active one (the inventory's
+    // order); with no project yet, adding one is the only useful next step.
+    void startNewSession() {
+      final projects = context.read<ProjectListCubit>().state;
+      if (projects is! ProjectListLoaded) return;
+      final project =
+          projects.projects.where((project) => project.id == selectedProjectId).firstOrNull ??
+          projects.projects.firstOrNull;
+      if (project == null) return addProject();
+      onNewSession(
+        context: context,
+        project: project,
+        displayName: desktopProjectDisplayName(context: context, project: project),
+      );
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final autoCollapsed = constraints.maxWidth < autoCollapseBreakpoint;
@@ -103,16 +126,11 @@ class const DesktopCockpitShell({
                     selectedSessionId: selectedSessionId,
                     onOpenSession: onOpenSession,
                     onNewSession: onNewSession,
+                    onStartNewSession: startNewSession,
                     sessionActions: sessionActions,
                     onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
                     onOpenProjects: onOpenProjects,
-                    onAddProject: () => unawaited(
-                      showAddProjectDialog(
-                        context: context,
-                        cubit: context.read<ProjectListCubit>(),
-                        connectionService: getIt<ConnectionService>(),
-                      ),
-                    ),
+                    onAddProject: addProject,
                     onOpenProject: onOpenProject,
                     onOpenBridgeSettings: onOpenBridgeSettings,
                     onOpenSettings: onOpenSettings,
@@ -139,6 +157,12 @@ class const DesktopCockpitShell({
             ): () {
               if (!autoCollapsed) unawaited(sidebar.toggleCollapsed());
             },
+            SingleActivator(
+              LogicalKeyboardKey.keyN,
+              meta: defaultTargetPlatform == TargetPlatform.macOS,
+              control: defaultTargetPlatform != TargetPlatform.macOS,
+              includeRepeats: false,
+            ): startNewSession,
           },
           child: Focus(autofocus: true, child: scaffold),
         );
