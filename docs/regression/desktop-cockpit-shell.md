@@ -74,12 +74,12 @@ The main pane hosts one full-width routed page.
   persist in the desktop layout file, and a file without them reads as unfolded. The collapsed rail has no
   headers, so folding never hides anything there.
 - Every rail button means one thing. While anything is in motion the rail leads with one Activity button:
-  the sparkle, turning while a session runs, with a count, and a tooltip naming the count and only what
-  its rows' flags say (running, awaiting input, new activity); a seen, idle row kept only because it is
-  selected adds nothing. It opens the same Activity rows in a popout beside the rail, never over the
-  project chips. The popout follows live state while open, keeps the rows' menus, and closes when a row
-  opens its session or when its last row leaves. Below it the rail shows one chip per project with its
-  sparkle badge; no session stands in as its project's initials.
+  the sparkle, turning while a session runs, with a count pill that grows with the system text size, and a
+  tooltip naming the count and only what its rows' flags say (running, awaiting input, new activity); a
+  seen, idle row kept only because it is selected adds nothing. It opens the same Activity rows in a
+  popout beside the rail, never over the project chips. The popout follows live state while open, keeps
+  the rows' menus, and closes when a row opens its session or when its last row leaves. Below it the rail
+  shows one chip per project with its sparkle badge; no session stands in as its project's initials.
 - Every session row leads with a fixed status column (awaiting-input and sparkle signals) aligned under the project
   avatar and ends with a compact last-activity time; its tooltip and screen-reader label say that time in full.
   Activity rows add the project name under the title. A running session shows no time, and a row drops the time
@@ -222,9 +222,10 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   same-page/Back preservation, different-session replacement, readiness and logged-failure ordering.
 - Popover scope/contextual actions, locks/live updates, explicit Stop intent, expanded/compact anchoring,
   outside/Escape dismissal, preserved main pane.
-- Rail Activity button count and tooltip (including a sticky-only count that claims nothing new), one chip
-  per project, popout placement beside the rail, rows that stay live with the cockpit's cubits mounted
-  below the root navigator, and dismissal when a row opens its session or the last row leaves.
+- Rail Activity button count and tooltip (including a sticky-only count that claims nothing new, and its
+  pill under larger text), one chip per project, popout placement beside the rail, rows that stay live
+  with the cockpit's cubits mounted below the root navigator, and dismissal when a row opens its session
+  or the last row leaves.
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks.
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,

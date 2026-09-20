@@ -878,8 +878,10 @@ void main() {
     await tester.tap(button);
     await tester.pumpAndSettle();
     expect(find.descendant(of: popout, matching: find.text("priority")), findsOneWidget);
+    // The app's own page route has a barrier too; the popout's route adds the second.
+    expect(find.byType(ModalBarrier), findsNWidgets(2));
 
-    // The last row leaves: no empty bubble stays behind its modal barrier.
+    // The last row leaves: no empty bubble stays behind, and its route goes with it.
     updates.add(entries(unseen: false));
     await tester.pumpAndSettle();
     expect(popout, findsNothing);
@@ -893,6 +895,15 @@ void main() {
     updates.add(entries(unseen: false));
     await tester.pumpAndSettle();
     expect(find.byTooltip("Activity · 1"), findsOneWidget);
+
+    // Larger system text grows the count pill instead of clipping its 12-point number.
+    final count = find.descendant(of: button, matching: find.text("1"));
+    expect(tester.getSize(count).height, 12);
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(count).height, 24);
+    expect(tester.takeException(), isNull);
     await updates.close();
   });
 

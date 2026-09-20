@@ -1081,11 +1081,11 @@ class const _SidebarSessionRow({
 class const _CountPill({required final int count}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-    height: 16,
-    constraints: const BoxConstraints(minWidth: 16),
+    // Minimums: larger system text grows the pill instead of clipping the count.
+    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
     padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
     alignment: Alignment.center,
-    decoration: BoxDecoration(color: context.prego.colors.bgBrandSolid, borderRadius: BorderRadius.circular(8)),
+    decoration: ShapeDecoration(color: context.prego.colors.bgBrandSolid, shape: const StadiumBorder()),
     child: Text(
       "$count",
       style: context.prego.textTheme.textXs.bold.copyWith(color: context.prego.colors.textWhite, height: 1),
