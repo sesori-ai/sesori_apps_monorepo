@@ -91,12 +91,49 @@ flutter analyze --no-pub
 ```
 
 - `desktop`: the full suite, 252 cases, passes. The new shell case opens the
-  popout over one unseen session, marks it seen, and requires the popout, the
-  button and the popover's modal barrier to be gone; then, with that session
-  selected and seen, it requires the tooltip to be exactly "Activity · 1". With
+  popout over one unseen session, marks it seen, and requires the popout and
+  the button to be gone and exactly one `ModalBarrier` to remain — the app's
+  own page route always has one, and the open popout's route was the second
+  (the case asserts two while it is open); then, with that session selected
+  and seen, it requires the tooltip to be exactly "Activity · 1". With
   the `close` call removed the case fails on the popout still being found
   (checked once by hand, then restored). The first rail case now expects
   "Activity · 2, Running, New activity" for one running and one unseen row.
+- `flutter analyze` reports no issues. No generated file changed.
+
+### Review follow-up 2
+
+The second review wave had one accessibility gap and one unclear sentence
+above; commit `487e4c0d9bbd13ca80201f47a4ab6f39607817c0` closes both (3 files,
+25 additions and 13 deletions, no generated lines).
+
+- **The count pill grows with larger text.** `_CountPill` had a fixed 16-point
+  height, so from about 134 % system text size the 12-point count was clamped
+  and clipped. The height and width are now minimums and the shape a stadium,
+  so the pill is unchanged at the default size and grows with the text.
+- **Which barrier leaves.** The shell case now also asserts two
+  `ModalBarrier`s while the popout is open, so the single one that remains
+  after the last row leaves is visibly the app's page route's own.
+
+Two findings of that wave were declined on the PR with reasons: closing the
+popout when the window is resized past the auto-collapse breakpoint while it
+is open, and when authentication ends while it is open. Both are rare timing
+windows with a one-click recovery that every popover and menu in the app
+shares; the owner of a sign-out dismissal would be the auth gate, for all root
+popups at once, not this popout.
+
+Re-measured at that commit with a clean tree; both commands exited 0:
+
+```sh
+cd client/desktop
+flutter test --no-pub
+flutter analyze --no-pub
+```
+
+- `desktop`: the full suite, 252 cases, passes. The shell case now requires
+  the count's text to be 12 points high at the default size and 24 at a text
+  scale of 2; with the fixed 16-point height restored it fails with 16
+  (checked once by hand, then restored).
 - `flutter analyze` reports no issues. No generated file changed.
 
 ## Size
