@@ -25,12 +25,11 @@ The main pane hosts one full-width routed page.
   changing saved preferences. Widening restores the user's expanded/collapsed
   choice. The native minimum window remains 560 × 480.
 - Project shortcuts open the existing sessions route. The labeled New session button is the sidebar's primary
-  action. The small New project button beside it uses the shared folder dialog and project-list cubit, and hides
-  with the collapsed sidebar, where the home pane still offers it. The collapse control owns sidebar
-  presentation. The compact Projects shortcut opens home, including empty/recovery states when the window is too
-  narrow to expand.
-  The separated footer groups This computer with refresh and Settings icon controls. Icon/status hints and
-  truncated-label hints remain useful, while fully visible labels need no duplicate tooltip.
+  action. The small New project button on the Projects section header uses the shared folder dialog and project-list
+  cubit, and hides with the collapsed sidebar, where the home pane still offers it. The collapse control owns
+  sidebar presentation. The compact Projects shortcut opens home, including empty/recovery states when the window is
+  too narrow to expand. The separated footer groups This computer with refresh and Settings icon controls.
+  Icon/status hints and truncated-label hints remain useful, while fully visible labels need no duplicate tooltip.
 - Explicit sidebar refresh runs through Layer-3 `DesktopSidebarRefreshService` over the same scoped project and recent
   inventory services. It awaits the project phase before refreshing admitted recent entries, joining initial reads
   already in flight. An ordinary project failure still allows retained recent entries to update; either phase failing
@@ -54,10 +53,11 @@ The main pane hosts one full-width routed page.
 - A selected project follows route identity, not the displayed name. Each
   signed-in cockpit owns one project-list cubit, including the home pane;
   leaving the signed-in shell releases it.
-- Activity appears before projects and lists only what is in motion: non-archived sessions that are running, or
-  live-unseen and not set aside. It spans every current project, including collapsed/offscreen projects, preserves
-  project/session source order and identifies each session's project. Sessions never leave their project: an
-  Activity session also keeps its place in the project's ordinary three rows plus selected-session pin.
+- Activity appears before projects, under an “Activity · N” header that counts its sessions, and lists only what is
+  in motion: non-archived sessions that are running, or live-unseen and not set aside. It spans every current
+  project, including collapsed/offscreen projects, preserves project/session source order and identifies each
+  session's project. Sessions never leave their project: an Activity session also keeps its place in the project's
+  ordinary rows.
 - Marking a session unread on this desktop (sidebar or sessions-page menu) sets it aside: the desktop layout file
   records its `time.updated`, and it stays out of Activity, bold under its project, until the agent moves that
   stamp or it runs again. Marking read records nothing. The record is per desktop and holds the newest 200.
@@ -65,11 +65,17 @@ The main pane hosts one full-width routed page.
   changes or the user sets it aside by marking it unread. The keyed header remains structurally stable at zero
   height when Activity is empty, and keyed Prego reconciliation honors reduced motion as rows enter, leave or
   reorder.
-- Expanded projects show the first three active visible sessions in the shared
-  list's order, plus the open session when present outside that head. The
-  “All sessions · N” link counts the full active visible inventory, including sessions currently prioritized in
-  Activity, and opens the existing sessions page. Compact/project collapse hides ordinary rows without clearing
-  cached data or hiding that project's Activity rows; per-project collapse preferences survive layout restore.
+- Expanded projects show the first three active visible sessions in the shared list's order, plus the open session
+  when present outside that head. While the project has more, Show more reveals ten more in place; folding the
+  project starts over at three. The project name is the one door to the sessions page. Compact/project collapse
+  hides ordinary rows without clearing cached data or hiding that project's Activity rows; per-project collapse
+  preferences survive layout restore.
+- “Activity · N” and “Projects” are labelled section headers. Clicking one folds its rows; both choices persist in
+  the desktop layout file, and a file without them reads as unfolded. The collapsed rail has no headers, so it
+  ignores folding and keeps showing both lists.
+- Every session row leads with a fixed status column (awaiting-input and sparkle signals) aligned under the project
+  avatar and ends with a compact last-activity time. Activity rows add the project name under the title. A running
+  session shows no time, and a narrowing row drops the time before its title.
 - Cmd+N (Ctrl+N on Windows/Linux) and the sidebar's New session button open New Session for the open project, else the
   most recently active one; with no project yet they open the New project dialog. They do nothing until the project
   inventory has loaded, and never substitute another project for an open one that is missing from the inventory.
@@ -212,15 +218,15 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   sidebar recovery/actions/locks.
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
   new-session replacement, diff/direct-entry Back, home states, package-font resolution.
-- Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
-  project-collapse persistence, shared menu/route callbacks. All-project admission happens once per entering ID,
-  including collapsed/offscreen projects; Activity keeps project context, selection/navigation/actions, leaves
-  project rows in place, honors set-aside and just-opened sessions, and reconciles keyed entry/exit under reduced
-  motion. Empty/loading/failed
-  entries preserve the stable header and project-local retry. Keep loaded rows through catalog/reconnect refreshes and
-  failures, including live unread false, lifecycle patches, failed-reread rearming and superseded-read completion.
-  Execute those inventory cases without a mounted Cubit. Verify adapter replay/retry, independent consumer close,
-  one eager factory instance per signed-in scope, and disposal before a fresh scope admits data.
+- Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal, project-
+  collapse and section-fold persistence, Show more paging and its reset, shared menu/route callbacks. All-project
+  admission happens once per entering ID, including collapsed/offscreen projects; Activity keeps project context,
+  selection/navigation/actions, leaves project rows in place, honors set-aside and just-opened sessions, and
+  reconciles keyed entry/exit under reduced motion. Empty/loading/failed entries preserve the stable header and
+  project-local retry. Keep loaded rows through catalog/reconnect refreshes and failures, including live unread
+  false, lifecycle patches, failed-reread rearming and superseded-read completion. Execute those inventory cases
+  without a mounted Cubit. Verify adapter replay/retry, independent consumer close, one eager factory instance per
+  signed-in scope, and disposal before a fresh scope admits data.
 - Headless explicit refresh ordering, shared-instance factory parameters, admission joining, completed failed winners,
   later owning reads, partial failure, removal/disposal and useful diagnostic causes. Presentation covers keyboard
   activation, accessible busy/idle names, disabled states, useful-row retention and success/failure notices.
@@ -252,7 +258,7 @@ width jumping on reversal beyond a bound, scrollbars intercepting project toggle
 automatic collapse overwriting user preferences, missing/stale activity marks,
 duplicate project inventories, a session leaving its project's rows for Activity, a deliberately unread session
 returning to Activity without new agent output, an opened Activity session vanishing under the pointer, repeated
-admission on rebuild/expansion, lost project
+admission on rebuild/expansion, a folded section hiding its rows in the collapsed rail, lost project
 context, a shifting empty Activity header, a second session-list pane, sidebar browsing clearing unread state,
 stale/missing recent rows, a refresh reporting success from old retained data, an indicator settling before its
 owning reads, duplicate refresh dispatch, unnamed icon controls, covered transcripts marked viewed,

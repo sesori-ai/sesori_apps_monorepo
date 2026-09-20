@@ -12,6 +12,7 @@ import "package:theme_prego/module_prego.dart";
 import "../di/injection.dart";
 import "desktop_bridge_popover.dart";
 import "desktop_bridge_recovery_card.dart";
+import "desktop_sidebar_section_header.dart";
 
 typedef SidebarSessionOpenedCallback = void Function({
   required BuildContext context,
@@ -155,34 +156,6 @@ class const DesktopSidebar({
                       ),
                     ),
                   ),
-                  if (expansion > 0)
-                    ClipRect(
-                      child: Align(
-                        alignment: AlignmentDirectional.centerEnd,
-                        widthFactor: expansion,
-                        child: Opacity(
-                          opacity: expansion,
-                          child: Padding(
-                            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.sm),
-                            child: SizedBox.square(
-                              dimension: 40,
-                              child: IconButton(
-                                key: const Key("desktop-sidebar-new-project"),
-                                tooltip: loc.desktopSidebarNewProject,
-                                onPressed: state is ProjectListLoaded ? onAddProject : null,
-                                icon: Icon(
-                                  TablerRegular.folder_plus,
-                                  size: 18,
-                                  color: state is ProjectListLoaded
-                                      ? prego.colors.textSecondary
-                                      : prego.colors.textDisabled,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -224,6 +197,7 @@ class const DesktopSidebar({
                   onOpenProject: onOpenProject,
                   onOpenSession: onOpenSession,
                   onNewSession: onNewSession,
+                  onAddProject: onAddProject,
                   sessionActions: sessionActions,
                 ),
                 ProjectListFailed() => _SidebarButton(
@@ -363,6 +337,7 @@ class const _SidebarInventory({
   required final String? selectedSessionId,
   required final SidebarSessionOpenedCallback onOpenSession,
   required final ProjectOpenedCallback onNewSession,
+  required final VoidCallback onAddProject,
   required final SessionListActionDispatcher sessionActions,
   required final ProjectOpenedCallback onOpenProject,
 }) extends StatefulWidget {
@@ -395,6 +370,10 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
       deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
       stickySessionId: _stickyActivitySessionId,
     );
+    // The rail has no headers to unfold a section with, so it ignores folding.
+    final railed = widget.expansion < 0.5;
+    final activityFolded = context.select((DesktopSidebarCubit cubit) => cubit.state.activitySectionCollapsed);
+    final projectsFolded = context.select((DesktopSidebarCubit cubit) => cubit.state.projectsSectionCollapsed);
     _activitySessionIds = {
       for (final group in projection.activityGroups)
         for (final item in group.sessions) item.session.id,
@@ -404,7 +383,6 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
       required Session session,
     }) => widget.sessionActions.sessionMenuEntries(context: context, cubit: cubit, session: session);
     final gutter = PregoSpacing.xl * widget.expansion;
-    final activityHeaderExpansion = projection.activityGroups.isEmpty ? 0.0 : widget.expansion;
     return CustomScrollView(
       key: const Key("desktop-sidebar-project-list"),
       slivers: [
@@ -412,22 +390,12 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
           padding: EdgeInsetsDirectional.only(end: gutter),
           sliver: SliverToBoxAdapter(
             key: const Key("desktop-sidebar-activity-header"),
-            child: ClipRect(
-              child: Align(
-                heightFactor: activityHeaderExpansion,
-                child: Opacity(
-                  opacity: activityHeaderExpansion,
-                  child: Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(20, PregoSpacing.sm, 8, PregoSpacing.xs),
-                    child: Text(
-                      context.loc.desktopSidebarActivity,
-                      style: context.prego.textTheme.textXs.bold.copyWith(
-                        color: context.prego.colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            child: DesktopSidebarSectionHeader(
+              label: context.loc.desktopSidebarActivity(_activitySessionIds.length),
+              collapsed: activityFolded,
+              expansion: projection.activityGroups.isEmpty ? 0 : widget.expansion,
+              onToggle: () => unawaited(context.read<DesktopSidebarCubit>().toggleActivitySection()),
+              action: null,
             ),
           ),
         ),
@@ -435,7 +403,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
           padding: EdgeInsetsDirectional.only(end: gutter),
           sliver: PregoAnimatedSliverList<DesktopSidebarActivityGroup>(
             key: const Key("desktop-sidebar-activity-list"),
-            items: projection.activityGroups,
+            items: railed || !activityFolded ? projection.activityGroups : const [],
             itemKey: (group) => ValueKey(group.project.id),
             itemBuilder: (context, _, group) {
               final projectName = desktopProjectDisplayName(context: context, project: group.project);
@@ -453,9 +421,31 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
         ),
         SliverPadding(
           padding: EdgeInsetsDirectional.only(end: gutter),
+          sliver: SliverToBoxAdapter(
+            child: DesktopSidebarSectionHeader(
+              key: const Key("desktop-sidebar-projects-header"),
+              label: context.loc.projectListTitle,
+              collapsed: projectsFolded,
+              expansion: widget.expansion,
+              onToggle: () => unawaited(context.read<DesktopSidebarCubit>().toggleProjectsSection()),
+              action: SizedBox.square(
+                dimension: 28,
+                child: IconButton(
+                  key: const Key("desktop-sidebar-new-project"),
+                  padding: EdgeInsets.zero,
+                  tooltip: context.loc.desktopSidebarNewProject,
+                  onPressed: widget.onAddProject,
+                  icon: Icon(TablerRegular.folder_plus, size: 16, color: context.prego.colors.textSecondary),
+                ),
+              ),
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: EdgeInsetsDirectional.only(end: gutter),
           sliver: PregoAnimatedSliverList<ProjectSummary>(
             key: const Key("desktop-sidebar-project-groups"),
-            items: widget.projects,
+            items: railed || !projectsFolded ? widget.projects : const [],
             itemKey: (project) => ValueKey(project.id),
             itemBuilder: (context, _, project) {
               final projectName = desktopProjectDisplayName(context: context, project: project);
@@ -467,9 +457,6 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                 active: widget.activityById[project.id] ?? 0,
                 unseen: widget.unseenByProjectId[project.id] ?? project.hasUnseenChanges,
                 entry: entry,
-                ordinarySessions: entry is RecentSessionsLoaded
-                    ? entry.rows(selectedSessionId: project.id == widget.selectedProjectId ? widget.selectedSessionId : null)
-                    : const [],
                 expansion: widget.expansion,
                 expanded: !widget.collapsedProjectIds.contains(project.id),
                 selected: project.id == widget.selectedProjectId,
@@ -537,7 +524,6 @@ class const _SidebarProjectGroup({
   required final int active,
   required final bool unseen,
   required final RecentSessionsEntry? entry,
-  required final List<Session> ordinarySessions,
   required final double expansion,
   required final bool expanded,
   required final bool selected,
@@ -552,12 +538,24 @@ class const _SidebarProjectGroup({
 }
 
 class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
+  static const int _initialRows = 3;
   bool _hovered = false;
   bool _focused = false;
+  // Show more grows this in place; folding the project starts over.
+  int _rowLimit = _initialRows;
+
+  @override
+  void didUpdateWidget(_SidebarProjectGroup oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.expanded) _rowLimit = _initialRows;
+  }
 
   @override
   Widget build(BuildContext context) {
     final entry = widget.entry;
+    final rows = entry is RecentSessionsLoaded
+        ? entry.rows(selectedSessionId: widget.selectedSessionId, limit: _rowLimit)
+        : const <Session>[];
     final loc = context.loc;
     final detailStyle = context.prego.textTheme.textXs.regular;
     // Created only if a session menu reads it. Keep this scope above the rows:
@@ -689,7 +687,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 PregoAnimatedList<Session>(
-                                  items: widget.ordinarySessions,
+                                  items: rows,
                                   itemKey: (session) => ValueKey(session.id),
                                   itemBuilder: (context, _, session) => _SidebarSessionRow(
                                     key: ValueKey("sidebar-session-${widget.project.id}-${session.id}"),
@@ -711,28 +709,26 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                                     },
                                   ),
                                 ),
-                                Padding(
-                                  padding: const EdgeInsetsDirectional.only(start: 44, end: 8),
-                                  child: TextButton(
-                                    style: TextButton.styleFrom(
-                                      alignment: AlignmentDirectional.centerStart,
-                                      foregroundColor: context.prego.colors.textSecondary,
-                                      minimumSize: const Size(0, 32),
-                                      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
-                                    ),
-                                    onPressed: () => widget.onOpenProject(
-                                      context: actionContext,
-                                      project: widget.project,
-                                      displayName: widget.name,
-                                    ),
-                                    child: Text(
-                                      loc.desktopSidebarAllSessions(entry.visibleSessions.length),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: detailStyle,
+                                if (rows.length < entry.visibleSessions.length)
+                                  Padding(
+                                    padding: const EdgeInsetsDirectional.only(start: 46, end: 8),
+                                    child: TextButton(
+                                      key: ValueKey("sidebar-show-more-${widget.project.id}"),
+                                      style: TextButton.styleFrom(
+                                        alignment: AlignmentDirectional.centerStart,
+                                        foregroundColor: context.prego.colors.textSecondary,
+                                        minimumSize: const Size(0, 28),
+                                        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
+                                      ),
+                                      onPressed: () => setState(() => _rowLimit += 10),
+                                      child: Text(
+                                        loc.desktopSidebarShowMore,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: detailStyle,
+                                      ),
                                     ),
                                   ),
-                                ),
                               ],
                             ),
                             RecentSessionsFailed() => TextButton.icon(
@@ -742,7 +738,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                               label: Text(loc.sessionListRetry, style: detailStyle),
                             ),
                             RecentSessionsLoading() || null => Padding(
-                              padding: const EdgeInsetsDirectional.fromSTEB(44, 4, 8, 4),
+                              padding: const EdgeInsetsDirectional.fromSTEB(50, 4, 8, 4),
                               child: Text(
                                 loc.sessionListLoadingSemantics,
                                 style: detailStyle,
@@ -784,8 +780,10 @@ class const _SidebarActivitySessionRow({
       isUnseen: item.isUnseen,
     );
     final description = [identity, ...statuses].join(", ");
+    // A running session is happening now; its spinning sparkle says so.
+    final updatedAt = item.isRunning ? null : item.session.time?.updated;
     return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(14 - 2 * expansion, 0, 14 - 6 * expansion, 0),
+      padding: EdgeInsets.symmetric(horizontal: 14 - 6 * expansion),
       child: PregoAnchorMenu(
         flat: true,
         menuWidth: 220,
@@ -808,7 +806,7 @@ class const _SidebarActivitySessionRow({
                 onLongPress: openMenu,
                 borderRadius: BorderRadius.circular(PregoRadius.md),
                 child: Ink(
-                  padding: EdgeInsets.symmetric(horizontal: 8 * expansion, vertical: 6),
+                  padding: EdgeInsets.symmetric(horizontal: PregoSpacing.sm * expansion, vertical: 6),
                   decoration: BoxDecoration(
                     color: selected ? prego.colors.textBrandPrimary.withValues(alpha: 0.14) : null,
                     borderRadius: BorderRadius.circular(PregoRadius.md),
@@ -816,31 +814,38 @@ class const _SidebarActivitySessionRow({
                   child: LayoutBuilder(
                     builder: (context, constraints) => Row(
                       children: [
+                        // The rail has no room for a title, so there the project's
+                        // avatar names the session and the sparkle is its badge.
                         SizedBox(
                           width: 28,
                           height: 28,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            alignment: Alignment.center,
-                            children: [
-                              PregoAvatarInitials(label: projectName, size: 26),
-                              if (expansion < 1 && (item.isRunning || item.isUnseen))
-                                PositionedDirectional(
-                                  end: -4,
-                                  top: -4,
-                                  child: Opacity(
-                                    opacity: 1 - expansion,
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        color: prego.colors.bgSecondary,
-                                        shape: BoxShape.circle,
+                          child: expansion < 0.5
+                              ? Stack(
+                                  clipBehavior: Clip.none,
+                                  alignment: Alignment.center,
+                                  children: [
+                                    PregoAvatarInitials(label: projectName, size: 26),
+                                    if (item.isRunning || item.isUnseen)
+                                      PositionedDirectional(
+                                        end: -4,
+                                        top: -4,
+                                        child: DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            color: prego.colors.bgSecondary,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: PregoAiLoader(size: 12, animate: item.isRunning),
+                                        ),
                                       ),
-                                      child: PregoAiLoader(size: 12, animate: item.isRunning),
-                                    ),
+                                  ],
+                                )
+                              : Center(
+                                  child: _SessionSignals(
+                                    isAwaitingInput: item.isAwaitingInput,
+                                    isRunning: item.isRunning,
+                                    isUnseen: item.isUnseen,
                                   ),
                                 ),
-                            ],
-                          ),
                         ),
                         if (expansion > 0)
                           Expanded(
@@ -870,15 +875,15 @@ class const _SidebarActivitySessionRow({
                               ),
                             ),
                           ),
-                        if (expansion > 0 && constraints.maxWidth >= 104)
-                          ClipRect(
-                            child: Opacity(
-                              opacity: expansion,
-                              child: _SessionSignals(
-                                isAwaitingInput: item.isAwaitingInput,
-                                isRunning: item.isRunning,
-                                isUnseen: item.isUnseen,
-                                size: 14,
+                        if (updatedAt != null && expansion > 0 && constraints.maxWidth >= _timeRevealWidth)
+                          Opacity(
+                            opacity: expansion,
+                            child: Padding(
+                              padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+                              child: Text(
+                                context.formatTimestampCompact(ms: updatedAt),
+                                maxLines: 1,
+                                style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
                               ),
                             ),
                           ),
@@ -894,6 +899,10 @@ class const _SidebarActivitySessionRow({
     );
   }
 }
+
+// Narrower than this, a row keeps its title and drops the time; the collapsing
+// rail passes through it.
+const double _timeRevealWidth = 104;
 
 class const _SidebarSessionRow({
   super.key,
@@ -917,15 +926,10 @@ class const _SidebarSessionRow({
       if (running) context.loc.projectListRunning(1),
       if (unseen) context.loc.projectListNewActivity,
     ].join(", ");
-    const statusIconSize = 14.0;
-    final statusIcons = [
-      if (awaiting) Icon(TablerRegular.message_circle, size: statusIconSize, color: prego.colors.textWarningPrimary),
-      if (running || unseen) PregoAiLoader(size: statusIconSize, animate: running),
-    ];
-    // What the signals need before the rail starts narrowing.
-    final statusWidth = statusIcons.isEmpty ? 0.0 : PregoSpacing.xs + statusIconSize * statusIcons.length;
+    // A running session is happening now; its spinning sparkle says so.
+    final updatedAt = running ? null : session.time?.updated;
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(40, 0, 8, 0),
+      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md),
       child: PregoAnchorMenu(
         flat: true,
         menuWidth: 220,
@@ -947,16 +951,24 @@ class const _SidebarSessionRow({
                 onLongPress: openMenu,
                 borderRadius: BorderRadius.circular(PregoRadius.md),
                 child: Ink(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  padding: EdgeInsets.symmetric(horizontal: PregoSpacing.sm * expansion, vertical: 6),
                   decoration: BoxDecoration(
                     color: selected ? prego.colors.textBrandPrimary.withValues(alpha: 0.14) : null,
                     borderRadius: BorderRadius.circular(PregoRadius.md),
                   ),
                   // A collapsing rail can leave less room than a row needs, so the
-                  // signals are measured against the row's own width.
+                  // time is measured against the row's own width.
                   child: LayoutBuilder(
                     builder: (context, constraints) => Row(
                       children: [
+                        // The status column sits under the project's avatar.
+                        SizedBox(
+                          width: 28,
+                          child: Center(
+                            child: _SessionSignals(isAwaitingInput: awaiting, isRunning: running, isUnseen: unseen),
+                          ),
+                        ),
+                        SizedBox(width: PregoSpacing.md * expansion),
                         Expanded(
                           child: Text(
                             session.title ?? context.loc.sessionListUntitled,
@@ -965,20 +977,13 @@ class const _SidebarSessionRow({
                             style: unseen ? prego.textTheme.textXs.bold : prego.textTheme.textXs.regular,
                           ),
                         ),
-                        // Reveal the signals with the rail, but only while the row
-                        // is still wide enough to hold them.
-                        if (statusIcons.isNotEmpty && statusWidth * expansion <= constraints.maxWidth)
-                          ClipRect(
-                            child: Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              widthFactor: expansion,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const SizedBox(width: PregoSpacing.xs),
-                                  ...statusIcons,
-                                ],
-                              ),
+                        if (updatedAt != null && constraints.maxWidth >= _timeRevealWidth)
+                          Padding(
+                            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+                            child: Text(
+                              context.formatTimestampCompact(ms: updatedAt),
+                              maxLines: 1,
+                              style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
                             ),
                           ),
                       ],
@@ -994,12 +999,14 @@ class const _SidebarSessionRow({
   }
 }
 
+/// The leading status column of a session row: two glyphs fill its 28 points.
 class const _SessionSignals({
   required final bool isAwaitingInput,
   required final bool isRunning,
   required final bool isUnseen,
-  required final double size,
 }) extends StatelessWidget {
+  static const double _size = 14;
+
   @override
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
@@ -1009,7 +1016,7 @@ class const _SessionSignals({
           message: context.loc.sessionListAwaitingInput,
           child: Icon(
             TablerRegular.message_circle,
-            size: size,
+            size: _size,
             color: context.prego.colors.textWarningPrimary,
           ),
         ),
@@ -1020,7 +1027,7 @@ class const _SessionSignals({
                     ? "${context.loc.projectListRunning(1)}, ${context.loc.projectListNewActivity}"
                     : context.loc.projectListRunning(1)
               : context.loc.projectListNewActivity,
-          child: PregoAiLoader(size: size, animate: isRunning),
+          child: PregoAiLoader(size: _size, animate: isRunning),
         ),
     ],
   );

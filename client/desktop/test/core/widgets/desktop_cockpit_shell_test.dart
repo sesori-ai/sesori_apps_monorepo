@@ -395,9 +395,7 @@ void main() {
     await updates.close();
   });
 
-  testWidgets("priority activity stays global, selected, actionable, and absent from ordinary recents", (
-    tester,
-  ) async {
+  testWidgets("priority activity stays global, counted, selected and actionable", (tester) async {
     const projectOne = ProjectSummary(id: "project-1", name: "Project One", path: "/one", time: null);
     const projectTwo = ProjectSummary(id: "project-2", name: "Project Two", path: "/two", time: null);
     final priority = _session(id: "priority").copyWith(unseen: true);
@@ -452,7 +450,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text("Activity"), findsOneWidget);
+    expect(find.text("Activity · 2"), findsOneWidget);
     final priorityRow = find.byKey(const ValueKey("sidebar-activity-session-project-1-priority"));
     final runningRow = find.byKey(const ValueKey("sidebar-activity-session-project-2-running"));
     expect(priorityRow, findsOneWidget);
@@ -603,7 +601,6 @@ void main() {
     expect(bridgeOpens, 0);
     await tester.tap(find.text("Bridge settings…"));
     await tester.pumpAndSettle();
-    expect(find.text("Projects"), findsNothing);
     await tester.tap(find.byKey(const Key("desktop-sidebar-settings")));
     await tester.tap(find.text("Sesori Desktop"));
     expect((bridgeOpens, projectOpens, settingsOpens, openedProject), (1, 0, 1, "project-1"));
@@ -624,7 +621,6 @@ void main() {
       },
     );
     String? openedSession;
-    var allSessions = 0;
     var newSessions = 0;
     await tester.pumpWidget(
       app(
@@ -636,7 +632,7 @@ void main() {
           onOpenSession: ({required context, required project, required displayName, required session}) =>
               openedSession = session.id,
           onNewSession: ({required context, required project, required displayName}) => newSessions++,
-          onOpenProject: ({required context, required project, required displayName}) => allSessions++,
+          onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
@@ -644,6 +640,8 @@ void main() {
         ),
       ),
     );
+    // The selected session is pinned under the three newest, so nothing is left to show.
+    expect(find.byKey(const ValueKey("sidebar-show-more-project-1")), findsNothing);
     for (final session in sessions) {
       expect(find.text(session.title!), findsOneWidget);
     }
@@ -651,11 +649,6 @@ void main() {
     expect(tester.widget<Semantics>(selected).properties.selected, isTrue);
     await tester.tap(find.text("session-4"));
     expect(openedSession, "session-4");
-    final allSessionsLabel = tester.widget<Text>(find.text("All sessions · 4"));
-    expect(allSessionsLabel.maxLines, 1);
-    expect(allSessionsLabel.style!.fontFamily, startsWith("packages/theme_prego/"));
-    await tester.tap(find.text("All sessions · 4"));
-    expect(allSessions, 1);
     final projectToggle = find.byKey(const ValueKey("sidebar-project-toggle-project-1"));
     await tester.tap(projectToggle);
     await tester.pump();
@@ -680,6 +673,85 @@ void main() {
     expect(find.text("Rename"), findsOneWidget);
     expect(find.text("Hide Project"), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("show more grows a project's rows in place and folding the project starts over", (tester) async {
+    final sessions = [for (var index = 1; index <= 15; index++) _session(id: "session-$index")];
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+    final rows = find.textContaining("session-");
+    final showMore = find.byKey(const ValueKey("sidebar-show-more-project-1"));
+    expect(rows, findsNWidgets(3));
+    final showMoreLabel = tester.widget<Text>(find.text("Show more"));
+    expect(showMoreLabel.maxLines, 1);
+    expect(showMoreLabel.style?.fontFamily, startsWith("packages/theme_prego/"));
+    await tester.tap(showMore);
+    await tester.pumpAndSettle();
+    expect(rows, findsNWidgets(13));
+    await tester.ensureVisible(showMore);
+    await tester.pump();
+    await tester.tap(showMore);
+    await tester.pumpAndSettle();
+    expect(rows, findsNWidgets(15));
+    expect(showMore, findsNothing);
+
+    // The list is scrolled by now, so fold through the cubit the chevron calls.
+    await sidebar.toggleProject(projectId: "project-1");
+    await tester.pump();
+    expect(rows, findsNothing);
+    await sidebar.toggleProject(projectId: "project-1");
+    await tester.pumpAndSettle();
+    expect(rows, findsNWidgets(3));
+  });
+
+  testWidgets("section headers fold their rows and persist, and the rail ignores folding", (tester) async {
+    final session = _session(id: "moving").copyWith(unseen: true);
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: [session],
+          visibleSessions: [session],
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+    final activityRow = find.byKey(const ValueKey("sidebar-activity-session-project-1-moving"));
+    final project = find.byKey(const ValueKey("project-1"));
+    expect(activityRow, findsOneWidget);
+
+    await tester.tap(find.text("Activity · 1"));
+    await tester.pumpAndSettle();
+    expect(activityRow, findsNothing);
+    expect(project, findsOneWidget);
+    await tester.tap(find.text("Projects"));
+    await tester.pumpAndSettle();
+    expect(project, findsNothing);
+    verify(
+      () => repository.writeSidebarLayout(
+        layout: const DesktopSidebarLayout(activitySectionCollapsed: true, projectsSectionCollapsed: true),
+      ),
+    ).called(1);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(rail).width, 56);
+    expect(activityRow, findsOneWidget);
+    expect(project, findsOneWidget);
   });
 
   testWidgets("session status signals stay inside the row while the rail collapses", (tester) async {
@@ -955,15 +1027,19 @@ void main() {
     }
   });
 
-  testWidgets("new session is the labeled primary action beside a small new project button", (tester) async {
+  testWidgets("new session is the labeled primary action and new project sits on the Projects header", (tester) async {
     await tester.pumpWidget(app(state: running));
     expect(find.text("Sesori"), findsNothing);
-    expect(find.text("Projects"), findsNothing);
     expect(find.text("New session"), findsOneWidget);
     expect(find.text("New project"), findsNothing);
     expect(find.text(defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N"), findsOneWidget);
     expect(tester.widget<FilledButton>(find.byKey(const Key("desktop-sidebar-new-session"))).onPressed, isNotNull);
-    final newProject = tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-new-project")));
+    final newProject = tester.widget<IconButton>(
+      find.descendant(
+        of: find.byKey(const Key("desktop-sidebar-projects-header")),
+        matching: find.byKey(const Key("desktop-sidebar-new-project")),
+      ),
+    );
     expect(newProject.tooltip, "New project");
     expect(newProject.onPressed, isNotNull);
     final footer = tester.widget<Container>(find.byKey(const Key("desktop-sidebar-footer")));
@@ -1052,7 +1128,9 @@ void main() {
       when(() => connection.status).thenAnswer((_) => BehaviorSubject<ConnectionStatus>.seeded(status));
       when(() => connection.currentStatus).thenReturn(status);
       when(() => projects.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer(
-        (_) async => const FilesystemSuggestionsSuccess(suggestions: FilesystemSuggestions(data: [], path: "/home")),
+        (_) async => const FilesystemSuggestionsSuccess(
+          suggestions: FilesystemSuggestions(data: [], path: "/home"),
+        ),
       );
       GetIt.instance.registerSingleton<ConnectionService>(connection);
       addTearDown(GetIt.instance.reset);
