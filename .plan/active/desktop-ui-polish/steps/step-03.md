@@ -15,7 +15,8 @@
 - **Sticky selection.** An Activity session the user opens stays listed until
   the selection changes; the id is widget state in the sidebar, taken from the
   previous build's Activity ids so the mark-seen that follows opening a session
-  cannot race it.
+  cannot race it. Setting the open session aside is explicit, so it beats the
+  sticky selection and the session leaves Activity at once.
 - **No relocation.** Sessions never leave their project's rows:
   `RecentSessionsResolvers.rows` lost `excludingSessionIds` and the projection
   no longer tracks activity ids per project. The collapsed rail's sparkle badge
@@ -112,6 +113,28 @@ flutter analyze --no-pub
   `_activitySessionIds` is assigned during build, was added before the measured
   checkpoint.
 
+### Review follow-up
+
+Commit `6464e2b0dc1648cad5def9600a22351a53402d4e` lets an explicit set-aside
+beat the sticky selection (Codex) and corrects the plan's marker wording
+(cubic). Its only code change is in `module_desktop_core`, so that package and
+its consumer were re-run on that commit with a clean tree; every command
+exited 0. The other packages' results above stand.
+
+```sh
+cd client/module_desktop_core
+dart test test/cubits/desktop_sidebar_cubit_test.dart \
+  test/cubits/desktop_sidebar/desktop_sidebar_session_projection_test.dart \
+  test/api/desktop_instance_storage_test.dart
+dart analyze
+cd ../desktop
+flutter test --no-pub
+flutter analyze --no-pub
+```
+
+23 and 247 cases pass; the projection case now also proves that a set-aside
+session is not listed even while it is the sticky one.
+
 ## Size
 
 **522 changed lines = 353 additions + 169 deletions** at the measured
@@ -123,9 +146,10 @@ git diff --numstat 9e771cabc2f38caa9f61d460ac8bbac20d716106 278914c9cd77d814c290
 ```
 
 The base is `git merge-base origin/main 278914c9cd77d814c2909e601cf2ba41c5fcc926`.
-The step target was 600; the repository soft cap is 1,500. This file and the
-tracker row come on top; final self-inclusive accounting belongs in the PR
-body.
+The step target was 600; the repository soft cap is 1,500. This file, the
+tracker row and the review follow-up come on top
+(`git diff --numstat 9e771cabc2f38caa9f61d460ac8bbac20d716106 6464e2b0dc1648cad5def9600a22351a53402d4e`
+gives 671 = 499 + 172); final self-inclusive accounting belongs in the PR body.
 
 ## Regression Documents
 
