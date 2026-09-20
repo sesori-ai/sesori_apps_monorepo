@@ -330,9 +330,12 @@ jobs:
           retention-days: 14
 
   macos-authenticated-upgrade:
-    # Repository QA credentials are exposed only to the exercise step after the trusted-main guard passes.
+    # Signing is automatic on main; repository QA credentials remain confined to the later exercise step.
+    environment: macos-signing
     needs: tooling
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'macos-authenticated-upgrade-probe'
+    if: >-
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
+      inputs.mode == 'macos-authenticated-upgrade-probe'
     permissions:
       contents: read
       actions: read
@@ -415,8 +418,17 @@ jobs:
           run-id: ${{ inputs.packaging_run }}
           name: desktop-macos-evidence-${{ matrix.architecture }}
           path: build/desktop-macos-authenticated-upgrade/current/evidence
+      - name: Sign the QA-only Keychain helper with the existing Developer ID
+        timeout-minutes: 3
+        env:
+          MACOS_DISTRIBUTION_MODE: macos-authenticated-upgrade-probe
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: bash .github/scripts/macos_signing_ci.sh
       - name: Exercise authenticated helper-On replacement and tray Quit
-        # Run 35465783382 reached this step 29s after job start; keep over 14m for timeout evidence upload.
+        # Keep upload headroom within the 35m job, including the separate 3m signing step.
         timeout-minutes: 20
         env:
           CHANNEL: ${{ inputs.channel }}
@@ -432,6 +444,7 @@ jobs:
             --current-packages build/desktop-macos-authenticated-upgrade/current/packages \
             --current-evidence build/desktop-macos-authenticated-upgrade/current/evidence \
             --current-pulls-json build/desktop-macos-authenticated-upgrade/current/pulls.json \
+            --keychain-writer build/desktop-macos-authenticated-upgrade/tools/keychain-writer \
             --architecture '${{ matrix.architecture }}' --channel "$CHANNEL" \
             --output build/desktop-macos-authenticated-upgrade/result
       - name: Upload bounded private authenticated upgrade evidence

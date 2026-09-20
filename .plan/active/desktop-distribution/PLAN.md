@@ -568,18 +568,38 @@ metadata. Baseline run `35042335424` supports only the existing `preferences` th
 "before the first supported marker", not "before Dart main". Full pre-sink interpretation
 is valid only for a package whose recorded source contains all new markers.
 
-After this PR merges, first produce a fresh private stable `macos-packaging` run from the
-post-`8.g/14` merged `main` and record its run ID, source and tree:
+This follow-up merged as #1564, source
+`33a4ceb5506349d08953be37ba7d3a5f1d6d20df`, tree
+`08f1d7b283faec4985a78b78ae8e7b7e4433dee9`. Fresh private stable packaging run
+`35501361734` passed both CPUs for `1.9.0+122`. Authenticated retry `35502787779`, using
+that current package and retained baseline `35042335424`, failed on both CPUs before
+replacement. Both report `previous` / `helperReadiness`, `preRender` /
+`desktopAttention`, no helper activity and completed cleanup. Current `1.9.0+122` was
+not reached. These failures do not demonstrate an upgrade regression. The archives for
+older run `35496105360` were mistakenly deleted during investigation; its recorded
+observations survive, but those artifact IDs are no longer retrievable.
 
-```bash
-gh workflow run desktop-qualification.yml \
-  --repo sesori-ai/sesori_apps_monorepo --ref main \
-  -f mode=macos-packaging -f channel=stable
-```
+**Step 6 signing-partition correction PR:**
+`⚙️ [desktop-distribution] Match QA Keychain signing partitions [step 8.h/14]`.
+The user resumed Step 8 work, requiring cause analysis and worthwhile fast local tests
+instead of repeated blind native-CI retries. An explicitly authorized disposable local
+Keychain test reproduced cross-process denial despite the trusted-app ACL: the unsigned /
+ad-hoc writer passes its own read while a distinct trusted reader running pinned
+FlutterSecureStorage native code receives `errSecAuthFailed`. The same reader succeeds
+when both processes share a signing partition. Ordinary scratch-directory Keychains lack
+this protection and cannot qualify the fix. See [step-06](steps/step-06.md) for boundaries.
 
-Then retry both CPUs from merged `main` with baseline run `35042335424` and that fresh
-current-package run. Do not reuse current-package run `35206885114`, whose source predates
-the pre-sink markers. This failed run is not qualification evidence.
+Sign the QA-only helper with the existing Developer ID in the main-only `macos-signing`
+environment, before and separately from QA credential exposure. Require matching valid
+Developer ID teams for helper and app. Use that signed helper for private reads as well
+as writes; remove the incompatible `security -w` verification path and its trusted-reader
+ACL entry. No product startup change, new identity, publication, persistent state or
+runtime coordination. Keep the helper outside app/packages and uploaded evidence.
+Local native controls, unsigned-helper refusal, focused Python tests and workflow
+validation precede one both-CPU merged-main retry with the unchanged package pair
+`35042335424` → `35501361734`. Do not rebuild products merely for this tooling change.
+Acceptance remains open until that full flow passes. Release preparation for build `62`
+does not authorize shipping build `122`; regenerate it before any gated publication.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.

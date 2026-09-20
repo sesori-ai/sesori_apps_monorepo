@@ -207,10 +207,23 @@ private sources, and separately records whether the downloaded package supports 
 pre-render-only or full pre-sink markers. Ordinary sources are inspected from the full Git
 checkout; exact retained baseline `35042335424` uses its existing pinned metadata and
 supports only
-pre-render markers, so `noMarker` cannot claim failure before Dart main. After `8.g/14`
-merges, produce and record a fresh stable `macos-packaging` run from merged `main`; use it
-as the current package with baseline run `35042335424` for the next both-CPU retry. Do not
-reuse current-package run `35206885114`, whose source predates the added markers.
+pre-render markers, so `noMarker` cannot claim failure before Dart main. #1564 merged as
+`33a4ceb5506349d08953be37ba7d3a5f1d6d20df`, tree
+`08f1d7b283faec4985a78b78ae8e7b7e4433dee9`. Fresh package run `35501361734` passed both
+CPUs for `1.9.0+122`. Retry `35502787779` failed both CPUs at baseline `desktopAttention`,
+with no helper activity and completed cleanup; replacement never began. Prior run
+`35496105360`'s two archives were mistakenly deleted; their recorded observations remain,
+not retrievable archives.
+
+The user resumed Step 8 with a local-first diagnosis requirement. Authorized disposable
+modern-Keychain tests reproduced signing-partition denial despite the trusted-app ACL,
+and a same-partition two-process control passed the pinned native plugin read. The
+`8.h/14` correction signs the QA helper with the existing Developer ID, checks matching
+helper/app teams, and uses that helper for private reads. No product startup change or
+publication. Signing and QA secrets stay in separate steps; default/search-list settings
+and existing local Keychains were unchanged during local tests. Next acceptance uses
+unchanged package pair `35042335424` → `35501361734`, on both CPUs from merged `main`.
+Build `62` release preparation must not be reused to publish build `122`.
 Failed-stop, interactive user-account/TCC, minimum-OS and public artifact retrieval remain
 open; the download page itself is live.
 
