@@ -143,24 +143,32 @@ retains that ACL while refreshing values, and gives every native Keychain comman
 deadline. The writer must also create and self-verify each item through the pinned
 FlutterSecureStorage query's explicit non-synchronizable (`kSecAttrSynchronizable:
 false`) and when-unlocked envelope; a broad `security` lookup is not equivalent.
-Merged-main runs `35454870471`, `35460239311` and `35465783382` are rejected. The first
-two reached the bounded prior-app helper deadline with zero final helper processes; the
-second first passed the exact Keychain self-check. The third also timed out one CPU before
-artifact upload and showed that redirected app output alone does not retain production
-log-sink markers. On failure, the probe may inspect at most 1 MiB from each phase-scoped
-redirected app output and authoritative persisted `logs/app.log` for the closed markers
+Merged-main runs `35454870471`, `35460239311`, `35465783382` and `35496105360` are
+rejected. The first two reached the bounded prior-app helper deadline with zero final
+helper processes; the second first passed the exact Keychain self-check. The third also
+timed out one CPU before artifact upload and showed that redirected app output alone does
+not retain production log-sink markers. The fourth uploaded both bounded artifacts; each reached
+prior-app helper readiness with zero helper processes, no helper or bridge-log activity,
+no persisted app log, and present redirected output with every existing marker false. On
+failure, the probe may inspect at most 1 MiB from each phase-scoped redirected app output
+and authoritative persisted `logs/app.log` for the closed markers
 `desktopStartupRendered`, `localSessionUnavailable`, `localUserRestoreIncomplete`,
-`desiredStateRestoreFailure` and `bridgeStartFailure`. The auth gate emits privacy-safe
-outcome markers through the production log sink rather than relying on `dart:developer`
-output. The probe uploads only booleans, an atomic closed phase/cleanup record, and
-whether any helper generation or fresh bridge-log activity appeared. Run `35465783382`
+`desiredStateRestoreFailure` and `bridgeStartFailure`. It also reports the furthest closed
+`startupStage`: `noMarker`, `dartMainEntered`, `processAdmissionStarted`,
+`processAdmissionCompleted`, `preferences`, `nativeWindow`, `controlDispatcher`,
+`relayClient`, `desktopAttention`, `analyticsPreferences` or `rendering`. Fixed pre-sink
+markers distinguish entry into Dart main and primary-process admission; later stages reuse
+privacy-safe production log messages. The auth gate emits privacy-safe outcome markers
+through the production log sink rather than relying on `dart:developer` output. The probe
+uploads only closed values, an atomic closed phase/cleanup record, and whether any helper
+generation or fresh bridge-log activity appeared. Run `35465783382`
 reached the exercise step 29 seconds after job start; the 20-minute exercise deadline
 therefore leaves over 14 minutes for always-upload within the 35-minute job. The probe
 persists Bridge On and requires the exact packaged helper, an authenticated profile lookup
 and relay-serving readiness before each real tray Quit. It then verifies Keychain, On
 intent, bounded state and helper absence through replacement. Artifacts exclude raw auth
-responses, token values, bridge/app output and authenticated screenshots. The tooling alone is not accepted
-helper-On evidence; both CPUs must pass from merged `main`. Even a pass does not prove
+responses, token values, bridge/app output and authenticated screenshots. The tooling
+alone is not accepted helper-On evidence; both CPUs must pass from merged `main`. Even a pass does not prove
 failed-stop refusal, interactive browser/user-account/TCC, minimum-OS support, public
 retrieval or release readiness.
 

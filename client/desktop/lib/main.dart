@@ -11,6 +11,7 @@ import "core/platform/desktop_launch_arguments.dart";
 import "core/routing/desktop_router.dart";
 
 Future<void> main(List<String> arguments) async {
+  logi("Desktop startup: entered Dart main");
   final bool hiddenLaunch = isDesktopHiddenLaunch(arguments: arguments);
   WidgetsFlutterBinding.ensureInitialized();
   configureDesktopDependencies(
@@ -18,9 +19,11 @@ Future<void> main(List<String> arguments) async {
     routerReady: desktopRouterReady,
   );
   final DesktopStartupOrchestrator startupOrchestrator = getIt();
+  logi("Desktop startup: claiming primary process");
   if (!await startupOrchestrator.preparePrimaryLaunch()) {
     return;
   }
+  logi("Desktop startup: primary process claimed");
   setLogSink(sink: getIt<LogSink>());
 
   // Only the primary process renders UI; premium remains disabled.

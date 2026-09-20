@@ -638,6 +638,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
                     "redirectedAppOutputTruncated": False,
                     "persistedAppLogPresent": True,
                     "persistedAppLogTruncated": False,
+                    "startupStage": "rendering",
                     "desktopStartupRendered": True,
                     "localSessionUnavailable": True,
                     "localUserRestoreIncomplete": True,
@@ -665,8 +666,30 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             )
 
             diagnostics = json.loads((root / "current-startup-diagnostics.json").read_text(encoding="utf-8"))
+            self.assertEqual(diagnostics["startupStage"], "noMarker")
             self.assertFalse(diagnostics["desktopStartupRendered"])
             self.assertTrue(diagnostics["localSessionUnavailable"])
+
+    def test_private_app_startup_diagnostics_report_furthest_pre_render_stage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            redirected_app_output = root / "private-authenticated-app.log"
+            redirected_app_output.write_text(
+                "Desktop startup: entered Dart main\n"
+                "Desktop startup: claiming primary process\n"
+                "Desktop startup: primary process claimed\n",
+                encoding="utf-8",
+            )
+            write_private_app_startup_diagnostics(
+                label="previous",
+                redirected_app_output=redirected_app_output,
+                persisted_app_log=root / "missing-app.log",
+                persisted_app_log_cursor=None,
+                output=root,
+            )
+
+            diagnostics = json.loads((root / "previous-startup-diagnostics.json").read_text(encoding="utf-8"))
+            self.assertEqual(diagnostics["startupStage"], "processAdmissionCompleted")
 
     def test_private_app_startup_diagnostics_report_missing_sources_without_markers(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -684,6 +707,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             self.assertFalse(diagnostics.pop("redirectedAppOutputTruncated"))
             self.assertFalse(diagnostics.pop("persistedAppLogPresent"))
             self.assertFalse(diagnostics.pop("persistedAppLogTruncated"))
+            self.assertEqual(diagnostics.pop("startupStage"), "noMarker")
             self.assertEqual(set(diagnostics.values()), {False})
 
     def test_private_app_startup_diagnostics_bound_each_private_source(self):
@@ -708,6 +732,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             diagnostics = json.loads(recorded)
             self.assertTrue(diagnostics["redirectedAppOutputTruncated"])
             self.assertTrue(diagnostics["persistedAppLogTruncated"])
+            self.assertEqual(diagnostics["startupStage"], "noMarker")
             self.assertFalse(diagnostics["localSessionUnavailable"])
             self.assertNotIn("private-token-value", recorded)
 

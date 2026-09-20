@@ -83,6 +83,34 @@ class QualificationCandidate(StrEnum):
     CURRENT = "current"
 
 
+class DesktopStartupStage(StrEnum):
+    NO_MARKER = "noMarker"
+    DART_MAIN_ENTERED = "dartMainEntered"
+    PROCESS_ADMISSION_STARTED = "processAdmissionStarted"
+    PROCESS_ADMISSION_COMPLETED = "processAdmissionCompleted"
+    PREFERENCES = "preferences"
+    NATIVE_WINDOW = "nativeWindow"
+    CONTROL_DISPATCHER = "controlDispatcher"
+    RELAY_CLIENT = "relayClient"
+    DESKTOP_ATTENTION = "desktopAttention"
+    ANALYTICS_PREFERENCES = "analyticsPreferences"
+    RENDERING = "rendering"
+
+
+DESKTOP_STARTUP_STAGE_MARKERS = (
+    (DesktopStartupStage.DART_MAIN_ENTERED, "Desktop startup: entered Dart main"),
+    (DesktopStartupStage.PROCESS_ADMISSION_STARTED, "Desktop startup: claiming primary process"),
+    (DesktopStartupStage.PROCESS_ADMISSION_COMPLETED, "Desktop startup: primary process claimed"),
+    (DesktopStartupStage.PREFERENCES, "Desktop startup: reading appearance and input preferences"),
+    (DesktopStartupStage.NATIVE_WINDOW, "Desktop startup: initializing the native window"),
+    (DesktopStartupStage.CONTROL_DISPATCHER, "Desktop startup: starting the control dispatcher"),
+    (DesktopStartupStage.RELAY_CLIENT, "Desktop startup: initializing the relay client"),
+    (DesktopStartupStage.DESKTOP_ATTENTION, "Desktop startup: starting desktop attention"),
+    (DesktopStartupStage.ANALYTICS_PREFERENCES, "Desktop startup: loading analytics preferences"),
+    (DesktopStartupStage.RENDERING, "Desktop startup: rendering the application"),
+)
+
+
 class QualificationPhase(StrEnum):
     PREPARING = "preparing"
     INSTALLING = "installing"
@@ -479,6 +507,14 @@ def _read_bounded_private_log(
     )
 
 
+def _desktop_startup_stage(*, private_output: str) -> DesktopStartupStage:
+    stage = DesktopStartupStage.NO_MARKER
+    for candidate, marker in DESKTOP_STARTUP_STAGE_MARKERS:
+        if marker in private_output:
+            stage = candidate
+    return stage
+
+
 def write_private_app_startup_diagnostics(
     *,
     label: str,
@@ -501,6 +537,7 @@ def write_private_app_startup_diagnostics(
         "redirectedAppOutputTruncated": redirected_truncated,
         "persistedAppLogPresent": persisted_present,
         "persistedAppLogTruncated": persisted_truncated,
+        "startupStage": _desktop_startup_stage(private_output=private_output).value,
         **{
             diagnostic: any(marker in private_output for marker in markers)
             for diagnostic, markers in PRIVATE_APP_LOG_DIAGNOSTIC_MARKERS
