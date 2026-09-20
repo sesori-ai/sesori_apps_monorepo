@@ -1,26 +1,34 @@
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-/// Immutable desktop-sidebar placement derived from existing project/session owners.
-final class DesktopSidebarSessionProjection._({
-  required final List<DesktopSidebarActivityGroup> activityGroups,
-  required final Map<String, Set<String>> _activitySessionIdsByProject,
-}) {
+/// The desktop sidebar's Activity list, derived from existing project/session
+/// owners. Sessions never leave their project; Activity is a shortcut on top.
+final class DesktopSidebarSessionProjection._({required final List<DesktopSidebarActivityGroup> activityGroups}) {
+  /// Activity holds what is in motion: running sessions and unseen sessions
+  /// the user has not set aside. [deferredSessions] maps a session the user
+  /// marked unread here to its `time.updated` at that moment; it stays out of
+  /// Activity until the agent moves that stamp. [stickySessionId] keeps the
+  /// Activity session the user just opened listed while it stays selected.
   factory from({
     required Iterable<ProjectSummary> projects,
     required Map<String, RecentSessionsEntry> entries,
+    required Map<String, int> deferredSessions,
+    required String? stickySessionId,
   }) {
     final groups = <DesktopSidebarActivityGroup>[];
-    final activitySessionIdsByProject = <String, Set<String>>{};
     for (final project in projects) {
       final entry = entries[project.id];
       if (entry is! RecentSessionsLoaded) continue;
-      final activityIds = <String>{};
       final sessions = <DesktopSidebarActivitySession>[];
       for (final session in entry.visibleSessions) {
         final isRunning = entry.isRunning(session: session);
         final isUnseen = entry.isUnseen(session: session);
-        if ((!isRunning && !isUnseen) || !activityIds.add(session.id)) continue;
+        final deferredAt = deferredSessions[session.id];
+        final isSetAside = isUnseen && deferredAt != null && deferredAt == session.time?.updated;
+        final inMotion = isRunning || (isUnseen && !isSetAside);
+        // Setting a session aside is explicit, so it beats the sticky selection too.
+        final isSticky = session.id == stickySessionId && !isSetAside;
+        if (!inMotion && !isSticky) continue;
         sessions.add(
           DesktopSidebarActivitySession(
             session: session,
@@ -31,7 +39,6 @@ final class DesktopSidebarSessionProjection._({
         );
       }
       if (sessions.isEmpty) continue;
-      activitySessionIdsByProject[project.id] = Set.unmodifiable(activityIds);
       groups.add(
         DesktopSidebarActivityGroup(
           project: project,
@@ -40,22 +47,8 @@ final class DesktopSidebarSessionProjection._({
         ),
       );
     }
-    return DesktopSidebarSessionProjection._(
-      activityGroups: List.unmodifiable(groups),
-      activitySessionIdsByProject: Map.unmodifiable(activitySessionIdsByProject),
-    );
+    return DesktopSidebarSessionProjection._(activityGroups: List.unmodifiable(groups));
   }
-
-  List<Session> ordinaryRows({
-    required String projectId,
-    required RecentSessionsLoaded loaded,
-    required String? selectedSessionId,
-  }) => List.unmodifiable(
-    loaded.rows(
-      selectedSessionId: selectedSessionId,
-      excludingSessionIds: _activitySessionIdsByProject[projectId] ?? const {},
-    ),
-  );
 }
 
 final class const DesktopSidebarActivityGroup({

@@ -97,6 +97,24 @@ void main() {
     expect(writes, 2);
     expect(cubit.state.collapsed, isFalse);
   });
+
+  test("deferring persists the stamp, re-deferring counts as newest and the cap drops the oldest", () async {
+    when(repository.readSidebarLayout).thenAnswer(
+      (_) async => DesktopSidebarLayout(
+        deferredSessions: {for (var index = 0; index < DesktopSidebarCubit.maxDeferredSessions; index++) "s$index": 1},
+      ),
+    );
+    cubit = DesktopSidebarCubit(repository: repository);
+    await pumpEventQueue();
+    await cubit.deferSession(sessionId: "s0", updatedAt: 7);
+    expect(cubit.state.deferredSessions.keys.last, "s0");
+    expect(cubit.state.deferredSessions["s0"], 7);
+    await cubit.deferSession(sessionId: "new", updatedAt: 9);
+    expect(cubit.state.deferredSessions.length, DesktopSidebarCubit.maxDeferredSessions);
+    expect(cubit.state.deferredSessions.keys.first, "s2");
+    expect(cubit.state.deferredSessions.keys.last, "new");
+    verify(() => repository.writeSidebarLayout(layout: cubit.state)).called(1);
+  });
 }
 
 class _Repository() extends Mock implements DesktopInstanceRepository;

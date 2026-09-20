@@ -8,6 +8,7 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
@@ -47,6 +48,14 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
       ),
     ),
   );
+}
+
+/// A session the user marks unread stays out of Activity until the agent moves
+/// on. [context] must sit under [DesktopCockpitCubitProvider].
+void deferMarkedUnreadSession({required BuildContext context, required Session session}) {
+  final updatedAt = session.time?.updated;
+  if (updatedAt == null) return;
+  unawaited(context.read<DesktopSidebarCubit>().deferSession(sessionId: session.id, updatedAt: updatedAt));
 }
 
 /// Product-shell navigation and supervision chrome around the desktop cockpit.

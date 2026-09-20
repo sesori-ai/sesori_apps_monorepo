@@ -13,7 +13,7 @@ class const SessionListScreen({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    const actionDispatcher = SessionListActionDispatcher(onSessionDeleted: closeDeletedSessionRoute);
+    const actionDispatcher = SessionListActionDispatcher(onSessionDeleted: closeDeletedSessionRoute, onSessionMarkedUnread: null);
     // The sessions route is the base of the nested pane navigator, so the
     // pane navigator can never pop it; the poppable session shell route (with
     // /projects underneath) lives on the root navigator.

@@ -48,7 +48,7 @@ void main() {
                   SessionListContent(
                     projectName: null,
                     onSessionTap: null,
-                    actionDispatcher: SessionListActionDispatcher(onSessionDeleted: null),
+                    actionDispatcher: SessionListActionDispatcher(onSessionDeleted: null, onSessionMarkedUnread: null),
                     archivedEmptyState: SessionArchivedEmptyState(artwork: null),
                   ),
                 ],

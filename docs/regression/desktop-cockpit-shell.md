@@ -54,12 +54,17 @@ The main pane hosts one full-width routed page.
 - A selected project follows route identity, not the displayed name. Each
   signed-in cockpit owns one project-list cubit, including the home pane;
   leaving the signed-in shell releases it.
-- Activity appears before projects whenever any non-archived session is running or live-unseen. It spans every
-  current project, including collapsed/offscreen projects, preserves project/session source order, identifies each
-  session's project, and renders each priority session once. Priority IDs are excluded before each project's ordinary
-  three rows plus active selected-session pin are chosen. An active selected session stays selected in Activity; an
-  inactive selected session remains pinnable ordinarily. The keyed header remains structurally stable at zero height
-  when Activity is empty, and keyed Prego reconciliation honors reduced motion as rows enter, leave or reorder.
+- Activity appears before projects and lists only what is in motion: non-archived sessions that are running, or
+  live-unseen and not set aside. It spans every current project, including collapsed/offscreen projects, preserves
+  project/session source order and identifies each session's project. Sessions never leave their project: an
+  Activity session also keeps its place in the project's ordinary three rows plus selected-session pin.
+- Marking a session unread on this desktop (sidebar or sessions-page menu) sets it aside: the desktop layout file
+  records its `time.updated`, and it stays out of Activity, bold under its project, until the agent moves that
+  stamp or it runs again. Marking read records nothing. The record is per desktop and holds the newest 200.
+- The Activity session the user opens stays listed and selected after opening marks it seen, until the selection
+  changes or the user sets it aside by marking it unread. The keyed header remains structurally stable at zero
+  height when Activity is empty, and keyed Prego reconciliation honors reduced motion as rows enter, leave or
+  reorder.
 - Expanded projects show the first three active visible sessions in the shared
   list's order, plus the open session when present outside that head. The
   “All sessions · N” link counts the full active visible inventory, including sessions currently prioritized in
@@ -209,8 +214,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   new-session replacement, diff/direct-entry Back, home states, package-font resolution.
 - Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
   project-collapse persistence, shared menu/route callbacks. All-project admission happens once per entering ID,
-  including collapsed/offscreen projects; priority Activity is deduplicated from ordinary rows, keeps project context,
-  selection/navigation/actions, and reconciles keyed movement/reordering under reduced motion. Empty/loading/failed
+  including collapsed/offscreen projects; Activity keeps project context, selection/navigation/actions, leaves
+  project rows in place, honors set-aside and just-opened sessions, and reconciles keyed entry/exit under reduced
+  motion. Empty/loading/failed
   entries preserve the stable header and project-local retry. Keep loaded rows through catalog/reconnect refreshes and
   failures, including live unread false, lifecycle patches, failed-reread rearming and superseded-read completion.
   Execute those inventory cases without a mounted Cubit. Verify adapter replay/retry, independent consumer close,
@@ -244,7 +250,9 @@ Synthetic rendering does not qualify native accessibility, compositing, keyboard
 Look for overflow at minimum width, drag updates that stall or write per frame,
 width jumping on reversal beyond a bound, scrollbars intercepting project toggles,
 automatic collapse overwriting user preferences, missing/stale activity marks,
-duplicate project inventories or Activity/ordinary session rows, repeated admission on rebuild/expansion, lost project
+duplicate project inventories, a session leaving its project's rows for Activity, a deliberately unread session
+returning to Activity without new agent output, an opened Activity session vanishing under the pointer, repeated
+admission on rebuild/expansion, lost project
 context, a shifting empty Activity header, a second session-list pane, sidebar browsing clearing unread state,
 stale/missing recent rows, a refresh reporting success from old retained data, an indicator settling before its
 owning reads, duplicate refresh dispatch, unnamed icon controls, covered transcripts marked viewed,

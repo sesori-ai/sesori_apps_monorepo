@@ -36,7 +36,10 @@ void scheduleDesktopRouterReady() {
   });
 }
 
-const _desktopSessionActions = SessionListActionDispatcher(onSessionDeleted: _closeDeletedSessionRoute);
+const _desktopSessionActions = SessionListActionDispatcher(
+  onSessionDeleted: _closeDeletedSessionRoute,
+  onSessionMarkedUnread: deferMarkedUnreadSession,
+);
 
 /// One routed main pane beside the sidebar, under a single authenticated shell.
 /// Only the all-sessions page owns a full session-list view claim; the sidebar's

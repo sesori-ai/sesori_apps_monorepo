@@ -479,32 +479,44 @@ void main() {
     expect(tester.widget<PregoAnchorMenu>(activityMenu).acquireOpenLease, isNotNull);
   });
 
-  testWidgets("activity reconciliation moves one stable session without duplicates under reduced motion", (
-    tester,
-  ) async {
+  testWidgets("Activity lists what is in motion above project rows that never move", (tester) async {
     tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-    final session = _session(id: "moving").copyWith(unseen: true);
+    final session = _session(
+      id: "moving",
+    ).copyWith(unseen: true, time: const SessionTime(created: 1, updated: 5, archived: null));
     final updates = StreamController<Map<String, RecentSessionsEntry>>();
-    whenListen(
-      recent,
-      updates.stream,
-      initialState: {
-        "project-1": RecentSessionsLoaded(
-          sourceSessions: [session],
-          visibleSessions: [session],
-          activityBySessionId: const {},
-          listStateBySessionId: const {"moving": (unseen: false, lastUserActivityAt: null)},
-        ),
-      },
+    Map<String, RecentSessionsEntry> entries({required Session session, required bool unseen}) => {
+      "project-1": RecentSessionsLoaded(
+        sourceSessions: [session],
+        visibleSessions: [session],
+        activityBySessionId: const {},
+        listStateBySessionId: {"moving": (unseen: unseen, lastUserActivityAt: null)},
+      ),
+    };
+    whenListen(recent, updates.stream, initialState: entries(session: session, unseen: false));
+    Widget shell({required String? selectedSessionId}) => app(
+      state: running,
+      child: DesktopCockpitShell(
+        selectedProjectId: "project-1",
+        selectedSessionId: selectedSessionId,
+        onOpenSession: _openSession,
+        onNewSession: _openProject,
+        sessionActions: _sessionActions,
+        onOpenProject: _openProject,
+        onOpenBridgeSettings: _noOp,
+        onOpenProjects: _noOp,
+        onOpenSettings: _noOp,
+        child: const SizedBox.shrink(),
+      ),
     );
-    await tester.pumpWidget(app(state: running));
+    await tester.pumpWidget(shell(selectedSessionId: null));
     final projectElement = tester.element(find.byKey(const ValueKey("project-1")));
-    final activityHeader = find.byKey(const Key("desktop-sidebar-activity-header"), skipOffstage: false);
-    expect(activityHeader, findsOneWidget);
     final ordinaryRow = find.byKey(const ValueKey("sidebar-session-project-1-moving"));
+    final activityRow = find.byKey(const ValueKey("sidebar-activity-session-project-1-moving"));
+    expect(find.byKey(const Key("desktop-sidebar-activity-header"), skipOffstage: false), findsOneWidget);
     expect(ordinaryRow, findsOneWidget);
-    expect(find.byKey(const ValueKey("sidebar-activity-session-project-1-moving")), findsNothing);
+    expect(activityRow, findsNothing);
     expect(
       tester
           .widget<PregoAnchorMenu>(find.descendant(of: ordinaryRow, matching: find.byType(PregoAnchorMenu)))
@@ -512,33 +524,35 @@ void main() {
       isNotNull,
     );
 
-    updates.add({
-      "project-1": RecentSessionsLoaded(
-        sourceSessions: [session],
-        visibleSessions: [session],
-        activityBySessionId: const {},
-        listStateBySessionId: const {"moving": (unseen: true, lastUserActivityAt: null)},
-      ),
-    });
+    updates.add(entries(session: session, unseen: true));
     await tester.pump();
-    expect(find.byKey(const ValueKey("sidebar-session-project-1-moving")), findsNothing);
-    expect(find.byKey(const ValueKey("sidebar-activity-session-project-1-moving")), findsOneWidget);
-    expect(find.text("moving"), findsOneWidget);
+    expect(ordinaryRow, findsOneWidget);
+    expect(activityRow, findsOneWidget);
     expect(tester.element(find.byKey(const ValueKey("project-1"))), same(projectElement));
 
-    updates.add({
-      "project-1": RecentSessionsLoaded(
-        sourceSessions: [session],
-        visibleSessions: [session],
-        activityBySessionId: const {},
-        listStateBySessionId: const {"moving": (unseen: false, lastUserActivityAt: null)},
-      ),
-    });
+    // Opening it from Activity marks it seen; it stays listed while selected.
+    await tester.pumpWidget(shell(selectedSessionId: "moving"));
+    updates.add(entries(session: session, unseen: false));
     await tester.pump();
-    expect(find.byKey(const ValueKey("sidebar-session-project-1-moving")), findsOneWidget);
-    expect(find.byKey(const ValueKey("sidebar-activity-session-project-1-moving")), findsNothing);
-    expect(find.text("moving"), findsOneWidget);
-    expect(activityHeader, findsOneWidget);
+    expect(activityRow, findsOneWidget);
+    await tester.pumpWidget(shell(selectedSessionId: null));
+    expect(activityRow, findsNothing);
+    expect(ordinaryRow, findsOneWidget);
+
+    // Marked unread on purpose: out of Activity until the agent moves the stamp.
+    deferMarkedUnreadSession(context: tester.element(find.byType(DesktopCockpitShell)), session: session);
+    updates.add(entries(session: session, unseen: true));
+    await tester.pump();
+    expect(activityRow, findsNothing);
+    expect(ordinaryRow, findsOneWidget);
+    updates.add(
+      entries(
+        session: session.copyWith(time: const SessionTime(created: 1, updated: 6, archived: null)),
+        unseen: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(activityRow, findsOneWidget);
     await updates.close();
   });
 
@@ -1315,7 +1329,7 @@ Session _session({required String id}) => Session(
   lastUserActivityAt: null,
 );
 
-const _sessionActions = SessionListActionDispatcher(onSessionDeleted: _deleted);
+const _sessionActions = SessionListActionDispatcher(onSessionDeleted: _deleted, onSessionMarkedUnread: null);
 void _deleted({required BuildContext context, required String sessionId}) {}
 void _openSession({
   required BuildContext context,

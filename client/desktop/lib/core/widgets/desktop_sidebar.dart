@@ -365,17 +365,46 @@ class const _SidebarInventory({
   required final ProjectOpenedCallback onNewSession,
   required final SessionListActionDispatcher sessionActions,
   required final ProjectOpenedCallback onOpenProject,
-}) extends StatelessWidget {
+}) extends StatefulWidget {
+  @override
+  State<_SidebarInventory> createState() => _SidebarInventoryState();
+}
+
+class _SidebarInventoryState() extends State<_SidebarInventory> {
+  // The Activity session the user just opened stays listed while selected,
+  // even once opening it has marked it seen (sessions never jump lists).
+  String? _stickyActivitySessionId;
+  // Activity as last built, read only when the selection changes: by then the
+  // opened session may already be seen and gone from a fresh projection.
+  Set<String> _activitySessionIds = const {};
+
+  @override
+  void didUpdateWidget(_SidebarInventory oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final selected = widget.selectedSessionId;
+    if (selected == oldWidget.selectedSessionId) return;
+    _stickyActivitySessionId = _activitySessionIds.contains(selected) ? selected : null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final entries = context.watch<RecentSessionsCubit>().state;
-    final projection = DesktopSidebarSessionProjection.from(projects: projects, entries: entries);
+    final projection = DesktopSidebarSessionProjection.from(
+      projects: widget.projects,
+      entries: entries,
+      deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
+      stickySessionId: _stickyActivitySessionId,
+    );
+    _activitySessionIds = {
+      for (final group in projection.activityGroups)
+        for (final item in group.sessions) item.session.id,
+    };
     List<PregoMenuEntry> buildSessionMenuEntries({
       required SessionListCubit cubit,
       required Session session,
-    }) => sessionActions.sessionMenuEntries(context: context, cubit: cubit, session: session);
-    final gutter = PregoSpacing.xl * expansion;
-    final activityHeaderExpansion = projection.activityGroups.isEmpty ? 0.0 : expansion;
+    }) => widget.sessionActions.sessionMenuEntries(context: context, cubit: cubit, session: session);
+    final gutter = PregoSpacing.xl * widget.expansion;
+    final activityHeaderExpansion = projection.activityGroups.isEmpty ? 0.0 : widget.expansion;
     return CustomScrollView(
       key: const Key("desktop-sidebar-project-list"),
       slivers: [
@@ -414,9 +443,9 @@ class const _SidebarInventory({
                 key: ValueKey("sidebar-activity-${group.project.id}"),
                 group: group,
                 projectName: projectName,
-                expansion: expansion,
-                selectedSessionId: group.project.id == selectedProjectId ? selectedSessionId : null,
-                onOpenSession: onOpenSession,
+                expansion: widget.expansion,
+                selectedSessionId: group.project.id == widget.selectedProjectId ? widget.selectedSessionId : null,
+                onOpenSession: widget.onOpenSession,
                 sessionMenuEntries: buildSessionMenuEntries,
               );
             },
@@ -426,7 +455,7 @@ class const _SidebarInventory({
           padding: EdgeInsetsDirectional.only(end: gutter),
           sliver: PregoAnimatedSliverList<ProjectSummary>(
             key: const Key("desktop-sidebar-project-groups"),
-            items: projects,
+            items: widget.projects,
             itemKey: (project) => ValueKey(project.id),
             itemBuilder: (context, _, project) {
               final projectName = desktopProjectDisplayName(context: context, project: project);
@@ -435,23 +464,19 @@ class const _SidebarInventory({
                 key: ValueKey(project.id),
                 project: project,
                 name: projectName,
-                active: activityById[project.id] ?? 0,
-                unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
+                active: widget.activityById[project.id] ?? 0,
+                unseen: widget.unseenByProjectId[project.id] ?? project.hasUnseenChanges,
                 entry: entry,
                 ordinarySessions: entry is RecentSessionsLoaded
-                    ? projection.ordinaryRows(
-                        projectId: project.id,
-                        loaded: entry,
-                        selectedSessionId: project.id == selectedProjectId ? selectedSessionId : null,
-                      )
+                    ? entry.rows(selectedSessionId: project.id == widget.selectedProjectId ? widget.selectedSessionId : null)
                     : const [],
-                expansion: expansion,
-                expanded: !collapsedProjectIds.contains(project.id),
-                selected: project.id == selectedProjectId,
-                selectedSessionId: project.id == selectedProjectId ? selectedSessionId : null,
-                onOpenProject: onOpenProject,
-                onOpenSession: onOpenSession,
-                onNewSession: onNewSession,
+                expansion: widget.expansion,
+                expanded: !widget.collapsedProjectIds.contains(project.id),
+                selected: project.id == widget.selectedProjectId,
+                selectedSessionId: project.id == widget.selectedProjectId ? widget.selectedSessionId : null,
+                onOpenProject: widget.onOpenProject,
+                onOpenSession: widget.onOpenSession,
+                onNewSession: widget.onNewSession,
                 sessionMenuEntries: buildSessionMenuEntries,
               );
             },
@@ -799,7 +824,7 @@ class const _SidebarActivitySessionRow({
                             alignment: Alignment.center,
                             children: [
                               PregoAvatarInitials(label: projectName, size: 26),
-                              if (expansion < 1)
+                              if (expansion < 1 && (item.isRunning || item.isUnseen))
                                 PositionedDirectional(
                                   end: -4,
                                   top: -4,
