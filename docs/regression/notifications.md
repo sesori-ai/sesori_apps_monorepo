@@ -81,10 +81,23 @@ external.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because external notification delivery is not a product heartbeat. |
-| L2 Routine | Automated and headless bridge, representative plugin, fake push client: current event-to-payload content mapping, collapse identity, project attribution, completion debounce, pending-interaction blocking, abort suppression, completion cooldowns, rapid permission/question sends sharing a display session, maintenance step isolation. Codex live write-path lifecycle coverage: the root stays busy while children run and emits one deferred idle after the last child settles. Desktop unit/widget coverage: focused/disabled suppression and resume, asked/resolved classification, title lookup, category-only content, serialized multi-request writes and in-flight cancellation, initialization retry/Linux callback ordering, persisted toggle, locally-restorable and account-bound open routing, account-ending cleanup, and service-owned logout settle-before-cancel ordering. |
+| L2 Routine | Bridge-push, Codex lifecycle, and desktop attention coverage detailed below. |
 | L3 Release | Mobile client end to end on the release-target platform with a fake messaging source: registration including the device ID, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral, cancellation on open. Desktop automated coverage: hidden/unfocused local alert, click-to-focus/session navigation, resolve cancellation, toggle silence, logout isolation, and no push registration. |
 | L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, disabling a category on one device suppressing its remote delivery there while another device still receives it, completion from another production plugin, account switch and logout isolation, a child prompt opening its root. |
 | L5 Full | Both mobile platforms end to end: OS permission denied then granted, collapse and replace across repeated notifications for one session, system-update notifications, and long-run maintenance pruning under many sessions. |
+
+L2 bridge-push coverage uses automated and headless bridge tests, a representative plugin, and a fake push client:
+current event-to-payload content mapping, collapse identity, project attribution, completion debounce,
+pending-interaction blocking, abort suppression, completion cooldowns, rapid permission/question sends sharing a display
+session, and maintenance step isolation.
+
+L2 Codex live write-path lifecycle coverage: the root stays busy while children run and emits one deferred idle after
+the last child settles.
+
+L2 desktop unit/widget coverage: focused/disabled suppression and resume, asked/resolved classification, title lookup,
+category-only content, serialized multi-request writes and in-flight cancellation, initialization retry/Linux callback
+ordering, persisted toggle, locally-restorable and account-bound open routing, account-ending cleanup, and service-owned
+logout settle-before-cancel ordering.
 
 Native macOS L2 coverage starts and disposes the bundled observer without sleeping the machine. A separate deterministic
 native-source child-process fixture checks early versus completed wake messages and forces disposal before the run loop
