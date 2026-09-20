@@ -311,7 +311,7 @@ verify the actual relocated helper, not merely the presence of its binary.
   logout clears auth before analytics preparation and fails to resume analytics
   when token clearing fails. A desktop session row cannot reach its typed detail
   route, Back cannot return to the session list, a child-session link loses its
-  typed route data, New task or file changes cannot reach their typed routes, or
+  typed route data, New session or file changes cannot reach their typed routes, or
   desktop renders unsupported voice/attachment controls, Enter inserts a newline
   instead of sending, Shift+Enter sends, an IME candidate-confirmation Enter
   submits the draft, Escape pops an ordinary cockpit page or steals a closer

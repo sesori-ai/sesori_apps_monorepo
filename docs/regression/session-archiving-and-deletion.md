@@ -69,7 +69,7 @@ entirely along with its transcript and, optionally, its worktree.
 - Clients present archiving as permanent, hide mutation affordances there, and
   list archived sessions. Archived row menus omit Rename and Archive but retain
   permanent Delete and read-state actions.
-- Mobile opens archived tasks in a full-screen modal from both portrait and
+- Mobile opens archived sessions in a full-screen modal from both portrait and
   split-pane session lists. The live list remains active-only. The modal contains
   only archived rows, grouped by their actual archive date, newest first; an
   active-only project shows the archive artwork and “No archived sessions”. It

@@ -181,7 +181,7 @@ abstract class AppLocalizations {
   /// **'Pick a session from the sidebar to get started.'**
   String get desktopHomePickSession;
 
-  /// Label for the prominent desktop sidebar action that opens the add-project dialog.
+  /// Tooltip and label for the small desktop sidebar action that opens the add-project dialog.
   ///
   /// In en, this message translates to:
   /// **'New project'**
@@ -1900,7 +1900,7 @@ abstract class AppLocalizations {
   /// Headline on the sessions list when a project has no active sessions yet, inviting the user to begin.
   ///
   /// In en, this message translates to:
-  /// **'Start your first task'**
+  /// **'Start your first session'**
   String get sessionListEmptyTitle;
 
   /// No description provided for @sessionListUntitled.
@@ -1939,17 +1939,11 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get sessionListRetry;
 
-  /// No description provided for @sessionListNewSession.
+  /// Label of the primary action that starts a new session: the sessions list button and the desktop sidebar button.
   ///
   /// In en, this message translates to:
   /// **'New session'**
   String get sessionListNewSession;
-
-  /// Label of the primary button on the sessions list that starts a new task (session).
-  ///
-  /// In en, this message translates to:
-  /// **'New task'**
-  String get sessionListNewTask;
 
   /// No description provided for @sessionDetailTitle.
   ///
@@ -3880,7 +3874,7 @@ abstract class AppLocalizations {
   /// Subtitle of the 'get notified' reassurance row.
   ///
   /// In en, this message translates to:
-  /// **'Know when a task needs you.'**
+  /// **'Know when a session needs you.'**
   String get projectsOnboardingWhyNotifiedSubtitle;
 
   /// Section header above the FAQ list in the 'Why is this needed?' sheet.
@@ -4300,7 +4294,7 @@ abstract class AppLocalizations {
   /// No description provided for @archivedSessionsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Archived tasks'**
+  /// **'Archived sessions'**
   String get archivedSessionsTitle;
 
   /// No description provided for @archivedSessionsClose.
@@ -4309,37 +4303,37 @@ abstract class AppLocalizations {
   /// **'Close archived sessions'**
   String get archivedSessionsClose;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'Today'**
   String get archivedSessionsToday;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'Yesterday'**
   String get archivedSessionsYesterday;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'This week'**
   String get archivedSessionsThisWeek;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'Last week'**
   String get archivedSessionsLastWeek;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'This month'**
   String get archivedSessionsThisMonth;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'One month ago'**

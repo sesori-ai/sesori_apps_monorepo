@@ -56,22 +56,6 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         builder: (context) => CallbackShortcuts(
           bindings: {
             SingleActivator(
-              LogicalKeyboardKey.keyN,
-              meta: defaultTargetPlatform == TargetPlatform.macOS,
-              control: defaultTargetPlatform != TargetPlatform.macOS,
-              includeRepeats: false,
-            ): () {
-              final projectId = state.pathParameters[projectIdPathParam];
-              if (projectId == null) return;
-              _pushRoute(
-                context: context,
-                route: AppRoute.newSession(
-                  projectId: projectId,
-                  projectName: state.uri.queryParameters[projectNameQueryParam],
-                ),
-              );
-            },
-            SingleActivator(
               LogicalKeyboardKey.comma,
               meta: defaultTargetPlatform == TargetPlatform.macOS,
               control: defaultTargetPlatform != TargetPlatform.macOS,

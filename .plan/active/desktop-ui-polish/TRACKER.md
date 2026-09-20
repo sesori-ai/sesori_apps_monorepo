@@ -2,7 +2,8 @@
 
 Status values: `pending` / `in-progress` / `done` / `blocked`. Evidence for a
 finished step lives in `steps/step-NN.md` (created when the step executes);
-this table records state only and never mirrors PR review status.
+this table records state only and never mirrors PR review status. Step 1 is
+the plan itself, so it has no evidence file.
 
 One PR at a time, in order. Step 15 carries an approval gate: it is built
 locally, shown to the user as screenshots of the running app, and **no PR is
@@ -11,8 +12,8 @@ for that approval or for the user's explicit decision to drop or defer it.
 
 | Done | Step | Branch | Title | Target | State |
 |---|---|---|---|---|---|
-| [ ] | 1 | `ux-review-ui-polish-plan` | [1/17](#pr-titles) | ≤ 1,100 | in-progress |
-| [ ] | 2 | `desktop-ui-polish/new-session-primary` | [2/17](#pr-titles) | ≤ 350 | pending |
+| [x] | 1 | `ux-review-ui-polish-plan` | [1/17](#pr-titles) | ≤ 1,100 | done |
+| [x] | 2 | `desktop-ui-polish/new-session-primary` | [2/17](#pr-titles) | ≤ 350 | done |
 | [ ] | 3 | `desktop-ui-polish/activity-in-motion` | [3/17](#pr-titles) | ≤ 600 | pending |
 | [ ] | 4 | `desktop-ui-polish/sidebar-sections` | [4/17](#pr-titles) | ≤ 700 | pending |
 | [ ] | 5 | `desktop-ui-polish/rail` | [5/17](#pr-titles) | ≤ 400 | pending |

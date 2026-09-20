@@ -5,7 +5,7 @@ import "../../extensions/build_context_x.dart";
 
 /// Empty state for the sessions list when a project has no active sessions
 /// yet: a terminal-window glyph, an invitation to begin, and a chip naming the
-/// project the first task will run in.
+/// project the first session will run in.
 ///
 /// Rendered inside a `SliverFillRemaining(hasScrollBody: false)`, so the glyph
 /// is a fixed size — an unbounded illustration would inflate the scroll extent.
@@ -129,7 +129,7 @@ class const _CursorBar({required final Color color}) extends StatelessWidget {
   }
 }
 
-/// Non-interactive pill naming the project the first task will run in.
+/// Non-interactive pill naming the project the first session will run in.
 class const _ProjectChip({required final String name}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

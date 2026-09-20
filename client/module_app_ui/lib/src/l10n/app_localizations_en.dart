@@ -988,7 +988,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListLoadingSemantics => 'Loading sessions';
 
   @override
-  String get sessionListEmptyTitle => 'Start your first task';
+  String get sessionListEmptyTitle => 'Start your first session';
 
   @override
   String get sessionListUntitled => 'Untitled session';
@@ -1010,9 +1010,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListNewSession => 'New session';
-
-  @override
-  String get sessionListNewTask => 'New task';
 
   @override
   String get sessionDetailTitle => 'Session';
@@ -2122,7 +2119,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingWhyNotifiedTitle => 'Get notified';
 
   @override
-  String get projectsOnboardingWhyNotifiedSubtitle => 'Know when a task needs you.';
+  String get projectsOnboardingWhyNotifiedSubtitle => 'Know when a session needs you.';
 
   @override
   String get projectsOnboardingWhyFaqHeader => 'FAQs';
@@ -2413,7 +2410,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessesStatusRunning => 'Running';
 
   @override
-  String get archivedSessionsTitle => 'Archived tasks';
+  String get archivedSessionsTitle => 'Archived sessions';
 
   @override
   String get archivedSessionsClose => 'Close archived sessions';

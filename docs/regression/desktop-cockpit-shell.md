@@ -24,9 +24,11 @@ The main pane hosts one full-width routed page.
 - Windows narrower than 760 pixels temporarily collapse the sidebar without
   changing saved preferences. Widening restores the user's expanded/collapsed
   choice. The native minimum window remains 560 × 480.
-- Project shortcuts open the existing sessions route. The labeled New project button uses the shared folder
-  dialog and project-list cubit; the adjacent collapse control owns sidebar presentation. The compact Projects
-  shortcut opens home, including empty/recovery states when the window is too narrow to expand.
+- Project shortcuts open the existing sessions route. The labeled New session button is the sidebar's primary
+  action. The small New project button beside it uses the shared folder dialog and project-list cubit, and hides
+  with the collapsed sidebar, where the home pane still offers it. The collapse control owns sidebar
+  presentation. The compact Projects shortcut opens home, including empty/recovery states when the window is too
+  narrow to expand.
   The separated footer groups This computer with refresh and Settings icon controls. Icon/status hints and
   truncated-label hints remain useful, while fully visible labels need no duplicate tooltip.
 - Explicit sidebar refresh runs through Layer-3 `DesktopSidebarRefreshService` over the same scoped project and recent
@@ -63,12 +65,13 @@ The main pane hosts one full-width routed page.
   “All sessions · N” link counts the full active visible inventory, including sessions currently prioritized in
   Activity, and opens the existing sessions page. Compact/project collapse hides ordinary rows without clearing
   cached data or hiding that project's Activity rows; per-project collapse preferences survive layout restore.
-- Cmd+N (Ctrl+N on Windows/Linux) opens New Session for the current route's project and preserves its nullable name.
-  Without a project context it does nothing. Cmd/Ctrl+B toggles the saved sidebar choice except during automatic
-  narrow-window collapse, where it does nothing like the disabled control. Cmd/Ctrl+, opens Settings.
-  Held-key repeats do not repeat these commands; text-field focus remains usable and root popups own their focus.
-  Hints use the platform modifier; only the selected project's New session button advertises the project shortcut.
-  All platforms retain native window chrome.
+- Cmd+N (Ctrl+N on Windows/Linux) and the sidebar's New session button open New Session for the open project, else the
+  most recently active one; with no project yet they open the New project dialog. They do nothing until the project
+  inventory has loaded, and never substitute another project for an open one that is missing from the inventory.
+  Cmd/Ctrl+B toggles the saved sidebar choice except during automatic narrow-window collapse, where it does nothing
+  like the disabled control. Cmd/Ctrl+, opens Settings. Held-key repeats do not repeat these commands; text-field
+  focus remains usable and root popups own their focus. Hints use the platform modifier; only the selected project's
+  New session button advertises the project shortcut. All platforms retain native window chrome.
 - Project hover/keyboard focus reveals New session. Right-click project and
   session menus reuse the shared rename/hide and session action flows.
   Session title tooltips, selection, running/awaiting/unread signals and
@@ -106,7 +109,7 @@ The main pane hosts one full-width routed page.
 - The sidebar is the only navigation pane, including at minimum window width.
   All sessions, new session, detail, and diffs are sibling main-pane routes.
   All sessions uses the shared full list, archive filter, actions, scan/refresh,
-  and New task button without a back arrow. Only that page creates a full list
+  and New session button without a back arrow. Only that page creates a full list
   owner; recent-session menus remain non-viewing action scopes.
 - Direct/sidebar-opened detail uses the available main-pane width without a
   redundant back arrow. Pushed details retain Back to their opener, including

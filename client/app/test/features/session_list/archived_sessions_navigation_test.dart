@@ -43,7 +43,7 @@ void main() {
           : find.bySemanticsLabel("Show archived");
       await tester.tap(entry);
       await tester.pumpAndSettle();
-      expect(find.text("Archived tasks"), findsOneWidget);
+      expect(find.text("Archived sessions"), findsOneWidget);
       expect(find.text("Live record"), findsNothing);
       expect(find.text("Archived record"), findsOneWidget);
       expect(find.text("Today"), findsOneWidget);
