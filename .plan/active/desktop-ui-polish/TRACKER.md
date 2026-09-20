@@ -17,7 +17,7 @@ for that approval or for the user's explicit decision to drop or defer it.
 | [x] | 3 | `desktop-ui-polish/activity-in-motion` | [3/17](#pr-titles) | ≤ 600 | done |
 | [x] | 4 | `desktop-ui-polish/sidebar-sections` | [4/17](#pr-titles) | ≤ 700 | done |
 | [x] | 5 | `desktop-ui-polish/rail` | [5/17](#pr-titles) | ≤ 400 | done |
-| [ ] | 6 | `desktop-ui-polish/floating-panel` | [6/17](#pr-titles) | ≤ 450 | pending |
+| [x] | 6 | `desktop-ui-polish/floating-panel` | [6/17](#pr-titles) | ≤ 450 | done |
 | [ ] | 7 | `desktop-ui-polish/title-bar` | [7/17](#pr-titles) | ≤ 350 | pending |
 | [ ] | 8 | `desktop-ui-polish/pointer-menus` | [8/17](#pr-titles) | ≤ 500 | pending |
 | [ ] | 9 | `desktop-ui-polish/project-page` | [9/17](#pr-titles) | ≤ 800 | pending |

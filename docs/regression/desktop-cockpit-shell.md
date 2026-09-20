@@ -2,13 +2,21 @@
 
 ## Capability
 
-Desktop project navigation in a resizable sidebar, with a compact initials rail
-and desktop-owned layout preferences. The sidebar and home pane share one
+Desktop project navigation in a resizable sidebar that floats as a panel over
+the page, with a compact initials rail and desktop-owned layout preferences. The sidebar and home pane share one
 signed-in project inventory; one shared recent-session cache feeds the tree.
 The main pane hosts one full-width routed page.
 
 ## Required Behavior
 
+- The sidebar and its rail float as a panel over the base surface the pages
+  paint: inset 8 pixels from the window's top, bottom and start edges, with
+  14-pixel corners, a hairline border and a soft shadow, and no divider. The
+  panel clips its footer. An 8-pixel gap separates it from the main pane, which
+  therefore starts 16 pixels past the panel's width. While the sidebar is
+  expanded that gap is the resize handle, with a resize cursor and no visible
+  line; the fixed-width rail has none. Width bounds and the rail's 56 pixels
+  measure the panel itself.
 - Expanded width defaults to 260 logical pixels and clamps to 200–420. Dragging
   uses the starting width plus global pointer displacement, preserving overshoot
   when reversing beyond either bound. Changes are immediate; an admitted drag
@@ -222,6 +230,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   same-page/Back preservation, different-session replacement, readiness and logged-failure ordering.
 - Popover scope/contextual actions, locks/live updates, explicit Stop intent, expanded/compact anchoring,
   outside/Escape dismissal, preserved main pane.
+- Floating panel geometry expanded and collapsed: window inset, main-pane offset, the resize gap and its absence
+  beside the rail, no divider.
 - Rail Activity button count and tooltip (including a sticky-only count that claims nothing new, and its
   pill under larger text), one chip per project, popout placement beside the rail, rows that stay live
   with the cockpit's cubits mounted below the root navigator, and dismissal when a row opens its session
@@ -255,6 +265,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Settings entries/tabs, native startup preference, dialog keyboard/backdrop/accessibility and retained composer.
 - Popover Start/Stop/Retry, Take Over versus Stop, logs and Settings.
 - Relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows.
+- The floating panel in light and dark: rounded corners, border and shadow with no hard edge against the page.
 - Keyboard focus, compact tooltips, relaunch persistence, light/dark appearance,
   recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping
   through the tree and menus.
@@ -272,7 +283,8 @@ automatic collapse overwriting user preferences, missing/stale activity marks,
 duplicate project inventories, a session leaving its project's rows for Activity, a deliberately unread session
 returning to Activity without new agent output, an opened Activity session vanishing under the pointer, repeated
 admission on rebuild/expansion, a folded section hiding its rows in the collapsed rail, session chips posing as
-projects in the rail, a rail Activity popout that is empty, stale or throws for a missing provider, lost project
+projects in the rail, a rail Activity popout that is empty, stale, over the rail or throws for a missing provider, a
+divider or square corners on the sidebar panel, a resize handle beside the fixed rail, lost project
 context, a shifting empty Activity header, a second session-list pane, sidebar browsing clearing unread state,
 stale/missing recent rows, a refresh reporting success from old retained data, an indicator settling before its
 owning reads, duplicate refresh dispatch, unnamed icon controls, covered transcripts marked viewed,

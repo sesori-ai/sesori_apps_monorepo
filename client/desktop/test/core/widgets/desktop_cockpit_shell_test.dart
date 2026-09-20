@@ -15,6 +15,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
 import "package:sesori_desktop/core/widgets/desktop_connection_pill.dart";
+import "package:sesori_desktop/core/widgets/desktop_sidebar.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -282,11 +283,29 @@ void main() {
       await tester.pumpWidget(app(state: running));
       await tester.pumpAndSettle();
       final mainPane = find.byKey(const Key("cockpit-content"));
-      final dividerWidth = width < DesktopCockpitShell.autoCollapseBreakpoint ? 1 : 6;
-      expect(tester.getSize(mainPane).width, width - tester.getSize(rail).width - dividerWidth);
+      // The panel keeps a margin at its start and the resize gap at its end.
+      expect(tester.getSize(mainPane).width, width - tester.getSize(rail).width - 2 * DesktopSidebar.panelMargin);
       expect(find.byType(SessionSplitShell), findsNothing);
       expect(find.byType(SessionListPanel), findsNothing);
     }
+  });
+
+  testWidgets("the sidebar floats as an inset panel whose gap is the resize handle", (tester) async {
+    const margin = DesktopSidebar.panelMargin;
+    final mainPane = find.byKey(const Key("cockpit-content"));
+    await tester.pumpWidget(app(state: running));
+    final panel = tester.getRect(rail);
+    expect(panel, const Rect.fromLTRB(margin, margin, margin + 260, 600 - margin));
+    expect(tester.getRect(resize), Rect.fromLTRB(panel.right, 0, panel.right + margin, 600));
+    expect(tester.getRect(mainPane).left, panel.right + margin);
+    expect(find.byType(VerticalDivider), findsNothing);
+
+    // The rail floats the same way, and a fixed-width rail has nothing to resize.
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(rail), const Rect.fromLTRB(margin, margin, margin + 56, 600 - margin));
+    expect(resize, findsNothing);
+    expect(tester.getRect(mainPane).left, margin + 56 + margin);
   });
 
   testWidgets("retry uses the failure-aware reconnect path", (tester) async {
@@ -822,7 +841,7 @@ void main() {
     await tester.tap(button);
     await tester.pumpAndSettle();
     final popout = find.byKey(const Key("desktop-sidebar-activity-popout"));
-    expect(tester.getTopLeft(popout).dx, greaterThan(56));
+    expect(tester.getTopLeft(popout).dx, greaterThan(tester.getTopRight(rail).dx));
     expect(find.descendant(of: popout, matching: find.text("priority")), findsOneWidget);
     expect(find.descendant(of: popout, matching: find.text("running")), findsOneWidget);
 
