@@ -2,7 +2,8 @@
 
 Status values: `pending` / `in-progress` / `done` / `blocked`. Evidence for a
 finished step lives in `steps/step-NN.md` (created when the step executes);
-this table records state only and never mirrors PR review status.
+this table records state only and never mirrors PR review status. Step 1 is
+the plan itself, so it has no evidence file.
 
 One PR at a time, in order. Step 15 carries an approval gate: it is built
 locally, shown to the user as screenshots of the running app, and **no PR is
