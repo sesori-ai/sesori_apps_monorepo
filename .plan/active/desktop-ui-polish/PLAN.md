@@ -398,8 +398,9 @@ inventory never holds.
 
 Mark unread is an explicit operation, not the row's toggle: the dispatcher
 gains `handleSessionMarkUnread`, which always sends `read: false` and fires
-the same `onSessionMarkedUnread` hook as the toggle. The toggle derives its
-direction from local state, which can still say "unseen" just after opening
+the `onSessionMarkedUnread` hook. The row toggle fires that hook only on its
+mark-unread branch, so marking a session read never writes a deferral entry.
+The toggle derives its direction from local state, which can still say "unseen" just after opening
 (the bridge marks a session seen asynchronously when viewing starts) and
 would then mark the session read. After marking unread the page navigates to
 the project page. `Shift+Cmd/Ctrl+U` is registered beside the existing
