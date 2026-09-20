@@ -7,8 +7,9 @@ import "../../services/session_activity_calculator.dart";
 /// Surface-neutral presentation derivation, following SessionListResolvers.
 /// Ordering/filtering remain owned by SessionListService; this chooses its head.
 extension RecentSessionsResolvers on RecentSessionsLoaded {
-  List<Session> rows({required String? selectedSessionId}) {
-    final recent = visibleSessions.take(3).toList();
+  /// The first [limit] sessions, plus the selected one when it sits further down.
+  List<Session> rows({required String? selectedSessionId, required int limit}) {
+    final recent = visibleSessions.take(limit).toList();
     final selected = visibleSessions.firstWhereOrNull((session) => session.id == selectedSessionId);
     return [
       ...recent,

@@ -15,6 +15,10 @@ sealed class DesktopSidebarLayout with _$DesktopSidebarLayout {
     /// `time.updated` at that moment, oldest first. Activity leaves such a
     /// session alone until the agent moves that stamp.
     @Default({}) Map<String, int> deferredSessions,
+
+    /// Section headers the user folded; a folded section hides its rows.
+    @Default(false) bool activitySectionCollapsed,
+    @Default(false) bool projectsSectionCollapsed,
   }) = _DesktopSidebarLayout;
 
   factory fromJson(Map<String, dynamic> json) => _$DesktopSidebarLayoutFromJson(json);

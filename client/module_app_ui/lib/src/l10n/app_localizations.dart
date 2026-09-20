@@ -187,17 +187,17 @@ abstract class AppLocalizations {
   /// **'New project'**
   String get desktopSidebarNewProject;
 
-  /// Sidebar link to a project's full session list, with its active visible session count.
+  /// Sidebar button that reveals more of a project's sessions in place.
   ///
   /// In en, this message translates to:
-  /// **'All sessions · {count}'**
-  String desktopSidebarAllSessions(int count);
+  /// **'Show more'**
+  String get desktopSidebarShowMore;
 
-  /// Heading above running or unseen sessions prioritized across every desktop sidebar project.
+  /// Collapsible desktop sidebar section of sessions in motion across every project, with how many.
   ///
   /// In en, this message translates to:
-  /// **'Activity'**
-  String get desktopSidebarActivity;
+  /// **'Activity · {count}'**
+  String desktopSidebarActivity(int count);
 
   /// Accessible identity of a priority sidebar session with its project context.
   ///

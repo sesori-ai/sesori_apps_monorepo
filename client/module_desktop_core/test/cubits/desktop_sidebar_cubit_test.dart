@@ -58,6 +58,17 @@ void main() {
     verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(3);
   });
 
+  test("folding a section persists and leaves the other section alone", () async {
+    cubit = DesktopSidebarCubit(repository: repository);
+    await pumpEventQueue();
+    await cubit.toggleActivitySection();
+    expect(cubit.state, const DesktopSidebarLayout(activitySectionCollapsed: true));
+    await cubit.toggleProjectsSection();
+    await cubit.toggleActivitySection();
+    expect(cubit.state, const DesktopSidebarLayout(projectsSectionCollapsed: true));
+    verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(3);
+  });
+
   test("read failure leaves defaults and write failure keeps the live layout", () async {
     when(repository.readSidebarLayout).thenThrow(const FormatException("invalid sidebar JSON"));
     when(() => repository.writeSidebarLayout(layout: any(named: "layout"))).thenThrow(StateError("disk unavailable"));

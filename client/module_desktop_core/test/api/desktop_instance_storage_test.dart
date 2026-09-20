@@ -55,12 +55,14 @@ void main() {
       collapsed: true,
       collapsedProjectIds: {"project-1", "project-2"},
       deferredSessions: {"older": 5, "newer": 9},
+      activitySectionCollapsed: true,
+      projectsSectionCollapsed: true,
     );
     await storage.writeSidebarLayout(layout: layout);
     final restored = await storage.readSidebarLayout();
     expect(restored, layout);
     expect(restored.deferredSessions.keys, ["older", "newer"]);
-    expect(DesktopSidebarLayout.fromJson(const {"width": 315}).deferredSessions, isEmpty);
+    expect(DesktopSidebarLayout.fromJson(const {"width": 315}), const DesktopSidebarLayout(width: 315));
     expect(File(path.join(root.path, "desktop-instance", "sidebar-layout")).existsSync(), isTrue);
   });
 

@@ -20,14 +20,12 @@
   "@desktopHomePickSession": {"description": "Desktop home guidance when projects are available but no session is open."},
   "desktopSidebarNewProject": "New project",
   "@desktopSidebarNewProject": {"description": "Tooltip and label for the small desktop sidebar action that opens the add-project dialog."},
-  "desktopSidebarAllSessions": "All sessions · {count}",
-  "@desktopSidebarAllSessions": {
-    "description": "Sidebar link to a project's full session list, with its active visible session count.",
-    "placeholders": {"count": {"type": "int"}}
-  },
-  "desktopSidebarActivity": "Activity",
+  "desktopSidebarShowMore": "Show more",
+  "@desktopSidebarShowMore": {"description": "Sidebar button that reveals more of a project's sessions in place."},
+  "desktopSidebarActivity": "Activity · {count}",
   "@desktopSidebarActivity": {
-    "description": "Heading above running or unseen sessions prioritized across every desktop sidebar project."
+    "description": "Collapsible desktop sidebar section of sessions in motion across every project, with how many.",
+    "placeholders": {"count": {"type": "int"}}
   },
   "desktopSidebarActivitySession": "{sessionTitle} in {projectName}",
   "@desktopSidebarActivitySession": {

@@ -40,6 +40,16 @@ class DesktopSidebarCubit({required final DesktopInstanceRepository repository})
     return saveLayout();
   }
 
+  Future<void> toggleActivitySection() {
+    emit(state.copyWith(activitySectionCollapsed: !state.activitySectionCollapsed));
+    return saveLayout();
+  }
+
+  Future<void> toggleProjectsSection() {
+    emit(state.copyWith(projectsSectionCollapsed: !state.projectsSectionCollapsed));
+    return saveLayout();
+  }
+
   Future<void> toggleProject({required String projectId}) {
     final collapsed = {...state.collapsedProjectIds};
     if (!collapsed.remove(projectId)) collapsed.add(projectId);
