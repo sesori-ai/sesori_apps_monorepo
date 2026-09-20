@@ -12,6 +12,7 @@ import "package:theme_prego/module_prego.dart";
 import "../di/injection.dart";
 import "desktop_bridge_popover.dart";
 import "desktop_bridge_recovery_card.dart";
+import "desktop_sidebar_activity_popout.dart";
 import "desktop_sidebar_section_header.dart";
 
 typedef SidebarSessionOpenedCallback = void Function({
@@ -370,14 +371,14 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
       deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
       stickySessionId: _stickyActivitySessionId,
     );
-    // The rail has no headers to unfold a section with, so it ignores folding.
+    // The rail has no headers to unfold a section with, so it ignores folding;
+    // its Activity is one button whose list pops out.
     final railed = widget.expansion < 0.5;
     final activityFolded = context.select((DesktopSidebarCubit cubit) => cubit.state.activitySectionCollapsed);
     final projectsFolded = context.select((DesktopSidebarCubit cubit) => cubit.state.projectsSectionCollapsed);
-    _activitySessionIds = {
-      for (final group in projection.activityGroups)
-        for (final item in group.sessions) item.session.id,
-    };
+    final activitySessions = [for (final group in projection.activityGroups) ...group.sessions];
+    _activitySessionIds = {for (final item in activitySessions) item.session.id};
+    final activityRunning = activitySessions.where((item) => item.isRunning).length;
     List<PregoMenuEntry> buildSessionMenuEntries({
       required SessionListCubit cubit,
       required Session session,
@@ -386,6 +387,49 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
     return CustomScrollView(
       key: const Key("desktop-sidebar-project-list"),
       slivers: [
+        if (railed && activitySessions.isNotEmpty)
+          SliverToBoxAdapter(
+            child: DesktopSidebarActivityPopout(
+              triggerBuilder: (_, toggle) => _SidebarButton(
+                key: const Key("desktop-sidebar-rail-activity"),
+                label: context.loc.desktopSidebarActivity(activitySessions.length),
+                icon: PregoAiLoader(size: 20, animate: activityRunning > 0),
+                expansion: 0,
+                selected: false,
+                status: (
+                  icon: _CountPill(count: activitySessions.length),
+                  label: activityRunning > 0
+                      ? context.loc.projectListRunning(activityRunning)
+                      : context.loc.projectListNewActivity,
+                ),
+                onPressed: toggle,
+              ),
+              // The popout sits on the root navigator, outside the cockpit's
+              // providers, so the sidebar hands over the cubits its rows watch.
+              contentBuilder: (_, close) => MultiBlocProvider(
+                providers: [
+                  BlocProvider.value(value: context.read<RecentSessionsCubit>()),
+                  BlocProvider.value(value: context.read<DesktopSidebarCubit>()),
+                ],
+                child: _SidebarActivityPopoutList(
+                  projects: widget.projects,
+                  stickySessionId: _stickyActivitySessionId,
+                  selectedProjectId: widget.selectedProjectId,
+                  selectedSessionId: widget.selectedSessionId,
+                  onOpenSession: ({required context, required project, required displayName, required session}) {
+                    close();
+                    widget.onOpenSession(
+                      context: this.context,
+                      project: project,
+                      displayName: displayName,
+                      session: session,
+                    );
+                  },
+                  sessionMenuEntries: buildSessionMenuEntries,
+                ),
+              ),
+            ),
+          ),
         SliverPadding(
           padding: EdgeInsetsDirectional.only(end: gutter),
           sliver: SliverToBoxAdapter(
@@ -403,7 +447,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
           padding: EdgeInsetsDirectional.only(end: gutter),
           sliver: PregoAnimatedSliverList<DesktopSidebarActivityGroup>(
             key: const Key("desktop-sidebar-activity-list"),
-            items: railed || !activityFolded ? projection.activityGroups : const [],
+            items: railed || activityFolded ? const [] : projection.activityGroups,
             itemKey: (group) => ValueKey(group.project.id),
             itemBuilder: (context, _, group) {
               final projectName = desktopProjectDisplayName(context: context, project: group.project);
@@ -469,6 +513,42 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
             },
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// The Activity rows as the rail pops them out, live while the popout is open.
+class const _SidebarActivityPopoutList({
+  required final List<ProjectSummary> projects,
+  required final String? stickySessionId,
+  required final String? selectedProjectId,
+  required final String? selectedSessionId,
+  required final SidebarSessionOpenedCallback onOpenSession,
+  required final _SidebarSessionMenuEntriesBuilder sessionMenuEntries,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final projection = DesktopSidebarSessionProjection.from(
+      projects: projects,
+      entries: context.watch<RecentSessionsCubit>().state,
+      deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
+      stickySessionId: stickySessionId,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final group in projection.activityGroups)
+          _SidebarActivityProjectGroup(
+            key: ValueKey("sidebar-activity-${group.project.id}"),
+            group: group,
+            projectName: desktopProjectDisplayName(context: context, project: group.project),
+            expansion: 1,
+            selectedSessionId: group.project.id == selectedProjectId ? selectedSessionId : null,
+            onOpenSession: onOpenSession,
+            sessionMenuEntries: sessionMenuEntries,
+          ),
       ],
     );
   }
@@ -815,38 +895,16 @@ class const _SidebarActivitySessionRow({
                   child: LayoutBuilder(
                     builder: (context, constraints) => Row(
                       children: [
-                        // The rail has no room for a title, so there the project's
-                        // avatar names the session and the sparkle is its badge.
                         SizedBox(
                           width: 28,
                           height: 28,
-                          child: expansion < 0.5
-                              ? Stack(
-                                  clipBehavior: Clip.none,
-                                  alignment: Alignment.center,
-                                  children: [
-                                    PregoAvatarInitials(label: projectName, size: 26),
-                                    if (item.isRunning || item.isUnseen)
-                                      PositionedDirectional(
-                                        end: -4,
-                                        top: -4,
-                                        child: DecoratedBox(
-                                          decoration: BoxDecoration(
-                                            color: prego.colors.bgSecondary,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: PregoAiLoader(size: 12, animate: item.isRunning),
-                                        ),
-                                      ),
-                                  ],
-                                )
-                              : Center(
-                                  child: _SessionSignals(
-                                    isAwaitingInput: item.isAwaitingInput,
-                                    isRunning: item.isRunning,
-                                    isUnseen: item.isUnseen,
-                                  ),
-                                ),
+                          child: Center(
+                            child: _SessionSignals(
+                              isAwaitingInput: item.isAwaitingInput,
+                              isRunning: item.isRunning,
+                              isUnseen: item.isUnseen,
+                            ),
+                          ),
                         ),
                         if (expansion > 0)
                           Expanded(
@@ -1003,6 +1061,22 @@ class const _SidebarSessionRow({
       ),
     );
   }
+}
+
+/// The count on the rail's Activity button.
+class const _CountPill({required final int count}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 16,
+    constraints: const BoxConstraints(minWidth: 16),
+    padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
+    alignment: Alignment.center,
+    decoration: BoxDecoration(color: context.prego.colors.bgBrandSolid, borderRadius: BorderRadius.circular(8)),
+    child: Text(
+      "$count",
+      style: context.prego.textTheme.textXs.bold.copyWith(color: context.prego.colors.textWhite, height: 1),
+    ),
+  );
 }
 
 /// The leading status column of a session row: two glyphs fill its 28 points.

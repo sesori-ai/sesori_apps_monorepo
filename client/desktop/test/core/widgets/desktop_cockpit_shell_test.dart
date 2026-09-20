@@ -68,34 +68,40 @@ void main() {
       providers: [
         BlocProvider<BridgeControlCubit>.value(value: bridgeControlCubit),
         BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
-        BlocProvider<ProjectListCubit>.value(value: projects),
-        BlocProvider<RecentSessionsCubit>.value(value: recent),
-        BlocProvider(create: (_) => DesktopSidebarRefreshCubit(service: refreshService)),
-        BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
       ],
       child: MaterialApp(
         theme: buildPregoThemeData(brightness: Brightness.light),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home:
-            child ??
-            DesktopCockpitShell(
-              selectedProjectId: "project-1",
-              selectedSessionId: null,
-              onOpenSession: _openSession,
-              onNewSession: _openProject,
-              sessionActions: _sessionActions,
-              onOpenProject: _openProject,
-              onOpenBridgeSettings: _noOp,
-              onOpenProjects: _noOp,
-              onOpenSettings: _noOp,
-              child: GestureDetector(
-                key: const Key("cockpit-content"),
-                behavior: HitTestBehavior.opaque,
-                onTap: () => contentTaps++,
-                child: const ColoredBox(color: Colors.transparent),
+        // As in the router, the cockpit's cubits sit below the root navigator,
+        // out of reach of the popups it hosts.
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<ProjectListCubit>.value(value: projects),
+            BlocProvider<RecentSessionsCubit>.value(value: recent),
+            BlocProvider(create: (_) => DesktopSidebarRefreshCubit(service: refreshService)),
+            BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
+          ],
+          child:
+              child ??
+              DesktopCockpitShell(
+                selectedProjectId: "project-1",
+                selectedSessionId: null,
+                onOpenSession: _openSession,
+                onNewSession: _openProject,
+                sessionActions: _sessionActions,
+                onOpenProject: _openProject,
+                onOpenBridgeSettings: _noOp,
+                onOpenProjects: _noOp,
+                onOpenSettings: _noOp,
+                child: GestureDetector(
+                  key: const Key("cockpit-content"),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => contentTaps++,
+                  child: const ColoredBox(color: Colors.transparent),
+                ),
               ),
-            ),
+        ),
       ),
     );
   }
@@ -715,7 +721,7 @@ void main() {
     expect(rows, findsNWidgets(3));
   });
 
-  testWidgets("section headers fold their rows and persist, and the rail ignores folding", (tester) async {
+  testWidgets("section headers fold their rows and persist, and the rail has no folded sections", (tester) async {
     final session = _session(id: "moving").copyWith(unseen: true);
     whenListen(
       recent,
@@ -750,8 +756,86 @@ void main() {
     await tester.tap(toggle);
     await tester.pumpAndSettle();
     expect(tester.getSize(rail).width, 56);
-    expect(activityRow, findsOneWidget);
+    expect(find.byKey(const Key("desktop-sidebar-rail-activity")), findsOneWidget);
     expect(project, findsOneWidget);
+  });
+
+  testWidgets("the rail's one Activity button counts and pops out live rows beside it", (tester) async {
+    const projectOne = ProjectSummary(id: "project-1", name: "Project One", path: "/one", time: null);
+    const projectTwo = ProjectSummary(id: "project-2", name: "Project Two", path: "/two", time: null);
+    final priority = _session(id: "priority").copyWith(unseen: true);
+    final runningSession = _session(id: "running").copyWith(projectID: "project-2", directory: "/two");
+    Map<String, RecentSessionsEntry> entries({required bool stillRunning}) => {
+      "project-1": RecentSessionsLoaded(
+        sourceSessions: [priority],
+        visibleSessions: [priority],
+        activityBySessionId: const {},
+        listStateBySessionId: const {},
+      ),
+      "project-2": RecentSessionsLoaded(
+        sourceSessions: [runningSession],
+        visibleSessions: [runningSession],
+        activityBySessionId: {
+          if (stillRunning)
+            "running": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+        },
+        listStateBySessionId: const {},
+      ),
+    };
+    final updates = StreamController<Map<String, RecentSessionsEntry>>();
+    when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout(collapsed: true));
+    whenListen(
+      projects,
+      const Stream<ProjectListState>.empty(),
+      initialState: const ProjectListState.loaded(projects: [projectOne, projectTwo], activityById: {}),
+    );
+    whenListen(recent, updates.stream, initialState: entries(stillRunning: true));
+    String? openedSession;
+    await tester.pumpWidget(
+      app(
+        state: running,
+        child: DesktopCockpitShell(
+          selectedProjectId: null,
+          selectedSessionId: null,
+          onOpenSession: ({required context, required project, required displayName, required session}) =>
+              openedSession = session.id,
+          onNewSession: _openProject,
+          sessionActions: _sessionActions,
+          onOpenProject: _openProject,
+          onOpenBridgeSettings: _noOp,
+          onOpenProjects: _noOp,
+          onOpenSettings: _noOp,
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.getSize(rail).width, 56);
+
+    // One Activity button, then one chip per project: no session stands in as its project.
+    final button = find.byKey(const Key("desktop-sidebar-rail-activity"));
+    expect(find.descendant(of: button, matching: find.text("2")), findsOneWidget);
+    expect(find.byTooltip("Activity · 2, Running"), findsOneWidget);
+    expect(find.byType(PregoAvatarInitials), findsNWidgets(2));
+    expect(find.text("priority"), findsNothing);
+
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    final popout = find.byKey(const Key("desktop-sidebar-activity-popout"));
+    expect(tester.getTopLeft(popout).dx, greaterThan(56));
+    expect(find.descendant(of: popout, matching: find.text("priority")), findsOneWidget);
+    expect(find.descendant(of: popout, matching: find.text("running")), findsOneWidget);
+
+    // The open popout follows the cubits: a finished, seen session leaves it.
+    updates.add(entries(stillRunning: false));
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: popout, matching: find.text("running")), findsNothing);
+
+    await tester.tap(find.descendant(of: popout, matching: find.text("priority")));
+    await tester.pumpAndSettle();
+    expect(openedSession, "priority");
+    expect(popout, findsNothing);
+    await updates.close();
   });
 
   testWidgets("session status signals stay inside the row while the rail collapses", (tester) async {
