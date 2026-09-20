@@ -60,6 +60,45 @@ flutter analyze --no-pub
   renders that file's private Activity group and menu types; only the popout
   frame, which needs neither, is its own file.
 
+### Review follow-up
+
+The first review wave found two real gaps; commit
+`56aaebcd19da4c01a0f5ddaa2033f59f4db21f98` closes both (3 files, 89 additions
+and 13 deletions, no generated lines).
+
+- **The popout closes with its last row.** When the last Activity row left an
+  open popout (marked read from its own menu, finished, or changed remotely),
+  the rail dropped the button but the popover's route stayed as an empty bubble
+  behind its modal barrier. `_SidebarActivityPopoutList` now takes the
+  popover's `close` and calls it after the frame in which its projection
+  becomes empty. `close` pops the top route, so the list pops only while
+  `ModalRoute.of(context).isCurrent`: a popout that is already closing, or
+  that sits under a row's menu, never pops another route, and the route
+  dependency rebuilds the list when it becomes the top route again.
+- **The button says only what its rows' flags say.** A seen, idle row that
+  stays listed because it is selected made the button's tooltip and
+  screen-reader label claim "New activity". The label is now built from the
+  rows' running, awaiting-input and unseen flags, and a sticky-only count says
+  just "Activity · 1". `_SidebarButton`'s status label became nullable for
+  that; no string was added.
+
+Re-measured at that commit with a clean tree; both commands exited 0:
+
+```sh
+cd client/desktop
+flutter test --no-pub
+flutter analyze --no-pub
+```
+
+- `desktop`: the full suite, 252 cases, passes. The new shell case opens the
+  popout over one unseen session, marks it seen, and requires the popout, the
+  button and the popover's modal barrier to be gone; then, with that session
+  selected and seen, it requires the tooltip to be exactly "Activity · 1". With
+  the `close` call removed the case fails on the popout still being found
+  (checked once by hand, then restored). The first rail case now expects
+  "Activity · 2, Running, New activity" for one running and one unseen row.
+- `flutter analyze` reports no issues. No generated file changed.
+
 ## Size
 
 **320 changed lines = 259 additions + 61 deletions** at the measured
