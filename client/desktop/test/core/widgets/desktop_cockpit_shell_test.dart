@@ -815,7 +815,7 @@ void main() {
     // One Activity button, then one chip per project: no session stands in as its project.
     final button = find.byKey(const Key("desktop-sidebar-rail-activity"));
     expect(find.descendant(of: button, matching: find.text("2")), findsOneWidget);
-    expect(find.byTooltip("Activity · 2, Running"), findsOneWidget);
+    expect(find.byTooltip("Activity · 2, Running, New activity"), findsOneWidget);
     expect(find.byType(PregoAvatarInitials), findsNWidgets(2));
     expect(find.text("priority"), findsNothing);
 
@@ -835,6 +835,64 @@ void main() {
     await tester.pumpAndSettle();
     expect(openedSession, "priority");
     expect(popout, findsNothing);
+    await updates.close();
+  });
+
+  testWidgets("the rail's Activity popout closes with its last row, and a sticky row claims nothing new", (
+    tester,
+  ) async {
+    Map<String, RecentSessionsEntry> entries({required bool unseen}) {
+      final session = _session(id: "priority").copyWith(unseen: unseen);
+      return {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: [session],
+          visibleSessions: [session],
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      };
+    }
+
+    final updates = StreamController<Map<String, RecentSessionsEntry>>();
+    when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout(collapsed: true));
+    whenListen(recent, updates.stream, initialState: entries(unseen: true));
+    Widget shell({required String? selectedSessionId}) => app(
+      state: running,
+      child: DesktopCockpitShell(
+        selectedProjectId: selectedSessionId == null ? null : "project-1",
+        selectedSessionId: selectedSessionId,
+        onOpenSession: _openSession,
+        onNewSession: _openProject,
+        sessionActions: _sessionActions,
+        onOpenProject: _openProject,
+        onOpenBridgeSettings: _noOp,
+        onOpenProjects: _noOp,
+        onOpenSettings: _noOp,
+        child: const SizedBox.shrink(),
+      ),
+    );
+    await tester.pumpWidget(shell(selectedSessionId: null));
+    await tester.pumpAndSettle();
+    final button = find.byKey(const Key("desktop-sidebar-rail-activity"));
+    final popout = find.byKey(const Key("desktop-sidebar-activity-popout"));
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: popout, matching: find.text("priority")), findsOneWidget);
+
+    // The last row leaves: no empty bubble stays behind its modal barrier.
+    updates.add(entries(unseen: false));
+    await tester.pumpAndSettle();
+    expect(popout, findsNothing);
+    expect(button, findsNothing);
+    expect(find.byType(ModalBarrier), findsOneWidget);
+
+    // A seen, idle session stays listed only while selected; the button counts it and claims nothing.
+    updates.add(entries(unseen: true));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(shell(selectedSessionId: "priority"));
+    updates.add(entries(unseen: false));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip("Activity · 1"), findsOneWidget);
     await updates.close();
   });
 

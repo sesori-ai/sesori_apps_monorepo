@@ -379,6 +379,12 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
     final activitySessions = [for (final group in projection.activityGroups) ...group.sessions];
     _activitySessionIds = {for (final item in activitySessions) item.session.id};
     final activityRunning = activitySessions.where((item) => item.isRunning).length;
+    // A sticky row is seen and idle, so the button says only what its rows' flags say.
+    final activityStatuses = [
+      if (activityRunning > 0) context.loc.projectListRunning(activityRunning),
+      if (activitySessions.any((item) => item.isAwaitingInput)) context.loc.sessionListAwaitingInput,
+      if (activitySessions.any((item) => item.isUnseen)) context.loc.projectListNewActivity,
+    ];
     List<PregoMenuEntry> buildSessionMenuEntries({
       required SessionListCubit cubit,
       required Session session,
@@ -398,9 +404,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                 selected: false,
                 status: (
                   icon: _CountPill(count: activitySessions.length),
-                  label: activityRunning > 0
-                      ? context.loc.projectListRunning(activityRunning)
-                      : context.loc.projectListNewActivity,
+                  label: activityStatuses.isEmpty ? null : activityStatuses.join(", "),
                 ),
                 onPressed: toggle,
               ),
@@ -412,6 +416,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                   BlocProvider.value(value: context.read<DesktopSidebarCubit>()),
                 ],
                 child: _SidebarActivityPopoutList(
+                  close: close,
                   projects: widget.projects,
                   stickySessionId: _stickyActivitySessionId,
                   selectedProjectId: widget.selectedProjectId,
@@ -520,6 +525,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
 
 /// The Activity rows as the rail pops them out, live while the popout is open.
 class const _SidebarActivityPopoutList({
+  required final VoidCallback close,
   required final List<ProjectSummary> projects,
   required final String? stickySessionId,
   required final String? selectedProjectId,
@@ -535,6 +541,14 @@ class const _SidebarActivityPopoutList({
       deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
       stickySessionId: stickySessionId,
     );
+    // The last row left the open popout: close it rather than leave an empty
+    // bubble. [close] pops the top route, so only while this route is that one.
+    final route = ModalRoute.of(context);
+    if (projection.activityGroups.isEmpty && route != null && route.isCurrent) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (route.isCurrent) close();
+      });
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -1119,14 +1133,15 @@ class const _SidebarButton({
   required final Widget icon,
   required final double expansion,
   required final bool selected,
-  required final ({Widget icon, String label})? status,
+  required final ({Widget icon, String? label})? status,
   required final VoidCallback onPressed,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final status = this.status;
-    final description = status == null ? label : "$label, ${status.label}";
+    final statusLabel = status?.label;
+    final description = statusLabel == null ? label : "$label, $statusLabel";
     final emphasized = selected || status != null;
     final color = emphasized ? prego.colors.textPrimary : prego.colors.textSecondary;
     final textStyle = (emphasized ? prego.textTheme.textSm.medium : prego.textTheme.textSm.regular).copyWith(
