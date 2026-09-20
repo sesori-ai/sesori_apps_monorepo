@@ -516,7 +516,7 @@ the failed run is not qualification evidence. This follow-up merged as
 `db9b0cd8bdf0e4b220d3f0fa069ec831e35f2a89`.
 
 **Step 6 persisted-log and timeout-evidence follow-up PR:**
-`🌿 [desktop-distribution] Preserve macOS startup evidence [step 8.f/14]`.
+`⚙️ [desktop-distribution] Preserve macOS startup evidence [step 8.f/14]`.
 Merged-main run `35465783382`, source
 `db9b0cd8bdf0e4b220d3f0fa069ec831e35f2a89`, tree
 `20a3a04d3a3b5399f880cb46f79eb222e6e24f4f`, was dispatched from:
@@ -543,7 +543,43 @@ an atomically replaced closed phase record before each potentially blocking boun
 and bound the exercise step below the job deadline so the always-upload step retains the
 latest phase after a step timeout. Raw app/bridge output remains private and cleanup still
 removes it. Retry both CPUs from merged `main`; the cancelled run is not qualification
-evidence.
+evidence. This follow-up merged as
+`e231295f8b00a8f7a7055e943cc6f4502dfda13c`.
+
+**Step 6 pre-render startup-classification follow-up PR:**
+`🌿 [desktop-distribution] Classify macOS pre-render startup [step 8.g/14]`.
+Merged-main run `35496105360`, source
+`e231295f8b00a8f7a7055e943cc6f4502dfda13c`, tree
+`2d24d147f9f2be55e8885c4e81d3fbb7ecd17672`, used the same working directory and
+exact dispatch command recorded for `8.f/14`. Tooling job `106039227037` passed. X64
+job `106039268281` and arm64 job `106039268268` both failed at `previous: authenticated
+helper did not become ready`; bounded artifacts `10601325063`
+(`sha256:4ac6d8e635f46d6f8774ac385bebe3c5514225c38132034cd0328de7ce7bc386`) and
+`10601410119`
+(`sha256:431fea30cc86113f9d5fe388a76a625a58bfc011475f515d894f9096f949de7d`)
+each record `previous` / `helperReadiness`, completed cleanup, zero helper processes,
+no helper or bridge-log activity, no persisted app log, and a present non-truncated
+redirected app output with every existing startup classification false. Add privacy-safe
+pre-sink Dart-main and process-admission markers, then emit only the furthest observed
+closed startup stage from either bounded private source. Record each package's closed
+marker-support level separately from checked-out source or the exact retained-baseline
+metadata. Baseline run `35042335424` supports only the existing `preferences` through
+`rendering` markers, so its `noMarker` result means
+"before the first supported marker", not "before Dart main". Full pre-sink interpretation
+is valid only for a package whose recorded source contains all new markers.
+
+After this PR merges, first produce a fresh private stable `macos-packaging` run from the
+post-`8.g/14` merged `main` and record its run ID, source and tree:
+
+```bash
+gh workflow run desktop-qualification.yml \
+  --repo sesori-ai/sesori_apps_monorepo --ref main \
+  -f mode=macos-packaging -f channel=stable
+```
+
+Then retry both CPUs from merged `main` with baseline run `35042335424` and that fresh
+current-package run. Do not reuse current-package run `35206885114`, whose source predates
+the pre-sink markers. This failed run is not qualification evidence.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.

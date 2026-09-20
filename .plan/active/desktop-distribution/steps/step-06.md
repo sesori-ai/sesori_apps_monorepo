@@ -233,9 +233,28 @@ redirected output file exists. The `8.f/14` correction also scans at most 1 MiB 
 authoritative private persisted `logs/app.log`, writes an atomic closed phase record
 before blocking boundaries, and bounds the exercise step below the job deadline so
 always-upload can retain timeout evidence. Raw authenticated app/bridge output remains
-excluded and cleanup removes it. Only a both-CPU retry dispatched from merged `main` can
-become evidence. Failed-stop, interactive browser/user-account/TCC, minimum-OS, public
-retrieval and parent Gate C remain open.
+excluded and cleanup removes it. It merged as source
+`e231295f8b00a8f7a7055e943cc6f4502dfda13c`, tree
+`2d24d147f9f2be55e8885c4e81d3fbb7ecd17672`. Merged-main run `35496105360` passed
+tooling job `106039227037`, but x64 job `106039268281` and arm64 job `106039268268`
+both reached `previous: authenticated helper did not become ready`. Their bounded
+artifacts, respectively `10601325063`
+(`sha256:4ac6d8e635f46d6f8774ac385bebe3c5514225c38132034cd0328de7ce7bc386`) and
+`10601410119`
+(`sha256:431fea30cc86113f9d5fe388a76a625a58bfc011475f515d894f9096f949de7d`),
+each record helper-readiness as the failing phase, completed cleanup, zero helpers, no
+helper/bridge-log activity, no persisted app log, and present non-truncated redirected
+output with all classified markers false. The `8.g/14` correction adds fixed pre-sink
+Dart-main and process-admission markers, emits only the furthest closed startup stage
+observed within the same bounded private sources, and separately records package marker
+support from checked-out source or exact retained-baseline metadata. Baseline run
+`35042335424` supports `preferences` through `rendering`, not the new pre-sink markers;
+its `noMarker` means only "before the first supported marker". After `8.g/14` merges,
+dispatch and record a fresh stable
+`macos-packaging` run from merged `main`, then pair that current package with baseline run
+`35042335424` for the both-CPU retry. Current-package run `35206885114` predates the new
+markers and must not be reused. Failed-stop, interactive browser/user-account/TCC,
+minimum-OS, public retrieval and parent Gate C remain open.
 
 Dispatches and expanded logs were run from
 `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
