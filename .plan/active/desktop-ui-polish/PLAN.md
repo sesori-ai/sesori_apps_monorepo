@@ -294,18 +294,27 @@ inputs.
   the rail math includes the margin; the footer border is clipped by the
   panel; the connection pill is re-anchored. The pixel invariants in
   `desktop-cockpit-shell.md` are updated in the same PR.
-- **Title bar.** macOS only:
-  `WindowOptions(titleBarStyle: TitleBarStyle.hidden, windowButtonVisibility: true)`.
-  The panel reserves a top inset for the traffic lights; `DragToMoveArea`
-  covers the panel's top strip and the page toolbar background so the window
-  still drags and zooms on double-click. With the rail collapsed the traffic
-  lights are wider than the rail, so the page toolbar takes a leading inset.
+- **Title bar.** macOS only. Every native-window operation stays behind the
+  existing platform boundary: `WindowHost` (`client/module_desktop_core`) is
+  the interface, and `FlutterWindowHost` remains the only file that imports
+  `window_manager`. `FlutterWindowHost` builds
+  `WindowOptions(titleBarStyle: TitleBarStyle.hidden, windowButtonVisibility: true)`
+  on macOS, and `WindowHost` gains three platform-neutral operations: start
+  dragging, toggle zoom, and set brightness (a closed light/dark value, because
+  the core module is pure Dart).
+  The panel reserves a top inset for the traffic lights. A small shell
+  drag-region widget covers the panel's top strip and the page toolbar
+  background and calls the host, so the window still drags and zooms on
+  double-click; `window_manager`'s own `DragToMoveArea` is not used, because it
+  would bypass the host. With the rail collapsed the traffic lights are wider
+  than the rail, so the page toolbar takes a leading inset.
   The native window brightness follows the app's **effective** brightness —
   the in-app mode resolved against the platform brightness — through one small
-  widget under `MaterialApp` that calls `windowManager.setBrightness` whenever
-  `Theme.of(context).brightness` changes (macOS and Windows). `window_manager`
-  can only force light or dark (it has no "follow the system" value), so under
-  System the widget re-applies the value on every OS light/dark switch.
+  shell widget under `MaterialApp` that observes `Theme.of(context).brightness`
+  and calls the host's brightness operation (macOS and Windows).
+  `window_manager` can only force light or dark (it has no "follow the system"
+  value), so under System the widget re-applies the value on every OS
+  light/dark switch.
   Full-screen, zoom and dragging are verified live before the PR opens; the
   step is independently revertible.
 
@@ -378,10 +387,24 @@ width is applied as symmetric padding computed from the available width inside
 the transcript and the bottom controls, so the scrollbar and wheel area stay
 full-width. The `…` menu reuses the sidebar's precedent: a throwaway
 `SessionListCubit` in `SessionListMode.actions(sessions: [session])` driven by
-the one desktop dispatcher. Mark unread calls `handleSessionToggleUnread`,
-then navigates to the project page; `Shift+Cmd/Ctrl+U` is registered beside
-the existing bindings in `desktop_router.dart` and acts only while a session
-route is open.
+the one desktop dispatcher. That needs a complete `Session`, which the desktop
+screen does not have today (it receives ids and a title, and
+`SessionDetailLoaded` exposes only derived fields). `SessionDetailLoaded`
+therefore gains the hydrated `Session` the cubit already holds privately
+(`_sessionMetadata`) as a required nullable field, the header builder receives
+it, and the toolbar's session actions stay disabled until it is non-null. This
+also covers child sessions and sessions opened directly, which the sidebar
+inventory never holds.
+
+Mark unread is an explicit operation, not the row's toggle: the dispatcher
+gains `handleSessionMarkUnread`, which always sends `read: false` and fires
+the same `onSessionMarkedUnread` hook as the toggle. The toggle derives its
+direction from local state, which can still say "unseen" just after opening
+(the bridge marks a session seen asynchronously when viewing starts) and
+would then mark the session read. After marking unread the page navigates to
+the project page. `Shift+Cmd/Ctrl+U` is registered beside the existing
+bindings in `desktop_router.dart` and acts only while a session route is
+open.
 
 **Archive with Undo and compact alerts (step 12).**
 `SessionListActionDispatcher` takes a required sealed `SessionCleanupFlow`.
@@ -568,7 +591,9 @@ New in-memory mutable state, each with exactly one owner:
 New types: `PregoInteractionMode` / `PregoInteractionScope`,
 `SessionListGrouping`, `SessionCleanupFlow`, `DesktopPageToolbar`,
 `PendingSessionArchiveCubit`, and the two small presentation values on
-`SessionDetailBody` and `NewSessionView`. No new DI registration (the cubit is
+`SessionDetailBody` and `NewSessionView`. Existing types grow by three
+`WindowHost` operations, one dispatcher handler (`handleSessionMarkUnread`)
+and one `SessionDetailLoaded` field. No new DI registration (the cubit is
 created by `BlocProvider` in the cockpit shell), route, repository, service,
 stream or subscription.
 
@@ -643,7 +668,9 @@ step's own PR.
   project; the popout lists the Activity rows.
 - **6:** layout test for the margin and the resize hit-area; live check of
   resize, collapse and persisted width.
-- **7:** live on macOS — drag, double-click zoom, full screen in and out,
+- **7:** `FlutterWindowHost` is still the only `window_manager` import; the
+  brightness widget and the drag region are tested against a fake
+  `WindowHost`. Live on macOS — drag, double-click zoom, full screen in and out,
   traffic lights with the rail collapsed, light/dark/system switching the
   native brightness, and an OS appearance switch while System is selected
   (after a forced value was applied). Windows and Linux still build with
@@ -658,8 +685,10 @@ step's own PR.
   reveal actions that call the dispatcher; an archived row has no Archive
   action.
 - **11:** `SessionDetailBody` with and without `headerBuilder`; width maths;
-  Mark unread lands on the project page; the shortcut is inert off a session
-  route.
+  session actions disabled until the hydrated `Session` arrives, and working
+  for a child session; Mark unread sends `read: false` even while local state
+  still says unseen, fires the deferral hook, and lands on the project page;
+  the shortcut is inert off a session route.
 - **12:** cubit tests under fake time — Undo sends nothing; the timer commits
   through `SessionRepository` with no list cubit mounted; a second archive
   flushes the first, and the first one's late refusal or failure leaves the
@@ -780,7 +809,12 @@ publishes no session event on archive (verified in
 the effective brightness, including OS switches under System
 (`window_manager` can only force light or dark); archived rows offer no
 Archive hover action; and step 17 executes the final matrix instead of only
-recording it. cubic's seven line-length findings were declined: the
+recording it. A second round (2026-09-20) routed the brightness and
+drag-region operations through `WindowHost`, so `FlutterWindowHost` stays the
+only `window_manager` import; made the session page's Mark unread an explicit
+`read: false` operation instead of the state-dependent toggle; and gave the
+toolbar's session actions a defined source by exposing the hydrated `Session`
+on `SessionDetailLoaded`. cubic's seven line-length findings were declined: the
 repository has no Markdown line-length convention.
 
 The architecture review found the rest compliant: plugin-boundary hygiene (the agent entry
