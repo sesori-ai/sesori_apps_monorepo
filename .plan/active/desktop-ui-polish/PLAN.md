@@ -260,12 +260,11 @@ inputs.
   `isRunning || (isUnseen && !isDeferred)`. The marker is written through a
   new `onSessionMarkedUnread` hook on the desktop's
   `SessionListActionDispatcher` instance (next to the existing
-  `onSessionDeleted`). On each write, entries whose session is no longer unseen
-  are dropped and the map is capped at 200 (oldest first).
-  Step 3 first verifies that `time.updated` advances with agent output for the
-  registered plugins and that marking unread does not advance it; if either
-  fails, the fallback is clearing the marker when the owner observes the
-  session running.
+  `onSessionDeleted`). The map is capped at 200 (oldest first) and never
+  pruned otherwise: an entry is inert once the agent moves the session's stamp.
+  Step 3 verified that `time.updated` advances with agent output for the
+  registered plugins and that marking unread does not advance it
+  (`steps/step-03.md`), so the running-session fallback was not needed.
 - **Sticky selection.** The sidebar keeps one widget-local
   `String? stickyActivitySessionId`: set when the selection changes to a
   session that is in Activity at that moment, cleared when the selection
@@ -534,8 +533,8 @@ Step 15 is different from every other step.
 
 - **Deferral marker.** The projection stays pure. A failed layout write is
   already logged by the sidebar cubit's write queue; the only effect is that a
-  deferred session shows in Activity again after a restart. Markers for
-  sessions that are no longer unseen are pruned on the next write.
+  deferred session shows in Activity again after a restart. A stale marker
+  is inert: a session that becomes unseen again carries a newer stamp.
 - **Pending archive.** Undo, or quitting inside the window, sends nothing and
   the session stays. Outcomes are events, not state, so overlapping archives
   cannot overwrite each other. A commit failure is never silent: a worktree refusal
@@ -599,7 +598,7 @@ Step 15 is different from every other step.
 New persistent state, all inside the existing desktop-local layout file (no
 new file, table or wire field):
 
-- `deferredSessions` (session id → stamp; capped at 200; pruned on write);
+- `deferredSessions` (session id → stamp; capped at 200, oldest dropped);
 - two section-collapsed flags.
 
 New in-memory mutable state, each with exactly one owner:
@@ -783,8 +782,10 @@ touched plugins are proven by automated tests rather than a live turn each.
 
 - **Deferral is per desktop.** Marking unread on the phone shows as news on
   the desktop. Fixing it needs a bridge-level reason (Later Phases).
-- **`time.updated` may not mean "agent output" for every plugin.** Step 3
-  verifies first and has a defined fallback.
+- **`time.updated` also moves without agent output.** Renaming a session
+  stamps it, and a cold Claude Code or Pi catalog import reads the transcript
+  file's modification time. Either can return a deferred session to Activity
+  once; the user defers it again. Accepted: rare, harmless, self-correcting.
 - **Hidden title bar.** Dragging, zoom and full screen can regress; verified
   live, independently revertible.
 - **Undo toast.** It is top-anchored and the presenter does not stack, so

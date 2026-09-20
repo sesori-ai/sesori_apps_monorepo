@@ -10,6 +10,7 @@ import "../../repositories/desktop_instance_repository.dart";
 class DesktopSidebarCubit({required final DesktopInstanceRepository repository}) extends Cubit<DesktopSidebarLayout> {
   static const double minWidth = 200;
   static const double maxWidth = 420;
+  static const int maxDeferredSessions = 200;
   Future<void> _writes = Future<void>.value();
 
   this : super(const DesktopSidebarLayout()) {
@@ -43,6 +44,18 @@ class DesktopSidebarCubit({required final DesktopInstanceRepository repository})
     final collapsed = {...state.collapsedProjectIds};
     if (!collapsed.remove(projectId)) collapsed.add(projectId);
     emit(state.copyWith(collapsedProjectIds: collapsed));
+    return saveLayout();
+  }
+
+  /// Sets [sessionId] aside at [updatedAt], its `time.updated` when the user
+  /// marked it unread. An older entry is inert once the agent moves the stamp,
+  /// so nothing prunes them; the cap drops the oldest.
+  Future<void> deferSession({required String sessionId, required int updatedAt}) {
+    final deferred = {...state.deferredSessions}
+      ..remove(sessionId)
+      ..[sessionId] = updatedAt;
+    final overflow = deferred.length - maxDeferredSessions;
+    emit(state.copyWith(deferredSessions: overflow > 0 ? Map.fromEntries(deferred.entries.skip(overflow)) : deferred));
     return saveLayout();
   }
 

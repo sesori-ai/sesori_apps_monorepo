@@ -237,7 +237,7 @@ void main() {
           child: SessionListScaffold(
             onOpenArchived: sessionListCubit.toggleArchived,
             onSessionTap: ({required session}) {},
-            actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
+            actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null, onSessionMarkedUnread: null),
             archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
             onNewSession: () {},
             onBack: null,

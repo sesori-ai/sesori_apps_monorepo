@@ -26,8 +26,10 @@ class _MockSessionListCubit() extends MockCubit<SessionListState> implements Ses
 
 void main() {
   late _MockSessionListCubit cubit;
+  final markedUnread = <String>[];
 
   setUp(() {
+    markedUnread.clear();
     cubit = _MockSessionListCubit();
     when(() => cubit.retainActionScope()).thenReturn(() {});
   });
@@ -40,7 +42,10 @@ void main() {
       SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
     );
 
-    const dispatcher = SessionListActionDispatcher(onSessionDeleted: null);
+    final dispatcher = SessionListActionDispatcher(
+      onSessionDeleted: null,
+      onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session.id),
+    );
 
     // A router, not a plain MaterialApp: the archive confirmation sheet closes
     // itself through GoRouter, which the lint requires over direct Navigator.
@@ -277,6 +282,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(() => cubit.markSessionSeen(sessionId: session.id, read: false)).called(1);
+    expect(markedUnread, [session.id]);
   });
 
   testWidgets("a full leading swipe marks an unseen row read", (tester) async {
@@ -297,6 +303,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(() => cubit.markSessionSeen(sessionId: session.id, read: true)).called(1);
+    expect(markedUnread, isEmpty);
   });
 
   testWidgets("the long-press menu still works after a swipe-open-close cycle", (tester) async {

@@ -20,6 +20,11 @@ typedef SessionDeletedRouteHandler = void Function({
   required String sessionId,
 });
 
+typedef SessionMarkedUnreadHandler = void Function({
+  required BuildContext context,
+  required Session session,
+});
+
 void _showRetainedActionDialog({
   required SessionListCubit cubit,
   required Future<void> Function() show,
@@ -28,7 +33,12 @@ void _showRetainedActionDialog({
   unawaited(show().whenComplete(release));
 }
 
-class const SessionListActionDispatcher({required final SessionDeletedRouteHandler? onSessionDeleted}) {
+class const SessionListActionDispatcher({
+  required final SessionDeletedRouteHandler? onSessionDeleted,
+
+  /// Told when the user marks a session unread, never when they mark it read.
+  required final SessionMarkedUnreadHandler? onSessionMarkedUnread,
+}) {
   /// The long-press actions for [session], rendered by [SessionTile] in a
   /// [PregoAnchorMenu] anchored to the row.
   ///
@@ -62,7 +72,7 @@ class const SessionListActionDispatcher({required final SessionDeletedRouteHandl
         title: isUnseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
         subtitle: null,
         isSelected: false,
-        onTap: () => unawaited(cubit.markSessionSeen(sessionId: session.id, read: isUnseen)),
+        onTap: () => _setRead(context: context, cubit: cubit, session: session, read: isUnseen),
       ),
       // Archiving is permanent, so an already-archived row has no archive
       // action left to offer.
@@ -114,12 +124,17 @@ class const SessionListActionDispatcher({required final SessionDeletedRouteHandl
   /// Flips [session]'s read state, from the row's leading swipe.
   void handleSessionToggleUnread({required BuildContext context, required Session session}) {
     final cubit = context.read<SessionListCubit>();
-    unawaited(
-      cubit.markSessionSeen(
-        sessionId: session.id,
-        read: _isUnseen(cubit: cubit, session: session),
-      ),
-    );
+    _setRead(context: context, cubit: cubit, session: session, read: _isUnseen(cubit: cubit, session: session));
+  }
+
+  void _setRead({
+    required BuildContext context,
+    required SessionListCubit cubit,
+    required Session session,
+    required bool read,
+  }) {
+    unawaited(cubit.markSessionSeen(sessionId: session.id, read: read));
+    if (!read) onSessionMarkedUnread?.call(context: context, session: session);
   }
 
   /// The row's effective unseen state: the cubit's live tracking when loaded,

@@ -58,7 +58,7 @@ void main() {
                   onBack: () {},
                   onNewSession: () {},
                   onSessionTap: ({required session}) {},
-                  actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
+                  actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null, onSessionMarkedUnread: null),
                   archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
                 ),
               ),

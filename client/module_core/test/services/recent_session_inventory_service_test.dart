@@ -162,12 +162,12 @@ void main() {
     await inventory.ensureLoaded(projectId: projectId);
     expect(loaded().visibleSessions.map((session) => session.id), ["4", "3", "2", "1"]);
     expect(
-      loaded().rows(selectedSessionId: "1", excludingSessionIds: const {}).map((session) => session.id),
+      loaded().rows(selectedSessionId: "1").map((session) => session.id),
       ["4", "3", "2", "1"],
     );
-    expect(loaded().rows(selectedSessionId: "4", excludingSessionIds: const {}).length, 3);
+    expect(loaded().rows(selectedSessionId: "4").length, 3);
     expect(
-      loaded().rows(selectedSessionId: "archived", excludingSessionIds: const {}).map((session) => session.id),
+      loaded().rows(selectedSessionId: "archived").map((session) => session.id),
       ["4", "3", "2"],
     );
     expect(() => loaded().sourceSessions.clear(), throwsUnsupportedError);
@@ -230,7 +230,7 @@ void main() {
       ),
     );
     expect(loaded().visibleSessions, isEmpty);
-    expect(loaded().rows(selectedSessionId: "created", excludingSessionIds: const {}), isEmpty);
+    expect(loaded().rows(selectedSessionId: "created"), isEmpty);
     expect(loaded().sourceSessions, hasLength(1));
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: session)));
     expect(loaded().sourceSessions, isEmpty);
@@ -367,7 +367,7 @@ void main() {
     events.add(SseEvent(data: SesoriSseEvent.sessionUpdated(info: archivedUpdate)));
     expect(inventory.state.value[projectId], isA<RecentSessionsLoaded>());
     expect(loaded().visibleSessions.single, renamed);
-    expect(loaded().rows(selectedSessionId: "archived", excludingSessionIds: const {}), [renamed]);
+    expect(loaded().rows(selectedSessionId: "archived"), [renamed]);
     stubSessions(sessions: [renamed, archivedUpdate]);
     reply.complete(ApiResponse.success(SessionListResponse(items: [deleted, archived])));
     expect(await pending, isTrue);
