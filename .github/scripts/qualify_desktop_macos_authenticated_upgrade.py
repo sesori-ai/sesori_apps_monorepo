@@ -92,8 +92,14 @@ class QualificationPhase(StrEnum):
     VISIBLE_WINDOW = "visibleWindow"
     TRAY_QUIT = "trayQuit"
     POST_QUIT = "postQuit"
-    CLEANUP = "cleanup"
     COMPLETE = "complete"
+
+
+def _write_qualification_phase_record(*, output: Path, record: dict[str, object]) -> None:
+    path = output / "qualification-phase.json"
+    temporary = output / "qualification-phase.json.tmp"
+    temporary.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(path)
 
 
 def write_qualification_phase(
@@ -101,22 +107,27 @@ def write_qualification_phase(
     output: Path,
     phase: QualificationPhase,
     candidate: QualificationCandidate | None,
+    cleanup_completed: bool = False,
 ) -> None:
-    path = output / "qualification-phase.json"
-    temporary = output / "qualification-phase.json.tmp"
-    temporary.write_text(
-        json.dumps(
-            {
-                "schemaVersion": 1,
-                "candidate": candidate.value if candidate is not None else None,
-                "phase": phase.value,
-            },
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
+    _write_qualification_phase_record(
+        output=output,
+        record={
+            "schemaVersion": 1,
+            "candidate": candidate.value if candidate is not None else None,
+            "phase": phase.value,
+            "cleanupStarted": cleanup_completed,
+            "cleanupCompleted": cleanup_completed,
+        },
     )
-    temporary.replace(path)
+
+
+def write_qualification_cleanup_progress(*, output: Path, completed: bool) -> None:
+    path = output / "qualification-phase.json"
+    record = json.loads(path.read_text(encoding="utf-8"))
+    require(isinstance(record, dict), "Qualification phase record must be an object")
+    record["cleanupStarted"] = True
+    record["cleanupCompleted"] = completed
+    _write_qualification_phase_record(output=output, record=record)
 
 
 @dataclass(frozen=True)
@@ -745,6 +756,29 @@ def cleanup_qualification(*, created_keychain_accounts: list[str]) -> None:
         raise RuntimeError("Authenticated upgrade cleanup failed:\n" + "\n".join(failures))
 
 
+def cleanup_qualification_with_phase(*, output: Path, created_keychain_accounts: list[str]) -> None:
+    failures: list[BaseException] = []
+    try:
+        write_qualification_cleanup_progress(output=output, completed=False)
+    except BaseException as error:
+        failures.append(error)
+    cleanup_succeeded = False
+    try:
+        cleanup_qualification(created_keychain_accounts=created_keychain_accounts)
+        cleanup_succeeded = True
+    except BaseException as error:
+        failures.append(error)
+    if cleanup_succeeded:
+        try:
+            write_qualification_cleanup_progress(output=output, completed=True)
+        except BaseException as error:
+            failures.append(error)
+    if len(failures) == 1:
+        raise failures[0]
+    if failures:
+        raise BaseExceptionGroup("Authenticated qualification cleanup evidence failed", failures)
+
+
 @contextmanager
 def qualification_cleanup(*, cleanup: Callable[[], None]) -> Iterator[None]:
     try:
@@ -945,7 +979,11 @@ def qualify(
     attachment_sentinel = ATTACHMENTS_ROOT / "upgrade-probe-preserved-state"
     sentinel_value = "sesori-private-macos-authenticated-upgrade-probe\n"
     created_keychain_accounts: list[str] = []
-    cleanup = partial(cleanup_qualification, created_keychain_accounts=created_keychain_accounts)
+    cleanup = partial(
+        cleanup_qualification_with_phase,
+        output=output,
+        created_keychain_accounts=created_keychain_accounts,
+    )
     with qualification_cleanup(cleanup=cleanup):
         write_qualification_phase(
             output=output,
@@ -1090,15 +1128,11 @@ def qualify(
             ),
         }
         (output / "authenticated-upgrade.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-        write_qualification_phase(
-            output=output,
-            phase=QualificationPhase.CLEANUP,
-            candidate=None,
-        )
     write_qualification_phase(
         output=output,
         phase=QualificationPhase.COMPLETE,
         candidate=None,
+        cleanup_completed=True,
     )
     print(f"PASS private authenticated macOS/{architecture} {previous.version}+{previous.build_number} "
           f"→ {current.version}+{current.build_number} manual replacement")

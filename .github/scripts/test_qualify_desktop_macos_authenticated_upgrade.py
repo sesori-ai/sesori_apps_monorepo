@@ -25,6 +25,7 @@ from qualify_desktop_macos_authenticated_upgrade import (
     _keychain_writer,
     _security,
     cleanup_qualification,
+    cleanup_qualification_with_phase,
     delete_auth_keychain,
     launch_authenticated_and_quit,
     load_qa_credentials,
@@ -608,10 +609,12 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             root = Path(directory)
             redirected_app_output = root / "private-authenticated-app.log"
             persisted_app_log = root / "app.log"
-            redirected_app_output.write_text("private-token-value\n", encoding="utf-8")
+            redirected_app_output.write_text(
+                "Desktop auth gate found no locally valid session\nprivate-token-value\n",
+                encoding="utf-8",
+            )
             persisted_app_log.write_text(
                 "Desktop startup: rendering the application\n"
-                "Desktop auth gate found no locally valid session\n"
                 "Desktop auth gate could not restore the local session\n"
                 "Failed to restore the desktop bridge's desired On state\n"
                 "Bridge startup failed after its process exit was already claimed: /private/user/path\n",
@@ -718,19 +721,81 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             )
             self.assertEqual(
                 json.loads((root / "qualification-phase.json").read_text(encoding="utf-8")),
-                {"schemaVersion": 1, "candidate": "previous", "phase": "helperReadiness"},
+                {
+                    "schemaVersion": 1,
+                    "candidate": "previous",
+                    "phase": "helperReadiness",
+                    "cleanupStarted": False,
+                    "cleanupCompleted": False,
+                },
             )
             write_qualification_phase(
                 output=root,
                 phase=QualificationPhase.COMPLETE,
                 candidate=None,
+                cleanup_completed=True,
             )
 
             self.assertEqual(
                 json.loads((root / "qualification-phase.json").read_text(encoding="utf-8")),
-                {"schemaVersion": 1, "candidate": None, "phase": "complete"},
+                {
+                    "schemaVersion": 1,
+                    "candidate": None,
+                    "phase": "complete",
+                    "cleanupStarted": True,
+                    "cleanupCompleted": True,
+                },
             )
             self.assertFalse((root / "qualification-phase.json.tmp").exists())
+
+    def test_cleanup_progress_preserves_the_failing_phase_on_success(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_qualification_phase(
+                output=root,
+                phase=QualificationPhase.HELPER_READINESS,
+                candidate=QualificationCandidate.PREVIOUS,
+            )
+            with patch("qualify_desktop_macos_authenticated_upgrade.cleanup_qualification") as cleanup:
+                cleanup_qualification_with_phase(output=root, created_keychain_accounts=[])
+
+            cleanup.assert_called_once_with(created_keychain_accounts=[])
+            self.assertEqual(
+                json.loads((root / "qualification-phase.json").read_text(encoding="utf-8")),
+                {
+                    "schemaVersion": 1,
+                    "candidate": "previous",
+                    "phase": "helperReadiness",
+                    "cleanupStarted": True,
+                    "cleanupCompleted": True,
+                },
+            )
+
+    def test_cleanup_failure_preserves_the_failing_phase_and_incomplete_cleanup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_qualification_phase(
+                output=root,
+                phase=QualificationPhase.HELPER_READINESS,
+                candidate=QualificationCandidate.PREVIOUS,
+            )
+            with patch(
+                "qualify_desktop_macos_authenticated_upgrade.cleanup_qualification",
+                side_effect=RuntimeError("cleanup failed"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "cleanup failed"):
+                    cleanup_qualification_with_phase(output=root, created_keychain_accounts=[])
+
+            self.assertEqual(
+                json.loads((root / "qualification-phase.json").read_text(encoding="utf-8")),
+                {
+                    "schemaVersion": 1,
+                    "candidate": "previous",
+                    "phase": "helperReadiness",
+                    "cleanupStarted": True,
+                    "cleanupCompleted": False,
+                },
+            )
 
     def test_current_launch_ignores_authenticated_markers_from_previous_log_segment(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -896,7 +961,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         self.assertNotIn("environment:", job)
         self.assertIn("max-parallel: 1", job)
         exercise_step = job.index("- name: Exercise authenticated helper-On replacement and tray Quit")
-        step_timeout = job.index("timeout-minutes: 25", exercise_step)
+        step_timeout = job.index("timeout-minutes: 20", exercise_step)
         exercise = job.index("qualify_desktop_macos_authenticated_upgrade.py", step_timeout)
         self.assertLess(exercise_step, step_timeout)
         self.assertLess(step_timeout, exercise)

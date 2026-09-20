@@ -148,12 +148,14 @@ two reached the bounded prior-app helper deadline with zero final helper process
 second first passed the exact Keychain self-check. The third also timed out one CPU before
 artifact upload and showed that redirected app output alone does not retain production
 log-sink markers. On failure, the probe may inspect at most 1 MiB from each phase-scoped
-redirected app output and authoritative persisted `logs/app.log` for a closed set of
-startup, local-session, local-restore, desired-state and bridge-start markers. The auth
-gate emits privacy-safe outcome markers through the production log sink rather than
-relying on `dart:developer` output. The probe uploads only booleans, an atomic closed
-phase record, and whether any helper generation or fresh bridge-log activity appeared.
-The exercise-step deadline leaves time for always-upload before the job deadline. The probe
+redirected app output and authoritative persisted `logs/app.log` for the closed markers
+`desktopStartupRendered`, `localSessionUnavailable`, `localUserRestoreIncomplete`,
+`desiredStateRestoreFailure` and `bridgeStartFailure`. The auth gate emits privacy-safe
+outcome markers through the production log sink rather than relying on `dart:developer`
+output. The probe uploads only booleans, an atomic closed phase/cleanup record, and
+whether any helper generation or fresh bridge-log activity appeared. Run `35465783382`
+reached the exercise step 29 seconds after job start; the 20-minute exercise deadline
+therefore leaves over 14 minutes for always-upload within the 35-minute job. The probe
 persists Bridge On and requires the exact packaged helper, an authenticated profile lookup
 and relay-serving readiness before each real tray Quit. It then verifies Keychain, On
 intent, bounded state and helper absence through replacement. Artifacts exclude raw auth
