@@ -5,18 +5,19 @@ import "package:theme_prego/module_prego.dart";
 /// button pops the list out beside the rail instead of over its project chips.
 class const DesktopSidebarActivityPopout({
   super.key,
+  required final double railStart,
   required final PregoPopoverTriggerBuilder triggerBuilder,
   required final PregoPopoverContentBuilder contentBuilder,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-    // The rail spans the window's start edge, so its width is where the popout
-    // may begin.
+    // The rail floats [railStart] from the window's start edge, so the popout
+    // may begin past that and the rail's width.
     builder: (context, constraints) => PregoPopover(
       popoverWidth: 300,
       popoverBorderRadius: PregoRadius.lg,
       screenPadding: EdgeInsetsDirectional.fromSTEB(
-        constraints.maxWidth + PregoSpacing.md,
+        railStart + constraints.maxWidth + PregoSpacing.md,
         PregoSpacing.lg,
         PregoSpacing.lg,
         PregoSpacing.lg,

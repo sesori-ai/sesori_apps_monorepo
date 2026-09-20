@@ -45,6 +45,10 @@ class const DesktopSidebar({
   required final VoidCallback onOpenBridgeSettings,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
+  /// The gap the shell keeps around this floating panel; what pops out beside
+  /// the rail starts past it.
+  static const double panelMargin = PregoSpacing.md;
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<ProjectListCubit>().state;
@@ -396,6 +400,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
         if (railed && activitySessions.isNotEmpty)
           SliverToBoxAdapter(
             child: DesktopSidebarActivityPopout(
+              railStart: DesktopSidebar.panelMargin,
               triggerBuilder: (_, toggle) => _SidebarButton(
                 key: const Key("desktop-sidebar-rail-activity"),
                 label: context.loc.desktopSidebarActivity(activitySessions.length),

@@ -74,6 +74,7 @@ class const DesktopCockpitShell({
 }) extends StatelessWidget {
   static const double compactWidth = 56;
   static const double autoCollapseBreakpoint = 760;
+  static const double _panelRadius = 14;
 
   @override
   Widget build(BuildContext context) {
@@ -128,33 +129,54 @@ class const DesktopCockpitShell({
             tween: Tween(begin: collapsed ? 0 : 1, end: collapsed ? 0 : 1),
             duration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
+            // Depth delimits: the sidebar floats as a panel over the base surface
+            // the pages paint, so no divider separates them.
             builder: (context, expansion, _) => Row(
               children: [
-                SizedBox(
-                  key: const Key("desktop-cockpit-sidebar"),
-                  width: compactWidth + (layout.width - compactWidth) * expansion,
-                  child: DesktopSidebar(
-                    expansion: expansion,
-                    autoCollapsed: autoCollapsed,
-                    selectedProjectId: selectedProjectId,
-                    selectedSessionId: selectedSessionId,
-                    onOpenSession: onOpenSession,
-                    onNewSession: onNewSession,
-                    onStartNewSession: startNewSession,
-                    sessionActions: sessionActions,
-                    onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
-                    onOpenProjects: onOpenProjects,
-                    onAddProject: addProject,
-                    onOpenProject: onOpenProject,
-                    onOpenBridgeSettings: onOpenBridgeSettings,
-                    onOpenSettings: onOpenSettings,
+                Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(
+                    DesktopSidebar.panelMargin,
+                    DesktopSidebar.panelMargin,
+                    0,
+                    DesktopSidebar.panelMargin,
+                  ),
+                  // The width bounds and the rail measure the panel itself.
+                  child: Container(
+                    key: const Key("desktop-cockpit-sidebar"),
+                    width: compactWidth + (layout.width - compactWidth) * expansion,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(_panelRadius),
+                      boxShadow: context.prego.shadows.lg,
+                    ),
+                    foregroundDecoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(_panelRadius),
+                      border: Border.all(color: context.prego.colors.borderSecondary),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(_panelRadius),
+                      child: DesktopSidebar(
+                        expansion: expansion,
+                        autoCollapsed: autoCollapsed,
+                        selectedProjectId: selectedProjectId,
+                        selectedSessionId: selectedSessionId,
+                        onOpenSession: onOpenSession,
+                        onNewSession: onNewSession,
+                        onStartNewSession: startNewSession,
+                        sessionActions: sessionActions,
+                        onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
+                        onOpenProjects: onOpenProjects,
+                        onAddProject: addProject,
+                        onOpenProject: onOpenProject,
+                        onOpenBridgeSettings: onOpenBridgeSettings,
+                        onOpenSettings: onOpenSettings,
+                      ),
+                    ),
                   ),
                 ),
+                // The gap beside the panel is the resize handle.
                 SizedBox(
-                  width: 1 + 5 * expansion,
-                  child: collapsed
-                      ? VerticalDivider(width: 1, color: context.prego.colors.borderSecondary)
-                      : _SidebarResizeHandle(sidebar: sidebar),
+                  width: DesktopSidebar.panelMargin,
+                  child: collapsed ? null : _SidebarResizeHandle(sidebar: sidebar),
                 ),
                 Expanded(child: content),
               ],
@@ -219,7 +241,7 @@ class _SidebarResizeHandleState() extends State<_SidebarResizeHandle> {
         onHorizontalDragEnd: (_) => _finishDrag(),
         onHorizontalDragCancel: _finishDrag,
         onDoubleTap: () => unawaited(widget.sidebar.resetWidth()),
-        child: VerticalDivider(width: 1, color: context.prego.colors.borderSecondary),
+        child: const SizedBox.expand(),
       ),
     ),
   );
