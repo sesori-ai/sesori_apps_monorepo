@@ -561,10 +561,24 @@ each record `previous` / `helperReadiness`, completed cleanup, zero helper proce
 no helper or bridge-log activity, no persisted app log, and a present non-truncated
 redirected app output with every existing startup classification false. Add privacy-safe
 pre-sink Dart-main and process-admission markers, then emit only the furthest observed
-closed startup stage from either bounded private source. This distinguishes failure before
-Dart main, dependency setup, primary-process admission, and each existing pre-render
-startup boundary without exposing raw output. Retry both CPUs from merged `main`; this
-failed run is not qualification evidence.
+closed startup stage from either bounded private source. Record the downloaded package
+source's closed marker-support level separately: baseline run `35042335424` supports only
+the existing `preferences` through `rendering` markers, so its `noMarker` result means
+"before the first supported marker", not "before Dart main". Full pre-sink interpretation
+is valid only for a package whose recorded source contains all new markers.
+
+After this PR merges, first produce a fresh private stable `macos-packaging` run from the
+post-`8.g/14` merged `main` and record its run ID, source and tree:
+
+```bash
+gh workflow run desktop-qualification.yml \
+  --repo sesori-ai/sesori_apps_monorepo --ref main \
+  -f mode=macos-packaging -f channel=stable
+```
+
+Then retry both CPUs from merged `main` with baseline run `35042335424` and that fresh
+current-package run. Do not reuse current-package run `35206885114`, whose source predates
+the pre-sink markers. This failed run is not qualification evidence.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.

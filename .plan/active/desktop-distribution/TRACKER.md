@@ -192,8 +192,9 @@ private source remains capped at 1 MiB; raw authenticated app/bridge output rema
 private and is removed during cleanup. That follow-up merged as source
 `e231295f8b00a8f7a7055e943cc6f4502dfda13c`, tree
 `2d24d147f9f2be55e8885c4e81d3fbb7ecd17672`. Its merged-main retry `35496105360`
-passed tooling job `106039227037`, then rejected both native CPU jobs at the previous-app
-helper-readiness deadline: x64 `106039268281`, arm64 `106039268268`. Bounded x64
+passed tooling job `106039227037` but was rejected on both native CPU jobs at the
+previous-app helper-readiness deadline: x64 `106039268281`, arm64 `106039268268`.
+Bounded x64
 artifact `10601325063`
 (`sha256:4ac6d8e635f46d6f8774ac385bebe3c5514225c38132034cd0328de7ce7bc386`) and arm64
 artifact `10601410119`
@@ -201,9 +202,15 @@ artifact `10601410119`
 each record completed cleanup, zero helper processes, no helper/bridge-log activity, no
 persisted app log, and a present non-truncated redirected app output with all classified
 markers false. The `8.g/14` follow-up adds fixed privacy-safe markers before the production
-log sink is installed and emits only a closed furthest startup stage from the same bounded
-private sources. Failed-stop, interactive user-account/TCC, minimum-OS and public artifact
-retrieval remain open; the download page itself is live.
+log sink is installed, emits only a closed furthest startup stage from the same bounded
+private sources, and separately records whether the downloaded package supports no,
+pre-render-only or full pre-sink markers. Baseline run `35042335424` supports only
+pre-render markers, so `noMarker` cannot claim failure before Dart main. After `8.g/14`
+merges, produce and record a fresh stable `macos-packaging` run from merged `main`; use it
+as the current package with baseline run `35042335424` for the next both-CPU retry. Do not
+reuse current-package run `35206885114`, whose source predates the added markers.
+Failed-stop, interactive user-account/TCC, minimum-OS and public artifact retrieval remain
+open; the download page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
 private-package documentation portion can proceed independently, so its dependency

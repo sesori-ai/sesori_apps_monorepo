@@ -17,6 +17,9 @@ from qualify_desktop_macos_authenticated_upgrade import (
     KEYCHAIN_ACCOUNTS,
     KEYCHAIN_SERVICE,
     PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES,
+    DESKTOP_STARTUP_STAGE_MARKERS,
+    DesktopStartupMarkerSupport,
+    DesktopStartupStage,
     KeychainSession,
     LogCursor,
     QaCredentials,
@@ -24,6 +27,7 @@ from qualify_desktop_macos_authenticated_upgrade import (
     QualificationPhase,
     _keychain_writer,
     _security,
+    _startup_marker_support_from_source,
     cleanup_qualification,
     cleanup_qualification_with_phase,
     delete_auth_keychain,
@@ -622,6 +626,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             )
             write_private_app_startup_diagnostics(
                 label="previous",
+                startup_marker_support=DesktopStartupMarkerSupport.PRE_SINK_ADMISSION,
                 redirected_app_output=redirected_app_output,
                 persisted_app_log=persisted_app_log,
                 persisted_app_log_cursor=None,
@@ -638,6 +643,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
                     "redirectedAppOutputTruncated": False,
                     "persistedAppLogPresent": True,
                     "persistedAppLogTruncated": False,
+                    "startupMarkerSupport": "preSinkAdmission",
                     "startupStage": "rendering",
                     "desktopStartupRendered": True,
                     "localSessionUnavailable": True,
@@ -659,6 +665,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
 
             write_private_app_startup_diagnostics(
                 label="current",
+                startup_marker_support=DesktopStartupMarkerSupport.PRE_RENDER,
                 redirected_app_output=root / "missing-output.log",
                 persisted_app_log=persisted_app_log,
                 persisted_app_log_cursor=cursor,
@@ -670,32 +677,62 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             self.assertFalse(diagnostics["desktopStartupRendered"])
             self.assertTrue(diagnostics["localSessionUnavailable"])
 
-    def test_private_app_startup_diagnostics_report_furthest_pre_render_stage(self):
+    def test_private_app_startup_diagnostics_report_every_closed_startup_stage(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             redirected_app_output = root / "private-authenticated-app.log"
-            redirected_app_output.write_text(
-                "Desktop startup: entered Dart main\n"
-                "Desktop startup: claiming primary process\n"
-                "Desktop startup: primary process claimed\n",
-                encoding="utf-8",
-            )
-            write_private_app_startup_diagnostics(
-                label="previous",
-                redirected_app_output=redirected_app_output,
-                persisted_app_log=root / "missing-app.log",
-                persisted_app_log_cursor=None,
-                output=root,
-            )
+            observed_markers: list[str] = []
+            for stage, marker in DESKTOP_STARTUP_STAGE_MARKERS:
+                with self.subTest(stage=stage.value):
+                    observed_markers.append(marker)
+                    redirected_app_output.write_text("\n".join(observed_markers), encoding="utf-8")
+                    write_private_app_startup_diagnostics(
+                        label="previous",
+                        startup_marker_support=DesktopStartupMarkerSupport.PRE_SINK_ADMISSION,
+                        redirected_app_output=redirected_app_output,
+                        persisted_app_log=root / "missing-app.log",
+                        persisted_app_log_cursor=None,
+                        output=root,
+                    )
 
-            diagnostics = json.loads((root / "previous-startup-diagnostics.json").read_text(encoding="utf-8"))
-            self.assertEqual(diagnostics["startupStage"], "processAdmissionCompleted")
+                    diagnostics = json.loads(
+                        (root / "previous-startup-diagnostics.json").read_text(encoding="utf-8"),
+                    )
+                    self.assertEqual(diagnostics["startupStage"], stage.value)
+
+    def test_startup_marker_support_distinguishes_legacy_and_full_instrumentation(self):
+        markers = dict(DESKTOP_STARTUP_STAGE_MARKERS)
+        pre_render_source = "\n".join(
+            marker
+            for stage, marker in DESKTOP_STARTUP_STAGE_MARKERS
+            if stage
+            not in {
+                DesktopStartupStage.DART_MAIN_ENTERED,
+                DesktopStartupStage.PROCESS_ADMISSION_STARTED,
+                DesktopStartupStage.PROCESS_ADMISSION_COMPLETED,
+            }
+        )
+        full_source = "\n".join(markers.values())
+
+        self.assertEqual(
+            _startup_marker_support_from_source(source="void main() {}"),
+            DesktopStartupMarkerSupport.NONE,
+        )
+        self.assertEqual(
+            _startup_marker_support_from_source(source=pre_render_source),
+            DesktopStartupMarkerSupport.PRE_RENDER,
+        )
+        self.assertEqual(
+            _startup_marker_support_from_source(source=full_source),
+            DesktopStartupMarkerSupport.PRE_SINK_ADMISSION,
+        )
 
     def test_private_app_startup_diagnostics_report_missing_sources_without_markers(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             write_private_app_startup_diagnostics(
                 label="previous",
+                startup_marker_support=DesktopStartupMarkerSupport.NONE,
                 redirected_app_output=root / "missing-output.log",
                 persisted_app_log=root / "missing-app.log",
                 persisted_app_log_cursor=None,
@@ -707,6 +744,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             self.assertFalse(diagnostics.pop("redirectedAppOutputTruncated"))
             self.assertFalse(diagnostics.pop("persistedAppLogPresent"))
             self.assertFalse(diagnostics.pop("persistedAppLogTruncated"))
+            self.assertEqual(diagnostics.pop("startupMarkerSupport"), "none")
             self.assertEqual(diagnostics.pop("startupStage"), "noMarker")
             self.assertEqual(set(diagnostics.values()), {False})
 
@@ -722,6 +760,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             persisted_app_log.write_bytes(b"y" * (PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES + 1))
             write_private_app_startup_diagnostics(
                 label="previous",
+                startup_marker_support=DesktopStartupMarkerSupport.PRE_RENDER,
                 redirected_app_output=redirected_app_output,
                 persisted_app_log=persisted_app_log,
                 persisted_app_log_cursor=None,
@@ -962,6 +1001,8 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
             keyword=("label", "'current'"),
         )
         self.assertLess(credentials["line"], fresh_runner["line"])
+        self.assertEqual(previous_launch["keywords"]["source_sha"], "previous.source_sha")
+        self.assertEqual(current_launch["keywords"]["source_sha"], "current.source_sha")
         self.assertLess(on_intent["line"], previous_launch["line"])
         self.assertLess(previous_launch["line"], replacement_session["line"])
         self.assertLess(replacement_session["line"], replacement_keychain["line"])

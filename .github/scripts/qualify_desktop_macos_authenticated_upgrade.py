@@ -83,6 +83,12 @@ class QualificationCandidate(StrEnum):
     CURRENT = "current"
 
 
+class DesktopStartupMarkerSupport(StrEnum):
+    NONE = "none"
+    PRE_RENDER = "preRender"
+    PRE_SINK_ADMISSION = "preSinkAdmission"
+
+
 class DesktopStartupStage(StrEnum):
     NO_MARKER = "noMarker"
     DART_MAIN_ENTERED = "dartMainEntered"
@@ -109,6 +115,48 @@ DESKTOP_STARTUP_STAGE_MARKERS = (
     (DesktopStartupStage.ANALYTICS_PREFERENCES, "Desktop startup: loading analytics preferences"),
     (DesktopStartupStage.RENDERING, "Desktop startup: rendering the application"),
 )
+
+
+def _startup_marker_support_from_source(*, source: str) -> DesktopStartupMarkerSupport:
+    markers = dict(DESKTOP_STARTUP_STAGE_MARKERS)
+    pre_render_supported = all(
+        markers[stage] in source
+        for stage in (
+            DesktopStartupStage.PREFERENCES,
+            DesktopStartupStage.NATIVE_WINDOW,
+            DesktopStartupStage.CONTROL_DISPATCHER,
+            DesktopStartupStage.RELAY_CLIENT,
+            DesktopStartupStage.DESKTOP_ATTENTION,
+            DesktopStartupStage.ANALYTICS_PREFERENCES,
+            DesktopStartupStage.RENDERING,
+        )
+    )
+    if not pre_render_supported:
+        return DesktopStartupMarkerSupport.NONE
+    pre_sink_supported = all(
+        markers[stage] in source
+        for stage in (
+            DesktopStartupStage.DART_MAIN_ENTERED,
+            DesktopStartupStage.PROCESS_ADMISSION_STARTED,
+            DesktopStartupStage.PROCESS_ADMISSION_COMPLETED,
+        )
+    )
+    return (
+        DesktopStartupMarkerSupport.PRE_SINK_ADMISSION
+        if pre_sink_supported
+        else DesktopStartupMarkerSupport.PRE_RENDER
+    )
+
+
+def load_startup_marker_support(*, source_sha: str) -> DesktopStartupMarkerSupport:
+    result = subprocess.run(
+        ["git", "show", f"{source_sha}:client/desktop/lib/main.dart"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    require(result.returncode == 0, "Could not inspect the package source's desktop startup marker support")
+    return _startup_marker_support_from_source(source=result.stdout)
 
 
 class QualificationPhase(StrEnum):
@@ -518,6 +566,7 @@ def _desktop_startup_stage(*, private_output: str) -> DesktopStartupStage:
 def write_private_app_startup_diagnostics(
     *,
     label: str,
+    startup_marker_support: DesktopStartupMarkerSupport,
     redirected_app_output: Path,
     persisted_app_log: Path,
     persisted_app_log_cursor: LogCursor | None,
@@ -537,6 +586,7 @@ def write_private_app_startup_diagnostics(
         "redirectedAppOutputTruncated": redirected_truncated,
         "persistedAppLogPresent": persisted_present,
         "persistedAppLogTruncated": persisted_truncated,
+        "startupMarkerSupport": startup_marker_support.value,
         "startupStage": _desktop_startup_stage(private_output=private_output).value,
         **{
             diagnostic: any(marker in private_output for marker in markers)
@@ -690,6 +740,7 @@ def write_missing_authenticated_helper_observation(
 def capture_authenticated_launch_diagnostics(
     *,
     label: str,
+    startup_marker_support: DesktopStartupMarkerSupport,
     redirected_app_output: Path,
     persisted_app_log: Path,
     persisted_app_log_cursor: LogCursor | None,
@@ -710,6 +761,7 @@ def capture_authenticated_launch_diagnostics(
     try:
         write_private_app_startup_diagnostics(
             label=label,
+            startup_marker_support=startup_marker_support,
             redirected_app_output=redirected_app_output,
             persisted_app_log=persisted_app_log,
             persisted_app_log_cursor=persisted_app_log_cursor,
@@ -836,10 +888,12 @@ def qualification_cleanup(*, cleanup: Callable[[], None]) -> Iterator[None]:
 def launch_authenticated_and_quit(
     *,
     label: str,
+    source_sha: str,
     inspector: Path,
     quitter: Path,
     output: Path,
 ) -> None:
+    startup_marker_support = load_startup_marker_support(source_sha=source_sha)
     launcher_log = output / f"{label}-launcher.log"
     # Authenticated app output stays in the exact probe-owned support root and is never uploaded.
     private_app_log = SUPPORT_ROOT / "desktop-instance" / f"{label}-authenticated-app.log"
@@ -934,6 +988,7 @@ def launch_authenticated_and_quit(
         try:
             capture_authenticated_launch_diagnostics(
                 label=label,
+                startup_marker_support=startup_marker_support,
                 redirected_app_output=private_app_log,
                 persisted_app_log=PERSISTED_APP_LOG,
                 persisted_app_log_cursor=persisted_app_log_cursor,
@@ -1054,6 +1109,7 @@ def qualify(
         registration_hash = seed_login_registration()
         launch_authenticated_and_quit(
             label="previous",
+            source_sha=previous.source_sha,
             inspector=inspector,
             quitter=quitter,
             output=output,
@@ -1103,6 +1159,7 @@ def qualify(
         require_auth_keychain_session(expected=replacement_session, label="replacement", output=output)
         launch_authenticated_and_quit(
             label="current",
+            source_sha=current.source_sha,
             inspector=inspector,
             quitter=quitter,
             output=output,
