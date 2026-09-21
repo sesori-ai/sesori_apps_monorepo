@@ -141,6 +141,7 @@ class const SessionListContent({
                       session: session,
                       isArchived: isArchived,
                       isActive: activityInfo != null,
+                      isRunning: loaded.isSessionRunning(session: session),
                       unseen: loaded.isSessionUnseen(session: session),
                       selected: selectedSessionId == session.id,
                       awaitingInput: activityInfo?.awaitingInput ?? false,

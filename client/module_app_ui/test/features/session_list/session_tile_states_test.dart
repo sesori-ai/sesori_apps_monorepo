@@ -27,6 +27,7 @@ void main() {
     required Session session,
     bool isArchived = false,
     bool isActive = false,
+    bool? isRunning,
     bool unseen = false,
     bool selected = false,
     bool awaitingInput = false,
@@ -38,6 +39,7 @@ void main() {
       session: session,
       isArchived: isArchived,
       isActive: isActive,
+      isRunning: isRunning ?? isActive,
       unseen: unseen,
       selected: selected,
       awaitingInput: awaitingInput,
@@ -521,7 +523,7 @@ void main() {
     });
     testWidgets("a row that only waits for input does not claim to be running", (tester) async {
       final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
-      await pumpPointerTile(tester, tile(session: session, isActive: true, awaitingInput: true));
+      await pumpPointerTile(tester, tile(session: session, isActive: true, isRunning: false, awaitingInput: true));
 
       expect(find.text("Running"), findsNothing);
       expect(find.bySemanticsLabel(RegExp("Running")), findsNothing);

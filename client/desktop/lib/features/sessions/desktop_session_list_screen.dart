@@ -38,11 +38,27 @@ class const DesktopSessionListScreen({
   required final SessionOpenedCallback onSessionTap,
   required final VoidCallback onNewSession,
   required final SessionListActionDispatcher actionDispatcher,
-}) extends StatelessWidget {
+}) extends StatefulWidget {
   static const double maxContentWidth = 760;
 
   @override
+  State<DesktopSessionListScreen> createState() => _DesktopSessionListScreenState();
+}
+
+class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
+  /// The toolbar's Refresh is in flight: the cubit refreshes silently, so the
+  /// page shows the progress the pull gesture's own spinner used to.
+  bool _refreshing = false;
+
+  Future<void> _refresh() async {
+    setState(() => _refreshing = true);
+    await refreshSessionList(context);
+    if (mounted) setState(() => _refreshing = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final DesktopSessionListScreen(:projectName, :onSessionTap, :onNewSession, :actionDispatcher) = widget;
     final loc = context.loc;
     final cubit = context.read<SessionListCubit>();
     final state = context.watch<SessionListCubit>().state;
@@ -89,7 +105,8 @@ class const DesktopSessionListScreen({
                     isSelected: false,
                     shortcutLabel: null,
                     leadingIcon: TablerRegular.refresh,
-                    onTap: () => unawaited(refreshSessionList(context)),
+                    isEnabled: !_refreshing,
+                    onTap: () => unawaited(_refresh()),
                   ),
                   PregoMenuItem(
                     title: loc.harnessManagementScan,
@@ -117,11 +134,11 @@ class const DesktopSessionListScreen({
                     // The column is centred by padding, so the wheel and the
                     // scrollbar still belong to the whole pane.
                     padding: EdgeInsets.symmetric(
-                      horizontal: math.max(0, (constraints.maxWidth - maxContentWidth) / 2),
+                      horizontal: math.max(0, (constraints.maxWidth - DesktopSessionListScreen.maxContentWidth) / 2),
                     ),
                     sliver: SliverMainAxisGroup(
                       slivers: [
-                        if (loaded != null && loaded.isRefreshing)
+                        if (_refreshing || (loaded != null && loaded.isRefreshing))
                           const SliverToBoxAdapter(child: LinearProgressIndicator()),
                         SliverToBoxAdapter(
                           child: CatalogScanRow(

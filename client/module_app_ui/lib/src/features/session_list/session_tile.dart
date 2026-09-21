@@ -52,6 +52,10 @@ class const SessionTile({
   required final Session session,
   required final bool isArchived,
   required final bool isActive,
+
+  /// The service-owned running classification: an active session that only
+  /// awaits input is not running. Pointer rows tell this one.
+  required final bool isRunning,
   final bool unseen = false,
   final bool selected = false,
   final bool awaitingInput = false,
@@ -229,8 +233,7 @@ class const SessionTile({
           SizedBox(
             width: kSessionRowIconSlotWidth,
             height: lineHeight,
-            // Waiting for input is not running; the footer says what the row wants.
-            child: switch (isActive && awaitingInput ? null : _state(context: context, size: _pointerStateIconSize)) {
+            child: switch (_state(context: context, size: _pointerStateIconSize, running: isRunning)) {
               final state? => Center(
                 child: Semantics(label: state.label, child: state.sparkle),
               ),
@@ -302,10 +305,9 @@ class const SessionTile({
     final updatedAt = session.time?.updated;
     final spokenTime = updatedAt == null ? null : context.formatTimestamp(updatedAt);
     // With a pointer the sparkle has its own leading column.
-    final state = pointer ? null : _state(context: context, size: _stateIconSize);
+    final state = pointer ? null : _state(context: context, size: _stateIconSize, running: isActive);
 
-    // A session that only waits for input is not running; its footer says what it wants.
-    if (pointer && isActive && !awaitingInput) {
+    if (pointer && isRunning) {
       return Padding(
         padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
         // The leading sparkle already speaks this state.
@@ -361,8 +363,12 @@ class const SessionTile({
   ///
   /// The sparkle is visual-only either way, so it never travels without the
   /// words that say what it means — the caller has both or neither.
-  ({String label, Widget sparkle})? _state({required BuildContext context, required double size}) {
-    if (isActive) {
+  ({String label, Widget sparkle})? _state({
+    required BuildContext context,
+    required double size,
+    required bool running,
+  }) {
+    if (running) {
       return (
         label: context.loc.sessionListRunning,
         sparkle: PregoAiLoader(size: size),

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -85,5 +87,25 @@ void main() {
 
     await pumpPage(tester: tester, filter: SessionListFilter.archived);
     expect(tester.widget<PregoButtonsSolid>(find.byKey(archived)).hierarchy, PregoButtonsSolidHierarchy.primaryAlt);
+  });
+
+  testWidgets("the toolbar's Refresh shows progress until the silent refresh returns", (tester) async {
+    final refresh = Completer<bool>();
+    when(() => cubit.refreshSessions(waitForPrData: true)).thenAnswer((_) => refresh.future);
+    await pumpPage(tester: tester, filter: SessionListFilter.active);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+
+    await tester.tap(find.byKey(const Key("desktop-project-page-more")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Refresh sessions"));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+
+    refresh.complete(true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    await tester.pump(const Duration(seconds: 10));
   });
 }
