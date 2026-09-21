@@ -52,8 +52,11 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
 
   Future<void> _refresh() async {
     setState(() => _refreshing = true);
-    await refreshSessionList(context);
-    if (mounted) setState(() => _refreshing = false);
+    try {
+      await refreshSessionList(context);
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
   }
 
   @override
