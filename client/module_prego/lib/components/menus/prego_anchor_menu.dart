@@ -353,7 +353,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           });
           if (!pointer) return trigger;
           return Listener(
-            onPointerDown: (event) => _secondaryPress = event.buttons == kSecondaryButton ? event.position : null,
+            onPointerDown: (event) => _secondaryPress = event.buttons & kSecondaryButton != 0 ? event.position : null,
             child: trigger,
           );
         },
