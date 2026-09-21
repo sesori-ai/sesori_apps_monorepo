@@ -253,6 +253,30 @@ abstract class AppLocalizations {
   /// **'Archived'**
   String get desktopProjectPageArchived;
 
+  /// Desktop project page filter chip showing every active session, with their count.
+  ///
+  /// In en, this message translates to:
+  /// **'All · {count}'**
+  String desktopProjectPageFilterAll(int count);
+
+  /// Shown on the desktop project page when the Running or Unread filter leaves no session.
+  ///
+  /// In en, this message translates to:
+  /// **'No sessions match this filter'**
+  String get desktopProjectPageFilterEmpty;
+
+  /// Desktop project page filter chip showing only sessions an agent is working in, with their count.
+  ///
+  /// In en, this message translates to:
+  /// **'Running · {count}'**
+  String desktopProjectPageFilterRunning(int count);
+
+  /// Desktop project page filter chip showing only sessions with unopened activity, with their count.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread · {count}'**
+  String desktopProjectPageFilterUnread(int count);
+
   /// Desktop project page overflow menu action that reloads the project's session list.
   ///
   /// In en, this message translates to:

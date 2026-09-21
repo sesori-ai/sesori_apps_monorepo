@@ -46,6 +46,8 @@ class const DesktopSessionListScreen({
 }
 
 class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
+  SessionListQuickFilter _filter = SessionListQuickFilter.all;
+
   /// The toolbar's Refresh is in flight: the cubit refreshes silently, so the
   /// page shows the progress the pull gesture's own spinner used to.
   bool _refreshing = false;
@@ -67,6 +69,15 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
     final state = context.watch<SessionListCubit>().state;
     final loaded = state is SessionListLoaded ? state : null;
     final showArchived = loaded != null && loaded.filter != SessionListFilter.active;
+    // The chips narrow the active list only; Archived shows everything it has.
+    final filter = showArchived ? SessionListQuickFilter.all : _filter;
+    final counts = {
+      SessionListQuickFilter.all: loaded?.sessions.length ?? 0,
+      SessionListQuickFilter.running:
+          loaded?.sessions.where((session) => loaded.isSessionRunning(session: session)).length ?? 0,
+      SessionListQuickFilter.unread:
+          loaded?.sessions.where((session) => loaded.isSessionUnseen(session: session)).length ?? 0,
+    };
 
     return Scaffold(
       body: Column(
@@ -150,13 +161,56 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
                             onDismiss: cubit.dismissCatalogScan,
                           ),
                         ),
+                        if (loaded != null && !showArchived && loaded.sessions.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
+                              child: Wrap(
+                                spacing: PregoSpacing.md,
+                                runSpacing: PregoSpacing.md,
+                                children: [
+                                  for (final MapEntry(key: value, value: count) in counts.entries)
+                                    Semantics(
+                                      toggled: filter == value,
+                                      child: PregoButtonsSolid(
+                                        key: Key("desktop-project-page-filter-${value.name}"),
+                                        label: switch (value) {
+                                          SessionListQuickFilter.all => loc.desktopProjectPageFilterAll(count),
+                                          SessionListQuickFilter.running => loc.desktopProjectPageFilterRunning(count),
+                                          SessionListQuickFilter.unread => loc.desktopProjectPageFilterUnread(count),
+                                        },
+                                        hierarchy: filter == value
+                                            ? PregoButtonsSolidHierarchy.primaryAlt
+                                            : PregoButtonsSolidHierarchy.secondary,
+                                        size: PregoButtonsSolidSize.sm,
+                                        onPressed: () => setState(() => _filter = value),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
                         SessionListContent(
                           projectName: projectName,
                           grouping: SessionListGrouping.timeline,
+                          quickFilter: filter,
                           onSessionTap: onSessionTap,
                           actionDispatcher: actionDispatcher,
                           archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
                         ),
+                        if (counts[filter] == 0 && loaded != null && loaded.sessions.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.all(PregoSpacing.x3l),
+                              child: Text(
+                                loc.desktopProjectPageFilterEmpty,
+                                textAlign: TextAlign.center,
+                                style: context.prego.textTheme.textSm.regular.copyWith(
+                                  color: context.prego.colors.textTertiary,
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),

@@ -1,3 +1,5 @@
+import "package:flutter/gestures.dart";
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -34,6 +36,8 @@ void main() {
     bool isRetrying = false,
     int backgroundTaskCount = 0,
     bool canOpen = true,
+    VoidCallback? onArchive,
+    VoidCallback? onToggleUnread,
   }) {
     return SessionTile(
       session: session,
@@ -47,9 +51,9 @@ void main() {
       backgroundTaskCount: backgroundTaskCount,
       onTap: canOpen ? () {} : null,
       menuEntries: () => const [],
-      onArchive: () {},
+      onArchive: onArchive ?? () {},
       onDelete: () {},
-      onToggleUnread: () {},
+      onToggleUnread: onToggleUnread ?? () {},
     );
   }
 
@@ -537,6 +541,43 @@ void main() {
       expect(find.bySemanticsLabel(RegExp("Running")), findsNothing);
       expect(find.byType(PregoAiLoader), findsNothing);
       expect(find.text("Awaiting input"), findsOneWidget);
+    });
+
+    testWidgets("hovering swaps the time for the read toggle and Archive, which call the row's handlers", (
+      tester,
+    ) async {
+      var archived = 0;
+      var toggled = 0;
+      final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
+      await pumpPointerTile(
+        tester,
+        tile(session: session, onArchive: () => archived++, onToggleUnread: () => toggled++),
+      );
+      const archive = Key("session-tile-hover-archive");
+      const toggle = Key("session-tile-hover-toggle-unread");
+      expect(find.byKey(archive), findsNothing);
+      final restingHeight = tester.getSize(find.byType(SessionTile)).height;
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: Offset.zero);
+      addTearDown(mouse.removePointer);
+      await mouse.moveTo(tester.getCenter(find.text("My Session")));
+      await tester.pump();
+      expect(tester.getSize(find.byType(SessionTile)).height, restingHeight);
+
+      await tester.tap(find.byKey(archive));
+      await tester.tap(find.byKey(toggle));
+      expect((archived, toggled), (1, 1));
+    });
+
+    testWidgets("keyboard focus reveals them too, and an archived row offers no Archive", (tester) async {
+      await pumpPointerTile(tester, tile(session: testSession(title: "My Session"), isArchived: true));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+
+      expect(find.byKey(const Key("session-tile-hover-toggle-unread")), findsOneWidget);
+      expect(find.byKey(const Key("session-tile-hover-archive")), findsNothing);
     });
   });
 }
