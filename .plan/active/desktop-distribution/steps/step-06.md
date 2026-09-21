@@ -183,7 +183,8 @@ are provided only to the exercise step, then consumed and removed from the envir
 before any child process. The script requests phase-fresh tokens in memory, writes
 `access_token`, `refresh_token` and `auth_user` to the established
 `com.sesori.desktop` classic-Keychain service
-through stdin, and trusts only the installed signed app plus `/usr/bin/security`.
+through stdin. The original trusted-app ACL included `/usr/bin/security`; the
+signing-partition correction below replaces that credential-value access path.
 It persists Bridge On, requires the exact packaged helper plus authenticated-profile and
 relay-serving markers before each real tray Quit, and verifies Keychain/On intent and
 bounded state through replacement with no relaunch or orphan. Raw auth responses,
@@ -364,21 +365,122 @@ Commands, base commit, measured diff digest and separate logs are recorded local
 `build/desktop-keychain-local/review-1571/verification.json`; the cwd is the same as above.
 Unchanged Dart/Flutter, desktop Python and Swift compilation checks were not repeated.
 
-After merged-main review, retry only the unchanged pair `35042335424` → `35501361734`:
+### Accepted build-122 replacement and preparation — ordinal 8.i/14
+
+PR #1571 merged on 2026-09-21 as
+`fe5df8e9152688c76eab127eac6c615547effd29`, tree
+`2549a8a964f534f462f5139d97aeaa15c925f73b`. All three runs below executed from that
+merged-main tooling revision. They reuse the unchanged retained baseline `35042335424`
+(`1.8.4+24`, source `efefcbcff7e7b75bdde271c1c670333987530212`, tree
+`d0f1d0e3cfb31090d0ddb6d5b8321604e7e65730`) and current package run `35501361734`
+(`1.9.0+122`, source `33a4ceb5506349d08953be37ba7d3a5f1d6d20df`, tree
+`08f1d7b283faec4985a78b78ae8e7b7e4433dee9`). No product rebuild or startup change was
+needed after the demonstrated signing-partition fixture correction.
+
+Dispatches ran from
+`/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
 
 ```bash
 gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
   --ref main -f mode=macos-authenticated-upgrade-probe -f channel=stable \
   -f previous_packaging_run=35042335424 -f packaging_run=35501361734
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-upgrade-probe -f channel=stable \
+  -f previous_packaging_run=35042335424 -f packaging_run=35501361734
+gh workflow run desktop-release.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f source_sha=33a4ceb5506349d08953be37ba7d3a5f1d6d20df \
+  -f packaging_run=35501361734 -f channel=stable
 ```
 
-One watched both-CPU result must establish authenticated acceptance; local controls do
-not close it. Historical helper-Off evidence remains tied to build `62`, not build `122`.
-Regenerate release preparation before considering publication of build `122`.
-Failed-stop, interactive browser/user-account/TCC, minimum-OS, public retrieval and
-parent Gate C remain open.
+Each run had exactly one asynchronous `gh run watch <run> --repo
+sesori-ai/sesori_apps_monorepo --exit-status`, followed by one terminal metadata query.
+All watches returned zero and every actual workflow HEAD matched the tooling SHA above.
+Archive bytes were fetched with `gh api repos/sesori-ai/sesori_apps_monorepo/actions/artifacts/<id>/zip`
+and their SHA-256 digests matched the Actions artifact metadata. Only the allowlisted
+bounded records described below were inspected; archives were not extracted or retained.
 
-Dispatches and expanded logs were run from
+#### Authenticated helper-On acceptance
+
+Run [35573213361](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35573213361)
+passed tooling job `106249150117` and both serialized native jobs:
+
+| CPU / runner | Job | Evidence artifact |
+|---|---|---|
+| x64 / `macos-26-intel` | `106249218337` | `10627117175` |
+| arm64 / `macos-26` | `106249218239` | `10626568356` |
+
+Verified archive digests:
+
+- x64: `sha256:c470d27cea880a58522c35ba64e4b959e8f9fae122f04680674c158c0bf4b0da`.
+- arm64: `sha256:1de7e6543fa1bef7691d755e9456e85dc9a504f3ba2584aa91d159cbe2db849f`.
+
+On each CPU, `authenticated-upgrade.json` records all 15 checks true. Both
+`previous-authenticated-helper.json` and `current-authenticated-helper.json` record
+exactly one live helper, observation during readiness polling, fresh bridge-log activity,
+authenticated-profile confirmation and relay-serving readiness. All four launches
+therefore crossed the formerly blocked baseline/current boundary. Both final
+`qualification-phase.json` records are `complete`, with null candidate and
+`cleanupStarted` / `cleanupCompleted` true. Each inspected JSON entry was capped at 8 KiB
+and its schema, identities and closed values validated. No raw auth response, credential,
+app/bridge log or authenticated screenshot was opened or retained.
+
+This accepts real signed helper-On replacement: private Keychain/session verification,
+On intent, exact helper readiness, real tray Quit stopping that helper, no relaunch/orphan,
+and bounded desktop/shared-data/attachment/login-registration preservation. It does not
+convert the old failed runs into passing evidence or prove every previous symptom's cause.
+Local bounded summary:
+`build/desktop-macos-authenticated-upgrade-evidence/source-35573213361/verified-summary.json`.
+
+#### Helper-Off acceptance for the same packages
+
+Run [35575012582](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35575012582)
+passed tooling job `106254787937` and both native jobs:
+
+| CPU / runner | Job | Evidence artifact |
+|---|---|---|
+| x64 / `macos-26-intel` | `106254857475` | `10628415220` |
+| arm64 / `macos-26` | `106254857531` | `10628285309` |
+
+Verified archive digests:
+
+- x64: `sha256:96ba19884e573150d63ca917f73e52becccc6d095e39ea0f56fcdf02aa6b5fde`.
+- arm64: `sha256:1d815299a2f4e23726b13f580669555385ef2265d58fb5614f777b12283b508f`.
+
+Both `upgrade.json` reports have all 11 checks true, including
+`helperAbsentBeforeQuit`. Each prior/current `*-helper-off.log` is exactly the closed
+`NO_INSTALLED_HELPER` marker. Report and marker entries were bounded to 8 KiB; no other
+log or screenshot was inspected. Both candidates' run/source/build/DMG identities match
+the accepted authenticated reports exactly. This qualifies build `122` directly rather
+than borrowing historical build-62 acceptance.
+Local bounded summary:
+`build/desktop-macos-upgrade-evidence/source-35575012582/verified-summary.json`.
+
+#### Regenerated read-only preparation
+
+Run [35575015316](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35575015316),
+job `106254795658`, passed. Artifact `10627179861` has verified digest
+`sha256:19fab4ad96ff29f39251da4459ff03007eade06ea1f9872a036389aeab4246aa`.
+Its bounded `desktop-release.json` and `checksums.txt` agree on all four previously
+verified DMG/ZIP hashes, stable `1.9.0+122`, proposed tag `desktop-v1.9.0`, and
+`githubLatest: false`. Package source `33a4ceb5506349d08953be37ba7d3a5f1d6d20df` / run
+`35501361734` remains distinct from preparation source
+`fe5df8e9152688c76eab127eac6c615547effd29`. The workflow revalidated both packages'
+compiled identity/channel, clean source, accepted notarization receipts and inventories.
+This is fresh consistency preparation for build `122`, not transferred build-62 evidence,
+independent signature verification or release approval. No tag, release, hosted payload,
+channel metadata or website link was published.
+Local bounded summary:
+`build/desktop-release-preparation-evidence/source-35575015316/verified-summary.json`.
+
+The acceptance-record change is documentation-only. Failed-stop refusal, interactive
+browser/login/TCC, real harness/chat and phone/CLI coexistence, login/autostart and
+close-to-tray behavior, minimum-OS, public retrieval and parent Gate C remain open.
+Sentinels prove only the exercised bounded preservation, not arbitrary user histories.
+These private passes do not complete the public portion of step 6 or authorize shipment.
+
+### Historical dispatch and log commands
+
+Earlier dispatches and expanded logs were run from
 `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
 
 ```bash
