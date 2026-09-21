@@ -7,8 +7,9 @@
 - **Plan date:** 2026-09-19
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `bf14d7c0f3`
-- **Delivery:** 17 numbered PRs; step 1 raises this plan before production
-  work. State lives in [TRACKER](TRACKER.md).
+- **Delivery:** 22 numbered PRs (17 until the 2026-09-21 amendment, see
+  D20); step 1 raises this plan before production work. State lives in
+  [TRACKER](TRACKER.md).
 - **Architecture review:** rejected 2026-09-19 on one seam (ownership and
   commit path of the pending-archive cubit); the findings were applied
   directly. See [Plan Review](#plan-review).
@@ -241,11 +242,17 @@ All agreed with the user on 2026-09-19 unless marked otherwise.
   of the series, shown to the user as screenshots of the running app, and no
   PR is opened for them until the user explicitly approves.
 - **D19 Out of scope.** The File changes screen and voice input on desktop.
-- **D20 The phone does not change by default** (planning default, not yet
-  confirmed by the user). The review covered the desktop. Shared widgets get
-  their desktop look through a closed input whose phone value is today's
-  behaviour, so phone rows, grouping, menus and sheets stay as they are. The
-  two exceptions are D5 (shared strings) and D15 (shared widget and bridge).
+- **D20 What suits the phone is built shared and the phone adopts it**
+  (user direction, 2026-09-21; it replaces the earlier planning default that
+  the phone stays unchanged). From step 13 on, an improvement that works with
+  touch lives in `sesori_app_ui` or `sesori_dart_core` and both shells use it;
+  a desktop-only opt-in switch is no longer the default shape. Work that
+  merged before this date behind such switches (steps 9–12) moves to a shared
+  implementation in steps 16–19, and step 20 deletes what that leaves unused.
+  Pointer-only behaviour stays desktop-only: hover actions, right-click menus,
+  the sidebar, rail and window chrome, pointer row density and keyboard
+  shortcuts. The phone keeps what touch needs: swipe actions, the composer
+  anchored above the keyboard, and its glass bars.
 
 ## Design
 
@@ -590,7 +597,8 @@ Step 15 is different from every other step.
 ## Non-Goals
 
 - The File changes screen and voice input on desktop (D19).
-- Phone layout changes beyond D5 and D15 (D20).
+- Phone adoption of pointer-only behaviour, the sidebar, the rail or window
+  chrome (D20).
 - A bridge-level "why is this unread" signal, or syncing deferral between
   devices.
 - An unarchive endpoint: Undo is a delayed commit.
@@ -659,10 +667,11 @@ beside it, and the existing private widgets are not moved.
 
 ## Delivery Plan
 
-Series slug `desktop-ui-polish`, 17 PRs, one at a time in order. Targets count
-additions plus deletions across every path. Exact titles and branches are in
+Series slug `desktop-ui-polish`, 22 PRs, one at a time in order. Steps 1–12
+were published with a total of 17, before the D20 amendment added steps 16–20.
+Targets count additions plus deletions across every path. Exact titles and branches are in
 [TRACKER](TRACKER.md#pr-titles). Each behaviour-changing step updates the
-regression lines it invalidates in the same PR; step 16 reconciles the whole.
+regression lines it invalidates in the same PR; step 21 reconciles the whole.
 
 | Step | Delivery | Target | Scope |
 |---|---|---|---|
@@ -678,14 +687,26 @@ regression lines it invalidates in the same PR; step 16 reconciles the whole.
 | 10 | 10/17 | ≤ 500 | Filter chips and hover actions (D10). |
 | 11 | 11/17 | ≤ 700 | Session toolbar, centred column, Mark unread and its shortcut (D11). |
 | 12 | 12/17 | ≤ 900 | Archive with Undo, refusal alert, compact delete alert (D13). |
-| 13 | 13/17 | ≤ 500 | New session page (D14). |
-| 14 | 14/17 | ≤ 600 | Agent entry rule; five plugins advertise only their default agent and keep honouring released mode values; `HARNESS_CAPABILITIES.md` (D15). |
-| 15 | 15/17 | set at approval | **Gated.** Composer selector look and the sub-agents bar (D16–D18). No PR before explicit approval of real screenshots. |
-| 16 | 16/17 | ≤ 400 | Reconcile `docs/regression/`. |
-| 17 | 17/17 | ≤ 300 | Execute the final matrix on the merged series, record it, retire to `.plan/completed/`. |
+| 13 | 13/22 | ≤ 600 | New session page (D14). The heading and the project selector are shared and the phone shows them too; the desktop adds the toolbar and the centred column, the phone keeps its composer above the keyboard (D20). |
+| 14 | 14/22 | ≤ 600 | Agent entry rule; five plugins advertise only their default agent and keep honouring released mode values; `HARNESS_CAPABILITIES.md` (D15). |
+| 15 | 15/22 | set at approval | **Gated.** Composer selector look and the sub-agents bar, on both shells (D16–D18). No PR before explicit approval of real screenshots. |
+| 16 | 16/22 | ≤ 500 | Phone session list becomes one timeline: Running merges into Today with the leading status, as on desktop (D10, D20). |
+| 17 | 17/22 | ≤ 500 | The All / Running / Unread filter chips become one shared widget and the phone list shows them (D10, D20). |
+| 18 | 18/22 | ≤ 900 | Archive with Undo on the phone: the pending-archive cubit moves to `sesori_dart_core`, the alerts move to `sesori_app_ui`, and the phone's swipe and menu archive use them (D13, D20). |
+| 19 | 19/22 | ≤ 500 | Phone session page: Mark unread and the Rename / Archive / Delete menu come from the shared implementation (D11, D20). |
+| 20 | 20/22 | ≤ 400 | Cleanup: delete the inputs, variants and widgets that both shells now set the same way or that nothing uses (D20). |
+| 21 | 21/22 | ≤ 400 | Reconcile `docs/regression/`. |
+| 22 | 22/22 | ≤ 300 | Execute the final matrix on the merged series, record it, retire to `.plan/completed/`. |
 
-Steps 16 and 17 wait for step 15's approval, or for the user's explicit
-decision to drop or defer it.
+Steps 16–20 are rough on purpose. Each one is detailed when it starts, against
+the code as it then stands, and is dropped with a recorded reason if the phone
+already behaves that way or the move would not make the phone better. Step 20's
+known candidates are `SessionListGrouping.runningSection`, the archive
+confirmation sheet, the `hiddenSessionIds` opt-outs and the
+`SessionCleanupFlow` variant the phone stops using.
+
+Steps 16–20 do not wait for step 15's approval. Steps 21 and 22 wait for it, or
+for the user's explicit decision to drop or defer it.
 
 ## Per-Step Verification
 
@@ -735,7 +756,7 @@ step's own PR.
   test covers both `SessionCleanupFlow` variants; phone sheets unchanged.
 - **13:** header-slot layout; after a project switch the route, the mounted
   `NewSessionCubit`'s project and the created session's project are all the
-  chosen one; phone tests pass untouched.
+  chosen one; a phone test shows the shared heading and project selector.
 - **14:** per-plugin catalog tests (only the default entry is advertised); a
   prompt carrying a released non-default mode still runs in that mode; a prompt
   carrying the advertised entry returns a plan-mode session to the default
@@ -743,14 +764,19 @@ step's own PR.
   turn in which a session left in plan mode runs its next prompt in the default
   mode.
 - **15:** the approval gate first; then tests for the approved design.
-- **16:** documentation validation only.
-- **17:** executes the final matrix below on the merged series and records
-  every cell in `steps/step-17.md`. A cell that was not executed is recorded
+- **16–19:** each adopting step adds phone widget coverage for what the phone
+  gains and keeps the desktop tests passing; step 18 moves the cubit's tests
+  with it.
+- **20:** deletion only; both apps analyze and their suites pass.
+- **21:** documentation validation only.
+- **22:** executes the final matrix below on the merged series and records
+  every cell in `steps/step-22.md`. A cell that was not executed is recorded
   as unexecuted, never as passed, and needs the user's explicit acceptance
   before the plan retires.
 
-A phone test that needs editing in steps 8–13 is a review signal: D20 says the
-phone value of every new input is today's behaviour.
+Steps 8–12 merged under the earlier default, where a phone test that needed
+editing was a review signal. From step 13 on, phone tests change on purpose
+and each adopting step adds phone coverage for what it adopts.
 
 ## Regression Documentation And Final Matrix
 
@@ -812,12 +838,13 @@ touched plugins are proven by automated tests rather than a live turn each.
   catalog refreshes. Accepted: a mode chosen from a cached list is still
   honoured, and nothing is invalidated to hurry it.
 - **Plan/Ask are no longer offered from Sesori** (user-confirmed).
-- **Shared-widget edits can regress the phone.** Every one sits behind a
-  closed input whose phone value is today's behaviour, and phone tests must
-  pass unmodified.
+- **Shared-widget edits can regress the phone.** Through step 12 every one
+  sits behind a closed input whose phone value is the earlier behaviour. From
+  step 13 the phone changes on purpose (D20), so each adopting step runs the
+  phone suite and analyzes `client/app`.
 - **One large file.** Steps 2–6 all touch `desktop_sidebar.dart`; they are
   serialized and add new widgets in new files.
-- **Step 15 can take several rounds.** It blocks only steps 16–17.
+- **Step 15 can take several rounds.** It blocks only steps 21–22.
 
 ## Plan Review
 
@@ -852,7 +879,7 @@ publishes no session event on archive (verified in
 `update_session_archive_status_handler.dart`); the native brightness follows
 the effective brightness, including OS switches under System
 (`window_manager` can only force light or dark); archived rows offer no
-Archive hover action; and step 17 executes the final matrix instead of only
+Archive hover action; and the final step executes the final matrix instead of only
 recording it. A second round (2026-09-20) routed the brightness and
 drag-region operations through `WindowHost`, so `FlutterWindowHost` stays the
 only `window_manager` import; made the session page's Mark unread an explicit
@@ -890,8 +917,6 @@ round above), naming, and no abstraction without a current consumer.
 - Voice input on desktop: the composer already has the modes; it needs a
   desktop capture implementation.
 - The File changes screen.
-- Phone adoption of whatever proves itself on desktop (one timeline, leading
-  sparkle).
 - A bridge-level unread reason, so "kept for later" follows the user across
   devices.
 - Custom title bars on Windows and Linux.
@@ -907,6 +932,7 @@ under a unified title bar, with one obvious "New session" button. Activity
 lists only what is in motion, and no session ever jumps between lists. Pages
 share one toolbar and pointer-sized rows; menus and confirmations behave the
 way desktop users expect; the composer strip shows an agent entry only when
-there is a real choice. The phone looks the same apart from saying "session"
-everywhere and losing pseudo-agents. There is no wire, relay or database
+there is a real choice. The phone gains what suits touch from the same shared
+code: the new session heading and project selector, one timeline with filter
+chips, archive with Undo, and Mark unread. There is no wire, relay or database
 impact.

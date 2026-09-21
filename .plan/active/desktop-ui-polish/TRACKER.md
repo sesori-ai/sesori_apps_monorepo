@@ -7,8 +7,13 @@ the plan itself, so it has no evidence file.
 
 One PR at a time, in order. Step 15 carries an approval gate: it is built
 locally, shown to the user as screenshots of the running app, and **no PR is
-opened until the user explicitly approves the actual UI**. Steps 16–17 wait
-for that approval or for the user's explicit decision to drop or defer it.
+opened until the user explicitly approves the actual UI**. Steps 21–22 wait
+for that approval or for the user's explicit decision to drop or defer it;
+steps 16–20 do not.
+
+The series total grew from 17 to 22 on 2026-09-21 (PLAN D20: what suits the
+phone is built shared). Steps 1–12 were published with `/17` titles and keep
+them.
 
 | Done | Step | Branch | Title | Target | State |
 |---|---|---|---|---|---|
@@ -24,11 +29,16 @@ for that approval or for the user's explicit decision to drop or defer it.
 | [x] | 10 | `desktop-ui-polish/project-page-filters` | [10/17](#pr-titles) | ≤ 500 | done |
 | [x] | 11 | `desktop-ui-polish/session-toolbar` | [11/17](#pr-titles) | ≤ 700 | done |
 | [x] | 12 | `desktop-ui-polish/archive-undo` | [12/17](#pr-titles) | ≤ 900 | done |
-| [ ] | 13 | `desktop-ui-polish/new-session-page` | [13/17](#pr-titles) | ≤ 500 | pending |
-| [ ] | 14 | `desktop-ui-polish/agent-entry` | [14/17](#pr-titles) | ≤ 600 | pending |
-| [ ] | 15 | `desktop-ui-polish/composer-and-sub-agents` | [15/17](#pr-titles) | set at approval | pending (gated) |
-| [ ] | 16 | `desktop-ui-polish/regression-docs` | [16/17](#pr-titles) | ≤ 400 | pending |
-| [ ] | 17 | `desktop-ui-polish/coverage-retire` | [17/17](#pr-titles) | ≤ 300 | pending |
+| [ ] | 13 | `desktop-ui-polish/new-session-page` | [13/22](#pr-titles) | ≤ 600 | pending |
+| [ ] | 14 | `desktop-ui-polish/agent-entry` | [14/22](#pr-titles) | ≤ 600 | pending |
+| [ ] | 15 | `desktop-ui-polish/composer-and-sub-agents` | [15/22](#pr-titles) | set at approval | pending (gated) |
+| [ ] | 16 | `desktop-ui-polish/phone-timeline` | [16/22](#pr-titles) | ≤ 500 | pending |
+| [ ] | 17 | `desktop-ui-polish/shared-filter-chips` | [17/22](#pr-titles) | ≤ 500 | pending |
+| [ ] | 18 | `desktop-ui-polish/shared-archive-undo` | [18/22](#pr-titles) | ≤ 900 | pending |
+| [ ] | 19 | `desktop-ui-polish/phone-session-actions` | [19/22](#pr-titles) | ≤ 500 | pending |
+| [ ] | 20 | `desktop-ui-polish/shared-cleanup` | [20/22](#pr-titles) | ≤ 400 | pending |
+| [ ] | 21 | `desktop-ui-polish/regression-docs` | [21/22](#pr-titles) | ≤ 400 | pending |
+| [ ] | 22 | `desktop-ui-polish/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | pending |
 
 ### PR titles
 
@@ -44,11 +54,16 @@ for that approval or for the user's explicit decision to drop or defer it.
 - 10/17: `⚙️ [desktop-ui-polish] Add project page filters and hover actions [step 10/17]`
 - 11/17: `⚙️ [desktop-ui-polish] Give the session page a toolbar and centred column [step 11/17]`
 - 12/17: `⚙️ [desktop-ui-polish] Archive with Undo and compact alerts [step 12/17]`
-- 13/17: `⚙️ [desktop-ui-polish] Centre the new session page [step 13/17]`
-- 14/17: `⚙️ [desktop-ui-polish] Stop presenting harness modes as agents [step 14/17]`
-- 15/17: `⚙️ [desktop-ui-polish] Restyle composer selectors and the sub-agents bar [step 15/17]`
-- 16/17: `🌿 [desktop-ui-polish] Reconcile regression documents [step 16/17]`
-- 17/17: `🌱 [desktop-ui-polish] Run final coverage and retire the plan [step 17/17]`
+- 13/22: `⚙️ [desktop-ui-polish] Centre the new session page and share its header [step 13/22]`
+- 14/22: `⚙️ [desktop-ui-polish] Stop presenting harness modes as agents [step 14/22]`
+- 15/22: `⚙️ [desktop-ui-polish] Restyle composer selectors and the sub-agents bar [step 15/22]`
+- 16/22: `⚙️ [desktop-ui-polish] Show the phone session list as one timeline [step 16/22]`
+- 17/22: `🌿 [desktop-ui-polish] Share the session filter chips with the phone [step 17/22]`
+- 18/22: `⚙️ [desktop-ui-polish] Archive with Undo on the phone [step 18/22]`
+- 19/22: `🌿 [desktop-ui-polish] Share Mark unread and session actions with the phone [step 19/22]`
+- 20/22: `🌿 [desktop-ui-polish] Delete what the shared implementations replaced [step 20/22]`
+- 21/22: `🌿 [desktop-ui-polish] Reconcile regression documents [step 21/22]`
+- 22/22: `🌱 [desktop-ui-polish] Run final coverage and retire the plan [step 22/22]`
 
 A clean split keeps the series total: a split step takes letter suffixes
 (14.a, 14.b) and the titles above are renumbered once, in the PR that
