@@ -113,10 +113,17 @@ elif name == "xcrun":
             signatures = [call for call in commands if call["name"] == "codesign"]
             self.assertEqual(len(signatures), 2)
             self.assertIn("Developer ID Application: DigitalBlock Labs LTD (FIXTURETEAM)", signatures[0]["args"])
-            self.assertIn('--test-requirement', signatures[1]["args"])
-            self.assertIn(
-                'anchor apple generic and certificate leaf[subject.OU] = "FIXTURETEAM"', signatures[1]["args"],
-            )
+            self.assertIn("-R", signatures[1]["args"])
+            requirement = '=anchor apple generic and certificate leaf[subject.OU] = "AQNCF7663C"'
+            self.assertIn(requirement, signatures[1]["args"])
+            # Exercise Apple's real parser without signing anything or accessing a private key.
+            if sys.platform == "darwin":
+                for source, expected_exit in (("=anchor apple", 0), (requirement, 3)):
+                    native = subprocess.run(
+                        ["/usr/bin/codesign", "--verify", "--strict", "-R", source, "/usr/bin/true"],
+                        capture_output=True, text=True, timeout=15,
+                    )
+                    self.assertEqual(native.returncode, expected_exit, native.stderr)
             self.assertTrue((root / "build/desktop-macos-authenticated-upgrade/tools/keychain-writer").exists())
             self.assertFalse((root / "desktop-signing.keychain-db").exists())
             self.assertFalse((root / "desktop-signing.p12").exists())

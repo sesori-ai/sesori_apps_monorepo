@@ -46,8 +46,9 @@ if [[ "$MACOS_DISTRIBUTION_MODE" == macos-authenticated-upgrade-probe ]]; then
   mkdir -p "$(dirname "$helper")"
   xcrun swiftc .github/scripts/write_desktop_macos_keychain.swift -framework Security -o "$helper"
   codesign --sign "$identity" --keychain "$keychain" --timestamp --options runtime --force "$helper"
-  codesign --verify --strict --test-requirement \
-    "anchor apple generic and certificate leaf[subject.OU] = \"$APPLE_TEAM_ID\"" "$helper"
+  # A leading '=' selects literal requirement text; without it codesign opens a file.
+  codesign --verify --strict -R \
+    '=anchor apple generic and certificate leaf[subject.OU] = "AQNCF7663C"' "$helper"
   echo 'Native QA Keychain helper signed and verified; no product submission or publication.'
   exit 0
 fi

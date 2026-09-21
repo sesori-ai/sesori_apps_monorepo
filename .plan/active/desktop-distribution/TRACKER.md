@@ -210,8 +210,10 @@ supports only
 pre-render markers, so `noMarker` cannot claim failure before Dart main. #1564 merged as
 `33a4ceb5506349d08953be37ba7d3a5f1d6d20df`, tree
 `08f1d7b283faec4985a78b78ae8e7b7e4433dee9`. Fresh package run `35501361734` passed both
-CPUs for `1.9.0+122`. Retry `35502787779` failed both CPUs at baseline `desktopAttention`,
-with no helper activity and completed cleanup; replacement never began. Prior run
+CPUs for `1.9.0+122`. Retry `35502787779` failed on both CPUs; each archive records
+`previous` / `helperReadiness` and `preRender` / `desktopAttention`, with no helper activity
+and completed cleanup. Replacement never began; the observed marker is not a proven
+failing implementation. Prior run
 `35496105360`'s two archives were mistakenly deleted; their recorded observations remain,
 not retrievable archives.
 

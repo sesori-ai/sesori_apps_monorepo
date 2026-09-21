@@ -143,8 +143,10 @@ QA credentials enter the job. This step needs no notarization credentials or pub
 permission; the helper is neither packaged with the app nor uploaded as evidence.
 The helper checks valid Developer ID signatures and matching app/helper teams before any
 Keychain access. The trusted-app ACL alone does not grant access across modern macOS
-signing partitions. Reads and writes therefore use the same signed helper, not an unrelated
-security-tool reader. Writes consume stdin; reads are privately captured and never logged.
+signing partitions. Credential-value reads and writes therefore use the same signed helper.
+Writes consume stdin; value reads are privately captured and never logged. The `security`
+tool still performs metadata-only absence checks and deletion of probe-owned items; those
+operations do not need to decrypt the credential.
 The probe requests phase-fresh tokens in memory, creates the three established
 classic-Keychain values with their exact trusted-app ACL atomically, retains that ACL
 while refreshing values, and bounds every native Keychain command. The writer must also

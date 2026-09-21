@@ -321,12 +321,48 @@ notarization credentials and neither embeds nor publishes the helper with the pr
 No production startup code, new signing identity, schema, persistent state or lifecycle
 coordination is introduced. Local signing keys are not accessed.
 
-Local verification: 38 focused authenticated-upgrade tests (included in 118 passing
-desktop Python tests), five signing-workflow tests, Swift compilation, bash syntax and
-actionlint passed. The compiled unsigned helper refused before Keychain access with
-`OSStatus -67050` and empty stdout. Signing-workflow tests use stub commands to verify
-secret separation, exact signer/requirement arguments and signing-material cleanup;
-they do not claim real Developer ID signing. No Dart/Flutter suite or live app was run.
+Initial local verification, on the **uncommitted worktree before** PR commit
+`0b5a0027d51fcbbbe6f0063bd44ee5f99b3a100b`: 38 focused authenticated-upgrade tests
+(included in 118 passing desktop Python tests), five signing-workflow tests, Swift
+compilation, bash syntax and actionlint passed. No source/tree hash was captured for
+those measurements; they are not exact-checkpoint evidence. Output was captured in the
+Pi session, with no separate durable log files. All commands ran from
+`/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
+
+```bash
+python3 -m unittest discover -s .github/scripts -p test_qualify_desktop_macos_authenticated_upgrade.py
+python3 -m unittest discover -s .github/scripts -p 'test_*desktop*.py'
+python3 -m unittest discover -s .github/scripts -p test_macos_signing_workflows.py
+bash -n .github/scripts/macos_signing_ci.sh
+xcrun swiftc -suppress-warnings .github/scripts/write_desktop_macos_keychain.swift \
+  -framework Security -o build/desktop-keychain-local/signed-policy-writer
+actionlint .github/workflows/desktop-qualification.yml
+```
+
+The compiled unsigned helper refused before Keychain access with `OSStatus -67050` and
+empty stdout. Initial signing-workflow tests used stubs for secret separation,
+signer/requirement arguments and signing-material cleanup; they did not test the real
+`codesign` requirement parser or claim Developer ID signing. Review identified the
+missing `=` literal-text prefix, which otherwise makes `codesign` interpret the
+requirement as a filename. The correction uses `-R` with a literal requirement pinned
+to publisher `AQNCF7663C`, independent of the configured signing team, and adds native
+Apple-binary acceptance / publisher-mismatch rejection controls on macOS. No Dart/Flutter
+suite or live app was run.
+
+A separate review-time disposable-Keychain control removed `security` from the item
+trusted-app list. The cross-partition pinned plugin read still failed (`-25293`), while
+`security find-generic-password` without `-w` succeeded, `delete-generic-password`
+succeeded, and the final lookup returned item-not-found (CLI exit `44`). Therefore
+metadata checks/deletion retain their existing owner; no new signed-delete operation or
+app-lifetime dependency is needed. The local bounded result is
+`build/desktop-keychain-local/probe.0f4jtM/cleanup-control.json`; the standalone fixture
+used explicit scratch-Keychain handles, preserved default/search-list settings, and
+removed its Keychain in `finally`. This control is not product acceptance evidence.
+The review corrections' five signing-workflow tests (including the real native parser
+controls), bash syntax and diff checks passed on an uncommitted worktree above `0b5a002`.
+Commands, base commit, measured diff digest and separate logs are recorded locally in
+`build/desktop-keychain-local/review-1571/verification.json`; the cwd is the same as above.
+Unchanged Dart/Flutter, desktop Python and Swift compilation checks were not repeated.
 
 After merged-main review, retry only the unchanged pair `35042335424` → `35501361734`:
 
