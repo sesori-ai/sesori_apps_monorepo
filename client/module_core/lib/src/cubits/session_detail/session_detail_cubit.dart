@@ -393,6 +393,7 @@ class SessionDetailCubit(
             emit(
               _buildLoadedState(
                 snapshot: snapshot,
+                session: session,
                 parkEpochAtFetch: parkEpochAtFetch,
                 interaction: becameAvailable ? interactionAtLoad : _interaction,
               ),
@@ -879,7 +880,7 @@ class SessionDetailCubit(
               availableCommands: availableCommands,
               supportsPromptAttachments: snapshot.supportsPromptAttachments,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
-              session: _sessionMetadata,
+              session: session,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
               stagedCommand: _selection.resolveStagedCommand(
@@ -2709,6 +2710,7 @@ class SessionDetailCubit(
 
   SessionDetailLoaded _buildLoadedState({
     required SessionDetailSnapshot snapshot,
+    required Session session,
     required int parkEpochAtFetch,
     required SessionInteractionState interaction,
   }) {
@@ -2746,7 +2748,7 @@ class SessionDetailCubit(
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
       bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
       sessionTitle: snapshot.canonicalSessionTitle,
-      session: _sessionMetadata,
+      session: session,
       pluginId: snapshot.pluginId,
       supportsPromptAttachments: snapshot.supportsPromptAttachments,
       agent: latestAssistant?.agent,

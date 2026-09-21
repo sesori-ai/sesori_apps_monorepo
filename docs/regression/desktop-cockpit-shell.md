@@ -180,7 +180,7 @@ The main pane hosts one full-width routed page.
   project's all-sessions page for direct entry. Deleting the open session
   returns to all sessions.
 - The session page uses the same toolbar anatomy above the transcript, never over it: title with agent and
-  model, Back only on a pushed page, a busy indicator, Mark unread, Changes while the session has a diff,
+  model, Back only on a pushed page, a busy indicator, Mark unread, Changes on a root unarchived session,
   and a menu with Rename, Archive and Delete run by the same dispatcher as a row's menu. Session actions
   stay disabled until the page has the hydrated session, and work for child sessions and sessions opened
   directly. Mark unread always sends unread, whatever local state says, defers the session like a row's Mark

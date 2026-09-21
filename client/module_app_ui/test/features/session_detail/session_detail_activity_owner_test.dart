@@ -8,6 +8,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class _MockSessionDetailCubit() extends Mock implements SessionDetailCubit;
@@ -27,7 +28,7 @@ const _loaded = SessionDetailState.loaded(
   pendingQuestions: [],
   pendingPermissions: [],
   sessionTitle: null,
-  session: null,
+  session: testConstSession,
   pluginId: "opencode",
   supportsPromptAttachments: false,
   agent: null,

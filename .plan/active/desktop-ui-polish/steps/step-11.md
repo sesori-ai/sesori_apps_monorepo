@@ -91,7 +91,7 @@ whose state switch moved into a method both frames share. Reproduce from the
 root:
 
 ```sh
-git diff --numstat "$(git merge-base origin/main fe180520a448cf3083f352de9364f3ae84f7174b)" fe180520a448cf3083f352de9364f3ae84f7174b
+git diff --numstat 5ae932dd0469207df0f45386dd504d30aee037e6 fe180520a448cf3083f352de9364f3ae84f7174b
 ```
 
 The step target was 700; the repository soft cap is 1,500. This file and the

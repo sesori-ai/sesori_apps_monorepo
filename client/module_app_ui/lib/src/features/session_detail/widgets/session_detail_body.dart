@@ -217,13 +217,20 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
               subtitle: subtitle.isEmpty ? null : subtitle,
               isBusy: isBusy,
               onShowDiffs: canShowDiffs ? onShowDiffs : null,
-              session: state is SessionDetailLoaded ? state.session : null,
+              session: switch (state) {
+                SessionDetailLoaded(:final session) || SessionDetailHarnessUnavailable(:final session) => session,
+                SessionDetailLoading() || SessionDetailFailed() => null,
+              },
             ),
             ?banner,
             // The header sits above the transcript, so nothing scrolls behind a
             // bar and the transcript needs no top inset for one.
             Expanded(
-              child: PregoTopBarInsetScope(baseInset: 0, bannerHeight: const AlwaysStoppedAnimation<double>(0), child: content),
+              child: PregoTopBarInsetScope(
+                baseInset: 0,
+                bannerHeight: const AlwaysStoppedAnimation<double>(0),
+                child: content,
+              ),
             ),
           ],
         ),

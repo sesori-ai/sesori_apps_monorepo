@@ -102,7 +102,7 @@ const _message = MessageWithParts(
   ],
 );
 
-SessionDetailLoaded _loadedState({Session? session}) {
+SessionDetailLoaded _loadedState({required Session session}) {
   return SessionDetailLoaded(
     interaction: const SessionInteractionState.available(refreshError: null),
     messages: const [_message],
@@ -149,7 +149,7 @@ void main() {
   testWidgets("desktop renders the transcript and text-first composer", (tester) async {
     final cubit = _MockSessionDetailCubit();
     when(() => cubit.isRouteVisible).thenReturn(true);
-    final state = _loadedState();
+    final state = _loadedState(session: _session);
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
     when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
@@ -263,7 +263,7 @@ void main() {
   testWidgets("desktop delegates Back and child-session navigation", (tester) async {
     final cubit = _MockSessionDetailCubit();
     when(() => cubit.isRouteVisible).thenReturn(true);
-    final state = _loadedState();
+    final state = _loadedState(session: _session);
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
     when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
@@ -333,7 +333,7 @@ void main() {
     late List<Session> markedUnread;
     late int leftPage;
 
-    Future<void> pumpPage(WidgetTester tester, {required Session? session}) async {
+    Future<void> pumpPage(WidgetTester tester, {required Session session}) async {
       cubit = _MockSessionDetailCubit();
       when(() => cubit.isRouteVisible).thenReturn(true);
       final state = _loadedState(session: session);
@@ -405,29 +405,6 @@ void main() {
       expect(tester.getRect(find.byType(SessionDetailLoadedView)).top, toolbar.bottom);
       expect(list.topInset, 0);
       expect(list.horizontalInset, (1400 - DesktopSessionDetailView.maxContentWidth) / 2);
-    });
-
-    testWidgets("keeps session actions disabled until the session is hydrated", (tester) async {
-      await pumpPage(tester, session: null);
-
-      final markUnread = find.byKey(const Key("desktop-session-page-mark-unread"));
-      expect(tester.widget<IconButton>(markUnread).onPressed, isNull);
-      expect(tester.widget<IconButton>(find.byKey(const Key("desktop-session-page-more"))).onPressed, isNull);
-
-      await tester.tap(find.text("Follow up..."));
-      await tester.pumpAndSettle();
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-      await tester.sendKeyEvent(LogicalKeyboardKey.keyU);
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
-      verifyNever(
-        () => listCubit.markSessionSeen(
-          sessionId: any(named: "sessionId"),
-          read: any(named: "read"),
-        ),
-      );
-      expect(leftPage, 0);
     });
 
     testWidgets("Mark unread always sends read: false, defers the session and leaves the page", (tester) async {

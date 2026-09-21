@@ -31,8 +31,8 @@ sealed class SessionDetailState with _$SessionDetailState {
     // Session title — updated reactively via SSE `session.updated` events.
     required String? sessionTitle,
     // The hydrated session, for surfaces that act on it (rename, archive,
-    // delete). Null until the metadata lookup resolves it.
-    required Session? session,
+    // delete).
+    required Session session,
     // The harness running this session, or null when it could not be resolved.
     required String? pluginId,
     // Null when the plugin metadata lookup could not resolve the capability.

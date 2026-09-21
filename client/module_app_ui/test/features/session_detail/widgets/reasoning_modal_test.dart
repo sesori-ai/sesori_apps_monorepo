@@ -8,6 +8,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -34,7 +35,7 @@ SessionDetailState _loadedState({
     pendingQuestions: const [],
     pendingPermissions: const [],
     sessionTitle: null,
-    session: null,
+    session: testConstSession,
     pluginId: "opencode",
     supportsPromptAttachments: false,
     agent: null,

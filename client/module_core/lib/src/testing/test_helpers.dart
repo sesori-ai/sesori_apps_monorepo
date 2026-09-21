@@ -619,6 +619,22 @@ ProjectSummary testProjectSummary({
   });
 }
 
+/// A hydrated session for const state fixtures that do not care which one.
+const Session testConstSession = Session(
+  branchName: null,
+  id: "session-1",
+  pluginId: "plugin-1",
+  projectID: "project-1",
+  directory: "/project",
+  parentID: null,
+  title: null,
+  pullRequest: null,
+  time: null,
+  promptDefaults: null,
+  lastUserActivityAt: null,
+  unseen: false,
+);
+
 Session testSession({
   String? id = _noString,
   String? title = _noString,

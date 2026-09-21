@@ -185,8 +185,7 @@ void main() {
         addTearDown(cubit.close);
         await awaitState(
           cubit: cubit,
-          predicate: (state) =>
-              state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
+          predicate: (state) => state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
           description: "initial harness state",
         );
         final before = cubit.state;
@@ -1591,10 +1590,10 @@ void main() {
         );
       },
       expect: () => [
-        isA<SessionDetailLoaded>().having((state) => state.session?.id, "hydrated session", sessionId),
+        isA<SessionDetailLoaded>().having((state) => state.session.id, "hydrated session", sessionId),
         isA<SessionDetailLoaded>()
             .having((state) => state.sessionTitle, "sessionTitle", "Renamed Session")
-            .having((state) => state.session?.title, "hydrated session title", "Renamed Session"),
+            .having((state) => state.session.title, "hydrated session title", "Renamed Session"),
       ],
     );
 

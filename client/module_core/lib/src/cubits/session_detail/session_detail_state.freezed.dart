@@ -121,7 +121,7 @@ class SessionDetailLoaded implements SessionDetailState {
 }
 
  final  String? sessionTitle;
- final  Session? session;
+ final  Session session;
  final  String? pluginId;
  final  bool? supportsPromptAttachments;
  final  String? agent;
@@ -229,11 +229,11 @@ abstract mixin class $SessionDetailLoadedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailLoadedCopyWith(SessionDetailLoaded value, $Res Function(SessionDetailLoaded) _then) = _$SessionDetailLoadedCopyWithImpl;
 @useResult
 $Res call({
- SessionInteractionState interaction, List<MessageWithParts> messages, int? olderMessagesCursor, bool isLoadingOlderMessages, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, Session? session, String? pluginId, bool? supportsPromptAttachments, String? agent, AgentModel? assistantAgentModel, List<Session> children, Map<String, SessionStatus> childStatuses, bool? isRootSession, bool isArchived, List<QueuedSessionSubmission> queuedMessages, QueuedSessionSubmission? sendingSubmission, List<QueuedSessionPrompt> bridgeQueuedPrompts, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String selectedAgent, AgentModel? selectedAgentModel, CommandInfo? stagedCommand, bool isRefreshing, List<SessionVariant> availableVariants
+ SessionInteractionState interaction, List<MessageWithParts> messages, int? olderMessagesCursor, bool isLoadingOlderMessages, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, Session session, String? pluginId, bool? supportsPromptAttachments, String? agent, AgentModel? assistantAgentModel, List<Session> children, Map<String, SessionStatus> childStatuses, bool? isRootSession, bool isArchived, List<QueuedSessionSubmission> queuedMessages, QueuedSessionSubmission? sendingSubmission, List<QueuedSessionPrompt> bridgeQueuedPrompts, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String selectedAgent, AgentModel? selectedAgentModel, CommandInfo? stagedCommand, bool isRefreshing, List<SessionVariant> availableVariants
 });
 
 
-$SessionStatusCopyWith<$Res> get sessionStatus;$SessionCopyWith<$Res>? get session;$AgentModelCopyWith<$Res>? get assistantAgentModel;$AgentModelCopyWith<$Res>? get selectedAgentModel;$CommandInfoCopyWith<$Res>? get stagedCommand;
+$SessionStatusCopyWith<$Res> get sessionStatus;$SessionCopyWith<$Res> get session;$AgentModelCopyWith<$Res>? get assistantAgentModel;$AgentModelCopyWith<$Res>? get selectedAgentModel;$CommandInfoCopyWith<$Res>? get stagedCommand;
 
 }
 /// @nodoc
@@ -246,7 +246,7 @@ class _$SessionDetailLoadedCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? interaction = null,Object? messages = null,Object? olderMessagesCursor = freezed,Object? isLoadingOlderMessages = null,Object? streamingText = null,Object? sessionStatus = null,Object? pendingQuestions = null,Object? pendingPermissions = null,Object? sessionTitle = freezed,Object? session = freezed,Object? pluginId = freezed,Object? supportsPromptAttachments = freezed,Object? agent = freezed,Object? assistantAgentModel = freezed,Object? children = null,Object? childStatuses = null,Object? isRootSession = freezed,Object? isArchived = null,Object? queuedMessages = null,Object? sendingSubmission = freezed,Object? bridgeQueuedPrompts = null,Object? awaitingBridgeSubmissions = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = null,Object? selectedAgentModel = freezed,Object? stagedCommand = freezed,Object? isRefreshing = null,Object? availableVariants = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? interaction = null,Object? messages = null,Object? olderMessagesCursor = freezed,Object? isLoadingOlderMessages = null,Object? streamingText = null,Object? sessionStatus = null,Object? pendingQuestions = null,Object? pendingPermissions = null,Object? sessionTitle = freezed,Object? session = null,Object? pluginId = freezed,Object? supportsPromptAttachments = freezed,Object? agent = freezed,Object? assistantAgentModel = freezed,Object? children = null,Object? childStatuses = null,Object? isRootSession = freezed,Object? isArchived = null,Object? queuedMessages = null,Object? sendingSubmission = freezed,Object? bridgeQueuedPrompts = null,Object? awaitingBridgeSubmissions = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = null,Object? selectedAgentModel = freezed,Object? stagedCommand = freezed,Object? isRefreshing = null,Object? availableVariants = null,}) {
   return _then(SessionDetailLoaded(
 interaction: null == interaction ? _self.interaction : interaction // ignore: cast_nullable_to_non_nullable
 as SessionInteractionState,messages: null == messages ? _self._messages : messages // ignore: cast_nullable_to_non_nullable
@@ -257,8 +257,8 @@ as Map<String, String>,sessionStatus: null == sessionStatus ? _self.sessionStatu
 as SessionStatus,pendingQuestions: null == pendingQuestions ? _self._pendingQuestions : pendingQuestions // ignore: cast_nullable_to_non_nullable
 as List<SesoriQuestionAsked>,pendingPermissions: null == pendingPermissions ? _self._pendingPermissions : pendingPermissions // ignore: cast_nullable_to_non_nullable
 as List<SesoriPermissionAsked>,sessionTitle: freezed == sessionTitle ? _self.sessionTitle : sessionTitle // ignore: cast_nullable_to_non_nullable
-as String?,session: freezed == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
-as Session?,pluginId: freezed == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String?,session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
+as Session,pluginId: freezed == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String?,supportsPromptAttachments: freezed == supportsPromptAttachments ? _self.supportsPromptAttachments : supportsPromptAttachments // ignore: cast_nullable_to_non_nullable
 as bool?,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,assistantAgentModel: freezed == assistantAgentModel ? _self.assistantAgentModel : assistantAgentModel // ignore: cast_nullable_to_non_nullable
@@ -295,12 +295,9 @@ $SessionStatusCopyWith<$Res> get sessionStatus {
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$SessionCopyWith<$Res>? get session {
-    if (_self.session == null) {
-    return null;
-  }
-
-  return $SessionCopyWith<$Res>(_self.session!, (value) {
+$SessionCopyWith<$Res> get session {
+  
+  return $SessionCopyWith<$Res>(_self.session, (value) {
     return _then(_self.copyWith(session: value));
   });
 }/// Create a copy of SessionDetailState
