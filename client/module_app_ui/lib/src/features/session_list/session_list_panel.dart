@@ -152,7 +152,6 @@ class const SessionListPanel({
           ),
         ),
         SessionListContent(
-          grouping: SessionListGrouping.runningSection,
           quickFilter: SessionListQuickFilter.all,
           hiddenSessionIds: const {},
           projectName: projectName,

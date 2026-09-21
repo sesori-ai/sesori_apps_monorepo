@@ -224,7 +224,6 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
                           ),
                         SessionListContent(
                           projectName: projectName,
-                          grouping: SessionListGrouping.timeline,
                           quickFilter: filter,
                           hiddenSessionIds: hidden,
                           onSessionTap: onSessionTap,

@@ -225,8 +225,9 @@ state.
   when no branch, pull request, or status label is shown. Title-only rows are
   48px at standard text size; a populated subtitle retains the 70px row height.
   Running and unread sparkles alone do not reserve a subtitle. Both layouts
-  grow with accessibility text rather than clipping. Regular rows show a
-  Running section first, then idle rows grouped by updated-time date buckets;
+  grow with accessibility text rather than clipping. Regular rows form one
+  timeline with no Running section: running rows lead Today whatever their
+  stored time, then idle rows follow in updated-time date buckets;
   archived rows retain archive-time date buckets. Awaiting-input-only rows stay
   in their updated-time bucket, and missing timestamps use an Unknown date
   heading rather than an invented epoch.
@@ -387,7 +388,7 @@ after a marker has been established.
 For session-row sizing and grouping, compare regular and archived title-only
 rows against branch-only, PR-only, and status-only subtitles. Toggle subtitle
 content and check compact spacing, preserved swipe/menu actions, and enlarged
-text. Verify regular Running-first ordering, awaiting-only date grouping,
+text. Verify running rows leading Today, awaiting-only date grouping,
 updated-time versus archive-time buckets, and missing-timestamp headings.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
@@ -471,9 +472,9 @@ started one. Restore harness eligibility afterwards.
   voice/attachment controls instead of honoring declared capabilities.
 - A title-only session row reserves an empty subtitle line, or a populated
   subtitle is clipped or loses its spacing in regular or archived lists.
-- Regular session rows lose their Running-first section, promote awaiting-only
-  rows into it, use archive time instead of updated time, or render an epoch
-  date when a timestamp is missing.
+- Running rows leave the top of Today or open a Running section, awaiting-only
+  rows are promoted with them, rows use archive time instead of updated time,
+  or render an epoch date when a timestamp is missing.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its

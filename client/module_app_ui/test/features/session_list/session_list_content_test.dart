@@ -23,7 +23,6 @@ void main() {
     required List<Session> sessions,
     required SessionListFilter filter,
     Map<String, SessionActivityInfo> activityBySessionId = const {},
-    SessionListGrouping grouping = SessionListGrouping.runningSection,
     SessionListQuickFilter quickFilter = SessionListQuickFilter.all,
   }) async {
     when(() => cubit.state).thenReturn(
@@ -56,7 +55,6 @@ void main() {
                       onSessionMarkedUnread: null,
                     ),
                     archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
-                    grouping: grouping,
                     quickFilter: quickFilter,
                     hiddenSessionIds: const {},
                   ),
@@ -105,19 +103,18 @@ void main() {
       },
     );
 
-    expect(find.text("Running"), findsOneWidget);
+    expect(find.text("Running"), findsNothing);
     expect(find.text("Today"), findsOneWidget);
     expect(find.text("Yesterday"), findsOneWidget);
-    expect(topOf(tester: tester, text: "Running"), lessThan(topOf(tester: tester, text: "Running task")));
-    expect(topOf(tester: tester, text: "Running task"), lessThan(topOf(tester: tester, text: "Today")));
-    expect(topOf(tester: tester, text: "Today"), lessThan(topOf(tester: tester, text: "Today task")));
+    expect(topOf(tester: tester, text: "Today"), lessThan(topOf(tester: tester, text: "Running task")));
+    expect(topOf(tester: tester, text: "Running task"), lessThan(topOf(tester: tester, text: "Today task")));
     expect(topOf(tester: tester, text: "Today task"), lessThan(topOf(tester: tester, text: "Today task again")));
     expect(topOf(tester: tester, text: "Today task again"), lessThan(topOf(tester: tester, text: "Yesterday")));
     expect(topOf(tester: tester, text: "Yesterday"), lessThan(topOf(tester: tester, text: "Awaiting task")));
     expect(find.text("Awaiting input"), findsOneWidget);
   });
 
-  testWidgets("the timeline grouping puts running sessions first under Today, with no Running section", (tester) async {
+  testWidgets("a session running since yesterday still leads Today", (tester) async {
     final now = DateTime.now();
     final yesterday = atStartOfDay(date: now).subtract(const Duration(days: 1)).add(const Duration(hours: 12));
     final today = atStartOfDay(date: now).add(const Duration(hours: 12));
@@ -129,7 +126,6 @@ void main() {
       tester: tester,
       sessions: [running, idleToday],
       filter: SessionListFilter.active,
-      grouping: SessionListGrouping.timeline,
       activityBySessionId: {
         "running": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
       },
