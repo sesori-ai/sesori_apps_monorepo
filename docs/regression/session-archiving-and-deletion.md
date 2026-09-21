@@ -18,11 +18,11 @@ entirely along with its transcript and, optionally, its worktree.
   stays readable through the same history path, served from that record.
 - On the phone and the desktop alike, Archive asks nothing for an idle session: the session leaves its lists
   at once, the desktop sidebar included, and an Archived alert offers Undo for five seconds. Nothing reaches
-  the bridge until that window closes, so Undo simply brings the session back. Archiving another session, or the window ending, sends the
-  archive; quitting inside the window sends nothing. The window belongs to the app shell, not to a page, so
-  leaving the project or the session list neither cancels nor loses the archive. Only a running session is
-  confirmed first, and a session with a worktree also offers Archive, keep worktree. The phone's swipe pill,
-  full swipe and row menu all archive this way.
+  the bridge until that window closes, so Undo simply brings the session back. Archiving another session, or
+  the window ending, sends the archive; quitting inside the window sends nothing. The window belongs to the
+  app shell, not to a page, so leaving the project or the session list neither cancels nor loses the
+  archive. Only a running session is confirmed first, and a session with a worktree also offers Archive,
+  keep worktree. The phone's swipe pill, full swipe and row menu all archive this way.
 - When the bridge refuses the archive because its worktree is not safe to delete, the session
   returns to the lists and a compact alert names the issues and offers Archive and keep the worktree, the
   default, or Delete it anyway. That second choice archives at once with no further Undo. Any other failure
