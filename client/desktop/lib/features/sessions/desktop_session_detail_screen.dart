@@ -115,8 +115,7 @@ class const DesktopSessionDetailView({
       openHarnessSettings: onOpenHarnessSettings,
       child: _MarkUnreadShortcut(
         onMarkUnread: () {
-          final state = context.read<SessionDetailCubit>().state;
-          final session = state is SessionDetailLoaded ? state.session : null;
+          final session = context.read<SessionDetailCubit>().state.hydratedSession;
           if (session != null) _markUnread(context: context, session: session);
         },
         child: SessionDetailBody(

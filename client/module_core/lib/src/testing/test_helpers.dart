@@ -619,7 +619,7 @@ ProjectSummary testProjectSummary({
   });
 }
 
-/// A hydrated session for const state fixtures that do not care which one.
+/// A minimal session for const state fixtures that do not care which one.
 const Session testConstSession = Session(
   branchName: null,
   id: "session-1",

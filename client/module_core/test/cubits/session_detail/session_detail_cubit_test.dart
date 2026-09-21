@@ -517,6 +517,19 @@ void main() {
         (blocked.interaction as SessionInteractionBlocked).reason,
         SessionInteractionBlockedReason.authenticationRequired,
       );
+
+      // The shell still offers the session's actions, so a rename reaches it.
+      sessionEvents.add(
+        SesoriSessionUpdated(
+          info: testSession(id: sessionId, title: "Renamed Session"),
+        ),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state.hydratedSession?.title == "Renamed Session",
+        description: "renamed unavailable session",
+      );
+      expect(cubit.state, isA<SessionDetailHarnessUnavailable>());
     });
 
     test("a block racing a reload keeps the rendered transcript instead of the unavailable shell", () async {

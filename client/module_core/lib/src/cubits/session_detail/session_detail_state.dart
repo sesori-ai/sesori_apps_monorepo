@@ -86,6 +86,14 @@ sealed class SessionDetailState with _$SessionDetailState {
   const factory failed({required RemoteFailureReason reason}) = SessionDetailFailed;
 }
 
+extension SessionDetailStateX on SessionDetailState {
+  /// The hydrated session, for the variants that have one.
+  Session? get hydratedSession => switch (this) {
+    SessionDetailLoaded(:final session) || SessionDetailHarnessUnavailable(:final session) => session,
+    SessionDetailLoading() || SessionDetailFailed() => null,
+  };
+}
+
 extension SessionDetailLoadedX on SessionDetailLoaded {
   String? get retryErrorMessage => switch (sessionStatus) {
     SessionStatusRetry(:final message) => message,

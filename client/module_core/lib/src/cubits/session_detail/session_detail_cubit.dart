@@ -1293,10 +1293,16 @@ class SessionDetailCubit(
 
   void _onSessionUpdated(Session session) {
     final current = state;
+    if (isClosed) return;
+    // The unavailable shell still offers the session's actions, so a rename or
+    // an archive has to reach it too.
+    if (current is SessionDetailHarnessUnavailable) {
+      emit(current.copyWith(session: session));
+      return;
+    }
     if (current is! SessionDetailLoaded) return;
     final sessionTime = session.time;
 
-    if (isClosed) return;
     emit(
       current.copyWith(
         sessionTitle: session.title,

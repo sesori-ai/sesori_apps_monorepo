@@ -217,10 +217,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
               subtitle: subtitle.isEmpty ? null : subtitle,
               isBusy: isBusy,
               onShowDiffs: canShowDiffs ? onShowDiffs : null,
-              session: switch (state) {
-                SessionDetailLoaded(:final session) || SessionDetailHarnessUnavailable(:final session) => session,
-                SessionDetailLoading() || SessionDetailFailed() => null,
-              },
+              session: state.hydratedSession,
             ),
             ?banner,
             // The header sits above the transcript, so nothing scrolls behind a
