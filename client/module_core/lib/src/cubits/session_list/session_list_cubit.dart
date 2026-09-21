@@ -397,75 +397,8 @@ class SessionListCubit({
   }
 
   // ---------------------------------------------------------------------------
-  // Archive / Delete
+  // Rename / Delete
   // ---------------------------------------------------------------------------
-
-  /// Archives a session permanently. Returns `true` on success so the screen
-  /// can confirm it.
-  Future<bool> archiveSession({
-    required String sessionId,
-    required bool deleteWorktree,
-    required bool force,
-  }) => _runActionScopeOperation(
-    operation: () => _archiveSession(
-      sessionId: sessionId,
-      deleteWorktree: deleteWorktree,
-      force: force,
-    ),
-  );
-
-  Future<bool> _archiveSession({
-    required String sessionId,
-    required bool deleteWorktree,
-    required bool force,
-  }) async {
-    if (state is! SessionListLoaded) return false;
-
-    final index = _allSessions.indexWhere((s) => s.id == sessionId);
-    if (index < 0) return false;
-
-    // Per-invocation, so two overlapping archives can never roll each other's
-    // session back.
-    final snapshot = _allSessions[index];
-
-    // Optimistically mark as archived in the backing list so _emitFiltered
-    // hides it when showArchived is off.
-    final archivedSession = _allSessions[index].copyWith(
-      time: _allSessions[index].time?.copyWith(archived: DateTime.now().millisecondsSinceEpoch),
-    );
-    _allSessions = _sessionListService.upsertSession(
-      sessions: _allSessions,
-      session: archivedSession,
-    );
-    _emitFiltered();
-
-    _lastCleanupRejection = null;
-
-    final ApiResponse<Session> response;
-    try {
-      response = await _sessionRepository.archiveSession(
-        sessionId: sessionId,
-        deleteWorktree: deleteWorktree,
-        force: force,
-      );
-    } on SessionCleanupRejectedException catch (error) {
-      _lastCleanupRejection = error.rejection;
-      _reinsertSession(snapshot);
-      return false;
-    }
-
-    if (isClosed) return false;
-
-    return switch (response) {
-      SuccessResponse() => true,
-      ErrorResponse(:final error) => () {
-        loge("Failed to archive session: ${error.toString()}");
-        // Rollback — re-insert the original session.
-        _reinsertSession(snapshot);
-        return false;
-      }(),
-    };
-  }
 
   /// Renames a session optimistically. Returns `false` after restoring the
   /// prior title when the bridge rejects the rename.

@@ -36,7 +36,7 @@ them.
 | [x] | 17 | `desktop-ui-polish/shared-filter-chips` | [17/22](#pr-titles) | ≤ 500 | done |
 | [x] | 18 | `desktop-ui-polish/shared-archive-undo` | [18/22](#pr-titles) | ≤ 900 | done |
 | [x] | 19 | `desktop-ui-polish/phone-session-actions` | [19/22](#pr-titles) | ≤ 500 | done |
-| [ ] | 20 | `desktop-ui-polish/shared-cleanup` | [20/22](#pr-titles) | ≤ 400 | pending |
+| [x] | 20 | `desktop-ui-polish/shared-cleanup` | [20/22](#pr-titles) | ≤ 400 | done |
 | [ ] | 21 | `desktop-ui-polish/regression-docs` | [21/22](#pr-titles) | ≤ 400 | pending |
 | [ ] | 22 | `desktop-ui-polish/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | pending |
 
@@ -61,7 +61,7 @@ them.
 - 17/22: `🌿 [desktop-ui-polish] Share the session filter chips with the phone [step 17/22]`
 - 18/22: `⚙️ [desktop-ui-polish] Archive with Undo on the phone [step 18/22]`
 - 19/22: `🌿 [desktop-ui-polish] Share Mark unread and session actions with the phone [step 19/22]`
-- 20/22: `🌿 [desktop-ui-polish] Delete what the shared implementations replaced [step 20/22]`
+- 20/22: `🌱 [desktop-ui-polish] Delete what the shared implementations replaced [step 20/22]`
 - 21/22: `🌿 [desktop-ui-polish] Reconcile regression documents [step 21/22]`
 - 22/22: `🌱 [desktop-ui-polish] Run final coverage and retire the plan [step 22/22]`
 
