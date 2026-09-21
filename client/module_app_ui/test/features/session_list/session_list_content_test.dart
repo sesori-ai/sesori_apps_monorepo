@@ -23,6 +23,7 @@ void main() {
     required List<Session> sessions,
     required SessionListFilter filter,
     Map<String, SessionActivityInfo> activityBySessionId = const {},
+    SessionListGrouping grouping = SessionListGrouping.runningSection,
   }) async {
     when(() => cubit.state).thenReturn(
       SessionListState.loaded(
@@ -40,7 +41,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<SessionListCubit>.value(
           value: cubit,
-          child: const Material(
+          child: Material(
             child: SizedBox(
               height: 1000,
               child: CustomScrollView(
@@ -48,8 +49,12 @@ void main() {
                   SessionListContent(
                     projectName: null,
                     onSessionTap: null,
-                    actionDispatcher: SessionListActionDispatcher(onSessionDeleted: null, onSessionMarkedUnread: null),
-                    archivedEmptyState: SessionArchivedEmptyState(artwork: null),
+                    actionDispatcher: const SessionListActionDispatcher(
+                      onSessionDeleted: null,
+                      onSessionMarkedUnread: null,
+                    ),
+                    archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+                    grouping: grouping,
                   ),
                 ],
               ),
@@ -106,6 +111,31 @@ void main() {
     expect(topOf(tester: tester, text: "Today task again"), lessThan(topOf(tester: tester, text: "Yesterday")));
     expect(topOf(tester: tester, text: "Yesterday"), lessThan(topOf(tester: tester, text: "Awaiting task")));
     expect(find.text("Awaiting input"), findsOneWidget);
+  });
+
+  testWidgets("the timeline grouping puts running sessions first under Today, with no Running section", (tester) async {
+    final now = DateTime.now();
+    final yesterday = atStartOfDay(date: now).subtract(const Duration(days: 1)).add(const Duration(hours: 12));
+    final today = atStartOfDay(date: now).add(const Duration(hours: 12));
+    // Running since yesterday: it still leads Today rather than opening a Yesterday bucket.
+    final running = testSession(id: "running", title: "Running task", updatedAt: yesterday.millisecondsSinceEpoch);
+    final idleToday = testSession(id: "idle-today", title: "Today task", updatedAt: today.millisecondsSinceEpoch);
+
+    await pumpList(
+      tester: tester,
+      sessions: [running, idleToday],
+      filter: SessionListFilter.active,
+      grouping: SessionListGrouping.timeline,
+      activityBySessionId: {
+        "running": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+      },
+    );
+
+    expect(find.text("Running"), findsNothing);
+    expect(find.text("Today"), findsOneWidget);
+    expect(find.text("Yesterday"), findsNothing);
+    expect(topOf(tester: tester, text: "Today"), lessThan(topOf(tester: tester, text: "Running task")));
+    expect(topOf(tester: tester, text: "Running task"), lessThan(topOf(tester: tester, text: "Today task")));
   });
 
   testWidgets("archived sessions keep archive-time buckets", (tester) async {

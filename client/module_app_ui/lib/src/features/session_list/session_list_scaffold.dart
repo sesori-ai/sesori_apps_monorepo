@@ -98,6 +98,7 @@ class const SessionListScaffold({
           ),
         ),
         SessionListContent(
+          grouping: SessionListGrouping.runningSection,
           projectName: projectName,
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,

@@ -12,19 +12,33 @@ import "session_empty_state.dart";
 import "session_list_action_dispatcher.dart";
 import "session_tile.dart";
 
+/// How a session list treats the sessions that are running right now.
+enum SessionListGrouping() {
+  /// Running sessions get their own section above the dated ones.
+  runningSection,
+
+  /// One timeline: a running session is simply a row of Today, whatever its
+  /// stored time, and the row itself says it is running.
+  timeline,
+}
+
 /// Chooses one stable heading for a session without changing the service-owned
 /// ordering of [SessionListLoaded.sessions]. The loaded-state resolver supplies
 /// running classification; presentation only chooses the localized heading.
 String _sessionListHeading({
   required Session session,
   required SessionListFilter filter,
+  required SessionListGrouping grouping,
   required bool isRunning,
   required DateTime now,
   required AppLocalizations loc,
 }) {
   final isArchivedList = filter == SessionListFilter.archived;
   if (!isArchivedList && isRunning) {
-    return loc.sessionListRunning;
+    return switch (grouping) {
+      SessionListGrouping.runningSection => loc.sessionListRunning,
+      SessionListGrouping.timeline => sessionDateLabel(date: now, now: now, loc: loc),
+    };
   }
 
   final timestamp = isArchivedList ? session.time?.archived : session.time?.updated;
@@ -55,6 +69,7 @@ class const SessionListContent({
   super.key,
   required final String? projectName,
   final String? selectedSessionId,
+  required final SessionListGrouping grouping,
   required final SessionOpenedCallback? onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
   required final Widget archivedEmptyState,
@@ -87,6 +102,7 @@ class const SessionListContent({
               final heading = _sessionListHeading(
                 session: session,
                 filter: loaded.filter,
+                grouping: grouping,
                 isRunning: loaded.isSessionRunning(session: session),
                 now: now,
                 loc: loc,
@@ -95,6 +111,7 @@ class const SessionListContent({
                   ? _sessionListHeading(
                       session: loaded.sessions[index - 1],
                       filter: loaded.filter,
+                      grouping: grouping,
                       isRunning: loaded.isSessionRunning(session: loaded.sessions[index - 1]),
                       now: now,
                       loc: loc,
@@ -124,6 +141,7 @@ class const SessionListContent({
                       session: session,
                       isArchived: isArchived,
                       isActive: activityInfo != null,
+                      isRunning: loaded.isSessionRunning(session: session),
                       unseen: loaded.isSessionUnseen(session: session),
                       selected: selectedSessionId == session.id,
                       awaitingInput: activityInfo?.awaitingInput ?? false,

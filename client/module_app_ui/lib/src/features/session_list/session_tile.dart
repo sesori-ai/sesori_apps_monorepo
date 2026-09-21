@@ -43,11 +43,19 @@ typedef SessionOpenedCallback = void Function({required Session session});
 /// edge the row opens on the mail-style read toggle, committed by a full swipe
 /// likewise. The swipes are the quick paths; the menu stays the discoverable
 /// and assistive one.
+///
+/// Under a [PregoInteractionMode.pointer] scope the row is denser and easier
+/// to scan with a mouse: the state sparkle moves to a fixed leading column, so
+/// the trailing slot always tells the time ("Running" while an agent works).
 class const SessionTile({
   super.key,
   required final Session session,
   required final bool isArchived,
   required final bool isActive,
+
+  /// The service-owned running classification: an active session that only
+  /// awaits input is not running. Pointer rows tell this one.
+  required final bool isRunning,
   final bool unseen = false,
   final bool selected = false,
   final bool awaitingInput = false,
@@ -87,11 +95,15 @@ class const SessionTile({
       // session the actions will hit is unambiguous.
       spotlight: PregoMenuSpotlight.listRow,
       entriesBuilder: menuEntries,
-      triggerBuilder: (context, openMenu) => _buildRow(context: context, openMenu: openMenu),
+      triggerBuilder: (context, openMenu) => _buildRow(
+        context: context,
+        openMenu: openMenu,
+        pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
+      ),
     );
   }
 
-  Widget _buildRow({required BuildContext context, required VoidCallback openMenu}) {
+  Widget _buildRow({required BuildContext context, required VoidCallback openMenu, required bool pointer}) {
     final prego = context.prego;
 
     return PregoSwipeActions(
@@ -122,18 +134,24 @@ class const SessionTile({
               child: InkWell(
                 onTap: onTap,
                 onLongPress: openMenu,
+                hoverColor: pointer ? prego.colors.bgSecondaryHover : null,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                     horizontal: PregoSpacing.xl,
-                    vertical: PregoSpacing.lg,
+                    vertical: pointer ? PregoSpacing.xs : PregoSpacing.lg,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: PregoSpacing.xxs,
-                    children: [
-                      _titleRow(context: context),
-                      ?_footerRow(context: context),
-                    ],
+                  // A pointer row with no footer still fills its 44 pt, title centred.
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: pointer ? _pointerRowMinHeight - 2 * PregoSpacing.xs : 0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: pointer ? 0 : PregoSpacing.xxs,
+                      children: [
+                        _titleRow(context: context, pointer: pointer),
+                        ?_footerRow(context: context, pointer: pointer),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -204,10 +222,26 @@ class const SessionTile({
     );
   }
 
-  Widget _titleRow({required BuildContext context}) {
+  Widget _titleRow({required BuildContext context, required bool pointer}) {
     final prego = context.prego;
+    final lineHeight = pointer ? _pointerTitleLineHeight : _titleLineHeight;
     return Row(
       children: [
+        // One column to scan for what is moving; it stays reserved when quiet
+        // so titles line up down the list.
+        if (pointer) ...[
+          SizedBox(
+            width: kSessionRowIconSlotWidth,
+            height: lineHeight,
+            child: switch (_state(context: context, size: _pointerStateIconSize, running: isRunning)) {
+              final state? => Center(
+                child: Semantics(label: state.label, child: state.sparkle),
+              ),
+              null => null,
+            },
+          ),
+          SizedBox(width: prego.spacing.xs),
+        ],
         // Which harness is driving the session, in a fixed slot so titles line
         // up down the list however many backends it mixes. The logo is the
         // only thing on the row that says which one, so it is named in words
@@ -216,7 +250,7 @@ class const SessionTile({
           label: context.loc.sessionListHarness(PregoBrandLogo.displayNameFor(session.pluginId)),
           child: SizedBox(
             width: kSessionRowIconSlotWidth,
-            height: _titleLineHeight,
+            height: lineHeight,
             child: Center(
               child: PregoBrandLogo(
                 pluginId: session.pluginId,
@@ -227,8 +261,10 @@ class const SessionTile({
           ),
         ),
         SizedBox(width: prego.spacing.xs),
-        Expanded(child: _title(context: context)),
-        _trailingSlot(context: context),
+        Expanded(
+          child: _title(context: context, pointer: pointer),
+        ),
+        _trailingSlot(context: context, pointer: pointer),
       ],
     );
   }
@@ -244,13 +280,14 @@ class const SessionTile({
   /// the titles that really did overflow, without a row paying to be measured
   /// twice. The ramp is an ellipsis wide rather than the design's, which is
   /// the price of that.
-  Widget _title({required BuildContext context}) {
+  Widget _title({required BuildContext context, required bool pointer}) {
     final prego = context.prego;
+    final size = pointer ? prego.textTheme.textSm : prego.textTheme.textMd;
 
     return Text(
       session.title ?? context.loc.sessionListUntitled,
       // Unopened activity leans on weight rather than a badge.
-      style: (unseen ? prego.textTheme.textMd.medium : prego.textTheme.textMd.regular).copyWith(
+      style: (unseen ? size.medium : size.regular).copyWith(
         color: prego.colors.textPrimary,
       ),
       maxLines: 1,
@@ -263,12 +300,30 @@ class const SessionTile({
   /// show, otherwise when it last changed. They share the slot rather than
   /// stack — a working session is the more urgent thing to say, so it takes
   /// the space and the time rides along in the slot's spoken label instead.
-  Widget _trailingSlot({required BuildContext context}) {
+  Widget _trailingSlot({required BuildContext context, required bool pointer}) {
     final prego = context.prego;
     final updatedAt = session.time?.updated;
     final spokenTime = updatedAt == null ? null : context.formatTimestamp(updatedAt);
-    final state = _state(context: context);
+    // With a pointer the sparkle has its own leading column.
+    final state = pointer ? null : _state(context: context, size: _stateIconSize, running: isActive);
 
+    if (pointer && isRunning) {
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
+        // The leading sparkle already speaks the state, so this slot speaks
+        // the time it visually gave up.
+        child: Semantics(
+          label: spokenTime,
+          excludeSemantics: true,
+          child: Text(
+            context.loc.sessionListRunning,
+            style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.bgBrandSolid),
+            maxLines: 1,
+            softWrap: false,
+          ),
+        ),
+      );
+    }
     if (state != null) {
       return Padding(
         padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
@@ -311,11 +366,15 @@ class const SessionTile({
   ///
   /// The sparkle is visual-only either way, so it never travels without the
   /// words that say what it means — the caller has both or neither.
-  ({String label, Widget sparkle})? _state({required BuildContext context}) {
-    if (isActive) {
+  ({String label, Widget sparkle})? _state({
+    required BuildContext context,
+    required double size,
+    required bool running,
+  }) {
+    if (running) {
       return (
         label: context.loc.sessionListRunning,
-        sparkle: const PregoAiLoader(size: _stateIconSize),
+        sparkle: PregoAiLoader(size: size),
       );
     }
     if (unseen) {
@@ -323,7 +382,7 @@ class const SessionTile({
       // unread meaning that title weight alone does not announce.
       return (
         label: context.loc.sessionListNewActivity,
-        sparkle: const PregoAiLoader(size: _stateIconSize, animate: false),
+        sparkle: PregoAiLoader(size: size, animate: false),
       );
     }
     return null;
@@ -332,16 +391,19 @@ class const SessionTile({
   /// The row's second line, indented under the title: branch, pull request and
   /// any state that needs words. When the session last changed is told by the
   /// title line's trailing slot, not here.
-  Widget? _footerRow({required BuildContext context}) {
+  Widget? _footerRow({required BuildContext context, required bool pointer}) {
     final status = _statusLabel(context: context);
     if (session.branchName == null && session.pullRequest == null && status == null) return null;
 
     // A minimum rather than a fixed height: scaled-up accessibility text grows
     // a populated footer instead of being cropped to the 1x line box.
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: _footerLineHeight),
+      constraints: BoxConstraints(minHeight: pointer ? 0 : _footerLineHeight),
       child: Padding(
-        padding: const EdgeInsetsDirectional.only(start: PregoSpacing.x2l),
+        // Under the title, past the leading status column a pointer row has.
+        padding: EdgeInsetsDirectional.only(
+          start: PregoSpacing.x2l + (pointer ? kSessionRowIconSlotWidth + PregoSpacing.xs : 0),
+        ),
         child: Row(
           spacing: PregoSpacing.md,
           children: [
@@ -419,7 +481,10 @@ class const _BranchDetail({required final String branch}) extends StatelessWidge
 /// The row's line boxes, from the type scale it renders: a 16/24 title over a
 /// 12/18 footer line with 20px minimum height.
 const double _titleLineHeight = 24;
+const double _pointerTitleLineHeight = 20;
+const double _pointerRowMinHeight = 44;
 const double _footerLineHeight = 20;
 
 const double _brandLogoSize = 12;
 const double _stateIconSize = 20;
+const double _pointerStateIconSize = 16;
