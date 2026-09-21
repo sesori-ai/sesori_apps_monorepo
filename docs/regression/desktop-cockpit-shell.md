@@ -17,6 +17,24 @@ The main pane hosts one full-width routed page.
   expanded that gap is the resize handle, with a resize cursor and no visible
   line; the fixed-width rail has none. Width bounds and the rail's 56 pixels
   measure the panel itself.
+- macOS hides the native title bar and keeps its traffic lights; Windows and Linux keep their native chrome.
+  The macOS runner gives the window an empty unified toolbar, so AppKit itself sets the lights lower and
+  further in: the expanded panel keeps its 8 pixel inset and carries them above its first control, which
+  starts 42 pixels from the window's top. The lights are wider than the rail, so the rail itself starts 42
+  pixels from the top, below them. The room the panel leaves for the lights, and the strip above the rail,
+  drag the window and zoom it on a double click. In full screen the runner hides that toolbar, which AppKit
+  would otherwise draw as a bar over the content's top, and restores it on exit. The window's top 54 pixels,
+  the band a page toolbar fills, drag it on every screen, the signed-out login included: a press becomes a
+  drag only after it travels further than a click tolerates, so toolbar controls keep their clicks,
+  undelayed, and a text selection or a scrollbar still wins its own press. Where the band and a zooming
+  region overlap, one press still reaches the host once.
+- The sidebar's collapse button sits in the panel's footer after refresh and settings, in both modes; the
+  rail fits two controls a line, so it wraps below them. The session list clips its rows' highlights, so a
+  highlighted row scrolled under the section above never shows through it.
+- The native window chrome is forced to the app's effective brightness (the in-app mode, or the system's
+  while the app follows it) and again on every change, because a host can only be forced light or dark.
+  Chrome and content therefore never disagree, including after the system switches appearance while the
+  app follows it.
 - Expanded width defaults to 260 logical pixels and clamps to 200–420. Dragging
   uses the starting width plus global pointer displacement, preserving overshoot
   when reversing beyond either bound. Changes are immediate; an admitted drag
@@ -232,6 +250,11 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   outside/Escape dismissal, preserved main pane.
 - Floating panel geometry expanded and collapsed: window inset, main-pane offset, the resize gap and its absence
   beside the rail, no divider.
+- Unified macOS title bar: the title bar style per platform, the panel's top edge and its first control
+  expanded and as a rail on macOS, drag and double-click zoom on the room above that control and on the
+  strip above the rail, the top band's drag that leaves a jiggling click alone and fires once under a
+  zooming region, the signed-out window moved from the app's root, logged host failures, the list's clipped
+  highlights, and the native brightness pushed once per effective change, including a system switch.
 - Rail Activity button count and tooltip (including a sticky-only count that claims nothing new, and its
   pill under larger text), one chip per project, popout placement beside the rail, rows that stay live
   with the cockpit's cubits mounted below the root navigator, and dismissal when a row opens its session
@@ -266,6 +289,11 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Popover Start/Stop/Retry, Take Over versus Stop, logs and Settings.
 - Relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows.
 - The floating panel in light and dark: rounded corners, border and shadow with no hard edge against the page.
+- The unified macOS title bar: the traffic lights on the expanded panel above New session and above the
+  rail, dragging by the room beside the lights, by a page toolbar and by the top of the login screen,
+  double-click zoom, full screen in and out with no bar over the content, a highlighted row scrolled under
+  the panel's top, and the chrome's brightness under light, dark and System, including a system appearance
+  switch after a forced value. Windows and Linux keep native chrome.
 - Keyboard focus, compact tooltips, relaunch persistence, light/dark appearance,
   recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping
   through the tree and menus.
@@ -297,6 +325,11 @@ bridge during UI-only checks.
 
 - `client/desktop/lib/core/widgets/desktop_cockpit_shell.dart`
 - `client/desktop/lib/core/widgets/desktop_sidebar.dart`
+- `client/desktop/lib/core/widgets/desktop_window_drag_area.dart`
+- `client/desktop/lib/core/widgets/desktop_window_brightness.dart`
+- `client/desktop/lib/core/platform/flutter_window_host.dart`
+- `client/desktop/macos/Runner/MainFlutterWindow.swift`
+- `client/module_desktop_core/lib/src/foundation/platform/window_host.dart`
 - `client/module_desktop_core/lib/src/services/desktop_sidebar_refresh_service.dart`
 - `client/module_desktop_core/lib/src/cubits/desktop_sidebar/desktop_sidebar_refresh_cubit.dart`
 - `client/desktop/lib/core/widgets/desktop_connection_pill.dart`

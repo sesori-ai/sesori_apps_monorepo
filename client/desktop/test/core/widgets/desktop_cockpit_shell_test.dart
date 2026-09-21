@@ -29,9 +29,16 @@ void main() {
   late _MockRepository repository;
   late DesktopSidebarCubit sidebar;
   late _MockRefreshService refreshService;
+  late _MockWindowHost windowHost;
 
   setUpAll(() => registerFallbackValue(const DesktopSidebarLayout()));
+  tearDown(GetIt.instance.reset);
   setUp(() {
+    // The shell asks for the window host on macOS only, where it hides the title bar.
+    windowHost = _MockWindowHost();
+    when(windowHost.startDragging).thenAnswer((_) async {});
+    when(windowHost.toggleZoom).thenAnswer((_) async {});
+    GetIt.instance.registerSingleton<WindowHost>(windowHost);
     bridgeControlCubit = _MockBridgeControlCubit();
     overlay = _MockConnectionOverlayCubit();
     contentTaps = 0;
@@ -299,6 +306,12 @@ void main() {
     expect(tester.getRect(resize), Rect.fromLTRB(panel.right, 0, panel.right + margin, 600));
     expect(tester.getRect(mainPane).left, panel.right + margin);
     expect(find.byType(VerticalDivider), findsNothing);
+    // A row's ink highlight is clipped with the list, not painted over the section above it.
+    final listMaterial = find.ancestor(
+      of: find.byKey(const Key("desktop-sidebar-project-list")),
+      matching: find.byType(Material),
+    );
+    expect(tester.widget<Material>(listMaterial.first).clipBehavior, Clip.hardEdge);
 
     // The rail floats the same way, and a fixed-width rail has nothing to resize.
     await tester.tap(toggle);
@@ -307,6 +320,55 @@ void main() {
     expect(resize, findsNothing);
     expect(tester.getRect(mainPane).left, margin + 56 + margin);
   });
+
+  testWidgets(
+    "on macOS the panel carries the traffic lights, its top drags and zooms, and the rail starts below them",
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    (tester) async {
+      const margin = DesktopSidebar.panelMargin;
+      await tester.pumpWidget(app(state: running));
+      expect(tester.getRect(rail), const Rect.fromLTRB(margin, margin, margin + 260, 600 - margin));
+      // The first control starts below the lights, which end 33 pt from the window's top.
+      expect(tester.getTopLeft(find.byKey(const Key("desktop-sidebar-new-session"))).dy, 42);
+
+      Future<void> drag({required Offset from}) async {
+        final gesture = await tester.startGesture(from, kind: PointerDeviceKind.mouse);
+        await gesture.moveBy(const Offset(40, 0));
+        await gesture.up();
+        await tester.pump();
+      }
+
+      Future<void> doubleClick({required Offset at}) async {
+        await tester.tapAt(at, kind: PointerDeviceKind.mouse);
+        await tester.pump(kDoubleTapMinTime);
+        await tester.tapAt(at, kind: PointerDeviceKind.mouse);
+        await tester.pumpAndSettle();
+      }
+
+      // The room the panel leaves for the lights stands in for the title bar.
+      await drag(from: const Offset(140, 26));
+      verify(windowHost.startDragging).called(1);
+      await doubleClick(at: const Offset(140, 26));
+      verify(windowHost.toggleZoom).called(1);
+
+      // The lights are wider than the rail, so it starts below them; the strip
+      // that opens above it drags and zooms too.
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(rail),
+        const Rect.fromLTRB(margin, DesktopCockpitShell.railTopUnderTrafficLights, margin + 56, 600 - margin),
+      );
+      await drag(from: const Offset(30, 20));
+      verify(windowHost.startDragging).called(1);
+      await doubleClick(at: const Offset(30, 20));
+      verify(windowHost.toggleZoom).called(1);
+
+      // The window's top band belongs to the app root, not to the shell.
+      await drag(from: const Offset(500, 20));
+      verifyNever(windowHost.startDragging);
+    },
+  );
 
   testWidgets("retry uses the failure-aware reconnect path", (tester) async {
     whenListen(
@@ -1335,7 +1397,6 @@ void main() {
         ),
       );
       GetIt.instance.registerSingleton<ConnectionService>(connection);
-      addTearDown(GetIt.instance.reset);
       await tester.pumpWidget(shell(selectedProjectId: null, available: const []));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key("desktop-sidebar-new-session")));
@@ -1621,6 +1682,8 @@ void _noOp() {}
 void _openProject({required BuildContext context, required ProjectSummary project, required String displayName}) {}
 
 class _MockRefreshService() extends Mock implements DesktopSidebarRefreshService;
+
+class _MockWindowHost() extends Mock implements WindowHost;
 
 class _MockConnectionService() extends Mock implements ConnectionService;
 

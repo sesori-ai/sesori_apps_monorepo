@@ -191,8 +191,12 @@ All agreed with the user on 2026-09-19 unless marked otherwise.
 - **D7 Depth delimits.** The page content is the window's base surface; the
   sidebar (and the rail) is an inset, rounded, elevated panel on top of it.
 - **D8 Unified macOS title bar.** The sidebar panel runs to the top edge and
-  the traffic lights sit on it, using the already-installed `window_manager`
-  (no custom Swift). Windows and Linux keep native chrome. The native
+  the traffic lights sit on it. `window_manager` hides the title bar but cannot
+  move the lights, so the macOS runner gives the window an empty unified toolbar
+  and AppKit itself sets them onto the panel (the user lifted the earlier "no
+  custom Swift" limit for these few declarative lines on 2026-09-21). The
+  collapse button lives in the panel's footer, so the top holds only the lights.
+  Windows and Linux keep native chrome. The native
   brightness follows the in-app theme so chrome and content never disagree.
 - **D9 Every rail button means one thing.** One Activity button with a count
   (the list pops out beside it), then one chip per project with a small sparkle
@@ -302,12 +306,14 @@ inputs.
   on macOS, and `WindowHost` gains three platform-neutral operations: start
   dragging, toggle zoom, and set brightness (a closed light/dark value, because
   the core module is pure Dart).
-  The panel reserves a top inset for the traffic lights. A small shell
-  drag-region widget covers the panel's top strip and the page toolbar
-  background and calls the host, so the window still drags and zooms on
-  double-click; `window_manager`'s own `DragToMoveArea` is not used, because it
-  would bypass the host. With the rail collapsed the traffic lights are wider
-  than the rail, so the page toolbar takes a leading inset.
+  The expanded panel leaves room at its top for the traffic lights. A small
+  shell drag-region widget covers that room (drag, and zoom on double-click)
+  and, from the app root, the band a page toolbar fills (drag only, signed-out
+  screens included) and calls the host; `window_manager`'s own `DragToMoveArea`
+  is not used, because it would bypass the host. The traffic lights are wider
+  than the rail, so the rail starts below them; they end before the page
+  toolbar's leading control, so it needs no inset. In full screen the runner
+  hides its empty toolbar, which AppKit would otherwise draw over the content.
   The native window brightness follows the app's **effective** brightness —
   the in-app mode resolved against the platform brightness — through one small
   shell widget under `MaterialApp` that observes `Theme.of(context).brightness`

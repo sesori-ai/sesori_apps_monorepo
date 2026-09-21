@@ -14,6 +14,7 @@ import "desktop_bridge_popover.dart";
 import "desktop_bridge_recovery_card.dart";
 import "desktop_sidebar_activity_popout.dart";
 import "desktop_sidebar_section_header.dart";
+import "desktop_window_drag_area.dart";
 
 typedef SidebarSessionOpenedCallback = void Function({
   required BuildContext context,
@@ -30,6 +31,10 @@ typedef _SidebarSessionMenuEntriesBuilder = List<PregoMenuEntry> Function({
 /// Desktop navigation frame. Its project inventory is shared with the main pane.
 class const DesktopSidebar({
   super.key,
+
+  /// Set on macOS, where the traffic lights sit on this panel's top: it makes
+  /// room for them there, and that room drags and zooms the window.
+  required final WindowHost? windowHost,
   required final double expansion,
   required final bool autoCollapsed,
   required final String? selectedProjectId,
@@ -54,7 +59,6 @@ class const DesktopSidebar({
     final state = context.watch<ProjectListCubit>().state;
     final collapsedProjects = context.select((DesktopSidebarCubit cubit) => cubit.state.collapsedProjectIds);
     final loc = context.loc;
-    final toggleLabel = expansion < 0.5 ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse;
     final newSessionShortcut = defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N";
     final prego = context.prego;
     final bridge = context.watch<BridgeControlCubit>().state;
@@ -82,33 +86,7 @@ class const DesktopSidebar({
         right: false,
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 12, 8),
-              child: Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: SizedBox.square(
-                  dimension: 32,
-                  child: IconButton(
-                    key: const Key("desktop-sidebar-toggle"),
-                    tooltip: autoCollapsed
-                        ? toggleLabel
-                        : loc.desktopShortcutHint(
-                            toggleLabel,
-                            defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B",
-                          ),
-                    padding: const EdgeInsets.all(PregoSpacing.sm),
-                    onPressed: autoCollapsed ? null : onToggleCollapsed,
-                    icon: Icon(
-                      expansion < 0.5
-                          ? TablerRegular.layout_sidebar_left_expand
-                          : TablerRegular.layout_sidebar_left_collapse,
-                      size: 18,
-                      color: autoCollapsed ? prego.colors.textDisabled : prego.colors.textSecondary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            _TopStrip(windowHost: windowHost, expansion: expansion),
             Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 16),
               child: Row(
@@ -183,44 +161,53 @@ class const DesktopSidebar({
                 ),
               ),
             Expanded(
-              child: switch (state) {
-                ProjectListLoading() => Center(
-                  child: Semantics(
-                    label: loc.projectListLoadingSemantics,
-                    child: const PregoActivityIndicator(color: null),
+              // Ink paints on the nearest Material, outside the list's own clip: this
+              // one keeps a row's highlight from showing through the section above.
+              child: Material(
+                type: MaterialType.transparency,
+                clipBehavior: Clip.hardEdge,
+                child: switch (state) {
+                  ProjectListLoading() => Center(
+                    child: Semantics(
+                      label: loc.projectListLoadingSemantics,
+                      child: const PregoActivityIndicator(color: null),
+                    ),
                   ),
-                ),
-                ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) => _SidebarInventory(
-                  key: const Key("desktop-sidebar-inventory"),
-                  projects: projects,
-                  activityById: activityById,
-                  unseenByProjectId: unseenByProjectId,
-                  collapsedProjectIds: collapsedProjects,
-                  expansion: expansion,
-                  selectedProjectId: selectedProjectId,
-                  selectedSessionId: selectedSessionId,
-                  onOpenProject: onOpenProject,
-                  onOpenSession: onOpenSession,
-                  onNewSession: onNewSession,
-                  onAddProject: onAddProject,
-                  sessionActions: sessionActions,
-                ),
-                ProjectListFailed() => _SidebarButton(
-                  label: loc.projectListRetry,
-                  icon: const Icon(TablerRegular.refresh, size: 20),
-                  expansion: expansion,
-                  selected: false,
-                  status: null,
-                  onPressed: () => unawaited(context.read<ProjectListCubit>().retryLoadProjects()),
-                ),
-                ProjectListBridgeDisconnected() => const SizedBox.shrink(),
-              },
+                  ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) =>
+                    _SidebarInventory(
+                      key: const Key("desktop-sidebar-inventory"),
+                      projects: projects,
+                      activityById: activityById,
+                      unseenByProjectId: unseenByProjectId,
+                      collapsedProjectIds: collapsedProjects,
+                      expansion: expansion,
+                      selectedProjectId: selectedProjectId,
+                      selectedSessionId: selectedSessionId,
+                      onOpenProject: onOpenProject,
+                      onOpenSession: onOpenSession,
+                      onNewSession: onNewSession,
+                      onAddProject: onAddProject,
+                      sessionActions: sessionActions,
+                    ),
+                  ProjectListFailed() => _SidebarButton(
+                    label: loc.projectListRetry,
+                    icon: const Icon(TablerRegular.refresh, size: 20),
+                    expansion: expansion,
+                    selected: false,
+                    status: null,
+                    onPressed: () => unawaited(context.read<ProjectListCubit>().retryLoadProjects()),
+                  ),
+                  ProjectListBridgeDisconnected() => const SizedBox.shrink(),
+                },
+              ),
             ),
             _SidebarFooter(
               projectState: state,
               expansion: expansion,
               bridge: bridge,
               bridgeColor: bridgeColor,
+              autoCollapsed: autoCollapsed,
+              onToggleCollapsed: onToggleCollapsed,
               onOpenBridgeSettings: onOpenBridgeSettings,
               onOpenSettings: onOpenSettings,
             ),
@@ -231,11 +218,32 @@ class const DesktopSidebar({
   }
 }
 
+/// The space above the panel's first control. On macOS the traffic lights sit
+/// on the expanded panel, so it grows to clear them and stands in for the title
+/// bar: it drags the window and zooms it on a double click.
+class const _TopStrip({required final WindowHost? windowHost, required final double expansion})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final windowHost = this.windowHost;
+    if (windowHost == null) return const SizedBox(height: 12);
+    final height = 12 + 22 * expansion;
+    return DesktopWindowDragArea(
+      windowHost: windowHost,
+      height: height,
+      zoomOnDoubleClick: true,
+      child: SizedBox(height: height, width: double.infinity),
+    );
+  }
+}
+
 class const _SidebarFooter({
   required final ProjectListState projectState,
   required final double expansion,
   required final BridgeControlState bridge,
   required final Color bridgeColor,
+  required final bool autoCollapsed,
+  required final VoidCallback onToggleCollapsed,
   required final VoidCallback onOpenBridgeSettings,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
@@ -243,6 +251,7 @@ class const _SidebarFooter({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
+    final toggleLabel = expansion < 0.5 ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse;
     final refresh = context.watch<DesktopSidebarRefreshCubit>();
     final refreshing =
         refresh.state == DesktopSidebarRefreshState.refreshing ||
@@ -289,8 +298,9 @@ class const _SidebarFooter({
                 onOpenSettings: onOpenBridgeSettings,
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            // The rail holds two controls a line, so the third wraps below them.
+            Wrap(
+              alignment: WrapAlignment.center,
               children: [
                 SizedBox.square(
                   dimension: controlSize,
@@ -320,6 +330,27 @@ class const _SidebarFooter({
                     padding: const EdgeInsets.all(PregoSpacing.sm),
                     onPressed: onOpenSettings,
                     icon: Icon(TablerRegular.settings, size: 18, semanticLabel: loc.settingsTitle),
+                  ),
+                ),
+                SizedBox.square(
+                  dimension: controlSize,
+                  child: IconButton(
+                    key: const Key("desktop-sidebar-toggle"),
+                    tooltip: autoCollapsed
+                        ? toggleLabel
+                        : loc.desktopShortcutHint(
+                            toggleLabel,
+                            defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B",
+                          ),
+                    padding: const EdgeInsets.all(PregoSpacing.sm),
+                    onPressed: autoCollapsed ? null : onToggleCollapsed,
+                    icon: Icon(
+                      expansion < 0.5
+                          ? TablerRegular.layout_sidebar_left_expand
+                          : TablerRegular.layout_sidebar_left_collapse,
+                      size: 18,
+                      color: autoCollapsed ? prego.colors.textDisabled : null,
+                    ),
                   ),
                 ),
               ],
