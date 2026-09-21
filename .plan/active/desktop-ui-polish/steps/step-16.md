@@ -43,9 +43,9 @@ dart analyze --fatal-infos
 - `app`: 776 cases pass. `desktop`: 276 cases pass.
 - All three analyzers report no issues.
 - `architecture-implementation-review` was not run. The step deletes the
-  internal `SessionListGrouping` enum and its argument on `SessionListContent`;
-  it changes no public, wire or persisted contract and moves no ownership or
-  dependency.
+  exported `SessionListGrouping` enum and its argument on `SessionListContent`,
+  updating every in-repository consumer with it; it changes no wire or
+  persisted contract and moves no ownership or dependency.
 
 ## Size
 
