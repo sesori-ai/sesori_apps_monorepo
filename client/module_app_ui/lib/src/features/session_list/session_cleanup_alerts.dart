@@ -22,11 +22,11 @@ Future<bool> _confirmArchiveRunning({required BuildContext context, required Ses
       actions: [
         TextButton(
           autofocus: true,
-          onPressed: () => Navigator.of(dialogContext).pop(false),
+          onPressed: () => dialogContext.pop(false),
           child: Text(loc.sessionListDeleteConfirmCancel),
         ),
         FilledButton(
-          onPressed: () => Navigator.of(dialogContext).pop(true),
+          onPressed: () => dialogContext.pop(true),
           child: Text(loc.sessionListArchiveConfirmAction),
         ),
       ],
@@ -79,13 +79,13 @@ class _CompactDeleteAlertState() extends State<_CompactDeleteAlert> {
       actions: [
         TextButton(
           autofocus: true,
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.pop(),
           child: Text(loc.sessionListDeleteConfirmCancel),
         ),
         FilledButton(
           key: const Key("session-delete-alert-confirm"),
           style: FilledButton.styleFrom(backgroundColor: context.prego.colors.fgErrorPrimary),
-          onPressed: () => Navigator.of(context).pop(hasWorktree && _deleteWorktree),
+          onPressed: () => context.pop(hasWorktree && _deleteWorktree),
           child: Text(loc.sessionListDeleteConfirmAction),
         ),
       ],
@@ -122,11 +122,11 @@ Future<SessionArchiveRefusedChoice?> showSessionArchiveRefusedAlert({
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
+          onPressed: () => dialogContext.pop(),
           child: Text(loc.sessionListDeleteConfirmCancel),
         ),
         TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(SessionArchiveRefusedChoice.deleteAnyway),
+          onPressed: () => dialogContext.pop(SessionArchiveRefusedChoice.deleteAnyway),
           child: Text(
             loc.sessionListArchiveDeleteAnyway,
             style: TextStyle(color: dialogContext.prego.colors.fgErrorPrimary),
@@ -134,7 +134,7 @@ Future<SessionArchiveRefusedChoice?> showSessionArchiveRefusedAlert({
         ),
         FilledButton(
           autofocus: true,
-          onPressed: () => Navigator.of(dialogContext).pop(SessionArchiveRefusedChoice.keepWorktree),
+          onPressed: () => dialogContext.pop(SessionArchiveRefusedChoice.keepWorktree),
           child: Text(loc.sessionListArchiveKeepWorktree),
         ),
       ],

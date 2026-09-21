@@ -1,6 +1,7 @@
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -45,20 +46,28 @@ void main() {
       onSessionMarkedUnread: null,
     );
     await tester.pumpWidget(
-      MaterialApp(
+      MaterialApp.router(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: BlocProvider<SessionListCubit>.value(
-          value: cubit,
-          child: Material(
-            child: Builder(
-              builder: (context) => TextButton(
-                onPressed: () => dispatcher.handleSessionArchive(context: context, session: session),
-                child: const Text("go"),
+        // The alerts close themselves through the router, as in the app.
+        routerConfig: GoRouter(
+          routes: [
+            GoRoute(
+              path: "/",
+              builder: (_, _) => BlocProvider<SessionListCubit>.value(
+                value: cubit,
+                child: Material(
+                  child: Builder(
+                    builder: (context) => TextButton(
+                      onPressed: () => dispatcher.handleSessionArchive(context: context, session: session),
+                      child: const Text("go"),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -18,13 +19,21 @@ void main() {
   Future<void> pumpAlerts(WidgetTester tester) async {
     repository = MockSessionRepository();
     await tester.pumpWidget(
-      MaterialApp(
+      MaterialApp.router(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: BlocProvider(
-          create: (_) => cubit = PendingSessionArchiveCubit(repository: repository),
-          child: const DesktopPendingArchiveAlerts(child: Scaffold()),
+        // The alerts close themselves through the router, as in the app.
+        routerConfig: GoRouter(
+          routes: [
+            GoRoute(
+              path: "/",
+              builder: (_, _) => BlocProvider(
+                create: (_) => cubit = PendingSessionArchiveCubit(repository: repository),
+                child: const DesktopPendingArchiveAlerts(child: Scaffold()),
+              ),
+            ),
+          ],
         ),
       ),
     );
