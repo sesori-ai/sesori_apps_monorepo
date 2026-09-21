@@ -5,6 +5,17 @@ import "package:material_ui/material_ui.dart";
 
 import "../../theme/prego_theme.dart";
 
+/// Where an [AnchoredFlatPanel] sits against the rect it anchors to.
+enum AnchoredPanelPlacement() {
+  /// Centred on the trigger and a gap away from it, toward whichever side has
+  /// more room: a popup hung off a button or a long-pressed row.
+  besideTrigger,
+
+  /// Its top-left corner on the rect's own, dropping below and flipping above
+  /// only when it does not fit: a context menu at the pointer.
+  atCorner,
+}
+
 /// A flat Material bubble anchored to a trigger rect, kept on screen and sprung
 /// in with `cue`. It caps its height to the room beside the trigger and scrolls
 /// its content past that cap, so callers can supply arbitrary content without
@@ -25,6 +36,9 @@ class const AnchoredFlatPanel({
 
   /// Screen-space rectangle of the trigger the bubble anchors to.
   required final Rect triggerRect,
+
+  /// How the bubble sits against [triggerRect].
+  required final AnchoredPanelPlacement placement,
 
   /// Fixed width of the bubble (clamped down to fit a narrow viewport).
   required final double width,
@@ -60,10 +74,13 @@ class const AnchoredFlatPanel({
     final safe = MediaQuery.paddingOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
 
+    final atCorner = placement == AnchoredPanelPlacement.atCorner;
+    final gap = atCorner ? 0.0 : _gap;
+
     // Expand toward whichever side of the trigger has more room. For a trigger
     // near the bottom (e.g. the session composer) this resolves to "expand up".
-    final spaceAbove = triggerRect.top - safe.top - screenPadding.top - _gap;
-    final spaceBelow = screen.height - keyboard - safe.bottom - screenPadding.bottom - triggerRect.bottom - _gap;
+    final spaceAbove = triggerRect.top - safe.top - screenPadding.top - gap;
+    final spaceBelow = screen.height - keyboard - safe.bottom - screenPadding.bottom - triggerRect.bottom - gap;
     final expandUp = spaceAbove >= spaceBelow;
     final cap = maxHeight;
     final available = math.max(0.0, expandUp ? spaceAbove : spaceBelow);
@@ -100,16 +117,21 @@ class const AnchoredFlatPanel({
         width: width,
         maxHeight: effectiveMaxHeight,
         expandUp: expandUp,
+        // A context menu drops from its corner whenever it fits there.
+        spaceBelowToPrefer: atCorner ? spaceBelow : null,
         screenPadding: screenPadding,
         safe: safe,
         keyboard: keyboard,
-        gap: _gap,
+        gap: gap,
       ),
       child: Actor(
         acts: [
           const Act.fadeIn(),
-          Act.scale(from: 0.96, alignment: expandUp ? Alignment.bottomCenter : Alignment.topCenter),
-          Act.slideY(from: expandUp ? 0.06 : -0.06),
+          // A context menu simply appears; it does not spring out of a trigger.
+          if (!atCorner) ...[
+            Act.scale(from: 0.96, alignment: expandUp ? Alignment.bottomCenter : Alignment.topCenter),
+            Act.slideY(from: expandUp ? 0.06 : -0.06),
+          ],
         ],
         child: panel,
       ),
@@ -126,6 +148,10 @@ class _AnchoredPopupLayoutDelegate({
   required final double width,
   required final double maxHeight,
   required final bool expandUp,
+
+  /// Set for a corner placement: the room below the anchor, which wins over
+  /// [expandUp] whenever the child fits in it.
+  required final double? spaceBelowToPrefer,
   required final EdgeInsets screenPadding,
   required final EdgeInsets safe,
   required final double keyboard,
@@ -150,13 +176,14 @@ class _AnchoredPopupLayoutDelegate({
   Offset getPositionForChild(Size size, Size childSize) {
     final leftBound = screenPadding.left + safe.left;
     final rightBound = size.width - screenPadding.right - safe.right - childSize.width;
-    final dx = (triggerRect.center.dx - childSize.width / 2)
-        .clamp(leftBound, math.max(leftBound, rightBound))
-        .toDouble();
+    final spaceBelowToPrefer = this.spaceBelowToPrefer;
+    final preferredDx = spaceBelowToPrefer == null ? triggerRect.center.dx - childSize.width / 2 : triggerRect.left;
+    final dx = preferredDx.clamp(leftBound, math.max(leftBound, rightBound)).toDouble();
 
     final topBound = screenPadding.top + safe.top;
     final bottomBound = size.height - keyboard - screenPadding.bottom - safe.bottom - childSize.height;
-    final preferredDy = expandUp ? triggerRect.top - gap - childSize.height : triggerRect.bottom + gap;
+    final up = spaceBelowToPrefer == null ? expandUp : childSize.height > spaceBelowToPrefer;
+    final preferredDy = up ? triggerRect.top - gap - childSize.height : triggerRect.bottom + gap;
     final dy = preferredDy.clamp(topBound, math.max(topBound, bottomBound)).toDouble();
 
     return Offset(dx, dy);
@@ -168,6 +195,7 @@ class _AnchoredPopupLayoutDelegate({
         width != oldDelegate.width ||
         maxHeight != oldDelegate.maxHeight ||
         expandUp != oldDelegate.expandUp ||
+        spaceBelowToPrefer != oldDelegate.spaceBelowToPrefer ||
         keyboard != oldDelegate.keyboard ||
         screenPadding != oldDelegate.screenPadding ||
         safe != oldDelegate.safe;

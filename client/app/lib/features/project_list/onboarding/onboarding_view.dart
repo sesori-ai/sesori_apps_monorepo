@@ -330,6 +330,7 @@ class const _NeedHelpMenu({
           title: loc.projectsOnboardingNeedHelpEmail,
           subtitle: null,
           isSelected: false,
+          shortcutLabel: null,
           onTap: () => unawaited(
             _openSupportLink(
               cubit: context.read<ProjectListCubit>(),
@@ -343,6 +344,7 @@ class const _NeedHelpMenu({
           title: loc.projectsOnboardingNeedHelpDiscord,
           subtitle: null,
           isSelected: false,
+          shortcutLabel: null,
           onTap: () => unawaited(
             _openSupportLink(
               cubit: context.read<ProjectListCubit>(),
@@ -357,6 +359,7 @@ class const _NeedHelpMenu({
           title: loc.projectsOnboardingNeedHelpX,
           subtitle: null,
           isSelected: false,
+          shortcutLabel: null,
           onTap: () => unawaited(
             _openSupportLink(
               cubit: context.read<ProjectListCubit>(),
