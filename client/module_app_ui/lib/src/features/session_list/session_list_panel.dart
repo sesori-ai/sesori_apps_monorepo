@@ -153,6 +153,7 @@ class const SessionListPanel({
         ),
         SessionListContent(
           grouping: SessionListGrouping.runningSection,
+          quickFilter: SessionListQuickFilter.all,
           projectName: projectName,
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,

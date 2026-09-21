@@ -31,7 +31,10 @@ void main() {
   Future<void> pumpPage({required WidgetTester tester, required SessionListFilter filter}) async {
     when(() => cubit.state).thenReturn(
       SessionListState.loaded(
-        sessions: [testSession(id: "s1", title: "Fix the build", updatedAt: DateTime.now().millisecondsSinceEpoch)],
+        sessions: [
+          testSession(id: "s1", title: "Fix the build", updatedAt: DateTime.now().millisecondsSinceEpoch),
+          testSession(id: "s2", title: "Unread one", updatedAt: DateTime.now().millisecondsSinceEpoch, unseen: true),
+        ],
         filter: filter,
         activeSessionIds: const {},
         baseBranch: null,
@@ -107,5 +110,24 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(LinearProgressIndicator), findsNothing);
     await tester.pump(const Duration(seconds: 10));
+  });
+
+  testWidgets("the chips count the loaded list and narrow it locally; Archived hides them", (tester) async {
+    await pumpPage(tester: tester, filter: SessionListFilter.active);
+    expect(find.text("All · 2"), findsOneWidget);
+    expect(find.text("Running · 0"), findsOneWidget);
+
+    await tester.tap(find.text("Unread · 1"));
+    await tester.pumpAndSettle();
+    expect(find.text("Unread one"), findsOneWidget);
+    expect(find.text("Fix the build"), findsNothing);
+
+    await tester.tap(find.text("Running · 0"));
+    await tester.pumpAndSettle();
+    expect(find.text("No sessions match this filter"), findsOneWidget);
+
+    await pumpPage(tester: tester, filter: SessionListFilter.archived);
+    expect(find.byKey(const Key("desktop-project-page-filter-all")), findsNothing);
+    expect(find.text("Fix the build"), findsOneWidget);
   });
 }

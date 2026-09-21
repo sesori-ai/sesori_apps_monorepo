@@ -22,6 +22,14 @@ enum SessionListGrouping() {
   timeline,
 }
 
+/// A widget-local narrowing of the active list. The list is fully loaded, so
+/// this filters what is shown and never asks the cubit for anything.
+enum SessionListQuickFilter() {
+  all,
+  running,
+  unread,
+}
+
 /// Chooses one stable heading for a session without changing the service-owned
 /// ordering of [SessionListLoaded.sessions]. The loaded-state resolver supplies
 /// running classification; presentation only chooses the localized heading.
@@ -70,6 +78,7 @@ class const SessionListContent({
   required final String? projectName,
   final String? selectedSessionId,
   required final SessionListGrouping grouping,
+  required final SessionListQuickFilter quickFilter,
   required final SessionOpenedCallback? onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
   required final Widget archivedEmptyState,
@@ -84,6 +93,15 @@ class const SessionListContent({
     final state = context.watch<SessionListCubit>().state;
     final onSessionTap = this.onSessionTap;
     final now = DateTime.now();
+    final sessions = state is! SessionListLoaded
+        ? const <Session>[]
+        : switch (quickFilter) {
+            SessionListQuickFilter.all => state.sessions,
+            SessionListQuickFilter.running =>
+              state.sessions.where((session) => state.isSessionRunning(session: session)).toList(),
+            SessionListQuickFilter.unread =>
+              state.sessions.where((session) => state.isSessionUnseen(session: session)).toList(),
+          };
 
     return switch (state) {
       SessionListLoading() => SliverToBoxAdapter(
@@ -94,7 +112,7 @@ class const SessionListContent({
           // This sliver stays mounted when the list becomes empty, giving the
           // final removed row time to close before the empty state settles in.
           PregoAnimatedSliverList<Session>(
-            items: loaded.sessions,
+            items: sessions,
             itemKey: (session) => ValueKey(session.id),
             itemBuilder: (_, index, session) {
               final isArchived = session.time?.archived != null;
@@ -109,10 +127,10 @@ class const SessionListContent({
               );
               final previousHeading = index > 0
                   ? _sessionListHeading(
-                      session: loaded.sessions[index - 1],
+                      session: sessions[index - 1],
                       filter: loaded.filter,
                       grouping: grouping,
-                      isRunning: loaded.isSessionRunning(session: loaded.sessions[index - 1]),
+                      isRunning: loaded.isSessionRunning(session: sessions[index - 1]),
                       now: now,
                       loc: loc,
                     )
@@ -135,7 +153,7 @@ class const SessionListContent({
                     // and last rows so that space collapses with the final item.
                     padding: EdgeInsetsDirectional.only(
                       top: index == 0 ? 8 : 0,
-                      bottom: index == loaded.sessions.length - 1 ? 8 : 0,
+                      bottom: index == sessions.length - 1 ? 8 : 0,
                     ),
                     child: SessionTile(
                       session: session,

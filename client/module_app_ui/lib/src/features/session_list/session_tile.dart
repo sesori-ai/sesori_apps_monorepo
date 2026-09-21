@@ -95,15 +95,24 @@ class const SessionTile({
       // session the actions will hit is unambiguous.
       spotlight: PregoMenuSpotlight.listRow,
       entriesBuilder: menuEntries,
-      triggerBuilder: (context, openMenu) => _buildRow(
-        context: context,
-        openMenu: openMenu,
-        pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
-      ),
+      triggerBuilder: (context, openMenu) {
+        if (PregoInteractionScope.of(context) != PregoInteractionMode.pointer) {
+          return _buildRow(context: context, openMenu: openMenu, pointer: false, revealActions: false);
+        }
+        return _PointerReveal(
+          builder: (context, revealed) =>
+              _buildRow(context: context, openMenu: openMenu, pointer: true, revealActions: revealed),
+        );
+      },
     );
   }
 
-  Widget _buildRow({required BuildContext context, required VoidCallback openMenu, required bool pointer}) {
+  Widget _buildRow({
+    required BuildContext context,
+    required VoidCallback openMenu,
+    required bool pointer,
+    required bool revealActions,
+  }) {
     final prego = context.prego;
 
     return PregoSwipeActions(
@@ -148,7 +157,7 @@ class const SessionTile({
                       crossAxisAlignment: CrossAxisAlignment.start,
                       spacing: pointer ? 0 : PregoSpacing.xxs,
                       children: [
-                        _titleRow(context: context, pointer: pointer),
+                        _titleRow(context: context, pointer: pointer, revealActions: revealActions),
                         ?_footerRow(context: context, pointer: pointer),
                       ],
                     ),
@@ -222,7 +231,7 @@ class const SessionTile({
     );
   }
 
-  Widget _titleRow({required BuildContext context, required bool pointer}) {
+  Widget _titleRow({required BuildContext context, required bool pointer, required bool revealActions}) {
     final prego = context.prego;
     final lineHeight = pointer ? _pointerTitleLineHeight : _titleLineHeight;
     return Row(
@@ -264,7 +273,7 @@ class const SessionTile({
         Expanded(
           child: _title(context: context, pointer: pointer),
         ),
-        _trailingSlot(context: context, pointer: pointer),
+        if (revealActions) _hoverActions(context: context) else _trailingSlot(context: context, pointer: pointer),
       ],
     );
   }
@@ -355,6 +364,48 @@ class const SessionTile({
         // open on the title's behalf.
         maxLines: 1,
         softWrap: false,
+      ),
+    );
+  }
+
+  /// What a hovered or focused pointer row offers in place of its time: the
+  /// read toggle and, unless the row is already archived, Archive.
+  Widget _hoverActions({required BuildContext context}) {
+    final loc = context.loc;
+    Widget action({required Key key, required String tooltip, required IconData icon, required VoidCallback onTap}) =>
+        IconButton(
+          key: key,
+          tooltip: tooltip,
+          onPressed: onTap,
+          icon: Icon(icon, size: 16),
+          // Inside the title's line box, so revealing them never moves the row.
+          style: IconButton.styleFrom(
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            padding: EdgeInsets.zero,
+            fixedSize: const Size(28, _pointerTitleLineHeight),
+            minimumSize: Size.zero,
+          ),
+        );
+    // The row's menu stays the assistive path; merged into the row these
+    // would fight its own tap action.
+    return ExcludeSemantics(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          action(
+            key: const Key("session-tile-hover-toggle-unread"),
+            tooltip: unseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
+            icon: unseen ? TablerRegular.mail_opened : TablerRegular.mail,
+            onTap: onToggleUnread,
+          ),
+          if (!isArchived)
+            action(
+              key: const Key("session-tile-hover-archive"),
+              tooltip: loc.sessionListArchive,
+              icon: TablerRegular.archive,
+              onTap: onArchive,
+            ),
+        ],
       ),
     );
   }
@@ -476,6 +527,30 @@ class const _BranchDetail({required final String branch}) extends StatelessWidge
       ],
     );
   }
+}
+
+/// Whether the pointer is over the row or keyboard focus is inside it.
+class const _PointerReveal({required final Widget Function(BuildContext context, bool revealed) builder})
+    extends StatefulWidget {
+  @override
+  State<_PointerReveal> createState() => _PointerRevealState();
+}
+
+class _PointerRevealState() extends State<_PointerReveal> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    onEnter: (_) => setState(() => _hovered = true),
+    onExit: (_) => setState(() => _hovered = false),
+    child: Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: widget.builder(context, _hovered || _focused),
+    ),
+  );
 }
 
 /// The row's line boxes, from the type scale it renders: a 16/24 title over a

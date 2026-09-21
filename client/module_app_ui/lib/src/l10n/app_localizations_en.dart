@@ -104,6 +104,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopProjectPageArchived => 'Archived';
 
   @override
+  String desktopProjectPageFilterAll(int count) {
+    return 'All · $count';
+  }
+
+  @override
+  String get desktopProjectPageFilterEmpty => 'No sessions match this filter';
+
+  @override
+  String desktopProjectPageFilterRunning(int count) {
+    return 'Running · $count';
+  }
+
+  @override
+  String desktopProjectPageFilterUnread(int count) {
+    return 'Unread · $count';
+  }
+
+  @override
   String get desktopProjectPageRefresh => 'Refresh sessions';
 
   @override

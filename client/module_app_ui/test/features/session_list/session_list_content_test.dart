@@ -24,6 +24,7 @@ void main() {
     required SessionListFilter filter,
     Map<String, SessionActivityInfo> activityBySessionId = const {},
     SessionListGrouping grouping = SessionListGrouping.runningSection,
+    SessionListQuickFilter quickFilter = SessionListQuickFilter.all,
   }) async {
     when(() => cubit.state).thenReturn(
       SessionListState.loaded(
@@ -55,6 +56,7 @@ void main() {
                     ),
                     archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
                     grouping: grouping,
+                    quickFilter: quickFilter,
                   ),
                 ],
               ),

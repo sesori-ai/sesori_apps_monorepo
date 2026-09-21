@@ -168,6 +168,11 @@ The main pane hosts one full-width routed page.
   Today and read "Running" where the time would be. Rows are about 44 pt, keep the state sparkle in a fixed
   leading column, show the time at the trailing edge when the session has one, and highlight under the
   pointer. The phone list keeps its Running section and row anatomy.
+- Above the active list, chips read All, Running and Unread with exact counts from the loaded list and
+  narrow it locally without a request; a filter that leaves nothing says so. The chips hide while Archived
+  is on, which shows every archived session. Hovering a row, or moving keyboard focus into it, swaps its
+  time for Mark read/unread and Archive without changing the row's height; an archived row offers no
+  Archive.
 - Direct/sidebar-opened detail uses the available main-pane width without a
   redundant back arrow. Pushed details retain Back to their opener, including
   child-to-parent navigation. Archived rows open read-only. New-session creation replaces its page with
@@ -276,6 +281,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   or the last row leaves.
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks.
+- Filter chip counts, local narrowing, the filtered-empty message and chips hidden under Archived; hover and
+  focus revealing row actions that call the row's handlers at a stable height, with no Archive on an
+  archived row.
 - The all-sessions page: toolbar title and New session, Archived toggle state, no floating button, the
   timeline grouping with running sessions first under Today, and pointer-mode row height, leading sparkle
   and trailing "Running".
