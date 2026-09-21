@@ -1297,6 +1297,8 @@ class SessionDetailCubit(
     // The unavailable shell still offers the session's actions, so a rename or
     // an archive has to reach it too.
     if (current is SessionDetailHarnessUnavailable) {
+      // A later availability change rebuilds this variant from the cache.
+      _sessionMetadata = session;
       emit(current.copyWith(session: session));
       return;
     }
