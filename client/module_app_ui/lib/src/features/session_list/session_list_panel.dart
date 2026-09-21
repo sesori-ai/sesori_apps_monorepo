@@ -8,6 +8,7 @@ import "../../l10n/app_localizations.dart";
 import "../../widgets/catalog_scan_row.dart";
 import "session_list_action_dispatcher.dart";
 import "session_list_content.dart";
+import "session_list_filtered_content.dart";
 import "session_tile.dart";
 
 class const SessionListPanel({
@@ -151,8 +152,7 @@ class const SessionListPanel({
             onDismiss: () => context.read<SessionListCubit>().dismissCatalogScan(),
           ),
         ),
-        SessionListContent(
-          quickFilter: SessionListQuickFilter.all,
+        SessionListFilteredContent(
           hiddenSessionIds: const {},
           projectName: projectName,
           selectedSessionId: selectedSessionId,

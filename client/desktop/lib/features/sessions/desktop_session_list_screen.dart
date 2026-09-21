@@ -6,7 +6,6 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -48,8 +47,6 @@ class const DesktopSessionListScreen({
 }
 
 class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
-  SessionListQuickFilter _filter = SessionListQuickFilter.all;
-
   /// The toolbar's Refresh is in flight: the cubit refreshes silently, so the
   /// page shows the progress the pull gesture's own spinner used to.
   bool _refreshing = false;
@@ -92,23 +89,8 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
     final state = context.watch<SessionListCubit>().state;
     final loaded = state is SessionListLoaded ? state : null;
     final showArchived = loaded != null && loaded.filter != SessionListFilter.active;
-    // The chips narrow the active list only; Archived shows everything it has.
-    final filter = showArchived ? SessionListQuickFilter.all : _filter;
-    // A session being archived leaves the list, and the counts, at once.
+    // A session being archived leaves the list at once.
     final hidden = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
-    // The same rule the list applies: only a still-unarchived session hides.
-    final counted =
-        loaded?.sessions.where((session) => session.time?.archived != null || !hidden.contains(session.id)).toList() ??
-        const <Session>[];
-    final counts = {
-      SessionListQuickFilter.all: counted.length,
-      SessionListQuickFilter.running: counted
-          .where((session) => loaded?.isSessionRunning(session: session) ?? false)
-          .length,
-      SessionListQuickFilter.unread: counted
-          .where((session) => loaded?.isSessionUnseen(session: session) ?? false)
-          .length,
-    };
 
     return Scaffold(
       body: Column(
@@ -193,60 +175,14 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
                             onDismiss: cubit.dismissCatalogScan,
                           ),
                         ),
-                        if (loaded != null && !showArchived && loaded.sessions.isNotEmpty)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
-                              child: Wrap(
-                                spacing: PregoSpacing.md,
-                                runSpacing: PregoSpacing.md,
-                                children: [
-                                  for (final MapEntry(key: value, value: count) in counts.entries)
-                                    Semantics(
-                                      toggled: filter == value,
-                                      child: PregoButtonsSolid(
-                                        key: Key("desktop-project-page-filter-${value.name}"),
-                                        label: switch (value) {
-                                          SessionListQuickFilter.all => loc.desktopProjectPageFilterAll(count),
-                                          SessionListQuickFilter.running => loc.desktopProjectPageFilterRunning(count),
-                                          SessionListQuickFilter.unread => loc.desktopProjectPageFilterUnread(count),
-                                        },
-                                        hierarchy: filter == value
-                                            ? PregoButtonsSolidHierarchy.primaryAlt
-                                            : PregoButtonsSolidHierarchy.secondary,
-                                        size: PregoButtonsSolidSize.sm,
-                                        onPressed: () => setState(() => _filter = value),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        SessionListContent(
+                        SessionListFilteredContent(
                           projectName: projectName,
-                          quickFilter: filter,
+                          selectedSessionId: null,
                           hiddenSessionIds: hidden,
                           onSessionTap: onSessionTap,
                           actionDispatcher: actionDispatcher,
                           archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
                         ),
-                        // All can only be empty while its last session is being archived.
-                        if (filter != SessionListQuickFilter.all &&
-                            counts[filter] == 0 &&
-                            loaded != null &&
-                            loaded.sessions.isNotEmpty)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.all(PregoSpacing.x3l),
-                              child: Text(
-                                loc.desktopProjectPageFilterEmpty,
-                                textAlign: TextAlign.center,
-                                style: context.prego.textTheme.textSm.regular.copyWith(
-                                  color: context.prego.colors.textTertiary,
-                                ),
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                   ),

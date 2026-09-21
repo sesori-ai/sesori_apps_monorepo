@@ -136,7 +136,7 @@ void main() {
     expect(find.text("No sessions match this filter"), findsOneWidget);
 
     await pumpPage(tester: tester, filter: SessionListFilter.archived);
-    expect(find.byKey(const Key("desktop-project-page-filter-all")), findsNothing);
+    expect(find.byKey(const Key("session-list-filter-all")), findsNothing);
     expect(find.text("Fix the build"), findsOneWidget);
   });
 

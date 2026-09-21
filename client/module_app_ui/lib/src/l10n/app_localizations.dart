@@ -253,11 +253,11 @@ abstract class AppLocalizations {
   /// **'Archived'**
   String get desktopProjectPageArchived;
 
-  /// Desktop project page filter chip showing every active session, with their count.
+  /// Session list filter chip showing every active session, with their count.
   ///
   /// In en, this message translates to:
   /// **'All · {count}'**
-  String desktopProjectPageFilterAll(int count);
+  String sessionListFilterAll(int count);
 
   /// Heading of the new session page, above the project selector and the prompt input.
   ///
@@ -271,23 +271,23 @@ abstract class AppLocalizations {
   /// **'Changes'**
   String get desktopSessionPageChanges;
 
-  /// Shown on the desktop project page when the Running or Unread filter leaves no session.
+  /// Shown in the session list when the Running or Unread filter leaves no session.
   ///
   /// In en, this message translates to:
   /// **'No sessions match this filter'**
-  String get desktopProjectPageFilterEmpty;
+  String get sessionListFilterEmpty;
 
-  /// Desktop project page filter chip showing only sessions an agent is working in, with their count.
+  /// Session list filter chip showing only sessions an agent is working in, with their count.
   ///
   /// In en, this message translates to:
   /// **'Running · {count}'**
-  String desktopProjectPageFilterRunning(int count);
+  String sessionListFilterRunning(int count);
 
-  /// Desktop project page filter chip showing only sessions with unopened activity, with their count.
+  /// Session list filter chip showing only sessions with unopened activity, with their count.
   ///
   /// In en, this message translates to:
   /// **'Unread · {count}'**
-  String desktopProjectPageFilterUnread(int count);
+  String sessionListFilterUnread(int count);
 
   /// Desktop project page overflow menu action that reloads the project's session list.
   ///
