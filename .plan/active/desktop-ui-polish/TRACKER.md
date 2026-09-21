@@ -35,7 +35,7 @@ them.
 | [x] | 16 | `desktop-ui-polish/phone-timeline` | [16/22](#pr-titles) | ≤ 500 | done |
 | [x] | 17 | `desktop-ui-polish/shared-filter-chips` | [17/22](#pr-titles) | ≤ 500 | done |
 | [x] | 18 | `desktop-ui-polish/shared-archive-undo` | [18/22](#pr-titles) | ≤ 900 | done |
-| [ ] | 19 | `desktop-ui-polish/phone-session-actions` | [19/22](#pr-titles) | ≤ 500 | pending |
+| [x] | 19 | `desktop-ui-polish/phone-session-actions` | [19/22](#pr-titles) | ≤ 500 | done |
 | [ ] | 20 | `desktop-ui-polish/shared-cleanup` | [20/22](#pr-titles) | ≤ 400 | pending |
 | [ ] | 21 | `desktop-ui-polish/regression-docs` | [21/22](#pr-titles) | ≤ 400 | pending |
 | [ ] | 22 | `desktop-ui-polish/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | pending |
