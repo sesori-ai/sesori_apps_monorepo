@@ -367,7 +367,15 @@ class const _SesoriAppShell() extends StatelessWidget {
               ),
               child: SseToastListener(
                 navigatorKey: appRootNavigatorKey,
-                child: child ?? const SizedBox.shrink(),
+                // Above the router, so an archive's Undo window survives
+                // leaving the project it was started in.
+                child: BlocProvider(
+                  create: (_) => PendingSessionArchiveCubit(repository: getIt<SessionRepository>()),
+                  child: PendingArchiveAlerts(
+                    navigatorKey: appRootNavigatorKey,
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
               ),
             ),
           ),

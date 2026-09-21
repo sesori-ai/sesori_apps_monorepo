@@ -26,7 +26,8 @@ class _MockImageSharer() extends Mock implements ImageSharer;
 class _MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
 const _actions = SessionListActionDispatcher(
-  cleanupFlow: SessionCleanupSheets(),
+  deleteConfirmation: SessionDeleteConfirmation.sheet,
+  onSessionArchived: null,
   onSessionDeleted: null,
   onSessionMarkedUnread: null,
 );
@@ -380,7 +381,8 @@ void main() {
                 sessionId: "session-1",
                 sessionTitle: "Desktop session",
                 sessionActions: SessionListActionDispatcher(
-                  cleanupFlow: const SessionCleanupSheets(),
+                  deleteConfirmation: SessionDeleteConfirmation.sheet,
+                  onSessionArchived: null,
                   onSessionDeleted: null,
                   onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session),
                 ),

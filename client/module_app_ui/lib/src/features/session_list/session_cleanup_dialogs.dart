@@ -17,23 +17,6 @@ class const _DeleteSessionSheet({
   }
 }
 
-class const _ArchiveSessionSheet({
-  required final Session session,
-  required final void Function({required bool deleteWorktree}) onConfirm,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-    return _CleanupConfirmSheet(
-      session: session,
-      message: loc.sessionListArchiveConfirmMessage,
-      confirmLabel: loc.sessionListArchiveConfirmAction,
-      destructive: false,
-      onConfirm: onConfirm,
-    );
-  }
-}
-
 class const _CleanupConfirmSheet({
   required final Session session,
   required final String message,

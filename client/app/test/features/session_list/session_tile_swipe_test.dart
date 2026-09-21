@@ -43,7 +43,8 @@ void main() {
     );
 
     final dispatcher = SessionListActionDispatcher(
-      cleanupFlow: const SessionCleanupSheets(),
+      deleteConfirmation: SessionDeleteConfirmation.sheet,
+      onSessionArchived: null,
       onSessionDeleted: null,
       onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session.id),
     );
@@ -75,11 +76,14 @@ void main() {
     await tester.pumpWidget(
       BlocProvider<ConnectionOverlayCubit>(
         create: (_) => StubConnectionOverlayCubit(),
-        child: MaterialApp.router(
-          routerConfig: router,
-          theme: ThemeData(extensions: [PregoDesignSystem.light]),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+        child: BlocProvider(
+          create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+          child: MaterialApp.router(
+            routerConfig: router,
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
         ),
       ),
     );
@@ -130,81 +134,33 @@ void main() {
     );
   });
 
-  testWidgets("the revealed Archive pill archives directly and confirms with the undo snackbar", (tester) async {
-    // testSession has no worktree, so Archive skips the confirm sheet and
-    // runs directly.
+  testWidgets("the revealed Archive pill hides the row inside the Undo window without asking", (tester) async {
     final session = testSession(title: "My Session");
-    when(
-      () => cubit.archiveSession(
-        sessionId: any(named: "sessionId"),
-        deleteWorktree: any(named: "deleteWorktree"),
-        force: any(named: "force"),
-      ),
-    ).thenAnswer((_) async => true);
-
     await pumpPanel(tester, session: session);
     await swipeOpen(tester, title: "My Session", dx: -220);
 
     await tester.tap(find.text("Archive"));
     await tester.pumpAndSettle();
 
-    // The confirmation makes clear that archived history remains viewable.
-    expect(
-      find.text(
-        "Archiving makes this session permanently read-only. "
-        "You can still view its history, but you can’t send new prompts or unarchive it.",
-      ),
-      findsOneWidget,
-    );
-    verifyNever(
-      () => cubit.archiveSession(
-        sessionId: any(named: "sessionId"),
-        deleteWorktree: any(named: "deleteWorktree"),
-        force: any(named: "force"),
-      ),
-    );
-
-    await tester.tap(find.widgetWithText(FilledButton, "Archive"));
-    await tester.pumpAndSettle();
-
-    verify(
-      () => cubit.archiveSession(
-        sessionId: session.id,
-        deleteWorktree: false,
-        force: false,
-      ),
-    ).called(1);
-    expect(find.text("Session archived"), findsOneWidget);
-    // Archiving is one-way, so there is no undo affordance any more.
-    expect(find.text("Undo"), findsNothing);
+    expect(find.widgetWithText(FilledButton, "Archive"), findsNothing);
+    expect(tile("My Session"), findsNothing);
+    final archives = tester.element(find.byType(SessionListPanel)).read<PendingSessionArchiveCubit>();
+    expect(archives.state.hiddenIds, {session.id});
+    // Closing inside the window cancels its timer and sends nothing.
+    await archives.close();
   });
 
-  testWidgets("a full swipe archives without touching the pills", (tester) async {
+  testWidgets("a full swipe archives the same way", (tester) async {
     final session = testSession(title: "My Session");
-    when(
-      () => cubit.archiveSession(
-        sessionId: any(named: "sessionId"),
-        deleteWorktree: any(named: "deleteWorktree"),
-        force: any(named: "force"),
-      ),
-    ).thenAnswer((_) async => true);
-
     await pumpPanel(tester, session: session);
 
     await tester.drag(tile("My Session"), const Offset(-520, 0));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, "Archive"));
-    await tester.pumpAndSettle();
-
-    verify(
-      () => cubit.archiveSession(
-        sessionId: session.id,
-        deleteWorktree: false,
-        force: false,
-      ),
-    ).called(1);
-    expect(find.text("Session archived"), findsOneWidget);
+    expect(tile("My Session"), findsNothing);
+    final archives = tester.element(find.byType(SessionListPanel)).read<PendingSessionArchiveCubit>();
+    expect(archives.state.hiddenIds, {session.id});
+    await archives.close();
   });
 
   testWidgets("an archived row offers delete only — archiving is permanent", (tester) async {

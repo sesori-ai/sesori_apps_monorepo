@@ -10,7 +10,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
 import "package:sesori_desktop/features/sessions/desktop_session_list_screen.dart";
-import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -63,7 +62,8 @@ void main() {
               onSessionTap: ({required session}) {},
               onNewSession: () {},
               actionDispatcher: const SessionListActionDispatcher(
-                cleanupFlow: SessionCleanupSheets(),
+                deleteConfirmation: SessionDeleteConfirmation.sheet,
+                onSessionArchived: null,
                 onSessionDeleted: null,
                 onSessionMarkedUnread: null,
               ),

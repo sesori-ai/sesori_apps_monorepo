@@ -99,7 +99,6 @@ class const SessionListScaffold({
           ),
         ),
         SessionListFilteredContent(
-          hiddenSessionIds: const {},
           projectName: projectName,
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,

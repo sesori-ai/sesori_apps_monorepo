@@ -50,7 +50,8 @@ void main() {
                     projectName: null,
                     onSessionTap: null,
                     actionDispatcher: const SessionListActionDispatcher(
-                      cleanupFlow: SessionCleanupSheets(),
+                      deleteConfirmation: SessionDeleteConfirmation.sheet,
+                      onSessionArchived: null,
                       onSessionDeleted: null,
                       onSessionMarkedUnread: null,
                     ),

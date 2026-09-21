@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -36,7 +34,8 @@ void main() {
     );
 
     const dispatcher = SessionListActionDispatcher(
-      cleanupFlow: SessionCleanupSheets(),
+      deleteConfirmation: SessionDeleteConfirmation.sheet,
+      onSessionArchived: null,
       onSessionDeleted: null,
       onSessionMarkedUnread: null,
     );
@@ -44,21 +43,24 @@ void main() {
     await tester.pumpWidget(
       BlocProvider<ConnectionOverlayCubit>(
         create: (_) => StubConnectionOverlayCubit(),
-        child: MaterialApp(
-          theme: ThemeData(extensions: [PregoDesignSystem.light]),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Material(
-            child: BlocProvider<SessionListCubit>.value(
-              value: cubit,
-              child: SessionListPanel(
-                onOpenArchived: cubit.toggleArchived,
-                projectName: "Project One",
-                onNewSession: () {},
-                onSessionTap: ({required session}) {},
-                actionDispatcher: dispatcher,
-                archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
-                onBack: null,
+        child: BlocProvider(
+          create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+          child: MaterialApp(
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Material(
+              child: BlocProvider<SessionListCubit>.value(
+                value: cubit,
+                child: SessionListPanel(
+                  onOpenArchived: cubit.toggleArchived,
+                  projectName: "Project One",
+                  onNewSession: () {},
+                  onSessionTap: ({required session}) {},
+                  actionDispatcher: dispatcher,
+                  archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+                  onBack: null,
+                ),
               ),
             ),
           ),
@@ -158,34 +160,15 @@ void main() {
     expect(find.widgetWithText(InkWell, "Delete"), findsOneWidget);
   });
 
-  testWidgets("archiving closes the row before confirming", (tester) async {
-    // The cubit hides the row optimistically, so the row's own context is
-    // unmounted long before the bridge call resolves — the entries must act
-    // through a context that outlives the row.
+  testWidgets("archiving hides the row at once, and Undo brings it back", (tester) async {
     final session = testSession(title: "My Session");
-    final states = StreamController<SessionListState>();
-    addTearDown(states.close);
-    whenListen(
-      cubit,
-      states.stream,
-      initialState: SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
+    when(() => cubit.state).thenReturn(
+      SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
     );
-    when(
-      () => cubit.archiveSession(
-        sessionId: any(named: "sessionId"),
-        deleteWorktree: any(named: "deleteWorktree"),
-        force: any(named: "force"),
-      ),
-    ).thenAnswer((_) async {
-      states.add(const SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null));
-      // Keeps the call pending across a few frames, like a real network
-      // round-trip, so the optimistic removal lands first.
-      await Future<void>.delayed(const Duration(seconds: 1));
-      return true;
-    });
 
     const dispatcher = SessionListActionDispatcher(
-      cleanupFlow: SessionCleanupSheets(),
+      deleteConfirmation: SessionDeleteConfirmation.sheet,
+      onSessionArchived: null,
       onSessionDeleted: null,
       onSessionMarkedUnread: null,
     );
@@ -216,11 +199,14 @@ void main() {
     await tester.pumpWidget(
       BlocProvider<ConnectionOverlayCubit>(
         create: (_) => StubConnectionOverlayCubit(),
-        child: MaterialApp.router(
-          routerConfig: router,
-          theme: ThemeData(extensions: [PregoDesignSystem.light]),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
+        child: BlocProvider(
+          create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+          child: MaterialApp.router(
+            routerConfig: router,
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
         ),
       ),
     );
@@ -229,30 +215,14 @@ void main() {
 
     await tester.tap(find.widgetWithText(InkWell, "Archive"));
     await tester.pumpAndSettle();
-    // Archiving is permanent, so it confirms before it commits.
-    await tester.tap(find.widgetWithText(FilledButton, "Archive"));
-    await tester.pump();
 
-    // The optimistic archive has removed the session from cubit state, but the
-    // list retains its outgoing row for the closing transition.
-    expect(find.widgetWithText(SessionTile, "My Session"), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 130));
-    expect(find.widgetWithText(SessionTile, "My Session"), findsOneWidget);
-
-    await tester.pumpAndSettle();
-
-    // The row finishes closing before the bridge call resolves…
+    // No sheet asks first: the row leaves inside the shell's Undo window.
+    expect(find.widgetWithText(FilledButton, "Archive"), findsNothing);
     expect(find.widgetWithText(SessionTile, "My Session"), findsNothing);
-    expect(find.text("Session archived"), findsNothing);
 
-    // …the call resolves…
-    await tester.pump(const Duration(seconds: 1));
+    tester.element(find.byType(SessionListPanel)).read<PendingSessionArchiveCubit>().undo();
     await tester.pumpAndSettle();
-
-    // …and the confirmation still appears. Archiving is one-way, so there is
-    // no undo affordance to offer.
-    expect(find.text("Session archived"), findsOneWidget);
-    expect(find.text("Undo"), findsNothing);
+    expect(find.widgetWithText(SessionTile, "My Session"), findsOneWidget);
   });
 
   testWidgets("tapping outside dismisses the menu without acting on the session", (tester) async {

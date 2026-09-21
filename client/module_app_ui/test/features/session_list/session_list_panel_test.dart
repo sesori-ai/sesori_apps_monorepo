@@ -29,6 +29,7 @@ void main() {
     when(() => cubit.state).thenReturn(
       const SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null),
     );
+    when(() => cubit.projectId).thenReturn("project-1");
   });
 
   // Renders the real panel at a fixed width; the header sits inside the panel's
@@ -45,8 +46,11 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: BlocProvider<SessionListCubit>.value(
-            value: cubit,
+          body: MultiBlocProvider(
+            providers: [
+              BlocProvider<SessionListCubit>.value(value: cubit),
+              BlocProvider(create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository())),
+            ],
             child: Align(
               alignment: Alignment.topLeft,
               child: SizedBox(
@@ -60,7 +64,8 @@ void main() {
                   onNewSession: () {},
                   onSessionTap: ({required session}) {},
                   actionDispatcher: const SessionListActionDispatcher(
-                    cleanupFlow: SessionCleanupSheets(),
+                    deleteConfirmation: SessionDeleteConfirmation.sheet,
+                    onSessionArchived: null,
                     onSessionDeleted: null,
                     onSessionMarkedUnread: null,
                   ),

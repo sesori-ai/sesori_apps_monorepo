@@ -316,14 +316,17 @@ void main() {
       await tester.pumpWidget(
         BlocProvider<ConnectionOverlayCubit>.value(
           value: cubit,
-          child: MaterialApp(
-            theme: ThemeData(extensions: [PregoDesignSystem.light]),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Builder(
-              builder: (context) => EmptySessionDetailPanel(
-                background: const SesoriBackgroundWidget(),
-                connectionBanner: ConnectionBanner.maybeFor(context),
+          child: BlocProvider(
+            create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+            child: MaterialApp(
+              theme: ThemeData(extensions: [PregoDesignSystem.light]),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Builder(
+                builder: (context) => EmptySessionDetailPanel(
+                  background: const SesoriBackgroundWidget(),
+                  connectionBanner: ConnectionBanner.maybeFor(context),
+                ),
               ),
             ),
           ),

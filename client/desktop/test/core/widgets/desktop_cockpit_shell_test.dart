@@ -1673,7 +1673,8 @@ Session _session({required String id}) => Session(
 );
 
 const _sessionActions = SessionListActionDispatcher(
-  cleanupFlow: SessionCleanupSheets(),
+  deleteConfirmation: SessionDeleteConfirmation.sheet,
+  onSessionArchived: null,
   onSessionDeleted: _deleted,
   onSessionMarkedUnread: null,
 );

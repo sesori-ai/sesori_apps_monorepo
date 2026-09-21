@@ -14,7 +14,8 @@ class const SessionListScreen({
   @override
   Widget build(BuildContext context) {
     const actionDispatcher = SessionListActionDispatcher(
-      cleanupFlow: SessionCleanupSheets(),
+      deleteConfirmation: SessionDeleteConfirmation.sheet,
+      onSessionArchived: null,
       onSessionDeleted: closeDeletedSessionRoute,
       onSessionMarkedUnread: null,
     );

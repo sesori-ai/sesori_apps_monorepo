@@ -153,7 +153,6 @@ class const SessionListPanel({
           ),
         ),
         SessionListFilteredContent(
-          hiddenSessionIds: const {},
           projectName: projectName,
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,
