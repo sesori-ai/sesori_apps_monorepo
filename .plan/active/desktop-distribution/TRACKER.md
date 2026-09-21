@@ -223,11 +223,23 @@ and a same-partition two-process control passed the pinned native plugin read. T
 `8.h/14` correction signs the QA helper with the existing Developer ID, checks matching
 helper/app teams, and uses that helper for private reads. No product startup change or
 publication. Signing and QA secrets stay in separate steps; default/search-list settings
-and existing local Keychains were unchanged during local tests. Next acceptance uses
-unchanged package pair `35042335424` → `35501361734`, on both CPUs from merged `main`.
-Build `62` release preparation must not be reused to publish build `122`.
-Failed-stop, interactive user-account/TCC, minimum-OS and public artifact retrieval remain
-open; the download page itself is live.
+and existing local Keychains were unchanged during local tests. #1571 merged as
+`fe5df8e9152688c76eab127eac6c615547effd29`, tree
+`2549a8a964f534f462f5139d97aeaa15c925f73b`. Main-only authenticated run `35573213361`
+passed tooling `106249150117`, x64 `106249218337` and arm64 `106249218239` using unchanged
+package pair `35042335424` → `35501361734` (`1.8.4+24 → 1.9.0+122`). Verified archive
+hashes and bounded reports establish all 15 checks, exact live authenticated helpers on
+both launches per CPU, and completed cleanup. The fixture correction unblocked product
+acceptance without a product rebuild or startup change. Full evidence is in
+[step-06](steps/step-06.md). At the same merged tooling source, helper-Off run
+`35575012582` passed tooling `106254787937`, x64 `106254857475` and arm64 `106254857531`;
+all 11 checks and both live helper-absence markers per CPU were verified. Read-only
+preparation `35575015316`, job `106254795658`, regenerated stable `1.9.0+122` metadata
+and checksums for the unchanged package run. Its artifact hash and all four package
+hashes were verified; no publication occurred. Ordinal `8.i/14` records these accepted
+boundaries rather than reusing build-62 evidence.
+Failed-stop, interactive user-account/TCC, minimum-OS, parent Gate C and public artifact
+retrieval remain open; the download page itself is live.
 
 Step 10 remains blocked until genuine platform releases and links exist. Step 11's
 private-package documentation portion can proceed independently, so its dependency
@@ -351,7 +363,7 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update | Helper-Off passed; helper-On tooling pending | Helper-On run, failed-stop, public gates. |
+| macOS update | On/Off to build 122 accepted on both CPUs | Failed-stop, interactive, minimum-OS and public gates. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Migration complete | Public hosting gates pending. |
 | macOS public gate | Pending | See checkpoint above. |

@@ -113,24 +113,11 @@ then invokes `Quit Sesori` only inside the
 accepted menu. The probe rejects relaunch or
 orphan processes, replaces the complete app from the current DMG and repeats while
 preserving bounded desktop, shared CLI-data, attachment and valid login-registration
-sentinels. Cleanup removes only probe-owned paths. Pre-merge run `35363132033` is not
-accepted because its Quit lookup was broader. First main-only run `35367589565` failed
-safely on both CPUs when status-item-only traversal could not observe AppKit's transient
-menu. Second main-only run `35375073067` also failed safely: arm64 exposed 16 menus
-before the press without a new accepted popup, while x64 traversal invalidated its
-status-item reference. Third main-only run `35384845467` failed safely because
-application-scoped hit testing did not surface the status-bar menu on either CPU.
-Fourth main-only run `35391748404` also refused because AXPress left only groups/windows
-at the system-wide sample points. The bounded real-click correction then merged. Runs
-`35399491087` and `35399933745` passed arm64 completely. Both x64 jobs passed prior-app
-Quit and current installation/launch but found no current window at the single sample
-15 seconds after launch. After the bounded-wait correction, main-only run `35405646668`
-passed signed replacement, persisted Bridge Off intent and post-Quit process absence,
-but did not inspect a live helper. The helper-observation correction then merged.
-Main-only run `35411687826` passed x64 job `105812464127` and arm64 job
-`105812464132`; both prior/current helper logs on both CPUs record
-`NO_INSTALLED_HELPER`, and every implemented check is true, including
-`helperAbsentBeforeQuit`. Private helper-Off is accepted on both CPUs.
+sentinels. Cleanup removes only probe-owned paths. Main-only run `35575012582`
+accepted `1.8.4+24 → 1.9.0+122` on native x64 and arm64. Both prior/current helper
+observations on both CPUs record `NO_INSTALLED_HELPER`; all 11 report checks are true,
+including `helperAbsentBeforeQuit`. Exact artifacts, hashes and historical investigation
+remain in [the step evidence](../../.plan/active/desktop-distribution/steps/step-06.md).
 
 The separate manual `macos-authenticated-upgrade-probe` is the credential-bearing
 continuation. It is restricted to `main`, serializes the CPU jobs around the dedicated
@@ -167,10 +154,8 @@ merged `main`. `noMarker` means only "before the first
 supported marker"; it never upgrades a legacy package to pre-sink evidence. Fixed pre-sink
 markers distinguish entry into Dart main and primary-process admission for newly built
 packages; later stages reuse privacy-safe production log messages. Current package run
-`35501361734` (`1.9.0+122`) contains these markers. Its authenticated pairing with baseline
-`35042335424` failed before replacement in run `35502787779`: both CPUs observed baseline
-`desktopAttention`, no helper activity, and completed cleanup. Signing-partition local
-controls establish a harness defect, not full authenticated replacement acceptance.
+`35501361734` (`1.9.0+122`) contains these markers. A package's marker support must not
+be inferred from the newer qualification tooling's source.
 The auth gate emits
 privacy-safe outcome markers
 through the production log sink rather than relying on `dart:developer` output. The probe
@@ -182,10 +167,15 @@ persists Bridge On and requires the exact packaged helper, an authenticated prof
 and relay-serving readiness before each real tray Quit. It then verifies Keychain, On
 intent, bounded state and helper absence through replacement. Artifacts exclude raw auth
 responses, token values, bridge/app output and authenticated screenshots. The tooling
-alone is not accepted helper-On evidence; both CPUs must pass from merged `main`. Even a
-pass does not prove
-failed-stop refusal, interactive browser/user-account/TCC, minimum-OS support, public
-retrieval or release readiness.
+alone is not accepted helper-On evidence; both CPUs must pass from merged `main`.
+Run `35573213361` accepts the same `1.8.4+24 → 1.9.0+122` pair on native x64 and arm64:
+all 15 checks are true, each prior/current launch has an exact live authenticated helper
+and relay readiness, and both final phase records confirm completion and cleanup.
+Artifact digests and bounded records were verified, not just job conclusions. This does
+not prove failed-stop refusal, interactive browser/login/TCC, minimum-OS support, arbitrary
+user-history preservation, public retrieval or release readiness. Read-only preparation
+`35575015316` separately regenerated build-122 metadata/checksums from package run
+`35501361734`; it is not publication or permission to ship.
 
 ## Current evidence boundary
 
@@ -199,11 +189,11 @@ in the active distribution plan's [macOS](../../.plan/active/desktop-distributio
 [Windows](../../.plan/active/desktop-distribution/steps/step-07.md), and
 [Linux](../../.plan/active/desktop-distribution/steps/step-09.md) evidence.
 
-Still unproved: public retrieval and trust, interactive user-account/browser/TCC
-restoration, declared minimum OS, full GUI/keyring/tray/login behavior, authenticated
-helper-On and failed-stop macOS replacement, signed Windows N→N+1 manual replacement,
-and signed-repository Linux N→N+1 updates. Unrun authenticated tooling, a private
-helper-Off probe, silent fixture or same-version reinstall cannot close those gates.
+Still unproved: public retrieval and trust, interactive account login/browser/TCC,
+declared minimum OS, the remaining GUI/keyring/tray/login scenarios, failed-stop macOS
+replacement, signed Windows N→N+1 manual replacement, and signed-repository Linux N→N+1
+updates. The passing private On/Off replacement probes, silent fixtures or same-version
+reinstalls cannot close those gates.
 
 ## Coverage
 

@@ -5,12 +5,12 @@
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
 - **Status:** Active — steps 1–5 and the private portions of steps 6, 7 and 9
-  merged. The macOS signing-secret migration is complete. Main-only run
-  `35411687826` accepted private signed helper-Off `1.8.4+24 → 1.9.0+62`
-  replacement on native x64 and arm64, including exact pre-Quit helper absence.
-  A credential-scoped successor is implementing authenticated helper-On/Keychain
-  replacement qualification; no authenticated result is accepted yet. Failed-stop,
-  interactive user-account/TCC, minimum-OS and public gates remain open. Public
+  merged. The macOS signing-secret migration is complete. Main-only runs
+  `35573213361` (authenticated helper-On/Keychain) and `35575012582` (helper-Off)
+  accepted private signed `1.8.4+24 → 1.9.0+122` replacement on native x64 and arm64.
+  Read-only preparation `35575015316` also passed for build `122`; no product rebuild
+  was needed after the QA signing-partition fix. Failed-stop, interactive user-account/TCC,
+  minimum-OS and public gates remain open. Public
   macOS/Windows/Linux publication and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
   releases. The independently executable private portion of step 11 is in progress;
   its public-release reconciliation and final plan retirement remain blocked. Shipping
@@ -596,10 +596,24 @@ as writes; remove the incompatible `security -w` verification path and its trust
 ACL entry. No product startup change, new identity, publication, persistent state or
 runtime coordination. Keep the helper outside app/packages and uploaded evidence.
 Local native controls, unsigned-helper refusal, focused Python tests and workflow
-validation precede one both-CPU merged-main retry with the unchanged package pair
-`35042335424` → `35501361734`. Do not rebuild products merely for this tooling change.
-Acceptance remains open until that full flow passes. Release preparation for build `62`
-does not authorize shipping build `122`; regenerate it before any gated publication.
+validation preceded the both-CPU merged-main retry with unchanged package pair
+`35042335424` → `35501361734`. #1571 merged as
+`fe5df8e9152688c76eab127eac6c615547effd29`, tree
+`2549a8a964f534f462f5139d97aeaa15c925f73b`. At that tooling source, run `35573213361`
+passed native x64 and arm64 with all 15 authenticated replacement checks true and cleanup
+complete. Both archive digests and bounded JSON evidence were verified; see
+[step-06](steps/step-06.md). The demonstrated fixture correction unblocked the real
+baseline/current flow without rebuilding either product or changing production startup.
+
+**Step 6 acceptance-record PR:**
+`🌱 [desktop-distribution] Record macOS replacement acceptance [step 8.i/14]`.
+Record authenticated acceptance plus helper-Off run `35575012582` (both CPUs, all 11
+checks true) and read-only preparation `35575015316` for the same build `122`. Both ran
+at the same merged tooling source; verified archive/record checks do not borrow build-62
+evidence. Documentation/evidence only; no user-visible or database change, new state,
+release, credential, or publication authority. Failed-stop, interactive, minimum-OS and
+parent ship gates remain open; private acceptance does not complete the public portion
+of step 6.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
