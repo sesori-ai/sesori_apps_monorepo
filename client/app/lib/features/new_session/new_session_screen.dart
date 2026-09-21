@@ -17,6 +17,9 @@ class const NewSessionScreen({
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
+      // Replacing the route keeps its page, so the project keys the providers:
+      // another project gets fresh cubits and never the one that was left.
+      key: ValueKey(projectId),
       providers: [
         BlocProvider(
           create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId),

@@ -165,8 +165,8 @@ Widget _buildApp({
         routes: [
           GoRoute(
             path: "projects/:projectId/sessions/new",
-            builder: (context, state) => const NewSessionScreen(
-              projectId: "project-1",
+            builder: (context, state) => NewSessionScreen(
+              projectId: state.pathParameters["projectId"] ?? "project-1",
               projectName: "Project One",
             ),
           ),
@@ -493,6 +493,8 @@ void main() {
 
     final router = GoRouter.of(tester.element(find.byType(NewSessionScreen)));
     expect(router.state.uri.path, "/projects/project-2/sessions/new");
+    // The replaced route keeps its page; the new project still gets its own cubit.
+    verify(() => projectRepository.getProject(projectId: "project-2")).called(1);
   });
 
   testWidgets("hides the worktree toggle while project capability loads", (tester) async {
