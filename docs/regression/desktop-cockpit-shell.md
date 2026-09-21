@@ -185,8 +185,8 @@ The main pane hosts one full-width routed page.
   `session-archiving-and-deletion.md`.
 - The new session page uses the same toolbar, titled New session with Back, above one centred column no
   wider than the session page's: the shared heading and project selector (see
-  session-creation-and-options.md), the harness chooser, the input, then Dedicated workspace and Refresh options. The column is
-  centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
+  session-creation-and-options.md), the harness chooser, the input, then Dedicated workspace and
+  Refresh options. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
   Choosing another project builds a fresh cubit for it.
 - The session page uses the same toolbar anatomy above the transcript, never over it: title with agent and
   model, Back only on a pushed page, a busy indicator, Mark unread, Changes on a root unarchived session,

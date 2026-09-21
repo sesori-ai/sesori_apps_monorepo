@@ -23,6 +23,11 @@ class const NewSessionHeader({
     final loc = context.loc;
     final prego = context.prego;
     final canSwitch = projects.any((project) => project.id != projectId);
+    // The loaded list knows the current name; the route's can be missing or stale.
+    final current = projects.where((project) => project.id == projectId).firstOrNull;
+    final label = current == null
+        ? projectName ?? loc.projectListDefaultName
+        : projectDisplayName(loc: loc, project: current);
     return Column(
       spacing: PregoSpacing.lg,
       children: [
@@ -55,7 +60,7 @@ class const NewSessionHeader({
           ],
           triggerBuilder: (context, openMenu) => PregoButtonsSolid(
             key: const Key("new_session_project"),
-            label: projectName ?? loc.projectListDefaultName,
+            label: label,
             leadingIcon: TablerRegular.folder,
             trailingIcon: canSwitch ? TablerRegular.chevron_down : null,
             hierarchy: PregoButtonsSolidHierarchy.secondary,

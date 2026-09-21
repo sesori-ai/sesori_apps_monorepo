@@ -71,8 +71,8 @@ dart analyze --fatal-infos
 ## Size
 
 **590 changed lines (497 additions and 93 deletions) across 18 files** at the
-measured checkpoint; 9 are generated, 145 are tests and 13 the regression
-documents. Reproduce from the root:
+measured checkpoint. Of those lines, 9 are generated, 145 are tests, 13 are
+regression documents and the remaining 423 are production source. Reproduce from the root:
 
 ```sh
 git diff --numstat b131508e175e98abbf6151e18851b14b3b74832b a13bd10141c4aa2070b79590e72faa285a7b6631

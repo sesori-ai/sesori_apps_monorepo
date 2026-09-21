@@ -118,7 +118,8 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           home: DesktopNewSessionView(
             projectId: "project-1",
-            projectName: "Sesori",
+            // The route can lack the name; the loaded list supplies it.
+            projectName: null,
             onBack: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
@@ -145,6 +146,11 @@ void main() {
     expect(workspace.top, greaterThan(input.bottom));
     // Centred, not anchored: the pane keeps room below the column.
     expect(workspace.bottom, lessThan(800));
+
+    expect(
+      find.descendant(of: find.byKey(const Key("new_session_project")), matching: find.text("Sesori")),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const Key("new_session_project")));
     await tester.pumpAndSettle();
