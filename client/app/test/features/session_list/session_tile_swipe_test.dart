@@ -118,12 +118,9 @@ void main() {
 
     // Still the list — the swipe is not a tap — and nothing was acted on.
     expect(tile("My Session"), findsOneWidget);
-    verifyNever(
-      () => cubit.archiveSession(
-        sessionId: any(named: "sessionId"),
-        deleteWorktree: any(named: "deleteWorktree"),
-        force: any(named: "force"),
-      ),
+    expect(
+      tester.element(find.byType(SessionListPanel)).read<PendingSessionArchiveCubit>().state.hiddenIds,
+      isEmpty,
     );
     verifyNever(
       () => cubit.deleteSession(
