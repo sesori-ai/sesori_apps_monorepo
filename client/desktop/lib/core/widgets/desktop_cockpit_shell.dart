@@ -14,6 +14,7 @@ import "package:theme_prego/module_prego.dart";
 import "../di/injection.dart";
 import "desktop_connection_pill.dart";
 import "desktop_sidebar.dart";
+import "desktop_window_drag_area.dart";
 
 /// Shared project/recent inventories and one layout owner per signed-in cockpit.
 class const DesktopCockpitCubitProvider({super.key, required final Widget child}) extends StatelessWidget {
@@ -76,10 +77,16 @@ class const DesktopCockpitShell({
   static const double autoCollapseBreakpoint = 760;
   static const double _panelRadius = 14;
 
+  /// Where the panel starts as a rail on macOS: below the traffic lights, which
+  /// are wider than it. Expanded, the panel runs to the top and carries them.
+  static const double railTopUnderTrafficLights = 42;
+
   @override
   Widget build(BuildContext context) {
     final layout = context.watch<DesktopSidebarCubit>().state;
     final sidebar = context.read<DesktopSidebarCubit>();
+    // macOS only: the window has no title bar of its own (see `FlutterWindowHost`).
+    final windowHost = defaultTargetPlatform == TargetPlatform.macOS ? getIt<WindowHost>() : null;
     final content = Stack(
       fit: StackFit.expand,
       children: [
@@ -133,13 +140,9 @@ class const DesktopCockpitShell({
             // the pages paint, so no divider separates them.
             builder: (context, expansion, _) => Row(
               children: [
-                Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(
-                    DesktopSidebar.panelMargin,
-                    DesktopSidebar.panelMargin,
-                    0,
-                    DesktopSidebar.panelMargin,
-                  ),
+                _TitleBarStrip(
+                  windowHost: windowHost,
+                  expansion: expansion,
                   // The width bounds and the rail measure the panel itself.
                   child: Container(
                     key: const Key("desktop-cockpit-sidebar"),
@@ -155,6 +158,7 @@ class const DesktopCockpitShell({
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(_panelRadius),
                       child: DesktopSidebar(
+                        windowHost: windowHost,
                         expansion: expansion,
                         autoCollapsed: autoCollapsed,
                         selectedProjectId: selectedProjectId,
@@ -204,6 +208,30 @@ class const DesktopCockpitShell({
         );
       },
     );
+  }
+}
+
+/// The panel's margins. On macOS the rail makes room for the traffic lights
+/// above it, and whatever is left above the panel drags and zooms the window.
+class const _TitleBarStrip({
+  required final WindowHost? windowHost,
+  required final double expansion,
+  required final Widget child,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final windowHost = this.windowHost;
+    const margin = DesktopSidebar.panelMargin;
+    final top = windowHost == null
+        ? margin
+        : DesktopCockpitShell.railTopUnderTrafficLights +
+              (margin - DesktopCockpitShell.railTopUnderTrafficLights) * expansion;
+    final panel = Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(margin, top, 0, margin),
+      child: child,
+    );
+    if (windowHost == null) return panel;
+    return DesktopWindowDragArea(windowHost: windowHost, height: top, zoomOnDoubleClick: true, child: panel);
   }
 }
 

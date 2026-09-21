@@ -1,7 +1,7 @@
 import "dart:async";
 import "dart:ui";
 
-import "package:flutter/foundation.dart" show visibleForTesting;
+import "package:flutter/foundation.dart" show TargetPlatform, defaultTargetPlatform, visibleForTesting;
 import "package:injectable/injectable.dart";
 import "package:screen_retriever/screen_retriever.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -63,6 +63,10 @@ class FlutterWindowHost.forTesting({
           center: initialBounds == null,
           backgroundColor: const Color(0x00000000),
           title: "Sesori",
+          // macOS only: the content runs under the title bar and the traffic
+          // lights stay. Windows and Linux keep their native chrome.
+          titleBarStyle: defaultTargetPlatform == TargetPlatform.macOS ? TitleBarStyle.hidden : null,
+          windowButtonVisibility: true,
         ),
       );
       if (initialBounds != null) {
@@ -189,6 +193,27 @@ class FlutterWindowHost.forTesting({
     // On macOS this switches to the accessory activation policy: the tray
     // remains available while the hidden window disappears from the Dock.
     await _manager.setSkipTaskbar(true);
+  }
+
+  @override
+  Future<void> startDragging() async {
+    _ensureInitialized();
+    await _manager.startDragging();
+  }
+
+  @override
+  Future<void> toggleZoom() async {
+    _ensureInitialized();
+    await (await _manager.isMaximized() ? _manager.unmaximize() : _manager.maximize());
+  }
+
+  @override
+  Future<void> setBrightness({required WindowBrightness brightness}) async {
+    _ensureInitialized();
+    await _manager.setBrightness(switch (brightness) {
+      WindowBrightness.light => Brightness.light,
+      WindowBrightness.dark => Brightness.dark,
+    });
   }
 
   void _emitEvent({required WindowHostEvent event}) {

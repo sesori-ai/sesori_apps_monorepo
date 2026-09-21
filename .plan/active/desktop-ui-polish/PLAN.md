@@ -100,10 +100,10 @@ Verified in code on 2026-09-19 (paths relative to the repository root).
 
 ### Window chrome and shortcuts
 
-- No title-bar customisation exists on any platform.
-  `client/desktop/lib/core/platform/flutter_window_host.dart` builds
-  `WindowOptions` without a `titleBarStyle`; `MainFlutterWindow.swift` only
-  supports hidden launch. `window_manager ^0.5.2` is already a dependency.
+- Before step 7, no title-bar customisation existed on any platform:
+  `client/desktop/lib/core/platform/flutter_window_host.dart` built
+  `WindowOptions` without a `titleBarStyle`, and `MainFlutterWindow.swift` only
+  supported hidden launch. `window_manager ^0.5.2` was already a dependency.
 - The in-app theme (`AppearanceCubit` → `MaterialApp.themeMode`) is never
   pushed to the native window, so the native title bar disagrees with the
   content whenever the in-app theme differs from the OS appearance.
@@ -191,8 +191,12 @@ All agreed with the user on 2026-09-19 unless marked otherwise.
 - **D7 Depth delimits.** The page content is the window's base surface; the
   sidebar (and the rail) is an inset, rounded, elevated panel on top of it.
 - **D8 Unified macOS title bar.** The sidebar panel runs to the top edge and
-  the traffic lights sit on it, using the already-installed `window_manager`
-  (no custom Swift). Windows and Linux keep native chrome. The native
+  the traffic lights sit on it. `window_manager` hides the title bar but cannot
+  move the lights, so the macOS runner gives the window an empty unified toolbar
+  and AppKit itself sets them onto the panel (the user lifted the earlier "no
+  custom Swift" limit for these few declarative lines on 2026-09-21). The
+  collapse button lives in the panel's footer, so the top holds only the lights.
+  Windows and Linux keep native chrome. The native
   brightness follows the in-app theme so chrome and content never disagree.
 - **D9 Every rail button means one thing.** One Activity button with a count
   (the list pops out beside it), then one chip per project with a small sparkle
@@ -302,12 +306,14 @@ inputs.
   on macOS, and `WindowHost` gains three platform-neutral operations: start
   dragging, toggle zoom, and set brightness (a closed light/dark value, because
   the core module is pure Dart).
-  The panel reserves a top inset for the traffic lights. A small shell
-  drag-region widget covers the panel's top strip and the page toolbar
-  background and calls the host, so the window still drags and zooms on
-  double-click; `window_manager`'s own `DragToMoveArea` is not used, because it
-  would bypass the host. With the rail collapsed the traffic lights are wider
-  than the rail, so the page toolbar takes a leading inset.
+  The expanded panel leaves room at its top for the traffic lights. A small
+  shell drag-region widget covers that room (drag, and zoom on double-click)
+  and, from the app root, the band a page toolbar fills (drag only, signed-out
+  screens included) and calls the host; `window_manager`'s own `DragToMoveArea`
+  is not used, because it would bypass the host. The traffic lights are wider
+  than the rail, so the rail starts below them; they end before the page
+  toolbar's leading control, so it needs no inset. In full screen the runner
+  hides its empty toolbar, which AppKit would otherwise draw over the content.
   The native window brightness follows the app's **effective** brightness —
   the in-app mode resolved against the platform brightness — through one small
   shell widget under `MaterialApp` that observes `Theme.of(context).brightness`
@@ -588,7 +594,8 @@ Step 15 is different from every other step.
   devices.
 - An unarchive endpoint: Undo is a delayed commit.
 - A density or spacing token system, or a desktop theme fork.
-- Custom title bars on Windows and Linux; custom Swift or C++ runner code.
+- Custom title bars on Windows and Linux; C++ runner code, or Swift beyond the
+  macOS runner's declarative toolbar lines that D8 allows.
 - Stacked, queued or bottom-anchored toasts.
 - A replacement control for Plan/Ask.
 - New analytics events: the series restyles existing actions, and

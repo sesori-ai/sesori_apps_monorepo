@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
@@ -11,6 +12,8 @@ import "package:theme_prego/module_prego.dart";
 import "core/di/injection.dart";
 import "core/routing/desktop_router.dart";
 import "core/widgets/desktop_escape_dismissal.dart";
+import "core/widgets/desktop_window_brightness.dart";
+import "core/widgets/desktop_window_drag_area.dart";
 
 /// Root widget of the Sesori desktop app.
 ///
@@ -130,9 +133,23 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
         routerConfig: desktopRouter,
         builder: (context, child) {
           scheduleDesktopRouterReady();
-          return _DesktopRootEffects(
+          final windowHost = getIt<WindowHost>();
+          final app = _DesktopRootEffects(
             navigatorKey: desktopRootNavigatorKey,
             child: child ?? const SizedBox.shrink(),
+          );
+          return DesktopWindowBrightness(
+            windowHost: windowHost,
+            // macOS only: the window has no title bar of its own (see `FlutterWindowHost`),
+            // so the band a page toolbar fills moves it, on every screen.
+            child: defaultTargetPlatform == TargetPlatform.macOS
+                ? DesktopWindowDragArea(
+                    windowHost: windowHost,
+                    height: PregoTopNavigation.barHeight,
+                    zoomOnDoubleClick: false,
+                    child: app,
+                  )
+                : app,
           );
         },
       ),
