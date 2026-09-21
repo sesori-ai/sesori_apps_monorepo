@@ -12,6 +12,12 @@ variant, and worktree mode, and creating the session with its first input.
   open the same typed setup route. The button and shortcut use the open project, else the most recently active
   one; with no project yet they open the New project dialog.
   It opens setup rather than creating a backend session, ignores held-key repeats and respects root popup focus.
+- On phone and desktop the setup page opens with the heading "What should we work on?" and a project
+  selector naming the session's project. The selector opens only when another project exists; choosing one
+  replaces the page with that project's setup page, so a session is never created in the project that was
+  left, and a draft stays with the project it was typed in. The phone lists projects itself for this and
+  names only the current project when that fails. On the phone the header sits above the options and hides
+  while the keyboard is open, so the options stay in view while typing.
 - Options are discovered per plugin and cached under the plugin's declared
   coherence scope; retention and replacement are bridge-owned.
 - Claude's plugin-scoped discovery runs in its host-created state directory,

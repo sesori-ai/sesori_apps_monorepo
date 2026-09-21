@@ -6,6 +6,7 @@ export "src/extensions/build_context_x.dart";
 export "src/extensions/remote_failure_x.dart";
 export "src/extensions/status_colors.dart";
 export "src/extensions/text_style_x.dart";
+export "src/features/new_session/new_session_header.dart";
 export "src/features/new_session/new_session_plugin_chooser.dart";
 export "src/features/new_session/new_session_view.dart";
 export "src/features/project_list/add_project_dialog.dart";

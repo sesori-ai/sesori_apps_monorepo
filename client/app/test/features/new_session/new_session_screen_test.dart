@@ -1,7 +1,6 @@
 import "dart:async";
 import "dart:typed_data";
 
-import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
@@ -38,7 +37,7 @@ class MockPluginRepository() extends Mock implements PluginRepository;
 
 class MockPluginPreferenceRepository() extends Mock implements PluginPreferenceRepository;
 
-class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
+class _MockProjectListService() extends Mock implements ProjectListService;
 
 final Uint8List _tinyPng = Uint8List.fromList(const [
   0x89,
@@ -156,11 +155,6 @@ Future<void> closeHarnessMenu(WidgetTester tester) async {
 Widget _buildApp({
   bool useHarnessFlow = false,
   ThemeMode themeMode = ThemeMode.light,
-  SessionListState sessionListState = const SessionListState.loaded(
-    sessions: [],
-    baseBranch: null,
-    repoSlug: null,
-  ),
 }) {
   final router = GoRouter(
     initialLocation: "/projects/project-1/sessions/new",
@@ -202,17 +196,10 @@ Widget _buildApp({
     ],
   );
 
-  // The screen wears the sessions bar, whose second line comes from the
-  // project's session-list cubit — the sessions shell provides it in the app.
-  final sessionListCubit = _MockSessionListCubit();
-  when(() => sessionListCubit.state).thenReturn(sessionListState);
-  whenListen(sessionListCubit, const Stream<SessionListState>.empty(), initialState: sessionListState);
-
   return MultiBlocProvider(
     providers: [
       BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
       BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
-      BlocProvider<SessionListCubit>.value(value: sessionListCubit),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -456,6 +443,18 @@ void main() {
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
     GetIt.instance.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
+    final projectListService = _MockProjectListService();
+    when(projectListService.listProjects).thenAnswer(
+      (_) async => ApiResponse.success(
+        Projects(
+          data: [
+            testProjectSummary(id: "project-1", name: "Project One"),
+            testProjectSummary(id: "project-2", name: "Project Two"),
+          ],
+        ),
+      ),
+    );
+    GetIt.instance.registerSingleton<ProjectListService>(projectListService);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<ComposerAttachmentDispatcher>(attachmentDispatcher);
     GetIt.instance.registerSingleton<ImageClipboard>(imageClipboard);
@@ -481,6 +480,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NewSessionScreen), findsNothing);
+  });
+
+  testWidgets("the header names the project and switches to another one", (tester) async {
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    expect(find.text("What should we work on?"), findsOneWidget);
+    await tester.tap(find.byKey(const Key("new_session_project")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Project Two"));
+    await tester.pumpAndSettle();
+
+    final router = GoRouter.of(tester.element(find.byType(NewSessionScreen)));
+    expect(router.state.uri.path, "/projects/project-2/sessions/new");
   });
 
   testWidgets("hides the worktree toggle while project capability loads", (tester) async {
@@ -1186,7 +1198,8 @@ void main() {
   });
 
   testWidgets("scrolls plugin and worktree options while keeping the composer pinned", (tester) async {
-    await tester.binding.setSurfaceSize(const Size(700, 400));
+    // Tall enough for the header above the options.
+    await tester.binding.setSurfaceSize(const Size(700, 560));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
@@ -1249,7 +1262,8 @@ void main() {
     // an overlay band that has to be estimated separately.
     tester.platformDispatcher.textScaleFactorTestValue = 1.5;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await tester.binding.setSurfaceSize(const Size(700, 400));
+    // Tall enough for the header above the options.
+    await tester.binding.setSurfaceSize(const Size(700, 560));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(_buildApp());
