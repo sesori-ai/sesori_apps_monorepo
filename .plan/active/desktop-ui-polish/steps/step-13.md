@@ -64,9 +64,9 @@ dart analyze --fatal-infos
   per project is asserted.
 - All four analyzers report no issues. From `client/module_app_ui`,
   `flutter gen-l10n` exited 0. Nothing generated was edited by hand.
-- `architecture-implementation-review` approved the first, desktop-only shape
-  of this step with no findings. The review of the shared shape is recorded in
-  the PR body.
+- `architecture-implementation-review` ran through a sub-agent over the
+  measured commit and approved it with no findings. An earlier run had approved
+  the first, desktop-only shape.
 
 ## Size
 
