@@ -102,6 +102,7 @@ class const ProjectTile({
         title: loc.rename,
         subtitle: null,
         isSelected: false,
+        shortcutLabel: null,
         onTap: () => _renameProject(context: context, project: project),
       ),
       PregoMenuItem(
@@ -109,6 +110,7 @@ class const ProjectTile({
         title: loc.hideProject,
         subtitle: null,
         isSelected: false,
+        shortcutLabel: null,
         onTap: () => unawaited(_hideProject(context: context, project: project)),
       ),
     ];

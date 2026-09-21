@@ -62,6 +62,7 @@ class const SessionListActionDispatcher({
           title: loc.rename,
           subtitle: null,
           isSelected: false,
+          shortcutLabel: null,
           onTap: () => _showRetainedActionDialog(
             cubit: cubit,
             show: () => showRenameSessionDialog(context: context, session: session, cubit: cubit),
@@ -72,6 +73,7 @@ class const SessionListActionDispatcher({
         title: isUnseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
         subtitle: null,
         isSelected: false,
+        shortcutLabel: null,
         onTap: () => _setRead(context: context, cubit: cubit, session: session, read: isUnseen),
       ),
       // Archiving is permanent, so an already-archived row has no archive
@@ -82,6 +84,7 @@ class const SessionListActionDispatcher({
           title: loc.sessionListArchive,
           subtitle: null,
           isSelected: false,
+          shortcutLabel: null,
           onTap: () => _showArchiveSheet(context: context, cubit: cubit, session: session),
         ),
       // Delete is the only entry here that also destroys the work itself —
@@ -93,6 +96,7 @@ class const SessionListActionDispatcher({
         title: loc.sessionListDelete,
         subtitle: null,
         isSelected: false,
+        shortcutLabel: null,
         isDestructive: true,
         onTap: () => _showDeleteSheet(
           context: context,

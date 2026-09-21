@@ -54,7 +54,11 @@ class const SesoriDesktopApp({
             ),
           ),
         ],
-        child: _DesktopAppShell(hiddenLaunch: hiddenLaunch),
+        // A mouse drives this shell: shared widgets draw their pointer presentation.
+        child: PregoInteractionScope(
+          mode: PregoInteractionMode.pointer,
+          child: _DesktopAppShell(hiddenLaunch: hiddenLaunch),
+        ),
       ),
     );
   }

@@ -122,6 +122,12 @@ The main pane hosts one full-width routed page.
   Session title tooltips, selection, running/awaiting/unread signals and
   screen-reader actions remain usable at minimum width; collapsing the rail clips
   them with the row instead of overflowing it.
+- Every anchored menu in the desktop app is a pointer menu, because the app installs the design system's
+  pointer scope at its root: a tight rounded panel of 30-pixel rows, no dimmed window and no lifted row. A
+  right-click drops the panel's top-left corner on the pointer and flips it above only when it does not fit
+  below; a button press or the keyboard hangs the menu off its trigger as before. A row shows a shortcut only
+  where the desktop registers a real binding for the same action. The phone installs no scope and keeps its
+  long-press presentation.
 - Opening the sidebar or its session action menu never claims project viewing.
   The main list/detail routes retain viewing ownership. Session mutations use
   the existing action controller and a stable sidebar presentation context. Opening a session menu first retains its
@@ -255,6 +261,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   strip above the rail, the top band's drag that leaves a jiggling click alone and fires once under a
   zooming region, the signed-out window moved from the app's root, logged host failures, the list's clipped
   highlights, and the native brightness pushed once per effective change, including a system switch.
+- Pointer menus: no spotlight, the panel's corner on the pointer and its flip above it, 30-pixel rows with the
+  shortcut label, a button-opened menu still hung off its trigger, the touch presentation where no scope
+  exists, and the desktop app installing the pointer scope.
 - Rail Activity button count and tooltip (including a sticky-only count that claims nothing new, and its
   pill under larger text), one chip per project, popout placement beside the rail, rows that stay live
   with the cockpit's cubits mounted below the root navigator, and dismissal when a row opens its session
@@ -283,6 +292,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 
 ### Live macOS checks (L3)
 
+- Right-click menus on sidebar projects and sessions and on list rows: they open at the pointer without
+  dimming the window, flip near the window's bottom edge, highlight the hovered row, and close on an outside
+  click or Escape.
 - Fresh-account autostart, login-item registration, optional Full Disk Access grant/deny/focus-return
   and helper inheritance.
 - Settings entries/tabs, native startup preference, dialog keyboard/backdrop/accessibility and retained composer.
@@ -341,6 +353,10 @@ bridge during UI-only checks.
 - `client/desktop/lib/features/home/desktop_home_pane.dart`
 - `client/desktop/lib/features/settings/desktop_settings_modal.dart`
 - `client/desktop/test/features/settings/desktop_settings_screens_test.dart`
+- `client/module_prego/lib/interactions/prego_interaction_scope.dart`
+- `client/module_prego/lib/components/menus/prego_anchor_menu.dart`
+- `client/module_prego/lib/components/menus/anchored_flat_panel.dart`
+- `client/module_prego/test/components/prego_anchor_menu_test.dart`
 - `client/module_prego/lib/components/navigation/prego_nav_title.dart`
 - `client/module_prego/test/components/prego_nav_title_test.dart`
 - `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`

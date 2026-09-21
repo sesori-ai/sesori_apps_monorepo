@@ -1,6 +1,8 @@
+import "package:flutter/gestures.dart" show PointerDeviceKind, kSecondaryButton;
 import "package:flutter_test/flutter_test.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
+import "package:theme_prego/components/menus/anchored_flat_panel.dart";
 import "package:theme_prego/components/menus/anchored_spotlight_backdrop.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -43,6 +45,7 @@ List<PregoMenuEntry> _agentEntries(List<String> names, {void Function(String nam
       title: name,
       subtitle: "The $name agent, described at some length",
       isSelected: name == names.last,
+      shortcutLabel: null,
       onTap: () => onTap?.call(name),
     ),
 ];
@@ -61,11 +64,12 @@ void main() {
             title: "Alpha",
             subtitle: "first",
             isSelected: false,
+            shortcutLabel: null,
             leadingIcon: Icons.mail_outline,
             onTap: () => taps++,
           ),
           const PregoMenuDivider(),
-          PregoMenuItem(title: "Beta", subtitle: null, isSelected: true, onTap: () {}),
+          PregoMenuItem(title: "Beta", subtitle: null, isSelected: true, shortcutLabel: null, onTap: () {}),
         ]),
       );
 
@@ -102,6 +106,7 @@ void main() {
               title: "Alpha",
               subtitle: null,
               isSelected: false,
+              shortcutLabel: null,
               onTap: () {
                 expect(releases, 0);
                 taps++;
@@ -141,7 +146,7 @@ void main() {
         _harness(
           [
             for (final name in ["First", "Second", "Third", "Last"])
-              PregoMenuItem(title: name, subtitle: null, isSelected: false, onTap: () {}),
+              PregoMenuItem(title: name, subtitle: null, isSelected: false, shortcutLabel: null, onTap: () {}),
           ],
           flat: true,
           reverseScroll: true,
@@ -184,8 +189,8 @@ void main() {
     testWidgets("first and last item highlights reach the panel edges", (tester) async {
       await tester.pumpWidget(
         _harness([
-          PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: () {}),
-          PregoMenuItem(title: "Beta", subtitle: null, isSelected: false, onTap: () {}),
+          PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, shortcutLabel: null, onTap: () {}),
+          PregoMenuItem(title: "Beta", subtitle: null, isSelected: false, shortcutLabel: null, onTap: () {}),
         ], flat: true),
       );
 
@@ -211,7 +216,7 @@ void main() {
             height: 12,
             builder: (context, close) => const SizedBox(key: ValueKey("first-custom"), height: 12),
           ),
-          PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: () {}),
+          PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, shortcutLabel: null, onTap: () {}),
           PregoMenuCustom(
             height: 12,
             builder: (context, close) => const SizedBox(key: ValueKey("last-custom"), height: 12),
@@ -237,7 +242,7 @@ void main() {
             height: 48,
             builder: (context, close) => TextButton(onPressed: close, child: const Text("Dismiss")),
           ),
-          PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: () {}),
+          PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, shortcutLabel: null, onTap: () {}),
         ]),
       );
 
@@ -271,7 +276,7 @@ void main() {
                 acquireOpenLease: null,
                 menuScreenPadding: const EdgeInsets.all(12),
                 entriesBuilder: () => [
-                  PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: () {}),
+                  PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, shortcutLabel: null, onTap: () {}),
                 ],
                 triggerBuilder: (context, toggle) => ElevatedButton(
                   onPressed: toggle,
@@ -364,6 +369,7 @@ void main() {
             title: "Alpha",
             subtitle: "first",
             isSelected: false,
+            shortcutLabel: null,
             leadingIcon: Icons.mail_outline,
             onTap: () => taps++,
           ),
@@ -396,6 +402,7 @@ void main() {
               title: "Alpha",
               subtitle: null,
               isSelected: false,
+              shortcutLabel: null,
               leadingIcon: Icons.mail_outline,
               onTap: () => taps++,
             ),
@@ -432,8 +439,14 @@ void main() {
       const custom = 64.0;
       final entries = <PregoMenuEntry>[
         const PregoMenuLabel(text: "Agent"),
-        PregoMenuItem(title: "Titled", subtitle: null, isSelected: false, onTap: () {}),
-        PregoMenuItem(title: "Subtitled", subtitle: "and described", isSelected: false, onTap: () {}),
+        PregoMenuItem(title: "Titled", subtitle: null, isSelected: false, shortcutLabel: null, onTap: () {}),
+        PregoMenuItem(
+          title: "Subtitled",
+          subtitle: "and described",
+          isSelected: false,
+          shortcutLabel: null,
+          onTap: () {},
+        ),
         const PregoMenuDivider(),
         PregoMenuCustom(
           height: custom,
@@ -554,11 +567,12 @@ void main() {
 
   group("Destructive entries", () {
     const entries = [
-      PregoMenuItem(title: "Archive", subtitle: null, isSelected: false, onTap: _noop),
+      PregoMenuItem(title: "Archive", subtitle: null, isSelected: false, shortcutLabel: null, onTap: _noop),
       PregoMenuItem(
         title: "Delete",
         subtitle: null,
         isSelected: false,
+        shortcutLabel: null,
         isDestructive: true,
         onTap: _noop,
         leadingIcon: Icons.delete_outline,
@@ -593,7 +607,7 @@ void main() {
 
   group("Spotlight", () {
     const entries = [
-      PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: _noop),
+      PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, shortcutLabel: null, onTap: _noop),
     ];
 
     const spotlight = PregoMenuSpotlight.listRow;
@@ -707,6 +721,89 @@ void main() {
         ),
         throwsAssertionError,
       );
+    });
+  });
+
+  group("Pointer mode", () {
+    List<PregoMenuEntry> entries() => const [
+      PregoMenuItem(title: "Mark as unread", subtitle: null, isSelected: false, shortcutLabel: "⇧⌘U", onTap: _noop),
+      PregoMenuDivider(),
+      PregoMenuItem(title: "Delete", subtitle: null, isSelected: false, shortcutLabel: null, onTap: _noop),
+    ];
+
+    // A spotlit list row that opens its menu on a secondary click, and a button that opens the same menu.
+    Widget row({Alignment alignment = Alignment.topLeft}) => MaterialApp(
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      home: Scaffold(
+        body: Align(
+          alignment: alignment,
+          child: PregoAnchorMenu(
+            flat: true,
+            menuWidth: 200,
+            spotlight: PregoMenuSpotlight.listRow,
+            acquireOpenLease: null,
+            entriesBuilder: entries,
+            triggerBuilder: (context, open) => GestureDetector(
+              onSecondaryTap: open,
+              child: SizedBox(
+                width: 400,
+                height: 40,
+                child: TextButton(onPressed: open, child: const Text("Row")),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    Widget pointer({required Widget child}) => PregoInteractionScope(mode: PregoInteractionMode.pointer, child: child);
+
+    final panel = find.descendant(of: find.byType(AnchoredFlatPanel), matching: find.byType(Material)).first;
+
+    Future<void> secondaryClick({required WidgetTester tester, required Offset at}) async {
+      await tester.tapAt(at, buttons: kSecondaryButton, kind: PointerDeviceKind.mouse);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets("a secondary click drops a compact menu from the pointer, without dimming the window", (
+      tester,
+    ) async {
+      await tester.pumpWidget(pointer(child: row()));
+      await secondaryClick(tester: tester, at: const Offset(120, 30));
+
+      expect(tester.getTopLeft(panel), const Offset(120, 30));
+      expect(find.byType(AnchoredSpotlightBackdrop), findsNothing);
+      expect(tester.getSize(find.widgetWithText(InkWell, "Delete")).height, 30);
+      expect(find.text("⇧⌘U"), findsOneWidget);
+    });
+
+    testWidgets("a menu that does not fit below the pointer flips above it", (tester) async {
+      await tester.pumpWidget(pointer(child: row(alignment: Alignment.bottomLeft)));
+      await secondaryClick(tester: tester, at: const Offset(120, 580));
+
+      expect(tester.getBottomLeft(panel), const Offset(120, 580));
+    });
+
+    testWidgets("a button press still hangs the menu off its trigger", (tester) async {
+      await tester.pumpWidget(pointer(child: row()));
+      // A secondary click that opened nothing must not move a later menu.
+      await secondaryClick(tester: tester, at: const Offset(120, 30));
+      await tester.tapAt(const Offset(700, 500));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text("Row"));
+      await tester.pumpAndSettle();
+
+      final trigger = tester.getRect(find.byType(TextButton));
+      expect(tester.getRect(panel).topCenter, trigger.bottomCenter + const Offset(0, 8));
+    });
+
+    testWidgets("a touch shell, which installs no scope, keeps the spotlight and the roomy rows", (tester) async {
+      await tester.pumpWidget(row());
+      await secondaryClick(tester: tester, at: const Offset(120, 30));
+
+      expect(find.byType(AnchoredSpotlightBackdrop), findsOneWidget);
+      expect(tester.getSize(find.widgetWithText(InkWell, "Delete")).height, 54);
+      expect(find.text("⇧⌘U"), findsNothing);
     });
   });
 }

@@ -57,6 +57,7 @@ class const PregoPopover({
         triggerBuilder: (context, showModal) => triggerBuilder(context, () => unawaited(showModal())),
         builder: (context, triggerRect) => AnchoredFlatPanel(
           triggerRect: triggerRect,
+          placement: AnchoredPanelPlacement.besideTrigger,
           width: popoverWidth,
           // Content-sized (still bounded to stay on screen).
           maxHeight: null,

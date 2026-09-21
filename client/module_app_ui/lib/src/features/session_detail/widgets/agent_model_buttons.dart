@@ -163,6 +163,7 @@ class const _AgentMenu({
             title: agent.name,
             subtitle: agent.description,
             isSelected: agent.name == selectedAgent,
+            shortcutLabel: null,
             onTap: () => onAgentSelected(agent.name),
           ),
       ],
@@ -206,6 +207,7 @@ class const _ModelMenu({
             title: model.displayName,
             subtitle: model.family,
             isSelected: section.providerID == selected?.providerID && model.modelID == selected?.modelID,
+            shortcutLabel: null,
             onTap: () => onModelSelected(providerID: section.providerID, modelID: model.modelID),
           ),
         );
@@ -258,6 +260,7 @@ class const _VariantMenu({
             title: variant.id,
             subtitle: null,
             isSelected: variant.id == selectedVariant,
+            shortcutLabel: null,
             onTap: () => onVariantSelected(variant),
           ),
       ],

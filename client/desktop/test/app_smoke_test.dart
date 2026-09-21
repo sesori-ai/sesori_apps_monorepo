@@ -8,6 +8,7 @@ import "package:sesori_desktop/app.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:theme_prego/module_prego.dart";
 
 class _InMemorySecureStorage() implements SecureStorage {
   final Map<String, String> _values = <String, String>{};
@@ -74,6 +75,7 @@ void main() {
     expect(scope.onQualityChanged, isNotNull);
 
     final loginContext = tester.element(find.text("Continue with GitHub"));
+    expect(PregoInteractionScope.of(loginContext), PregoInteractionMode.pointer);
     expect(MediaQuery.platformBrightnessOf(loginContext), Brightness.light);
     expect(GlassTheme.brightnessOf(loginContext), Brightness.dark);
     expect(windowHost.brightnessPushes, [WindowBrightness.dark]);

@@ -2,9 +2,11 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:cue/cue.dart";
+import "package:flutter/gestures.dart" show kSecondaryButton;
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 
+import "../../interactions/prego_interaction_scope.dart";
 import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
 import "anchored_flat_panel.dart";
@@ -28,6 +30,11 @@ class const PregoMenuItem({
   required final String? subtitle,
   required final bool isSelected,
   required final VoidCallback onTap,
+
+  /// The key binding that runs the same action, as the host formats it for its
+  /// platform (`⌘N`, `Ctrl+N`). Only a pointer menu draws it, and only a host
+  /// with a real binding passes one.
+  required final String? shortcutLabel,
 
   /// Identifies the rendered row, on whichever path builds it.
   final Key? key,
@@ -136,6 +143,10 @@ class const PregoMenuSpotlight({
 /// rendering differs. See [glassEffectsEnabled] for the platform switch. Set [flat] to
 /// force the flat/`cue` path on every platform (including Apple) — for a menu
 /// paired with a flat trigger, where a glass popup would look out of place.
+///
+/// Under [PregoInteractionMode.pointer] the flat menu is a desktop one: compact
+/// rows with their shortcuts, no [spotlight], and opened by a secondary click
+/// it drops from the pointer instead of hanging off the trigger.
 class const PregoAnchorMenu({
   super.key,
 
@@ -206,6 +217,11 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
   /// the menu before escalating (e.g. into a full-screen sheet). `late` so it is
   /// only constructed when the glass path actually reads it — never on Android.
   late final GlassMenuController _glassController = GlassMenuController();
+
+  /// Where the secondary click that is opening a pointer menu landed. Null for
+  /// every other way in (a button press, the keyboard), which anchors the menu
+  /// to its trigger.
+  Offset? _secondaryPress;
 
   @override
   Widget build(BuildContext context) {
@@ -313,7 +329,9 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
   // ── Flat path (Android) ────────────────────────────────────────────────────
 
   Widget _buildFlat(BuildContext context) {
-    final spotlight = widget.spotlight;
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    // Dimming the window to lift one row is a touch idiom.
+    final spotlight = pointer ? null : widget.spotlight;
     // `cue` still imports the SDK Material library and reads its localizations.
     // ignore: deprecated_member_use
     return MaterialUiCompatibilityBridge(
@@ -323,13 +341,24 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         reverseMotion: const Spring.snappy(),
         // No alignment: the panel positions itself from the trigger rect so it can
         // clamp to the screen edges, mirroring GlassMenu.autoAdjustToScreen.
-        triggerBuilder: (context, showModal) => widget.triggerBuilder(context, () {
-          final release = widget.acquireOpenLease?.call();
-          final menu = showModal();
-          unawaited(release == null ? menu : menu.whenComplete(release));
-        }),
+        triggerBuilder: (context, showModal) {
+          final trigger = widget.triggerBuilder(context, () {
+            final release = widget.acquireOpenLease?.call();
+            unawaited(
+              showModal().whenComplete(() {
+                _secondaryPress = null;
+                release?.call();
+              }),
+            );
+          });
+          if (!pointer) return trigger;
+          return Listener(
+            onPointerDown: (event) => _secondaryPress = event.buttons & kSecondaryButton != 0 ? event.position : null,
+            child: trigger,
+          );
+        },
         builder: (context, triggerRect) {
-          final panel = _flatPanel(context, triggerRect: triggerRect);
+          final panel = _flatPanel(context, triggerRect: triggerRect, compact: pointer);
           if (spotlight == null) return panel;
           // The backdrop is stacked here rather than passed as CueModalTransition's
           // `backdrop`, which is a plain widget and so cannot see the trigger rect
@@ -350,19 +379,24 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
     );
   }
 
-  Widget _flatPanel(BuildContext context, {required Rect triggerRect}) {
+  Widget _flatPanel(BuildContext context, {required Rect triggerRect, required bool compact}) {
     final entries = widget.entriesBuilder();
-    final edgePadding = EdgeInsetsDirectional.only(
-      top: entries.isEmpty || entries.first is! PregoMenuItem ? 6 : 0,
-      bottom: entries.isEmpty || entries.last is! PregoMenuItem ? 6 : 0,
-    );
+    final secondaryPress = _secondaryPress;
+    final edgePadding = compact
+        // Compact rows round their own highlight inside an even margin.
+        ? const EdgeInsetsDirectional.all(_compactPanelPadding)
+        : EdgeInsetsDirectional.only(
+            top: entries.isEmpty || entries.first is! PregoMenuItem ? 6 : 0,
+            bottom: entries.isEmpty || entries.last is! PregoMenuItem ? 6 : 0,
+          );
     return AnchoredFlatPanel(
-      triggerRect: triggerRect,
+      triggerRect: secondaryPress == null ? triggerRect : secondaryPress & Size.zero,
+      placement: secondaryPress == null ? AnchoredPanelPlacement.besideTrigger : AnchoredPanelPlacement.atCorner,
       width: widget.menuWidth,
       // The panel measures its rows for real, so the cap is all it needs: it
       // shrink-wraps below it and scrolls above it.
       maxHeight: widget.menuMaxHeight,
-      borderRadius: widget.menuBorderRadius,
+      borderRadius: compact ? _compactPanelRadius : widget.menuBorderRadius,
       screenPadding: widget.menuScreenPadding,
       reverseScroll: widget.reverseScroll,
       // Menu items meet the panel clip so their ink reaches its outer edges.
@@ -374,19 +408,26 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final entry in entries) _flatEntry(context, entry: entry, close: close),
+            for (final entry in entries) _flatEntry(context, entry: entry, close: close, compact: compact),
           ],
         ),
       ),
     );
   }
 
-  Widget _flatEntry(BuildContext context, {required PregoMenuEntry entry, required VoidCallback close}) {
+  Widget _flatEntry(
+    BuildContext context, {
+    required PregoMenuEntry entry,
+    required VoidCallback close,
+    required bool compact,
+  }) {
     final prego = context.prego;
     switch (entry) {
       case PregoMenuLabel(:final text):
         return Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 4),
+          padding: compact
+              ? const EdgeInsetsDirectional.fromSTEB(_compactRowInset, 6, _compactRowInset, 2)
+              : const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 4),
           // Uppercased to match GlassMenuLabel on the glass path.
           child: Text(text.toUpperCase(), style: _labelStyle(prego)),
         );
@@ -396,6 +437,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         :final subtitle,
         :final isSelected,
         :final onTap,
+        :final shortcutLabel,
         :final leadingIcon,
         :final leading,
         :final isEnabled,
@@ -406,6 +448,8 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           title: title,
           subtitle: subtitle,
           isSelected: isSelected,
+          compact: compact,
+          shortcutLabel: compact ? shortcutLabel : null,
           leadingIcon: leadingIcon,
           leading: leading,
           isEnabled: isEnabled,
@@ -417,10 +461,10 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         );
       case PregoMenuDivider():
         return Divider(
-          height: 12,
+          height: compact ? 9 : 12,
           thickness: 0.5,
-          indent: 8,
-          endIndent: 8,
+          indent: compact ? 0 : 8,
+          endIndent: compact ? 0 : 8,
           color: prego.colors.borderSecondary,
         );
       case PregoMenuCustom(:final builder):
@@ -429,13 +473,24 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
   }
 }
 
+/// The compact pointer menu's chrome: a tight panel whose rows round their own
+/// highlight, as a desktop menu's do.
+const double _compactPanelRadius = PregoRadius.md;
+const double _compactPanelPadding = 4;
+const double _compactRowInset = 10;
+
 /// A single flat menu row — the Android counterpart of [GlassMenuItem], styled
 /// to match its glass sibling (same 44px min height, title/subtitle/check layout).
+///
+/// [compact] is the pointer presentation: a 30px row with a smaller glyph and a
+/// trailing [shortcutLabel].
 class const _FlatMenuTile({
   super.key,
   required final String title,
   required final String? subtitle,
   required final bool isSelected,
+  required final bool compact,
+  required final String? shortcutLabel,
   required final VoidCallback onTap,
   required final bool isEnabled,
   required final bool isDestructive,
@@ -450,6 +505,7 @@ class const _FlatMenuTile({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final subtitle = this.subtitle;
+    final shortcutLabel = this.shortcutLabel;
     final leadingIcon = this.leadingIcon;
     final leading = this.leading;
     return Opacity(
@@ -457,21 +513,28 @@ class const _FlatMenuTile({
       child: InkWell(
         onTap: isEnabled ? onTap : null,
         // The enclosing Material clips the menu to its configured radius. A
-        // second radius here would round the shared edges between adjacent rows.
-        borderRadius: BorderRadius.zero,
+        // second radius here would round the shared edges between adjacent rows;
+        // compact rows sit apart inside the panel's margin and round their own.
+        borderRadius: BorderRadius.circular(compact ? PregoRadius.sm : 0),
         child: ConstrainedBox(
-          // Matches Figma design of 54px touch target.
-          constraints: const BoxConstraints(minHeight: 54),
+          // 54px is the Figma touch target; a pointer needs no more than 30.
+          constraints: BoxConstraints(minHeight: compact ? 30 : 54),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: compact
+                ? const EdgeInsets.symmetric(horizontal: _compactRowInset, vertical: 5)
+                : const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
                 if (leading != null) ...[
                   leading,
-                  const SizedBox(width: 12),
+                  SizedBox(width: compact ? 8 : 12),
                 ] else if (leadingIcon != null) ...[
-                  Icon(leadingIcon, size: 20, color: _iconColor(prego, isDestructive: isDestructive)),
-                  const SizedBox(width: 12),
+                  Icon(
+                    leadingIcon,
+                    size: compact ? 16 : 20,
+                    color: _iconColor(prego, isDestructive: isDestructive),
+                  ),
+                  SizedBox(width: compact ? 8 : 12),
                 ],
                 Expanded(
                   child: Column(
@@ -489,6 +552,10 @@ class const _FlatMenuTile({
                     ],
                   ),
                 ),
+                if (shortcutLabel != null) ...[
+                  const SizedBox(width: 12),
+                  Text(shortcutLabel, style: _subtitleStyle(prego)),
+                ],
                 if (isSelected) ...[
                   const SizedBox(width: 8),
                   _selectedCheck(prego),
