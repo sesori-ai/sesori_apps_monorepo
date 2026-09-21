@@ -209,6 +209,7 @@ class _ThreadStateMotionPlaybookState() extends State<ThreadStateMotionPlaybook>
     session: testSession(id: id, title: title, branchName: "main", pluginId: "codex"),
     isArchived: false,
     isActive: working,
+    isRunning: working,
     unseen: true,
     onTap: null,
     menuEntries: () => const [],
