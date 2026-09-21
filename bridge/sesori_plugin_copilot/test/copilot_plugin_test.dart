@@ -224,7 +224,7 @@ void main() {
       final discovering = plugin.getAgents(projectId: "/repo");
       await completeCatalogDiscovery(process: catalogFakes.first);
 
-      expect((await discovering).map((agent) => agent.name), ["Agent", "Plan"]);
+      expect((await discovering).map((agent) => agent.name), ["Agent"]);
       expect(launchEnvironments.last["COPILOT_HOME"], "/state/copilot");
       expect(fake.written.where((frame) => frame["method"] == "session/new"), isEmpty);
       plugin.onConnectionReset();

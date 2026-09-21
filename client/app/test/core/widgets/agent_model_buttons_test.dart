@@ -155,6 +155,18 @@ void main() {
   });
 
   group("Agent picker", () {
+    testWidgets("appears only when there is more than one agent", (tester) async {
+      final only = _agent(name: "aristotle-impl-review", description: "Reviews");
+      for (final (agents, matcher) in [
+        (const <AgentInfo>[], findsNothing),
+        ([only], findsNothing),
+        ([only, _agent(name: "other", description: "Other")], findsOneWidget),
+      ]) {
+        await tester.pumpWidget(_buildApp(agents: agents, onAgentSelected: (_) {}));
+        expect(find.text("aristotle-impl-review"), matcher);
+      }
+    });
+
     testWidgets("shows every agent, with none clipped out of reach", (tester) async {
       await tester.pumpWidget(_buildApp(agents: _agents, onAgentSelected: (_) {}));
 

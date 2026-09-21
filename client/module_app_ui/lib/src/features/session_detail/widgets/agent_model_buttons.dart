@@ -69,7 +69,8 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
   Widget build(BuildContext context) {
     final selected = widget.selectedAgentModel;
     final selectedAgent = widget.selectedAgent;
-    final hasAgentSelection = widget.agents.isNotEmpty && selectedAgent != null;
+    // One agent is no choice: the entry appears only when there is another.
+    final hasAgentSelection = widget.agents.length > 1 && selectedAgent != null;
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
       child: Row(

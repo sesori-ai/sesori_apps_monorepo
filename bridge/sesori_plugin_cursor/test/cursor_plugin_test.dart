@@ -816,11 +816,8 @@ void main() {
       expect(provider.models.last.variants, ["high", "medium", "low"]);
 
       final agents = await plugin.getAgents(projectId: "/repo");
-      expect(agents.map((a) => a.name), ["Agent", "Plan", "Ask"]);
-      expect(
-        agents.map((a) => a.description),
-        ["Works autonomously", "Plans before editing", "Answers without editing"],
-      );
+      expect(agents.map((a) => a.name), ["Agent"]);
+      expect(agents.map((a) => a.description), ["Works autonomously"]);
       expect(agents.every((a) => a.model == null), isTrue);
     });
 
@@ -844,7 +841,7 @@ void main() {
 
       final options = (result as PluginSessionOptionsDiscoveryObserved).options;
       expect(options.completeness, PluginSessionOptionsCompleteness.partial);
-      expect(options.agents.map((agent) => agent.name), ["Agent", "Plan", "Ask"]);
+      expect(options.agents.map((agent) => agent.name), ["Agent"]);
       expect(options.providers.providers.single.defaultModelID, "gpt-5.4");
       expect(options.commands.single.name, "compact");
     });
@@ -1849,7 +1846,7 @@ void main() {
         providers.providers.single.models.last.variants,
         ["high", "medium", "low", "none"],
       );
-      expect(agents.map((agent) => agent.name), ["Agent", "Plan", "Ask"]);
+      expect(agents.map((agent) => agent.name), ["Agent"]);
       expect(
         allWritten().where((frame) => frame["method"] == "session/list"),
         isEmpty,

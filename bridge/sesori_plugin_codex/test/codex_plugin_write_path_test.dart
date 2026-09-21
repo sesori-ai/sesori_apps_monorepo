@@ -3022,7 +3022,7 @@ void main() {
       expect(fake.sentMethods, contains("model/list"));
     });
 
-    test("getAgents uses the live catalog to expose Plan without local model metadata", () async {
+    test("getAgents takes the agent model from the live catalog without local model metadata", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
@@ -3042,7 +3042,7 @@ void main() {
       await plugin.healthCheck();
       final agents = await plugin.getAgents(projectId: "/work/sample");
 
-      expect(agents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(agents.map((agent) => agent.name), ["Agent"]);
       expect(agents.every((agent) => agent.model?.modelID == "gpt-5.5"), isTrue);
     });
 
@@ -3089,7 +3089,7 @@ void main() {
       final options = (result as PluginSessionOptionsDiscoveryObserved).options;
       expect(options.completeness, PluginSessionOptionsCompleteness.complete);
       expect(options.providers.providers.single.models.single.id, "gpt-5.5");
-      expect(options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(options.agents.map((agent) => agent.name), ["Agent"]);
       expect(options.commands.map((command) => command.name), ["review", "compact"]);
       expect(fake.sentMethods.where((method) => method == "model/list"), hasLength(1));
     });

@@ -63,15 +63,15 @@ final class const ClaudeBackendCatalogRepository() {
           );
 
     return ClaudeBackendCatalog(
+      // Only the default is advertised: Plan is a harness mode, not an agent.
       agents: List.unmodifiable([
-        for (final selection in ClaudeAgentSelection.values)
-          PluginAgent(
-            name: selection.displayName,
-            description: selection.description,
-            model: agentModel,
-            mode: PluginAgentMode.primary,
-            hidden: false,
-          ),
+        PluginAgent(
+          name: ClaudeAgentSelection.standard.displayName,
+          description: ClaudeAgentSelection.standard.description,
+          model: agentModel,
+          mode: PluginAgentMode.primary,
+          hidden: false,
+        ),
       ]),
       providers: PluginProvidersResult(
         providers: models.isEmpty

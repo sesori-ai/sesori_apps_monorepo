@@ -2,6 +2,7 @@ import "package:acp_plugin/acp_plugin.dart" show AcpCommandTracker;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../models/cursor_catalog_models.dart";
 import "../trackers/cursor_catalog_tracker.dart";
 import "cursor_catalog_service.dart";
 
@@ -86,21 +87,21 @@ class CursorSessionOptionsService({
       ];
     }
 
-    final ordered = modes.toList(growable: true);
-    final defaultMode = _catalogTracker.defaultModeId;
-    if (defaultMode != null) {
-      final defaultIndex = ordered.indexWhere((mode) => mode.value == defaultMode);
-      if (defaultIndex > 0) ordered.insert(0, ordered.removeAt(defaultIndex));
-    }
+    // Only the Agent mode is advertised: the CLI's other modes are harness
+    // modes, not agents. The tracker's default follows the mode a new session
+    // loads with, which can be one of those, so it is only the fallback.
+    final mode =
+        modes.where((mode) => mode.value == CursorMode.agent.id).firstOrNull ??
+        modes.where((mode) => mode.value == _catalogTracker.defaultModeId).firstOrNull ??
+        modes.first;
     return [
-      for (final mode in ordered)
-        PluginAgent(
-          name: mode.name,
-          description: mode.description,
-          model: null,
-          mode: PluginAgentMode.primary,
-          hidden: false,
-        ),
+      PluginAgent(
+        name: mode.name,
+        description: mode.description,
+        model: null,
+        mode: PluginAgentMode.primary,
+        hidden: false,
+      ),
     ];
   }
 

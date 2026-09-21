@@ -6,7 +6,7 @@ void main() {
   group("ClaudeBackendCatalogRepository", () {
     const repository = ClaudeBackendCatalogRepository();
 
-    test("maps models, effort variants, commands, and permission-mode agents", () {
+    test("maps models, effort variants, commands, and the default agent", () {
       final catalog = repository.map(
         handshake: {
           "commands": [
@@ -40,7 +40,7 @@ void main() {
         },
       );
 
-      expect(catalog.agents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(catalog.agents.map((agent) => agent.name), ["Agent"]);
       expect(catalog.agents.every((agent) => agent.model?.modelID == "opus[1m]"), isTrue);
       expect(catalog.agents.every((agent) => agent.model?.variant == "high"), isTrue);
       final provider = catalog.providers.providers.single;
@@ -132,7 +132,7 @@ void main() {
     test("returns agents but no provider for an empty model catalog", () {
       final catalog = repository.map(handshake: const {});
 
-      expect(catalog.agents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(catalog.agents.map((agent) => agent.name), ["Agent"]);
       expect(catalog.agents.every((agent) => agent.model == null), isTrue);
       expect(catalog.providers.providers, isEmpty);
       expect(catalog.commands, isEmpty);
