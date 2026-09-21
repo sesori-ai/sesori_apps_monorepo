@@ -46,7 +46,6 @@ AUTH_EMAIL_ENVIRONMENT_KEY = "SESORI_DESKTOP_QA_EMAIL"
 AUTH_PASSWORD_ENVIRONMENT_KEY = "SESORI_DESKTOP_QA_PASSWORD"
 KEYCHAIN_SERVICE = "com.sesori.desktop"
 KEYCHAIN_ACCOUNTS = ("access_token", "refresh_token", "auth_user")
-KEYCHAIN_WRITER_SOURCE = Path(__file__).with_name("write_desktop_macos_keychain.swift")
 PERSISTED_APP_LOG = SUPPORT_ROOT / "logs/app.log"
 BRIDGE_LOG = SUPPORT_ROOT / "logs/bridge.log"
 HELPER_WAIT_SECONDS = 60.0
@@ -341,23 +340,6 @@ def request_qa_session(*, credentials: QaCredentials) -> KeychainSession:
     return parse_keychain_session(payload=payload)
 
 
-def compile_keychain_writer(*, output: Path, log: Path) -> Path:
-    writer = output / "keychain-writer"
-    execute(
-        command=[
-            "xcrun",
-            "swiftc",
-            str(KEYCHAIN_WRITER_SOURCE),
-            "-framework",
-            "Security",
-            "-o",
-            str(writer),
-        ],
-        log=log,
-    )
-    return writer
-
-
 def _security(*, arguments: list[str]) -> subprocess.CompletedProcess[str]:
     try:
         return subprocess.run(
@@ -376,13 +358,13 @@ def _keychain_writer(
     writer: Path,
     operation: str,
     account: str,
-    secret_input: str,
+    secret_input: str | None,
 ) -> subprocess.CompletedProcess[str]:
     executable = APPLICATION / "Contents/MacOS/Sesori"
     try:
         result = subprocess.run(
-            [str(writer), operation, account, KEYCHAIN_SERVICE, str(executable), "/usr/bin/security"],
-            input=f"{secret_input}\n",
+            [str(writer), operation, account, KEYCHAIN_SERVICE, str(executable)],
+            input=f"{secret_input}\n" if secret_input is not None else "",
             text=True,
             capture_output=True,
             check=False,
@@ -394,7 +376,7 @@ def _keychain_writer(
         args=result.args,
         returncode=result.returncode,
         stdout=result.stdout,
-        stderr=result.stderr.replace(secret_input, "<redacted>"),
+        stderr=result.stderr.replace(secret_input, "<redacted>") if secret_input else result.stderr,
     )
 
 
@@ -459,8 +441,8 @@ def update_auth_keychain(*, writer: Path, session: KeychainSession) -> None:
     require(tuple(written_accounts) == KEYCHAIN_ACCOUNTS, "Did not refresh every desktop Keychain item")
 
 
-def read_auth_keychain(*, account: str) -> str:
-    result = _security(arguments=["find-generic-password", "-a", account, "-s", KEYCHAIN_SERVICE, "-w"])
+def read_auth_keychain(*, writer: Path, account: str) -> str:
+    result = _keychain_writer(writer=writer, operation="read", account=account, secret_input=None)
     if result.returncode != 0:
         raise RuntimeError(
             f"Could not read the {account} desktop Keychain item: {_security_failure(result=result)}",
@@ -468,8 +450,8 @@ def read_auth_keychain(*, account: str) -> str:
     return result.stdout.rstrip("\n")
 
 
-def require_auth_keychain_session(*, expected: KeychainSession, label: str, output: Path) -> None:
-    observed = {account: read_auth_keychain(account=account) for account in KEYCHAIN_ACCOUNTS}
+def require_auth_keychain_session(*, writer: Path, expected: KeychainSession, label: str, output: Path) -> None:
+    observed = {account: read_auth_keychain(writer=writer, account=account) for account in KEYCHAIN_ACCOUNTS}
     require(observed["access_token"] == expected.access_token, f"{label}: access token changed")
     require(observed["refresh_token"] == expected.refresh_token, f"{label}: refresh token changed")
     try:
@@ -1025,6 +1007,7 @@ def qualify(
     current_packages: Path,
     current_evidence: Path,
     current_pulls_json: Path,
+    keychain_writer: Path,
     architecture: str,
     channel: str,
     output: Path,
@@ -1068,7 +1051,7 @@ def qualify(
         associated_pulls=read_json_array(current_pulls_json),
     )
     inspector, quitter = compile_native_helpers(output=output, log=log)
-    keychain_writer = compile_keychain_writer(output=output, log=log)
+    require(keychain_writer.is_file(), "The pre-signed Keychain helper is missing")
 
     sentinel = SUPPORT_ROOT / "desktop-instance/upgrade-probe-sentinel"
     desired_state = SUPPORT_ROOT / "desktop-instance/bridge-desired-state"
@@ -1129,7 +1112,7 @@ def qualify(
             REGISTRATION.exists() and sha256(REGISTRATION) == registration_hash,
             "Previous launch changed login registration",
         )
-        require_auth_keychain_session(expected=session, label="previous", output=output)
+        require_auth_keychain_session(writer=keychain_writer, expected=session, label="previous", output=output)
 
         write_qualification_phase(
             output=output,
@@ -1138,7 +1121,9 @@ def qualify(
         )
         replacement_session = request_qa_session(credentials=credentials)
         update_auth_keychain(writer=keychain_writer, session=replacement_session)
-        require_auth_keychain_session(expected=replacement_session, label="replacement-seed", output=output)
+        require_auth_keychain_session(
+            writer=keychain_writer, expected=replacement_session, label="replacement-seed", output=output,
+        )
         shutil.rmtree(APPLICATION)
         write_qualification_phase(
             output=output,
@@ -1161,7 +1146,9 @@ def qualify(
             minimum_seconds=MIN_LAUNCH_VALIDITY_SECONDS,
             label="current launch",
         )
-        require_auth_keychain_session(expected=replacement_session, label="replacement", output=output)
+        require_auth_keychain_session(
+            writer=keychain_writer, expected=replacement_session, label="replacement", output=output,
+        )
         launch_authenticated_and_quit(
             label="current",
             source_sha=current.source_sha,
@@ -1179,7 +1166,9 @@ def qualify(
             REGISTRATION.exists() and sha256(REGISTRATION) == registration_hash,
             "Current launch changed login registration",
         )
-        require_auth_keychain_session(expected=replacement_session, label="current", output=output)
+        require_auth_keychain_session(
+            writer=keychain_writer, expected=replacement_session, label="current", output=output,
+        )
 
         report = {
             "schemaVersion": 1,
@@ -1247,6 +1236,7 @@ def main() -> None:
     parser.add_argument("--current-packages", type=Path, required=True)
     parser.add_argument("--current-evidence", type=Path, required=True)
     parser.add_argument("--current-pulls-json", type=Path, required=True)
+    parser.add_argument("--keychain-writer", type=Path, required=True)
     parser.add_argument("--architecture", choices=("x64", "arm64"), required=True)
     parser.add_argument("--channel", choices=("stable", "internal"), required=True)
     parser.add_argument("--output", type=Path, required=True)

@@ -38,6 +38,7 @@ from qualify_desktop_macos_authenticated_upgrade import (
     parse_keychain_session,
     qualification_cleanup,
     qualify,
+    read_auth_keychain,
     request_qa_session,
     require_auth_keychain_absent,
     require_auth_keychain_session,
@@ -211,7 +212,7 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         self.assertIn("FileManager.default.currentDirectoryPath", source)
         self.assertIn("SecItemAdd", source)
         self.assertIn("kSecAttrAccess: access", source)
-        query_start = source.index("private func flutterSecureStorageItemStatus")
+        query_start = source.index("private func flutterSecureStorageItem")
         query_end = source.index("\n}\n\nguard CommandLine.arguments", query_start)
         query_source = source[query_start:query_end]
         self.assertIn("SecItemCopyMatching", query_source)
@@ -221,6 +222,11 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         self.assertNotIn("SecKeychainItemSetAccess", source)
         self.assertNotIn("let password = CommandLine.arguments", source)
         self.assertNotIn("add-generic-password", source)
+        self.assertNotIn("/usr/bin/security", source)
+        self.assertIn("SecStaticCodeCheckValidity", source)
+        self.assertIn("kSecCodeInfoTeamIdentifier", source)
+        self.assertIn("developerIdTeam(path: writerPath) == developerIdTeam(path: appPath)", source)
+        self.assertIn("SecKeychainSetUserInteractionAllowed(false)", source)
 
     def test_keychain_values_use_stdin_and_never_process_arguments(self):
         session = KeychainSession(
@@ -297,6 +303,31 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         self.assertIn("Keychain locked", result.stderr)
         self.assertNotIn("private-token", result.stderr)
 
+    def test_reads_use_the_same_signed_helper_and_keep_stdout_private(self):
+        native = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="private-token", stderr="",
+        )
+        writer = Path(tempfile.gettempdir()) / "signed-keychain-writer"
+        with patch(
+            "qualify_desktop_macos_authenticated_upgrade.subprocess.run", return_value=native,
+        ) as run:
+            self.assertEqual(read_auth_keychain(writer=writer, account="access_token"), "private-token")
+        self.assertEqual(run.call_args.args[0][0:3], [str(writer), "read", "access_token"])
+        self.assertNotIn("/usr/bin/security", run.call_args.args[0])
+        self.assertEqual(run.call_args.kwargs["input"], "")
+        self.assertTrue(run.call_args.kwargs["capture_output"])
+        self.assertEqual(run.call_args.kwargs["timeout"], 15)
+
+        native = subprocess.CompletedProcess(
+            args=[], returncode=1, stdout="private-token", stderr="Keychain is unavailable",
+        )
+        with patch(
+            "qualify_desktop_macos_authenticated_upgrade.subprocess.run", return_value=native,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Keychain is unavailable") as raised:
+                read_auth_keychain(writer=writer, account="access_token")
+        self.assertNotIn("private-token", str(raised.exception))
+
     def test_keychain_commands_fail_safely_on_deadline(self):
         timeout = subprocess.TimeoutExpired(cmd=["keychain-writer"], timeout=15, stderr="private-token")
         writer = Path(tempfile.gettempdir()) / "keychain-writer"
@@ -363,9 +394,10 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as directory, patch(
             "qualify_desktop_macos_authenticated_upgrade.read_auth_keychain",
-            side_effect=lambda *, account: observed[account],
+            side_effect=lambda *, writer, account: observed[account],
         ):
             require_auth_keychain_session(
+                writer=Path(directory) / "signed-keychain-writer",
                 expected=session,
                 label="current",
                 output=Path(directory),
@@ -1045,7 +1077,9 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         job = workflow[job_start:job_end]
 
         self.assertIn("inputs.mode == 'macos-authenticated-upgrade-probe'", job)
-        self.assertNotIn("environment:", job)
+        self.assertIn("environment: macos-signing", job)
+        self.assertNotIn("environment: desktop-qa", job)
+        self.assertIn("github.ref == 'refs/heads/main'", job)
         self.assertIn("max-parallel: 1", job)
         exercise_step = job.index("- name: Exercise authenticated helper-On replacement and tray Quit")
         step_timeout = job.index("timeout-minutes: 20", exercise_step)
@@ -1061,9 +1095,24 @@ class MacosAuthenticatedUpgradeTests(unittest.TestCase):
         self.assertIn("SESORI_DESKTOP_QA_PASSWORD: ${{ secrets.SESORI_DESKTOP_QA_PASSWORD }}", job)
         self.assertNotIn("--email", job)
         self.assertNotIn("--password", job)
-        self.assertNotIn("MACOS_CERT", job)
+        signing_start = job.index("- name: Sign the QA-only Keychain helper")
+        signing = job[signing_start:exercise_step]
+        exercise_source = job[exercise_step:job.index("- name: Upload bounded private authenticated")]
+        self.assertLess(guard, signing_start)
+        self.assertIn("timeout-minutes: 3", signing)
+        self.assertIn("macos_signing_ci.sh", signing)
+        self.assertIn("MACOS_CERT_P12_BASE64", signing)
+        self.assertNotIn("SESORI_DESKTOP_QA", signing)
+        self.assertNotIn("APPLE_APP_SPECIFIC_PASSWORD", signing)
+        self.assertNotIn("MACOS_CERT", exercise_source)
+        self.assertIn(
+            "--keychain-writer build/desktop-macos-authenticated-upgrade/tools/keychain-writer", exercise_source,
+        )
+        self.assertNotIn("compile_keychain_writer", inspect.getsource(qualify))
         self.assertNotIn("contents: write", job)
-        self.assertEqual(job.count("secrets."), 2)
+        self.assertEqual(signing.count("secrets."), 3)
+        self.assertEqual(exercise_source.count("secrets."), 2)
+        self.assertEqual(job.count("secrets."), 5)
         self.assertIn("desktop-macos-authenticated-upgrade-evidence-${{ matrix.architecture }}", job)
 
 

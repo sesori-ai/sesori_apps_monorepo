@@ -249,12 +249,134 @@ Dart-main and process-admission markers, emits only the furthest closed startup 
 observed within the same bounded private sources, and separately records package marker
 support from checked-out source or exact retained-baseline metadata. Baseline run
 `35042335424` supports `preferences` through `rendering`, not the new pre-sink markers;
-its `noMarker` means only "before the first supported marker". After `8.g/14` merges,
-dispatch and record a fresh stable
-`macos-packaging` run from merged `main`, then pair that current package with baseline run
-`35042335424` for the both-CPU retry. Current-package run `35206885114` predates the new
-markers and must not be reused. Failed-stop, interactive browser/user-account/TCC,
-minimum-OS, public retrieval and parent Gate C remain open.
+its `noMarker` means only "before the first supported marker". This merged as #1564,
+source `33a4ceb5506349d08953be37ba7d3a5f1d6d20df`, tree
+`08f1d7b283faec4985a78b78ae8e7b7e4433dee9`.
+
+### Fresh packages and rejected authenticated retry
+
+Stable macOS package run `35501361734` passed both CPUs at that source/tree for
+`1.9.0+122`; both app/DMG notarizations were accepted and source patches empty.
+No publication was attempted. Tooling job: `106053576778`.
+
+- X64 job `106053597551`, evidence `10602722410`:
+  `sha256:cf589543df21681b415956db846992d547f124a2a633c898494cbf88bb1cc58b`.
+  Package artifact `10602617512`:
+  `sha256:ddb61da09e3b051876383d9de470e631429d0efdaeab10a7aa9a6f60d4662c65`.
+  DMG: `99dfc8a194fe286c98a4dca3adf53b90936f6e172e4fca92ab9562d6208f6184`.
+  ZIP: `71f9a2c733e20cc013f33042ba9bf80b0920063404f93f832d61840ee3d8200d`.
+- Arm64 job `106053597564`, evidence `10602283403`:
+  `sha256:d48dce904bc8509232ab38d7a473f7c0523c3ae66e4fe68c8014350674066bda`.
+  Package artifact `10601849265`:
+  `sha256:a4c30484ce99426d715b7d37adf0f610384ee4f87a909b352b18e3c2d610407a`.
+  DMG: `7b5329305da33a473a5687351befeb442f703dd07f69105f9d4635c74bc3e19d`.
+  ZIP: `630b2731c994531b6d41e2d952fb1141257aa5ead12e97c423286a03d185365b`.
+
+Retry `35502787779`, at the same tooling source, paired these packages with baseline
+`35042335424`. Tooling job `106057422791` passed; both native jobs failed:
+
+- X64 job `106057447920`, artifact `10603060838`:
+  `sha256:0a8336768ce4ed0b47916c3cff78756cac0b8d8c965266b5d149650b947bc216`.
+- Arm64 job `106057447951`, artifact `10603335432`:
+  `sha256:c9bc0d6cdb43e431e8f54c174b6331a0e22b5b6782b00435191d3cf5620db0ac`.
+
+Both verified archives report `previous` / `helperReadiness`, completed cleanup,
+zero helpers/activity, and `preRender` / `desktopAttention`. Redirected output exists,
+but no persisted log or current-candidate evidence. Replacement never began; this does
+not demonstrate an upgrade regression. Only bounded allowlisted JSON was inspected.
+Older run `35496105360`'s archives `10601325063` and `10601410119` were mistakenly
+deleted during investigation, as was their local directory. Recorded IDs/digests and
+observations survive; do not claim those archives remain available. No credential leak
+was established: the misclassified launcher file captures `open(1)`, not app output.
+
+### Signing-partition correction — ordinal 8.h/14
+
+After the pause, the user directed continued work through Step 8 with careful diagnosis
+and cost-effective local tests. They expressly allowed disposable dummy-only Keychains,
+without changing the login/default Keychain or search list, launching Sesori, or touching
+existing app/bridge state. Those restrictions were preserved, and every created Keychain
+was deleted. Tests used explicit `kSecUseKeychain` / `kSecMatchSearchList` handles and
+non-interactive readers; default/search-list comparisons remained equal.
+
+The fast native reproducer used the current seeder calls and pinned
+`flutter_secure_storage_darwin` 0.4.2 native read implementation, modified only to target
+the disposable Keychain. Swift readers disabled interaction. A file outside
+`~/Library/Keychains` has no partition ACL and
+incorrectly suggests cross-process access is fine. A uniquely named disposable file
+inside that directory has a partition ACL: self-read succeeds, but a different ad-hoc
+reader in the trusted-app ACL returns `errSecAuthFailed` (`-25293`). A byte-identical
+second executable, sharing the signing partition, reads the exact dummy value through
+the same native plugin. This isolates a real harness defect; it is not a local launch
+of either signed product or proof that all later CI gates pass.
+
+Apple's `securityd/src/clientid.cpp` assigns Developer ID processes their signing team's
+partition independently of the item trusted-app list. Sign the QA helper with the same
+existing Developer ID as both apps rather than manually rewriting partition ACLs. The
+helper checks both Developer ID signatures and team equality before Keychain access.
+Use it for private verification reads too; `security -w` has a separate partition.
+Keep exact-app ACLs, stdin-only writes, private captured reads, and 15-second deadlines.
+The main-only `macos-signing` step uses existing credentials, bounded to three minutes;
+it removes signing material before the separate QA-secret exercise step. It needs no
+notarization credentials and neither embeds nor publishes the helper with the product.
+No production startup code, new signing identity, schema, persistent state or lifecycle
+coordination is introduced. Local signing keys are not accessed.
+
+Initial local verification, on the **uncommitted worktree before** PR commit
+`0b5a0027d51fcbbbe6f0063bd44ee5f99b3a100b`: 38 focused authenticated-upgrade tests
+(included in 118 passing desktop Python tests), five signing-workflow tests, Swift
+compilation, bash syntax and actionlint passed. No source/tree hash was captured for
+those measurements; they are not exact-checkpoint evidence. Output was captured in the
+Pi session, with no separate durable log files. All commands ran from
+`/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:
+
+```bash
+python3 -m unittest discover -s .github/scripts -p test_qualify_desktop_macos_authenticated_upgrade.py
+python3 -m unittest discover -s .github/scripts -p 'test_*desktop*.py'
+python3 -m unittest discover -s .github/scripts -p test_macos_signing_workflows.py
+bash -n .github/scripts/macos_signing_ci.sh
+xcrun swiftc -suppress-warnings .github/scripts/write_desktop_macos_keychain.swift \
+  -framework Security -o build/desktop-keychain-local/signed-policy-writer
+actionlint .github/workflows/desktop-qualification.yml
+```
+
+The compiled unsigned helper refused before Keychain access with `OSStatus -67050` and
+empty stdout. Initial signing-workflow tests used stubs for secret separation,
+signer/requirement arguments and signing-material cleanup; they did not test the real
+`codesign` requirement parser or claim Developer ID signing. Review identified the
+missing `=` literal-text prefix, which otherwise makes `codesign` interpret the
+requirement as a filename. The correction uses `-R` with a literal requirement pinned
+to publisher `AQNCF7663C`, independent of the configured signing team, and adds native
+Apple-binary acceptance / publisher-mismatch rejection controls on macOS. No Dart/Flutter
+suite or live app was run.
+
+A separate review-time disposable-Keychain control removed `security` from the item
+trusted-app list. The cross-partition pinned plugin read still failed (`-25293`), while
+`security find-generic-password` without `-w` succeeded, `delete-generic-password`
+succeeded, and the final lookup returned item-not-found (CLI exit `44`). Therefore
+metadata checks/deletion retain their existing owner; no new signed-delete operation or
+app-lifetime dependency is needed. The local bounded result is
+`build/desktop-keychain-local/probe.0f4jtM/cleanup-control.json`; the standalone fixture
+used explicit scratch-Keychain handles, preserved default/search-list settings, and
+removed its Keychain in `finally`. This control is not product acceptance evidence.
+The review corrections' five signing-workflow tests (including the real native parser
+controls), bash syntax and diff checks passed on an uncommitted worktree above `0b5a002`.
+Commands, base commit, measured diff digest and separate logs are recorded locally in
+`build/desktop-keychain-local/review-1571/verification.json`; the cwd is the same as above.
+Unchanged Dart/Flutter, desktop Python and Swift compilation checks were not repeated.
+
+After merged-main review, retry only the unchanged pair `35042335424` → `35501361734`:
+
+```bash
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-authenticated-upgrade-probe -f channel=stable \
+  -f previous_packaging_run=35042335424 -f packaging_run=35501361734
+```
+
+One watched both-CPU result must establish authenticated acceptance; local controls do
+not close it. Historical helper-Off evidence remains tied to build `62`, not build `122`.
+Regenerate release preparation before considering publication of build `122`.
+Failed-stop, interactive browser/user-account/TCC, minimum-OS, public retrieval and
+parent Gate C remain open.
 
 Dispatches and expanded logs were run from
 `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`:

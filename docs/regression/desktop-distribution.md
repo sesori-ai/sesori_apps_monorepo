@@ -136,20 +136,23 @@ The separate manual `macos-authenticated-upgrade-probe` is the credential-bearin
 continuation. It is restricted to `main`, serializes the CPU jobs around the dedicated
 `qa@sesori.com` production account, and reads its email/password from repository Actions
 secrets only in the exercise step, then consumes/removes both before any child process.
-No environment approval gate is required; workflow review plus the runtime main guard is
-the credential-access boundary. It requests phase-fresh tokens in memory, creates the
-three established classic-Keychain values with their trusted ACL atomically through stdin,
-retains that ACL while refreshing values, and gives every native Keychain command a fixed
-deadline. The writer must also create and self-verify each item through the pinned
-FlutterSecureStorage query's explicit non-synchronizable (`kSecAttrSynchronizable:
-false`) and when-unlocked envelope; a broad `security` lookup is not equivalent.
-Merged-main runs `35454870471`, `35460239311`, `35465783382` and `35496105360` are
-rejected. The first two reached the bounded prior-app helper deadline with zero final
-helper processes; the second first passed the exact Keychain self-check. The third also
-timed out one CPU before artifact upload and showed that redirected app output alone does
-not retain production log-sink markers. The fourth uploaded both bounded artifacts; each
-reached prior-app helper readiness with zero helper processes, no helper or bridge-log activity,
-no persisted app log, and present redirected output with every existing marker false. On
+No extra QA approval environment is required; workflow review plus the runtime main guard
+is the credential-access boundary. An earlier, separate `macos-signing` step signs the
+QA-only Keychain helper with the existing Developer ID and removes signing material before
+QA credentials enter the job. This step needs no notarization credentials or publication
+permission; the helper is neither packaged with the app nor uploaded as evidence.
+The helper checks valid Developer ID signatures and matching app/helper teams before any
+Keychain access. The trusted-app ACL alone does not grant access across modern macOS
+signing partitions. Credential-value reads and writes therefore use the same signed helper.
+Writes consume stdin; value reads are privately captured and never logged. The `security`
+tool still performs metadata-only absence checks and deletion of probe-owned items; those
+operations do not need to decrypt the credential.
+The probe requests phase-fresh tokens in memory, creates the three established
+classic-Keychain values with their exact trusted-app ACL atomically, retains that ACL
+while refreshing values, and bounds every native Keychain command. The writer must also
+create and self-verify each item through the pinned FlutterSecureStorage query's explicit
+non-synchronizable (`kSecAttrSynchronizable: false`) and when-unlocked envelope.
+On
 failure, the probe may inspect at most 1 MiB from each phase-scoped redirected app output
 and authoritative persisted `logs/app.log` for the closed markers
 `desktopStartupRendered`, `localSessionUnavailable`, `localUserRestoreIncomplete`,
@@ -163,15 +166,18 @@ packages derive it from checked-out immutable source; exact retained baseline
 merged `main`. `noMarker` means only "before the first
 supported marker"; it never upgrades a legacy package to pre-sink evidence. Fixed pre-sink
 markers distinguish entry into Dart main and primary-process admission for newly built
-packages; later stages reuse privacy-safe production log messages. After this tooling
-merges, the next retry must use a fresh stable macOS package built from merged `main` as
-the current candidate rather than pre-marker run `35206885114`. The auth gate emits
+packages; later stages reuse privacy-safe production log messages. Current package run
+`35501361734` (`1.9.0+122`) contains these markers. Its authenticated pairing with baseline
+`35042335424` failed before replacement in run `35502787779`: both CPUs observed baseline
+`desktopAttention`, no helper activity, and completed cleanup. Signing-partition local
+controls establish a harness defect, not full authenticated replacement acceptance.
+The auth gate emits
 privacy-safe outcome markers
 through the production log sink rather than relying on `dart:developer` output. The probe
 uploads only closed values, an atomic closed phase/cleanup record, and whether any helper
-generation or fresh bridge-log activity appeared. Run `35465783382`
-reached the exercise step 29 seconds after job start; the 20-minute exercise deadline
-therefore leaves over 14 minutes for always-upload within the 35-minute job. The probe
+generation or fresh bridge-log activity appeared. The exercise has a 20-minute deadline
+within a 35-minute job; separate helper signing is bounded to three minutes, preserving
+upload headroom. The probe
 persists Bridge On and requires the exact packaged helper, an authenticated profile lookup
 and relay-serving readiness before each real tray Quit. It then verifies Keychain, On
 intent, bounded state and helper absence through replacement. Artifacts exclude raw auth
