@@ -162,7 +162,7 @@ class const SessionListContent({
                         context: context,
                         cubit: context.read<SessionListCubit>(),
                         session: session,
-                        includeReadToggle: true,
+                        readEntry: SessionReadMenuEntry.toggle,
                       ),
                       onArchive: () => actionDispatcher.handleSessionArchive(context: context, session: session),
                       onDelete: () => actionDispatcher.handleSessionDelete(context: context, session: session),

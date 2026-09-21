@@ -137,6 +137,7 @@ class const DesktopSessionDetailView({
             maxContentWidth: maxContentWidth,
             headerBuilder: _buildToolbar,
           ),
+          menuEntriesBuilder: null,
         ),
       ),
     );
@@ -201,7 +202,7 @@ class const DesktopSessionDetailView({
                   context: context,
                   cubit: context.read<SessionListCubit>()..updateActionSession(session: session),
                   session: session,
-                  includeReadToggle: false,
+                  readEntry: SessionReadMenuEntry.none,
                 ),
           triggerBuilder: (context, openMenu) => IconButton(
             key: const Key("desktop-session-page-more"),

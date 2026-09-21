@@ -428,7 +428,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
       context: context,
       cubit: cubit,
       session: session,
-      includeReadToggle: true,
+      readEntry: SessionReadMenuEntry.toggle,
     );
     final gutter = PregoSpacing.xl * widget.expansion;
     return CustomScrollView(

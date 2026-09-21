@@ -37,6 +37,12 @@ typedef SessionDetailHeaderBuilder = Widget Function({
   required Session? session,
 });
 
+/// The session's own actions for the glass bar's menu, built when it opens.
+typedef SessionDetailMenuEntriesBuilder = List<PregoMenuEntry> Function({
+  required BuildContext context,
+  required Session session,
+});
+
 /// A pointer surface's page frame: an opaque header above the transcript
 /// instead of the floating glass bar over it, and a centred reading column.
 class const SessionDetailPageChrome({
@@ -58,6 +64,10 @@ class const SessionDetailBody({
 
   /// Null keeps the floating glass bar and a full-width transcript.
   required final SessionDetailPageChrome? pageChrome,
+
+  /// The glass bar's session menu; null shows none. A page frame brings its
+  /// own header and menu instead.
+  required final SessionDetailMenuEntriesBuilder? menuEntriesBuilder,
 }) extends StatefulWidget {
   @override
   State<SessionDetailBody> createState() => _SessionDetailBodyState();
@@ -156,6 +166,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     };
     final canShowDiffs = state is SessionDetailLoaded && (state.isRootSession ?? false) && !state.isArchived;
     final onShowDiffs = widget.onShowDiffs;
+    final menuEntriesBuilder = widget.menuEntriesBuilder;
+    final session = state.hydratedSession;
 
     final actions = <Widget>[
       if (widget.onClose != null)
@@ -169,6 +181,19 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
           icon: TablerRegular.git_compare,
           semanticLabel: loc.sessionDetailFileChangesTooltip,
           onPressed: onShowDiffs,
+        ),
+      if (menuEntriesBuilder != null && session != null)
+        PregoAnchorMenu(
+          flat: true,
+          menuWidth: 240,
+          acquireOpenLease: null,
+          entriesBuilder: () => menuEntriesBuilder(context: context, session: session),
+          triggerBuilder: (context, openMenu) => PregoButtonsIconGlass(
+            key: const Key("session-detail-more"),
+            icon: TablerRegular.dots,
+            semanticLabel: loc.sessionDetailMoreActions,
+            onPressed: openMenu,
+          ),
         ),
       if (isBusy)
         // A status indicator, not a button — sized to the glass button's 40×40

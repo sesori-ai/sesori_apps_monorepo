@@ -36,6 +36,19 @@ enum SessionDeleteConfirmation() {
   alert,
 }
 
+/// Which read action a session menu offers.
+enum SessionReadMenuEntry() {
+  /// A list row: flips the row's read state.
+  toggle,
+
+  /// An open session page: always Mark as unread. The page is marked seen
+  /// asynchronously, so a toggle could read "unseen" and mark it read instead.
+  markUnread,
+
+  /// The surface offers Mark unread on its own, as the desktop toolbar does.
+  none,
+}
+
 void _showRetainedActionDialog({
   required SessionListCubit cubit,
   required Future<void> Function() show,
@@ -65,14 +78,11 @@ class const SessionListActionDispatcher({
     required BuildContext context,
     required SessionListCubit cubit,
     required Session session,
-
-    /// False where the surface offers Mark unread on its own, as the session
-    /// page's toolbar does.
-    required bool includeReadToggle,
+    required SessionReadMenuEntry readEntry,
   }) {
     final loc = context.loc;
     final isArchived = session.time?.archived != null;
-    final isUnseen = _isUnseen(cubit: cubit, session: session);
+    final markRead = readEntry == SessionReadMenuEntry.toggle && _isUnseen(cubit: cubit, session: session);
 
     return [
       if (!isArchived)
@@ -87,14 +97,14 @@ class const SessionListActionDispatcher({
             show: () => showRenameSessionDialog(context: context, session: session, cubit: cubit),
           ),
         ),
-      if (includeReadToggle)
+      if (readEntry != SessionReadMenuEntry.none)
         PregoMenuItem(
-          leadingIcon: isUnseen ? TablerRegular.mail_opened : TablerRegular.mail,
-          title: isUnseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
+          leadingIcon: markRead ? TablerRegular.mail_opened : TablerRegular.mail,
+          title: markRead ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
           subtitle: null,
           isSelected: false,
           shortcutLabel: null,
-          onTap: () => _setRead(context: context, cubit: cubit, session: session, read: isUnseen),
+          onTap: () => _setRead(context: context, cubit: cubit, session: session, read: markRead),
         ),
       // Archiving is permanent, so an already-archived row has no archive
       // action left to offer.
