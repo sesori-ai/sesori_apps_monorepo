@@ -25,6 +25,8 @@ import "../../../helpers/voice_test_helpers.dart";
 
 class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
+class MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
+
 class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
 class MockImageClipboard() extends Mock implements ImageClipboard;
@@ -52,6 +54,7 @@ Widget _buildApp({
   bool startAtPreviousScreen = false,
   VoidCallback? onOpenHarnessSettings,
   VoidCallback? onClose,
+  SessionDetailMenuEntriesBuilder? menuEntriesBuilder,
 }) {
   final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
@@ -91,6 +94,7 @@ Widget _buildApp({
               onBack: context.pop,
               onShowDiffs: () => context.push("/projects/project-1/sessions/session-1/diffs"),
               pageChrome: null,
+              menuEntriesBuilder: menuEntriesBuilder,
               bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
                   MobileSessionDetailComposerControls(
                     projectId: projectId,
@@ -293,6 +297,56 @@ void main() {
       expect(closed, isTrue);
     });
   }
+
+  testWidgets("the glass bar menu marks the open session unread whatever its local state says", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    // Locally still unseen: a toggle would offer "Mark as read" here.
+    final unseen = testConstSession.copyWith(unseen: true);
+    final sessions = MockSessionListCubit();
+    when(() => sessions.state).thenReturn(
+      SessionListState.loaded(sessions: [unseen], baseBranch: null, repoSlug: null),
+    );
+    when(
+      () => sessions.markSessionSeen(
+        sessionId: any(named: "sessionId"),
+        read: any(named: "read"),
+      ),
+    ).thenAnswer((_) async {});
+    final left = <String>[];
+    final dispatcher = SessionListActionDispatcher(
+      deleteConfirmation: SessionDeleteConfirmation.sheet,
+      onSessionArchived: null,
+      onSessionDeleted: null,
+      onSessionMarkedUnread: ({required context, required session}) => left.add(session.id),
+    );
+
+    await tester.pumpWidget(
+      _buildApp(
+        cubit: cubit,
+        menuEntriesBuilder: ({required context, required session}) => dispatcher.sessionMenuEntries(
+          context: context,
+          cubit: sessions,
+          session: unseen,
+          readEntry: SessionReadMenuEntry.markUnread,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key("session-detail-more")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Rename"), findsOneWidget);
+    expect(find.text("Archive"), findsOneWidget);
+    expect(find.text("Delete"), findsOneWidget);
+    expect(find.text("Mark as read"), findsNothing);
+    await tester.tap(find.text("Mark as unread"));
+    await tester.pumpAndSettle();
+
+    verify(() => sessions.markSessionSeen(sessionId: unseen.id, read: false)).called(1);
+    expect(left, [unseen.id]);
+  });
 
   testWidgets("PromptInput consumes initial attachments once per identity or restoration", (tester) async {
     final first = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "first.png");

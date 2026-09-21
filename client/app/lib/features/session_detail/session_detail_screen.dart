@@ -4,6 +4,7 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show Session;
 
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
@@ -54,6 +55,18 @@ class const SessionDetailScreen({
     );
   }
 }
+
+/// The open page's actions. Each one that takes the session away from the
+/// reader — archive, delete, Mark as unread — returns to the session list.
+const _sessionActions = SessionListActionDispatcher(
+  deleteConfirmation: SessionDeleteConfirmation.sheet,
+  onSessionArchived: closeDeletedSessionRoute,
+  onSessionDeleted: closeDeletedSessionRoute,
+  onSessionMarkedUnread: _leaveMarkedUnreadSession,
+);
+
+void _leaveMarkedUnreadSession({required BuildContext context, required Session session}) =>
+    closeDeletedSessionRoute(context: context, sessionId: session.id);
 
 class const _MobileSessionDetailBody({
   required final String projectId,
@@ -131,6 +144,16 @@ class const _MobileSessionDetailBody({
                 ),
               ),
         pageChrome: null,
+        // An archived session is read through its own flow, whose list cubit
+        // holds archived sessions only, so the audit view offers no actions.
+        menuEntriesBuilder: auditView
+            ? null
+            : ({required context, required session}) => _sessionActions.sessionMenuEntries(
+                context: context,
+                cubit: context.read<SessionListCubit>()..updateActionSession(session: session),
+                session: session,
+                readEntry: SessionReadMenuEntry.markUnread,
+              ),
         bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
             MobileSessionDetailComposerControls(
               projectId: projectId,
