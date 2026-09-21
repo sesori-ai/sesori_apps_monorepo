@@ -2,27 +2,27 @@ import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
-import "package:sesori_desktop_core/sesori_desktop_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
-/// Archives [session] behind the Undo window. [context] must sit under
-/// `DesktopCockpitCubitProvider`.
-void archiveSessionWithUndo({
-  required BuildContext context,
-  required Session session,
-  required bool deleteWorktree,
-}) => context.read<PendingSessionArchiveCubit>().archive(session: session, deleteWorktree: deleteWorktree);
+import "../extensions/build_context_x.dart";
+import "../features/session_list/session_list_action_dispatcher.dart";
 
 /// The one place that tells the user what a pending archive is doing: the
 /// "Archived" alert with Undo, then the refusal alert or the error toast.
-class const DesktopPendingArchiveAlerts({super.key, required final Widget child}) extends StatefulWidget {
+class const PendingArchiveAlerts({
+  super.key,
+
+  /// The navigator whose overlay shows the alerts, for a shell that mounts
+  /// this above its router. Null where this already sits under a navigator.
+  required final GlobalKey<NavigatorState>? navigatorKey,
+  required final Widget child,
+}) extends StatefulWidget {
   @override
-  State<DesktopPendingArchiveAlerts> createState() => _DesktopPendingArchiveAlertsState();
+  State<PendingArchiveAlerts> createState() => _PendingArchiveAlertsState();
 }
 
-class _DesktopPendingArchiveAlertsState() extends State<DesktopPendingArchiveAlerts> {
+class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
   late final StreamSubscription<PendingSessionArchiveOutcome> _outcomes;
 
   @override
@@ -37,9 +37,18 @@ class _DesktopPendingArchiveAlertsState() extends State<DesktopPendingArchiveAle
     super.dispose();
   }
 
+  /// Null before the shell's navigator has mounted.
+  PregoPopupAlertPresenter? get _presenter {
+    final navigatorKey = widget.navigatorKey;
+    if (navigatorKey == null) return PregoPopupAlertPresenter.of(context);
+    final overlay = navigatorKey.currentState?.overlay;
+    return overlay == null ? null : PregoPopupAlertPresenter.fromOverlayState(overlay);
+  }
+
   void _offerUndo() {
+    final presenter = _presenter;
+    if (presenter == null) return;
     final cubit = context.read<PendingSessionArchiveCubit>();
-    final presenter = PregoPopupAlertPresenter.of(context);
     presenter.show(
       title: context.loc.sessionListArchived,
       variant: PregoPopupAlertsNotificationsVariant.success,
@@ -63,13 +72,16 @@ class _DesktopPendingArchiveAlertsState() extends State<DesktopPendingArchiveAle
       case PendingSessionArchiveCommitted():
         return;
       case PendingSessionArchiveFailed():
-        PregoPopupAlertPresenter.of(context).show(
+        _presenter?.show(
           title: context.loc.sessionListArchiveFailed,
           variant: PregoPopupAlertsNotificationsVariant.error,
         );
       case PendingSessionArchiveRefused(:final session, :final rejection):
         final cubit = context.read<PendingSessionArchiveCubit>();
-        final choice = await showSessionArchiveRefusedAlert(context: context, rejection: rejection);
+        final navigatorKey = widget.navigatorKey;
+        final dialogContext = navigatorKey == null ? context : navigatorKey.currentContext;
+        if (dialogContext == null) return;
+        final choice = await showSessionArchiveRefusedAlert(context: dialogContext, rejection: rejection);
         if (choice == null) return;
         // The user has already decided twice; no second Undo window.
         final deleteAnyway = choice == SessionArchiveRefusedChoice.deleteAnyway;

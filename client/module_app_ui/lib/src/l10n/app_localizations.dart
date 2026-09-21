@@ -3541,18 +3541,6 @@ abstract class AppLocalizations {
   /// **'Open Harness Settings'**
   String get sessionDetailOpenHarnessSettings;
 
-  /// No description provided for @sessionListArchiveConfirmTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Archive session?'**
-  String get sessionListArchiveConfirmTitle;
-
-  /// No description provided for @sessionListArchiveConfirmMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.'**
-  String get sessionListArchiveConfirmMessage;
-
   /// No description provided for @sessionListArchiveConfirmAction.
   ///
   /// In en, this message translates to:
@@ -3565,12 +3553,6 @@ abstract class AppLocalizations {
   /// **'Force delete?'**
   String get sessionListForceDeleteTitle;
 
-  /// No description provided for @sessionListForceArchiveTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Force archive?'**
-  String get sessionListForceArchiveTitle;
-
   /// No description provided for @sessionListForceMessage.
   ///
   /// In en, this message translates to:
@@ -3582,12 +3564,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Force Delete'**
   String get sessionListForceDeleteAction;
-
-  /// No description provided for @sessionListForceArchiveAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Force Archive'**
-  String get sessionListForceArchiveAction;
 
   /// No description provided for @sessionListCleanupIssueUnstagedChanges.
   ///

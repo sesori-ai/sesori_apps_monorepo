@@ -407,7 +407,8 @@ class const _SessionListPane({
   @override
   Widget build(BuildContext context) {
     const actionDispatcher = SessionListActionDispatcher(
-      cleanupFlow: SessionCleanupSheets(),
+      deleteConfirmation: SessionDeleteConfirmation.sheet,
+      onSessionArchived: null,
       onSessionDeleted: closeDeletedSessionRoute,
       onSessionMarkedUnread: null,
     );
@@ -572,7 +573,8 @@ ShellRoute buildArchivedSessionsRoute() {
               ),
             ),
             actionDispatcher: SessionListActionDispatcher(
-              cleanupFlow: const SessionCleanupSheets(),
+              deleteConfirmation: SessionDeleteConfirmation.sheet,
+              onSessionArchived: null,
               onSessionDeleted: ({required context, required sessionId}) =>
                   closeDeletedArchivedSessionRoute(context: context, projectId: route.projectId, sessionId: sessionId),
               onSessionMarkedUnread: null,

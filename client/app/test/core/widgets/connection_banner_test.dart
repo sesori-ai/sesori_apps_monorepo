@@ -25,11 +25,14 @@ class _MockSessionListCubit() extends MockCubit<SessionListState> implements Ses
 Widget _app({required ConnectionOverlayCubit cubit, required Widget home}) {
   return BlocProvider<ConnectionOverlayCubit>.value(
     value: cubit,
-    child: MaterialApp(
-      theme: ThemeData(extensions: [PregoDesignSystem.light]),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: home,
+    child: BlocProvider(
+      create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+      child: MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: home,
+      ),
     ),
   );
 }
@@ -238,7 +241,8 @@ void main() {
             onOpenArchived: sessionListCubit.toggleArchived,
             onSessionTap: ({required session}) {},
             actionDispatcher: const SessionListActionDispatcher(
-              cleanupFlow: SessionCleanupSheets(),
+              deleteConfirmation: SessionDeleteConfirmation.sheet,
+              onSessionArchived: null,
               onSessionDeleted: null,
               onSessionMarkedUnread: null,
             ),

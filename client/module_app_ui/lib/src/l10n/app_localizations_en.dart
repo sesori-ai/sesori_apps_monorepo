@@ -1936,29 +1936,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailOpenHarnessSettings => 'Open Harness Settings';
 
   @override
-  String get sessionListArchiveConfirmTitle => 'Archive session?';
-
-  @override
-  String get sessionListArchiveConfirmMessage =>
-      'Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.';
-
-  @override
   String get sessionListArchiveConfirmAction => 'Archive';
 
   @override
   String get sessionListForceDeleteTitle => 'Force delete?';
 
   @override
-  String get sessionListForceArchiveTitle => 'Force archive?';
-
-  @override
   String get sessionListForceMessage => 'The following issues were found:';
 
   @override
   String get sessionListForceDeleteAction => 'Force Delete';
-
-  @override
-  String get sessionListForceArchiveAction => 'Force Archive';
 
   @override
   String get sessionListCleanupIssueUnstagedChanges => 'Worktree has unstaged changes';

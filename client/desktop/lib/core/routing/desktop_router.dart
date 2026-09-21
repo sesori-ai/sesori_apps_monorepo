@@ -6,7 +6,6 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart" show Session;
 
 import "../../features/auth_gate/auth_gate.dart";
 import "../../features/home/desktop_home_pane.dart";
@@ -16,7 +15,6 @@ import "../../features/sessions/desktop_session_detail_screen.dart";
 import "../../features/sessions/desktop_session_list_screen.dart";
 import "../../features/settings/desktop_settings_modal.dart";
 import "../widgets/desktop_cockpit_shell.dart";
-import "../widgets/desktop_pending_archive_alerts.dart";
 
 /// Root navigator shared by desktop routes and app-wide presentation hosts.
 final GlobalKey<NavigatorState> desktopRootNavigatorKey = GlobalKey<NavigatorState>();
@@ -39,7 +37,9 @@ void scheduleDesktopRouterReady() {
 }
 
 const _desktopSessionActions = SessionListActionDispatcher(
-  cleanupFlow: SessionCleanupImmediate(onArchive: _archiveSession),
+  deleteConfirmation: SessionDeleteConfirmation.alert,
+  // An archived session is read-only, so its open page gives way to the project.
+  onSessionArchived: _closeDeletedSessionRoute,
   onSessionDeleted: _closeDeletedSessionRoute,
   onSessionMarkedUnread: deferMarkedUnreadSession,
 );
@@ -287,12 +287,6 @@ void _openSettings({required BuildContext context, required DesktopSettingsTab i
       onLogoutCompleted: _goDesktopHome,
     ),
   );
-}
-
-void _archiveSession({required BuildContext context, required Session session, required bool deleteWorktree}) {
-  archiveSessionWithUndo(context: context, session: session, deleteWorktree: deleteWorktree);
-  // An archived session is read-only, so its open page gives way to the project.
-  _closeDeletedSessionRoute(context: context, sessionId: session.id);
 }
 
 void _closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {

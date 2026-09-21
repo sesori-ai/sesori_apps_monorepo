@@ -1,5 +1,6 @@
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
+
+import "../../repositories/models/session_cleanup_rejection.dart";
 
 /// The one archive the user can still take back.
 sealed class const PendingArchiveWindow();

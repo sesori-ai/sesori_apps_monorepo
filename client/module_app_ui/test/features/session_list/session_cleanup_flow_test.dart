@@ -7,25 +7,25 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
 
 void main() {
   late _MockSessionListCubit cubit;
-  late List<Session> archived;
+  late PendingSessionArchiveCubit archives;
+  late List<String> archived;
   final session = testSession(id: "s1", title: "Fix the build");
 
   setUp(() {
     cubit = _MockSessionListCubit();
     archived = [];
+    archives = PendingSessionArchiveCubit(repository: MockSessionRepository());
     when(() => cubit.retainActionScope()).thenReturn(() {});
   });
 
   Future<void> pumpArchiveButton({
     required WidgetTester tester,
-    required SessionCleanupFlow cleanupFlow,
     required bool running,
   }) async {
     when(() => cubit.state).thenReturn(
@@ -41,7 +41,8 @@ void main() {
       ),
     );
     final dispatcher = SessionListActionDispatcher(
-      cleanupFlow: cleanupFlow,
+      deleteConfirmation: SessionDeleteConfirmation.sheet,
+      onSessionArchived: ({required context, required sessionId}) => archived.add(sessionId),
       onSessionDeleted: null,
       onSessionMarkedUnread: null,
     );
@@ -55,8 +56,11 @@ void main() {
           routes: [
             GoRoute(
               path: "/",
-              builder: (_, _) => BlocProvider<SessionListCubit>.value(
-                value: cubit,
+              builder: (_, _) => MultiBlocProvider(
+                providers: [
+                  BlocProvider<SessionListCubit>.value(value: cubit),
+                  BlocProvider.value(value: archives),
+                ],
                 child: Material(
                   child: Builder(
                     builder: (context) => TextButton(
@@ -75,34 +79,31 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  SessionCleanupImmediate immediate() => SessionCleanupImmediate(
-    onArchive: ({required context, required session, required deleteWorktree}) => archived.add(session),
-  );
-
-  testWidgets("the sheets flow still asks in the archive sheet", (tester) async {
-    await pumpArchiveButton(tester: tester, cleanupFlow: const SessionCleanupSheets(), running: false);
-    expect(find.text("Archive session?"), findsOneWidget);
-  });
-
-  testWidgets("the immediate flow archives an idle session without asking", (tester) async {
-    await pumpArchiveButton(tester: tester, cleanupFlow: immediate(), running: false);
-    expect(archived, [session]);
+  testWidgets("an idle session enters the Undo window without being asked about", (tester) async {
+    await pumpArchiveButton(tester: tester, running: false);
+    expect(archived, ["s1"]);
+    expect(archives.state.hiddenIds, {"s1"});
+    // Closing inside the window cancels its timer and sends nothing.
+    await archives.close();
     expect(find.byType(AlertDialog), findsNothing);
   });
 
-  testWidgets("the immediate flow asks first for a running session, and Cancel archives nothing", (tester) async {
-    await pumpArchiveButton(tester: tester, cleanupFlow: immediate(), running: true);
+  testWidgets("a running session is asked about first, and Cancel archives nothing", (tester) async {
+    await pumpArchiveButton(tester: tester, running: true);
     expect(find.text("Archive a running session?"), findsOneWidget);
-    expect(archived, isEmpty);
+    expect(archives.state.hiddenIds, isEmpty);
 
     await tester.tap(find.text("Cancel"));
     await tester.pumpAndSettle();
-    expect(archived, isEmpty);
+    expect(archives.state.hiddenIds, isEmpty);
 
     await tester.tap(find.text("go"));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, "Archive"));
     await tester.pumpAndSettle();
-    expect(archived, [session]);
+    expect(archived, ["s1"]);
+    expect(archives.state.hiddenIds, {"s1"});
+    // Closing inside the window cancels its timer and sends nothing.
+    await archives.close();
   });
 }

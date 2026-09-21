@@ -16,17 +16,19 @@ entirely along with its transcript and, optionally, its worktree.
   unavailable the export may proceed from stored content only and must record
   that honestly, never claiming completeness it lacks. The archived session
   stays readable through the same history path, served from that record.
-- On desktop, Archive asks nothing for an idle session: the session leaves the sidebar and the project page
-  at once and an Archived alert offers Undo for five seconds. Nothing reaches the bridge until that window
-  closes, so Undo simply brings the session back. Archiving another session, or the window ending, sends the
-  archive; quitting inside the window sends nothing. Only a running session is confirmed first, and a
-  session with a worktree also offers Archive, keep worktree.
-- When the bridge refuses the desktop archive because its worktree is not safe to delete, the session
+- On the phone and the desktop alike, Archive asks nothing for an idle session: the session leaves its lists
+  at once, the desktop sidebar included, and an Archived alert offers Undo for five seconds. Nothing reaches
+  the bridge until that window closes, so Undo simply brings the session back. Archiving another session, or
+  the window ending, sends the archive; quitting inside the window sends nothing. The window belongs to the
+  app shell, not to a page, so leaving the project or the session list neither cancels nor loses the
+  archive. Only a running session is confirmed first, and a session with a worktree also offers Archive,
+  keep worktree. The phone's swipe pill, full swipe and row menu all archive this way.
+- When the bridge refuses the archive because its worktree is not safe to delete, the session
   returns to the lists and a compact alert names the issues and offers Archive and keep the worktree, the
   default, or Delete it anyway. That second choice archives at once with no further Undo. Any other failure
   returns the session and shows an error alert.
 - Desktop Delete asks in a compact centred alert that names the session; Cancel is the default button and
-  the destructive button never is. Phone surfaces keep their archive and delete sheets.
+  the destructive button never is. The phone keeps its delete sheet.
 - Deletion removes the session record immediately and is destructive and not
   recoverable. History, spilled content, and the archive record are purged
   best-effort after row deletion; a logged failure leaves residue for startup
@@ -106,9 +108,9 @@ entirely along with its transcript and, optionally, its worktree.
 - Deletion completed in the archive flow returns to its archive list only when
   the currently open audit record matches both project and session. Stale or
   unrelated completions leave navigation unchanged; X still restores the opener.
-- Archive and delete confirmation sheets identify the action, default worktree
-  cleanup on only when a dedicated worktree exists, and keep deletion's confirm
-  action visually destructive. Cancelling performs neither operation.
+- The phone's delete confirmation sheet identifies the action, defaults worktree
+  cleanup on only when a dedicated worktree exists, and keeps its confirm action
+  visually destructive. Cancelling deletes nothing.
 - After successful deletion, mobile and desktop leave the deleted session's
   current detail or diffs route for its project list, preserving the project
   name. Deleting another session, or completing deletion after navigation to

@@ -24,8 +24,6 @@ export "src/cubits/desktop_sidebar/desktop_sidebar_refresh_cubit.dart";
 export "src/cubits/desktop_sidebar/desktop_sidebar_session_projection.dart";
 export "src/cubits/file_access/file_access_cubit.dart";
 export "src/cubits/file_access/file_access_state.dart";
-export "src/cubits/pending_session_archive/pending_session_archive_cubit.dart";
-export "src/cubits/pending_session_archive/pending_session_archive_state.dart";
 export "src/di/injection.dart";
 export "src/foundation/bridge_process_desired_state.dart";
 export "src/foundation/control_channel_server.dart";

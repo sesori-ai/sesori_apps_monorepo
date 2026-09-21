@@ -35,29 +35,33 @@ void main() {
     await tester.pumpWidget(
       BlocProvider<ConnectionOverlayCubit>(
         create: (_) => StubConnectionOverlayCubit(initialState: overlay),
-        child: MaterialApp(
-          theme: ThemeData(extensions: [PregoDesignSystem.light]),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaler: textScaler),
-            child: child!,
-          ),
-          home: BlocProvider<SessionListCubit>.value(
-            value: cubit,
-            child: SessionListScaffold(
-              onOpenArchived: cubit.toggleArchived,
-              projectName: projectName,
-              onBack: null,
-              onNewSession: () {},
-              onSessionTap: ({required session}) {},
-              actionDispatcher: const SessionListActionDispatcher(
-                cleanupFlow: SessionCleanupSheets(),
-                onSessionDeleted: null,
-                onSessionMarkedUnread: null,
+        child: BlocProvider(
+          create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+          child: MaterialApp(
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+              child: child!,
+            ),
+            home: BlocProvider<SessionListCubit>.value(
+              value: cubit,
+              child: SessionListScaffold(
+                onOpenArchived: cubit.toggleArchived,
+                projectName: projectName,
+                onBack: null,
+                onNewSession: () {},
+                onSessionTap: ({required session}) {},
+                actionDispatcher: const SessionListActionDispatcher(
+                  deleteConfirmation: SessionDeleteConfirmation.sheet,
+                  onSessionArchived: null,
+                  onSessionDeleted: null,
+                  onSessionMarkedUnread: null,
+                ),
+                archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+                connectionBanner: null,
               ),
-              archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
-              connectionBanner: null,
             ),
           ),
         ),

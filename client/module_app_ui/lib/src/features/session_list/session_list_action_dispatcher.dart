@@ -26,23 +26,15 @@ typedef SessionMarkedUnreadHandler = void Function({
   required Session session,
 });
 
-typedef SessionImmediateArchiveHandler = void Function({
-  required BuildContext context,
-  required Session session,
-  required bool deleteWorktree,
-});
+/// How a surface asks before deleting. Archive never asks first, except for a
+/// running session: it happens at once behind the shell's Undo window.
+enum SessionDeleteConfirmation() {
+  /// The phone: a bottom sheet.
+  sheet,
 
-/// How a surface confirms archive and delete.
-sealed class const SessionCleanupFlow();
-
-/// The phone: a confirmation sheet for both.
-final class const SessionCleanupSheets() extends SessionCleanupFlow;
-
-/// A pointer surface: archive happens at once through [onArchive], whose owner
-/// offers Undo, and asks first only for a running session. Delete asks in a
-/// compact alert.
-final class const SessionCleanupImmediate({required final SessionImmediateArchiveHandler onArchive})
-    extends SessionCleanupFlow;
+  /// A pointer surface: a compact centred alert.
+  alert,
+}
 
 void _showRetainedActionDialog({
   required SessionListCubit cubit,
@@ -53,7 +45,10 @@ void _showRetainedActionDialog({
 }
 
 class const SessionListActionDispatcher({
-  required final SessionCleanupFlow cleanupFlow,
+  required final SessionDeleteConfirmation deleteConfirmation,
+
+  /// Told once an archive enters its Undo window, so an open page can close.
+  required final SessionDeletedRouteHandler? onSessionArchived,
   required final SessionDeletedRouteHandler? onSessionDeleted,
 
   /// Told when the user marks a session unread, never when they mark it read.
@@ -112,7 +107,7 @@ class const SessionListActionDispatcher({
           shortcutLabel: null,
           onTap: () => _archive(context: context, cubit: cubit, session: session, deleteWorktree: true),
         ),
-      if (!isArchived && cleanupFlow is SessionCleanupImmediate && session.hasWorktree)
+      if (!isArchived && session.hasWorktree)
         PregoMenuItem(
           leadingIcon: TablerRegular.archive,
           title: loc.sessionListArchiveKeepWorktree,
@@ -155,25 +150,24 @@ class const SessionListActionDispatcher({
     required Session session,
     required bool deleteWorktree,
   }) {
-    switch (cleanupFlow) {
-      case SessionCleanupSheets():
-        _showArchiveSheet(context: context, cubit: cubit, session: session);
-      case SessionCleanupImmediate(:final onArchive):
-        final state = cubit.state;
-        final isRunning = state is SessionListLoaded && state.isSessionRunning(session: session);
-        unawaited(() async {
-          if (isRunning && !await _confirmArchiveRunning(context: context, session: session)) return;
-          if (!context.mounted) return;
-          onArchive(context: context, session: session, deleteWorktree: deleteWorktree && session.hasWorktree);
-        }());
-    }
+    final state = cubit.state;
+    final isRunning = state is SessionListLoaded && state.isSessionRunning(session: session);
+    unawaited(() async {
+      if (isRunning && !await _confirmArchiveRunning(context: context, session: session)) return;
+      if (!context.mounted) return;
+      context.read<PendingSessionArchiveCubit>().archive(
+        session: session,
+        deleteWorktree: deleteWorktree && session.hasWorktree,
+      );
+      onSessionArchived?.call(context: context, sessionId: session.id);
+    }());
   }
 
   void _delete({required BuildContext context, required SessionListCubit cubit, required Session session}) {
-    switch (cleanupFlow) {
-      case SessionCleanupSheets():
+    switch (deleteConfirmation) {
+      case SessionDeleteConfirmation.sheet:
         _showDeleteSheet(context: context, cubit: cubit, session: session, onSessionDeleted: onSessionDeleted);
-      case SessionCleanupImmediate():
+      case SessionDeleteConfirmation.alert:
         _showRetainedActionDialog(
           cubit: cubit,
           show: () async {

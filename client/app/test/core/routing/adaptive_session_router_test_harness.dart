@@ -297,6 +297,7 @@ class AdaptiveSessionRouterTestHarness() {
       providers: [
         BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
         BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+        BlocProvider(create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository())),
       ],
       child: MaterialApp.router(
         routerConfig: router,

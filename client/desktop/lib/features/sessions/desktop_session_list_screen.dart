@@ -5,7 +5,6 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -51,27 +50,6 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
   /// page shows the progress the pull gesture's own spinner used to.
   bool _refreshing = false;
 
-  late final StreamSubscription<PendingSessionArchiveOutcome> _archiveOutcomes;
-
-  @override
-  void initState() {
-    super.initState();
-    // The bridge publishes no session event on archive, so a committed archive
-    // refreshes the list for the Archived view to show the session at once.
-    final sessions = context.read<SessionListCubit>();
-    _archiveOutcomes = context.read<PendingSessionArchiveCubit>().outcomes.listen((outcome) {
-      if (outcome is PendingSessionArchiveCommitted && outcome.session.projectID == sessions.projectId) {
-        unawaited(sessions.refreshSessions());
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    unawaited(_archiveOutcomes.cancel());
-    super.dispose();
-  }
-
   Future<void> _refresh() async {
     setState(() => _refreshing = true);
     try {
@@ -89,9 +67,6 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
     final state = context.watch<SessionListCubit>().state;
     final loaded = state is SessionListLoaded ? state : null;
     final showArchived = loaded != null && loaded.filter != SessionListFilter.active;
-    // A session being archived leaves the list at once.
-    final hidden = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
-
     return Scaffold(
       body: Column(
         children: [
@@ -178,7 +153,6 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
                         SessionListFilteredContent(
                           projectName: projectName,
                           selectedSessionId: null,
-                          hiddenSessionIds: hidden,
                           onSessionTap: onSessionTap,
                           actionDispatcher: actionDispatcher,
                           archivedEmptyState: const SessionArchivedEmptyState(artwork: null),

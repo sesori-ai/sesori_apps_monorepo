@@ -694,7 +694,7 @@ regression lines it invalidates in the same PR; step 21 reconciles the whole.
 | 17 | 17/22 | ≤ 500 | The All / Running / Unread filter chips become one shared widget and the phone list shows them (D10, D20). |
 | 18 | 18/22 | ≤ 900 | Archive with Undo on the phone: the pending-archive cubit moves to `sesori_dart_core`, the alerts move to `sesori_app_ui`, and the phone's swipe and menu archive use them (D13, D20). |
 | 19 | 19/22 | ≤ 500 | Phone session page: Mark unread and the Rename / Archive / Delete menu come from the shared implementation (D11, D20). |
-| 20 | 20/22 | ≤ 400 | Cleanup: delete the inputs, variants and widgets that both shells now set the same way or that nothing uses (D20). |
+| 20 | 20/22 | ≤ 400 | Cleanup: delete the inputs, variants and widgets that both shells now set the same way or that nothing uses, including `SessionListCubit.archiveSession` (D20). |
 | 21 | 21/22 | ≤ 400 | Reconcile `docs/regression/`. |
 | 22 | 22/22 | ≤ 300 | Execute the final matrix on the merged series, record it, retire to `.plan/completed/`. |
 

@@ -1,9 +1,12 @@
 import "dart:async";
 
 import "package:bloc/bloc.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 
+import "../../logging/logging.dart";
+import "../../repositories/models/session_cleanup_rejection.dart";
+import "../../repositories/session_repository.dart";
 import "pending_session_archive_state.dart";
 
 /// Archives a session after a short Undo window: a delayed commit, so Undo

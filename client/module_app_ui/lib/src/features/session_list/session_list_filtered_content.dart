@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -12,14 +14,13 @@ import "session_tile.dart";
 
 /// The active session list under its All / Running / Unread chips, as one
 /// sliver. The chosen chip lives here, so every surface filters the same way.
+///
+/// A session inside the shell's archive Undo window is hidden at once, and a
+/// committed archive refreshes the list.
 class const SessionListFilteredContent({
   super.key,
   required final String? projectName,
   required final String? selectedSessionId,
-
-  /// Sessions being archived elsewhere, hidden while they still read as
-  /// unarchived. Empty where archive is confirmed in a sheet.
-  required final Set<String> hiddenSessionIds,
   required final SessionOpenedCallback? onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
   required final Widget archivedEmptyState,
@@ -30,6 +31,26 @@ class const SessionListFilteredContent({
 
 class _SessionListFilteredContentState() extends State<SessionListFilteredContent> {
   SessionListQuickFilter _filter = SessionListQuickFilter.all;
+  late final StreamSubscription<PendingSessionArchiveOutcome> _archiveOutcomes;
+
+  @override
+  void initState() {
+    super.initState();
+    // The bridge publishes no session event on archive, so a committed archive
+    // refreshes the list for the Archived view to show the session at once.
+    final sessions = context.read<SessionListCubit>();
+    _archiveOutcomes = context.read<PendingSessionArchiveCubit>().outcomes.listen((outcome) {
+      if (outcome is PendingSessionArchiveCommitted && outcome.session.projectID == sessions.projectId) {
+        unawaited(sessions.refreshSessions());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_archiveOutcomes.cancel());
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,12 +60,11 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
     final showArchived = loaded != null && loaded.filter != SessionListFilter.active;
     // The chips narrow the active list only; Archived shows everything it has.
     final filter = showArchived ? SessionListQuickFilter.all : _filter;
+    final hidden = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
     // The same rule the list applies: only a still-unarchived session hides,
     // so a session being archived leaves the list and the counts at once.
     final counted =
-        loaded?.sessions
-            .where((session) => session.time?.archived != null || !widget.hiddenSessionIds.contains(session.id))
-            .toList() ??
+        loaded?.sessions.where((session) => session.time?.archived != null || !hidden.contains(session.id)).toList() ??
         const <Session>[];
     final counts = {
       SessionListQuickFilter.all: counted.length,
@@ -92,7 +112,7 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
           projectName: widget.projectName,
           selectedSessionId: widget.selectedSessionId,
           quickFilter: filter,
-          hiddenSessionIds: widget.hiddenSessionIds,
+          hiddenSessionIds: hidden,
           onSessionTap: widget.onSessionTap,
           actionDispatcher: widget.actionDispatcher,
           archivedEmptyState: widget.archivedEmptyState,
