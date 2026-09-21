@@ -68,8 +68,6 @@
   "@desktopProjectPageArchived": {"description": "Desktop project page toolbar toggle that switches the list to the project's archived sessions."},
   "desktopProjectPageRefresh": "Refresh sessions",
   "@desktopProjectPageRefresh": {"description": "Desktop project page overflow menu action that reloads the project's session list."},
-  "desktopProjectPageScan": "Scan for sessions",
-  "@desktopProjectPageScan": {"description": "Desktop project page overflow menu action that scans the harnesses for sessions started outside Sesori."},
   "desktopSidebarRefresh": "Refresh projects and sessions",
   "@desktopSidebarRefresh": {"description": "Tooltip for explicitly refreshing both desktop sidebar inventories."},
   "desktopSidebarRefreshing": "Refreshing projects and sessions",

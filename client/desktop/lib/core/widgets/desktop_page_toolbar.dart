@@ -4,7 +4,7 @@ import "package:theme_prego/module_prego.dart";
 /// The one toolbar anatomy of a desktop page: what the page is on the left,
 /// what it can do on the right, over a hairline.
 ///
-/// It is as tall as the band the app root lets drag the macOS window, so its
+/// At its resting height it is as tall as the band the app root lets drag the macOS window, so its
 /// empty background moves the window and its controls keep their clicks.
 class const DesktopPageToolbar({
   super.key,
@@ -21,7 +21,8 @@ class const DesktopPageToolbar({
     final prego = context.prego;
     final subtitle = this.subtitle;
     return Container(
-      height: height,
+      // A floor, not a fixed slot: scaled-up text grows the bar instead of spilling out of it.
+      constraints: const BoxConstraints(minHeight: height),
       padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
       decoration: BoxDecoration(
         color: prego.colors.bgSurface1,

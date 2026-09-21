@@ -259,12 +259,6 @@ abstract class AppLocalizations {
   /// **'Refresh sessions'**
   String get desktopProjectPageRefresh;
 
-  /// Desktop project page overflow menu action that scans the harnesses for sessions started outside Sesori.
-  ///
-  /// In en, this message translates to:
-  /// **'Scan for sessions'**
-  String get desktopProjectPageScan;
-
   /// Tooltip for explicitly refreshing both desktop sidebar inventories.
   ///
   /// In en, this message translates to:

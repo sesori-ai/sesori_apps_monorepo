@@ -166,8 +166,8 @@ The main pane hosts one full-width routed page.
   overflow menu; nothing floats over the list and there is no back arrow. The shared list sits in a centred
   column about 760 pt wide while the whole pane scrolls. It has no Running section: running sessions lead
   Today and read "Running" where the time would be. Rows are about 44 pt, keep the state sparkle in a fixed
-  leading column, always show the time at the trailing edge, and highlight under the pointer. The phone list
-  keeps its Running section and row anatomy.
+  leading column, show the time at the trailing edge when the session has one, and highlight under the
+  pointer. The phone list keeps its Running section and row anatomy.
 - Direct/sidebar-opened detail uses the available main-pane width without a
   redundant back arrow. Pushed details retain Back to their opener, including
   child-to-parent navigation. Archived rows open read-only. New-session creation replaces its page with

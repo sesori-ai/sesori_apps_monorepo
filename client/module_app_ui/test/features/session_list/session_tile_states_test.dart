@@ -519,5 +519,12 @@ void main() {
       );
       expect(tester.getTopLeft(find.text("Running")).dx, greaterThan(tester.getTopRight(find.text("My Session")).dx));
     });
+    testWidgets("a row that only waits for input does not claim to be running", (tester) async {
+      final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
+      await pumpPointerTile(tester, tile(session: session, isActive: true, awaitingInput: true));
+
+      expect(find.text("Running"), findsNothing);
+      expect(find.text("Awaiting input"), findsOneWidget);
+    });
   });
 }

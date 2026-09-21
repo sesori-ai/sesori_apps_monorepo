@@ -66,7 +66,7 @@ class const DesktopSessionListScreen({
                       ? PregoButtonsSolidHierarchy.primaryAlt
                       : PregoButtonsSolidHierarchy.secondary,
                   size: PregoButtonsSolidSize.sm,
-                  onPressed: cubit.toggleArchived,
+                  onPressed: loaded == null ? null : cubit.toggleArchived,
                 ),
               ),
               PregoButtonsSolid(
@@ -92,7 +92,7 @@ class const DesktopSessionListScreen({
                     onTap: () => unawaited(refreshSessionList(context)),
                   ),
                   PregoMenuItem(
-                    title: loc.desktopProjectPageScan,
+                    title: loc.harnessManagementScan,
                     subtitle: null,
                     isSelected: false,
                     shortcutLabel: null,

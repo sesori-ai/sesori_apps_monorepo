@@ -23,7 +23,8 @@
   `PregoAiLoader` sparkle, the time always in the trailing slot ("Running"
   while an agent works, spoken once through the sparkle), and the sidebar's
   hover colour. The touch row is unchanged.
-- Three new strings (Archived, Refresh sessions, Scan for sessions). No wire,
+- Two new strings (Archived, Refresh sessions); Scan reuses the harness
+  settings' "Scan for sessions". No wire,
   database or analytics change. Filter chips and hover actions are step 10.
 
 ## Automated Evidence
@@ -57,13 +58,21 @@ flutter analyze --no-pub
   button, and the Archived toggle calling the cubit and reading as on. The
   router test now asserts the page's project name rather than the removed
   scaffold. All three analyzers report no issues.
-- `flutter gen-l10n` regenerated the two localisation files; nothing generated
-  was edited by hand.
+- From `client/module_app_ui`, `flutter gen-l10n` exited 0 and regenerated the
+  two localisation files; nothing generated was edited by hand.
 - Appearance, the 44-point rows and the hover highlight were checked once in
   rendered output with the packaged fonts, in light and dark; the images were
   not kept in the repository.
 - Architecture review (`architecture-implementation-review`, one run):
   approved with no findings.
+
+## Review Follow-up
+
+After the measured checkpoint, review fixes made the toolbar's height a floor
+so scaled text grows it, disabled Archived until the list loads, kept
+"Running" off a row that only awaits input (with a test), and reused the
+existing scan string. `module_app_ui` then passed 389 cases and `desktop` 265,
+with clean analyzers; the size below is the checkpoint's.
 
 ## Size
 
@@ -72,7 +81,7 @@ measured checkpoint; 27 are generated localisation lines, 163 are tests and 15
 the regression document. Reproduce from the root:
 
 ```sh
-git diff --numstat 86a91ae34345826eb8c08d8c6f945251414f24bd cb41d6a9630a42e68da215d1765ac0bb76cdcf94
+git diff --numstat "$(git merge-base origin/main cb41d6a9630a42e68da215d1765ac0bb76cdcf94)" cb41d6a9630a42e68da215d1765ac0bb76cdcf94
 ```
 
 The base is `git merge-base origin/main cb41d6a9630a42e68da215d1765ac0bb76cdcf94`.

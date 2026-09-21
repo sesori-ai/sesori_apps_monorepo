@@ -303,7 +303,8 @@ class const SessionTile({
     // With a pointer the sparkle has its own leading column.
     final state = pointer ? null : _state(context: context, size: _stateIconSize);
 
-    if (pointer && isActive) {
+    // A session that only waits for input is not running; its footer says what it wants.
+    if (pointer && isActive && !awaitingInput) {
       return Padding(
         padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
         // The leading sparkle already speaks this state.

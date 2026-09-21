@@ -107,9 +107,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopProjectPageRefresh => 'Refresh sessions';
 
   @override
-  String get desktopProjectPageScan => 'Scan for sessions';
-
-  @override
   String get desktopSidebarRefresh => 'Refresh projects and sessions';
 
   @override
