@@ -183,6 +183,11 @@ The main pane hosts one full-width routed page.
   counts for as long as its Undo window or its archive request is open, and returns if the archive is
   undone, refused or fails. Archiving the open session leaves its page. See
   `session-archiving-and-deletion.md`.
+- The new session page uses the same toolbar, titled New session with Back, above one centred column no
+  wider than the session page's: the shared heading and project selector (see
+  session-creation-and-options.md), the harness chooser, the input, then Dedicated workspace and
+  Refresh options. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
+  Choosing another project builds a fresh cubit for it.
 - The session page uses the same toolbar anatomy above the transcript, never over it: title with agent and
   model, Back only on a pushed page, a busy indicator, Mark unread, Changes on a root unarchived session,
   and a menu with Rename, Archive and Delete run by the same dispatcher as a row's menu. Session actions
@@ -300,6 +305,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Filter chip counts, local narrowing, the filtered-empty message and chips hidden under Archived; hover and
   focus revealing row actions that call the row's handlers at a stable height, with no Archive on an
   archived row.
+- The new session page: toolbar above a centred, width-capped column with room left below it, and the
+  project selector reporting the chosen project (`desktop_new_session_screen_test`).
 - The all-sessions page: toolbar title and New session, Archived toggle state, no floating button, the
   timeline grouping with running sessions first under Today, and pointer-mode row height, leading sparkle
   and trailing "Running".

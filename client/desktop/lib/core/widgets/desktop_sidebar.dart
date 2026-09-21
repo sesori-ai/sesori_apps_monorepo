@@ -1322,6 +1322,5 @@ List<String> _sessionStatusLabels({
 
 /// The sidebar's name for [project]: its stored name, else its directory.
 String desktopProjectDisplayName({required BuildContext context, required ProjectSummary project}) {
-  final basename = projectDirectoryBasename(project);
-  return project.name ?? (basename.isEmpty ? context.loc.projectListDefaultName : basename);
+  return projectDisplayName(loc: context.loc, project: project);
 }

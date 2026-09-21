@@ -149,6 +149,13 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         builder: (BuildContext context, GoRouterState state) {
           final route = _decodeNewSessionRoute(state: state);
           return DesktopNewSessionScreen(
+            // Replacing the route reuses the page, so the key is what gives
+            // another project its own cubit.
+            key: ValueKey("desktop-new-session-${route.projectId}"),
+            onProjectSelected: ({required projectId, required projectName}) => _replaceRoute(
+              context: context,
+              route: AppRoute.newSession(projectId: projectId, projectName: projectName),
+            ),
             projectId: route.projectId,
             projectName: route.projectName,
             onBack: () => _popRouteOrGo(

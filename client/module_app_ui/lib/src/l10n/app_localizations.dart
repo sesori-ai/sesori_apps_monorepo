@@ -259,6 +259,12 @@ abstract class AppLocalizations {
   /// **'All · {count}'**
   String desktopProjectPageFilterAll(int count);
 
+  /// Heading of the new session page, above the project selector and the prompt input.
+  ///
+  /// In en, this message translates to:
+  /// **'What should we work on?'**
+  String get newSessionHeading;
+
   /// Desktop session page toolbar button that opens the session's file changes.
   ///
   /// In en, this message translates to:

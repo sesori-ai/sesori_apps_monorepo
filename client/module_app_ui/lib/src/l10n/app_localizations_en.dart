@@ -109,6 +109,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get newSessionHeading => 'What should we work on?';
+
+  @override
   String get desktopSessionPageChanges => 'Changes';
 
   @override

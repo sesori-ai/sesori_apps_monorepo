@@ -68,6 +68,8 @@
   "@desktopProjectPageArchived": {"description": "Desktop project page toolbar toggle that switches the list to the project's archived sessions."},
   "desktopProjectPageFilterAll": "All · {count}",
   "@desktopProjectPageFilterAll": {"description": "Desktop project page filter chip showing every active session, with their count.", "placeholders": {"count": {"type": "int"}}},
+  "newSessionHeading": "What should we work on?",
+  "@newSessionHeading": {"description": "Heading of the new session page, above the project selector and the prompt input."},
   "desktopSessionPageChanges": "Changes",
   "@desktopSessionPageChanges": {"description": "Desktop session page toolbar button that opens the session's file changes."},
   "desktopProjectPageFilterEmpty": "No sessions match this filter",
