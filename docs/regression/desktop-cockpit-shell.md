@@ -167,7 +167,7 @@ The main pane hosts one full-width routed page.
   column about 760 pt wide while the whole pane scrolls. It has no Running section: running sessions lead
   Today and read "Running" where the time would be. Rows are about 44 pt, keep the state sparkle in a fixed
   leading column, show the time at the trailing edge when the session has one, and highlight under the
-  pointer. The phone list keeps its Running section and row anatomy.
+  pointer. The phone list is the same one timeline and keeps its own row anatomy.
 - Above the active list, chips read All, Running and Unread with exact counts from the loaded list and
   narrow it locally without a request; a filter that leaves nothing says so. The chips hide while Archived
   is on, which shows every archived session, and while the project has no sessions. Hovering a row, or
