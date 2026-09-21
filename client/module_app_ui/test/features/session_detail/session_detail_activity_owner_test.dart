@@ -150,11 +150,9 @@ void main() {
       expect(events, 1); // Existing analytics deduplication survives cover/return.
 
       final ownerElement = tester.element(find.byType(SessionDetailActivityOwner));
-      unawaited(
-        showDialog<void>(
-          context: ownerElement,
-          builder: (_) => const Dialog(child: Text("root popup")),
-        ),
+      showDialog<void>(
+        context: ownerElement,
+        builder: (_) => const Dialog(child: Text("root popup")),
       );
       await tester.pumpAndSettle();
       expect(routeSource.currentRoute, expectedRoute);

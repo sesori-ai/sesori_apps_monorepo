@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -119,11 +117,9 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     final element = tester.element(find.text("visible:true"));
-    unawaited(
-      showDialog<void>(
-        context: element,
-        builder: (_) => const Dialog(child: Text("popup")),
-      ),
+    showDialog<void>(
+      context: element,
+      builder: (_) => const Dialog(child: Text("popup")),
     );
     await tester.pumpAndSettle();
     expect(find.text("visible:false"), findsOneWidget);
@@ -156,11 +152,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _detail(readOnly: false).buildPath());
     final opener = tester.element(find.text("diffs"));
-    unawaited(
-      showDialog<void>(
-        context: opener,
-        builder: (_) => const Dialog(child: Text("popup")),
-      ),
+    showDialog<void>(
+      context: opener,
+      builder: (_) => const Dialog(child: Text("popup")),
     );
     await tester.pumpAndSettle();
     // Same-session reveal, then a no-popup reveal, retain the page and Back stack.
@@ -179,11 +173,9 @@ void main() {
       sessionTitle: null,
       readOnly: false,
     );
-    unawaited(
-      showDialog<void>(
-        context: opener,
-        builder: (_) => const Dialog(child: Text("popup")),
-      ),
+    showDialog<void>(
+      context: opener,
+      builder: (_) => const Dialog(child: Text("popup")),
     );
     await tester.pumpAndSettle();
     dispatcher.dismissPopups();
