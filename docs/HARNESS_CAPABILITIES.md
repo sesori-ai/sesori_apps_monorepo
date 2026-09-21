@@ -157,6 +157,22 @@ variants only when labels carry the matching suffix. Its pre-chat catalog uses
 one retained hidden no-prompt native session because the pinned runtime exposes
 models only from new/resume responses and has no deletion capability.
 
+## Agent selection and harness modes
+
+| Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Agent choice offered in the composer | 🚫 | ✅ | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| Harness mode control (for example Plan or Ask) | ⬜ | ✅ | 🚫 | ⬜ | ⬜ | ⬜ | 🚫 | 🚫 | ⬜ | 🚫 | 🚫 |
+
+Only OpenCode has real agents, and its plan agent is how its mode is chosen. The composer shows the agent entry only when a
+harness advertises more than one selectable agent, so it appears for OpenCode
+alone. Claude, Codex, Copilot, Cursor and OMP have modes such as Plan and Ask
+that Sesori used to list as agents; since 2026-09-21 each advertises only its
+default mode and Sesori offers no mode control. A mode name that still arrives
+from a catalog captured earlier is honoured, never run in the default mode.
+Naming the advertised default returns a session left in another mode to the
+default with its next prompt.
+
 ## ACP multi-select form questions
 
 | Harness | Sesori implementation | Verification boundary |

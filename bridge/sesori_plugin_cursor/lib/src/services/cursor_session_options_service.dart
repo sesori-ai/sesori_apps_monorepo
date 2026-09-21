@@ -86,21 +86,17 @@ class CursorSessionOptionsService({
       ];
     }
 
-    final ordered = modes.toList(growable: true);
-    final defaultMode = _catalogTracker.defaultModeId;
-    if (defaultMode != null) {
-      final defaultIndex = ordered.indexWhere((mode) => mode.value == defaultMode);
-      if (defaultIndex > 0) ordered.insert(0, ordered.removeAt(defaultIndex));
-    }
+    // Only the default mode is advertised: the CLI's other modes are harness
+    // modes, not agents.
+    final mode = modes.where((mode) => mode.value == _catalogTracker.defaultModeId).firstOrNull ?? modes.first;
     return [
-      for (final mode in ordered)
-        PluginAgent(
-          name: mode.name,
-          description: mode.description,
-          model: null,
-          mode: PluginAgentMode.primary,
-          hidden: false,
-        ),
+      PluginAgent(
+        name: mode.name,
+        description: mode.description,
+        model: null,
+        mode: PluginAgentMode.primary,
+        hidden: false,
+      ),
     ];
   }
 

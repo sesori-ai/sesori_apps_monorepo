@@ -119,7 +119,11 @@ AgentInfo _testAgent({required String name, required String description, require
 }
 
 SessionOptionsCatalog _testSessionOptionsCatalog() => SessionOptionsCatalog(
-  agents: [_testAgent(name: "coder", description: "A coding assistant", variant: "xhigh")],
+  // Two agents, so the composer shows the agent entry these tests look for.
+  agents: [
+    _testAgent(name: "coder", description: "A coding assistant", variant: "xhigh"),
+    _testAgent(name: "reviewer", description: "A review assistant", variant: null),
+  ],
   providers: testProviderListResponse().items,
   providersConnectedOnly: testProviderListResponse().connectedOnly,
   commands: const [],
@@ -1403,7 +1407,10 @@ void main() {
       return Future.value(
         ApiResponse.success(
           Agents(
-            agents: [_testAgent(name: "coder", description: "Coder", variant: "xhigh")],
+            agents: [
+              _testAgent(name: "coder", description: "Coder", variant: "xhigh"),
+              _testAgent(name: "reviewer", description: "Reviewer", variant: null),
+            ],
           ),
         ),
       );

@@ -350,6 +350,8 @@ final class ClaudePlugin({
     if (!_approvals.replyQuestion(id: questionId, answers: answers)) {
       throw const PluginOperationException("replyToQuestion", message: "Claude rejected the question response");
     }
+    // COMPATIBILITY 2026-09-21 (v1.9.0): Only an honoured "Plan" selection reaches plan
+    // exit now. Remove with `ClaudeAgentSelection.plan`.
     if (exitsPlanMode) {
       final applied = _processes.appliedSelection(sessionId: sessionId);
       if (applied != null) {

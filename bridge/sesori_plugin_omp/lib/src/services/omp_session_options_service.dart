@@ -195,21 +195,19 @@ class OmpSessionOptionsService({
   );
 
   List<PluginAgent> _agents(OmpProjectCatalog catalog) {
-    final modes = catalog.modes.toList(growable: true);
-    final defaultMode = catalog.defaultModeValue;
-    if (defaultMode != null) {
-      final index = modes.indexWhere((mode) => mode.value == defaultMode);
-      if (index > 0) modes.insert(0, modes.removeAt(index));
-    }
+    // Only the default mode is advertised: the CLI's other modes are harness
+    // modes, not agents.
+    final modes = catalog.modes;
+    final mode = modes.where((mode) => mode.value == catalog.defaultModeValue).firstOrNull ?? modes.firstOrNull;
+    if (mode == null) return const [];
     return [
-      for (final mode in modes)
-        PluginAgent(
-          name: mode.name,
-          description: mode.description,
-          model: null,
-          mode: PluginAgentMode.primary,
-          hidden: false,
-        ),
+      PluginAgent(
+        name: mode.name,
+        description: mode.description,
+        model: null,
+        mode: PluginAgentMode.primary,
+        hidden: false,
+      ),
     ];
   }
 
@@ -262,6 +260,10 @@ class OmpSessionOptionsService({
     required OmpProjectCatalog? catalog,
   }) {
     final modes = snapshot?.modes.isNotEmpty ?? false ? snapshot!.modes : catalog?.modes ?? const [];
+    // COMPATIBILITY 2026-09-21 (v1.9.0): Only the default mode is advertised, but
+    // catalogs captured before this date are served for up to 30 days, so a
+    // client can still name another mode. It is honoured rather than run in the
+    // default. Match only the default once no such catalog can be served.
     for (final mode in modes) {
       if (mode.value == agent || mode.name == agent) return mode.value;
     }

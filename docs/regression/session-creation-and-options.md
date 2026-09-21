@@ -18,6 +18,11 @@ variant, and worktree mode, and creating the session with its first input.
   left, and a draft stays with the project it was typed in. The phone lists projects itself for this and
   names only the current project when that fails. On the phone the header sits above the options and hides
   while the keyboard is open, so the options stay in view while typing.
+- The composer shows the agent entry only when the harness advertises more than one selectable agent.
+  Claude, Codex, Copilot, Cursor and OMP advertise only their default mode as one agent, so their composer
+  shows model and effort alone; OpenCode lists its real agents. A released mode name such as Plan or Ask
+  that still arrives is honoured by the plugin, and naming the advertised default returns a session left in
+  another mode to the default with its next prompt.
 - Options are discovered per plugin and cached under the plugin's declared
   coherence scope; retention and replacement are bridge-owned.
 - Claude's plugin-scoped discovery runs in its host-created state directory,

@@ -934,16 +934,15 @@ class CodexSessionService({
             variant: null,
           );
     return (
+      // Only the default is advertised: Plan is a harness mode, not an agent.
       agents: [
-        for (final collaborationMode in CodexCollaborationMode.values)
-          if (agentModel != null || collaborationMode == CodexCollaborationMode.defaultMode)
-            PluginAgent(
-              name: collaborationMode.agentName,
-              description: collaborationMode.description,
-              model: agentModel,
-              mode: PluginAgentMode.primary,
-              hidden: false,
-            ),
+        PluginAgent(
+          name: CodexCollaborationMode.defaultMode.agentName,
+          description: CodexCollaborationMode.defaultMode.description,
+          model: agentModel,
+          mode: PluginAgentMode.primary,
+          hidden: false,
+        ),
       ],
       providers: PluginProvidersResult(
         providers: selectedModelID == null

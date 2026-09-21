@@ -213,6 +213,10 @@ class CopilotSessionOptionsService({
       agent: agent,
     );
     final snapshot = _snapshot;
+    // COMPATIBILITY 2026-09-21 (v1.9.0): Only the default mode is advertised, but
+    // catalogs captured before this date are served for up to 30 days, so a
+    // client can still name another mode. It is honoured rather than run in the
+    // default. Match only the default once no such catalog can be served.
     final requestedMode = agent == null
         ? null
         : _resolveOption(valueOrName: agent, options: snapshot?.modes ?? const []);
@@ -322,21 +326,17 @@ class CopilotSessionOptionsService({
         ),
       ];
     }
-    final ordered = modes.toList(growable: true);
-    final defaultMode = _defaultModeValue;
-    if (defaultMode != null) {
-      final defaultIndex = ordered.indexWhere((mode) => mode.value == defaultMode);
-      if (defaultIndex > 0) ordered.insert(0, ordered.removeAt(defaultIndex));
-    }
+    // Only the default mode is advertised: the CLI's other modes are harness
+    // modes, not agents.
+    final mode = modes.where((mode) => mode.value == _defaultModeValue).firstOrNull ?? modes.first;
     return [
-      for (final mode in ordered)
-        PluginAgent(
-          name: mode.name,
-          description: mode.description,
-          model: null,
-          mode: PluginAgentMode.primary,
-          hidden: false,
-        ),
+      PluginAgent(
+        name: mode.name,
+        description: mode.description,
+        model: null,
+        mode: PluginAgentMode.primary,
+        hidden: false,
+      ),
     ];
   }
 

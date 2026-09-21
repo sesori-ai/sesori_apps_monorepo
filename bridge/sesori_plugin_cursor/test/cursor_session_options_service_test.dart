@@ -62,7 +62,7 @@ void main() {
       final secondOptions = (second as PluginSessionOptionsDiscoveryObserved).options;
       expect(firstOptions, secondOptions);
       expect(firstOptions.completeness, PluginSessionOptionsCompleteness.complete);
-      expect(firstOptions.agents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(firstOptions.agents.map((agent) => agent.name), ["Agent"]);
       expect(firstOptions.providers.providers.single.models.single.id, "model");
       expect(firstOptions.commands.map((command) => command.name), ["review", "compact"]);
     });

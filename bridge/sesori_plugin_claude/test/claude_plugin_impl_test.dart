@@ -32,7 +32,7 @@ void main() {
       );
 
       final observed = options as PluginSessionOptionsDiscoveryObserved;
-      expect(observed.options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(observed.options.agents.map((agent) => agent.name), ["Agent"]);
       expect(observed.options.providers.providers.single.models, hasLength(2));
       expect(observed.options.commands.single.name, "review");
       expect(harness.processes, hasLength(1));
@@ -248,6 +248,25 @@ void main() {
         (event) => event.part.text == "/review src",
       );
       expect(visible, hasLength(1));
+
+      // Naming the advertised agent returns the session to the default mode.
+      first.emit(_result());
+      await pump();
+      await harness.plugin.sendPrompt(
+        promptId: "prompt-2",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "now build it")],
+        variant: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "small"),
+      );
+      await _waitForUserText(first, "now build it");
+      final modes = [
+        for (final frame in first.written)
+          if (frame["type"] == "control_request" && _request(frame)["subtype"] == "set_permission_mode")
+            _request(frame)["mode"],
+      ];
+      expect(modes, ["plan", "default"]);
       await subscription.cancel();
     });
 

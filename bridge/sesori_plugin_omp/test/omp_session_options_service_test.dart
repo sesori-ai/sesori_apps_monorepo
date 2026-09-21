@@ -36,8 +36,8 @@ void main() {
       defaultModelValue: "custom/team/model-v2",
       modeConfigId: "mode",
       modes: const [
-        OmpCatalogOption(value: "default", name: "Default", description: null),
         OmpCatalogOption(value: "plan", name: "Plan", description: null),
+        OmpCatalogOption(value: "default", name: "Default", description: null),
       ],
       defaultModeValue: "default",
       thinkingByModel: {
@@ -59,6 +59,12 @@ void main() {
       launchDirectory: "/repo",
     );
     configRepository = _FakeConfigRepository();
+  });
+
+  test("advertises only the default mode as the agent", () async {
+    final agents = await service.listAgents(projectId: "/repo");
+
+    expect(agents.map((agent) => agent.name), ["Default"]);
   });
 
   test("preserves exact slash-containing model IDs and configured default", () async {
