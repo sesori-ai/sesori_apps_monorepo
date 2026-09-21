@@ -41,6 +41,7 @@ void main() {
       (_) async => ApiResponse.success(const SessionListResponse(items: [])),
     );
     // Register only owned fake-backed factories, never production DI/bootstrap.
+    getIt.registerFactory<SessionRepository>(MockSessionRepository.new);
     getIt.registerFactory<RecentSessionInventoryService>(() {
       final inventory = RecentSessionInventoryService(
         sessionListService: SessionListService(
@@ -84,6 +85,7 @@ void main() {
     });
     addTearDown(() async {
       await getIt.unregister<DesktopSidebarRefreshService>();
+      await getIt.unregister<SessionRepository>();
       await getIt.unregister<ProjectInventoryService>();
       await getIt.unregister<RecentSessionInventoryService>();
       await projects.dispose();

@@ -10,6 +10,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
 import "package:sesori_desktop/features/sessions/desktop_session_list_screen.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -20,10 +21,13 @@ class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> im
 void main() {
   late _MockSessionListCubit cubit;
   late _MockConnectionOverlayCubit overlay;
+  late PendingSessionArchiveCubit archives;
 
   setUp(() {
     cubit = _MockSessionListCubit();
     when(() => cubit.toggleArchived()).thenReturn(null);
+    when(() => cubit.projectId).thenReturn("project-1");
+    when(() => cubit.refreshSessions()).thenAnswer((_) async => true);
     overlay = _MockConnectionOverlayCubit();
     when(() => overlay.state).thenReturn(const ConnectionOverlayState.hidden(connected: true));
   });
@@ -52,12 +56,17 @@ void main() {
             providers: [
               BlocProvider<SessionListCubit>.value(value: cubit),
               BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
+              BlocProvider(create: (_) => archives = PendingSessionArchiveCubit(repository: MockSessionRepository())),
             ],
             child: DesktopSessionListScreen(
               projectName: "sesori",
               onSessionTap: ({required session}) {},
               onNewSession: () {},
-              actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null, onSessionMarkedUnread: null),
+              actionDispatcher: const SessionListActionDispatcher(
+                cleanupFlow: SessionCleanupSheets(),
+                onSessionDeleted: null,
+                onSessionMarkedUnread: null,
+              ),
             ),
           ),
         ),
@@ -129,5 +138,24 @@ void main() {
     await pumpPage(tester: tester, filter: SessionListFilter.archived);
     expect(find.byKey(const Key("desktop-project-page-filter-all")), findsNothing);
     expect(find.text("Fix the build"), findsOneWidget);
+  });
+
+  testWidgets("a session being archived leaves the list and the counts at once, and Undo brings it back", (
+    tester,
+  ) async {
+    await pumpPage(tester: tester, filter: SessionListFilter.active);
+
+    archives.archive(
+      session: testSession(id: "s1", title: "Fix the build"),
+      deleteWorktree: false,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("Fix the build"), findsNothing);
+    expect(find.text("All · 1"), findsOneWidget);
+
+    archives.undo();
+    await tester.pumpAndSettle();
+    expect(find.text("Fix the build"), findsOneWidget);
+    expect(find.text("All · 2"), findsOneWidget);
   });
 }

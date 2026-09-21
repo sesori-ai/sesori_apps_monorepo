@@ -406,7 +406,11 @@ class const _SessionListPane({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    const actionDispatcher = SessionListActionDispatcher(onSessionDeleted: closeDeletedSessionRoute, onSessionMarkedUnread: null);
+    const actionDispatcher = SessionListActionDispatcher(
+      cleanupFlow: SessionCleanupSheets(),
+      onSessionDeleted: closeDeletedSessionRoute,
+      onSessionMarkedUnread: null,
+    );
     // ignore: no_slop_linter/avoid_navigator_of, root navigator pop is required here so shell chrome exits the whole shell instead of the nested pane route
     final rootNavigator = Navigator.of(context);
 
@@ -568,6 +572,7 @@ ShellRoute buildArchivedSessionsRoute() {
               ),
             ),
             actionDispatcher: SessionListActionDispatcher(
+              cleanupFlow: const SessionCleanupSheets(),
               onSessionDeleted: ({required context, required sessionId}) =>
                   closeDeletedArchivedSessionRoute(context: context, projectId: route.projectId, sessionId: sessionId),
               onSessionMarkedUnread: null,

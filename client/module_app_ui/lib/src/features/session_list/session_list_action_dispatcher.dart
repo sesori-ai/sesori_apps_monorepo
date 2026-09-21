@@ -11,6 +11,7 @@ import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "rename_session_dialog.dart";
 
+part "session_cleanup_alerts.dart";
 part "session_cleanup_dialogs.dart";
 part "session_force_dialog.dart";
 part "session_list_actions.dart";
@@ -25,6 +26,24 @@ typedef SessionMarkedUnreadHandler = void Function({
   required Session session,
 });
 
+typedef SessionImmediateArchiveHandler = void Function({
+  required BuildContext context,
+  required Session session,
+  required bool deleteWorktree,
+});
+
+/// How a surface confirms archive and delete.
+sealed class const SessionCleanupFlow();
+
+/// The phone: a confirmation sheet for both.
+final class const SessionCleanupSheets() extends SessionCleanupFlow;
+
+/// A pointer surface: archive happens at once through [onArchive], whose owner
+/// offers Undo, and asks first only for a running session. Delete asks in a
+/// compact alert.
+final class const SessionCleanupImmediate({required final SessionImmediateArchiveHandler onArchive})
+    extends SessionCleanupFlow;
+
 void _showRetainedActionDialog({
   required SessionListCubit cubit,
   required Future<void> Function() show,
@@ -34,6 +53,7 @@ void _showRetainedActionDialog({
 }
 
 class const SessionListActionDispatcher({
+  required final SessionCleanupFlow cleanupFlow,
   required final SessionDeletedRouteHandler? onSessionDeleted,
 
   /// Told when the user marks a session unread, never when they mark it read.
@@ -90,7 +110,16 @@ class const SessionListActionDispatcher({
           subtitle: null,
           isSelected: false,
           shortcutLabel: null,
-          onTap: () => _showArchiveSheet(context: context, cubit: cubit, session: session),
+          onTap: () => _archive(context: context, cubit: cubit, session: session, deleteWorktree: true),
+        ),
+      if (!isArchived && cleanupFlow is SessionCleanupImmediate && session.hasWorktree)
+        PregoMenuItem(
+          leadingIcon: TablerRegular.archive,
+          title: loc.sessionListArchiveKeepWorktree,
+          subtitle: null,
+          isSelected: false,
+          shortcutLabel: null,
+          onTap: () => _archive(context: context, cubit: cubit, session: session, deleteWorktree: false),
         ),
       // Delete is the only entry here that also destroys the work itself —
       // archiving is permanent but keeps the session readable — so it is set
@@ -103,12 +132,7 @@ class const SessionListActionDispatcher({
         isSelected: false,
         shortcutLabel: null,
         isDestructive: true,
-        onTap: () => _showDeleteSheet(
-          context: context,
-          cubit: cubit,
-          session: session,
-          onSessionDeleted: onSessionDeleted,
-        ),
+        onTap: () => _delete(context: context, cubit: cubit, session: session),
       ),
     ];
   }
@@ -116,18 +140,55 @@ class const SessionListActionDispatcher({
   /// Archives [session], from the row's trailing swipe pill or its full-swipe
   /// commit.
   void handleSessionArchive({required BuildContext context, required Session session}) {
-    _showArchiveSheet(context: context, cubit: context.read<SessionListCubit>(), session: session);
+    _archive(context: context, cubit: context.read<SessionListCubit>(), session: session, deleteWorktree: true);
   }
 
   /// Deletes [session] behind the same confirmation flow as the menu entry,
   /// from the row's trailing swipe pill.
   void handleSessionDelete({required BuildContext context, required Session session}) {
-    _showDeleteSheet(
-      context: context,
-      cubit: context.read<SessionListCubit>(),
-      session: session,
-      onSessionDeleted: onSessionDeleted,
-    );
+    _delete(context: context, cubit: context.read<SessionListCubit>(), session: session);
+  }
+
+  void _archive({
+    required BuildContext context,
+    required SessionListCubit cubit,
+    required Session session,
+    required bool deleteWorktree,
+  }) {
+    switch (cleanupFlow) {
+      case SessionCleanupSheets():
+        _showArchiveSheet(context: context, cubit: cubit, session: session);
+      case SessionCleanupImmediate(:final onArchive):
+        final state = cubit.state;
+        final isRunning = state is SessionListLoaded && state.isSessionRunning(session: session);
+        unawaited(() async {
+          if (isRunning && !await _confirmArchiveRunning(context: context, session: session)) return;
+          if (!context.mounted) return;
+          onArchive(context: context, session: session, deleteWorktree: deleteWorktree && session.hasWorktree);
+        }());
+    }
+  }
+
+  void _delete({required BuildContext context, required SessionListCubit cubit, required Session session}) {
+    switch (cleanupFlow) {
+      case SessionCleanupSheets():
+        _showDeleteSheet(context: context, cubit: cubit, session: session, onSessionDeleted: onSessionDeleted);
+      case SessionCleanupImmediate():
+        _showRetainedActionDialog(
+          cubit: cubit,
+          show: () async {
+            final deleteWorktree = await _confirmDelete(context: context, session: session);
+            if (deleteWorktree == null || !context.mounted) return;
+            await _deleteSession(
+              context: context,
+              cubit: cubit,
+              sessionId: session.id,
+              deleteWorktree: deleteWorktree,
+              onSessionDeleted: onSessionDeleted,
+            );
+          },
+        );
+    }
   }
 
   /// Flips [session]'s read state, from the row's leading swipe.

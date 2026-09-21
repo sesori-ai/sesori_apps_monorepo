@@ -13,6 +13,7 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
 import "package:sesori_desktop/core/widgets/desktop_connection_pill.dart";
 import "package:sesori_desktop/core/widgets/desktop_sidebar.dart";
@@ -89,6 +90,7 @@ void main() {
             BlocProvider<RecentSessionsCubit>.value(value: recent),
             BlocProvider(create: (_) => DesktopSidebarRefreshCubit(service: refreshService)),
             BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
+            BlocProvider(create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository())),
           ],
           child:
               child ??
@@ -1670,7 +1672,11 @@ Session _session({required String id}) => Session(
   lastUserActivityAt: null,
 );
 
-const _sessionActions = SessionListActionDispatcher(onSessionDeleted: _deleted, onSessionMarkedUnread: null);
+const _sessionActions = SessionListActionDispatcher(
+  cleanupFlow: SessionCleanupSheets(),
+  onSessionDeleted: _deleted,
+  onSessionMarkedUnread: null,
+);
 void _deleted({required BuildContext context, required String sessionId}) {}
 void _openSession({
   required BuildContext context,

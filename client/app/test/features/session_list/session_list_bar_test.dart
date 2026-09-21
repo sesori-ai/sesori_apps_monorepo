@@ -51,7 +51,11 @@ void main() {
               onBack: null,
               onNewSession: () {},
               onSessionTap: ({required session}) {},
-              actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null, onSessionMarkedUnread: null),
+              actionDispatcher: const SessionListActionDispatcher(
+                cleanupFlow: SessionCleanupSheets(),
+                onSessionDeleted: null,
+                onSessionMarkedUnread: null,
+              ),
               archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
               connectionBanner: null,
             ),

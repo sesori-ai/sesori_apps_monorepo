@@ -38,6 +38,7 @@ class const ArchivedSessionsView({
         SessionListContent(
           grouping: SessionListGrouping.runningSection,
           quickFilter: SessionListQuickFilter.all,
+          hiddenSessionIds: const {},
           projectName: null,
           onSessionTap: onSessionTap,
           actionDispatcher: actionDispatcher,

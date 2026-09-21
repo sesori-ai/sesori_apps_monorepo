@@ -1463,6 +1463,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListArchived => 'Session archived';
 
   @override
+  String get sessionListArchiveUndo => 'Undo';
+
+  @override
+  String get sessionListArchiveKeepWorktree => 'Archive, keep worktree';
+
+  @override
+  String get sessionListArchiveRunningTitle => 'Archive a running session?';
+
+  @override
+  String sessionListArchiveRunningMessage(String title) {
+    return '“$title” is still running. Archiving makes it permanently read-only.';
+  }
+
+  @override
+  String get sessionListArchiveRefusedTitle => 'The worktree can’t be deleted safely';
+
+  @override
+  String get sessionListArchiveDeleteAnyway => 'Delete it anyway';
+
+  @override
+  String sessionListDeleteNamedTitle(String title) {
+    return 'Delete “$title”?';
+  }
+
+  @override
+  String get sessionListDeleteWorktreeKeepsBranch => 'Delete the worktree too (the branch is kept)';
+
+  @override
   String get sessionListDeleted => 'Session deleted';
 
   @override

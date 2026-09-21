@@ -35,7 +35,11 @@ void main() {
       SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
     );
 
-    const dispatcher = SessionListActionDispatcher(onSessionDeleted: null, onSessionMarkedUnread: null);
+    const dispatcher = SessionListActionDispatcher(
+      cleanupFlow: SessionCleanupSheets(),
+      onSessionDeleted: null,
+      onSessionMarkedUnread: null,
+    );
 
     await tester.pumpWidget(
       BlocProvider<ConnectionOverlayCubit>(
@@ -180,7 +184,11 @@ void main() {
       return true;
     });
 
-    const dispatcher = SessionListActionDispatcher(onSessionDeleted: null, onSessionMarkedUnread: null);
+    const dispatcher = SessionListActionDispatcher(
+      cleanupFlow: SessionCleanupSheets(),
+      onSessionDeleted: null,
+      onSessionMarkedUnread: null,
+    );
     // A router, not a plain MaterialApp: the archive confirmation sheet closes
     // itself through GoRouter, which the lint requires over direct Navigator.
     final router = GoRouter(

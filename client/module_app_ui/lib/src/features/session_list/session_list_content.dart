@@ -79,6 +79,10 @@ class const SessionListContent({
   final String? selectedSessionId,
   required final SessionListGrouping grouping,
   required final SessionListQuickFilter quickFilter,
+
+  /// Sessions being archived elsewhere, hidden while they still read as
+  /// unarchived. Empty where archive is confirmed in a sheet.
+  required final Set<String> hiddenSessionIds,
   required final SessionOpenedCallback? onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
   required final Widget archivedEmptyState,
@@ -95,13 +99,16 @@ class const SessionListContent({
     final now = DateTime.now();
     final sessions = state is! SessionListLoaded
         ? const <Session>[]
-        : switch (quickFilter) {
-            SessionListQuickFilter.all => state.sessions,
-            SessionListQuickFilter.running =>
-              state.sessions.where((session) => state.isSessionRunning(session: session)).toList(),
-            SessionListQuickFilter.unread =>
-              state.sessions.where((session) => state.isSessionUnseen(session: session)).toList(),
-          };
+        : state.sessions
+              .where((session) => session.time?.archived != null || !hiddenSessionIds.contains(session.id))
+              .where(
+                (session) => switch (quickFilter) {
+                  SessionListQuickFilter.all => true,
+                  SessionListQuickFilter.running => state.isSessionRunning(session: session),
+                  SessionListQuickFilter.unread => state.isSessionUnseen(session: session),
+                },
+              )
+              .toList();
 
     return switch (state) {
       SessionListLoading() => SliverToBoxAdapter(

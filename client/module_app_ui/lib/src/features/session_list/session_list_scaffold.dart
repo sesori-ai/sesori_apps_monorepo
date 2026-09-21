@@ -100,6 +100,7 @@ class const SessionListScaffold({
         SessionListContent(
           grouping: SessionListGrouping.runningSection,
           quickFilter: SessionListQuickFilter.all,
+          hiddenSessionIds: const {},
           projectName: projectName,
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,
