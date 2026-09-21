@@ -116,7 +116,7 @@ The main pane hosts one full-width routed page.
   Cmd/Ctrl+B toggles the saved sidebar choice except during automatic narrow-window collapse, where it does nothing
   like the disabled control. Cmd/Ctrl+, opens Settings. Held-key repeats do not repeat these commands; text-field
   focus remains usable and root popups own their focus. Hints use the platform modifier; only the selected project's
-  New session button advertises the project shortcut. All platforms retain native window chrome.
+  New session button advertises the project shortcut. Windows and Linux retain native window chrome.
 - Project hover/keyboard focus reveals New session. Right-click project and
   session menus reuse the shared rename/hide and session action flows.
   Session title tooltips, selection, running/awaiting/unread signals and

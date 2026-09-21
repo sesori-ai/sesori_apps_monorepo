@@ -100,10 +100,10 @@ Verified in code on 2026-09-19 (paths relative to the repository root).
 
 ### Window chrome and shortcuts
 
-- No title-bar customisation exists on any platform.
-  `client/desktop/lib/core/platform/flutter_window_host.dart` builds
-  `WindowOptions` without a `titleBarStyle`; `MainFlutterWindow.swift` only
-  supports hidden launch. `window_manager ^0.5.2` is already a dependency.
+- Before step 7, no title-bar customisation existed on any platform:
+  `client/desktop/lib/core/platform/flutter_window_host.dart` built
+  `WindowOptions` without a `titleBarStyle`, and `MainFlutterWindow.swift` only
+  supported hidden launch. `window_manager ^0.5.2` was already a dependency.
 - The in-app theme (`AppearanceCubit` → `MaterialApp.themeMode`) is never
   pushed to the native window, so the native title bar disagrees with the
   content whenever the in-app theme differs from the OS appearance.
@@ -594,7 +594,8 @@ Step 15 is different from every other step.
   devices.
 - An unarchive endpoint: Undo is a delayed commit.
 - A density or spacing token system, or a desktop theme fork.
-- Custom title bars on Windows and Linux; custom Swift or C++ runner code.
+- Custom title bars on Windows and Linux; C++ runner code, or Swift beyond the
+  macOS runner's declarative toolbar lines that D8 allows.
 - Stacked, queued or bottom-anchored toasts.
 - A replacement control for Plan/Ask.
 - New analytics events: the series restyles existing actions, and

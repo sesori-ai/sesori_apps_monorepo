@@ -73,14 +73,15 @@ dart analyze
 
 ## Live macOS Evidence
 
-The plan requires a live check before this PR. On 2026-09-21 the branch ran
-on the user's Mac (macOS 27) against their separately running bridge. The
-user was given the checklist (traffic lights expanded and with the rail,
-dragging, clicks on toolbar buttons, double-click zoom, full screen, and light,
-dark and System appearance) and reported everything but full screen good. Full screen first showed the toolbar as a bar over the
-content; after the fix above the user confirmed full screen works. A capture
-of the app's own window showed the lights on the panel above New session and
-the collapse button in the footer. No image was kept in the repository.
+The plan requires a live check before this PR. On 2026-09-21 the branch ran on
+the user's Mac (macOS 27) against their separately running bridge. The user
+was given the checklist (traffic lights expanded and with the rail, dragging,
+clicks on toolbar buttons, double-click zoom, full screen, and light, dark and
+System appearance) and reported everything but full screen good. Full screen
+first showed the toolbar as a bar over the content; after the fix above the
+user confirmed full screen works. A capture of the app's own window showed the
+lights on the panel above New session and the collapse button in the footer.
+No image was kept in the repository.
 
 ## Size
 
