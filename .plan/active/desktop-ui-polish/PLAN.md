@@ -341,9 +341,10 @@ plan amendment.
 `spotlight` (no dimming, no lifted row), opens at the pointer for a secondary
 click and at its anchor for a button, draws about 30 pt rows at `textSm`, and
 renders a trailing shortcut label. Menu entries gain a required nullable
-shortcut; the label comes from Flutter's `LocalizedShortcutLabeler` and the
-same `SingleActivator` the desktop router registers, passed in by the desktop
-host, so shared code never formats key names or checks the platform. Only real
+shortcut label, a string the desktop host formats the way the sidebar formats
+its hints ("⌘N" or "Ctrl+N"), so shared code never formats key names or checks
+the platform. (Flutter's shortcut labeller is private in the pinned toolchain,
+so it cannot do the formatting.) Only real
 bindings are shown (`Cmd/Ctrl+N`, and `Shift+Cmd/Ctrl+U` from step 11). Every
 desktop call site inherits the look without a per-call-site flag.
 
