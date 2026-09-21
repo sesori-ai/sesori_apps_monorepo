@@ -879,6 +879,7 @@ class SessionDetailCubit(
               availableCommands: availableCommands,
               supportsPromptAttachments: snapshot.supportsPromptAttachments,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
+              session: _sessionMetadata,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
               stagedCommand: _selection.resolveStagedCommand(
@@ -1298,6 +1299,7 @@ class SessionDetailCubit(
     emit(
       current.copyWith(
         sessionTitle: session.title,
+        session: session,
         isArchived: sessionTime == null ? current.isArchived : sessionTime.archived != null,
       ),
     );
@@ -2744,6 +2746,7 @@ class SessionDetailCubit(
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
       bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
       sessionTitle: snapshot.canonicalSessionTitle,
+      session: _sessionMetadata,
       pluginId: snapshot.pluginId,
       supportsPromptAttachments: snapshot.supportsPromptAttachments,
       agent: latestAssistant?.agent,

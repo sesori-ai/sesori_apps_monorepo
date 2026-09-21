@@ -187,6 +187,11 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               ),
             ),
             onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
+            sessionActions: _desktopSessionActions,
+            onMarkedUnread: () => _goRoute(
+              context: context,
+              route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+            ),
             onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
                 _pushRoute(
                   context: context,

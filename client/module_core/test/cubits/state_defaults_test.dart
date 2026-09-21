@@ -16,6 +16,7 @@ void main() {
       pendingQuestions: [],
       pendingPermissions: [],
       sessionTitle: null,
+      session: null,
       pluginId: "opencode",
       supportsPromptAttachments: false,
       agent: null,

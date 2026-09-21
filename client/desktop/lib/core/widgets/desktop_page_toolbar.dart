@@ -8,6 +8,9 @@ import "package:theme_prego/module_prego.dart";
 /// empty background moves the window and its controls keep their clicks.
 class const DesktopPageToolbar({
   super.key,
+
+  /// A control before the title, such as Back on a pushed page.
+  required final Widget? leading,
   required final String title,
 
   /// A second, quieter line under the title; null leaves the title alone.
@@ -31,6 +34,7 @@ class const DesktopPageToolbar({
       child: Row(
         spacing: PregoSpacing.md,
         children: [
+          ?leading,
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

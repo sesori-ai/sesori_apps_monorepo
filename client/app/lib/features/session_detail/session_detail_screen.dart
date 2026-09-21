@@ -130,6 +130,7 @@ class const _MobileSessionDetailBody({
                   sessionId: sessionId,
                 ),
               ),
+        pageChrome: null,
         bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
             MobileSessionDetailComposerControls(
               projectId: projectId,

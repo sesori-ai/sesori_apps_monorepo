@@ -1577,7 +1577,7 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "SSE session.updated updates title",
+      "SSE session.updated updates title and the hydrated session",
       build: buildCubit,
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -1591,12 +1591,10 @@ void main() {
         );
       },
       expect: () => [
-        isA<SessionDetailLoaded>(),
-        isA<SessionDetailLoaded>().having(
-          (state) => state.sessionTitle,
-          "sessionTitle",
-          "Renamed Session",
-        ),
+        isA<SessionDetailLoaded>().having((state) => state.session?.id, "hydrated session", sessionId),
+        isA<SessionDetailLoaded>()
+            .having((state) => state.sessionTitle, "sessionTitle", "Renamed Session")
+            .having((state) => state.session?.title, "hydrated session title", "Renamed Session"),
       ],
     );
 

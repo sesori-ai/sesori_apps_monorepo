@@ -423,7 +423,12 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
     List<PregoMenuEntry> buildSessionMenuEntries({
       required SessionListCubit cubit,
       required Session session,
-    }) => widget.sessionActions.sessionMenuEntries(context: context, cubit: cubit, session: session);
+    }) => widget.sessionActions.sessionMenuEntries(
+      context: context,
+      cubit: cubit,
+      session: session,
+      includeReadToggle: true,
+    );
     final gutter = PregoSpacing.xl * widget.expansion;
     return CustomScrollView(
       key: const Key("desktop-sidebar-project-list"),

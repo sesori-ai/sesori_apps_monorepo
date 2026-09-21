@@ -34,6 +34,7 @@ SessionDetailState _loadedState({
     pendingQuestions: const [],
     pendingPermissions: const [],
     sessionTitle: null,
+    session: null,
     pluginId: "opencode",
     supportsPromptAttachments: false,
     agent: null,

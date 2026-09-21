@@ -259,6 +259,12 @@ abstract class AppLocalizations {
   /// **'All · {count}'**
   String desktopProjectPageFilterAll(int count);
 
+  /// Desktop session page toolbar button that opens the session's file changes.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get desktopSessionPageChanges;
+
   /// Shown on the desktop project page when the Running or Unread filter leaves no session.
   ///
   /// In en, this message translates to:

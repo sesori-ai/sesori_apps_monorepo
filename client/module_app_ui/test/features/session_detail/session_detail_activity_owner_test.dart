@@ -27,6 +27,7 @@ const _loaded = SessionDetailState.loaded(
   pendingQuestions: [],
   pendingPermissions: [],
   sessionTitle: null,
+  session: null,
   pluginId: "opencode",
   supportsPromptAttachments: false,
   agent: null,

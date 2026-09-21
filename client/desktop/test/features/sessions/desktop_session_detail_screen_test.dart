@@ -1,15 +1,19 @@
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
 import "package:sesori_desktop/features/sessions/desktop_session_detail_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
+
+class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
 
 class _MockMessageImageRepository() extends Mock implements MessageImageRepository;
 
@@ -20,6 +24,8 @@ class _MockImageClipboard() extends Mock implements ImageClipboard;
 class _MockImageSharer() extends Mock implements ImageSharer;
 
 class _MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
+
+const _actions = SessionListActionDispatcher(onSessionDeleted: null, onSessionMarkedUnread: null);
 
 const _question = SesoriQuestionAsked(
   id: "question-1",
@@ -48,6 +54,23 @@ const _child = Session(
   time: SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
   promptDefaults: null,
   lastUserActivityAt: null,
+);
+
+/// A child session: the sidebar inventory never holds one, the page does.
+const _session = Session(
+  branchName: null,
+  id: "session-1",
+  pluginId: "opencode",
+  projectID: "project-1",
+  directory: "/project",
+  parentID: "parent-1",
+  title: "Desktop session",
+  pullRequest: null,
+  time: SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
+  promptDefaults: null,
+  lastUserActivityAt: null,
+  // Local state can still say unseen just after opening.
+  unseen: true,
 );
 
 const _message = MessageWithParts(
@@ -79,29 +102,30 @@ const _message = MessageWithParts(
   ],
 );
 
-SessionDetailLoaded _loadedState() {
-  return const SessionDetailLoaded(
-    interaction: SessionInteractionState.available(refreshError: null),
-    messages: [_message],
+SessionDetailLoaded _loadedState({Session? session}) {
+  return SessionDetailLoaded(
+    interaction: const SessionInteractionState.available(refreshError: null),
+    messages: const [_message],
     olderMessagesCursor: null,
-    streamingText: {},
-    sessionStatus: SessionStatus.idle(),
-    pendingQuestions: [_question],
-    pendingPermissions: [],
+    streamingText: const {},
+    sessionStatus: const SessionStatus.idle(),
+    pendingQuestions: const [_question],
+    pendingPermissions: const [],
     sessionTitle: "Desktop session",
+    session: session,
     pluginId: "opencode",
     supportsPromptAttachments: true,
     agent: null,
     assistantAgentModel: null,
-    children: [_child],
-    childStatuses: {"child-1": SessionStatus.idle()},
+    children: const [_child],
+    childStatuses: const {"child-1": SessionStatus.idle()},
     isRootSession: true,
     isArchived: false,
-    queuedMessages: [],
+    queuedMessages: const [],
     sendingSubmission: null,
-    availableAgents: [],
-    availableProviders: [],
-    availableCommands: [],
+    availableAgents: const [],
+    availableProviders: const [],
+    availableCommands: const [],
     selectedAgent: "coder",
     selectedAgentModel: null,
     stagedCommand: null,
@@ -164,6 +188,8 @@ void main() {
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Desktop session",
+              sessionActions: _actions,
+              onMarkedUnread: () {},
               readOnly: false,
               onBack: null,
               onShowDiffs: () => diffCalls++,
@@ -193,7 +219,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Desktop transcript"), findsOneWidget);
-    expect(find.bySemanticsLabel("Back"), findsNothing);
+    expect(find.byKey(const Key("desktop-session-page-back")), findsNothing);
     expect(find.byType(PregoReadableSelectionArea), findsOneWidget);
     final loadedView = tester.widget<SessionDetailLoadedView>(find.byType(SessionDetailLoadedView));
     expect(loadedView.readOnly, isFalse);
@@ -225,7 +251,8 @@ void main() {
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
     expect(find.byTooltip("Attach image"), findsOneWidget);
-    expect(find.byTooltip("More actions"), findsNothing);
+    // The page toolbar's menu, not a composer one.
+    expect(find.byTooltip("More actions"), findsOneWidget);
 
     await tester.tap(find.text("1 pending question"));
     await tester.pumpAndSettle();
@@ -261,6 +288,8 @@ void main() {
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Desktop session",
+              sessionActions: _actions,
+              onMarkedUnread: () {},
               readOnly: false,
               onBack: () => backCalls++,
               onShowDiffs: () {},
@@ -283,7 +312,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.bySemanticsLabel("Back"));
+    await tester.tap(find.byKey(const Key("desktop-session-page-back")));
     expect(backCalls, 1);
 
     await tester.tap(find.text("Child session"));
@@ -296,5 +325,148 @@ void main() {
         readOnly: true,
       ),
     );
+  });
+
+  group("page toolbar", () {
+    late _MockSessionDetailCubit cubit;
+    late _MockSessionListCubit listCubit;
+    late List<Session> markedUnread;
+    late int leftPage;
+
+    Future<void> pumpPage(WidgetTester tester, {required Session? session}) async {
+      cubit = _MockSessionDetailCubit();
+      when(() => cubit.isRouteVisible).thenReturn(true);
+      final state = _loadedState(session: session);
+      when(() => cubit.state).thenReturn(state);
+      whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+      when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
+      when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
+      when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
+      when(cubit.clearNotifications).thenReturn(null);
+      when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+      listCubit = _MockSessionListCubit();
+      when(() => listCubit.state).thenReturn(const SessionListState.loading());
+      when(listCubit.retainActionScope).thenReturn(() {});
+      when(
+        () => listCubit.markSessionSeen(
+          sessionId: any(named: "sessionId"),
+          read: any(named: "read"),
+        ),
+      ).thenAnswer((_) async {});
+      markedUnread = [];
+      leftPage = 0;
+      await tester.binding.setSurfaceSize(const Size(1400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<SessionDetailCubit>.value(value: cubit),
+            BlocProvider<SessionListCubit>.value(value: listCubit),
+          ],
+          child: MaterialApp(
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: _composerScope(
+              imageClipboard: _MockImageClipboard.new,
+              child: DesktopSessionDetailView(
+                onOpenHarnessSettings: () {},
+                projectId: "project-1",
+                sessionId: "session-1",
+                sessionTitle: "Desktop session",
+                sessionActions: SessionListActionDispatcher(
+                  onSessionDeleted: null,
+                  onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session),
+                ),
+                onMarkedUnread: () => leftPage++,
+                readOnly: false,
+                onBack: null,
+                onShowDiffs: () {},
+                onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+                messageImageRepository: _MockMessageImageRepository.new,
+                imageSaver: _MockImageSaver.new,
+                imageClipboard: _MockImageClipboard.new,
+                imageSharer: _MockImageSharer.new,
+                canShareImages: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets("sits above a centred transcript column", (tester) async {
+      await pumpPage(tester, session: _session);
+
+      final toolbar = tester.getRect(find.byType(DesktopPageToolbar));
+      final list = tester.widget<SessionDetailMessageList>(find.byType(SessionDetailMessageList));
+      expect(tester.getRect(find.byType(SessionDetailLoadedView)).top, toolbar.bottom);
+      expect(list.topInset, 0);
+      expect(list.horizontalInset, (1400 - DesktopSessionDetailView.maxContentWidth) / 2);
+    });
+
+    testWidgets("keeps session actions disabled until the session is hydrated", (tester) async {
+      await pumpPage(tester, session: null);
+
+      final markUnread = find.byKey(const Key("desktop-session-page-mark-unread"));
+      expect(tester.widget<IconButton>(markUnread).onPressed, isNull);
+      expect(tester.widget<IconButton>(find.byKey(const Key("desktop-session-page-more"))).onPressed, isNull);
+
+      await tester.tap(find.text("Follow up..."));
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyU);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      verifyNever(
+        () => listCubit.markSessionSeen(
+          sessionId: any(named: "sessionId"),
+          read: any(named: "read"),
+        ),
+      );
+      expect(leftPage, 0);
+    });
+
+    testWidgets("Mark unread always sends read: false, defers the session and leaves the page", (tester) async {
+      await pumpPage(tester, session: _session);
+
+      await tester.tap(find.byKey(const Key("desktop-session-page-mark-unread")));
+
+      verify(() => listCubit.markSessionSeen(sessionId: "session-1", read: false)).called(1);
+      expect(markedUnread, [_session]);
+      expect(leftPage, 1);
+    });
+
+    testWidgets("Shift+Ctrl+U marks the open session unread", (tester) async {
+      await pumpPage(tester, session: _session);
+      await tester.tap(find.text("Follow up..."));
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyU);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+
+      verify(() => listCubit.markSessionSeen(sessionId: "session-1", read: false)).called(1);
+      expect(leftPage, 1);
+    });
+
+    testWidgets("offers a child session's actions without a second read toggle", (tester) async {
+      await pumpPage(tester, session: _session);
+
+      await tester.tap(find.byKey(const Key("desktop-session-page-more")));
+      await tester.pumpAndSettle();
+
+      verify(() => listCubit.updateActionSession(session: _session)).called(1);
+      expect(find.text("Rename"), findsOneWidget);
+      expect(find.text("Archive"), findsOneWidget);
+      expect(find.text("Delete"), findsOneWidget);
+      expect(find.text("Mark as read"), findsNothing);
+      expect(find.text("Mark as unread"), findsNothing);
+    });
   });
 }
