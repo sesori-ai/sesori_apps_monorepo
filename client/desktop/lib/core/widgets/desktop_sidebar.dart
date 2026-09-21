@@ -852,7 +852,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                                     },
                                   ),
                                 ),
-                                if (rows.length < entry.visibleSessions.length)
+                                if (rows.length < entry.visibleSessions.where((s) => !hidden.contains(s.id)).length)
                                   Padding(
                                     padding: const EdgeInsetsDirectional.only(start: 46, end: 8),
                                     child: TextButton(

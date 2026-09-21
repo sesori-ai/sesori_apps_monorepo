@@ -59,7 +59,8 @@ class PendingSessionArchiveCubit({required final SessionRepository repository})
   Future<void> _commit({required Session session, required bool deleteWorktree, required bool force}) async {
     emit(PendingSessionArchiveState(window: state.window, archivingIds: {...state.archivingIds, session.id}));
     final outcome = await _archive(session: session, deleteWorktree: deleteWorktree, force: force);
-    if (isClosed) return;
+    // close() shuts the outcomes first, so either one means disposed.
+    if (isClosed || _outcomes.isClosed) return;
     if (outcome is! PendingSessionArchiveCommitted) {
       emit(
         PendingSessionArchiveState(
@@ -86,7 +87,7 @@ class PendingSessionArchiveCubit({required final SessionRepository repository})
         case SuccessResponse():
           return PendingSessionArchiveCommitted(session: session);
         case ErrorResponse(:final error):
-          loge("Failed to archive session ${session.id}: ${error.toString()}");
+          loge("Failed to archive session ${session.id}", error);
           return PendingSessionArchiveFailed(session: session);
       }
     } on SessionCleanupRejectedException catch (error) {

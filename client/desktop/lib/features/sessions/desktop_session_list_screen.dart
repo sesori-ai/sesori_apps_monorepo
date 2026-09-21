@@ -96,7 +96,10 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
     final filter = showArchived ? SessionListQuickFilter.all : _filter;
     // A session being archived leaves the list, and the counts, at once.
     final hidden = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
-    final counted = loaded?.sessions.where((session) => !hidden.contains(session.id)).toList() ?? const <Session>[];
+    // The same rule the list applies: only a still-unarchived session hides.
+    final counted =
+        loaded?.sessions.where((session) => session.time?.archived != null || !hidden.contains(session.id)).toList() ??
+        const <Session>[];
     final counts = {
       SessionListQuickFilter.all: counted.length,
       SessionListQuickFilter.running: counted
@@ -228,7 +231,11 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
                           actionDispatcher: actionDispatcher,
                           archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
                         ),
-                        if (counts[filter] == 0 && loaded != null && loaded.sessions.isNotEmpty)
+                        // All can only be empty while its last session is being archived.
+                        if (filter != SessionListQuickFilter.all &&
+                            counts[filter] == 0 &&
+                            loaded != null &&
+                            loaded.sessions.isNotEmpty)
                           SliverToBoxAdapter(
                             child: Padding(
                               padding: const EdgeInsets.all(PregoSpacing.x3l),

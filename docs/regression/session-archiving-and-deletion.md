@@ -172,6 +172,9 @@ restart before explicit re-import.
 
 ## Known Limitations
 
+- The desktop Undo offer lives in the single popup alert slot. Another alert shown inside the five-second
+  window replaces it, and the archive still commits when the window ends, as it would had the user closed
+  the alert.
 - Archiving is intentionally irreversible; deletion additionally destroys the
   audit record. The read-only rule covers the named session only, not ancestors,
   descendants, or related sessions.

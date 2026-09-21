@@ -181,8 +181,8 @@ The main pane hosts one full-width routed page.
   returns to all sessions.
 - A session being archived is hidden from the sidebar, the Activity popout, the project page and its chip
   counts for as long as its Undo window or its archive request is open, and returns if the archive is
-  undone, refused or fails. Archiving the open session leaves its page. See `session-archiving-and-
-  deletion.md`.
+  undone, refused or fails. Archiving the open session leaves its page. See
+  `session-archiving-and-deletion.md`.
 - The session page uses the same toolbar anatomy above the transcript, never over it: title with agent and
   model, Back only on a pushed page, a busy indicator, Mark unread, Changes on a root unarchived session,
   and a menu with Rename, Archive and Delete run by the same dispatcher as a row's menu. Session actions
