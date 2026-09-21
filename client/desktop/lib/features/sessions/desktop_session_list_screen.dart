@@ -1,9 +1,15 @@
+import "dart:async";
+import "dart:math" as math;
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
+import "../../core/widgets/desktop_page_toolbar.dart";
 
 /// Owns the full inventory only while the all-sessions page is mounted.
 class const DesktopSessionListCubitProvider({
@@ -24,7 +30,8 @@ class const DesktopSessionListCubitProvider({
   }
 }
 
-/// Full main-pane composition for the shared session inventory.
+/// The desktop project page: a toolbar over one timeline of the project's
+/// sessions, in a column narrow enough to read from title to time.
 class const DesktopSessionListScreen({
   super.key,
   required final String? projectName,
@@ -32,17 +39,113 @@ class const DesktopSessionListScreen({
   required final VoidCallback onNewSession,
   required final SessionListActionDispatcher actionDispatcher,
 }) extends StatelessWidget {
+  static const double maxContentWidth = 760;
+
   @override
   Widget build(BuildContext context) {
-    return SessionListScaffold(
-      onOpenArchived: () => context.read<SessionListCubit>().toggleArchived(),
-      projectName: projectName,
-      onSessionTap: onSessionTap,
-      actionDispatcher: actionDispatcher,
-      archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
-      onNewSession: onNewSession,
-      onBack: null,
-      connectionBanner: null,
+    final loc = context.loc;
+    final cubit = context.read<SessionListCubit>();
+    final state = context.watch<SessionListCubit>().state;
+    final loaded = state is SessionListLoaded ? state : null;
+    final showArchived = loaded != null && loaded.filter != SessionListFilter.active;
+
+    return Scaffold(
+      body: Column(
+        children: [
+          DesktopPageToolbar(
+            title: projectName ?? loc.sessionListTitle,
+            subtitle: buildProjectNavSubtitle(context),
+            actions: [
+              Semantics(
+                toggled: showArchived,
+                child: PregoButtonsSolid(
+                  key: const Key("desktop-project-page-archived"),
+                  label: loc.desktopProjectPageArchived,
+                  leadingIcon: TablerRegular.archive,
+                  hierarchy: showArchived
+                      ? PregoButtonsSolidHierarchy.primaryAlt
+                      : PregoButtonsSolidHierarchy.secondary,
+                  size: PregoButtonsSolidSize.sm,
+                  onPressed: cubit.toggleArchived,
+                ),
+              ),
+              PregoButtonsSolid(
+                key: const Key("desktop-project-page-new-session"),
+                label: loc.sessionListNewSession,
+                leadingIcon: TablerRegular.plus,
+                hierarchy: PregoButtonsSolidHierarchy.primary,
+                size: PregoButtonsSolidSize.sm,
+                onPressed: onNewSession,
+              ),
+              // A mouse has no pull gesture, so the pull's two refreshes live here.
+              PregoAnchorMenu(
+                flat: true,
+                menuWidth: 220,
+                acquireOpenLease: null,
+                entriesBuilder: () => [
+                  PregoMenuItem(
+                    title: loc.desktopProjectPageRefresh,
+                    subtitle: null,
+                    isSelected: false,
+                    shortcutLabel: null,
+                    leadingIcon: TablerRegular.refresh,
+                    onTap: () => unawaited(refreshSessionList(context)),
+                  ),
+                  PregoMenuItem(
+                    title: loc.desktopProjectPageScan,
+                    subtitle: null,
+                    isSelected: false,
+                    shortcutLabel: null,
+                    leadingIcon: TablerRegular.radar_2,
+                    onTap: cubit.startCatalogScan,
+                  ),
+                ],
+                triggerBuilder: (context, openMenu) => IconButton(
+                  key: const Key("desktop-project-page-more"),
+                  tooltip: loc.sessionDetailMoreActions,
+                  onPressed: loaded == null ? null : openMenu,
+                  icon: const Icon(TablerRegular.dots, size: 18),
+                ),
+              ),
+            ],
+          ),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) => CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    // The column is centred by padding, so the wheel and the
+                    // scrollbar still belong to the whole pane.
+                    padding: EdgeInsets.symmetric(
+                      horizontal: math.max(0, (constraints.maxWidth - maxContentWidth) / 2),
+                    ),
+                    sliver: SliverMainAxisGroup(
+                      slivers: [
+                        if (loaded != null && loaded.isRefreshing)
+                          const SliverToBoxAdapter(child: LinearProgressIndicator()),
+                        SliverToBoxAdapter(
+                          child: CatalogScanRow(
+                            scan: loaded?.catalogScan ?? const CatalogRescanState.idle(),
+                            onCancel: cubit.cancelCatalogScan,
+                            onDismiss: cubit.dismissCatalogScan,
+                          ),
+                        ),
+                        SessionListContent(
+                          projectName: projectName,
+                          grouping: SessionListGrouping.timeline,
+                          onSessionTap: onSessionTap,
+                          actionDispatcher: actionDispatcher,
+                          archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

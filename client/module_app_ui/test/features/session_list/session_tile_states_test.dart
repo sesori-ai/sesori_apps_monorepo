@@ -51,13 +51,13 @@ void main() {
     );
   }
 
-  Future<void> pumpTile(WidgetTester tester, SessionTile row) async {
+  Future<void> pumpTile(WidgetTester tester, SessionTile row, {Widget Function(Widget child)? wrap}) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Material(child: Column(children: [row])),
+        home: Material(child: Column(children: [if (wrap == null) row else wrap(row)])),
       ),
     );
     await tester.pump();
@@ -491,6 +491,33 @@ void main() {
       );
 
       semantics.dispose();
+    });
+  });
+
+  group("in pointer mode", () {
+    Future<void> pumpPointerTile(WidgetTester tester, SessionTile row) => pumpTile(
+      tester,
+      row,
+      wrap: (child) => PregoInteractionScope(mode: PregoInteractionMode.pointer, child: child),
+    );
+
+    testWidgets("an idle row is about 44 pt tall with its time at the trailing edge", (tester) async {
+      final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
+      await pumpPointerTile(tester, tile(session: session));
+
+      expect(tester.getSize(find.byType(SessionTile)).height, inInclusiveRange(40, 48));
+      expect(find.byType(PregoAiLoader), findsNothing);
+    });
+
+    testWidgets("a running row leads with the sparkle and says Running where the time would be", (tester) async {
+      await pumpPointerTile(tester, tile(session: testSession(title: "My Session"), isActive: true));
+
+      expect(find.text("Running"), findsOneWidget);
+      expect(
+        tester.getCenter(find.byType(PregoAiLoader)).dx,
+        lessThan(tester.getTopLeft(find.text("My Session")).dx),
+      );
+      expect(tester.getTopLeft(find.text("Running")).dx, greaterThan(tester.getTopRight(find.text("My Session")).dx));
     });
   });
 }

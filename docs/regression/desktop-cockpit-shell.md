@@ -159,9 +159,15 @@ The main pane hosts one full-width routed page.
   completion cannot release a newer pending read.
 - The sidebar is the only navigation pane, including at minimum window width.
   All sessions, new session, detail, and diffs are sibling main-pane routes.
-  All sessions uses the shared full list, archive filter, actions, scan/refresh,
-  and New session button without a back arrow. Only that page creates a full list
-  owner; recent-session menus remain non-viewing action scopes.
+  Only the all-sessions page creates a full list owner; recent-session menus
+  remain non-viewing action scopes.
+- The all-sessions page is a toolbar over one timeline. The toolbar names the project and its repository,
+  toggles Archived, owns New session as the primary button, and keeps Refresh and Scan for sessions in its
+  overflow menu; nothing floats over the list and there is no back arrow. The shared list sits in a centred
+  column about 760 pt wide while the whole pane scrolls. It has no Running section: running sessions lead
+  Today and read "Running" where the time would be. Rows are about 44 pt, keep the state sparkle in a fixed
+  leading column, always show the time at the trailing edge, and highlight under the pointer. The phone list
+  keeps its Running section and row anatomy.
 - Direct/sidebar-opened detail uses the available main-pane width without a
   redundant back arrow. Pushed details retain Back to their opener, including
   child-to-parent navigation. Archived rows open read-only. New-session creation replaces its page with
@@ -270,6 +276,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   or the last row leaves.
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks.
+- The all-sessions page: toolbar title and New session, Archived toggle state, no floating button, the
+  timeline grouping with running sessions first under Today, and pointer-mode row height, leading sparkle
+  and trailing "Running".
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
   new-session replacement, diff/direct-entry Back, home states, package-font resolution.
 - Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,

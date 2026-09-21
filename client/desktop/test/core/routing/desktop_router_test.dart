@@ -80,12 +80,7 @@ void main() {
     ) as DesktopSessionListCubitProvider;
     expect(provider.projectId, "p");
     final screen = provider.child as DesktopSessionListScreen;
-    final scaffold = screen.build(_FakeBuildContext()) as SessionListScaffold;
-    expect(scaffold.onBack, isNull);
-    expect(scaffold.projectName, "Sesori");
-    expect(scaffold.onNewSession, isNotNull);
-    expect(scaffold.onOpenArchived, isNotNull);
-    expect(scaffold.connectionBanner, isNull);
+    expect(screen.projectName, "Sesori");
     expect(
       _routeWithPath(AppRouteDef.projects.path).builder!(_FakeBuildContext(), _FakeGoRouterState()),
       isA<DesktopHomePane>(),

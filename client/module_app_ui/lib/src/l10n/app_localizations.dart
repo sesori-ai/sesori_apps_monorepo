@@ -247,6 +247,24 @@ abstract class AppLocalizations {
   /// **'Resize sidebar; double-click to reset'**
   String get desktopSidebarResize;
 
+  /// Desktop project page toolbar toggle that switches the list to the project's archived sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived'**
+  String get desktopProjectPageArchived;
+
+  /// Desktop project page overflow menu action that reloads the project's session list.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh sessions'**
+  String get desktopProjectPageRefresh;
+
+  /// Desktop project page overflow menu action that scans the harnesses for sessions started outside Sesori.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan for sessions'**
+  String get desktopProjectPageScan;
+
   /// Tooltip for explicitly refreshing both desktop sidebar inventories.
   ///
   /// In en, this message translates to:
