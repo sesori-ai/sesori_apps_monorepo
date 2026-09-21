@@ -2,6 +2,7 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
 import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
 import "package:sesori_dart_core/src/services/models/project_list_state.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -16,6 +17,7 @@ void main() {
       pendingQuestions: [],
       pendingPermissions: [],
       sessionTitle: null,
+      session: testConstSession,
       pluginId: "opencode",
       supportsPromptAttachments: false,
       agent: null,

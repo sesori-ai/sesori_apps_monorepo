@@ -50,6 +50,10 @@ class const SessionListActionDispatcher({
     required BuildContext context,
     required SessionListCubit cubit,
     required Session session,
+
+    /// False where the surface offers Mark unread on its own, as the session
+    /// page's toolbar does.
+    required bool includeReadToggle,
   }) {
     final loc = context.loc;
     final isArchived = session.time?.archived != null;
@@ -68,14 +72,15 @@ class const SessionListActionDispatcher({
             show: () => showRenameSessionDialog(context: context, session: session, cubit: cubit),
           ),
         ),
-      PregoMenuItem(
-        leadingIcon: isUnseen ? TablerRegular.mail_opened : TablerRegular.mail,
-        title: isUnseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
-        subtitle: null,
-        isSelected: false,
-        shortcutLabel: null,
-        onTap: () => _setRead(context: context, cubit: cubit, session: session, read: isUnseen),
-      ),
+      if (includeReadToggle)
+        PregoMenuItem(
+          leadingIcon: isUnseen ? TablerRegular.mail_opened : TablerRegular.mail,
+          title: isUnseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
+          subtitle: null,
+          isSelected: false,
+          shortcutLabel: null,
+          onTap: () => _setRead(context: context, cubit: cubit, session: session, read: isUnseen),
+        ),
       // Archiving is permanent, so an already-archived row has no archive
       // action left to offer.
       if (!isArchived)
@@ -128,8 +133,22 @@ class const SessionListActionDispatcher({
   /// Flips [session]'s read state, from the row's leading swipe.
   void handleSessionToggleUnread({required BuildContext context, required Session session}) {
     final cubit = context.read<SessionListCubit>();
-    _setRead(context: context, cubit: cubit, session: session, read: _isUnseen(cubit: cubit, session: session));
+    _setRead(
+      context: context,
+      cubit: cubit,
+      session: session,
+      read: _isUnseen(cubit: cubit, session: session),
+    );
   }
+
+  /// Marks [session] unread whatever the local state says. An open session is
+  /// marked seen asynchronously, so local state can still read "unseen" and a
+  /// toggle would mark it read instead.
+  void handleSessionMarkUnread({
+    required BuildContext context,
+    required SessionListCubit cubit,
+    required Session session,
+  }) => _setRead(context: context, cubit: cubit, session: session, read: false);
 
   void _setRead({
     required BuildContext context,

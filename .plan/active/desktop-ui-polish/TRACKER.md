@@ -22,7 +22,7 @@ for that approval or for the user's explicit decision to drop or defer it.
 | [x] | 8 | `desktop-ui-polish/pointer-menus` | [8/17](#pr-titles) | ≤ 500 | done |
 | [x] | 9 | `desktop-ui-polish/project-page` | [9/17](#pr-titles) | ≤ 800 | done |
 | [x] | 10 | `desktop-ui-polish/project-page-filters` | [10/17](#pr-titles) | ≤ 500 | done |
-| [ ] | 11 | `desktop-ui-polish/session-toolbar` | [11/17](#pr-titles) | ≤ 700 | pending |
+| [x] | 11 | `desktop-ui-polish/session-toolbar` | [11/17](#pr-titles) | ≤ 700 | done |
 | [ ] | 12 | `desktop-ui-polish/archive-undo` | [12/17](#pr-titles) | ≤ 900 | pending |
 | [ ] | 13 | `desktop-ui-polish/new-session-page` | [13/17](#pr-titles) | ≤ 500 | pending |
 | [ ] | 14 | `desktop-ui-polish/agent-entry` | [14/17](#pr-titles) | ≤ 600 | pending |

@@ -170,15 +170,24 @@ The main pane hosts one full-width routed page.
   pointer. The phone list keeps its Running section and row anatomy.
 - Above the active list, chips read All, Running and Unread with exact counts from the loaded list and
   narrow it locally without a request; a filter that leaves nothing says so. The chips hide while Archived
-  is on, which shows every archived session. Hovering a row, or moving keyboard focus into it, swaps its
-  time for Mark read/unread and Archive without changing the row's height; an archived row offers no
-  Archive.
+  is on, which shows every archived session, and while the project has no sessions. Hovering a row, or
+  moving keyboard focus into it, swaps its time for Mark read/unread and Archive without changing the row's
+  height; an archived row offers no Archive.
 - Direct/sidebar-opened detail uses the available main-pane width without a
   redundant back arrow. Pushed details retain Back to their opener, including
   child-to-parent navigation. Archived rows open read-only. New-session creation replaces its page with
   detail. New-session/diff Back returns to the opener when pushed, or to the
   project's all-sessions page for direct entry. Deleting the open session
   returns to all sessions.
+- The session page uses the same toolbar anatomy above the transcript, never over it: title with agent and
+  model, Back only on a pushed page, a busy indicator, Mark unread, Changes on a root unarchived session,
+  and a menu with Rename, Archive and Delete run by the same dispatcher as a row's menu. Session actions
+  stay disabled until the page has the hydrated session, and work for child sessions and sessions opened
+  directly. Mark unread always sends unread, whatever local state says, defers the session like a row's Mark
+  unread, and returns to the project's all-sessions page; Shift+Cmd/Ctrl+U does the same while focus is in
+  the session page and is inert elsewhere. The transcript and composer sit in a centred column about 760 pt
+  wide while the wheel and scrollbar keep the whole pane. The phone keeps its floating glass bar and full-
+  width transcript.
 - Home directs an existing inventory to the sidebar; empty inventory offers
   Add/Open Project. Loading is labelled, failures retry the shared inventory,
   and disconnected states offer supervised bridge recovery without CLI setup.
@@ -281,6 +290,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   or the last row leaves.
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks.
+- The session page toolbar above a centred transcript column, session actions disabled until the session is
+  hydrated, Mark unread sending unread and leaving the page from the button and from Shift+Cmd/Ctrl+U, and a
+  child session's menu without a second read toggle.
 - Filter chip counts, local narrowing, the filtered-empty message and chips hidden under Archived; hover and
   focus revealing row actions that call the row's handlers at a stable height, with no Archive on an
   archived row.

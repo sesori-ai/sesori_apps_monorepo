@@ -393,6 +393,7 @@ class SessionDetailCubit(
             emit(
               _buildLoadedState(
                 snapshot: snapshot,
+                session: session,
                 parkEpochAtFetch: parkEpochAtFetch,
                 interaction: becameAvailable ? interactionAtLoad : _interaction,
               ),
@@ -879,6 +880,7 @@ class SessionDetailCubit(
               availableCommands: availableCommands,
               supportsPromptAttachments: snapshot.supportsPromptAttachments,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
+              session: session,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
               stagedCommand: _selection.resolveStagedCommand(
@@ -1291,13 +1293,22 @@ class SessionDetailCubit(
 
   void _onSessionUpdated(Session session) {
     final current = state;
+    if (isClosed) return;
+    // The unavailable shell still offers the session's actions, so a rename or
+    // an archive has to reach it too.
+    if (current is SessionDetailHarnessUnavailable) {
+      // A later availability change rebuilds this variant from the cache.
+      _sessionMetadata = session;
+      emit(current.copyWith(session: session));
+      return;
+    }
     if (current is! SessionDetailLoaded) return;
     final sessionTime = session.time;
 
-    if (isClosed) return;
     emit(
       current.copyWith(
         sessionTitle: session.title,
+        session: session,
         isArchived: sessionTime == null ? current.isArchived : sessionTime.archived != null,
       ),
     );
@@ -2707,6 +2718,7 @@ class SessionDetailCubit(
 
   SessionDetailLoaded _buildLoadedState({
     required SessionDetailSnapshot snapshot,
+    required Session session,
     required int parkEpochAtFetch,
     required SessionInteractionState interaction,
   }) {
@@ -2744,6 +2756,7 @@ class SessionDetailCubit(
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
       bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
       sessionTitle: snapshot.canonicalSessionTitle,
+      session: session,
       pluginId: snapshot.pluginId,
       supportsPromptAttachments: snapshot.supportsPromptAttachments,
       agent: latestAssistant?.agent,

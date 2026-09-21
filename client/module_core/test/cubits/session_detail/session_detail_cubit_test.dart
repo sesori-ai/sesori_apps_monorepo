@@ -185,8 +185,7 @@ void main() {
         addTearDown(cubit.close);
         await awaitState(
           cubit: cubit,
-          predicate: (state) =>
-              state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
+          predicate: (state) => state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
           description: "initial harness state",
         );
         final before = cubit.state;
@@ -518,6 +517,19 @@ void main() {
         (blocked.interaction as SessionInteractionBlocked).reason,
         SessionInteractionBlockedReason.authenticationRequired,
       );
+
+      // The shell still offers the session's actions, so a rename reaches it.
+      sessionEvents.add(
+        SesoriSessionUpdated(
+          info: testSession(id: sessionId, title: "Renamed Session"),
+        ),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state.hydratedSession?.title == "Renamed Session",
+        description: "renamed unavailable session",
+      );
+      expect(cubit.state, isA<SessionDetailHarnessUnavailable>());
     });
 
     test("a block racing a reload keeps the rendered transcript instead of the unavailable shell", () async {
@@ -1577,7 +1589,7 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "SSE session.updated updates title",
+      "SSE session.updated updates title and the hydrated session",
       build: buildCubit,
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -1591,12 +1603,10 @@ void main() {
         );
       },
       expect: () => [
-        isA<SessionDetailLoaded>(),
-        isA<SessionDetailLoaded>().having(
-          (state) => state.sessionTitle,
-          "sessionTitle",
-          "Renamed Session",
-        ),
+        isA<SessionDetailLoaded>().having((state) => state.session.id, "hydrated session", sessionId),
+        isA<SessionDetailLoaded>()
+            .having((state) => state.sessionTitle, "sessionTitle", "Renamed Session")
+            .having((state) => state.session.title, "hydrated session title", "Renamed Session"),
       ],
     );
 

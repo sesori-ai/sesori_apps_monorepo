@@ -83,6 +83,7 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
       body: Column(
         children: [
           DesktopPageToolbar(
+            leading: null,
             title: projectName ?? loc.sessionListTitle,
             subtitle: buildProjectNavSubtitle(context),
             actions: [

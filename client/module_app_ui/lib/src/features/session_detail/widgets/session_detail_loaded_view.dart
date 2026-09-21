@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
@@ -23,6 +24,10 @@ class SessionDetailLoadedView extends StatefulWidget {
   final SessionDetailLoaded state;
   final bool readOnly;
   final Widget? bottomControls;
+
+  /// Caps the transcript and the bottom controls to a centred column; null
+  /// lets them span the pane.
+  final double? maxContentWidth;
   final VoidCallback onShowPendingQuestions;
   final VoidCallback onShowPendingPermissions;
 
@@ -34,6 +39,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
     required this.bottomControls,
+    required this.maxContentWidth,
   }) : readOnly = true;
 
   const new interactive({
@@ -44,6 +50,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
     required this.bottomControls,
+    required this.maxContentWidth,
   }) : readOnly = false;
 
   @override
@@ -71,6 +78,17 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
 
   @override
   Widget build(BuildContext context) {
+    final maxContentWidth = widget.maxContentWidth;
+    if (maxContentWidth == null) return _buildContent(context: context, horizontalInset: 0);
+    return LayoutBuilder(
+      builder: (context, constraints) => _buildContent(
+        context: context,
+        horizontalInset: math.max(0, (constraints.maxWidth - maxContentWidth) / 2),
+      ),
+    );
+  }
+
+  Widget _buildContent({required BuildContext context, required double horizontalInset}) {
     final loc = context.loc;
     final state = widget.state;
     final hasBottomControls = widget.bottomControls != null;
@@ -91,7 +109,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
     // indicator / banners — come from PregoTopBarInsetBuilder so they clear
     // the bar at rest and ride the top-nav connection banner's height
     // animation frame-by-frame.
-    final content = Stack(
+    return Stack(
       children: [
         Column(
           children: [
@@ -133,6 +151,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           // up behind the bar's fade and the composer's fade.
                           topInset: topInset,
                           bottomInset: hasBottomControls ? bottomControlsHeight : 0,
+                          horizontalInset: horizontalInset,
                         ),
                       ),
                     ),
@@ -191,8 +210,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
         if (widget.bottomControls case final bottomControls?)
           Positioned(
             bottom: 0,
-            left: 0,
-            right: 0,
+            left: horizontalInset,
+            right: horizontalInset,
             child: PregoSizeObserver(
               onSizeChanged: (size) {
                 if (!mounted) return;
@@ -203,7 +222,6 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
           ),
       ],
     );
-    return content;
   }
 }
 

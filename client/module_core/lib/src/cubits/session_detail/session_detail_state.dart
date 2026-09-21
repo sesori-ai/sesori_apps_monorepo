@@ -30,6 +30,9 @@ sealed class SessionDetailState with _$SessionDetailState {
     required List<SesoriPermissionAsked> pendingPermissions,
     // Session title — updated reactively via SSE `session.updated` events.
     required String? sessionTitle,
+    // The hydrated session, for surfaces that act on it (rename, archive,
+    // delete).
+    required Session session,
     // The harness running this session, or null when it could not be resolved.
     required String? pluginId,
     // Null when the plugin metadata lookup could not resolve the capability.
@@ -81,6 +84,14 @@ sealed class SessionDetailState with _$SessionDetailState {
   }) = SessionDetailHarnessUnavailable;
 
   const factory failed({required RemoteFailureReason reason}) = SessionDetailFailed;
+}
+
+extension SessionDetailStateX on SessionDetailState {
+  /// The hydrated session, for the variants that have one.
+  Session? get hydratedSession => switch (this) {
+    SessionDetailLoaded(:final session) || SessionDetailHarnessUnavailable(:final session) => session,
+    SessionDetailLoading() || SessionDetailFailed() => null,
+  };
 }
 
 extension SessionDetailLoadedX on SessionDetailLoaded {

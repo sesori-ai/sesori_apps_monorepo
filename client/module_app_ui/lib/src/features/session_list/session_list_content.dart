@@ -172,6 +172,7 @@ class const SessionListContent({
                         context: context,
                         cubit: context.read<SessionListCubit>(),
                         session: session,
+                        includeReadToggle: true,
                       ),
                       onArchive: () => actionDispatcher.handleSessionArchive(context: context, session: session),
                       onDelete: () => actionDispatcher.handleSessionDelete(context: context, session: session),

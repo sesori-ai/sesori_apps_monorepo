@@ -90,6 +90,7 @@ Widget _buildApp({
               banner: null,
               onBack: context.pop,
               onShowDiffs: () => context.push("/projects/project-1/sessions/session-1/diffs"),
+              pageChrome: null,
               bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
                   MobileSessionDetailComposerControls(
                     projectId: projectId,
@@ -144,6 +145,7 @@ SessionDetailLoaded _loadedState({
     pendingQuestions: pendingQuestions,
     pendingPermissions: pendingPermissions,
     sessionTitle: "Session",
+    session: testConstSession,
     pluginId: pluginId,
     supportsPromptAttachments: supportsPromptAttachments,
     agent: null,
@@ -721,6 +723,7 @@ void main() {
       pendingQuestions: const [],
       pendingPermissions: const [],
       sessionTitle: "Session",
+      session: testConstSession,
       pluginId: "opencode",
       supportsPromptAttachments: false,
       agent: null,

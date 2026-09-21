@@ -109,6 +109,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get desktopSessionPageChanges => 'Changes';
+
+  @override
   String get desktopProjectPageFilterEmpty => 'No sessions match this filter';
 
   @override
