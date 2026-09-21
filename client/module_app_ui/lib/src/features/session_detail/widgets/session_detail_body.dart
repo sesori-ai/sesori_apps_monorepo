@@ -65,7 +65,7 @@ class const SessionDetailBody({
   /// Null keeps the floating glass bar and a full-width transcript.
   required final SessionDetailPageChrome? pageChrome,
 
-  /// The glass bar's session menu; null shows none. A page frame brings its
+  /// The glass bar's session menu, for a root session; null shows none. A page frame brings its
   /// own header and menu instead.
   required final SessionDetailMenuEntriesBuilder? menuEntriesBuilder,
 }) extends StatefulWidget {
@@ -182,7 +182,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
           semanticLabel: loc.sessionDetailFileChangesTooltip,
           onPressed: onShowDiffs,
         ),
-      if (menuEntriesBuilder != null && session != null)
+      // Root sessions only: the actions run on the project's session list,
+      // which holds no sub-agent sessions and must not gain one.
+      if (menuEntriesBuilder != null && session != null && session.parentID == null)
         PregoAnchorMenu(
           flat: true,
           menuWidth: 240,

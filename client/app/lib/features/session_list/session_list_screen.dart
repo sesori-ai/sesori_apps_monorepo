@@ -1,4 +1,3 @@
-import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -50,24 +49,4 @@ class const SessionListScreen({
       connectionBanner: ConnectionBanner.maybeFor(context),
     );
   }
-}
-
-/// Leaves a deleted session's detail/diffs route when that session is still
-/// the current mobile location. In a narrow list route this is a no-op.
-void closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {
-  // Deletion can finish outside a route-local context. Inspect the current
-  // router location, including any navigation while the request was in flight.
-  // ignore: no_slop_linter/avoid_raw_go_router, reads current route state; navigation below uses the typed extension
-  final routeState = GoRouter.of(context).state;
-  if (routeState.pathParameters[sessionIdPathParam] != sessionId) return;
-
-  final projectId = routeState.pathParameters[projectIdPathParam];
-  if (projectId == null) return;
-
-  context.goRoute(
-    AppRoute.sessions(
-      projectId: projectId,
-      projectName: routeState.uri.queryParameters[projectNameQueryParam],
-    ),
-  );
 }

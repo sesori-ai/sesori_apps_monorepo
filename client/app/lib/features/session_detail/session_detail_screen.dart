@@ -10,7 +10,6 @@ import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/routing/imperative_pane_route.dart";
-import "../session_list/session_list_screen.dart";
 import "widgets/session_detail_composer_controls.dart";
 
 class const SessionDetailScreen({
