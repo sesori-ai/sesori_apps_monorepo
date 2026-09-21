@@ -30,7 +30,7 @@ them.
 | [x] | 11 | `desktop-ui-polish/session-toolbar` | [11/17](#pr-titles) | ≤ 700 | done |
 | [x] | 12 | `desktop-ui-polish/archive-undo` | [12/17](#pr-titles) | ≤ 900 | done |
 | [x] | 13 | `desktop-ui-polish/new-session-page` | [13/22](#pr-titles) | ≤ 600 | done |
-| [ ] | 14 | `desktop-ui-polish/agent-entry` | [14/22](#pr-titles) | ≤ 600 | pending |
+| [x] | 14 | `desktop-ui-polish/agent-entry` | [14/22](#pr-titles) | ≤ 600 | done |
 | [ ] | 15 | `desktop-ui-polish/composer-and-sub-agents` | [15/22](#pr-titles) | set at approval | pending (gated) |
 | [ ] | 16 | `desktop-ui-polish/phone-timeline` | [16/22](#pr-titles) | ≤ 500 | pending |
 | [ ] | 17 | `desktop-ui-polish/shared-filter-chips` | [17/22](#pr-titles) | ≤ 500 | pending |
