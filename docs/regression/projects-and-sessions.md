@@ -184,10 +184,10 @@ state.
   cubit; the sidebar never claims project viewing. Archived rows open read-only.
   Mobile retains its adaptive session split. Desktop Activity, ordinary recents, contextual shortcuts and local
   controls follow the [cockpit contract](desktop-cockpit-shell.md); the sidebar is not another full session-list pane.
-- The phone's open session page offers the row's actions from a menu in its glass bar: Rename, Mark as
+- The phone's open root session page offers the row's actions from a menu in its glass bar: Rename, Mark as
   unread, Archive and Delete, from the shared dispatcher. Mark as unread always sends unread, whatever
   local state says. Archive, Delete and Mark as unread return to the session list. The read-only
-  archived view offers no menu.
+  archived view and a sub-agent's page offer no menu.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are

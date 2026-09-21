@@ -22,6 +22,12 @@
   glass bar already carries Back, Changes and the busy indicator on a narrow
   screen.
 
+## Review Follow-up
+
+- The menu shows only for a root session, so a sub-agent page never adds its
+  session to the project's list. `closeDeletedSessionRoute` moved into
+  `core/routing`. Both came from review and were not re-measured.
+
 ## Automated Evidence
 
 Measured checkpoint: commit `f76aa241689d1c9e2c2a356948b5c5232563860c` against
