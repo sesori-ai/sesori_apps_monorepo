@@ -124,6 +124,8 @@ elif name == "xcrun":
                         capture_output=True, text=True, timeout=15,
                     )
                     self.assertEqual(native.returncode, expected_exit, native.stderr)
+                    if expected_exit != 0:
+                        self.assertIn("code failed to satisfy specified code requirement", native.stderr)
             self.assertTrue((root / "build/desktop-macos-authenticated-upgrade/tools/keychain-writer").exists())
             self.assertFalse((root / "desktop-signing.keychain-db").exists())
             self.assertFalse((root / "desktop-signing.p12").exists())

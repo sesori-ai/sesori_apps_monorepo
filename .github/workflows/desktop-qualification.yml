@@ -48,6 +48,7 @@ on:
       - 'client/app/android/app/src/main/ic_launcher-playstore.png'
       - 'client/desktop/windows/runner/main.cpp'
       - '.github/scripts/macos_signing_ci.sh'
+      - '.github/scripts/test_macos_signing_workflows.py'
       - '.github/scripts/probe_sparkle.swift'
       - '.github/scripts/probe_desktop_macos.py'
       - '.github/scripts/test_probe_desktop_macos.py'
@@ -830,6 +831,10 @@ jobs:
         with:
           python-version: '3.13'
           architecture: ${{ matrix.arch }}
+
+      - name: Verify native codesign requirement controls
+        if: matrix.target == 'macos'
+        run: python -m unittest discover -s .github/scripts -p test_macos_signing_workflows.py
 
       # Official pinned framework source bootstraps native Dart on all six hosts.
       # Windows/Linux ARM64 have no prepacked Flutter SDK for the current pin.
