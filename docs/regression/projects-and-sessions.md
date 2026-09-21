@@ -231,6 +231,10 @@ state.
   archived rows retain archive-time date buckets. Awaiting-input-only rows stay
   in their updated-time bucket, and missing timestamps use an Unknown date
   heading rather than an invented epoch.
+- Above the active session list, on the phone and the split pane alike, chips
+  read All, Running and Unread with exact counts from the loaded list and narrow
+  it locally without a request. A filter that leaves nothing says so. The chips
+  hide in the archived list and while the project has no sessions.
 - Session activity stays relative for 30 days. Older rows use a compact numeric
   date whose field order and separators follow the user's full device locale;
   dates from the current year omit the year, while earlier years remain explicit.

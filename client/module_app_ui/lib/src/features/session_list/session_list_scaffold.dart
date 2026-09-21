@@ -9,6 +9,7 @@ import "../../widgets/catalog_scan_row.dart";
 import "../../widgets/project_nav_subtitle.dart";
 import "session_list_action_dispatcher.dart";
 import "session_list_content.dart";
+import "session_list_filtered_content.dart";
 import "session_tile.dart";
 
 class const SessionListScaffold({
@@ -97,8 +98,7 @@ class const SessionListScaffold({
             onDismiss: () => context.read<SessionListCubit>().dismissCatalogScan(),
           ),
         ),
-        SessionListContent(
-          quickFilter: SessionListQuickFilter.all,
+        SessionListFilteredContent(
           hiddenSessionIds: const {},
           projectName: projectName,
           selectedSessionId: selectedSessionId,

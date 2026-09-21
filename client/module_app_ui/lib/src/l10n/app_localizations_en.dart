@@ -104,7 +104,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopProjectPageArchived => 'Archived';
 
   @override
-  String desktopProjectPageFilterAll(int count) {
+  String sessionListFilterAll(int count) {
     return 'All · $count';
   }
 
@@ -115,15 +115,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSessionPageChanges => 'Changes';
 
   @override
-  String get desktopProjectPageFilterEmpty => 'No sessions match this filter';
+  String get sessionListFilterEmpty => 'No sessions match this filter';
 
   @override
-  String desktopProjectPageFilterRunning(int count) {
+  String sessionListFilterRunning(int count) {
     return 'Running · $count';
   }
 
   @override
-  String desktopProjectPageFilterUnread(int count) {
+  String sessionListFilterUnread(int count) {
     return 'Unread · $count';
   }
 

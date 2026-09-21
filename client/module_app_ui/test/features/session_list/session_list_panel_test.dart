@@ -8,6 +8,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// Layout guards for [SessionListPanel]'s header.
@@ -101,6 +102,31 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byIcon(Icons.add), findsOneWidget);
     expect(find.text(newSessionLabel(tester)), findsOneWidget);
+  });
+
+  testWidgets("the pane shows the shared filter chips and narrows the list with them", (tester) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    when(() => cubit.state).thenReturn(
+      SessionListState.loaded(
+        sessions: [
+          testSession(id: "s1", title: "Fix the build", updatedAt: now),
+          testSession(id: "s2", title: "Unread one", updatedAt: now, unseen: true),
+        ],
+        baseBranch: null,
+        repoSlug: null,
+      ),
+    );
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+    expect(find.text("All · 2"), findsOneWidget);
+
+    await tester.tap(find.text("Unread · 1"));
+    await tester.pumpAndSettle();
+    expect(find.text("Unread one"), findsOneWidget);
+    expect(find.text("Fix the build"), findsNothing);
+
+    await tester.tap(find.text("Running · 0"));
+    await tester.pumpAndSettle();
+    expect(find.text("No sessions match this filter"), findsOneWidget);
   });
 
   testWidgets("wide Android pane uses the Cupertino refresh control", (tester) async {

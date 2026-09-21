@@ -172,7 +172,7 @@ The main pane hosts one full-width routed page.
   narrow it locally without a request; a filter that leaves nothing says so. The chips hide while Archived
   is on, which shows every archived session, and while the project has no sessions. Hovering a row, or
   moving keyboard focus into it, swaps its time for Mark read/unread and Archive without changing the row's
-  height; an archived row offers no Archive.
+  height; an archived row offers no Archive. The phone list shows the same shared chips.
 - Direct/sidebar-opened detail uses the available main-pane width without a
   redundant back arrow. Pushed details retain Back to their opener, including
   child-to-parent navigation. Archived rows open read-only. New-session creation replaces its page with
