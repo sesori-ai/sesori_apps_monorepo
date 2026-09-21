@@ -8,7 +8,8 @@
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `bf14d7c0f3`
 - **Delivery:** 22 numbered PRs (17 until the 2026-09-21 amendment, see
-  D20); step 1 raises this plan before production work. State lives in [TRACKER](TRACKER.md).
+  D20); step 1 raises this plan before production work. State lives in
+  [TRACKER](TRACKER.md).
 - **Architecture review:** rejected 2026-09-19 on one seam (ownership and
   commit path of the pending-archive cubit); the findings were applied
   directly. See [Plan Review](#plan-review).
