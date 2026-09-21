@@ -13,6 +13,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
 import "desktop_connection_pill.dart";
+import "desktop_pending_archive_alerts.dart";
 import "desktop_sidebar.dart";
 import "desktop_window_drag_area.dart";
 
@@ -36,6 +37,8 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
             create: (context) => RecentSessionsCubit(inventoryService: context.read<RecentSessionInventoryService>()),
           ),
           BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
+          // Outlives every page and the sidebar, so an Undo window survives navigation.
+          BlocProvider(create: (_) => PendingSessionArchiveCubit(repository: getIt())),
           BlocProvider(
             create: (context) => DesktopSidebarRefreshCubit(
               service: getIt<DesktopSidebarRefreshService>(
@@ -45,7 +48,7 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
             ),
           ),
         ],
-        child: child,
+        child: DesktopPendingArchiveAlerts(child: child),
       ),
     ),
   );

@@ -2695,6 +2695,54 @@ abstract class AppLocalizations {
   /// **'Session archived'**
   String get sessionListArchived;
 
+  /// Action on the desktop 'Session archived' alert that cancels the archive before it is sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get sessionListArchiveUndo;
+
+  /// Desktop session menu entry, and the default button of the refusal alert, that archives a session without deleting its worktree.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive, keep worktree'**
+  String get sessionListArchiveKeepWorktree;
+
+  /// Title of the desktop alert shown before archiving a session that is still running.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive a running session?'**
+  String get sessionListArchiveRunningTitle;
+
+  /// Body of the desktop alert shown before archiving a running session.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” is still running. Archiving makes it permanently read-only.'**
+  String sessionListArchiveRunningMessage(String title);
+
+  /// Title of the desktop alert shown when the bridge refuses to delete a session's worktree while archiving.
+  ///
+  /// In en, this message translates to:
+  /// **'The worktree can’t be deleted safely'**
+  String get sessionListArchiveRefusedTitle;
+
+  /// Desktop refusal alert button that archives the session and force-deletes its worktree.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete it anyway'**
+  String get sessionListArchiveDeleteAnyway;
+
+  /// Title of the desktop delete alert, naming the session.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{title}”?'**
+  String sessionListDeleteNamedTitle(String title);
+
+  /// Checkbox in the desktop delete alert.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the worktree too (the branch is kept)'**
+  String get sessionListDeleteWorktreeKeepsBranch;
+
   /// No description provided for @sessionListDeleted.
   ///
   /// In en, this message translates to:

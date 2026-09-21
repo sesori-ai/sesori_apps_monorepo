@@ -16,6 +16,17 @@ entirely along with its transcript and, optionally, its worktree.
   unavailable the export may proceed from stored content only and must record
   that honestly, never claiming completeness it lacks. The archived session
   stays readable through the same history path, served from that record.
+- On desktop, Archive asks nothing for an idle session: the session leaves the sidebar and the project page
+  at once and an Archived alert offers Undo for five seconds. Nothing reaches the bridge until that window
+  closes, so Undo simply brings the session back. Archiving another session, or the window ending, sends the
+  archive; quitting inside the window sends nothing. Only a running session is confirmed first, and a
+  session with a worktree also offers Archive, keep worktree.
+- When the bridge refuses the desktop archive because its worktree is not safe to delete, the session
+  returns to the lists and a compact alert names the issues and offers Archive and keep the worktree, the
+  default, or Delete it anyway. That second choice archives at once with no further Undo. Any other failure
+  returns the session and shows an error alert.
+- Desktop Delete asks in a compact centred alert that names the session; Cancel is the default button and
+  the destructive button never is. Phone surfaces keep their archive and delete sheets.
 - Deletion removes the session record immediately and is destructive and not
   recoverable. History, spilled content, and the archive record are purged
   best-effort after row deletion; a logged failure leaves residue for startup
@@ -198,4 +209,6 @@ worktree service; shared cleanup rejection model; OMP cleanup service; shared
 ACP tombstone behavior used by Antigravity, Copilot and Grok; Antigravity composed deletion tests; Grok package deletion
 tests; client list/detail surfaces; shared `session_detail_activity_owner_test`,
 mobile `session_detail_activity_navigation_test` and
-`archived_sessions_navigation_test`, desktop `desktop_session_detail_screen_test`.
+`archived_sessions_navigation_test`, desktop `desktop_session_detail_screen_test`,
+`desktop_pending_archive_alerts_test`, `pending_session_archive_cubit_test` and shared
+`session_cleanup_flow_test`.

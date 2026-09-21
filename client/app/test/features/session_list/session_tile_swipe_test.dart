@@ -43,6 +43,7 @@ void main() {
     );
 
     final dispatcher = SessionListActionDispatcher(
+      cleanupFlow: const SessionCleanupSheets(),
       onSessionDeleted: null,
       onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session.id),
     );

@@ -404,6 +404,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
       projects: widget.projects,
       entries: entries,
       deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
+      hiddenSessionIds: context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
       stickySessionId: _stickyActivitySessionId,
     );
     // The rail has no headers to unfold a section with, so it ignores folding;
@@ -455,6 +456,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                 providers: [
                   BlocProvider.value(value: context.read<RecentSessionsCubit>()),
                   BlocProvider.value(value: context.read<DesktopSidebarCubit>()),
+                  BlocProvider.value(value: context.read<PendingSessionArchiveCubit>()),
                 ],
                 child: _SidebarActivityPopoutList(
                   close: close,
@@ -580,6 +582,7 @@ class const _SidebarActivityPopoutList({
       projects: projects,
       entries: context.watch<RecentSessionsCubit>().state,
       deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
+      hiddenSessionIds: context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
       stickySessionId: stickySessionId,
     );
     // The last row left the open popout: close it rather than leave an empty
@@ -688,8 +691,13 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
   @override
   Widget build(BuildContext context) {
     final entry = widget.entry;
+    // A session being archived leaves its project at once.
+    final hidden = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
     final rows = entry is RecentSessionsLoaded
-        ? entry.rows(selectedSessionId: widget.selectedSessionId, limit: _rowLimit)
+        ? entry
+              .rows(selectedSessionId: widget.selectedSessionId, limit: _rowLimit)
+              .where((session) => !hidden.contains(session.id))
+              .toList()
         : const <Session>[];
     final loc = context.loc;
     final detailStyle = context.prego.textTheme.textXs.regular;

@@ -14,6 +14,9 @@ final class DesktopSidebarSessionProjection._({required final List<DesktopSideba
     required Map<String, RecentSessionsEntry> entries,
     required Map<String, int> deferredSessions,
     required String? stickySessionId,
+
+    /// Sessions being archived, hidden while they still read as unarchived.
+    required Set<String> hiddenSessionIds,
   }) {
     final groups = <DesktopSidebarActivityGroup>[];
     for (final project in projects) {
@@ -21,6 +24,7 @@ final class DesktopSidebarSessionProjection._({required final List<DesktopSideba
       if (entry is! RecentSessionsLoaded) continue;
       final sessions = <DesktopSidebarActivitySession>[];
       for (final session in entry.visibleSessions) {
+        if (hiddenSessionIds.contains(session.id)) continue;
         final isRunning = entry.isRunning(session: session);
         final isUnseen = entry.isUnseen(session: session);
         final deferredAt = deferredSessions[session.id];

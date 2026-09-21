@@ -38,6 +38,7 @@ void main() {
       },
       deferredSessions: const {},
       stickySessionId: null,
+      hiddenSessionIds: const {},
     );
 
     expect(projection.activityGroups.map((group) => group.project.id), ["two", "one"]);
@@ -64,6 +65,7 @@ void main() {
           },
           deferredSessions: const {"deferred": 5, "news": 5},
           stickySessionId: stickySessionId,
+          hiddenSessionIds: const {},
         ).activityGroups.expand((group) => group.sessions).map((item) => item.session.id).toList();
 
     expect(activity(sessions: [deferred, news], stickySessionId: null), ["news"]);
@@ -87,6 +89,7 @@ void main() {
         entries: {"one": running},
         deferredSessions: const {"deferred": 5},
         stickySessionId: null,
+        hiddenSessionIds: const {},
       ).activityGroups.single.sessions.single.isRunning,
       isTrue,
     );
@@ -114,6 +117,7 @@ void main() {
       entries: {"one": loaded},
       deferredSessions: const {},
       stickySessionId: null,
+      hiddenSessionIds: const {},
     );
 
     expect(projection.activityGroups.single.sessions.single.session.id, "priority");
