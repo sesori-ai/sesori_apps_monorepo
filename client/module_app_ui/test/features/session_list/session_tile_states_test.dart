@@ -512,8 +512,16 @@ void main() {
     });
 
     testWidgets("a running row leads with the sparkle and says Running where the time would be", (tester) async {
-      await pumpPointerTile(tester, tile(session: testSession(title: "My Session"), isActive: true));
+      final semantics = tester.ensureSemantics();
+      final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
+      await pumpPointerTile(tester, tile(session: session, isActive: true));
 
+      // Spoken once as the state, and the time the slot gave up is still told.
+      expect(
+        find.bySemanticsLabel(RegExp("^(?!.*Running.*Running).*Running.*just now", dotAll: true)),
+        findsOneWidget,
+      );
+      semantics.dispose();
       expect(find.text("Running"), findsOneWidget);
       expect(
         tester.getCenter(find.byType(PregoAiLoader)).dx,

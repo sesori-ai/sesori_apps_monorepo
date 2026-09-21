@@ -310,8 +310,11 @@ class const SessionTile({
     if (pointer && isRunning) {
       return Padding(
         padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
-        // The leading sparkle already speaks this state.
-        child: ExcludeSemantics(
+        // The leading sparkle already speaks the state, so this slot speaks
+        // the time it visually gave up.
+        child: Semantics(
+          label: spokenTime,
+          excludeSemantics: true,
           child: Text(
             context.loc.sessionListRunning,
             style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.bgBrandSolid),
