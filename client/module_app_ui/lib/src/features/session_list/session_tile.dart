@@ -229,7 +229,8 @@ class const SessionTile({
           SizedBox(
             width: kSessionRowIconSlotWidth,
             height: lineHeight,
-            child: switch (_state(context: context, size: _pointerStateIconSize)) {
+            // Waiting for input is not running; the footer says what the row wants.
+            child: switch (isActive && awaitingInput ? null : _state(context: context, size: _pointerStateIconSize)) {
               final state? => Center(
                 child: Semantics(label: state.label, child: state.sparkle),
               ),

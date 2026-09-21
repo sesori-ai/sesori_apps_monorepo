@@ -524,6 +524,8 @@ void main() {
       await pumpPointerTile(tester, tile(session: session, isActive: true, awaitingInput: true));
 
       expect(find.text("Running"), findsNothing);
+      expect(find.bySemanticsLabel(RegExp("Running")), findsNothing);
+      expect(find.byType(PregoAiLoader), findsNothing);
       expect(find.text("Awaiting input"), findsOneWidget);
     });
   });
