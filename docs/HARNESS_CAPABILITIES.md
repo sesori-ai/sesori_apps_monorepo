@@ -166,12 +166,13 @@ models only from new/resume responses and has no deletion capability.
 
 Only OpenCode has real agents, and its plan agent is how its mode is chosen.
 The composer shows the agent entry only when a harness advertises more than
-one selectable agent, so it appears for OpenCode alone. Claude, Codex, Copilot, Cursor and OMP have modes such as Plan and Ask
-that Sesori used to list as agents; since 2026-09-21 each advertises only its
-default mode and Sesori offers no mode control. A mode name that still arrives
-from a catalog captured earlier is honoured, never run in the default mode.
-Naming the advertised default returns a session left in another mode to the
-default with its next prompt.
+one selectable agent, so it appears for OpenCode alone. Claude, Codex,
+Copilot, Cursor and OMP have modes such as Plan and Ask that Sesori used to
+list as agents; since 2026-09-21 each advertises only its default mode
+(Cursor always its Agent mode) and Sesori offers no mode control. A mode name
+that still arrives from a catalog captured earlier is honoured, never run in
+the default mode. Naming the advertised default returns a session left in
+another mode to the default with its next prompt.
 
 ## ACP multi-select form questions
 
