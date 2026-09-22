@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -12,9 +14,9 @@ import "background_tasks_list.dart";
 /// never claims they are finished: an idle sub-agent can be resumed at any
 /// time.
 ///
-/// Tapping it opens the sub-agent list in an [OverlayPortal] anchored above the
-/// pill, so the composer's footprint never changes and the list keeps tracking
-/// live statuses while it is open.
+/// Tapping it opens the sub-agent list in an [OverlayPortal] beside the pill,
+/// so the composer's footprint never changes and the list keeps tracking live
+/// statuses while it is open.
 class const BackgroundTasksBar({
   super.key,
   required final PregoComposerSurfaceStyle surfaceStyle,
@@ -29,8 +31,13 @@ class const BackgroundTasksBar({
 class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
   static const double _listWidth = 320;
 
+  /// Between the pill and the list.
+  static const double _gap = 6;
+
+  /// Kept clear between the list and the edges of the screen.
+  static const double _edgeMargin = 8;
+
   final OverlayPortalController _overlayController = OverlayPortalController();
-  final LayerLink _link = LayerLink();
 
   bool _isRunning(Session child) {
     final status = widget.childStatuses[child.id];
@@ -49,52 +56,50 @@ class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
     final totalForeground = runningCount > 0 ? prego.colors.textTertiary : foreground;
     final borderRadius = BorderRadius.circular(PregoRadius.full);
 
-    return CompositedTransformTarget(
-      link: _link,
-      child: OverlayPortal(
-        controller: _overlayController,
-        overlayChildBuilder: _buildOverlay,
-        child: Tooltip(
-          message: loc.subAgentsSummary(count, runningCount),
-          child: Semantics(
-            button: true,
-            label: loc.subAgentsSummary(count, runningCount),
-            excludeSemantics: true,
-            child: DecoratedBox(
-              decoration: pregoComposerSurfaceDecoration(
-                prego: prego,
-                style: widget.surfaceStyle,
-                borderRadius: borderRadius,
-              ),
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: borderRadius,
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  key: const ValueKey("sub_agents_pill"),
-                  onTap: _overlayController.toggle,
-                  child: SizedBox(
-                    height: 36,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        spacing: 4,
-                        children: [
-                          if (runningCount > 0) ...[
-                            const SizedBox.square(dimension: 14, child: PregoActivityIndicator(color: null)),
-                            Padding(
-                              padding: const EdgeInsetsDirectional.only(end: 2),
-                              child: Text(
-                                "$runningCount",
-                                style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textPrimary),
-                              ),
+    return OverlayPortal.overlayChildLayoutBuilder(
+      controller: _overlayController,
+      overlayChildBuilder: (context, info) => _buildOverlay(context: context, info: info),
+      child: Tooltip(
+        message: loc.subAgentsSummary(count, runningCount),
+        child: Semantics(
+          button: true,
+          label: loc.subAgentsSummary(count, runningCount),
+          onTap: _overlayController.toggle,
+          excludeSemantics: true,
+          child: DecoratedBox(
+            decoration: pregoComposerSurfaceDecoration(
+              prego: prego,
+              style: widget.surfaceStyle,
+              borderRadius: borderRadius,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: borderRadius,
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                key: const ValueKey("sub_agents_pill"),
+                onTap: _overlayController.toggle,
+                child: SizedBox(
+                  height: 36,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: 4,
+                      children: [
+                        if (runningCount > 0) ...[
+                          const SizedBox.square(dimension: 14, child: PregoActivityIndicator(color: null)),
+                          Padding(
+                            padding: const EdgeInsetsDirectional.only(end: 2),
+                            child: Text(
+                              "$runningCount",
+                              style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textPrimary),
                             ),
-                          ],
-                          Icon(TablerRegular.subtask, size: 14, color: totalForeground),
-                          Text("$count", style: prego.textTheme.textXs.medium.copyWith(color: totalForeground)),
+                          ),
                         ],
-                      ),
+                        Icon(TablerRegular.subtask, size: 14, color: totalForeground),
+                        Text("$count", style: prego.textTheme.textXs.medium.copyWith(color: totalForeground)),
+                      ],
                     ),
                   ),
                 ),
@@ -106,10 +111,20 @@ class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
     );
   }
 
-  Widget _buildOverlay(BuildContext context) {
+  Widget _buildOverlay({required BuildContext context, required OverlayChildLayoutInfo info}) {
     final prego = context.prego;
     final running = widget.children.where(_isRunning).toList();
     final idle = widget.children.where((child) => !_isRunning(child)).toList();
+    // A tall draft, an open keyboard or a short window can leave too little
+    // room above the pill: the list then opens toward the roomier side and
+    // scrolls within it instead of running off screen.
+    final pill = MatrixUtils.transformRect(info.childPaintTransform, Offset.zero & info.childSize);
+    final screen = info.overlaySize;
+    final safe = MediaQuery.paddingOf(context);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final roomAbove = pill.top - _gap - safe.top - _edgeMargin;
+    final roomBelow = screen.height - keyboard - safe.bottom - _edgeMargin - pill.bottom - _gap;
+    final opensUp = roomAbove >= roomBelow;
 
     return Stack(
       children: [
@@ -117,15 +132,14 @@ class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
         Positioned.fill(
           child: GestureDetector(behavior: HitTestBehavior.translucent, onTap: _overlayController.hide),
         ),
-        CompositedTransformFollower(
-          link: _link,
-          showWhenUnlinked: false,
-          // Grow upward from the pill's top trailing corner.
-          targetAnchor: Alignment.topRight,
-          followerAnchor: Alignment.bottomRight,
-          offset: const Offset(0, -6),
-          child: SizedBox(
-            width: _listWidth,
+        Positioned(
+          // The list's trailing edge lines up with the pill's.
+          right: screen.width - pill.right,
+          top: opensUp ? null : pill.bottom + _gap,
+          bottom: opensUp ? screen.height - pill.top + _gap : null,
+          width: math.min(_listWidth, pill.right - safe.left - _edgeMargin),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: math.max(0, opensUp ? roomAbove : roomBelow)),
             child: PregoCard(
               surfaceStyle: widget.surfaceStyle,
               child: Column(
@@ -139,12 +153,14 @@ class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
                       style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary),
                     ),
                   ),
-                  BackgroundTasksList(
-                    projectId: widget.projectId,
-                    // Working sub-agents first; idle ones stay listed because
-                    // they can be resumed.
-                    tasks: [...running, ...idle],
-                    childStatuses: widget.childStatuses,
+                  Flexible(
+                    child: BackgroundTasksList(
+                      projectId: widget.projectId,
+                      // Working sub-agents first; idle ones stay listed because
+                      // they can be resumed.
+                      tasks: [...running, ...idle],
+                      childStatuses: widget.childStatuses,
+                    ),
                   ),
                 ],
               ),

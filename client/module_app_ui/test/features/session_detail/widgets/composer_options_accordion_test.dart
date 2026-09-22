@@ -12,6 +12,7 @@ void main() {
       await _pumpAccordion(
         tester: tester,
         brightness: brightness,
+        alwaysOpen: false,
         actionsEnabled: true,
         showAttachImage: true,
         onAttachImageTap: () => attachmentPicks++,
@@ -70,6 +71,7 @@ void main() {
     await _pumpAccordion(
       tester: tester,
       brightness: Brightness.light,
+      alwaysOpen: false,
       actionsEnabled: true,
       showAttachImage: false,
       onAttachImageTap: () => fail("Unsupported attachment action was invoked"),
@@ -88,10 +90,39 @@ void main() {
     expect(find.byTooltip("More actions"), findsOneWidget);
   });
 
+  testWidgets("an always-open pill shows its actions without an opener and keeps them after a pick", (tester) async {
+    var attachmentPicks = 0;
+    var commandPicks = 0;
+    await _pumpAccordion(
+      tester: tester,
+      brightness: Brightness.light,
+      alwaysOpen: true,
+      actionsEnabled: true,
+      showAttachImage: true,
+      onAttachImageTap: () => attachmentPicks++,
+      onSlashCommandsTap: () => commandPicks++,
+    );
+    expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.slash), findsOneWidget);
+
+    await tester.tap(find.byTooltip("Attach image"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.slash));
+    await tester.pumpAndSettle();
+
+    expect(attachmentPicks, 1);
+    expect(commandPicks, 1);
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.slash), findsOneWidget);
+    expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
+  });
+
   testWidgets("disabled actions remain inert while the opener still works", (tester) async {
     await _pumpAccordion(
       tester: tester,
       brightness: Brightness.light,
+      alwaysOpen: false,
       actionsEnabled: false,
       showAttachImage: true,
       onAttachImageTap: () => fail("Disabled attachment action was invoked"),
@@ -111,6 +142,7 @@ void main() {
 Future<void> _pumpAccordion({
   required WidgetTester tester,
   required Brightness brightness,
+  required bool alwaysOpen,
   required bool actionsEnabled,
   required bool showAttachImage,
   required VoidCallback onAttachImageTap,
@@ -129,7 +161,7 @@ Future<void> _pumpAccordion({
           child: ComposerOptionsAccordion(
             actionsEnabled: actionsEnabled,
             showAttachImage: showAttachImage,
-            alwaysOpen: false,
+            alwaysOpen: alwaysOpen,
             onAttachImageTap: onAttachImageTap,
             onSlashCommandsTap: onSlashCommandsTap,
           ),

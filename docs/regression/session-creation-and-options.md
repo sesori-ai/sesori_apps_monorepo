@@ -33,7 +33,9 @@ variant, and worktree mode, and creating the session with its first input.
   with a spinner and the running count, then the sub-agent glyph and the total, muted; idle, it shows the
   glyph and the total only. It never claims sub-agents are finished, since an idle one can be resumed.
   Tapping it opens the sub-agent list above the pill, running first, without changing the composer's
-  height; a tap elsewhere closes it. The tooltip and screen-reader label read "N sub-agents, M working".
+  height; a tap elsewhere closes it. With more room below, as under a tall draft in a short window, the list
+  opens below instead, and it scrolls rather than leaving the screen. The tooltip and screen-reader label
+  read "N sub-agents, M working", and a screen reader can open the list from it.
 - Options are discovered per plugin and cached under the plugin's declared
   coherence scope; retention and replacement are bridge-owned.
 - Claude's plugin-scoped discovery runs in its host-created state directory,

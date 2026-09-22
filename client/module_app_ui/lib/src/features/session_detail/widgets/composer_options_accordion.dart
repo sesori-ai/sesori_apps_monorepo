@@ -33,6 +33,12 @@ class const ComposerOptionsAccordion({
 class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
   bool _isOpen = false;
 
+  /// After an action the pill folds again, unless it never folds.
+  void _collapse() {
+    if (widget.alwaysOpen) return;
+    setState(() => _isOpen = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -72,7 +78,7 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
                         tooltip: loc.sessionDetailAttachImage,
                         onTap: widget.actionsEnabled
                             ? () {
-                                setState(() => _isOpen = false);
+                                _collapse();
                                 widget.onAttachImageTap();
                               }
                             : null,
@@ -82,7 +88,7 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
                       tooltip: loc.sessionDetailCommandPickerTitle,
                       onTap: widget.actionsEnabled
                           ? () {
-                              setState(() => _isOpen = false);
+                              _collapse();
                               widget.onSlashCommandsTap();
                             }
                           : null,

@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:flutter/rendering.dart";
 import "package:material_ui/material_ui.dart";
 
@@ -20,13 +22,19 @@ class const PregoStartEllipsisText({
   this : super(text, style: style);
 
   @override
-  Widget build(BuildContext context) => _StartEllipsisRenderWidget(
-    text: text,
-    // The same resolution [Text] applies to its own style.
-    style: DefaultTextStyle.of(context).style.merge(style),
-    textDirection: Directionality.of(context),
-    textScaler: MediaQuery.textScalerOf(context),
-  );
+  Widget build(BuildContext context) {
+    // The same resolution [Text] applies to its own style, bold text included.
+    var resolved = DefaultTextStyle.of(context).style.merge(style);
+    if (MediaQuery.boldTextOf(context)) {
+      resolved = resolved.merge(const TextStyle(fontWeight: FontWeight.bold));
+    }
+    return _StartEllipsisRenderWidget(
+      text: text,
+      style: resolved,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    );
+  }
 }
 
 class const _StartEllipsisRenderWidget({
@@ -83,6 +91,7 @@ class RenderStartEllipsisText({
     if (value == _textDirection) return;
     _textDirection = value;
     markNeedsLayout();
+    markNeedsSemanticsUpdate();
   }
 
   TextScaler _textScaler = textScaler;
@@ -123,7 +132,7 @@ class RenderStartEllipsisText({
   }
 
   @override
-  double computeMinIntrinsicWidth(double height) => _measure(_ellipsis);
+  double computeMinIntrinsicWidth(double height) => math.min(_measure(_ellipsis), _measure(_text));
 
   @override
   double computeMaxIntrinsicWidth(double height) => _measure(_text);
@@ -157,7 +166,12 @@ class RenderStartEllipsisText({
   @override
   void paint(PaintingContext context, Offset offset) {
     _measure(_fit(constraints.maxWidth));
+    // Narrower than one ellipsis, the glyph would spill over a neighbour.
+    context.canvas
+      ..save()
+      ..clipRect(offset & size);
     _painter.paint(context.canvas, offset);
+    context.canvas.restore();
   }
 
   @override

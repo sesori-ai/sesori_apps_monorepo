@@ -22,7 +22,12 @@ void main() {
     lastUserActivityAt: null,
   );
 
-  Future<void> pump(WidgetTester tester, {required int total, required int running}) async {
+  Future<void> pump(
+    WidgetTester tester, {
+    required int total,
+    required int running,
+    Alignment alignment = Alignment.bottomRight,
+  }) async {
     final children = [for (var i = 1; i <= total; i++) child(i)];
     await tester.pumpWidget(
       MaterialApp(
@@ -31,7 +36,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: Align(
-            alignment: Alignment.bottomRight,
+            alignment: alignment,
             child: BackgroundTasksBar(
               surfaceStyle: PregoComposerSurfaceStyle.subtle,
               projectId: "project-1",
@@ -57,7 +62,11 @@ void main() {
     expect(find.text("28"), findsOneWidget);
     // Reading order: spinner, running count, glyph, total.
     expect(tester.getRect(find.text("3")).right, lessThan(tester.getRect(find.byIcon(TablerRegular.subtask)).left));
-    expect(find.bySemanticsLabel("28 sub-agents, 3 working"), findsOneWidget);
+    // A screen reader can open the list from the summary it reads out.
+    expect(
+      tester.getSemantics(find.bySemanticsLabel("28 sub-agents, 3 working")),
+      isSemantics(isButton: true, hasTapAction: true),
+    );
   });
 
   testWidgets("idle, only the total shows behind the sub-agent glyph", (tester) async {
@@ -84,5 +93,21 @@ void main() {
     await tester.tapAt(const Offset(20, 20));
     await tester.pumpAndSettle();
     expect(find.text("Sub-agents"), findsNothing);
+  });
+
+  testWidgets("with little room above, the list opens below the pill and stays on screen", (tester) async {
+    tester.view.physicalSize = const Size(400, 300);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pump(tester, total: 28, running: 3, alignment: Alignment.topRight);
+    await tester.tap(find.byKey(const ValueKey("sub_agents_pill")));
+    await tester.pumpAndSettle();
+
+    final pill = tester.getRect(find.byKey(const ValueKey("sub_agents_pill")));
+    final list = tester.getRect(find.byType(PregoCard));
+    expect(tester.takeException(), isNull);
+    expect(list.top, greaterThan(pill.bottom));
+    // Twenty-eight rows do not fit in 300 points: the list scrolls instead.
+    expect(list.bottom, lessThanOrEqualTo(300));
   });
 }

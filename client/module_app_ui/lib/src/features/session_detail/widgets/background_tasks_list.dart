@@ -4,7 +4,8 @@ import "package:theme_prego/module_prego.dart";
 
 import "background_task_row.dart";
 
-/// The scrollable list of sub-agent rows under the list heading.
+/// The scrollable list of sub-agent rows under the list heading. It needs a
+/// bounded height: given less than it wants, it scrolls in what it gets.
 class const BackgroundTasksList({
   super.key,
   required final String? projectId,
@@ -18,21 +19,23 @@ class const BackgroundTasksList({
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const PregoDivider(flat: true),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 240),
-          child: ListView.builder(
-            shrinkWrap: true,
-            padding: EdgeInsets.zero,
-            itemCount: tasks.length,
-            itemBuilder: (context, index) {
-              final child = tasks[index];
-              return BackgroundTaskRow(
-                projectId: projectId,
-                session: child,
-                status: childStatuses[child.id],
-                isLast: index == tasks.length - 1,
-              );
-            },
+        Flexible(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 240),
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: tasks.length,
+              itemBuilder: (context, index) {
+                final child = tasks[index];
+                return BackgroundTaskRow(
+                  projectId: projectId,
+                  session: child,
+                  status: childStatuses[child.id],
+                  isLast: index == tasks.length - 1,
+                );
+              },
+            ),
           ),
         ),
       ],

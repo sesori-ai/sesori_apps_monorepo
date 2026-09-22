@@ -54,6 +54,21 @@ void main() {
     expect(paintedWidth(tester), 13 * 14);
   });
 
+  testWidgets("the system bold-text setting bolds the label, as it does any Text", (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(boldText: true),
+          child: Center(
+            child: PregoStartEllipsisText(text: "Claude Opus 5", style: style),
+          ),
+        ),
+      ),
+    );
+    final label = tester.renderObject<RenderStartEllipsisText>(find.byType(PregoStartEllipsisText));
+    expect(label.style.fontWeight, FontWeight.bold);
+  });
+
   testWidgets("screen readers get the whole text", (tester) async {
     await pump(
       tester,
