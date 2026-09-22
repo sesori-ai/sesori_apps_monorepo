@@ -38,7 +38,10 @@ them.
 | [x] | 19 | `desktop-ui-polish/phone-session-actions` | [19/22](#pr-titles) | ≤ 500 | done |
 | [x] | 20 | `desktop-ui-polish/shared-cleanup` | [20/22](#pr-titles) | ≤ 400 | done |
 | [x] | 21 | `desktop-ui-polish/regression-docs` | [21/22](#pr-titles) | ≤ 400 | done |
-| [ ] | 22 | `desktop-ui-polish/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | pending |
+| [x] | 22 | `desktop-ui-polish/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | done |
+
+Step 22 is done through the user's explicit acceptance of its unexecuted
+cells, not a claim that every matrix cell passed.
 
 ### PR titles
 
