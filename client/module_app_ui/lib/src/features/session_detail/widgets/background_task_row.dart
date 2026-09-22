@@ -55,10 +55,11 @@ class const BackgroundTaskRow({
         child: PregoActivityIndicator(color: null),
       ),
     ),
+    // Idle is not finished: a sub-agent can be resumed, so no check mark.
     SessionStatusIdle() || null => Icon(
-      Icons.check_circle,
+      TablerRegular.player_pause,
       size: 16,
-      color: prego.colors.bgBrandSolid,
+      color: prego.colors.textSecondary,
     ),
   };
 

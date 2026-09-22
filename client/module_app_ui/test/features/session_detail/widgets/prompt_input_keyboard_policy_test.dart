@@ -110,6 +110,7 @@ Future<void> _pumpComposer({
         inputMode: ChatInputMode.textFirst,
         isKeyboardVisible: false,
         sendKeyPolicy: sendKeyPolicy,
+        presentation: ComposerPresentation.touch,
         attachmentDispatcher: () => attachmentDispatcher,
         imageClipboard: () => imageClipboard,
         child: Scaffold(

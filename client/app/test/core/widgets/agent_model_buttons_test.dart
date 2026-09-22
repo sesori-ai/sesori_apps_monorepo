@@ -41,6 +41,8 @@ Widget _buildApp({required List<AgentInfo> agents, required void Function(String
             onModelSelected: ({required providerID, required modelID}) {},
             availableVariants: const [],
             onVariantSelected: (_) {},
+            compact: false,
+            trailing: null,
           ),
         ],
       ),
@@ -77,6 +79,8 @@ Widget _buildVariantApp({required ValueChanged<SessionVariant> onVariantSelected
             onModelSelected: ({required providerID, required modelID}) {},
             availableVariants: _variants,
             onVariantSelected: onVariantSelected,
+            compact: false,
+            trailing: null,
           ),
           // The prompt field sits below the picker row in the chat composer.
           const SizedBox(height: 120),

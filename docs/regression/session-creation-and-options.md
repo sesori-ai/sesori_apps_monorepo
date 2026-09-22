@@ -23,6 +23,17 @@ variant, and worktree mode, and creating the session with its first input.
   shows model and effort alone; OpenCode lists its real agents. A released mode name such as Plan or Ask
   that still arrives is honoured by the plugin, and naming the advertised default returns a session left in
   another mode to the default with its next prompt.
+- The agent, model and effort selectors sit in one strip above the input on every surface, each a pill
+  with a leading glyph and an unfold caret. A label too long for its pill keeps its end behind a leading
+  ellipsis, "…Opus 5" rather than "Claude Op…", and screen readers hear the whole name. On a pointer
+  surface the pills size to their labels; on touch they share the width. On a pointer surface the attach
+  and command buttons are always visible and the box grows with the draft instead of opening an editor
+  sheet.
+- A session with sub-agents shows a pill at the strip's trailing edge. While any sub-agent works it leads
+  with a spinner and the running count, then the sub-agent glyph and the total, muted; idle, it shows the
+  glyph and the total only. It never claims sub-agents are finished, since an idle one can be resumed.
+  Tapping it opens the sub-agent list above the pill, running first, without changing the composer's
+  height; a tap elsewhere closes it. The tooltip and screen-reader label read "N sub-agents, M working".
 - Options are discovered per plugin and cached under the plugin's declared
   coherence scope; retention and replacement are bridge-owned.
 - Claude's plugin-scoped discovery runs in its host-created state directory,

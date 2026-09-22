@@ -26,6 +26,13 @@ class const AgentModelButtons({
   required final void Function({required String providerID, required String modelID}) onModelSelected,
   required final List<SessionVariant> availableVariants,
   required final ValueChanged<SessionVariant> onVariantSelected,
+
+  /// Whether each selector hugs its label at the leading edge (pointer shells)
+  /// instead of sharing the strip's width equally (touch shells).
+  required final bool compact,
+
+  /// Shown at the strip's trailing edge, after the selectors.
+  required final Widget? trailing,
 }) extends StatefulWidget {
   @override
   State<AgentModelButtons> createState() => _AgentModelButtonsState();
@@ -71,42 +78,53 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     final selectedAgent = widget.selectedAgent;
     // One agent is no choice: the entry appears only when there is another.
     final hasAgentSelection = widget.agents.length > 1 && selectedAgent != null;
+    final compact = widget.compact;
+    Widget slot(Widget menu) => compact
+        ? Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 240),
+              child: IntrinsicWidth(child: menu),
+            ),
+          )
+        : Expanded(child: menu);
+    final selectors = [
+      if (hasAgentSelection)
+        slot(
+          _AgentMenu(
+            surfaceStyle: widget.surfaceStyle,
+            agents: widget.agents,
+            selectedAgent: selectedAgent,
+            onAgentSelected: widget.onAgentSelected,
+          ),
+        ),
+      slot(
+        _ModelMenu(
+          surfaceStyle: widget.surfaceStyle,
+          sections: _modelSections,
+          selected: selected,
+          providers: widget.providers,
+          onModelSelected: widget.onModelSelected,
+          onSearchTap: _openModelSearchSheet,
+        ),
+      ),
+      if (widget.availableVariants.isNotEmpty)
+        slot(
+          _VariantMenu(
+            surfaceStyle: widget.surfaceStyle,
+            availableVariants: widget.availableVariants,
+            selectedVariant: selected?.variant,
+            onVariantSelected: widget.onVariantSelected,
+          ),
+        ),
+    ];
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
       child: Row(
+        spacing: 8,
         children: [
-          if (hasAgentSelection) ...[
-            Expanded(
-              child: _AgentMenu(
-                surfaceStyle: widget.surfaceStyle,
-                agents: widget.agents,
-                selectedAgent: selectedAgent,
-                onAgentSelected: widget.onAgentSelected,
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: _ModelMenu(
-              surfaceStyle: widget.surfaceStyle,
-              sections: _modelSections,
-              selected: selected,
-              providers: widget.providers,
-              onModelSelected: widget.onModelSelected,
-              onSearchTap: _openModelSearchSheet,
-            ),
-          ),
-          if (widget.availableVariants.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Expanded(
-              child: _VariantMenu(
-                surfaceStyle: widget.surfaceStyle,
-                availableVariants: widget.availableVariants,
-                selectedVariant: selected?.variant,
-                onVariantSelected: widget.onVariantSelected,
-              ),
-            ),
-          ],
+          // The selectors take the strip; [trailing] keeps the trailing edge.
+          Expanded(child: Row(spacing: 8, children: selectors)),
+          ?widget.trailing,
         ],
       ),
     );

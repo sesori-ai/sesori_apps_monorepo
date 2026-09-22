@@ -129,6 +129,7 @@ Future<void> _pumpAccordion({
           child: ComposerOptionsAccordion(
             actionsEnabled: actionsEnabled,
             showAttachImage: showAttachImage,
+            alwaysOpen: false,
             onAttachImageTap: onAttachImageTap,
             onSlashCommandsTap: onSlashCommandsTap,
           ),

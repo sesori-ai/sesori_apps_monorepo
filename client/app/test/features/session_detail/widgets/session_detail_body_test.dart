@@ -383,6 +383,7 @@ void main() {
               inputMode: ChatInputMode.voiceFirst,
               isKeyboardVisible: false,
               sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
+              presentation: ComposerPresentation.touch,
               attachmentDispatcher: GetIt.instance.get<ComposerAttachmentDispatcher>,
               imageClipboard: GetIt.instance.get<ImageClipboard>,
               child: PromptInput(
@@ -1597,7 +1598,7 @@ void main() {
     expect(find.text("Hold to talk"), findsOneWidget);
   });
 
-  testWidgets("picker pills and task card follow the composer surface style", (tester) async {
+  testWidgets("picker pills and the sub-agents pill follow the composer surface style", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],
@@ -1610,10 +1611,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final picker = find.byType(PregoPickerButton).first;
-    final taskCard = find.descendant(
-      of: find.byType(BackgroundTasksBar),
-      matching: find.byType(PregoCard),
-    );
+    final taskCard = find.byType(BackgroundTasksBar);
     expect(
       composerSurfaceBorderColor(tester: tester, surface: picker),
       PregoColorsLight.borderSecondary,
@@ -1681,10 +1679,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final picker = find.byType(PregoPickerButton).first;
-    final taskCard = find.descendant(
-      of: find.byType(BackgroundTasksBar),
-      matching: find.byType(PregoCard),
-    );
+    final taskCard = find.byType(BackgroundTasksBar);
     expect(
       composerSurfaceBorderColor(tester: tester, surface: picker),
       PregoColorsLight.borderSecondary,
@@ -1699,10 +1694,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(EditableText), findsOneWidget);
-    expect(
-      composerSurfaceBorderColor(tester: tester, surface: taskCard),
-      PregoColorsLight.borderPrimary,
-    );
+    // The staged-command chip takes the selector strip, sub-agents pill included.
+    expect(taskCard, findsNothing);
 
     composerFocus(tester).unfocus();
     await tester.pumpAndSettle();

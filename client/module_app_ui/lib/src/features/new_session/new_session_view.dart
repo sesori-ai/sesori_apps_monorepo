@@ -177,6 +177,8 @@ class _NewSessionViewState() extends State<NewSessionView> {
         onModelSelected: cubit.selectModel,
         availableVariants: data.availableVariants,
         onVariantSelected: cubit.selectVariant,
+        compact: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
+        trailing: null,
       ),
     );
   }

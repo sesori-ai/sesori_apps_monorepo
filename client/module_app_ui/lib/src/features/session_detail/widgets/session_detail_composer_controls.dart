@@ -53,16 +53,6 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (state.children.isNotEmpty)
-          ValueListenableBuilder<PregoComposerSurfaceStyle>(
-            valueListenable: _composerSurfaceStyle,
-            builder: (context, surfaceStyle, _) => BackgroundTasksBar(
-              surfaceStyle: surfaceStyle,
-              projectId: widget.projectId,
-              children: state.children,
-              childStatuses: state.childStatuses,
-            ),
-          ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: PromptInput(
@@ -115,6 +105,15 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                 onModelSelected: context.read<SessionDetailCubit>().selectModel,
                 availableVariants: state.availableVariants,
                 onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                compact: composerCapabilities.presentation == ComposerPresentation.pointer,
+                trailing: state.children.isEmpty
+                    ? null
+                    : BackgroundTasksBar(
+                        surfaceStyle: surfaceStyle,
+                        projectId: widget.projectId,
+                        children: state.children,
+                        childStatuses: state.childStatuses,
+                      ),
               ),
             ),
             availableCommands: state.availableCommands,

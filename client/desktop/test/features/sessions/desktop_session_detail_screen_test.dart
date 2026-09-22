@@ -144,6 +144,7 @@ Widget _composerScope({required Widget child, required ComposerCapabilityProvide
     inputMode: ChatInputMode.textFirst,
     isKeyboardVisible: false,
     sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+    presentation: ComposerPresentation.pointer,
     attachmentDispatcher: _MockComposerAttachmentDispatcher.new,
     imageClipboard: imageClipboard,
     child: child,
@@ -253,9 +254,11 @@ void main() {
       ),
     ).called(1);
 
-    await tester.tap(find.byIcon(TablerRegular.chevron_right));
-    await tester.pumpAndSettle();
+    // `+` and `/` are always visible on desktop, and the box grows instead of
+    // offering the editor sheet.
     expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
+    expect(find.byIcon(TablerRegular.maximize), findsNothing);
     // The page toolbar's menu, not a composer one.
     expect(find.byTooltip("More actions"), findsOneWidget);
 

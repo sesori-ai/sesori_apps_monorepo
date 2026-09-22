@@ -20,6 +20,9 @@ class const ComposerOptionsAccordion({
   /// Whether the image-attach action is offered at all. Harnesses that drop
   /// image parts get no attach button rather than one that loses the image.
   required final bool showAttachImage,
+
+  /// Keeps `+` and `/` visible instead of folding them behind the chevron.
+  required final bool alwaysOpen,
   required final VoidCallback onSlashCommandsTap,
   required final VoidCallback onAttachImageTap,
 }) extends StatefulWidget {
@@ -34,6 +37,7 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
+    final isOpen = _isOpen || widget.alwaysOpen;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -54,14 +58,14 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
               // single button centred in a 44pt circle, including command-only
               // harnesses. Expansion remains anchored to the trailing edge.
               padding: EdgeInsetsDirectional.only(
-                start: _isOpen && widget.showAttachImage ? 3 : PregoSpacing.sm,
+                start: isOpen && widget.showAttachImage ? 3 : PregoSpacing.sm,
                 end: PregoSpacing.sm,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 spacing: PregoSpacing.md,
                 children: [
-                  if (_isOpen) ...[
+                  if (isOpen) ...[
                     if (widget.showAttachImage)
                       _AccordionIconButton(
                         icon: TablerRegular.plus,

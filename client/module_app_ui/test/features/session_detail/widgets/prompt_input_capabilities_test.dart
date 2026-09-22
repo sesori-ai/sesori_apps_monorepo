@@ -55,6 +55,7 @@ void main() {
           inputMode: ChatInputMode.textFirst,
           isKeyboardVisible: false,
           sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+          presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
           child: Scaffold(
@@ -231,6 +232,7 @@ void main() {
           inputMode: ChatInputMode.voiceFirst,
           isKeyboardVisible: false,
           sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+          presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => attachmentDispatcher,
           imageClipboard: () => imageClipboard,
           child: Scaffold(
@@ -299,6 +301,7 @@ void main() {
               inputMode: mode,
               isKeyboardVisible: false,
               sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
+              presentation: ComposerPresentation.touch,
               attachmentDispatcher: () => attachmentDispatcher,
               imageClipboard: () => imageClipboard,
               child: Scaffold(
@@ -377,6 +380,7 @@ Future<void> _pumpCommandComposer({
       inputMode: ChatInputMode.textFirst,
       isKeyboardVisible: false,
       sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+      presentation: ComposerPresentation.touch,
       attachmentDispatcher: () => attachmentDispatcher,
       imageClipboard: () => imageClipboard,
       child: Scaffold(

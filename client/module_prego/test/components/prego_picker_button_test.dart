@@ -94,10 +94,12 @@ void main() {
       ),
     );
 
-    // No overflow error: the label clamps to one ellipsized line inside the pill.
+    // No overflow error: the label keeps its end on one line inside the pill.
     expect(tester.takeException(), isNull);
-    final text = tester.widget<Text>(find.byType(Text));
-    expect(text.maxLines, 1);
-    expect(text.overflow, TextOverflow.ellipsis);
+    expect(find.byType(PregoStartEllipsisText), findsOneWidget);
+    expect(
+      tester.getRect(find.byType(PregoStartEllipsisText)).right,
+      lessThanOrEqualTo(tester.getRect(find.byType(PregoPickerButton)).right),
+    );
   });
 }

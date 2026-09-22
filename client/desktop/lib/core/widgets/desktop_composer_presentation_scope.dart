@@ -18,6 +18,7 @@ class const DesktopComposerPresentationScope({
       inputMode: ChatInputMode.textFirst,
       isKeyboardVisible: false,
       sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+      presentation: ComposerPresentation.pointer,
       attachmentDispatcher: getIt.get<ComposerAttachmentDispatcher>,
       imageClipboard: getIt.get<ImageClipboard>,
       child: child,

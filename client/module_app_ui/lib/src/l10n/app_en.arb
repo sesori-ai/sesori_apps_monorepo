@@ -835,27 +835,22 @@
   "sessionDetailPickerVariant": "Variant",
   "sessionDetailSelectModel": "Select Model",
   "sessionDetailModelSearch": "Search models...",
-  "backgroundTasksRunning": "{count, plural, =1{1 Task Running} other{{count} Tasks Running}}",
-  "@backgroundTasksRunning": {
+  "subAgentsTitle": "Sub-agents",
+  "subAgentsSummary": "{count, plural, =1{1 sub-agent} other{{count} sub-agents}}, {running} working",
+  "@subAgentsSummary": {
+    "description": "Tooltip and screen-reader label of the sub-agents pill in the composer.",
     "placeholders": {
       "count": {
+        "type": "int"
+      },
+      "running": {
         "type": "int"
       }
     }
   },
-  "backgroundTasksCompleted": "All tasks completed",
-  "backgroundTaskStatusIdle": "Completed",
+  "backgroundTaskStatusIdle": "Idle",
   "backgroundTaskStatusBusy": "Running",
   "backgroundTaskStatusRetry": "Retrying",
-  "backgroundTasksShowCompleted": "{count, plural, =1{Show 1 completed task} other{Show {count} completed tasks}}",
-  "@backgroundTasksShowCompleted": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "backgroundTasksHideCompleted": "Hide completed",
   "sessionListToggleArchived": "Show archived",
   "sessionListEmptyArchived": "No archived sessions",
   "sessionListArchive": "Archive",

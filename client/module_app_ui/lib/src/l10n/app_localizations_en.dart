@@ -1408,41 +1408,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailModelSearch => 'Search models...';
 
   @override
-  String backgroundTasksRunning(int count) {
+  String get subAgentsTitle => 'Sub-agents';
+
+  @override
+  String subAgentsSummary(int count, int running) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count Tasks Running',
-      one: '1 Task Running',
+      other: '$count sub-agents',
+      one: '1 sub-agent',
     );
-    return '$_temp0';
+    return '$_temp0, $running working';
   }
 
   @override
-  String get backgroundTasksCompleted => 'All tasks completed';
-
-  @override
-  String get backgroundTaskStatusIdle => 'Completed';
+  String get backgroundTaskStatusIdle => 'Idle';
 
   @override
   String get backgroundTaskStatusBusy => 'Running';
 
   @override
   String get backgroundTaskStatusRetry => 'Retrying';
-
-  @override
-  String backgroundTasksShowCompleted(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'Show $count completed tasks',
-      one: 'Show 1 completed task',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get backgroundTasksHideCompleted => 'Hide completed';
 
   @override
   String get sessionListToggleArchived => 'Show archived';
