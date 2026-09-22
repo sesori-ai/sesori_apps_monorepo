@@ -13,6 +13,7 @@ import "../di/injection.dart";
 import "desktop_bridge_popover.dart";
 import "desktop_bridge_recovery_card.dart";
 import "desktop_sidebar_activity_popout.dart";
+import "desktop_sidebar_expansion.dart";
 import "desktop_sidebar_section_header.dart";
 import "desktop_window_drag_area.dart";
 
@@ -35,7 +36,6 @@ class const DesktopSidebar({
   /// Set on macOS, where the traffic lights sit on this panel's top: it makes
   /// room for them there, and that room drags and zooms the window.
   required final WindowHost? windowHost,
-  required final double expansion,
   required final bool autoCollapsed,
   required final String? selectedProjectId,
   required final String? selectedSessionId,
@@ -56,6 +56,7 @@ class const DesktopSidebar({
 
   @override
   Widget build(BuildContext context) {
+    final expansion = DesktopSidebarExpansion.of(context);
     final state = context.watch<ProjectListCubit>().state;
     final collapsedProjects = context.select((DesktopSidebarCubit cubit) => cubit.state.collapsedProjectIds);
     final loc = context.loc;
@@ -92,49 +93,52 @@ class const DesktopSidebar({
               child: Row(
                 children: [
                   Expanded(
-                    child: _ConditionalTooltip(
-                      enabled: expansion < 1,
-                      message: loc.desktopShortcutHint(loc.sessionListNewSession, newSessionShortcut),
-                      child: FilledButton(
-                        key: const Key("desktop-sidebar-new-session"),
-                        onPressed: state is ProjectListLoaded ? onStartNewSession : null,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: prego.colors.bgBrandSolid,
-                          foregroundColor: prego.colors.textWhite,
-                          minimumSize: const Size(0, 40),
-                          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.lg)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(TablerRegular.plus, size: 18),
-                            if (expansion > 0)
-                              Flexible(
-                                child: Opacity(
-                                  opacity: expansion,
-                                  child: Padding(
-                                    padding: EdgeInsetsDirectional.only(start: PregoSpacing.md * expansion),
-                                    child: _TooltipWhenTruncated(
-                                      message: loc.sessionListNewSession,
-                                      style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textWhite),
+                    child: DesktopSidebarPhaseBuilder(
+                      expansion: expansion,
+                      builder: (context, phase) => _ConditionalTooltip(
+                        enabled: phase != DesktopSidebarPhase.open,
+                        message: loc.desktopShortcutHint(loc.sessionListNewSession, newSessionShortcut),
+                        child: FilledButton(
+                          key: const Key("desktop-sidebar-new-session"),
+                          onPressed: state is ProjectListLoaded ? onStartNewSession : null,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: prego.colors.bgBrandSolid,
+                            foregroundColor: prego.colors.textWhite,
+                            minimumSize: const Size(0, 40),
+                            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.lg)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(TablerRegular.plus, size: 18),
+                              if (phase != DesktopSidebarPhase.rail)
+                                Flexible(
+                                  child: FadeTransition(
+                                    opacity: expansion,
+                                    child: _LabelInset(
+                                      expansion: expansion,
+                                      child: _TooltipWhenTruncated(
+                                        message: loc.sessionListNewSession,
+                                        style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textWhite),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            if (expansion == 1)
-                              Padding(
-                                padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
-                                child: ExcludeSemantics(
-                                  child: Text(
-                                    newSessionShortcut,
-                                    style: prego.textTheme.textXs.regular.copyWith(
-                                      color: prego.colors.textWhite.withValues(alpha: 0.7),
+                              if (phase == DesktopSidebarPhase.open)
+                                Padding(
+                                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
+                                  child: ExcludeSemantics(
+                                    child: Text(
+                                      newSessionShortcut,
+                                      style: prego.textTheme.textXs.regular.copyWith(
+                                        color: prego.colors.textWhite.withValues(alpha: 0.7),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -142,24 +146,23 @@ class const DesktopSidebar({
                 ],
               ),
             ),
-            if (expansion < 1)
-              ClipRect(
-                child: Align(
-                  heightFactor: 1 - expansion,
-                  child: Opacity(
-                    opacity: 1 - expansion,
-                    child: _SidebarButton(
-                      key: const Key("desktop-sidebar-projects"),
-                      label: loc.projectListTitle,
-                      icon: const Icon(TablerRegular.folders, size: 20),
-                      expansion: 0,
-                      selected: selectedProjectId == null,
-                      status: null,
-                      onPressed: onOpenProjects,
+            DesktopSidebarPhaseBuilder(
+              expansion: expansion,
+              builder: (context, phase) => phase == DesktopSidebarPhase.open
+                  ? const SizedBox.shrink()
+                  : DesktopSidebarFold(
+                      heightFactor: ReverseAnimation(expansion),
+                      child: _SidebarButton(
+                        key: const Key("desktop-sidebar-projects"),
+                        label: loc.projectListTitle,
+                        icon: const Icon(TablerRegular.folders, size: 20),
+                        expansion: kAlwaysDismissedAnimation,
+                        selected: selectedProjectId == null,
+                        status: null,
+                        onPressed: onOpenProjects,
+                      ),
                     ),
-                  ),
-                ),
-              ),
+            ),
             Expanded(
               // Ink paints on the nearest Material, outside the list's own clip: this
               // one keeps a row's highlight from showing through the section above.
@@ -221,25 +224,30 @@ class const DesktopSidebar({
 /// The space above the panel's first control. On macOS the traffic lights sit
 /// on the expanded panel, so it grows to clear them and stands in for the title
 /// bar: it drags the window and zooms it on a double click.
-class const _TopStrip({required final WindowHost? windowHost, required final double expansion})
+class const _TopStrip({required final WindowHost? windowHost, required final Animation<double> expansion})
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final windowHost = this.windowHost;
     if (windowHost == null) return const SizedBox(height: 12);
-    final height = 12 + 22 * expansion;
-    return DesktopWindowDragArea(
-      windowHost: windowHost,
-      height: height,
-      zoomOnDoubleClick: true,
-      child: SizedBox(height: height, width: double.infinity),
+    return AnimatedBuilder(
+      animation: expansion,
+      builder: (context, _) {
+        final height = 12 + 22 * expansion.value;
+        return DesktopWindowDragArea(
+          windowHost: windowHost,
+          height: height,
+          zoomOnDoubleClick: true,
+          child: SizedBox(height: height, width: double.infinity),
+        );
+      },
     );
   }
 }
 
 class const _SidebarFooter({
   required final ProjectListState projectState,
-  required final double expansion,
+  required final Animation<double> expansion,
   required final BridgeControlState bridge,
   required final Color bridgeColor,
   required final bool autoCollapsed,
@@ -251,7 +259,6 @@ class const _SidebarFooter({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final toggleLabel = expansion < 0.5 ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse;
     final refresh = context.watch<DesktopSidebarRefreshCubit>();
     final refreshing =
         refresh.state == DesktopSidebarRefreshState.refreshing ||
@@ -260,7 +267,11 @@ class const _SidebarFooter({
           ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => false,
         };
     final canRefresh = projectState is ProjectListLoaded && !refreshing;
-    final controlSize = 28 + 8 * expansion;
+    Widget control(Widget button) => DesktopSidebarExpansionBuilder(
+      expansion: expansion,
+      builder: (expansion, button) => SizedBox.square(dimension: 28 + 8 * expansion, child: button),
+      child: button,
+    );
     return BlocListener<DesktopSidebarRefreshCubit, DesktopSidebarRefreshState>(
       listenWhen: (_, current) =>
           current == DesktopSidebarRefreshState.succeeded || current == DesktopSidebarRefreshState.failed,
@@ -282,7 +293,10 @@ class const _SidebarFooter({
         ),
         child: Column(
           children: [
-            DesktopBridgeRecoveryCard(expansion: expansion),
+            DesktopSidebarPhaseBuilder(
+              expansion: expansion,
+              builder: (context, phase) => DesktopBridgeRecoveryCard(compact: phase != DesktopSidebarPhase.open),
+            ),
             PregoPopover(
               popoverWidth: 300,
               triggerBuilder: (context, toggle) => _SidebarButton(
@@ -302,9 +316,8 @@ class const _SidebarFooter({
             Wrap(
               alignment: WrapAlignment.center,
               children: [
-                SizedBox.square(
-                  dimension: controlSize,
-                  child: IconButton(
+                control(
+                  IconButton(
                     key: const Key("desktop-sidebar-refresh"),
                     tooltip: refreshing ? loc.desktopSidebarRefreshing : loc.desktopSidebarRefresh,
                     padding: const EdgeInsets.all(PregoSpacing.sm),
@@ -319,9 +332,8 @@ class const _SidebarFooter({
                         : Icon(TablerRegular.refresh, size: 18, semanticLabel: loc.desktopSidebarRefresh),
                   ),
                 ),
-                SizedBox.square(
-                  dimension: controlSize,
-                  child: IconButton(
+                control(
+                  IconButton(
                     key: const Key("desktop-sidebar-settings"),
                     tooltip: loc.desktopShortcutHint(
                       loc.settingsTitle,
@@ -332,25 +344,31 @@ class const _SidebarFooter({
                     icon: Icon(TablerRegular.settings, size: 18, semanticLabel: loc.settingsTitle),
                   ),
                 ),
-                SizedBox.square(
-                  dimension: controlSize,
-                  child: IconButton(
-                    key: const Key("desktop-sidebar-toggle"),
-                    tooltip: autoCollapsed
-                        ? toggleLabel
-                        : loc.desktopShortcutHint(
-                            toggleLabel,
-                            defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B",
-                          ),
-                    padding: const EdgeInsets.all(PregoSpacing.sm),
-                    onPressed: autoCollapsed ? null : onToggleCollapsed,
-                    icon: Icon(
-                      expansion < 0.5
-                          ? TablerRegular.layout_sidebar_left_expand
-                          : TablerRegular.layout_sidebar_left_collapse,
-                      size: 18,
-                      color: autoCollapsed ? prego.colors.textDisabled : null,
-                    ),
+                control(
+                  DesktopSidebarExpansionSelector(
+                    expansion: expansion,
+                    select: (expansion) => expansion < 0.5,
+                    builder: (context, railed) {
+                      final toggleLabel = railed ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse;
+                      return IconButton(
+                        key: const Key("desktop-sidebar-toggle"),
+                        tooltip: autoCollapsed
+                            ? toggleLabel
+                            : loc.desktopShortcutHint(
+                                toggleLabel,
+                                defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B",
+                              ),
+                        padding: const EdgeInsets.all(PregoSpacing.sm),
+                        onPressed: autoCollapsed ? null : onToggleCollapsed,
+                        icon: Icon(
+                          railed
+                              ? TablerRegular.layout_sidebar_left_expand
+                              : TablerRegular.layout_sidebar_left_collapse,
+                          size: 18,
+                          color: autoCollapsed ? prego.colors.textDisabled : null,
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -368,7 +386,7 @@ class const _SidebarInventory({
   required final Map<String, int> activityById,
   required final Map<String, bool> unseenByProjectId,
   required final Set<String> collapsedProjectIds,
-  required final double expansion,
+  required final Animation<double> expansion,
   required final String? selectedProjectId,
   required final String? selectedSessionId,
   required final SidebarSessionOpenedCallback onOpenSession,
@@ -407,9 +425,6 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
       hiddenSessionIds: context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
       stickySessionId: _stickyActivitySessionId,
     );
-    // The rail has no headers to unfold a section with, so it ignores folding;
-    // its Activity is one button whose list pops out.
-    final railed = widget.expansion < 0.5;
     final activityFolded = context.select((DesktopSidebarCubit cubit) => cubit.state.activitySectionCollapsed);
     final projectsFolded = context.select((DesktopSidebarCubit cubit) => cubit.state.projectsSectionCollapsed);
     final activitySessions = [for (final group in projection.activityGroups) ...group.sessions];
@@ -430,138 +445,147 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
       session: session,
       readEntry: SessionReadMenuEntry.toggle,
     );
-    final gutter = PregoSpacing.xl * widget.expansion;
-    return CustomScrollView(
-      key: const Key("desktop-sidebar-project-list"),
-      slivers: [
-        if (railed && activitySessions.isNotEmpty)
-          SliverToBoxAdapter(
-            child: DesktopSidebarActivityPopout(
-              railStart: DesktopSidebar.panelMargin,
-              triggerBuilder: (_, toggle) => _SidebarButton(
-                key: const Key("desktop-sidebar-rail-activity"),
-                label: context.loc.desktopSidebarActivity(activitySessions.length),
-                icon: PregoAiLoader(size: 20, animate: activityRunning > 0),
-                expansion: 0,
-                selected: false,
-                status: (
-                  icon: _CountPill(count: activitySessions.length),
-                  label: activityStatuses.isEmpty ? null : activityStatuses.join(", "),
+    Widget gutter(Widget sliver) => DesktopSidebarExpansionBuilder(
+      expansion: widget.expansion,
+      builder: (expansion, sliver) => SliverPadding(
+        padding: EdgeInsetsDirectional.only(end: PregoSpacing.xl * expansion),
+        sliver: sliver,
+      ),
+      child: sliver,
+    );
+    // The rail has no headers to unfold a section with, so it ignores folding;
+    // its Activity is one button whose list pops out.
+    return DesktopSidebarExpansionSelector(
+      expansion: widget.expansion,
+      select: (expansion) => expansion < 0.5,
+      builder: (context, railed) => CustomScrollView(
+        key: const Key("desktop-sidebar-project-list"),
+        slivers: [
+          if (railed && activitySessions.isNotEmpty)
+            SliverToBoxAdapter(
+              child: DesktopSidebarActivityPopout(
+                railStart: DesktopSidebar.panelMargin,
+                triggerBuilder: (_, toggle) => _SidebarButton(
+                  key: const Key("desktop-sidebar-rail-activity"),
+                  label: context.loc.desktopSidebarActivity(activitySessions.length),
+                  icon: PregoAiLoader(size: 20, animate: activityRunning > 0),
+                  expansion: kAlwaysDismissedAnimation,
+                  selected: false,
+                  status: (
+                    icon: _CountPill(count: activitySessions.length),
+                    label: activityStatuses.isEmpty ? null : activityStatuses.join(", "),
+                  ),
+                  onPressed: toggle,
                 ),
-                onPressed: toggle,
+                // The popout sits on the root navigator, outside the cockpit's
+                // providers, so the sidebar hands over the cubits its rows watch.
+                contentBuilder: (_, close) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider.value(value: context.read<RecentSessionsCubit>()),
+                    BlocProvider.value(value: context.read<DesktopSidebarCubit>()),
+                    BlocProvider.value(value: context.read<PendingSessionArchiveCubit>()),
+                  ],
+                  child: _SidebarActivityPopoutList(
+                    close: close,
+                    projects: widget.projects,
+                    stickySessionId: _stickyActivitySessionId,
+                    selectedProjectId: widget.selectedProjectId,
+                    selectedSessionId: widget.selectedSessionId,
+                    onOpenSession: ({required context, required project, required displayName, required session}) {
+                      close();
+                      widget.onOpenSession(
+                        context: this.context,
+                        project: project,
+                        displayName: displayName,
+                        session: session,
+                      );
+                    },
+                    sessionMenuEntries: buildSessionMenuEntries,
+                  ),
+                ),
               ),
-              // The popout sits on the root navigator, outside the cockpit's
-              // providers, so the sidebar hands over the cubits its rows watch.
-              contentBuilder: (_, close) => MultiBlocProvider(
-                providers: [
-                  BlocProvider.value(value: context.read<RecentSessionsCubit>()),
-                  BlocProvider.value(value: context.read<DesktopSidebarCubit>()),
-                  BlocProvider.value(value: context.read<PendingSessionArchiveCubit>()),
-                ],
-                child: _SidebarActivityPopoutList(
-                  close: close,
-                  projects: widget.projects,
-                  stickySessionId: _stickyActivitySessionId,
-                  selectedProjectId: widget.selectedProjectId,
-                  selectedSessionId: widget.selectedSessionId,
-                  onOpenSession: ({required context, required project, required displayName, required session}) {
-                    close();
-                    widget.onOpenSession(
-                      context: this.context,
-                      project: project,
-                      displayName: displayName,
-                      session: session,
-                    );
-                  },
+            ),
+          gutter(
+            SliverToBoxAdapter(
+              key: const Key("desktop-sidebar-activity-header"),
+              child: DesktopSidebarSectionHeader(
+                label: context.loc.desktopSidebarActivity(_activitySessionIds.length),
+                collapsed: activityFolded,
+                expansion: projection.activityGroups.isEmpty ? kAlwaysDismissedAnimation : widget.expansion,
+                onToggle: () => unawaited(context.read<DesktopSidebarCubit>().toggleActivitySection()),
+                action: null,
+              ),
+            ),
+          ),
+          gutter(
+            PregoAnimatedSliverList<DesktopSidebarActivityGroup>(
+              key: const Key("desktop-sidebar-activity-list"),
+              items: railed || activityFolded ? const [] : projection.activityGroups,
+              itemKey: (group) => ValueKey(group.project.id),
+              itemBuilder: (context, _, group) {
+                final projectName = desktopProjectDisplayName(context: context, project: group.project);
+                return _SidebarActivityProjectGroup(
+                  key: ValueKey("sidebar-activity-${group.project.id}"),
+                  group: group,
+                  projectName: projectName,
+                  expansion: widget.expansion,
+                  selectedSessionId: group.project.id == widget.selectedProjectId ? widget.selectedSessionId : null,
+                  onOpenSession: widget.onOpenSession,
                   sessionMenuEntries: buildSessionMenuEntries,
+                );
+              },
+            ),
+          ),
+          gutter(
+            SliverToBoxAdapter(
+              child: DesktopSidebarSectionHeader(
+                key: const Key("desktop-sidebar-projects-header"),
+                label: context.loc.projectListTitle,
+                collapsed: projectsFolded,
+                expansion: widget.expansion,
+                onToggle: () => unawaited(context.read<DesktopSidebarCubit>().toggleProjectsSection()),
+                action: SizedBox.square(
+                  dimension: 28,
+                  child: IconButton(
+                    key: const Key("desktop-sidebar-new-project"),
+                    padding: EdgeInsets.zero,
+                    tooltip: context.loc.desktopSidebarNewProject,
+                    onPressed: widget.onAddProject,
+                    icon: Icon(TablerRegular.folder_plus, size: 16, color: context.prego.colors.textSecondary),
+                  ),
                 ),
               ),
             ),
           ),
-        SliverPadding(
-          padding: EdgeInsetsDirectional.only(end: gutter),
-          sliver: SliverToBoxAdapter(
-            key: const Key("desktop-sidebar-activity-header"),
-            child: DesktopSidebarSectionHeader(
-              label: context.loc.desktopSidebarActivity(_activitySessionIds.length),
-              collapsed: activityFolded,
-              expansion: projection.activityGroups.isEmpty ? 0 : widget.expansion,
-              onToggle: () => unawaited(context.read<DesktopSidebarCubit>().toggleActivitySection()),
-              action: null,
+          gutter(
+            PregoAnimatedSliverList<ProjectSummary>(
+              key: const Key("desktop-sidebar-project-groups"),
+              items: railed || !projectsFolded ? widget.projects : const [],
+              itemKey: (project) => ValueKey(project.id),
+              itemBuilder: (context, _, project) {
+                final projectName = desktopProjectDisplayName(context: context, project: project);
+                final entry = entries[project.id];
+                return _SidebarProjectGroup(
+                  key: ValueKey(project.id),
+                  project: project,
+                  name: projectName,
+                  active: widget.activityById[project.id] ?? 0,
+                  unseen: widget.unseenByProjectId[project.id] ?? project.hasUnseenChanges,
+                  entry: entry,
+                  expansion: widget.expansion,
+                  expanded: !widget.collapsedProjectIds.contains(project.id),
+                  selected: project.id == widget.selectedProjectId,
+                  selectedSessionId: project.id == widget.selectedProjectId ? widget.selectedSessionId : null,
+                  onOpenProject: widget.onOpenProject,
+                  onOpenSession: widget.onOpenSession,
+                  onNewSession: widget.onNewSession,
+                  sessionMenuEntries: buildSessionMenuEntries,
+                );
+              },
             ),
           ),
-        ),
-        SliverPadding(
-          padding: EdgeInsetsDirectional.only(end: gutter),
-          sliver: PregoAnimatedSliverList<DesktopSidebarActivityGroup>(
-            key: const Key("desktop-sidebar-activity-list"),
-            items: railed || activityFolded ? const [] : projection.activityGroups,
-            itemKey: (group) => ValueKey(group.project.id),
-            itemBuilder: (context, _, group) {
-              final projectName = desktopProjectDisplayName(context: context, project: group.project);
-              return _SidebarActivityProjectGroup(
-                key: ValueKey("sidebar-activity-${group.project.id}"),
-                group: group,
-                projectName: projectName,
-                expansion: widget.expansion,
-                selectedSessionId: group.project.id == widget.selectedProjectId ? widget.selectedSessionId : null,
-                onOpenSession: widget.onOpenSession,
-                sessionMenuEntries: buildSessionMenuEntries,
-              );
-            },
-          ),
-        ),
-        SliverPadding(
-          padding: EdgeInsetsDirectional.only(end: gutter),
-          sliver: SliverToBoxAdapter(
-            child: DesktopSidebarSectionHeader(
-              key: const Key("desktop-sidebar-projects-header"),
-              label: context.loc.projectListTitle,
-              collapsed: projectsFolded,
-              expansion: widget.expansion,
-              onToggle: () => unawaited(context.read<DesktopSidebarCubit>().toggleProjectsSection()),
-              action: SizedBox.square(
-                dimension: 28,
-                child: IconButton(
-                  key: const Key("desktop-sidebar-new-project"),
-                  padding: EdgeInsets.zero,
-                  tooltip: context.loc.desktopSidebarNewProject,
-                  onPressed: widget.onAddProject,
-                  icon: Icon(TablerRegular.folder_plus, size: 16, color: context.prego.colors.textSecondary),
-                ),
-              ),
-            ),
-          ),
-        ),
-        SliverPadding(
-          padding: EdgeInsetsDirectional.only(end: gutter),
-          sliver: PregoAnimatedSliverList<ProjectSummary>(
-            key: const Key("desktop-sidebar-project-groups"),
-            items: railed || !projectsFolded ? widget.projects : const [],
-            itemKey: (project) => ValueKey(project.id),
-            itemBuilder: (context, _, project) {
-              final projectName = desktopProjectDisplayName(context: context, project: project);
-              final entry = entries[project.id];
-              return _SidebarProjectGroup(
-                key: ValueKey(project.id),
-                project: project,
-                name: projectName,
-                active: widget.activityById[project.id] ?? 0,
-                unseen: widget.unseenByProjectId[project.id] ?? project.hasUnseenChanges,
-                entry: entry,
-                expansion: widget.expansion,
-                expanded: !widget.collapsedProjectIds.contains(project.id),
-                selected: project.id == widget.selectedProjectId,
-                selectedSessionId: project.id == widget.selectedProjectId ? widget.selectedSessionId : null,
-                onOpenProject: widget.onOpenProject,
-                onOpenSession: widget.onOpenSession,
-                onNewSession: widget.onNewSession,
-                sessionMenuEntries: buildSessionMenuEntries,
-              );
-            },
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -602,7 +626,7 @@ class const _SidebarActivityPopoutList({
             key: ValueKey("sidebar-activity-${group.project.id}"),
             group: group,
             projectName: desktopProjectDisplayName(context: context, project: group.project),
-            expansion: 1,
+            expansion: kAlwaysCompleteAnimation,
             selectedSessionId: group.project.id == selectedProjectId ? selectedSessionId : null,
             onOpenSession: onOpenSession,
             sessionMenuEntries: sessionMenuEntries,
@@ -616,7 +640,7 @@ class const _SidebarActivityProjectGroup({
   super.key,
   required final DesktopSidebarActivityGroup group,
   required final String projectName,
-  required final double expansion,
+  required final Animation<double> expansion,
   required final String? selectedSessionId,
   required final SidebarSessionOpenedCallback onOpenSession,
   required final _SidebarSessionMenuEntriesBuilder sessionMenuEntries,
@@ -662,7 +686,7 @@ class const _SidebarProjectGroup({
   required final int active,
   required final bool unseen,
   required final RecentSessionsEntry? entry,
-  required final double expansion,
+  required final Animation<double> expansion,
   required final bool expanded,
   required final bool selected,
   required final String? selectedSessionId,
@@ -710,192 +734,202 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
         mode: SessionListMode.actions(sessions: entry is RecentSessionsLoaded ? entry.sourceSessions : const []),
       ),
       child: Builder(
-        builder: (actionContext) => Focus(
-          canRequestFocus: false,
-          onFocusChange: (focused) => setState(() => _focused = focused),
-          child: Column(
+        builder: (actionContext) {
+          final sessions = Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              MouseRegion(
-                onEnter: (_) => setState(() => _hovered = true),
-                onExit: (_) => setState(() => _hovered = false),
-                child: Row(
+              switch (entry) {
+                RecentSessionsLoaded() => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: PregoAnchorMenu(
-                        flat: true,
-                        menuWidth: 200,
-                        acquireOpenLease: null,
-                        entriesBuilder: () => ProjectTile.menuEntries(context: actionContext, project: widget.project),
-                        triggerBuilder: (_, openMenu) => GestureDetector(
-                          onSecondaryTap: openMenu,
-                          onLongPress: openMenu,
-                          child: _SidebarButton(
-                            label: widget.name,
-                            icon: PregoAvatarInitials(label: widget.name, size: 26),
-                            expansion: widget.expansion,
-                            selected: widget.selected,
-                            status: widget.active > 0 || widget.unseen
-                                ? (
-                                    icon: PregoAiLoader(size: 18, animate: widget.active > 0),
-                                    label: widget.active > 0
-                                        ? widget.unseen
-                                              ? "${loc.projectListRunning(widget.active)}, ${loc.projectListNewActivity}"
-                                              : loc.projectListRunning(widget.active)
-                                        : loc.projectListNewActivity,
-                                  )
-                                : null,
-                            onPressed: () => widget.onOpenProject(
-                              context: actionContext,
-                              project: widget.project,
-                              displayName: widget.name,
-                            ),
-                          ),
+                    PregoAnimatedList<Session>(
+                      items: rows,
+                      itemKey: (session) => ValueKey(session.id),
+                      itemBuilder: (context, _, session) => _SidebarSessionRow(
+                        key: ValueKey("sidebar-session-${widget.project.id}-${session.id}"),
+                        session: session,
+                        entry: entry,
+                        selected: session.id == widget.selectedSessionId,
+                        expansion: widget.expansion,
+                        onPressed: () => widget.onOpenSession(
+                          context: actionContext,
+                          project: widget.project,
+                          displayName: widget.name,
+                          session: session,
                         ),
+                        acquireMenuLease: () => actionContext.read<SessionListCubit>().retainActionScope(),
+                        menuEntries: () {
+                          final cubit = actionContext.read<SessionListCubit>()..updateActionSession(session: session);
+                          return widget.sessionMenuEntries(cubit: cubit, session: session);
+                        },
                       ),
                     ),
-                    if (widget.expansion > 0)
-                      SizedBox(
-                        width: 48 * widget.expansion,
-                        height: 36,
-                        child: ClipRect(
-                          child: Opacity(
-                            opacity: widget.expansion,
-                            child: OverflowBox(
-                              minWidth: 48,
-                              maxWidth: 48,
-                              child: Row(
-                                children: [
-                                  SizedBox(
-                                    width: 24,
-                                    height: 28,
-                                    child: Opacity(
-                                      opacity: _hovered || _focused ? 1 : 0,
-                                      child: IconButton(
-                                        key: ValueKey("sidebar-new-session-${widget.project.id}"),
-                                        padding: EdgeInsets.zero,
-                                        tooltip: widget.selected
-                                            ? loc.desktopShortcutHint(
-                                                loc.desktopSidebarNewSession(widget.name),
-                                                defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N",
-                                              )
-                                            : loc.desktopSidebarNewSession(widget.name),
-                                        icon: const Icon(TablerRegular.plus, size: 16),
-                                        onPressed: () => widget.onNewSession(
-                                          context: actionContext,
-                                          project: widget.project,
-                                          displayName: widget.name,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: 24,
-                                    height: 28,
-                                    child: IconButton(
-                                      key: ValueKey("sidebar-project-toggle-${widget.project.id}"),
-                                      padding: EdgeInsets.zero,
-                                      tooltip: widget.expanded
-                                          ? loc.desktopSidebarCollapseProject(widget.name)
-                                          : loc.desktopSidebarExpandProject(widget.name),
-                                      icon: Icon(
-                                        widget.expanded ? TablerRegular.chevron_down : TablerRegular.chevron_right,
-                                        size: 16,
-                                      ),
-                                      onPressed: () => unawaited(
-                                        context.read<DesktopSidebarCubit>().toggleProject(projectId: widget.project.id),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                    if (rows.length < entry.visibleSessions.where((s) => !hidden.contains(s.id)).length)
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(start: 46, end: 8),
+                        child: TextButton(
+                          key: ValueKey("sidebar-show-more-${widget.project.id}"),
+                          style: TextButton.styleFrom(
+                            alignment: AlignmentDirectional.centerStart,
+                            foregroundColor: context.prego.colors.textSecondary,
+                            minimumSize: const Size(0, 28),
+                            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
+                          ),
+                          onPressed: () => setState(() => _rowLimit += 10),
+                          child: Text(
+                            loc.desktopSidebarShowMore,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: detailStyle,
                           ),
                         ),
                       ),
                   ],
                 ),
-              ),
-              if (widget.expanded && widget.expansion > 0)
-                ClipRect(
-                  child: Align(
-                    heightFactor: widget.expansion,
-                    child: Opacity(
-                      opacity: widget.expansion,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          switch (entry) {
-                            RecentSessionsLoaded() => Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                PregoAnimatedList<Session>(
-                                  items: rows,
-                                  itemKey: (session) => ValueKey(session.id),
-                                  itemBuilder: (context, _, session) => _SidebarSessionRow(
-                                    key: ValueKey("sidebar-session-${widget.project.id}-${session.id}"),
-                                    session: session,
-                                    entry: entry,
-                                    selected: session.id == widget.selectedSessionId,
-                                    expansion: widget.expansion,
-                                    onPressed: () => widget.onOpenSession(
-                                      context: actionContext,
-                                      project: widget.project,
-                                      displayName: widget.name,
-                                      session: session,
-                                    ),
-                                    acquireMenuLease: () => actionContext.read<SessionListCubit>().retainActionScope(),
-                                    menuEntries: () {
-                                      final cubit = actionContext.read<SessionListCubit>()
-                                        ..updateActionSession(session: session);
-                                      return widget.sessionMenuEntries(cubit: cubit, session: session);
-                                    },
-                                  ),
-                                ),
-                                if (rows.length < entry.visibleSessions.where((s) => !hidden.contains(s.id)).length)
-                                  Padding(
-                                    padding: const EdgeInsetsDirectional.only(start: 46, end: 8),
-                                    child: TextButton(
-                                      key: ValueKey("sidebar-show-more-${widget.project.id}"),
-                                      style: TextButton.styleFrom(
-                                        alignment: AlignmentDirectional.centerStart,
-                                        foregroundColor: context.prego.colors.textSecondary,
-                                        minimumSize: const Size(0, 28),
-                                        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
-                                      ),
-                                      onPressed: () => setState(() => _rowLimit += 10),
-                                      child: Text(
-                                        loc.desktopSidebarShowMore,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: detailStyle,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            RecentSessionsFailed() => TextButton.icon(
-                              onPressed: () =>
-                                  unawaited(context.read<RecentSessionsCubit>().retry(projectId: widget.project.id)),
-                              icon: const Icon(TablerRegular.refresh, size: 14),
-                              label: Text(loc.sessionListRetry, style: detailStyle),
-                            ),
-                            RecentSessionsLoading() || null => Padding(
-                              padding: const EdgeInsetsDirectional.fromSTEB(50, 4, 8, 4),
-                              child: Text(
-                                loc.sessionListLoadingSemantics,
-                                style: detailStyle,
-                              ),
-                            ),
-                          },
-                        ],
-                      ),
-                    ),
+                RecentSessionsFailed() => TextButton.icon(
+                  onPressed: () => unawaited(context.read<RecentSessionsCubit>().retry(projectId: widget.project.id)),
+                  icon: const Icon(TablerRegular.refresh, size: 14),
+                  label: Text(loc.sessionListRetry, style: detailStyle),
+                ),
+                RecentSessionsLoading() || null => Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(50, 4, 8, 4),
+                  child: Text(
+                    loc.sessionListLoadingSemantics,
+                    style: detailStyle,
                   ),
                 ),
+              },
             ],
-          ),
-        ),
+          );
+          return Focus(
+            canRequestFocus: false,
+            onFocusChange: (focused) => setState(() => _focused = focused),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                MouseRegion(
+                  onEnter: (_) => setState(() => _hovered = true),
+                  onExit: (_) => setState(() => _hovered = false),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: PregoAnchorMenu(
+                          flat: true,
+                          menuWidth: 200,
+                          acquireOpenLease: null,
+                          entriesBuilder: () =>
+                              ProjectTile.menuEntries(context: actionContext, project: widget.project),
+                          triggerBuilder: (_, openMenu) => GestureDetector(
+                            onSecondaryTap: openMenu,
+                            onLongPress: openMenu,
+                            child: _SidebarButton(
+                              label: widget.name,
+                              icon: PregoAvatarInitials(label: widget.name, size: 26),
+                              expansion: widget.expansion,
+                              selected: widget.selected,
+                              status: widget.active > 0 || widget.unseen
+                                  ? (
+                                      icon: PregoAiLoader(size: 18, animate: widget.active > 0),
+                                      label: widget.active > 0
+                                          ? widget.unseen
+                                                ? "${loc.projectListRunning(widget.active)}, ${loc.projectListNewActivity}"
+                                                : loc.projectListRunning(widget.active)
+                                          : loc.projectListNewActivity,
+                                    )
+                                  : null,
+                              onPressed: () => widget.onOpenProject(
+                                context: actionContext,
+                                project: widget.project,
+                                displayName: widget.name,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      DesktopSidebarPhaseBuilder(
+                        expansion: widget.expansion,
+                        builder: (context, phase) => phase == DesktopSidebarPhase.rail
+                            ? const SizedBox.shrink()
+                            : DesktopSidebarExpansionBuilder(
+                                expansion: widget.expansion,
+                                builder: (expansion, controls) =>
+                                    SizedBox(width: 48 * expansion, height: 36, child: controls),
+                                child: ClipRect(
+                                  child: FadeTransition(
+                                    opacity: widget.expansion,
+                                    child: OverflowBox(
+                                      minWidth: 48,
+                                      maxWidth: 48,
+                                      child: Row(
+                                        children: [
+                                          SizedBox(
+                                            width: 24,
+                                            height: 28,
+                                            child: Opacity(
+                                              opacity: _hovered || _focused ? 1 : 0,
+                                              child: IconButton(
+                                                key: ValueKey("sidebar-new-session-${widget.project.id}"),
+                                                padding: EdgeInsets.zero,
+                                                tooltip: widget.selected
+                                                    ? loc.desktopShortcutHint(
+                                                        loc.desktopSidebarNewSession(widget.name),
+                                                        defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N",
+                                                      )
+                                                    : loc.desktopSidebarNewSession(widget.name),
+                                                icon: const Icon(TablerRegular.plus, size: 16),
+                                                onPressed: () => widget.onNewSession(
+                                                  context: actionContext,
+                                                  project: widget.project,
+                                                  displayName: widget.name,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: 24,
+                                            height: 28,
+                                            child: IconButton(
+                                              key: ValueKey("sidebar-project-toggle-${widget.project.id}"),
+                                              padding: EdgeInsets.zero,
+                                              tooltip: widget.expanded
+                                                  ? loc.desktopSidebarCollapseProject(widget.name)
+                                                  : loc.desktopSidebarExpandProject(widget.name),
+                                              icon: Icon(
+                                                widget.expanded
+                                                    ? TablerRegular.chevron_down
+                                                    : TablerRegular.chevron_right,
+                                                size: 16,
+                                              ),
+                                              onPressed: () => unawaited(
+                                                context.read<DesktopSidebarCubit>().toggleProject(
+                                                  projectId: widget.project.id,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+                // The rows are built outside the phase builder, so they are not
+                // rebuilt when the fold appears or goes.
+                if (widget.expanded)
+                  DesktopSidebarPhaseBuilder(
+                    expansion: widget.expansion,
+                    builder: (context, phase) => phase == DesktopSidebarPhase.rail
+                        ? const SizedBox.shrink()
+                        : DesktopSidebarFold(heightFactor: widget.expansion, child: sessions),
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -906,7 +940,7 @@ class const _SidebarActivitySessionRow({
   required final DesktopSidebarActivitySession item,
   required final String projectName,
   required final bool selected,
-  required final double expansion,
+  required final Animation<double> expansion,
   required final VoidCallback onPressed,
   required final PregoMenuOpenLease acquireMenuLease,
   required final List<PregoMenuEntry> Function() menuEntries,
@@ -926,100 +960,114 @@ class const _SidebarActivitySessionRow({
     final updatedAt = item.isRunning ? null : item.session.time?.updated;
     // The row's "3h" is a glance mark; the label says it in full.
     final description = [identity, ...statuses, if (updatedAt != null) context.formatTimestamp(updatedAt)].join(", ");
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 14 - 6 * expansion),
-      child: PregoAnchorMenu(
-        flat: true,
-        menuWidth: 220,
-        acquireOpenLease: acquireMenuLease,
-        entriesBuilder: menuEntries,
-        triggerBuilder: (_, openMenu) => GestureDetector(
-          onSecondaryTap: openMenu,
-          child: Semantics(
-            button: true,
-            selected: selected,
-            label: description,
-            onTap: onPressed,
-            onLongPress: openMenu,
-            excludeSemantics: true,
-            child: _ConditionalTooltip(
-              enabled: expansion < 1,
-              message: description,
-              child: InkWell(
+    return DesktopSidebarPhaseBuilder(
+      expansion: expansion,
+      builder: (context, phase) {
+        final signals = SizedBox(
+          width: 28,
+          height: 28,
+          child: Center(
+            child: _SessionSignals(
+              isAwaitingInput: item.isAwaitingInput,
+              isRunning: item.isRunning,
+              isUnseen: item.isUnseen,
+            ),
+          ),
+        );
+        final labels = phase == DesktopSidebarPhase.rail
+            ? null
+            : Expanded(
+                child: ClipRect(
+                  child: FadeTransition(
+                    opacity: expansion,
+                    child: _LabelInset(
+                      expansion: expansion,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _TooltipWhenTruncated(
+                            message: title,
+                            style: item.isUnseen ? prego.textTheme.textXs.bold : prego.textTheme.textXs.regular,
+                          ),
+                          _TooltipWhenTruncated(
+                            message: projectName,
+                            style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+        final time = updatedAt == null || phase == DesktopSidebarPhase.rail
+            ? null
+            : FadeTransition(
+                opacity: expansion,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+                  child: Text(
+                    context.formatTimestampCompact(ms: updatedAt),
+                    maxLines: 1,
+                    style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+                  ),
+                ),
+              );
+        return DesktopSidebarExpansionBuilder(
+          expansion: expansion,
+          builder: (expansion, menu) => Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14 - 6 * expansion),
+            child: menu,
+          ),
+          child: PregoAnchorMenu(
+            flat: true,
+            menuWidth: 220,
+            acquireOpenLease: acquireMenuLease,
+            entriesBuilder: menuEntries,
+            triggerBuilder: (_, openMenu) => GestureDetector(
+              onSecondaryTap: openMenu,
+              child: Semantics(
+                button: true,
+                selected: selected,
+                label: description,
                 onTap: onPressed,
                 onLongPress: openMenu,
-                borderRadius: BorderRadius.circular(PregoRadius.md),
-                child: Ink(
-                  padding: EdgeInsets.symmetric(horizontal: PregoSpacing.sm * expansion, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: selected ? prego.colors.textBrandPrimary.withValues(alpha: 0.14) : null,
+                excludeSemantics: true,
+                child: _ConditionalTooltip(
+                  enabled: phase != DesktopSidebarPhase.open,
+                  message: description,
+                  child: InkWell(
+                    onTap: onPressed,
+                    onLongPress: openMenu,
                     borderRadius: BorderRadius.circular(PregoRadius.md),
-                  ),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) => Row(
-                      children: [
-                        SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: Center(
-                            child: _SessionSignals(
-                              isAwaitingInput: item.isAwaitingInput,
-                              isRunning: item.isRunning,
-                              isUnseen: item.isUnseen,
-                            ),
-                          ),
+                    child: DesktopSidebarExpansionBuilder(
+                      expansion: expansion,
+                      builder: (expansion, content) => Ink(
+                        padding: EdgeInsets.symmetric(horizontal: PregoSpacing.sm * expansion, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: selected ? prego.colors.textBrandPrimary.withValues(alpha: 0.14) : null,
+                          borderRadius: BorderRadius.circular(PregoRadius.md),
                         ),
-                        if (expansion > 0)
-                          Expanded(
-                            child: ClipRect(
-                              child: Opacity(
-                                opacity: expansion,
-                                child: Padding(
-                                  padding: EdgeInsetsDirectional.only(start: PregoSpacing.md * expansion),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                    children: [
-                                      _TooltipWhenTruncated(
-                                        message: title,
-                                        style: item.isUnseen
-                                            ? prego.textTheme.textXs.bold
-                                            : prego.textTheme.textXs.regular,
-                                      ),
-                                      _TooltipWhenTruncated(
-                                        message: projectName,
-                                        style: prego.textTheme.textXs.regular.copyWith(
-                                          color: prego.colors.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        if (updatedAt != null &&
-                            expansion > 0 &&
-                            _rowFitsTime(context: context, width: constraints.maxWidth))
-                          Opacity(
-                            opacity: expansion,
-                            child: Padding(
-                              padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                              child: Text(
-                                context.formatTimestampCompact(ms: updatedAt),
-                                maxLines: 1,
-                                style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
-                              ),
-                            ),
-                          ),
-                      ],
+                        child: content,
+                      ),
+                      // The parts are built once: the row's width changes every
+                      // frame the rail animates, and only the layout follows it.
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => Row(
+                          children: [
+                            signals,
+                            ?labels,
+                            if (time != null && _rowFitsTime(context: context, width: constraints.maxWidth)) time,
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -1034,7 +1082,7 @@ class const _SidebarSessionRow({
   required final Session session,
   required final RecentSessionsLoaded entry,
   required final bool selected,
-  required final double expansion,
+  required final Animation<double> expansion,
   required final VoidCallback onPressed,
   required final PregoMenuOpenLease acquireMenuLease,
   required final List<PregoMenuEntry> Function() menuEntries,
@@ -1055,6 +1103,35 @@ class const _SidebarSessionRow({
       // The row's "3h" is a glance mark; the label says it in full.
       if (updatedAt != null) context.formatTimestamp(updatedAt),
     ].join(", ");
+    // The status column sits under the project's avatar.
+    final signals = SizedBox(
+      width: 28,
+      child: Center(
+        child: _SessionSignals(isAwaitingInput: awaiting, isRunning: running, isUnseen: unseen),
+      ),
+    );
+    final gap = AnimatedBuilder(
+      animation: expansion,
+      builder: (_, _) => SizedBox(width: PregoSpacing.md * expansion.value),
+    );
+    final title = Expanded(
+      child: Text(
+        session.title ?? context.loc.sessionListUntitled,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: unseen ? prego.textTheme.textXs.bold : prego.textTheme.textXs.regular,
+      ),
+    );
+    final time = updatedAt == null
+        ? null
+        : Padding(
+            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+            child: Text(
+              context.formatTimestampCompact(ms: updatedAt),
+              maxLines: 1,
+              style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+            ),
+          );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md),
       child: PregoAnchorMenu(
@@ -1077,42 +1154,26 @@ class const _SidebarSessionRow({
                 onTap: onPressed,
                 onLongPress: openMenu,
                 borderRadius: BorderRadius.circular(PregoRadius.md),
-                child: Ink(
-                  padding: EdgeInsets.symmetric(horizontal: PregoSpacing.sm * expansion, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: selected ? prego.colors.textBrandPrimary.withValues(alpha: 0.14) : null,
-                    borderRadius: BorderRadius.circular(PregoRadius.md),
+                child: DesktopSidebarExpansionBuilder(
+                  expansion: expansion,
+                  builder: (expansion, content) => Ink(
+                    padding: EdgeInsets.symmetric(horizontal: PregoSpacing.sm * expansion, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: selected ? prego.colors.textBrandPrimary.withValues(alpha: 0.14) : null,
+                      borderRadius: BorderRadius.circular(PregoRadius.md),
+                    ),
+                    child: content,
                   ),
                   // A collapsing rail can leave less room than a row needs, so the
-                  // time is measured against the row's own width.
+                  // time is measured against the row's own width. The parts are
+                  // built once; only the layout follows the animating width.
                   child: LayoutBuilder(
                     builder: (context, constraints) => Row(
                       children: [
-                        // The status column sits under the project's avatar.
-                        SizedBox(
-                          width: 28,
-                          child: Center(
-                            child: _SessionSignals(isAwaitingInput: awaiting, isRunning: running, isUnseen: unseen),
-                          ),
-                        ),
-                        SizedBox(width: PregoSpacing.md * expansion),
-                        Expanded(
-                          child: Text(
-                            session.title ?? context.loc.sessionListUntitled,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: unseen ? prego.textTheme.textXs.bold : prego.textTheme.textXs.regular,
-                          ),
-                        ),
-                        if (updatedAt != null && _rowFitsTime(context: context, width: constraints.maxWidth))
-                          Padding(
-                            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                            child: Text(
-                              context.formatTimestampCompact(ms: updatedAt),
-                              maxLines: 1,
-                              style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
-                            ),
-                          ),
+                        signals,
+                        gap,
+                        title,
+                        if (time != null && _rowFitsTime(context: context, width: constraints.maxWidth)) time,
                       ],
                     ),
                   ),
@@ -1180,7 +1241,7 @@ class const _SidebarButton({
   super.key,
   required final String label,
   required final Widget icon,
-  required final double expansion,
+  required final Animation<double> expansion,
   required final bool selected,
   required final ({Widget icon, String? label})? status,
   required final VoidCallback onPressed,
@@ -1196,80 +1257,84 @@ class const _SidebarButton({
     final textStyle = (emphasized ? prego.textTheme.textSm.medium : prego.textTheme.textSm.regular).copyWith(
       color: color,
     );
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.xxs),
-      child: _ConditionalTooltip(
-        enabled: expansion < 1 || status != null,
-        message: description,
-        child: Semantics(
-          button: true,
-          selected: selected,
-          label: description,
-          onTap: onPressed,
-          excludeSemantics: true,
-          child: InkWell(
+    return DesktopSidebarPhaseBuilder(
+      expansion: expansion,
+      builder: (context, phase) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.xxs),
+        child: _ConditionalTooltip(
+          enabled: phase != DesktopSidebarPhase.open || status != null,
+          message: description,
+          child: Semantics(
+            button: true,
+            selected: selected,
+            label: description,
             onTap: onPressed,
-            hoverColor: prego.colors.bgSecondaryHover,
-            focusColor: prego.colors.textBrandPrimary.withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(PregoRadius.lg),
-            child: Ink(
-              decoration: BoxDecoration(
-                color: selected ? prego.colors.textBrandPrimary.withValues(alpha: 0.14) : null,
-                borderRadius: BorderRadius.circular(PregoRadius.lg),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm, vertical: PregoSpacing.xs),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.center,
-                      children: [
-                        IconTheme(
-                          data: IconThemeData(color: color),
-                          child: icon,
-                        ),
-                        if (status != null && expansion < 1)
-                          PositionedDirectional(
-                            end: -4,
-                            top: -4,
-                            child: Opacity(
-                              opacity: 1 - expansion,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(color: prego.colors.bgSecondary, shape: BoxShape.circle),
-                                child: status.icon,
+            excludeSemantics: true,
+            child: InkWell(
+              onTap: onPressed,
+              hoverColor: prego.colors.bgSecondaryHover,
+              focusColor: prego.colors.textBrandPrimary.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(PregoRadius.lg),
+              child: Ink(
+                decoration: BoxDecoration(
+                  color: selected ? prego.colors.textBrandPrimary.withValues(alpha: 0.14) : null,
+                  borderRadius: BorderRadius.circular(PregoRadius.lg),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm, vertical: PregoSpacing.xs),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.center,
+                        children: [
+                          IconTheme(
+                            data: IconThemeData(color: color),
+                            child: icon,
+                          ),
+                          if (status != null && phase != DesktopSidebarPhase.open)
+                            PositionedDirectional(
+                              end: -4,
+                              top: -4,
+                              child: FadeTransition(
+                                opacity: ReverseAnimation(expansion),
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(color: prego.colors.bgSecondary, shape: BoxShape.circle),
+                                  child: status.icon,
+                                ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (expansion > 0)
-                    Expanded(
-                      child: Opacity(
-                        opacity: expansion,
-                        child: Padding(
-                          padding: EdgeInsetsDirectional.only(start: PregoSpacing.md * expansion),
-                          child: status == null
-                              ? _TooltipWhenTruncated(message: label, style: textStyle)
-                              : Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle),
-                        ),
+                        ],
                       ),
                     ),
-                  if (status != null && expansion > 0)
-                    SizedBox(
-                      width: 24 * expansion,
-                      height: 20,
-                      child: ClipRect(
-                        child: Opacity(
+                    if (phase != DesktopSidebarPhase.rail)
+                      Expanded(
+                        child: FadeTransition(
                           opacity: expansion,
-                          child: OverflowBox(minWidth: 24, maxWidth: 24, child: status.icon),
+                          child: _LabelInset(
+                            expansion: expansion,
+                            child: status == null
+                                ? _TooltipWhenTruncated(message: label, style: textStyle)
+                                : Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle),
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                    if (status != null && phase != DesktopSidebarPhase.rail)
+                      DesktopSidebarExpansionBuilder(
+                        expansion: expansion,
+                        builder: (expansion, statusIcon) =>
+                            SizedBox(width: 24 * expansion, height: 20, child: statusIcon),
+                        child: ClipRect(
+                          child: FadeTransition(
+                            opacity: expansion,
+                            child: OverflowBox(minWidth: 24, maxWidth: 24, child: status.icon),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1277,6 +1342,20 @@ class const _SidebarButton({
       ),
     );
   }
+}
+
+/// A label's start inset, which grows with the sidebar.
+class const _LabelInset({required final Animation<double> expansion, required final Widget child})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => DesktopSidebarExpansionBuilder(
+    expansion: expansion,
+    builder: (expansion, child) => Padding(
+      padding: EdgeInsetsDirectional.only(start: PregoSpacing.md * expansion),
+      child: child,
+    ),
+    child: child,
+  );
 }
 
 class const _TooltipWhenTruncated({
@@ -1304,9 +1383,21 @@ class const _ConditionalTooltip({
   required final bool enabled,
   required final String message,
   required final Widget child,
-}) extends StatelessWidget {
+}) extends StatefulWidget {
   @override
-  Widget build(BuildContext context) => enabled ? Tooltip(message: message, child: child) : child;
+  State<_ConditionalTooltip> createState() => _ConditionalTooltipState();
+}
+
+class _ConditionalTooltipState() extends State<_ConditionalTooltip> {
+  // Toggling the tooltip moves the child instead of rebuilding it: the rail
+  // animation flips every row's tooltip in one frame.
+  final GlobalKey _childKey = GlobalKey();
+
+  @override
+  Widget build(BuildContext context) {
+    final child = KeyedSubtree(key: _childKey, child: widget.child);
+    return widget.enabled ? Tooltip(message: widget.message, child: child) : child;
+  }
 }
 
 List<String> _sessionStatusLabels({
