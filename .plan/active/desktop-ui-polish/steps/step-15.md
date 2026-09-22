@@ -26,8 +26,10 @@
   28 running. It never claims a final state. Tapping opens the list in an
   `OverlayPortal`, running first, without changing the composer's height. It
   opens above the pill unless there is more room below, and scrolls rather
-  than leaving the screen. The old bar, header, toggle and their strings are
-  deleted.
+  than leaving the screen. `PromptInput` holds the pill in its own
+  `composerTrailing` slot, so it stays while a staged command or the voice
+  controls replace the selectors. The old bar, header, toggle and their
+  strings are deleted.
 - No wire, database or analytics change.
 
 ## Deviations From The Plan
@@ -120,3 +122,17 @@ Wave 2 (cubic, 2 threads; Codex, 1 thread) is answered in commit
 - Tests: `module_app_ui` session detail widget tests (194) and `desktop`
   session page tests (7), all passing. `dart analyze --fatal-infos` is clean in
   both packages.
+
+Wave 3 (cubic, no findings; Codex, 1 thread) is answered in commit
+`5352c0154859ed2172868d86e2008fddb632be14`, 75 changed lines, 21 of them tests.
+
+- Fixed: the pill sat inside the selector header, which a staged command, the
+  recording hint and the saved-recording actions replace, so it vanished in
+  those states (Codex). `PromptInput` now takes it as `composerTrailing` and
+  keeps it beside whichever of them shows, and `AgentModelButtons` loses its
+  `trailing` slot. The session body test that this step had changed to expect
+  the pill to vanish is back to main's expectation, and the composer test
+  checks the pill through staging, recording and retry.
+- Tests: `module_app_ui` session detail tests (198), `app` selector and session
+  detail tests (164) and `desktop` session tests (12), all passing.
+  `dart analyze --fatal-infos` is clean in all three packages.
