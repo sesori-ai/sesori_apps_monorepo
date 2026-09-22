@@ -104,9 +104,9 @@ void main() {
 
     await pumpPanel(tester, session: session);
 
-    // Both pills start past the row's end edge, clipped out of view.
-    expect(tester.getRect(find.text("Archive")).left, greaterThanOrEqualTo(800));
-    expect(tester.getRect(find.text("Delete")).left, greaterThanOrEqualTo(800));
+    // A row at rest builds no pills.
+    expect(find.text("Archive"), findsNothing);
+    expect(find.text("Delete"), findsNothing);
 
     await swipeOpen(tester, title: "My Session", dx: -220);
 
@@ -226,8 +226,8 @@ void main() {
 
     await pumpPanel(tester, session: session);
 
-    // The toggle starts past the row's start edge, clipped out of view.
-    expect(tester.getRect(find.text("Mark as unread")).right, lessThanOrEqualTo(0));
+    // A row at rest builds no toggle.
+    expect(find.text("Mark as unread"), findsNothing);
 
     await swipeOpen(tester, title: "My Session", dx: 200);
 
@@ -251,8 +251,6 @@ void main() {
     await pumpPanel(tester, session: session);
 
     // The unseen row offers the other direction of the toggle.
-    expect(find.text("Mark as read"), findsOneWidget);
-
     await tester.drag(tile("My Session"), const Offset(520, 0));
     await tester.pumpAndSettle();
 
