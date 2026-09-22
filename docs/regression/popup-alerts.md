@@ -11,6 +11,8 @@ and render above the current route, below the top navigation bar.
   accent treatment from the Prego design system.
 - An alert without supporting text stays compact; supporting text and optional
   actions expand the card without clipping at accessibility text sizes.
+- An alert with actions but no supporting text keeps its icon, title, actions,
+  and close button on one vertically centred row.
 - The card is centered with 16 px screen margins and a 343 px maximum width.
 - A newly presented alert replaces the alert already visible on the same route,
   including while the previous alert is still dismissing.
