@@ -135,6 +135,10 @@ class const PromptInput({
   required final VoidCallback onAbort,
   required final ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController,
   required final Widget? composerHeader,
+
+  /// Kept at the trailing edge of the strip above the input in every state,
+  /// while a staged command or the voice controls take [composerHeader]'s place.
+  required final Widget? composerTrailing,
   required final List<CommandInfo> availableCommands,
   required final CommandInfo? stagedCommand,
   required final ValueChanged<CommandInfo> onCommandSelected,
@@ -1095,7 +1099,17 @@ class _PromptInputState() extends State<PromptInput> {
                 onPopInvokedWithResult: (didPop, _) {
                   if (!didPop && shouldDismissKeyboardBeforePop) _focusNode.unfocus();
                 },
-                child: _buildComposerTopSlot(context),
+                child: switch (widget.composerTrailing) {
+                  null => _buildComposerTopSlot(context),
+                  final trailing => Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    spacing: 8,
+                    children: [
+                      Expanded(child: _buildComposerTopSlot(context)),
+                      Padding(padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2), child: trailing),
+                    ],
+                  ),
+                },
               );
             },
           ),

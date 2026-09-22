@@ -72,6 +72,7 @@ void main() {
                   onAbort: () {},
                   surfaceStyleController: surfaceStyle,
                   composerHeader: null,
+                  composerTrailing: null,
                   availableCommands: const [],
                   stagedCommand: null,
                   onCommandSelected: (_) {},
@@ -139,6 +140,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus, isTrue);
+    // The trailing slot stays while the chip stands in for the header.
+    expect(find.text("Picker header"), findsNothing);
+    expect(find.text("Sub-agents"), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.close));
     await tester.pump();
@@ -159,6 +163,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
     expect(find.byKey(const ValueKey("release-hint")), findsOneWidget);
+    expect(find.text("Sub-agents"), findsOneWidget);
     expect(
       find.ancestor(
         of: find.byKey(const ValueKey("release-hint")),
@@ -173,6 +178,7 @@ void main() {
     voiceStates.add(VoiceInputState.retryPending(error: VoiceTranscriptionError.networkError()));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey("saved-recording-actions")), findsOneWidget);
+    expect(find.text("Sub-agents"), findsOneWidget);
     expect(find.byType(GlassMaterializeTransition), findsNothing);
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, "Keep this draft");
   }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS, TargetPlatform.macOS}));
@@ -246,6 +252,7 @@ void main() {
               onAbort: () {},
               surfaceStyleController: surfaceStyle,
               composerHeader: null,
+              composerTrailing: null,
               availableCommands: const [],
               stagedCommand: null,
               onCommandSelected: (_) {},
@@ -321,6 +328,7 @@ void main() {
                       onAbort: () {},
                       surfaceStyleController: surfaceStyle,
                       composerHeader: null,
+                      composerTrailing: null,
                       availableCommands: const [],
                       stagedCommand: null,
                       onCommandSelected: (_) {},
@@ -394,6 +402,7 @@ Future<void> _pumpCommandComposer({
           onAbort: () {},
           surfaceStyleController: surfaceStyle,
           composerHeader: const Text("Picker header"),
+          composerTrailing: const Text("Sub-agents"),
           availableCommands: const [_stagedCommand],
           stagedCommand: staged,
           onCommandSelected: (_) {},

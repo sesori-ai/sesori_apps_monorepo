@@ -124,6 +124,7 @@ Future<void> _pumpComposer({
             onAbort: () {},
             surfaceStyleController: surfaceStyle,
             composerHeader: null,
+            composerTrailing: null,
             availableCommands: const [],
             stagedCommand: null,
             onCommandSelected: (_) {},

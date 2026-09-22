@@ -106,16 +106,19 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                 availableVariants: state.availableVariants,
                 onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
                 compact: composerCapabilities.presentation == ComposerPresentation.pointer,
-                trailing: state.children.isEmpty
-                    ? null
-                    : BackgroundTasksBar(
-                        surfaceStyle: surfaceStyle,
-                        projectId: widget.projectId,
-                        children: state.children,
-                        childStatuses: state.childStatuses,
-                      ),
               ),
             ),
+            composerTrailing: state.children.isEmpty
+                ? null
+                : ValueListenableBuilder<PregoComposerSurfaceStyle>(
+                    valueListenable: _composerSurfaceStyle,
+                    builder: (context, surfaceStyle, _) => BackgroundTasksBar(
+                      surfaceStyle: surfaceStyle,
+                      projectId: widget.projectId,
+                      children: state.children,
+                      childStatuses: state.childStatuses,
+                    ),
+                  ),
             availableCommands: state.availableCommands,
             stagedCommand: state.stagedCommand,
             onCommandSelected: context.read<SessionDetailCubit>().stageCommand,

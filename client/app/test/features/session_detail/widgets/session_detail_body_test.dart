@@ -399,6 +399,7 @@ void main() {
                 onAbort: () {},
                 surfaceStyleController: surfaceStyle,
                 composerHeader: null,
+                composerTrailing: null,
                 availableCommands: const [],
                 stagedCommand: null,
                 onCommandSelected: (_) {},
@@ -1694,8 +1695,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(EditableText), findsOneWidget);
-    // The staged-command chip takes the selector strip, sub-agents pill included.
-    expect(taskCard, findsNothing);
+    // The staged-command chip takes the selectors' place, not the pill's.
+    expect(
+      composerSurfaceBorderColor(tester: tester, surface: taskCard),
+      PregoColorsLight.borderPrimary,
+    );
 
     composerFocus(tester).unfocus();
     await tester.pumpAndSettle();

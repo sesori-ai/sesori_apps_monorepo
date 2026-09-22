@@ -30,9 +30,6 @@ class const AgentModelButtons({
   /// Whether each selector hugs its label at the leading edge (pointer shells)
   /// instead of sharing the strip's width equally (touch shells).
   required final bool compact,
-
-  /// Shown at the strip's trailing edge, after the selectors.
-  required final Widget? trailing,
 }) extends StatefulWidget {
   @override
   State<AgentModelButtons> createState() => _AgentModelButtonsState();
@@ -119,14 +116,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     ];
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-      child: Row(
-        spacing: 8,
-        children: [
-          // The selectors take the strip; [trailing] keeps the trailing edge.
-          Expanded(child: Row(spacing: 8, children: selectors)),
-          ?widget.trailing,
-        ],
-      ),
+      child: Row(spacing: 8, children: selectors),
     );
   }
 
