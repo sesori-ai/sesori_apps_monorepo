@@ -80,6 +80,7 @@ class const PregoPopupAlertsNotifications({
               Positioned.fill(child: IgnorePointer(child: _buildAccent(colors))),
               // A lone title keeps its actions and close button on its own
               // line, centred, instead of stacking a button under one word.
+              // When large text leaves no room, the actions wrap below.
               if (message == null && _hasActions)
                 Padding(
                   padding: EdgeInsetsDirectional.fromSTEB(
@@ -88,18 +89,29 @@ class const PregoPopupAlertsNotifications({
                     onClose == null ? PregoSpacing.lg : PregoSpacing.sm,
                     PregoSpacing.lg,
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Wrap(
+                    spacing: PregoSpacing.x2l,
+                    runSpacing: PregoSpacing.md,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      _buildLeading(colors),
-                      const SizedBox(width: PregoSpacing.lg),
-                      Flexible(child: _buildTitle(prego)),
-                      const SizedBox(width: PregoSpacing.x2l),
-                      _buildActions(),
-                      if (onClose case final onClose?) ...[
-                        const SizedBox(width: PregoSpacing.xs),
-                        _CloseButton(onPressed: onClose),
-                      ],
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildLeading(colors),
+                          const SizedBox(width: PregoSpacing.lg),
+                          Flexible(child: _buildTitle(prego)),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildActions(),
+                          if (onClose case final onClose?) ...[
+                            const SizedBox(width: PregoSpacing.xs),
+                            _CloseButton(onPressed: onClose),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
                 )
