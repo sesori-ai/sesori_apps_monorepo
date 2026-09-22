@@ -8,8 +8,8 @@
 - **Selectors (D16).** `AgentModelButtons` keeps agent, model and effort in one
   strip above the input on every surface. On a pointer surface the pills size
   to their labels; on touch they share the width. The pointer composer always
-  shows the attach and command buttons and grows with the draft instead of
-  opening the editor sheet. `ComposerPresentation` on
+  shows the attach and command buttons and grows with the draft, up to a third
+  of the window, instead of opening the editor sheet. `ComposerPresentation` on
   `ComposerPresentationScope` carries the touch/pointer choice.
 - **Start ellipsis (user note).** New `PregoStartEllipsisText` in the design
   system, used by `PregoPickerButton`. A label that does not fit keeps its end
@@ -74,7 +74,8 @@ The step target was set at approval as 1,100; the repository soft cap is
 
 `session-creation-and-options.md` gains two bullets: the selector strip with
 its start ellipsis, and the sub-agents pill with its list. The review
-follow-up adds where the list opens and its screen-reader action.
+follow-up adds where the list opens, its screen-reader action and where the
+desktop draft stops growing.
 
 ## Review Follow-up
 
@@ -102,3 +103,20 @@ whitespace, from re-indenting the overlay), 118 of them tests.
   pill and composer pill tests (9), `app` selector, child-session navigation
   and session body tests (145), `desktop` session page tests (6), all passing.
   `dart analyze --fatal-infos` is clean in all four packages.
+
+Wave 2 (cubic, 2 threads; Codex, 1 thread) is answered in commit
+`cd918fdd3ca97b62d6f787b8509dee435e70c11d`, 33 changed lines, 24 of them tests.
+
+- Fixed: on the 560 by 480 minimum desktop window a 16-line draft pushed the
+  selectors and the sub-agents pill above the session view (Codex). The
+  pointer draft now stops at a third of the window and scrolls. A new desktop
+  test types 30 lines at that size and keeps the field at or under 160 points
+  and the pill inside the view; it failed at 336 points before the fix.
+- Declined with evidence: the list needs no trailing edge margin, because the
+  composer controls are padded 16 points on both sides and the list lines up
+  with the pill on purpose. Its heading cannot overflow: with the keyboard up
+  the typing composer leaves about 120 points below the pill, with it down the
+  whole screen above is free, and the heading needs about 40.
+- Tests: `module_app_ui` session detail widget tests (194) and `desktop`
+  session page tests (7), all passing. `dart analyze --fatal-infos` is clean in
+  both packages.
