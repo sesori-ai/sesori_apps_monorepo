@@ -1535,6 +1535,12 @@ class _PromptInputState() extends State<PromptInput> {
                       decoration: InputDecoration(
                         isCollapsed: true,
                         border: InputBorder.none,
+                        // Growing in place stops at a third of the window and
+                        // then scrolls, so a short window keeps the selectors
+                        // above the draft on screen.
+                        constraints: growsInPlace
+                            ? BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height / 3)
+                            : null,
                         contentPadding: const EdgeInsets.symmetric(vertical: PregoSpacing.md),
                         // Command-aware placeholder: the staged command's hint,
                         // else the follow-up/default prompt hint.
