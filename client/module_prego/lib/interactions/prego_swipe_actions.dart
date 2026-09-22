@@ -418,8 +418,7 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
   void _afterStripsMeasured(VoidCallback settle) {
     _measureStrips();
     if (!_measurePending) {
-      _dragging = false;
-      settle();
+      _finishDrag(settle);
       return;
     }
     WidgetsBinding.instance
@@ -427,10 +426,17 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
         if (!mounted) return;
         _measureStrips();
         _pastCommit = !_commitFired && _extent.abs() >= _commitThreshold(extent: _extent);
-        _dragging = false;
-        settle();
+        _finishDrag(settle);
       })
       ..ensureVisualUpdate();
+  }
+
+  void _finishDrag(VoidCallback settle) {
+    _dragging = false;
+    settle();
+    // A touch that never moved the row starts no settle to rebuild it, so
+    // drop the strips it built here.
+    if (!_controller.isAnimating && _controller.value == 0) setState(() {});
   }
 
   void _handleDragCancel() => _afterStripsMeasured(_settleToNearest);

@@ -30,6 +30,10 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
   final GlobalKey<SliverAnimatedListState> _listKey = GlobalKey<SliverAnimatedListState>();
   late List<_ListEntry<T>> _entries;
 
+  /// How many times each item has left. A row that returns while its previous
+  /// copy is still closing gets a new key, so the two never share one.
+  final Map<Key, int> _departures = {};
+
   @override
   void initState() {
     super.initState();
@@ -57,10 +61,12 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       if (nextKeys.contains(entry.key)) continue;
 
       _entries.removeAt(index);
+      final outgoingKey = _itemKey(entry.key);
+      _departures.update(entry.key, (count) => count + 1, ifAbsent: () => 1);
       listState.removeItem(
         index,
         (context, animation) => _transition(
-          key: _PregoAnimatedSliverItemKey(entry.key),
+          key: outgoingKey,
           animation: animation,
           outgoing: true,
           child: oldWidget.itemBuilder(context, index, entry.item),
@@ -93,13 +99,13 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       initialItemCount: _entries.length,
       findChildIndexCallback: (key) {
         if (key is! _PregoAnimatedSliverItemKey) return null;
-        final index = _entries.indexWhere((entry) => entry.key == key.value);
+        final index = _entries.indexWhere((entry) => _itemKey(entry.key) == key);
         return index == -1 ? null : index;
       },
       itemBuilder: (context, index, animation) {
         final entry = _entries[index];
         return _transition(
-          key: _PregoAnimatedSliverItemKey(entry.key),
+          key: _itemKey(entry.key),
           animation: animation,
           outgoing: false,
           child: widget.itemBuilder(context, index, entry.item),
@@ -107,6 +113,8 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       },
     );
   }
+
+  _PregoAnimatedSliverItemKey _itemKey(Key key) => _PregoAnimatedSliverItemKey((key, _departures[key] ?? 0));
 
   List<_ListEntry<T>> _entriesFor(PregoAnimatedSliverList<T> source) {
     final entries = [for (final item in source.items) _ListEntry(key: source.itemKey(item), item: item)];
@@ -151,4 +159,4 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
 
 class const _ListEntry<T>({required final Key key, required final T item});
 
-class const _PregoAnimatedSliverItemKey(super.value) extends ValueKey<Key>;
+class const _PregoAnimatedSliverItemKey(super.value) extends ValueKey<(Key, int)>;
