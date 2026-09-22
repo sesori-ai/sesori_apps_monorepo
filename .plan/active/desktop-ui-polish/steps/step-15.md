@@ -23,9 +23,11 @@
   the running count, then the sub-agent glyph and the muted total; idle, it
   shows the glyph and the total only. Each number is read by the symbol next
   to it, so a session that used 28 disposable sub-agents no longer looks like
-  28 running. It never claims a final state. Tapping opens the list above the
-  pill in an `OverlayPortal`, running first, without changing the composer's
-  height. The old bar, header, toggle and their strings are deleted.
+  28 running. It never claims a final state. Tapping opens the list in an
+  `OverlayPortal`, running first, without changing the composer's height. It
+  opens above the pill unless there is more room below, and scrolls rather
+  than leaving the screen. The old bar, header, toggle and their strings are
+  deleted.
 - No wire, database or analytics change.
 
 ## Deviations From The Plan
@@ -45,8 +47,6 @@ Measured checkpoint: commit `260412856ac89e476c0f865dc5e7abedf2500d07` against
 base `c3f638fddfd0ab9f2461c8b68f25a2f7c916c9cd`, Flutter 3.47.5 (Dart 3.13).
 No log files were kept; CI on the PR is the durable record.
 
-- Size: 1,046 changed lines, 672 added and 374 deleted, across 31 files. 271
-  are tests, 56 generated l10n, 11 docs.
 - `dart analyze --fatal-infos` in `module_prego`, `module_app_ui`, `app` and
   `desktop`: clean.
 - `flutter test --no-pub`: `module_prego` 325, `module_app_ui` 398 plus the
@@ -56,3 +56,49 @@ No log files were kept; CI on the PR is the durable record.
 - Architecture review: `architecture-implementation-review` ran once through a
   sub-agent on this branch against `main` after the measured checkpoint and
   approved it with no violations and no required changes.
+
+## Size
+
+**1,046 changed lines (672 additions and 374 deletions) across 31 files** at
+the measured checkpoint. Of those lines, 271 are tests, 56 generated l10n and
+11 documents. Reproduce from the root:
+
+```sh
+git diff --numstat c3f638fddfd0ab9f2461c8b68f25a2f7c916c9cd 260412856ac89e476c0f865dc5e7abedf2500d07
+```
+
+The step target was set at approval as 1,100; the repository soft cap is
+1,500. The review follow-up below, this file and the tracker row come on top.
+
+## Regression Documents
+
+`session-creation-and-options.md` gains two bullets: the selector strip with
+its start ellipsis, and the sub-agents pill with its list. The review
+follow-up adds where the list opens and its screen-reader action.
+
+## Review Follow-up
+
+Wave 1 (cubic, 9 threads; Codex, 4 threads) is answered in commit
+`acebb69711029174e8935ca170de49d555f33679`, 341 changed lines (217 ignoring
+whitespace, from re-indenting the overlay), 118 of them tests.
+
+- Fixed: the pill's screen-reader node now carries the tap action (both
+  reviewers). The list is placed with `OverlayPortal.overlayChildLayoutBuilder`
+  from the pill's real rect: it opens toward the side with more room and caps
+  its height, so a tall draft, an open keyboard or a short window no longer
+  pushes its heading off screen, and its statuses stay live. The start-ellipsis
+  label honours the system bold-text setting, updates semantics when the text
+  direction changes, clips when narrower than one ellipsis, and keeps its
+  minimum intrinsic width at or below its maximum. The always-open composer
+  pill no longer rebuilds on every tap. This file gained its Size and
+  Regression Documents sections.
+- Declined with evidence: compact selectors already size to their labels,
+  because a tight infinite `SizedBox` width reports its child's intrinsic
+  width; a new test pins widths that differ per label. The touch strip keeps
+  its layout on 320-point screens: each chip's row runs about 4 points into its
+  own 12-point end padding there, so nothing is clipped in a release build.
+  The tracker already had a step 15 row.
+- Tests: `module_prego` start-ellipsis and picker tests (9), `module_app_ui`
+  pill and composer pill tests (9), `app` selector, child-session navigation
+  and session body tests (145), `desktop` session page tests (6), all passing.
+  `dart analyze --fatal-infos` is clean in all four packages.
