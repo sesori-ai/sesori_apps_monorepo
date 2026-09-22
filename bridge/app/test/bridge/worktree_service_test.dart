@@ -81,7 +81,7 @@ void main() {
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
       _expectColorAnimalSlug(success.branchName);
-      expect(success.path, equals("$_projectId/.worktrees/${success.branchName}"));
+      expect(success.path, equals("$_projectId/.worktrees/${_slugOf(success.branchName)}"));
       expect(success.baseBranch, equals("main"));
       expect(success.baseCommit, equals("abc123def456"));
 
@@ -126,7 +126,7 @@ void main() {
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
       _expectColorAnimalSlug(success.branchName);
-      expect(success.path, equals("/moved/project/.worktrees/${success.branchName}"));
+      expect(success.path, equals("/moved/project/.worktrees/${_slugOf(success.branchName)}"));
       for (final invocation in processRunner.invocations) {
         expect(invocation.workingDirectory, equals("/moved/project"));
       }
@@ -191,7 +191,7 @@ void main() {
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
       _expectColorAnimalSlug(success.branchName);
-      expect(success.path, equals("$_projectId/.worktrees/${success.branchName}"));
+      expect(success.path, equals("$_projectId/.worktrees/${_slugOf(success.branchName)}"));
     });
 
     // -----------------------------------------------------------------------
@@ -263,7 +263,7 @@ void main() {
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
       _expectColorAnimalSlug(success.branchName);
-      expect(success.path, equals("$_projectId/.worktrees/${success.branchName}"));
+      expect(success.path, equals("$_projectId/.worktrees/${_slugOf(success.branchName)}"));
       final checkedBranches = processRunner.invocations
           .where(
             (invocation) =>
@@ -490,7 +490,7 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.branchName, matches(RegExp(r"^[a-z]+-[a-z]+-[0-9a-f]{6}$")));
+      expect(success.branchName, matches(RegExp(r"^sesori/[a-z]+-[a-z]+-[0-9a-f]{6}$")));
       final checkedBranches = processRunner.invocations
           .where(
             (invocation) =>
@@ -506,10 +506,10 @@ void main() {
       expect(normalCandidates.toSet(), hasLength(3));
       normalCandidates.forEach(_expectColorAnimalSlug);
       expect(suffixCandidates.toSet(), hasLength(2));
-      expect(suffixCandidates, everyElement(matches(RegExp(r"^[a-z]+-[a-z]+-[0-9a-f]{6}$"))));
+      expect(suffixCandidates, everyElement(matches(RegExp(r"^sesori/[a-z]+-[a-z]+-[0-9a-f]{6}$"))));
       expect(success.branchName, suffixCandidates.last);
       expect(success.branchName.substring(0, success.branchName.length - 7), normalCandidates.last);
-      expect(success.path, equals("$_projectId/.worktrees/${success.branchName}"));
+      expect(success.path, equals("$_projectId/.worktrees/${_slugOf(success.branchName)}"));
     });
 
     // -----------------------------------------------------------------------
@@ -1024,9 +1024,9 @@ void main() {
       );
 
       expect(result, isA<GeneratedBranchRenamed>());
-      expect((result as GeneratedBranchRenamed).branchName, "fix-login-flow");
+      expect((result as GeneratedBranchRenamed).branchName, "sesori/fix-login-flow");
       expect(repository.renameCalls, [
-        (oldBranchName: "blue-otter", newBranchName: "fix-login-flow"),
+        (oldBranchName: "blue-otter", newBranchName: "sesori/fix-login-flow"),
       ]);
       expect(repository.lastWorktreePath, "/repo/.worktrees/blue-otter");
     });
@@ -1097,7 +1097,7 @@ void main() {
     });
 
     test("adds a secure suffix when the generated target already exists", () async {
-      repository.existingBranches.add("fix-login-flow");
+      repository.existingBranches.add("sesori/fix-login-flow");
 
       final result = await service.renameGeneratedBranch(
         worktreePath: "/worktree",
@@ -1106,12 +1106,12 @@ void main() {
       );
 
       final renamed = result as GeneratedBranchRenamed;
-      expect(renamed.branchName, matches(RegExp(r"^fix-login-flow-[0-9a-f]{6}$")));
+      expect(renamed.branchName, matches(RegExp(r"^sesori/fix-login-flow-[0-9a-f]{6}$")));
       expect(repository.renameCalls.single.newBranchName, renamed.branchName);
     });
 
     test("adds a secure suffix when only a matching remote target exists", () async {
-      repository.remoteBranches.add("fix-login-flow");
+      repository.remoteBranches.add("sesori/fix-login-flow");
 
       final result = await service.renameGeneratedBranch(
         worktreePath: "/worktree",
@@ -1120,14 +1120,14 @@ void main() {
       );
 
       final renamed = result as GeneratedBranchRenamed;
-      expect(renamed.branchName, matches(RegExp(r"^fix-login-flow-[0-9a-f]{6}$")));
+      expect(renamed.branchName, matches(RegExp(r"^sesori/fix-login-flow-[0-9a-f]{6}$")));
       expect(repository.renameCalls.single.newBranchName, renamed.branchName);
     });
 
     test("skips when collision suffixes are not valid branch names", () async {
       repository
-        ..existingBranches.add("fix-login-flow")
-        ..branchNameValidator = (branchName) => branchName == "fix-login-flow";
+        ..existingBranches.add("sesori/fix-login-flow")
+        ..branchNameValidator = (branchName) => branchName == "sesori/fix-login-flow";
 
       final result = await service.renameGeneratedBranch(
         worktreePath: "/worktree",
@@ -1164,8 +1164,8 @@ void main() {
         ),
       );
       expect(repository.renameCalls, [
-        (oldBranchName: "blue-otter", newBranchName: "fix-login-flow"),
-        (oldBranchName: "fix-login-flow", newBranchName: "blue-otter"),
+        (oldBranchName: "blue-otter", newBranchName: "sesori/fix-login-flow"),
+        (oldBranchName: "sesori/fix-login-flow", newBranchName: "blue-otter"),
       ]);
     });
 
@@ -1181,8 +1181,8 @@ void main() {
         throwsA(isA<StateError>()),
       );
       expect(repository.renameCalls, [
-        (oldBranchName: "blue-otter", newBranchName: "fix-login-flow"),
-        (oldBranchName: "fix-login-flow", newBranchName: "blue-otter"),
+        (oldBranchName: "blue-otter", newBranchName: "sesori/fix-login-flow"),
+        (oldBranchName: "sesori/fix-login-flow", newBranchName: "blue-otter"),
       ]);
     });
   });
@@ -1200,9 +1200,11 @@ ProcessResult _fail({required int exitCode, String stderr = ""}) {
   return ProcessResult(1, exitCode, "", stderr);
 }
 
-void _expectColorAnimalSlug(String slug) {
-  expect(slug, matches(RegExp(r"^[a-z]+-[a-z]+$")));
+void _expectColorAnimalSlug(String branchName) {
+  expect(branchName, matches(RegExp(r"^sesori/[a-z]+-[a-z]+$")));
 }
+
+String _slugOf(String branchName) => branchName.replaceFirst("sesori/", "");
 
 class const _Invocation({
   required final String command,
@@ -1249,7 +1251,7 @@ class _FakeProcessRunner() implements ProcessRunner {
     );
 
     if (generatedPathsToOccupy > 0 && arguments.take(2).join(" ") == "branch --list") {
-      Directory("$workingDirectory/.worktrees/${arguments.last}").createSync(recursive: true);
+      Directory("$workingDirectory/.worktrees/${_slugOf(arguments.last)}").createSync(recursive: true);
       generatedPathsToOccupy--;
     }
 

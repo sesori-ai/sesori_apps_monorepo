@@ -10,6 +10,9 @@ export "../repositories/models/worktree_types.dart";
 const _maxWorktreeCreationAttempts = 3;
 const _suffixSpace = 0x1000000;
 const _worktreeDir = ".worktrees";
+// Every bridge-created branch lives under this namespace; worktree directories
+// keep the bare slug.
+const _branchPrefix = "sesori/";
 // Adapted from the MIT-licensed unique-names-generator dictionaries:
 // https://github.com/andreasonny83/unique-names-generator/tree/main/src/dictionaries
 const _workspaceColors = [
@@ -216,9 +219,9 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     final colorOffset = _random.nextInt(_workspaceColors.length);
     final animalOffset = _random.nextInt(_workspaceAnimals.length);
 
-    Future<_WorktreeCandidateAttempt> attemptCandidate(String branchName) => _attemptWorktreeCandidate(
+    Future<_WorktreeCandidateAttempt> attemptCandidate(String slug) => _attemptWorktreeCandidate(
       projectPath: projectPath,
-      branchName: branchName,
+      slug: slug,
       startPoint: startPoint,
       baseBranch: baseBranch,
       baseCommit: baseCommit,
@@ -270,15 +273,16 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
   static String _workspaceSlug({required int colorIndex, required int animalIndex}) =>
       "${_workspaceColors[colorIndex]}-${_workspaceAnimals[animalIndex]}";
 
-  /// Creates the worktree for [branchName] unless the branch or path is taken.
+  /// Creates the worktree for [slug] unless its branch or path is taken.
   Future<_WorktreeCandidateAttempt> _attemptWorktreeCandidate({
     required String projectPath,
-    required String branchName,
+    required String slug,
     required String startPoint,
     required String baseBranch,
     required String baseCommit,
   }) async {
-    final worktreePath = "$projectPath/$_worktreeDir/$branchName";
+    final branchName = "$_branchPrefix$slug";
+    final worktreePath = "$projectPath/$_worktreeDir/$slug";
     if (await _worktreeRepository.branchExists(projectPath: projectPath, branchName: branchName) ||
         _worktreeRepository.worktreePathExists(worktreePath: worktreePath)) {
       return const _WorktreeCandidateTaken();
@@ -305,10 +309,11 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     required String initialBranchName,
     required String generatedBranchName,
   }) async {
-    if (generatedBranchName == initialBranchName) {
+    final prefixedBranchName = "$_branchPrefix$generatedBranchName";
+    if (prefixedBranchName == initialBranchName) {
       return GeneratedBranchRenameSkipped(reason: GeneratedBranchRenameSkipReason.unchanged);
     }
-    if (!await _worktreeRepository.isValidBranchName(branchName: generatedBranchName)) {
+    if (!await _worktreeRepository.isValidBranchName(branchName: prefixedBranchName)) {
       return GeneratedBranchRenameSkipped(reason: GeneratedBranchRenameSkipReason.invalidGeneratedName);
     }
 
@@ -327,7 +332,7 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       return GeneratedBranchRenameSkipped(reason: GeneratedBranchRenameSkipReason.initialBranchPublished);
     }
 
-    var targetBranchName = generatedBranchName;
+    var targetBranchName = prefixedBranchName;
     if (await _branchExistsLocallyOrRemotely(
       worktreePath: worktreePath,
       branchName: targetBranchName,
@@ -335,7 +340,7 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       final suffixOffset = _random.nextInt(_suffixSpace);
       String? availableBranchName;
       for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
-        final candidate = "$generatedBranchName-${_hexSuffix((suffixOffset + attempt) % _suffixSpace)}";
+        final candidate = "$prefixedBranchName-${_hexSuffix((suffixOffset + attempt) % _suffixSpace)}";
         if (!await _worktreeRepository.isValidBranchName(branchName: candidate)) continue;
         if (!await _branchExistsLocallyOrRemotely(
           worktreePath: worktreePath,
