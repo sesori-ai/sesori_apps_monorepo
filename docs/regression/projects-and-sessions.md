@@ -242,6 +242,11 @@ state.
 - Session activity stays relative for 30 days. Older rows use a compact numeric
   date whose field order and separators follow the user's full device locale;
   dates from the current year omit the year, while earlier years remain explicit.
+  On iOS and macOS the date follows the OS region and custom short date format
+  even when the language is set to another region, such as English (US) with
+  a Bulgarian region. The yearless date drops a leading or trailing year from
+  that short format; a format with the year elsewhere uses the platform
+  locale's month/day instead.
 - A listed session's `session.updated` reports the newest instant the bridge
   knows: backend activity, bridge-owned metadata changes, live turn completion,
   or the live user-message marker when that is newer. When a plugin reports a

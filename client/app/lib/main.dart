@@ -53,6 +53,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Initialize standard shaders, but do not preload the unused premium tier.
   await LiquidGlassWidgets.initialize(warmUpMode: GlassWarmUpMode.never);
+  await PregoSystemDatePatterns.load();
   // The native splash runs in fullscreen, which leaves the status/nav bars
   // hidden on iOS until the engine is told otherwise. Restore them and let
   // content draw behind them so the background image still reaches the edges.
