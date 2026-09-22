@@ -135,6 +135,10 @@ class const PromptInput({
   required final VoidCallback onAbort,
   required final ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController,
   required final Widget? composerHeader,
+
+  /// Kept at the trailing edge of the strip above the input in every state,
+  /// while a staged command or the voice controls take [composerHeader]'s place.
+  required final Widget? composerTrailing,
   required final List<CommandInfo> availableCommands,
   required final CommandInfo? stagedCommand,
   required final ValueChanged<CommandInfo> onCommandSelected,
@@ -1095,7 +1099,17 @@ class _PromptInputState() extends State<PromptInput> {
                 onPopInvokedWithResult: (didPop, _) {
                   if (!didPop && shouldDismissKeyboardBeforePop) _focusNode.unfocus();
                 },
-                child: _buildComposerTopSlot(context),
+                child: switch (widget.composerTrailing) {
+                  null => _buildComposerTopSlot(context),
+                  final trailing => Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    spacing: 8,
+                    children: [
+                      Expanded(child: _buildComposerTopSlot(context)),
+                      Padding(padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2), child: trailing),
+                    ],
+                  ),
+                },
               );
             },
           ),
@@ -1458,6 +1472,9 @@ class _PromptInputState() extends State<PromptInput> {
     final loc = context.loc;
     final voiceFirst = _isVoiceFirst;
     final sendKeyPolicy = ComposerPresentationScope.of(context).sendKeyPolicy;
+    // A pointer shell grows the box for long prompts instead of offering the
+    // full-screen editor sheet.
+    final growsInPlace = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
 
     // Voice-first nests the fully-rounded hold pill along the bottom, so the
     // container's bottom corners wrap it: pill radius (22) + padding (6) = 28
@@ -1486,7 +1503,7 @@ class _PromptInputState() extends State<PromptInput> {
               Padding(
                 // Clear the expand button on the trailing edge so text never
                 // runs underneath it.
-                padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.xs, 0, 36, 0),
+                padding: EdgeInsetsDirectional.fromSTEB(PregoSpacing.xs, 0, growsInPlace ? PregoSpacing.xs : 36, 0),
                 child: Actions(
                   // Browser paste must remain synchronous with its DOM event;
                   // deferring Flutter's text action behind an async Clipboard
@@ -1517,7 +1534,7 @@ class _PromptInputState() extends State<PromptInput> {
                       scrollController: _textScrollController,
                       focusNode: _focusNode,
                       minLines: 1,
-                      maxLines: 6,
+                      maxLines: growsInPlace ? 16 : 6,
                       keyboardType: TextInputType.multiline,
                       textInputAction: TextInputAction.newline,
                       contextMenuBuilder: (_, editableTextState) =>
@@ -1532,6 +1549,12 @@ class _PromptInputState() extends State<PromptInput> {
                       decoration: InputDecoration(
                         isCollapsed: true,
                         border: InputBorder.none,
+                        // Growing in place stops at a third of the window and
+                        // then scrolls, so a short window keeps the selectors
+                        // above the draft on screen.
+                        constraints: growsInPlace
+                            ? BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height / 3)
+                            : null,
                         contentPadding: const EdgeInsets.symmetric(vertical: PregoSpacing.md),
                         // Command-aware placeholder: the staged command's hint,
                         // else the follow-up/default prompt hint.
@@ -1542,19 +1565,20 @@ class _PromptInputState() extends State<PromptInput> {
                   ),
                 ),
               ),
-              PositionedDirectional(
-                top: 0,
-                end: 0,
-                child: Tooltip(
-                  message: loc.sessionDetailExpandEditor,
-                  child: PregoTappable(
-                    onTap: _voicePresentation == _VoicePresentation.idle ? _openEditorSheet : null,
-                    borderRadius: BorderRadius.circular(PregoRadius.full),
-                    containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
-                    child: Icon(TablerRegular.maximize, size: 18, color: prego.colors.textSecondary),
+              if (!growsInPlace)
+                PositionedDirectional(
+                  top: 0,
+                  end: 0,
+                  child: Tooltip(
+                    message: loc.sessionDetailExpandEditor,
+                    child: PregoTappable(
+                      onTap: _voicePresentation == _VoicePresentation.idle ? _openEditorSheet : null,
+                      borderRadius: BorderRadius.circular(PregoRadius.full),
+                      containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
+                      child: Icon(TablerRegular.maximize, size: 18, color: prego.colors.textSecondary),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           if (voiceFirst)
@@ -1672,6 +1696,7 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildOptionsAccordion() {
     return ComposerOptionsAccordion(
       actionsEnabled: _voicePresentation == _VoicePresentation.idle,
+      alwaysOpen: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
       showAttachImage: widget.attachmentsSupported ?? false,
       onSlashCommandsTap: _openCommandPicker,
       onAttachImageTap: _handleAttachImage,

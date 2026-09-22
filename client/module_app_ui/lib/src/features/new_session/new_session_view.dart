@@ -177,6 +177,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
         onModelSelected: cubit.selectModel,
         availableVariants: data.availableVariants,
         onVariantSelected: cubit.selectVariant,
+        compact: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
       ),
     );
   }
@@ -472,6 +473,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
                   state: state,
                   surfaceStyleController: surfaceStyleController,
                 ),
+                composerTrailing: null,
                 availableCommands: composerData?.commands ?? const [],
                 stagedCommand: composerData?.stagedCommand,
                 onCommandSelected: context.read<NewSessionCubit>().stageCommand,

@@ -17,6 +17,17 @@ enum ComposerSendKeyPolicy() {
   enterSends,
 }
 
+/// How the product shell lays the composer out.
+enum ComposerPresentation() {
+  /// Touch-sized: selectors share the strip's width, `+` and `/` sit behind
+  /// the options pill, and a full-screen editor is offered for long prompts.
+  touch,
+
+  /// Pointer-sized: selectors hug their labels at the leading edge, `+` and
+  /// `/` are always visible, and the box itself grows for long prompts.
+  pointer,
+}
+
 typedef ComposerCapabilityProvider<T> = T Function();
 
 /// Product-owned platform and presentation capabilities for shared composers.
@@ -30,6 +41,7 @@ class const ComposerPresentationScope({
   required final ChatInputMode inputMode,
   required final bool isKeyboardVisible,
   required final ComposerSendKeyPolicy sendKeyPolicy,
+  required final ComposerPresentation presentation,
   required final ComposerCapabilityProvider<ComposerAttachmentDispatcher> attachmentDispatcher,
   required final ComposerCapabilityProvider<ImageClipboard> imageClipboard,
   required super.child,
@@ -50,6 +62,7 @@ class const ComposerPresentationScope({
       inputMode != oldWidget.inputMode ||
       isKeyboardVisible != oldWidget.isKeyboardVisible ||
       sendKeyPolicy != oldWidget.sendKeyPolicy ||
+      presentation != oldWidget.presentation ||
       attachmentDispatcher != oldWidget.attachmentDispatcher ||
       imageClipboard != oldWidget.imageClipboard;
 }

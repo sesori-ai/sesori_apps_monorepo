@@ -144,6 +144,7 @@ Widget _composerScope({required Widget child, required ComposerCapabilityProvide
     inputMode: ChatInputMode.textFirst,
     isKeyboardVisible: false,
     sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+    presentation: ComposerPresentation.pointer,
     attachmentDispatcher: _MockComposerAttachmentDispatcher.new,
     imageClipboard: imageClipboard,
     child: child,
@@ -253,9 +254,11 @@ void main() {
       ),
     ).called(1);
 
-    await tester.tap(find.byIcon(TablerRegular.chevron_right));
-    await tester.pumpAndSettle();
+    // `+` and `/` are always visible on desktop, and the box grows instead of
+    // offering the editor sheet.
     expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
+    expect(find.byIcon(TablerRegular.maximize), findsNothing);
     // The page toolbar's menu, not a composer one.
     expect(find.byTooltip("More actions"), findsOneWidget);
 
@@ -332,7 +335,7 @@ void main() {
     );
   });
 
-  group("page toolbar", () {
+  group("page", () {
     late _MockSessionDetailCubit cubit;
     late _MockSessionListCubit listCubit;
     late List<Session> markedUnread;
@@ -412,6 +415,28 @@ void main() {
       expect(tester.getRect(find.byType(SessionDetailLoadedView)).top, toolbar.bottom);
       expect(list.topInset, 0);
       expect(list.horizontalInset, (1400 - DesktopSessionDetailView.maxContentWidth) / 2);
+    });
+
+    testWidgets("a long draft scrolls in place so a minimum-size window keeps the selectors", (tester) async {
+      await pumpPage(tester, session: _session);
+      // The desktop minimum window, seen by layout and MediaQuery alike.
+      await tester.binding.setSurfaceSize(null);
+      tester.view
+        ..physicalSize = const Size(560, 480)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Follow up..."));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(EditableText), List.generate(30, (line) => "Line $line").join("\n"));
+      await tester.pumpAndSettle();
+
+      expect(tester.getSize(find.byType(TextField)).height, lessThanOrEqualTo(480 / 3));
+      expect(
+        tester.getRect(find.byKey(const ValueKey("sub_agents_pill"))).top,
+        greaterThanOrEqualTo(tester.getRect(find.byType(SessionDetailLoadedView)).top),
+      );
     });
 
     testWidgets("Mark unread always sends read: false, defers the session and leaves the page", (tester) async {

@@ -2617,22 +2617,22 @@ abstract class AppLocalizations {
   /// **'Search models...'**
   String get sessionDetailModelSearch;
 
-  /// No description provided for @backgroundTasksRunning.
+  /// No description provided for @subAgentsTitle.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 Task Running} other{{count} Tasks Running}}'**
-  String backgroundTasksRunning(int count);
+  /// **'Sub-agents'**
+  String get subAgentsTitle;
 
-  /// No description provided for @backgroundTasksCompleted.
+  /// Tooltip and screen-reader label of the sub-agents pill in the composer.
   ///
   /// In en, this message translates to:
-  /// **'All tasks completed'**
-  String get backgroundTasksCompleted;
+  /// **'{count, plural, =1{1 sub-agent} other{{count} sub-agents}}, {running} working'**
+  String subAgentsSummary(int count, int running);
 
   /// No description provided for @backgroundTaskStatusIdle.
   ///
   /// In en, this message translates to:
-  /// **'Completed'**
+  /// **'Idle'**
   String get backgroundTaskStatusIdle;
 
   /// No description provided for @backgroundTaskStatusBusy.
@@ -2646,18 +2646,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retrying'**
   String get backgroundTaskStatusRetry;
-
-  /// No description provided for @backgroundTasksShowCompleted.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{Show 1 completed task} other{Show {count} completed tasks}}'**
-  String backgroundTasksShowCompleted(int count);
-
-  /// No description provided for @backgroundTasksHideCompleted.
-  ///
-  /// In en, this message translates to:
-  /// **'Hide completed'**
-  String get backgroundTasksHideCompleted;
 
   /// No description provided for @sessionListToggleArchived.
   ///

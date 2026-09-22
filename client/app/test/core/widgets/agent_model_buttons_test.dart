@@ -41,6 +41,7 @@ Widget _buildApp({required List<AgentInfo> agents, required void Function(String
             onModelSelected: ({required providerID, required modelID}) {},
             availableVariants: const [],
             onVariantSelected: (_) {},
+            compact: false,
           ),
         ],
       ),
@@ -77,6 +78,7 @@ Widget _buildVariantApp({required ValueChanged<SessionVariant> onVariantSelected
             onModelSelected: ({required providerID, required modelID}) {},
             availableVariants: _variants,
             onVariantSelected: onVariantSelected,
+            compact: false,
           ),
           // The prompt field sits below the picker row in the chat composer.
           const SizedBox(height: 120),
@@ -212,5 +214,42 @@ void main() {
       final popup = tester.state<ScrollableState>(find.byType(Scrollable)).position;
       expect(popup.maxScrollExtent, greaterThan(0.0));
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+  });
+
+  testWidgets("compact selectors size to their labels instead of sharing the strip", (tester) async {
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: AgentModelButtons(
+            surfaceStyle: PregoComposerSurfaceStyle.subtle,
+            agents: [
+              _agent(name: "build", description: "Build"),
+              _agent(name: "plan", description: "Plan"),
+            ],
+            selectedAgent: "build",
+            onAgentSelected: (_) {},
+            providers: const [],
+            selectedAgentModel: const AgentModel(providerID: "example", modelID: "m", variant: "high"),
+            onModelSelected: ({required providerID, required modelID}) {},
+            availableVariants: const [SessionVariant(id: "high")],
+            onVariantSelected: (_) {},
+            compact: true,
+          ),
+        ),
+      ),
+    );
+
+    double width(String label) =>
+        tester.getSize(find.byWidgetPredicate((widget) => widget is PregoPickerButton && widget.label == label)).width;
+    // A one-letter model is the narrowest chip, and none is stretched to the cap.
+    expect(width("m"), lessThan(width("high")));
+    expect(width("high"), lessThan(width("build")));
+    expect(width("build"), lessThan(240));
   });
 }
