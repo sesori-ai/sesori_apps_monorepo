@@ -14,6 +14,7 @@ import "package:theme_prego/module_prego.dart";
 import "../di/injection.dart";
 import "desktop_connection_pill.dart";
 import "desktop_sidebar.dart";
+import "desktop_sidebar_expansion.dart";
 import "desktop_window_drag_area.dart";
 
 /// Shared project/recent inventories and one layout owner per signed-in cockpit.
@@ -85,7 +86,6 @@ class const DesktopCockpitShell({
 
   @override
   Widget build(BuildContext context) {
-    final layout = context.watch<DesktopSidebarCubit>().state;
     final sidebar = context.read<DesktopSidebarCubit>();
     // macOS only: the window has no title bar of its own (see `FlutterWindowHost`).
     final windowHost = defaultTargetPlatform == TargetPlatform.macOS ? getIt<WindowHost>() : null;
@@ -132,60 +132,50 @@ class const DesktopCockpitShell({
     return LayoutBuilder(
       builder: (context, constraints) {
         final autoCollapsed = constraints.maxWidth < autoCollapseBreakpoint;
-        final collapsed = layout.collapsed || autoCollapsed;
+        bool collapsed(BuildContext context) =>
+            context.select((DesktopSidebarCubit cubit) => cubit.state.collapsed) || autoCollapsed;
+        // Depth delimits: the sidebar floats as a panel over the base surface
+        // the pages paint, so no divider separates them.
+        final row = Row(
+          children: [
+            _SidebarPanel(
+              windowHost: windowHost,
+              child: DesktopSidebar(
+                windowHost: windowHost,
+                autoCollapsed: autoCollapsed,
+                selectedProjectId: selectedProjectId,
+                selectedSessionId: selectedSessionId,
+                onOpenSession: onOpenSession,
+                onNewSession: onNewSession,
+                onStartNewSession: startNewSession,
+                sessionActions: sessionActions,
+                onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
+                onOpenProjects: onOpenProjects,
+                onAddProject: addProject,
+                onOpenProject: onOpenProject,
+                onOpenBridgeSettings: onOpenBridgeSettings,
+                onOpenSettings: onOpenSettings,
+              ),
+            ),
+            // The gap beside the panel is the resize handle.
+            Builder(
+              builder: (context) => SizedBox(
+                width: DesktopSidebar.panelMargin,
+                child: collapsed(context) ? null : _SidebarResizeHandle(sidebar: sidebar),
+              ),
+            ),
+            Expanded(child: content),
+          ],
+        );
+        // Only the animation follows a toggle: the sidebar reads its expansion
+        // from it, so the panel's rows are not rebuilt to start one.
         final scaffold = Scaffold(
-          body: TweenAnimationBuilder<double>(
-            tween: Tween(begin: collapsed ? 0 : 1, end: collapsed ? 0 : 1),
-            duration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            // Depth delimits: the sidebar floats as a panel over the base surface
-            // the pages paint, so no divider separates them.
-            builder: (context, expansion, _) => Row(
-              children: [
-                _TitleBarStrip(
-                  windowHost: windowHost,
-                  expansion: expansion,
-                  // The width bounds and the rail measure the panel itself.
-                  child: Container(
-                    key: const Key("desktop-cockpit-sidebar"),
-                    width: compactWidth + (layout.width - compactWidth) * expansion,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(_panelRadius),
-                      boxShadow: context.prego.shadows.lg,
-                    ),
-                    foregroundDecoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(_panelRadius),
-                      border: Border.all(color: context.prego.colors.borderSecondary),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(_panelRadius),
-                      child: DesktopSidebar(
-                        windowHost: windowHost,
-                        expansion: expansion,
-                        autoCollapsed: autoCollapsed,
-                        selectedProjectId: selectedProjectId,
-                        selectedSessionId: selectedSessionId,
-                        onOpenSession: onOpenSession,
-                        onNewSession: onNewSession,
-                        onStartNewSession: startNewSession,
-                        sessionActions: sessionActions,
-                        onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
-                        onOpenProjects: onOpenProjects,
-                        onAddProject: addProject,
-                        onOpenProject: onOpenProject,
-                        onOpenBridgeSettings: onOpenBridgeSettings,
-                        onOpenSettings: onOpenSettings,
-                      ),
-                    ),
-                  ),
-                ),
-                // The gap beside the panel is the resize handle.
-                SizedBox(
-                  width: DesktopSidebar.panelMargin,
-                  child: collapsed ? null : _SidebarResizeHandle(sidebar: sidebar),
-                ),
-                Expanded(child: content),
-              ],
+          body: Builder(
+            builder: (context) => _SidebarExpansionAnimator(
+              target: collapsed(context) ? 0 : 1,
+              duration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              child: row,
             ),
           ),
         );
@@ -209,6 +199,79 @@ class const DesktopCockpitShell({
           child: Focus(autofocus: true, child: scaffold),
         );
       },
+    );
+  }
+}
+
+/// Animates the sidebar's expansion like a [TweenAnimationBuilder], but hands
+/// [child] the animation through [DesktopSidebarExpansion] instead of
+/// rebuilding it with every value: only the parts that read the animation
+/// update during a frame.
+class const _SidebarExpansionAnimator({
+  required final double target,
+  required super.duration,
+  required super.curve,
+  required final Widget child,
+}) extends ImplicitlyAnimatedWidget {
+  @override
+  ImplicitlyAnimatedWidgetState<_SidebarExpansionAnimator> createState() => _SidebarExpansionAnimatorState();
+}
+
+class _SidebarExpansionAnimatorState() extends ImplicitlyAnimatedWidgetState<_SidebarExpansionAnimator> {
+  // One tween, retargeted in place by every change of [target].
+  Tween<double>? _tween;
+  Animation<double>? _expansion;
+
+  @override
+  void forEachTween(TweenVisitor<dynamic> visitor) {
+    // The visitor only constructs a tween for the target it was handed.
+    _tween = switch (visitor(_tween, widget.target, (_) => Tween<double>(begin: widget.target))) {
+      final Tween<double> tween => tween,
+      _ => null,
+    };
+  }
+
+  @override
+  void didUpdateTweens() {
+    if (_tween case final tween? when _expansion == null) _expansion = animation.drive(tween);
+  }
+
+  @override
+  Widget build(BuildContext context) => DesktopSidebarExpansion(
+    expansion: _expansion ?? kAlwaysCompleteAnimation,
+    child: widget.child,
+  );
+}
+
+/// The floating panel, as wide as the sidebar's width and expansion make it.
+class const _SidebarPanel({required final WindowHost? windowHost, required final Widget child})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final width = context.select((DesktopSidebarCubit cubit) => cubit.state.width);
+    const compactWidth = DesktopCockpitShell.compactWidth;
+    const radius = DesktopCockpitShell._panelRadius;
+    return DesktopSidebarExpansionBuilder(
+      expansion: DesktopSidebarExpansion.of(context),
+      builder: (expansion, panel) => _TitleBarStrip(
+        windowHost: windowHost,
+        expansion: expansion,
+        // The width bounds and the rail measure the panel itself.
+        child: Container(
+          key: const Key("desktop-cockpit-sidebar"),
+          width: compactWidth + (width - compactWidth) * expansion,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(radius),
+            boxShadow: context.prego.shadows.lg,
+          ),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: context.prego.colors.borderSecondary),
+          ),
+          child: panel,
+        ),
+      ),
+      child: ClipRRect(borderRadius: BorderRadius.circular(radius), child: child),
     );
   }
 }
