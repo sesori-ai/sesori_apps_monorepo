@@ -31,20 +31,27 @@ public final class ThemePregoPlugin: NSObject, FlutterPlugin {
 
 /// The user's date and time patterns keyed by intl skeleton. The short styles
 /// honour custom formats and the 24-hour setting; the templates honour a region
-/// set apart from the language.
+/// set apart from the language. Both are pinned to the Gregorian calendar,
+/// since Dart formats Gregorian dates and cannot follow an alternate calendar's
+/// era and year.
 private func systemDatePatterns() -> [String: String] {
+  let gregorian = Calendar(identifier: .gregorian)
   func styled(date: DateFormatter.Style, time: DateFormatter.Style) -> String {
     let formatter = DateFormatter()
+    formatter.calendar = gregorian
     formatter.dateStyle = date
     formatter.timeStyle = time
     return formatter.dateFormat
   }
+  var components = Locale.components(fromIdentifier: Locale.current.identifier)
+  components["calendar"] = "gregorian"
+  let templateLocale = Locale(identifier: Locale.identifier(fromComponents: components))
   var patterns = [
     "yMd": styled(date: .short, time: .none),
     "jm": styled(date: .none, time: .short),
   ]
   for skeleton in ["MMMd", "yMMMd"] {
-    patterns[skeleton] = DateFormatter.dateFormat(fromTemplate: skeleton, options: 0, locale: .current)
+    patterns[skeleton] = DateFormatter.dateFormat(fromTemplate: skeleton, options: 0, locale: templateLocale)
   }
   return patterns
 }

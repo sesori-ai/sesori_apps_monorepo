@@ -16,11 +16,24 @@ abstract final class PregoSystemDatePatterns() {
   static Map<String, String> get patterns => _patterns;
 
   /// Reads the patterns once at startup; a region change applies on relaunch.
+  /// A failure is reported and leaves intl's patterns in place, since startup
+  /// must not stop over a date format.
   static Future<void> load() async {
     if (kIsWeb) return;
     if (defaultTargetPlatform != TargetPlatform.iOS && defaultTargetPlatform != TargetPlatform.macOS) return;
-    final patterns = await _channel.invokeMapMethod<String, String>("load");
-    if (patterns != null) debugSetPatterns(patterns);
+    try {
+      final patterns = await _channel.invokeMapMethod<String, String>("load");
+      if (patterns != null) debugSetPatterns(patterns);
+    } on Object catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: "theme_prego",
+          context: ErrorDescription("while reading the OS date patterns"),
+        ),
+      );
+    }
   }
 
   /// Takes the OS patterns; the yearless month/day comes from the short date,
