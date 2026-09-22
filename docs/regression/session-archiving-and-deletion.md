@@ -86,7 +86,7 @@ entirely along with its transcript and, optionally, its worktree.
   split-pane session lists. The live list remains active-only. The modal contains
   only archived rows, grouped by their actual archive date, newest first; an
   active-only project shows the archive artwork and “No archived sessions”. It
-  has no new-task button or bottom floating navigation.
+  has no new-session button or bottom floating navigation.
 - Archived detail is read-only from its first frame. Back returns to the retained
   archive list; X closes the entire modal to its original opener, preserving its
   list/scroll and draft. Both controls remain available during loading and errors,
@@ -145,7 +145,7 @@ restart before explicit re-import.
 
 ## Failure Signals
 
-- Mobile mixes active rows into archives, shows a new-task floating button in
+- Mobile mixes active rows into archives, shows a new-session floating button in
   the modal, loses the opener on X, or navigates out of the modal on detail Back.
 - Opening or closing an audit record consumes the underlying live project's
   claim, preventing its declaration from returning when the opener is visible.
@@ -174,8 +174,8 @@ restart before explicit re-import.
 
 ## Known Limitations
 
-- The desktop Undo offer lives in the single popup alert slot. Another alert shown inside the five-second
-  window replaces it, and the archive still commits when the window ends, as it would had the user closed
+- On both shells the Undo offer lives in the single popup alert slot. Another alert shown inside the
+  five-second window replaces it, and the archive still commits when the window ends, as it would had the user closed
   the alert.
 - Archiving is intentionally irreversible; deletion additionally destroys the
   audit record. The read-only rule covers the named session only, not ancestors,
@@ -214,6 +214,6 @@ worktree service; shared cleanup rejection model; OMP cleanup service; shared
 ACP tombstone behavior used by Antigravity, Copilot and Grok; Antigravity composed deletion tests; Grok package deletion
 tests; client list/detail surfaces; shared `session_detail_activity_owner_test`,
 mobile `session_detail_activity_navigation_test` and
-`archived_sessions_navigation_test`, desktop `desktop_session_detail_screen_test`,
-`desktop_pending_archive_alerts_test`, `pending_session_archive_cubit_test` and shared
+`archived_sessions_navigation_test`, desktop `desktop_session_detail_screen_test`, shared
+`pending_archive_alerts_test`, `pending_session_archive_cubit_test` and
 `session_cleanup_flow_test`.
