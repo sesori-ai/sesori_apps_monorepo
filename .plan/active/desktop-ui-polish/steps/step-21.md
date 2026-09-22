@@ -29,9 +29,10 @@
 
 ## Automated Evidence
 
-Measured checkpoint: commit `HEADSHA` against base `BASESHA`. Documentation
-validation only, as the plan sets for this step: every added line stays within
-120 bytes, checked with `git diff -U0 <base> <head>` piped through `awk`.
+Measured checkpoint: commit `d9a9581f0bc2536fe057aaf47b94010bea8215df` against
+base `1c0766043c305556584fdb02bf34eda6327f10d0`. Documentation validation
+only, as the plan sets for this step: every added line stays within 120 bytes,
+checked with `git diff -U0 <base> <head>` piped through `awk`.
 
-- Size: SIZE changed lines across FILES files, all documentation and plan
+- Size: 81 changed lines across 6 files, all documentation and plan
   files.
