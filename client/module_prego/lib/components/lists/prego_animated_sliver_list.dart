@@ -57,17 +57,13 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       if (nextKeys.contains(entry.key)) continue;
 
       _entries.removeAt(index);
-      final outgoingKey = UniqueKey();
       listState.removeItem(
         index,
         (context, animation) => _transition(
-          key: outgoingKey,
+          key: _PregoAnimatedSliverItemKey(entry.key),
           animation: animation,
-          child: ExcludeSemantics(
-            child: IgnorePointer(
-              child: oldWidget.itemBuilder(context, index, entry.item),
-            ),
-          ),
+          outgoing: true,
+          child: oldWidget.itemBuilder(context, index, entry.item),
         ),
         duration: duration,
       );
@@ -105,6 +101,7 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
         return _transition(
           key: _PregoAnimatedSliverItemKey(entry.key),
           animation: animation,
+          outgoing: false,
           child: widget.itemBuilder(context, index, entry.item),
         );
       },
@@ -127,13 +124,27 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
     return entries;
   }
 
-  Widget _transition({required Key key, required Animation<double> animation, required Widget child}) {
+  /// A leaving row keeps its live key and widget shape, so it updates the row
+  /// already on screen instead of building a new one: removing many rows at
+  /// once (a filter change) otherwise rebuilt every one of them in one frame.
+  Widget _transition({
+    required Key key,
+    required Animation<double> animation,
+    required bool outgoing,
+    required Widget child,
+  }) {
     final curvedAnimation = CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic);
     return SizeTransition(
       key: key,
       sizeFactor: curvedAnimation,
       alignment: Alignment.topCenter,
-      child: FadeTransition(opacity: curvedAnimation, child: child),
+      child: FadeTransition(
+        opacity: curvedAnimation,
+        child: ExcludeSemantics(
+          excluding: outgoing,
+          child: IgnorePointer(ignoring: outgoing, child: child),
+        ),
+      ),
     );
   }
 }
