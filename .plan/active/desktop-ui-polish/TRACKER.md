@@ -31,7 +31,7 @@ them.
 | [x] | 12 | `desktop-ui-polish/archive-undo` | [12/17](#pr-titles) | ≤ 900 | done |
 | [x] | 13 | `desktop-ui-polish/new-session-page` | [13/22](#pr-titles) | ≤ 600 | done |
 | [x] | 14 | `desktop-ui-polish/agent-entry` | [14/22](#pr-titles) | ≤ 600 | done |
-| [ ] | 15 | `desktop-ui-polish/composer-and-sub-agents` | [15/22](#pr-titles) | set at approval | pending (gated) |
+| [x] | 15 | `desktop-ui-polish/composer-and-sub-agents` | [15/22](#pr-titles) | ≤ 1,100 | done |
 | [x] | 16 | `desktop-ui-polish/phone-timeline` | [16/22](#pr-titles) | ≤ 500 | done |
 | [x] | 17 | `desktop-ui-polish/shared-filter-chips` | [17/22](#pr-titles) | ≤ 500 | done |
 | [x] | 18 | `desktop-ui-polish/shared-archive-undo` | [18/22](#pr-titles) | ≤ 900 | done |
