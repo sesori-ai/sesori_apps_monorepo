@@ -88,7 +88,9 @@ class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
                       spacing: 4,
                       children: [
                         if (runningCount > 0) ...[
-                          const SizedBox.square(dimension: 14, child: PregoActivityIndicator(color: null)),
+                          // A spinner fills its box; a 14px Tabler glyph draws
+                          // about 12px, so this matches the icon beside it.
+                          const SizedBox.square(dimension: 12, child: PregoActivityIndicator(color: null)),
                           Padding(
                             padding: const EdgeInsetsDirectional.only(end: 2),
                             child: Text(

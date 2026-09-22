@@ -78,29 +78,56 @@ class const PregoPopupAlertsNotifications({
           child: Stack(
             children: [
               Positioned.fill(child: IgnorePointer(child: _buildAccent(colors))),
-              Padding(
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  PregoSpacing.xl,
-                  PregoSpacing.xl,
-                  onClose == null ? PregoSpacing.xl : PregoSpacing.xl * 2 + _closeIconSize,
-                  PregoSpacing.xl,
+              // A lone title keeps its actions and close button on its own
+              // line, centred, instead of stacking a button under one word.
+              if (message == null && _hasActions)
+                Padding(
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    PregoSpacing.xl,
+                    PregoSpacing.lg,
+                    onClose == null ? PregoSpacing.lg : PregoSpacing.sm,
+                    PregoSpacing.lg,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildLeading(colors),
+                      const SizedBox(width: PregoSpacing.lg),
+                      Flexible(child: _buildTitle(prego)),
+                      const SizedBox(width: PregoSpacing.x2l),
+                      _buildActions(),
+                      if (onClose case final onClose?) ...[
+                        const SizedBox(width: PregoSpacing.xs),
+                        _CloseButton(onPressed: onClose),
+                      ],
+                    ],
+                  ),
+                )
+              else ...[
+                Padding(
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    PregoSpacing.xl,
+                    PregoSpacing.xl,
+                    onClose == null ? PregoSpacing.xl : PregoSpacing.xl * 2 + _closeIconSize,
+                    PregoSpacing.xl,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildLeading(colors),
+                      const SizedBox(width: PregoSpacing.lg),
+                      Flexible(child: _buildContent(prego)),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildLeading(colors),
-                    const SizedBox(width: PregoSpacing.lg),
-                    Flexible(child: _buildContent(prego)),
-                  ],
-                ),
-              ),
-              if (onClose case final onClose?)
-                PositionedDirectional(
-                  top: PregoSpacing.md,
-                  end: PregoSpacing.md,
-                  child: _CloseButton(onPressed: onClose),
-                ),
+                if (onClose case final onClose?)
+                  PositionedDirectional(
+                    top: PregoSpacing.md,
+                    end: PregoSpacing.md,
+                    child: _CloseButton(onPressed: onClose),
+                  ),
+              ],
             ],
           ),
         ),
@@ -108,18 +135,16 @@ class const PregoPopupAlertsNotifications({
     );
   }
 
+  bool get _hasActions => primaryAction != null || secondaryAction != null;
+
   Widget _buildContent(PregoDesignSystem prego) {
     final message = this.message;
-    final hasActions = primaryAction != null || secondaryAction != null;
     return IntrinsicWidth(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            title,
-            style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
-          ),
+          _buildTitle(prego),
           if (message != null) ...[
             const SizedBox(height: PregoSpacing.lg),
             Text(
@@ -127,38 +152,42 @@ class const PregoPopupAlertsNotifications({
               style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textSecondary),
             ),
           ],
-          if (hasActions) ...[
+          if (_hasActions) ...[
             const SizedBox(height: PregoSpacing.lg),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (secondaryAction case final action?)
-                    PregoButtonsSolid(
-                      label: action.label,
-                      hierarchy: PregoButtonsSolidHierarchy.tertiary,
-                      size: PregoButtonsSolidSize.sm,
-                      onPressed: action.onPressed,
-                    ),
-                  if (primaryAction case final action?) ...[
-                    const SizedBox(width: PregoSpacing.lg),
-                    PregoButtonsSolid(
-                      label: action.label,
-                      hierarchy: _primaryButtonHierarchy,
-                      size: PregoButtonsSolidSize.sm,
-                      type: _primaryButtonType,
-                      onPressed: action.onPressed,
-                    ),
-                  ],
-                ],
-              ),
-            ),
+            Align(alignment: AlignmentDirectional.centerEnd, child: _buildActions()),
           ],
         ],
       ),
     );
   }
+
+  Widget _buildTitle(PregoDesignSystem prego) => Text(
+    title,
+    style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
+  );
+
+  Widget _buildActions() => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (secondaryAction case final action?)
+        PregoButtonsSolid(
+          label: action.label,
+          hierarchy: PregoButtonsSolidHierarchy.tertiary,
+          size: PregoButtonsSolidSize.sm,
+          onPressed: action.onPressed,
+        ),
+      if (primaryAction case final action?) ...[
+        const SizedBox(width: PregoSpacing.lg),
+        PregoButtonsSolid(
+          label: action.label,
+          hierarchy: _primaryButtonHierarchy,
+          size: PregoButtonsSolidSize.sm,
+          type: _primaryButtonType,
+          onPressed: action.onPressed,
+        ),
+      ],
+    ],
+  );
 
   Widget _buildLeading(PregoColors colors) {
     if (variant == PregoPopupAlertsNotificationsVariant.loading) {
@@ -273,7 +302,8 @@ final class PregoPopupAlertPresenter._({
   static PregoPopupAlertPresenter fromOverlayState(OverlayState overlay) {
     return PregoPopupAlertPresenter._(
       overlay: overlay,
-      topInset: pregoRootTopBarInsetFor(overlay) ??
+      topInset:
+          pregoRootTopBarInsetFor(overlay) ??
           pregoTopBarInsetOf(
             context: overlay.context,
             fallbackTopPadding: MediaQuery.paddingOf(overlay.context).top,
@@ -415,34 +445,34 @@ class _PregoPopupAlertOverlayState() extends State<_PregoPopupAlertOverlay> with
       start: PregoSpacing.xl,
       end: PregoSpacing.xl,
       child: SafeArea(
-          top: false,
-          bottom: false,
-          child: Center(
-            child: FadeTransition(
-              opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, -0.12),
-                  end: Offset.zero,
-                ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic)),
-                child: Dismissible(
-                  key: const ValueKey("prego_popup_alert"),
-                  direction: DismissDirection.up,
-                  resizeDuration: null,
-                  onDismissed: (_) => _dismissBySwipe(),
-                  child: PregoPopupAlertsNotifications(
-                    title: widget.title,
-                    message: widget.message,
-                    variant: widget.variant,
-                    primaryAction: widget.primaryAction,
-                    secondaryAction: widget.secondaryAction,
-                    onClose: widget.showCloseButton ? _dismiss : null,
-                  ),
+        top: false,
+        bottom: false,
+        child: Center(
+          child: FadeTransition(
+            opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, -0.12),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic)),
+              child: Dismissible(
+                key: const ValueKey("prego_popup_alert"),
+                direction: DismissDirection.up,
+                resizeDuration: null,
+                onDismissed: (_) => _dismissBySwipe(),
+                child: PregoPopupAlertsNotifications(
+                  title: widget.title,
+                  message: widget.message,
+                  variant: widget.variant,
+                  primaryAction: widget.primaryAction,
+                  secondaryAction: widget.secondaryAction,
+                  onClose: widget.showCloseButton ? _dismiss : null,
                 ),
               ),
             ),
           ),
         ),
+      ),
     );
   }
 }
