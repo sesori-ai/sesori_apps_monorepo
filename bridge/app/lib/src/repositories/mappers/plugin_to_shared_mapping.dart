@@ -141,7 +141,9 @@ extension PluginMessagePartMapping on PluginMessagePart {
         id: id,
         sessionID: sessionId,
         messageID: messageID,
-        prompt: prompt,
+        prompt: String.fromCharCodes(prompt.runes.take(maxToolOutputLength)),
+        // Clients can match a child by its full title when a backend supplies
+        // no child session ID (OpenCode), so the description stays intact.
         description: description,
         agent: agent,
         taskState: taskState?.toShared(retainSummary: true),

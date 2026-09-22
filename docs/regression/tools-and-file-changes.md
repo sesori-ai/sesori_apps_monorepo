@@ -37,8 +37,10 @@ sub-agent parts, plus the signal that a tool changed files.
   by runes at the common bridge projection, so a character is never split; the
   rule is identical live and on replay. The command remains the released title
   alias for older clients; old title-only payloads still decode.
-- Subtasks retain bounded title/outcome/error summaries, status, attachments and
-  child-session IDs; ordinary non-shell tool stripping never applies to them.
+- Subtasks retain a prompt bounded to 500 runes, bounded title/outcome/error
+  summaries, status, attachments and child-session IDs; ordinary non-shell tool
+  stripping never applies to them. The description stays complete because
+  clients use it to match a child by title when a harness supplies no child ID.
 - Codex code-mode JavaScript is not itself a shell command. Only verified
   `exec_command` input, literal single-invocation code-mode command evidence or
   correlated `commandExecution` data retains shell results. Quoted/commented fake
