@@ -1519,13 +1519,26 @@ void main() {
     );
     if (part is! MessagePartTool) fail("MessagePart.tool returned a non-tool variant");
 
-    await tester.pumpWidget(
-      _app(
-        child: const ToolPartWidget(part: part),
-      ),
-    );
-
-    expect(find.text("screenshot.png"), findsOneWidget);
+    for (final command in [null, "capture-preview"]) {
+      await tester.pumpWidget(
+        _app(
+          child: SingleChildScrollView(
+            child: ToolPartWidget(
+              part: part.copyWith(state: part.state.copyWith(shellCommand: command)),
+            ),
+          ),
+        ),
+      );
+      expect(find.text("screenshot.png"), findsOneWidget);
+      if (command != null) {
+        await tester.tap(find.byKey(const ValueKey("shellTool.toggle")));
+        await tester.pumpAndSettle();
+        expect(find.text("screenshot.png"), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey("shellTool.toggle")));
+        await tester.pumpAndSettle();
+        expect(find.text("screenshot.png"), findsOneWidget);
+      }
+    }
   });
 
   testWidgets("renders the released title when an older bridge omits shellCommand", (tester) async {
