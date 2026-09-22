@@ -150,7 +150,10 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
         opacity: curvedAnimation,
         child: ExcludeSemantics(
           excluding: outgoing,
-          child: IgnorePointer(ignoring: outgoing, child: child),
+          child: ExcludeFocus(
+            excluding: outgoing,
+            child: IgnorePointer(ignoring: outgoing, child: child),
+          ),
         ),
       ),
     );

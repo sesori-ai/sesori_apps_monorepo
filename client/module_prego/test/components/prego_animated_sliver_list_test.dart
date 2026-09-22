@@ -109,6 +109,31 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets("an outgoing row gives up keyboard focus", (tester) async {
+    final focus = FocusNode();
+    addTearDown(focus.dispose);
+    Widget list(List<String> items) => MaterialApp(
+      home: CustomScrollView(
+        slivers: [
+          PregoAnimatedSliverList<String>(
+            items: items,
+            itemKey: ValueKey<String>.new,
+            itemBuilder: (context, index, item) => Focus(focusNode: focus, child: Text(item)),
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(list(["A"]));
+    focus.requestFocus();
+    await tester.pump();
+    expect(focus.hasFocus, isTrue);
+
+    await tester.pumpWidget(list([]));
+    expect(find.text("A"), findsOneWidget);
+    expect(focus.hasFocus, isFalse);
+  });
+
   testWidgets("reduced motion removes a row without a transition delay", (tester) async {
     await tester.pumpWidget(_harness(["A"], disableAnimations: true));
 
