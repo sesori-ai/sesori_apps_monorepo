@@ -53,3 +53,6 @@ No log files were kept; CI on the PR is the durable record.
   three new pill tests, `app` 775, `desktop` 273, all passing.
 - Screenshots reviewed by the user: `/tmp/sesori-ux/step15_review.html`,
   rendered from the real widgets. Not committed.
+- Architecture review: `architecture-implementation-review` ran once through a
+  sub-agent on this branch against `main` after the measured checkpoint and
+  approved it with no violations and no required changes.
