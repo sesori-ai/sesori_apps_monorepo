@@ -37,7 +37,7 @@ them.
 | [x] | 18 | `desktop-ui-polish/shared-archive-undo` | [18/22](#pr-titles) | ≤ 900 | done |
 | [x] | 19 | `desktop-ui-polish/phone-session-actions` | [19/22](#pr-titles) | ≤ 500 | done |
 | [x] | 20 | `desktop-ui-polish/shared-cleanup` | [20/22](#pr-titles) | ≤ 400 | done |
-| [ ] | 21 | `desktop-ui-polish/regression-docs` | [21/22](#pr-titles) | ≤ 400 | pending |
+| [x] | 21 | `desktop-ui-polish/regression-docs` | [21/22](#pr-titles) | ≤ 400 | done |
 | [ ] | 22 | `desktop-ui-polish/coverage-retire` | [22/22](#pr-titles) | ≤ 300 | pending |
 
 ### PR titles
