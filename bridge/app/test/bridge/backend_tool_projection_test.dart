@@ -18,6 +18,7 @@ ToolState _state({required PluginMessagePart part}) => (part.toShared(sessionId:
 void main() {
   for (final failed in [false, true]) {
     test("Claude Agent outcome survives common projection failed=$failed", () {
+      final prompt = "😀" * (maxToolOutputLength + 2);
       final block =
           const ClaudeContentMapper()
                   .map(
@@ -25,7 +26,7 @@ void main() {
                       "type": "tool_use",
                       "id": "task",
                       "name": "Agent",
-                      "input": {"description": "Explore", "prompt": "Explore project", "subagent_type": "explore"},
+                      "input": {"description": "Explore", "prompt": prompt, "subagent_type": "explore"},
                     },
                   )
                   .single
@@ -40,21 +41,72 @@ void main() {
         input: block.input,
       );
       final outcome = "😀" * (maxToolOutputLength + 2);
-      final part =
-          tracker
-                  .complete(
-                    sessionId: "s",
-                    toolId: block.id,
-                    output: outcome,
-                    isError: failed,
-                    attachments: const [],
-                    result: ClaudeToolUseResult.parse({"status": "completed", "agentId": "child"}),
-                  )!
-                  .toPart()!
-                  .toShared(sessionId: "stable")
-              as MessagePartSubtask;
+      final livePart = tracker
+          .complete(
+            sessionId: "s",
+            toolId: block.id,
+            output: outcome,
+            isError: failed,
+            attachments: const [],
+            result: ClaudeToolUseResult.parse({"status": "completed", "agentId": "child"}),
+          )!
+          .toPart()!;
+      final part = MessagePart.fromJson(livePart.toShared(sessionId: "stable").toJson()) as MessagePartSubtask;
+      final replayPart = const ClaudeHistoryMapper(content: ClaudeContentMapper())
+          .map(
+            sessionId: "s",
+            agentId: null,
+            residentTaskToolUseIds: const {},
+            catalogModelId: null,
+            records: [
+              ClaudeTranscriptAssistantRecord(
+                id: "m",
+                model: null,
+                effort: null,
+                content: [
+                  {
+                    "type": "tool_use",
+                    "id": "task",
+                    "name": "Agent",
+                    "input": {"description": "Explore", "prompt": prompt, "subagent_type": "explore"},
+                  },
+                ],
+                cwd: null,
+                timestamp: null,
+                isSidechain: null,
+                agentId: null,
+                gitBranch: null,
+                version: null,
+                sessionId: "s",
+                raw: const {},
+              ),
+              ClaudeTranscriptUserRecord(
+                id: "u",
+                content: [
+                  {"type": "tool_result", "tool_use_id": "task", "content": outcome, "is_error": failed},
+                ],
+                isMeta: false,
+                isVisibleInTranscriptOnly: false,
+                toolUseResult: ClaudeToolUseResult.parse({"status": "completed", "agentId": "child"}),
+                isTaskNotification: false,
+                cwd: null,
+                timestamp: null,
+                isSidechain: null,
+                agentId: null,
+                gitBranch: null,
+                version: null,
+                sessionId: "s",
+                raw: const {},
+              ),
+            ],
+          )
+          .expand((message) => message.parts)
+          .whereType<PluginMessagePartSubtask>()
+          .single;
+      final replay = MessagePart.fromJson(replayPart.toShared(sessionId: "stable").toJson()) as MessagePartSubtask;
+      expect(replay, part);
       expect(part.childSessionID, "agent-child");
-      expect(part.prompt, "Explore project");
+      expect(part.prompt, "😀" * maxToolOutputLength);
       expect(part.description, "Explore");
       expect(part.agent, "explore");
       expect(part.taskState!.status, failed ? ToolStatus.error : ToolStatus.completed);
