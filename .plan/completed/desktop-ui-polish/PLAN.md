@@ -3,7 +3,9 @@
 ## Status
 
 - **Plan slug:** `desktop-ui-polish`
-- **Status:** Proposed
+- **Status:** Completed 2026-09-22. Step 22 retired the plan with the user's
+  explicit acceptance of the unexecuted final-matrix cells; see
+  [step 22](steps/step-22.md).
 - **Plan date:** 2026-09-19
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `bf14d7c0f3`
