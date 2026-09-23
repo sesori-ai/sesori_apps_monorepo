@@ -35,7 +35,6 @@ export "src/features/session_detail/widgets/message_timestamp_reveal.dart";
 export "src/features/session_detail/widgets/model_picker.dart";
 export "src/features/session_detail/widgets/pending_request_auto_dismiss.dart";
 export "src/features/session_detail/widgets/permission_modal.dart";
-export "src/features/session_detail/widgets/picker_search_list.dart" show PickerPopover;
 export "src/features/session_detail/widgets/prompt_editor_sheet.dart";
 export "src/features/session_detail/widgets/prompt_input.dart";
 export "src/features/session_detail/widgets/question_modal.dart";

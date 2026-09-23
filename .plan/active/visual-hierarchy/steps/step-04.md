@@ -39,10 +39,11 @@ stand alone, following the plan's `31.a` convention:
 
 ### What changed
 
-- New `picker_search_list.dart` in `module_app_ui`:
-  - `PickerPopover` anchors a picker to its composer button: 380 px high at
+- New `prego_picker_search_list.dart` in `module_prego`, where reusable
+  visual primitives live:
+  - `PregoPickerPopover` anchors a picker to its composer button: 380 px high at
     most, 300 or 360 wide under a pointer, and screen-wide on the phone.
-  - `PickerSearchList` is a search field over a lazy list of headings and
+  - `PregoPickerSearchList` is a search field over a lazy list of headings and
     options.
   - Under a pointer the field takes focus as it opens. Up and Down move one
     highlight, skipping headings and holding at either end, and the mouse
@@ -55,6 +56,10 @@ stand alone, following the plan's `31.a` convention:
     sheet's brand colour.
   - The highlight starts at the first option, not the selected model.
   - A search that matches nothing shows an empty list, as before.
+- An open picker rebuilds its rows, keeping the search, when the catalog or
+  the selection changes.
+- Regression docs: `session-creation-and-options.md` describes the model
+  picker's popover, desktop keys and failure signals.
 - Removed: `model_picker_sheet.dart`, `model_picker_list_items.dart`, the
   search affordance row, and the unused "Select Model" string.
 

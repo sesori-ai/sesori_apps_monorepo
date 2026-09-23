@@ -1,23 +1,27 @@
 import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
-import "package:theme_prego/module_prego.dart";
+import "../../icons/tabler_icons.g.dart";
+import "../../interactions/prego_interaction_scope.dart";
+import "../../theme/prego_theme.dart";
+import "../loaders/prego_activity_indicator.dart";
+import "prego_popover.dart";
 
-/// A row of a [PickerSearchList].
-sealed class const PickerSearchRow();
+/// A row of a [PregoPickerSearchList].
+sealed class const PregoPickerSearchRow();
 
 /// A heading over the options that follow it. The highlight passes over it.
-class const PickerSearchHeading({required final String text}) extends PickerSearchRow;
+class const PregoPickerSearchHeading({required final String text}) extends PregoPickerSearchRow;
 
 /// An option, picked by a tap or, under a pointer, by Enter while highlighted.
-class const PickerSearchOption({
+class const PregoPickerSearchOption({
   required final bool isSelected,
   required final VoidCallback onPick,
   required final Widget child,
-}) extends PickerSearchRow;
+}) extends PregoPickerSearchRow;
 
 /// Opens a composer picker in a popover beside its trigger: [pointerWidth]
 /// wide under a pointer, and as wide as the screen allows under touch.
-class const PickerPopover({
+class const PregoPickerPopover({
   super.key,
   required final double pointerWidth,
   required final PregoPopoverTriggerBuilder triggerBuilder,
@@ -50,7 +54,7 @@ class const PickerPopover({
 /// Under a pointer the field takes focus, so typing filters at once. Up and
 /// Down move a highlight through the options, and so does the mouse; Enter
 /// picks the highlighted option, and Esc closes the picker.
-class const PickerSearchList({
+class const PregoPickerSearchList({
   super.key,
   required final String searchHint,
 
@@ -58,17 +62,17 @@ class const PickerSearchList({
   required final ValueChanged<String> onQueryChanged,
 
   /// The rows that match the query, or null while they load.
-  required final List<PickerSearchRow>? rows,
+  required final List<PregoPickerSearchRow>? rows,
 
   /// Shown instead of an empty list; null shows nothing.
   required final String? emptyText,
   required final VoidCallback onClose,
 }) extends StatefulWidget {
   @override
-  State<PickerSearchList> createState() => _PickerSearchListState();
+  State<PregoPickerSearchList> createState() => _PickerSearchListState();
 }
 
-class _PickerSearchListState() extends State<PickerSearchList> {
+class _PickerSearchListState() extends State<PregoPickerSearchList> {
   final _scrollController = ScrollController();
   final _highlightedKey = GlobalKey();
 
@@ -76,7 +80,7 @@ class _PickerSearchListState() extends State<PickerSearchList> {
   late int? _highlighted = _nextOption(after: -1, step: 1);
 
   @override
-  void didUpdateWidget(PickerSearchList oldWidget) {
+  void didUpdateWidget(PregoPickerSearchList oldWidget) {
     super.didUpdateWidget(oldWidget);
     // New matches start from the top.
     if (!identical(oldWidget.rows, widget.rows)) _highlighted = _nextOption(after: -1, step: 1);
@@ -89,9 +93,9 @@ class _PickerSearchListState() extends State<PickerSearchList> {
   }
 
   int? _nextOption({required int after, required int step}) {
-    final rows = widget.rows ?? const <PickerSearchRow>[];
+    final rows = widget.rows ?? const <PregoPickerSearchRow>[];
     for (var index = after + step; index >= 0 && index < rows.length; index += step) {
-      if (rows[index] is PickerSearchOption) return index;
+      if (rows[index] is PregoPickerSearchOption) return index;
     }
     return null;
   }
@@ -118,7 +122,7 @@ class _PickerSearchListState() extends State<PickerSearchList> {
   void _pickHighlighted() {
     final highlighted = _highlighted;
     if (highlighted == null) return;
-    if (widget.rows?[highlighted] case final PickerSearchOption option) option.onPick();
+    if (widget.rows?[highlighted] case final PregoPickerSearchOption option) option.onPick();
   }
 
   void _setQuery(String value) {
@@ -144,15 +148,15 @@ class _PickerSearchListState() extends State<PickerSearchList> {
           style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
         ),
       ),
-      (final List<PickerSearchRow> rows, _) => ListView.builder(
+      (final List<PregoPickerSearchRow> rows, _) => ListView.builder(
         controller: _scrollController,
         // Still lazy: the popover's height cap bounds the list.
         shrinkWrap: true,
         padding: pointer ? const EdgeInsets.all(4) : const EdgeInsets.symmetric(vertical: 6),
         itemCount: rows.length,
         itemBuilder: (context, index) => switch (rows[index]) {
-          PickerSearchHeading(:final text) => _Heading(text: text, pointer: pointer),
-          final PickerSearchOption option => _OptionRow(
+          PregoPickerSearchHeading(:final text) => _Heading(text: text, pointer: pointer),
+          final PregoPickerSearchOption option => _OptionRow(
             key: index == _highlighted ? _highlightedKey : null,
             option: option,
             pointer: pointer,
@@ -233,7 +237,7 @@ class const _Heading({required final String text, required final bool pointer}) 
 /// pointer, which rounds its own highlight, and a 54 px touch target.
 class const _OptionRow({
   super.key,
-  required final PickerSearchOption option,
+  required final PregoPickerSearchOption option,
   required final bool pointer,
   required final bool isHighlighted,
   required final VoidCallback onHover,

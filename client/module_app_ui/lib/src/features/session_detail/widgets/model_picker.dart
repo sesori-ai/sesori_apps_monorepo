@@ -4,7 +4,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "picker_search_list.dart";
 
 /// The composer's model picker, grouped by provider: each provider's
 /// representative models, or every model that matches the search.
@@ -22,21 +21,30 @@ class const ModelPicker({
 }
 
 class _ModelPickerState() extends State<ModelPicker> {
-  /// Kept until the query changes, so other rebuilds keep the highlight.
-  late List<PickerSearchRow> _rows = _rowsFor(query: "");
+  String _query = "";
 
-  List<PickerSearchRow> _rowsFor({required String query}) {
+  /// Kept until an input changes, so other rebuilds keep the highlight.
+  late List<PregoPickerSearchRow> _rows = _buildRows();
+
+  @override
+  void didUpdateWidget(ModelPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sections != widget.sections || oldWidget.selected != widget.selected) _rows = _buildRows();
+  }
+
+  List<PregoPickerSearchRow> _buildRows() {
+    final query = _query;
     final selected = widget.selected;
-    final rows = <PickerSearchRow>[];
+    final rows = <PregoPickerSearchRow>[];
     for (final section in widget.sections) {
       final models = section.models
           .where((model) => query.isEmpty ? model.visibleByDefault : model.searchText.contains(query))
           .toList();
       if (models.isEmpty) continue;
-      rows.add(PickerSearchHeading(text: section.providerName));
+      rows.add(PregoPickerSearchHeading(text: section.providerName));
       for (final model in models) {
         rows.add(
-          PickerSearchOption(
+          PregoPickerSearchOption(
             isSelected: section.providerID == selected?.providerID && model.modelID == selected?.modelID,
             onPick: () => widget.onModelSelected(providerID: section.providerID, modelID: model.modelID),
             child: _ModelLabel(name: model.displayName, family: model.family),
@@ -49,9 +57,12 @@ class _ModelPickerState() extends State<ModelPicker> {
 
   @override
   Widget build(BuildContext context) {
-    return PickerSearchList(
+    return PregoPickerSearchList(
       searchHint: context.loc.sessionDetailModelSearch,
-      onQueryChanged: (query) => setState(() => _rows = _rowsFor(query: query)),
+      onQueryChanged: (query) => setState(() {
+        _query = query;
+        _rows = _buildRows();
+      }),
       rows: _rows,
       emptyText: null,
       onClose: widget.onClose,

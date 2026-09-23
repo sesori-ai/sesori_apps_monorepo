@@ -5,7 +5,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "model_picker.dart";
-import "picker_search_list.dart";
 
 /// Composer header exposing the available agent / model / variant selections
 /// as solid pill buttons ([PregoPickerButton]). Tapping a pill opens its popup
@@ -135,7 +134,7 @@ class const _AgentMenu({
       flat: true,
       menuWidth: 240,
       acquireOpenLease: null,
-      menuMaxHeight: PickerPopover.maxHeight,
+      menuMaxHeight: PregoPickerPopover.maxHeight,
       triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.smart_toy_outlined,
         label: selectedAgent,
@@ -167,7 +166,7 @@ class const _ModelMenu({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return PickerPopover(
+    return PregoPickerPopover(
       pointerWidth: 300,
       triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.memory_outlined,
@@ -202,7 +201,7 @@ class const _VariantMenu({
       flat: true,
       menuWidth: 220,
       acquireOpenLease: null,
-      menuMaxHeight: PickerPopover.maxHeight,
+      menuMaxHeight: PregoPickerPopover.maxHeight,
       reverseScroll: true,
       triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.speed_outlined,

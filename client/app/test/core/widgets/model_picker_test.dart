@@ -55,7 +55,10 @@ List<ProviderInfo> _providers() {
   ];
 }
 
+const _claudeNew = AgentModel(providerID: "anthropic", modelID: "claude-new", variant: null);
+
 Widget _buildApp({
+  required AgentModel selected,
   required PregoInteractionMode mode,
   required void Function({required String providerID, required String modelID}) onModelSelected,
 }) {
@@ -76,7 +79,7 @@ Widget _buildApp({
               selectedAgent: null,
               onAgentSelected: (_) {},
               providers: _providers(),
-              selectedAgentModel: const AgentModel(providerID: "anthropic", modelID: "claude-new", variant: null),
+              selectedAgentModel: selected,
               onModelSelected: onModelSelected,
               availableVariants: const [],
               onVariantSelected: (_) {},
@@ -108,7 +111,11 @@ Finder _highlighted({required String label}) => find.ancestor(
 void main() {
   testWidgets("opens beside the model pill with each provider's representative models", (tester) async {
     await tester.pumpWidget(
-      _buildApp(mode: PregoInteractionMode.touch, onModelSelected: ({required providerID, required modelID}) {}),
+      _buildApp(
+        selected: _claudeNew,
+        mode: PregoInteractionMode.touch,
+        onModelSelected: ({required providerID, required modelID}) {},
+      ),
     );
     await _openPicker(tester: tester);
 
@@ -126,12 +133,41 @@ void main() {
     // The picker opens above the pill, clear of the composer.
     final panel = tester.getRect(find.byType(ModelPicker));
     expect(panel.bottom, lessThanOrEqualTo(tester.getRect(find.byType(PregoPickerButton)).top));
-    expect(panel.height, lessThanOrEqualTo(PickerPopover.maxHeight));
+    expect(panel.height, lessThanOrEqualTo(PregoPickerPopover.maxHeight));
+  });
+
+  testWidgets("an open picker follows a selection made elsewhere and keeps its search", (tester) async {
+    void onModelSelected({required String providerID, required String modelID}) {}
+    await tester.pumpWidget(
+      _buildApp(selected: _claudeNew, mode: PregoInteractionMode.touch, onModelSelected: onModelSelected),
+    );
+    await _openPicker(tester: tester);
+    await tester.enterText(find.byType(TextField), "zeta");
+    await tester.pump();
+
+    await tester.pumpWidget(
+      _buildApp(
+        selected: const AgentModel(providerID: "zeta", modelID: "z-1", variant: null),
+        mode: PregoInteractionMode.touch,
+        onModelSelected: onModelSelected,
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text("ANTHROPIC"), findsNothing);
+    expect(
+      find.descendant(of: find.widgetWithText(InkWell, "Zeta One"), matching: find.byIcon(Icons.check)),
+      findsOneWidget,
+    );
   });
 
   testWidgets("search reveals non-default family members and filters providers", (tester) async {
     await tester.pumpWidget(
-      _buildApp(mode: PregoInteractionMode.touch, onModelSelected: ({required providerID, required modelID}) {}),
+      _buildApp(
+        selected: _claudeNew,
+        mode: PregoInteractionMode.touch,
+        onModelSelected: ({required providerID, required modelID}) {},
+      ),
     );
     await _openPicker(tester: tester);
 
@@ -148,6 +184,7 @@ void main() {
     final selected = <(String, String)>[];
     await tester.pumpWidget(
       _buildApp(
+        selected: _claudeNew,
         mode: PregoInteractionMode.touch,
         onModelSelected: ({required providerID, required modelID}) => selected.add((providerID, modelID)),
       ),
@@ -165,6 +202,7 @@ void main() {
     final selected = <(String, String)>[];
     await tester.pumpWidget(
       _buildApp(
+        selected: _claudeNew,
         mode: PregoInteractionMode.pointer,
         onModelSelected: ({required providerID, required modelID}) => selected.add((providerID, modelID)),
       ),
@@ -204,6 +242,7 @@ void main() {
     final selected = <(String, String)>[];
     await tester.pumpWidget(
       _buildApp(
+        selected: _claudeNew,
         mode: PregoInteractionMode.pointer,
         onModelSelected: ({required providerID, required modelID}) => selected.add((providerID, modelID)),
       ),
@@ -219,7 +258,11 @@ void main() {
 
   testWidgets("under touch, nothing is highlighted and the keyboard stays down", (tester) async {
     await tester.pumpWidget(
-      _buildApp(mode: PregoInteractionMode.touch, onModelSelected: ({required providerID, required modelID}) {}),
+      _buildApp(
+        selected: _claudeNew,
+        mode: PregoInteractionMode.touch,
+        onModelSelected: ({required providerID, required modelID}) {},
+      ),
     );
     await _openPicker(tester: tester);
 
