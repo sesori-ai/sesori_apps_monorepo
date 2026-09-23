@@ -233,7 +233,7 @@ the stream-json `initialize` response (omitted for models without it; in CLI
 2.1.281 only some Opus models carry it), which sets
 `PluginModel.supportsFastMode`. Fast mode is not a launch flag: a fresh process
 starts with it off, and the plugin sends the `apply_flag_settings`
-`{fastMode}` control request before a turn whenever the session's choice
+control request (`{"subtype":"apply_flag_settings","settings":{"fastMode":…}}`, the shape the Agent SDK's `applyFlagSettings` sends) before a turn whenever the session's choice
 differs from what the resident process last applied. The CLI acknowledges the
 setting even when the model or account cannot use fast mode (for example, extra
 usage turned off) and then serves at standard speed; it reports why only
