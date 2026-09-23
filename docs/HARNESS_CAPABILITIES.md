@@ -213,7 +213,7 @@ models only from new/resume responses and has no deletion capability.
 | Harness | Status |
 |---|---|
 | Codex | ✅ Implemented in the bridge; the composer ⚡ control ships in a later step. |
-| Claude | ⬜ Not implemented yet; Claude Code supports it over stream-json `apply_flag_settings {fastMode}`. |
+| Claude | ✅ Implemented in the bridge for the Opus models the CLI reports as supporting it; fast turns draw on the account's extra usage. The composer ⚡ control ships in a later step. |
 | OpenCode, Antigravity, Copilot, Cursor, Hermes, Pi, OMP, DeepSeek, Grok | ⬜ Not implemented (not assessed). |
 
 Codex advertises fast mode per model as a `model/list` service tier: a model
@@ -227,6 +227,17 @@ sibling `TurnStartParams.serviceTierForTurn` field documents 'Use "default"
 for standard speed', and `serviceTier` shares the same tier vocabulary) — and
 on `thread/start` when a new session is created with fast mode on, so its
 first turn already runs fast.
+
+Claude Code reports fast-mode support per model as `supportsFastMode: true` in
+the stream-json `initialize` response (omitted for models without it; in CLI
+2.1.281 only some Opus models carry it), which sets
+`PluginModel.supportsFastMode`. Fast mode is not a launch flag: a fresh process
+starts with it off, and the plugin sends the `apply_flag_settings`
+control request (`{"subtype":"apply_flag_settings","settings":{"fastMode":…}}`, the shape the Agent SDK's `applyFlagSettings` sends) before a turn whenever the session's choice
+differs from what the resident process last applied. The CLI acknowledges the
+setting even when the model or account cannot use fast mode (for example, extra
+usage turned off) and then serves at standard speed; it reports why only
+through `fast_mode_disabled_reason`, which the plugin does not surface.
 
 ## Agent selection and harness modes
 

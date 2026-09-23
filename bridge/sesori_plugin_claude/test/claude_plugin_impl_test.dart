@@ -316,6 +316,26 @@ void main() {
       await subscription.cancel();
     });
 
+    test("rejects the native /fast command as a stale option", () async {
+      await harness.createSession();
+
+      await expectLater(
+        harness.plugin.sendCommand(
+          fastMode: true,
+          promptId: "prompt-fast",
+          sessionId: testSessionId,
+          command: "fast",
+          arguments: "on",
+          userVisibleArguments: "on",
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(isA<PluginStaleOptionsException>()),
+      );
+      expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
+    });
+
     test("renders a follow-up prompt from its replayed user frame", () async {
       await harness.createSession();
       final first = harness.processes.single;
@@ -739,6 +759,7 @@ void main() {
         model: "default",
         effort: null,
         permissionMode: ClaudePermissionMode.plan,
+        fastMode: false,
       );
       process.emit({
         "type": "control_request",

@@ -64,6 +64,92 @@ void main() {
       await harness.waitForIdle();
     });
 
+    test("turns fast mode on after a fresh launch, before the first turn", () async {
+      unawaited(harness.enqueue("first", fastMode: true));
+      final process = await harness.firstProcess;
+
+      final fast = await _waitForControlSubtype(process, "apply_flag_settings");
+      expect((fast["request"]! as Map)["settings"], {"fastMode": true});
+      expect(_userFrames(process), isEmpty, reason: "the turn waits for the setting to apply");
+      process.emitControlResponse(requestId: fast["request_id"]! as String, payload: const {});
+      await _waitForUserFrames(process, 1);
+      expect(harness.repository.appliedSelection(sessionId: testSessionId)?.fastMode, isTrue);
+      process.emit(_replayOf(_userFrames(process).single, uuid: "replay-first"));
+      process.emit(_result());
+      await harness.waitForIdle();
+    });
+
+    test("sends fast mode only when it changes, at a turn boundary", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      unawaited(harness.enqueue("second"));
+      await _waitForUserFrames(process, 2);
+      expect(_controlSubtypes(process), isNot(contains("apply_flag_settings")), reason: "a fresh process starts off");
+
+      unawaited(harness.enqueue("third", fastMode: true));
+      await pump();
+      expect(
+        _controlSubtypes(process),
+        isNot(contains("apply_flag_settings")),
+        reason: "the running turn keeps its speed",
+      );
+      process.emit(_replayOf(_userFrames(process)[0], uuid: "replay-first"));
+      process.emit(_replayOf(_userFrames(process)[1], uuid: "replay-second"));
+      process.emit(_result());
+
+      final fast = await _waitForControlSubtype(process, "apply_flag_settings");
+      expect((fast["request"]! as Map)["settings"], {"fastMode": true});
+      process.emitControlResponse(requestId: fast["request_id"]! as String, payload: const {});
+      await _waitForUserFrames(process, 3);
+      process.emit(_replayOf(_userFrames(process).last, uuid: "replay-third"));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      unawaited(harness.enqueue("fourth", fastMode: true));
+      await _waitForUserFrames(process, 4);
+      expect(_controlSubtypes(process).where((subtype) => subtype == "apply_flag_settings"), hasLength(1));
+      process.emit(_replayOf(_userFrames(process).last, uuid: "replay-fourth"));
+      process.emit(_result());
+      await harness.waitForIdle();
+    });
+
+    test("a rejected fast-mode setting fails the queued turn without writing it", () async {
+      unawaited(harness.enqueue("first", fastMode: true));
+      final process = await harness.firstProcess;
+      final fast = await _waitForControlSubtype(process, "apply_flag_settings");
+      process.emitControlError(requestId: fast["request_id"]! as String, error: "fast mode unavailable");
+      await harness.waitForIdle();
+
+      expect(_userFrames(process), isEmpty);
+      expect(harness.events.whereType<BridgeSseSessionError>(), hasLength(1));
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+      expect(harness.repository.appliedSelection(sessionId: testSessionId)?.fastMode, isFalse);
+    });
+
+    test("a rejected fast-mode setting fails the blocking initial turn's acceptance", () async {
+      final acceptance = harness.service.enqueueInitialTurn(
+        sessionId: testSessionId,
+        directory: "/tmp/project",
+        createNew: true,
+        parts: [const PluginPromptPart.text(text: "initial")],
+        model: null,
+        effort: null,
+        permissionMode: null,
+        fastMode: true,
+      );
+      final process = await harness.firstProcess;
+      final fast = await _waitForControlSubtype(process, "apply_flag_settings");
+      process.emitControlError(requestId: fast["request_id"]! as String, error: "fast mode unavailable");
+
+      await expectLater(
+        acceptance,
+        throwsA(isA<ClaudeControlException>().having((error) => error.message, "message", "fast mode unavailable")),
+      );
+      expect(_userFrames(process), isEmpty);
+      await harness.waitForIdle();
+    });
+
     test("abort cancels the running turn and submitted steering input", () async {
       unawaited(harness.enqueue("first", model: "haiku"));
       unawaited(harness.enqueue("second", model: "haiku"));
@@ -587,6 +673,7 @@ void main() {
             model: null,
             effort: null,
             permissionMode: null,
+            fastMode: false,
           )
           .then((_) => accepted = true);
       await pump();
@@ -865,6 +952,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
     String? promptId,
     String? command,
     ClaudePermissionMode? permissionMode,
+    bool fastMode = false,
   }) {
     return service
         .enqueueTurn(
@@ -875,6 +963,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
           model: model,
           effort: null,
           permissionMode: permissionMode,
+          fastMode: fastMode,
           promptId: promptId ?? "prompt-$text",
           displayText: text,
           command: command,

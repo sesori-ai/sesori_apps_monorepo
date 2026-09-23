@@ -118,6 +118,7 @@ void main() {
         model: "small",
         effort: ClaudeEffortLevel.low,
         permissionMode: ClaudePermissionMode.standard,
+        fastMode: false,
         allowedTools: const [],
       );
     });

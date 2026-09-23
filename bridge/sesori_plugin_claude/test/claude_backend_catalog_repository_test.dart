@@ -34,6 +34,7 @@ void main() {
               "displayName": "Opus (1M context)",
               "supportsEffort": true,
               "supportedEffortLevels": ["low", "medium", "future", "high", "xhigh", "max"],
+              "supportsFastMode": true,
             },
           ],
           "account": {"email": "private@example.com"},
@@ -53,6 +54,8 @@ void main() {
       expect(provider.models.first.defaultVariant, "high");
       expect(provider.models.last.variants, isEmpty);
       expect(provider.models.last.defaultVariant, isNull);
+      expect(provider.models.first.supportsFastMode, isTrue);
+      expect(provider.models.last.supportsFastMode, isFalse, reason: "the CLI omits the field when unsupported");
       expect(
         catalog.commands,
         const [
@@ -127,6 +130,19 @@ void main() {
       expect(catalog.commands, isEmpty);
       expect(catalog.providers.providers.single.defaultModelID, "sonnet");
       expect(catalog.providers.providers.single.models.single.name, "claude-sonnet-test");
+    });
+
+    test("omits the native /fast command owned by the fast-mode selection", () {
+      final catalog = repository.map(
+        handshake: {
+          "commands": [
+            {"name": "fast", "description": "Toggle fast mode", "argumentHint": "[on|off]"},
+            {"name": "review", "description": "Review changes"},
+          ],
+        },
+      );
+
+      expect(catalog.commands.map((command) => command.name), ["review"]);
     });
 
     test("returns agents but no provider for an empty model catalog", () {

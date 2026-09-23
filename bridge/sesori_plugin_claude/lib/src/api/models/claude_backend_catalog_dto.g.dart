@@ -24,4 +24,5 @@ _ClaudeModelDto _$ClaudeModelDtoFromJson(Map json) => _ClaudeModelDto(
   displayName: _stringOrNull(json['displayName']),
   supportsEffort: _boolOrNull(json['supportsEffort']),
   supportedEffortLevels: _stringsOrEmpty(json['supportedEffortLevels']),
+  supportsFastMode: _boolOrNull(json['supportsFastMode']),
 );

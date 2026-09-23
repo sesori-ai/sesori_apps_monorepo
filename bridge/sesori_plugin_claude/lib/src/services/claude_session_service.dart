@@ -196,6 +196,7 @@ final class ClaudeSessionService({
     required String? model,
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
     required String promptId,
     required String? displayText,
     required String? command,
@@ -225,6 +226,7 @@ final class ClaudeSessionService({
         model: model,
         effort: effort,
         permissionMode: permissionMode,
+        fastMode: fastMode,
         state: state,
         generation: generation,
         mode: _QueuedTurnMode(entry: entry),
@@ -244,6 +246,7 @@ final class ClaudeSessionService({
     required String? model,
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
   }) {
     if (_disposed || parts.isEmpty) {
       return Future.error(StateError("Claude session cannot accept the turn"));
@@ -261,6 +264,7 @@ final class ClaudeSessionService({
         model: model,
         effort: effort,
         permissionMode: permissionMode,
+        fastMode: fastMode,
         state: state,
         generation: generation,
         mode: _BlockingTurnMode(acceptance: acceptance),
@@ -288,6 +292,7 @@ final class ClaudeSessionService({
     required String? model,
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
     required _SessionTurnState state,
     required int generation,
     required _TurnMode mode,
@@ -308,6 +313,7 @@ final class ClaudeSessionService({
         model: model,
         effort: effort,
         permissionMode: permissionMode,
+        fastMode: fastMode,
         mode: mode,
       )) {
         final selfStartedTurn = state.selfStartedTurn?.future;
@@ -327,6 +333,7 @@ final class ClaudeSessionService({
         model: model,
         effort: effort,
         permissionMode: permissionMode,
+        fastMode: fastMode,
         allowedTools: _approvals.allowedToolsForSession(sessionId: sessionId),
       );
       if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) || _isCancelled(mode, state)) {
@@ -388,12 +395,16 @@ final class ClaudeSessionService({
     required String? model,
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
     required _TurnMode mode,
   }) {
     if (mode is _QueuedTurnMode && mode.entry.command != null) return true;
     final applied = _processes.appliedSelection(sessionId: sessionId);
     return applied != null &&
-        (applied.model != model || applied.effort != effort || applied.permissionMode != permissionMode);
+        (applied.model != model ||
+            applied.effort != effort ||
+            applied.permissionMode != permissionMode ||
+            applied.fastMode != fastMode);
   }
 
   Future<void> _settleDispatchedTurn({

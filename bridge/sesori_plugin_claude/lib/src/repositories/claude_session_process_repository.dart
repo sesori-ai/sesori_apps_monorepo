@@ -44,6 +44,7 @@ final class const ClaudeAppliedSelection({
   required final String? model,
   required final ClaudeEffortLevel? effort,
   required final ClaudePermissionMode? permissionMode,
+  required final bool fastMode,
 });
 
 final class _PendingTurn({
@@ -63,6 +64,10 @@ final class _ResidentProcess({
   required var String? appliedModel,
   required var ClaudeEffortLevel? appliedEffort,
   required var ClaudePermissionMode? appliedPermissionMode,
+
+  /// A fresh process starts with fast mode off; it is a flag setting applied
+  /// over the control protocol, not a launch argument.
+  required var bool appliedFastMode,
 }) {
   late final StreamSubscription<ClaudeStreamMessage> messages;
   final Queue<_PendingTurn> pendingTurns = Queue<_PendingTurn>();
@@ -104,6 +109,7 @@ final class ClaudeSessionProcessRepository({
       model: process.appliedModel,
       effort: process.appliedEffort,
       permissionMode: process.appliedPermissionMode,
+      fastMode: process.appliedFastMode,
     );
   }
 
@@ -112,13 +118,15 @@ final class ClaudeSessionProcessRepository({
     required String? model,
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
   }) {
     final process = _resident[sessionId];
     if (process == null) return;
     process
       ..appliedModel = model
       ..appliedEffort = effort
-      ..appliedPermissionMode = permissionMode;
+      ..appliedPermissionMode = permissionMode
+      ..appliedFastMode = fastMode;
   }
 
   Future<void> ensureResident({
@@ -128,6 +136,7 @@ final class ClaudeSessionProcessRepository({
     required String? model,
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
     required List<String> allowedTools,
   }) async {
     if (_disposed) throw StateError("Claude process repository is disposed");
@@ -140,6 +149,7 @@ final class ClaudeSessionProcessRepository({
           process: resident,
           model: model,
           permissionMode: permissionMode,
+          fastMode: fastMode,
         );
         return;
       }
@@ -167,12 +177,16 @@ final class ClaudeSessionProcessRepository({
     } finally {
       if (identical(_connecting[sessionId], connection)) unawaited(_connecting.remove(sessionId));
     }
+    if (_resident[sessionId] case final process?) {
+      await _applyFastMode(process: process, fastMode: fastMode);
+    }
   }
 
   Future<void> _applySelection({
     required _ResidentProcess process,
     required String? model,
     required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
   }) async {
     if (process.appliedModel != model) {
       await process.client.sendControlRequest(
@@ -188,6 +202,21 @@ final class ClaudeSessionProcessRepository({
       );
       process.appliedPermissionMode = permissionMode;
     }
+    await _applyFastMode(process: process, fastMode: fastMode);
+  }
+
+  /// The CLI acknowledges this setting even when the model or account cannot
+  /// use fast mode; it then serves at standard speed (verified against CLI
+  /// 2.1.281, which reports the reason only in `fast_mode_disabled_reason`).
+  Future<void> _applyFastMode({required _ResidentProcess process, required bool fastMode}) async {
+    if (process.appliedFastMode == fastMode) return;
+    await process.client.sendControlRequest(
+      subtype: "apply_flag_settings",
+      params: {
+        "settings": {"fastMode": fastMode},
+      },
+    );
+    process.appliedFastMode = fastMode;
   }
 
   ClaudeTurnDispatch sendTurn({
@@ -350,6 +379,7 @@ final class ClaudeSessionProcessRepository({
       appliedModel: model,
       appliedEffort: effort,
       appliedPermissionMode: permissionMode,
+      appliedFastMode: false,
     );
     process.messages = client.messages.listen((message) {
       final current = _resident[sessionId];
