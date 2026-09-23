@@ -21,7 +21,7 @@ class const DesktopBridgePopover({
     final takeOverAction = (
       label: loc.desktopBridgeTakeOver,
       command: controls.takeOver,
-      hierarchy: PregoButtonsSolidHierarchy.primary,
+      hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
     );
     final ({String label, Future<void> Function() command, PregoButtonsSolidHierarchy hierarchy}) action =
         state.canTakeOver

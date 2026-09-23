@@ -539,7 +539,8 @@ class _ToolOutputBlockState() extends State<_ToolOutputBlock> {
                     padding: const EdgeInsetsDirectional.only(top: 4),
                     child: Text(
                       _expanded ? loc.sessionDetailShowLess : loc.sessionDetailShowMore,
-                      style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.bgBrandSolid),
+                      // Primary, not secondary: secondary falls under 4.5:1 on the dark recessed block.
+                      style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textPrimary),
                     ),
                   ),
                 ),

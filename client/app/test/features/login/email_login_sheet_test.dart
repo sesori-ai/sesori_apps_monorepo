@@ -78,8 +78,10 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit));
 
     expect(find.byType(PregoInputField), findsNWidgets(2));
-    expect(find.text("Email *", findRichText: true), findsOneWidget);
-    expect(find.text("Password *", findRichText: true), findsOneWidget);
+    // Every field is required, so none carries a marker.
+    expect(find.text("Email"), findsOneWidget);
+    expect(find.text("Password"), findsOneWidget);
+    expect(find.textContaining("*"), findsNothing);
     expect(find.text("Sign in"), findsOneWidget);
   });
 

@@ -98,7 +98,7 @@ void main() {
     verify(() => cubit.toggleArchived()).called(1);
 
     await pumpPage(tester: tester, filter: SessionListFilter.archived);
-    expect(tester.widget<PregoButtonsSolid>(find.byKey(archived)).hierarchy, PregoButtonsSolidHierarchy.primaryAlt);
+    expect(tester.widget<PregoButtonsSolid>(find.byKey(archived)).hierarchy, PregoButtonsSolidHierarchy.primary);
   });
 
   testWidgets("the toolbar's Refresh shows progress until the silent refresh returns", (tester) async {

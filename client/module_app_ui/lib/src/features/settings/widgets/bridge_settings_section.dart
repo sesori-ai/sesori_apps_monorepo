@@ -341,7 +341,6 @@ class _RefreshIntervalSheetState() extends State<_RefreshIntervalSheet> {
               key: const Key("pull_request_refresh_input"),
               controller: _controller,
               label: context.loc.settingsPullRequestRefreshSecondsLabel,
-              isRequired: true,
               autofocus: true,
               autocorrect: false,
               keyboardType: TextInputType.number,
