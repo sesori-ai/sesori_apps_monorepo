@@ -11,7 +11,8 @@ import "prego_modal.dart";
 /// Unlike the navigation bottom sheet, this has no header controls or grabber.
 /// The caller owns route presentation and dismissal. Long content scrolls above
 /// the action slot, keeping the decision controls visible. Compact viewports and
-/// enlarged text use one scrollable flow so fixed actions cannot overflow.
+/// enlarged text use one scrollable flow so fixed actions cannot overflow, in
+/// the sheet and the dialog alike.
 ///
 /// Under a pointer [PregoInteractionScope] it is a [PregoModalWidth.request]
 /// dialog instead, whose close button pops its route; present it with
@@ -38,17 +39,10 @@ class const PregoActionSheet({
         width: PregoModalWidth.request,
         handleBottomSafeArea: true,
         topInset: topInset,
-        child: Padding(
+        child: _DecisionFlow(
           padding: EdgeInsetsDirectional.fromSTEB(prego.spacing.xl, 0, prego.spacing.xl, prego.spacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Flexible(child: SingleChildScrollView(child: child)),
-              SizedBox(height: prego.spacing.xl),
-              actions,
-            ],
-          ),
+          content: child,
+          actions: actions,
         ),
       );
     }
@@ -74,43 +68,61 @@ class const PregoActionSheet({
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(PregoRadius.x8l),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Below a comfortable 400px decision viewport, prefer a single
-                // scrollable flow. Scale the breakpoint for accessibility text;
-                // it is a layout policy, not a measurement of the action slot.
-                final scrollAll = constraints.maxHeight < media.textScaler.scale(400);
-                final content = Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Semantics(
-                      header: true,
-                      child: Text(title, style: prego.textTheme.textMd.medium),
-                    ),
-                    SizedBox(height: prego.spacing.xl),
-                    child,
-                  ],
-                );
-                final body = Padding(
-                  // Figma's floating Sheet has a 26px top inset, not a spacing token.
-                  padding: EdgeInsetsDirectional.fromSTEB(prego.spacing.xl, 26, prego.spacing.xl, prego.spacing.xl),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (scrollAll) content else Flexible(child: SingleChildScrollView(child: content)),
-                      SizedBox(height: prego.spacing.xl),
-                      actions,
-                    ],
+            child: _DecisionFlow(
+              // Figma's floating Sheet has a 26px top inset, not a spacing token.
+              padding: EdgeInsetsDirectional.fromSTEB(prego.spacing.xl, 26, prego.spacing.xl, prego.spacing.xl),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Semantics(
+                    header: true,
+                    child: Text(title, style: prego.textTheme.textMd.medium),
                   ),
-                );
-                return scrollAll ? SingleChildScrollView(child: body) : body;
-              },
+                  SizedBox(height: prego.spacing.xl),
+                  child,
+                ],
+              ),
+              actions: actions,
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The content above the actions. Long content scrolls above them; a viewport
+/// too short for that scrolls the whole flow, so the actions never overflow.
+class const _DecisionFlow({
+  required final EdgeInsetsGeometry padding,
+  required final Widget content,
+  required final Widget actions,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final textScaler = MediaQuery.textScalerOf(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Below a comfortable 400px decision viewport, prefer a single
+        // scrollable flow. Scale the breakpoint for accessibility text;
+        // it is a layout policy, not a measurement of the action slot.
+        final scrollAll = constraints.maxHeight < textScaler.scale(400);
+        final body = Padding(
+          padding: padding,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (scrollAll) content else Flexible(child: SingleChildScrollView(child: content)),
+              SizedBox(height: prego.spacing.xl),
+              actions,
+            ],
+          ),
+        );
+        return scrollAll ? SingleChildScrollView(child: body) : body;
+      },
     );
   }
 }

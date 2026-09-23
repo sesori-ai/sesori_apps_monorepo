@@ -19,13 +19,13 @@ Widget _app({required PregoInteractionMode mode, required void Function(BuildCon
   );
 }
 
-Future<void> _open(WidgetTester tester) async {
+Future<void> _open({required WidgetTester tester}) async {
   await tester.tap(find.text("Open"));
   await tester.pumpAndSettle();
 }
 
 /// The dialog's visible panel; the [Dialog] widget itself spans the window.
-Rect _panel(WidgetTester tester) =>
+Rect _panel({required WidgetTester tester}) =>
     tester.getRect(find.descendant(of: find.byType(Dialog), matching: find.byType(Material)).first);
 
 void main() {
@@ -37,7 +37,7 @@ void main() {
             showPregoModal<void>(context: context, title: "Rename", builder: (_) => const Text("Body")),
       ),
     );
-    await _open(tester);
+    await _open(tester: tester);
     expect(find.byType(PregoBottomSheet), findsOneWidget);
     expect(find.byType(Dialog), findsNothing);
     expect(find.text("Body"), findsOneWidget);
@@ -54,12 +54,12 @@ void main() {
         ),
       ),
     );
-    await _open(tester);
+    await _open(tester: tester);
     expect(find.byType(PregoBottomSheet), findsNothing);
     expect(find.text("Rename"), findsOneWidget);
     expect(find.text("Body"), findsOneWidget);
-    expect(_panel(tester).width, PregoModalWidth.regular.pixels);
-    expect(_panel(tester).center, tester.getRect(find.byType(Scaffold)).center);
+    expect(_panel(tester: tester).width, PregoModalWidth.regular.pixels);
+    expect(_panel(tester: tester).center, tester.getRect(find.byType(Scaffold)).center);
     // The sheet's surface, so content built for the sheet keeps its contrast.
     expect(tester.widget<Dialog>(find.byType(Dialog)).backgroundColor, PregoDesignSystem.light.colors.bgSecondary);
 
@@ -82,7 +82,7 @@ void main() {
         ),
       ),
     );
-    await _open(tester);
+    await _open(tester: tester);
     await tester.tap(find.text("Open second"));
     await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsNWidgets(2));
@@ -109,7 +109,7 @@ void main() {
         ),
       ),
     );
-    await _open(tester);
+    await _open(tester: tester);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.tapAt(const Offset(4, 4));
     await tester.pumpAndSettle();
@@ -153,8 +153,8 @@ void main() {
         ),
       ),
     );
-    await _open(tester);
-    expect(_panel(tester).width, PregoModalWidth.request.pixels);
+    await _open(tester: tester);
+    expect(_panel(tester: tester).width, PregoModalWidth.request.pixels);
     expect(find.text("Allow this action?"), findsOneWidget);
     expect(find.text("Run make check"), findsOneWidget);
     expect(find.text("Allow once"), findsOneWidget);
@@ -183,7 +183,7 @@ void main() {
         ),
       ),
     );
-    await _open(tester);
+    await _open(tester: tester);
     expect(find.byType(PregoBottomSheet), findsOneWidget);
     expect(find.byType(Dialog), findsNothing);
     expect(find.text("1 of 2"), findsOneWidget);

@@ -29,7 +29,7 @@
   while the modal is open, which a fixed-title builder cannot express.
 - The dialog is painted in the phone sheet's `bgSecondary`, not the settings
   window's `bgSurface1`. Sheet content draws its tiles and fields in
-  `bgSurface1`, and those merged into a `bgSurface1` frame.
+  `bgSurface1`, and those would merge into a `bgSurface1` frame.
 - Dialogs open on the root navigator. The harness settings sheets were
   already there, above the settings window, whose Close already pops
   everything above it. The question, permission and reasoning sheets used to
@@ -65,3 +65,7 @@
   on `PregoModalSurface`.
 - Size: about 614 changed lines before this file, against a ≤ 600 target.
   About 190 of them are the new shared tests.
+- Review round 1: the action sheet's dialog now shares the sheet's
+  scroll-all flow. `prego_action_sheet_test.dart` gained the desktop's
+  560 × 480 minimum window at 3x text, which overflowed by 12 px before the
+  fix and keeps every action reachable after it.

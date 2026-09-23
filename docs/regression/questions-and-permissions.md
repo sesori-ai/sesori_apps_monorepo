@@ -36,9 +36,9 @@ reaches the backend so the turn continues.
   must never appear as ordinary plain-text input.
 - Allow once, allow always, and reject each reach the backend with the meaning
   the user chose. Once is never escalated to a broader grant.
-- Permission dialogs use the shared Prego action sheet in both themes, floating
-  on phone and a centred dialog on desktop, as the question form is:
-  a generic action heading, the complete backend tool label and selectable,
+- Permission dialogs use the shared Prego action sheet in both themes. Like
+  the question form, it floats on phone and is a centred dialog on desktop. It
+  shows a generic action heading, the complete backend tool label and selectable,
   copyable Markdown description, then full-width stacked **Allow**, optional
   **Always approve**, and **Don’t allow** actions. **Allow** means once only.
   Long details normally scroll above visible actions. When the viewport is
