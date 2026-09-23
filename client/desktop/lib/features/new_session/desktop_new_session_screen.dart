@@ -3,7 +3,6 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
@@ -15,6 +14,9 @@ class const DesktopNewSessionScreen({
   required final String projectId,
   required final String? projectName,
   required final VoidCallback onBack,
+
+  /// Opens the project's session list from the toolbar breadcrumb.
+  required final VoidCallback onOpenProject,
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
 
@@ -31,6 +33,7 @@ class const DesktopNewSessionScreen({
         projectId: projectId,
         projectName: projectName,
         onBack: onBack,
+        onOpenProject: onOpenProject,
         onOpenHarnessSettings: onOpenHarnessSettings,
         onSessionCreated: onSessionCreated,
         onProjectSelected: onProjectSelected,
@@ -46,12 +49,23 @@ class const DesktopNewSessionView({
   required final String projectId,
   required final String? projectName,
   required final VoidCallback onBack,
+
+  /// Opens the project's session list from the toolbar breadcrumb.
+  required final VoidCallback onOpenProject,
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
   required final NewSessionProjectSelected onProjectSelected,
   required final List<ProjectSummary> projects,
 }) extends StatelessWidget {
   static const double maxContentWidth = 760;
+
+  /// The loaded list knows the current name; the route's can be missing or stale.
+  String _projectLabel({required BuildContext context}) {
+    final current = projects.where((project) => project.id == projectId).firstOrNull;
+    return current == null
+        ? projectName ?? context.loc.projectListDefaultName
+        : projectDisplayName(loc: context.loc, project: current);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,12 +83,8 @@ class const DesktopNewSessionView({
       pageChrome: NewSessionPageChrome(
         maxContentWidth: maxContentWidth,
         topBar: DesktopPageToolbar(
-          leading: IconButton(
-            key: const Key("desktop-new-session-back"),
-            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-            onPressed: onBack,
-            icon: const Icon(TablerRegular.arrow_left, size: 18),
-          ),
+          breadcrumb: (label: _projectLabel(context: context), onPressed: onOpenProject),
+          status: null,
           title: context.loc.sessionListNewSession,
           subtitle: null,
           actions: const [],

@@ -12,6 +12,7 @@ import "package:theme_prego/module_prego.dart";
 import "../di/injection.dart";
 import "desktop_bridge_popover.dart";
 import "desktop_bridge_recovery_card.dart";
+import "desktop_session_signals.dart";
 import "desktop_sidebar_activity_popout.dart";
 import "desktop_sidebar_expansion.dart";
 import "desktop_sidebar_section_header.dart";
@@ -967,10 +968,10 @@ class const _SidebarActivitySessionRow({
       expansion: expansion,
       builder: (context, phase) {
         final signals = SizedBox(
-          width: 28,
-          height: 28,
+          width: DesktopSessionSignals.width,
+          height: DesktopSessionSignals.width,
           child: Center(
-            child: _SessionSignals(
+            child: DesktopSessionSignals(
               isAwaitingInput: item.isAwaitingInput,
               isRunning: item.isRunning,
               isUnseen: item.isUnseen,
@@ -1108,9 +1109,9 @@ class const _SidebarSessionRow({
     ].join(", ");
     // The status column sits under the project's avatar.
     final signals = SizedBox(
-      width: 28,
+      width: DesktopSessionSignals.width,
       child: Center(
-        child: _SessionSignals(isAwaitingInput: awaiting, isRunning: running, isUnseen: unseen),
+        child: DesktopSessionSignals(isAwaitingInput: awaiting, isRunning: running, isUnseen: unseen),
       ),
     );
     final gap = AnimatedBuilder(
@@ -1203,40 +1204,6 @@ class const _CountPill({required final int count}) extends StatelessWidget {
       "$count",
       style: context.prego.textTheme.textXs.bold.copyWith(color: context.prego.colors.textWhite, height: 1),
     ),
-  );
-}
-
-/// The leading status column of a session row: two glyphs fill its 28 points.
-class const _SessionSignals({
-  required final bool isAwaitingInput,
-  required final bool isRunning,
-  required final bool isUnseen,
-}) extends StatelessWidget {
-  static const double _size = 14;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      if (isAwaitingInput)
-        Tooltip(
-          message: context.loc.sessionListAwaitingInput,
-          child: Icon(
-            TablerRegular.message_circle,
-            size: _size,
-            color: context.prego.colors.textWarningPrimary,
-          ),
-        ),
-      if (isRunning || isUnseen)
-        Tooltip(
-          message: isRunning
-              ? isUnseen
-                    ? "${context.loc.projectListRunning(1)}, ${context.loc.projectListNewActivity}"
-                    : context.loc.projectListRunning(1)
-              : context.loc.projectListNewActivity,
-          child: PregoAiLoader(size: _size, animate: isRunning),
-        ),
-    ],
   );
 }
 

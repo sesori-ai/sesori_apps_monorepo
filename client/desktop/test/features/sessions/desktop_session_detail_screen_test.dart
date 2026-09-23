@@ -7,6 +7,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
+import "package:sesori_desktop/core/widgets/desktop_session_signals.dart";
 import "package:sesori_desktop/features/sessions/desktop_session_detail_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -197,7 +198,8 @@ void main() {
               sessionActions: _actions,
               onMarkedUnread: () {},
               readOnly: false,
-              onBack: null,
+              projectName: "UI / Core",
+              onOpenProject: () {},
               onShowDiffs: () => diffCalls++,
               onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
               messageImageRepository: () {
@@ -226,6 +228,7 @@ void main() {
 
     expect(find.text("Desktop transcript"), findsOneWidget);
     expect(find.byKey(const Key("desktop-session-page-back")), findsNothing);
+    expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
     expect(find.byType(PregoReadableSelectionArea), findsOneWidget);
     final loadedView = tester.widget<SessionDetailLoadedView>(find.byType(SessionDetailLoadedView));
     expect(loadedView.readOnly, isFalse);
@@ -257,7 +260,8 @@ void main() {
     // `+` and `/` are always visible on desktop, and the box grows instead of
     // offering the editor sheet.
     expect(find.byTooltip("Attach image"), findsOneWidget);
-    expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
+    final composer = find.byType(SessionDetailComposerControls);
+    expect(find.descendant(of: composer, matching: find.byIcon(TablerRegular.chevron_right)), findsNothing);
     expect(find.byIcon(TablerRegular.maximize), findsNothing);
     // The page toolbar's menu, not a composer one.
     expect(find.byTooltip("More actions"), findsOneWidget);
@@ -268,7 +272,7 @@ void main() {
     expect(find.text("Choose a release channel"), findsOneWidget);
   });
 
-  testWidgets("desktop delegates Back and child-session navigation", (tester) async {
+  testWidgets("desktop delegates child-session navigation", (tester) async {
     final cubit = _MockSessionDetailCubit();
     when(() => cubit.isRouteVisible).thenReturn(true);
     final state = _loadedState(session: _session);
@@ -279,7 +283,6 @@ void main() {
     when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
     when(cubit.clearNotifications).thenReturn(null);
     when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
-    var backCalls = 0;
     ({String projectId, String sessionId, String? sessionTitle, bool readOnly})? openedSession;
 
     await tester.pumpWidget(
@@ -299,7 +302,8 @@ void main() {
               sessionActions: _actions,
               onMarkedUnread: () {},
               readOnly: false,
-              onBack: () => backCalls++,
+              projectName: "UI / Core",
+              onOpenProject: () {},
               onShowDiffs: () {},
               onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
                   openedSession = (
@@ -320,9 +324,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key("desktop-session-page-back")));
-    expect(backCalls, 1);
-
     await tester.tap(find.text("Child session"));
     expect(
       openedSession,
@@ -340,6 +341,7 @@ void main() {
     late _MockSessionListCubit listCubit;
     late List<Session> markedUnread;
     late int leftPage;
+    late int openedProject;
 
     Future<void> pumpPage(WidgetTester tester, {required Session session}) async {
       cubit = _MockSessionDetailCubit();
@@ -363,6 +365,7 @@ void main() {
       ).thenAnswer((_) async {});
       markedUnread = [];
       leftPage = 0;
+      openedProject = 0;
       await tester.binding.setSurfaceSize(const Size(1400, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -372,33 +375,43 @@ void main() {
             BlocProvider<SessionDetailCubit>.value(value: cubit),
             BlocProvider<SessionListCubit>.value(value: listCubit),
           ],
-          child: MaterialApp(
-            theme: ThemeData(extensions: [PregoDesignSystem.light]),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: _composerScope(
-              imageClipboard: _MockImageClipboard.new,
-              child: DesktopSessionDetailView(
-                onOpenHarnessSettings: () {},
-                projectId: "project-1",
-                sessionId: "session-1",
-                sessionTitle: "Desktop session",
-                sessionActions: SessionListActionDispatcher(
-                  deleteConfirmation: SessionDeleteConfirmation.sheet,
-                  onSessionArchived: null,
-                  onSessionDeleted: null,
-                  onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session),
-                ),
-                onMarkedUnread: () => leftPage++,
-                readOnly: false,
-                onBack: null,
-                onShowDiffs: () {},
-                onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-                messageImageRepository: _MockMessageImageRepository.new,
-                imageSaver: _MockImageSaver.new,
+          // The desktop is a pointer surface: its menus draw shortcut labels.
+          child: PregoInteractionScope(
+            mode: PregoInteractionMode.pointer,
+            child: MaterialApp(
+              theme: ThemeData(extensions: [PregoDesignSystem.light]),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: _composerScope(
                 imageClipboard: _MockImageClipboard.new,
-                imageSharer: _MockImageSharer.new,
-                canShareImages: true,
+                child: DesktopSessionDetailView(
+                  onOpenHarnessSettings: () {},
+                  projectId: "project-1",
+                  sessionId: "session-1",
+                  sessionTitle: "Desktop session",
+                  sessionActions: SessionListActionDispatcher(
+                    deleteConfirmation: SessionDeleteConfirmation.sheet,
+                    onSessionArchived: null,
+                    onSessionDeleted: null,
+                    onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session),
+                  ),
+                  onMarkedUnread: () => leftPage++,
+                  readOnly: false,
+                  projectName: "UI / Core",
+                  onOpenProject: () => openedProject++,
+                  onShowDiffs: () {},
+                  onOpenSession: ({
+                    required projectId,
+                    required sessionId,
+                    required sessionTitle,
+                    required readOnly,
+                  }) {},
+                  messageImageRepository: _MockMessageImageRepository.new,
+                  imageSaver: _MockImageSaver.new,
+                  imageClipboard: _MockImageClipboard.new,
+                  imageSharer: _MockImageSharer.new,
+                  canShareImages: true,
+                ),
               ),
             ),
           ),
@@ -439,10 +452,37 @@ void main() {
       );
     });
 
-    testWidgets("Mark unread always sends read: false, defers the session and leaves the page", (tester) async {
+    testWidgets("the project breadcrumb leads the status slot and the bold session title", (tester) async {
       await pumpPage(tester, session: _session);
 
-      await tester.tap(find.byKey(const Key("desktop-session-page-mark-unread")));
+      final breadcrumb = find.byKey(const Key("desktop-page-breadcrumb"));
+      final crumbText = tester.widget<Text>(find.descendant(of: breadcrumb, matching: find.text("UI / Core")));
+      expect(crumbText.style?.fontSize, 14);
+      expect(crumbText.style?.color, PregoDesignSystem.light.colors.textTertiary);
+      final title = find.descendant(of: find.byType(DesktopPageToolbar), matching: find.text("Desktop session"));
+      expect(tester.widget<Text>(title).style?.fontSize, 16);
+      expect(tester.widget<Text>(title).style?.fontWeight, FontWeight.bold);
+      // The pending question puts the awaiting glyph in the slot before the title.
+      final signals = find.byType(DesktopSessionSignals);
+      expect(tester.widget<DesktopSessionSignals>(signals).isAwaitingInput, isTrue);
+      expect(tester.getTopLeft(breadcrumb).dx, lessThan(tester.getTopLeft(signals).dx));
+      expect(tester.getTopLeft(signals).dx, lessThan(tester.getTopLeft(title).dx));
+
+      await tester.tap(breadcrumb);
+      expect(openedProject, 1);
+    });
+
+    testWidgets("Mark unread from the menu shows its shortcut, sends read: false and leaves the page", (
+      tester,
+    ) async {
+      await pumpPage(tester, session: _session);
+      expect(find.byKey(const Key("desktop-session-page-mark-unread")), findsNothing);
+
+      await tester.tap(find.byKey(const Key("desktop-session-page-more")));
+      await tester.pumpAndSettle();
+      expect(find.text("Ctrl+Shift+U"), findsOneWidget);
+      await tester.tap(find.text("Mark as unread"));
+      await tester.pumpAndSettle();
 
       verify(() => listCubit.markSessionSeen(sessionId: "session-1", read: false)).called(1);
       expect(markedUnread, [_session]);
@@ -464,7 +504,7 @@ void main() {
       expect(leftPage, 1);
     });
 
-    testWidgets("offers a child session's actions without a second read toggle", (tester) async {
+    testWidgets("offers the session's actions with Mark as unread, never Mark as read", (tester) async {
       await pumpPage(tester, session: _session);
 
       await tester.tap(find.byKey(const Key("desktop-session-page-more")));
@@ -475,7 +515,7 @@ void main() {
       expect(find.text("Archive"), findsOneWidget);
       expect(find.text("Delete"), findsOneWidget);
       expect(find.text("Mark as read"), findsNothing);
-      expect(find.text("Mark as unread"), findsNothing);
+      expect(find.text("Mark as unread"), findsOneWidget);
     });
   });
 }

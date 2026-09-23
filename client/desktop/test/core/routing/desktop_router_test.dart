@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -196,7 +197,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text("popup"), findsNothing);
       expect(tester.element(find.text("diffs")), same(opener));
-      expect(find.text("back"), findsOneWidget);
+      expect(router.canPop(), isTrue);
     }
     const other = AppRoute.sessionDetail(
       projectId: "p",
@@ -220,7 +221,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("popup"), findsNothing);
     expect(router.state.uri.toString(), other.buildPath());
-    await tester.tap(find.text("back"));
+    router.pop();
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _sessions.buildPath());
     router.pop();
@@ -237,7 +238,6 @@ void main() {
     await tester.tap(find.text("open archived"));
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
-    expect(find.text("back"), findsNothing);
     await tester.tap(find.text("delete open session"));
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _sessions.buildPath());
@@ -253,24 +253,33 @@ void main() {
     await tester.tap(find.text("created"));
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _detail(readOnly: false).buildPath());
-    await tester.tap(find.text("back"));
-    await tester.pumpAndSettle();
+    await _commandBracket(tester);
     expect(router.state.uri.toString(), _sessions.buildPath());
   });
 
-  testWidgets("direct detail hides Back but a pushed child can return to its parent", (tester) async {
+  testWidgets("Cmd/Ctrl+[ returns a pushed child to its parent and does nothing on a direct page", (tester) async {
     final router = _callbackRouter(initialRoute: _detail(readOnly: true));
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    expect(find.text("back"), findsNothing);
     await tester.tap(find.text("open child"));
     await tester.pumpAndSettle();
     expect(router.state.pathParameters[sessionIdPathParam], "child");
-    await tester.tap(find.text("back"));
-    await tester.pumpAndSettle();
+    await _commandBracket(tester);
     expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
-    expect(find.text("back"), findsNothing);
+    await _commandBracket(tester);
+    expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
   });
+
+  for (final route in [const AppRoute.newSession(projectId: "p", projectName: "UI / Core"), _detail(readOnly: false)]) {
+    testWidgets("the ${route.def.name} breadcrumb opens its project's sessions", (tester) async {
+      final router = _callbackRouter(initialRoute: route);
+      addTearDown(router.dispose);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.tap(find.text("project"));
+      await tester.pumpAndSettle();
+      expect(router.state.uri.toString(), _sessions.buildPath());
+    });
+  }
 
   testWidgets("diff back preserves the pushed detail including read-only state", (tester) async {
     final router = _callbackRouter(initialRoute: _detail(readOnly: true));
@@ -370,64 +379,88 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
   return GoRouter(
     initialLocation: initialRoute.buildPath(),
     routes: [
-      for (final page in shell.routes.whereType<GoRoute>())
-        GoRoute(
-          path: page.path,
-          redirect: page.redirect,
-          builder: (context, state) {
-            final screen = page.builder!(context, state);
-            Widget button({required String label, required VoidCallback action}) =>
-                TextButton(onPressed: action, child: Text(label));
-            return Scaffold(
-              body: Column(
-                children: switch (screen) {
-                  DesktopSessionListCubitProvider(child: final DesktopSessionListScreen list) => [
-                    button(
-                      label: "open archived",
-                      action: () => list.onSessionTap(session: _session),
-                    ),
-                    button(label: "new", action: list.onNewSession),
-                  ],
-                  DesktopNewSessionScreen() => [
-                    button(
-                      label: "created",
-                      action: () => screen.onSessionCreated(session: _session),
-                    ),
-                    button(label: "back", action: screen.onBack),
-                  ],
-                  DesktopSessionDetailScreen() => [
-                    if (screen.onBack case final onBack?) button(label: "back", action: onBack),
-                    button(
-                      label: "open child",
-                      action: () => screen.onOpenSession(
-                        projectId: "p",
-                        sessionId: "child",
-                        sessionTitle: "Child",
-                        readOnly: true,
-                      ),
-                    ),
-                    button(label: "diffs", action: screen.onShowDiffs),
-                    button(
-                      label: "delete open session",
-                      action: () {
-                        final provider = _routeWithPath(AppRouteDef.sessions.path).builder!(
-                          context,
-                          state,
-                        ) as DesktopSessionListCubitProvider;
-                        final list = provider.child as DesktopSessionListScreen;
-                        list.actionDispatcher.onSessionDeleted!(context: context, sessionId: screen.sessionId);
-                      },
-                    ),
-                  ],
-                  DesktopSessionDiffsScreen() => [button(label: "back", action: screen.onBack)],
-                  _ => [const Text("home")],
-                },
-              ),
-            );
-          },
+      ShellRoute(
+        builder: (context, state, child) => CallbackShortcuts(
+          bindings: _shellShortcuts(context: context, state: state).bindings,
+          child: Focus(autofocus: true, child: child),
         ),
+        routes: [
+          for (final page in shell.routes.whereType<GoRoute>())
+            GoRoute(
+              path: page.path,
+              redirect: page.redirect,
+              builder: (context, state) {
+                final screen = page.builder!(context, state);
+                Widget button({required String label, required VoidCallback action}) =>
+                    TextButton(onPressed: action, child: Text(label));
+                return Scaffold(
+                  body: Column(
+                    children: switch (screen) {
+                      DesktopSessionListCubitProvider(child: final DesktopSessionListScreen list) => [
+                        button(
+                          label: "open archived",
+                          action: () => list.onSessionTap(session: _session),
+                        ),
+                        button(label: "new", action: list.onNewSession),
+                      ],
+                      DesktopNewSessionScreen() => [
+                        button(
+                          label: "created",
+                          action: () => screen.onSessionCreated(session: _session),
+                        ),
+                        button(label: "back", action: screen.onBack),
+                        button(label: "project", action: screen.onOpenProject),
+                      ],
+                      DesktopSessionDetailScreen() => [
+                        button(label: "project", action: screen.onOpenProject),
+                        button(
+                          label: "open child",
+                          action: () => screen.onOpenSession(
+                            projectId: "p",
+                            sessionId: "child",
+                            sessionTitle: "Child",
+                            readOnly: true,
+                          ),
+                        ),
+                        button(label: "diffs", action: screen.onShowDiffs),
+                        button(
+                          label: "delete open session",
+                          action: () {
+                            final provider = _routeWithPath(AppRouteDef.sessions.path).builder!(
+                              context,
+                              state,
+                            ) as DesktopSessionListCubitProvider;
+                            final list = provider.child as DesktopSessionListScreen;
+                            list.actionDispatcher.onSessionDeleted!(context: context, sessionId: screen.sessionId);
+                          },
+                        ),
+                      ],
+                      DesktopSessionDiffsScreen() => [button(label: "back", action: screen.onBack)],
+                      _ => [const Text("home")],
+                    },
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
     ],
   );
+}
+
+/// The production shell's key bindings, bound to [context].
+CallbackShortcuts _shellShortcuts({required BuildContext context, required GoRouterState state}) {
+  final shell = buildDesktopRoutes().single as ShellRoute;
+  final gate = shell.builder?.call(context, state, const SizedBox());
+  if (gate is! AuthGate) fail("The desktop shell must start with its AuthGate");
+  return (gate.child as Builder).builder(context) as CallbackShortcuts;
+}
+
+Future<void> _commandBracket(WidgetTester tester) async {
+  await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+  await tester.sendKeyEvent(LogicalKeyboardKey.bracketLeft);
+  await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+  await tester.pumpAndSettle();
 }
 
 // ignore_for_file: avoid_implementing_value_types, tests use lightweight framework fakes

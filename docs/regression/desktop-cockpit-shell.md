@@ -173,26 +173,29 @@ The main pane hosts one full-width routed page.
   is on, which shows every archived session, and while the project has no sessions. Hovering a row, or
   moving keyboard focus into it, swaps its time for Mark read/unread and Archive without changing the row's
   height; an archived row offers no Archive. The phone list shows the same shared chips.
-- Direct/sidebar-opened detail uses the available main-pane width without a
-  redundant back arrow. Pushed details retain Back to their opener, including
-  child-to-parent navigation. Archived rows open read-only. New-session creation replaces its page with
-  detail. New-session/diff Back returns to the opener when pushed, or to the
-  project's all-sessions page for direct entry. Deleting the open session
-  returns to all sessions.
+- No page toolbar has a back arrow, so every toolbar starts its content at the same left edge.
+  Cmd/Ctrl+[ returns a pushed page to its opener, including child-to-parent navigation, and does nothing
+  on a page reached from the sidebar. The new session and session pages lead their title with the
+  project as a 14 pt tertiary breadcrumb that opens the project's all-sessions page. Archived rows open
+  read-only. New-session creation replaces its page with detail. Diff Back returns to the opener when
+  pushed, or to the project's all-sessions page for direct entry. Deleting the open session returns to
+  all sessions.
 - A session being archived is hidden from the sidebar, the Activity popout, the project page and its chip
   counts for as long as its Undo window or its archive request is open, and returns if the archive is
   undone, refused or fails. Archiving the open session leaves its page. See
   `session-archiving-and-deletion.md`.
-- The new session page uses the same toolbar, titled New session with Back, above one centred column no
-  wider than the session page's: the shared heading and project selector (see
+- The new session page uses the same toolbar, titled New session under the project breadcrumb, above one
+  centred column no wider than the session page's: the shared heading and project selector (see
   session-creation-and-options.md), the harness chooser, the input, then Dedicated workspace and
   Refresh options. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
   Choosing another project builds a fresh cubit for it.
-- The session page uses the same toolbar anatomy above the transcript, never over it: title with agent and
-  model, Back only on a pushed page, a busy indicator, Mark unread, Changes on a root unarchived session,
-  and a menu with Rename, Archive, Archive keeping the worktree when the session has one, and Delete, run
-  by the same dispatcher as a row's menu. Session actions stay disabled until the page has the hydrated
-  session, and work for child sessions and sessions opened directly. Mark unread always sends unread,
+- The session page uses the same toolbar anatomy above the transcript, never over it: the project
+  breadcrumb, then the sidebar's status slot (the running sparkle, the amber awaiting glyph) leading the
+  16 pt bold title, with agent and model under it; Changes on a root unarchived session; and a menu with
+  Mark as unread labelled with its shortcut, Rename, Archive, Archive keeping the worktree when the
+  session has one, and Delete, the last four run by the same dispatcher as a row's menu. Session actions
+  stay disabled until the page has the hydrated session, and work for child sessions and sessions opened
+  directly. Mark unread always sends unread,
   whatever local state says, defers the session like a row's Mark unread, and returns to the project's
   all-sessions page; Shift+Cmd/Ctrl+U does the same while focus is in the session page and is inert
   elsewhere. The transcript and composer sit in a centred column about 760 pt wide while the wheel and
@@ -299,9 +302,12 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   or the last row leaves.
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks.
-- The session page toolbar above a centred transcript column, session actions disabled until the session is
-  hydrated, Mark unread sending unread and leaving the page from the button and from Shift+Cmd/Ctrl+U, and a
-  child session's menu without a second read toggle.
+- The session page toolbar above a centred transcript column: the breadcrumb, status slot and title styles
+  and order, the breadcrumb opening the project, session actions disabled until the session is hydrated,
+  Mark unread sending unread and leaving the page from the menu (which shows its shortcut) and from
+  Shift+Cmd/Ctrl+U, and a menu without Mark as read.
+- Cmd/Ctrl+[ popping a pushed page and doing nothing on a direct one; the new session and session
+  breadcrumbs opening the project's sessions.
 - Filter chip counts, local narrowing, the filtered-empty message and chips hidden under Archived; hover and
   focus revealing row actions that call the row's handlers at a stable height, with no Archive on an
   archived row.
