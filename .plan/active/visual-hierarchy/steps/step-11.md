@@ -42,6 +42,12 @@ changes Title Case strings to sentence case.
 
 ## 11.b — Verification
 
-- `flutter gen-l10n` regenerated the English localizations.
-- All module_app_ui and app tests pass; desktop `test/features` and
-  `test/core` pass, before and after merging 11.a.
+- `flutter gen-l10n` (in `client/module_app_ui`) regenerated the English
+  localizations.
+- At d8768d9780, before merging 11.a: `flutter test` passed in
+  `client/module_app_ui` and `client/app`, and
+  `flutter test test/features test/core` passed in `client/desktop`.
+- At 7da9f36940, after merging main with 11.a: `dart analyze --fatal-infos`
+  and `flutter test` passed in `client/module_app_ui`, and
+  `flutter test test/features test/core` passed in `client/app`. Desktop was
+  not re-run locally; CI covers it on the PR head.
