@@ -40,6 +40,35 @@ void main() {
       );
     });
 
+    test("decodes serviceTiers from the model/list response", () async {
+      final client = _StubClient(
+        response: const {
+          "data": [
+            {
+              "id": "gpt-6-astra",
+              "displayName": "GPT-6 Astra",
+              "hidden": false,
+              "serviceTiers": [
+                {
+                  "id": "priority",
+                  "name": "Fast",
+                  "description": "2x speed, increased usage",
+                },
+              ],
+            },
+          ],
+          "nextCursor": null,
+        },
+      );
+
+      final response = await CodexAppServerApi(client: client).listModels();
+
+      final tiers = response.data.single.serviceTiers;
+      expect(tiers, hasLength(1));
+      expect(tiers?.single.id, "priority");
+      expect(tiers?.single.name, "Fast");
+    });
+
     test("rejects a non-object model/list response", () async {
       final api = CodexAppServerApi(client: _StubClient(response: const []));
 
@@ -115,6 +144,7 @@ void main() {
                 supportedReasoningEfforts: [],
                 defaultReasoningEffort: null,
                 isDefault: true,
+                serviceTiers: [],
               ),
               CodexModelDto(
                 id: "gpt-hidden",
@@ -123,6 +153,7 @@ void main() {
                 supportedReasoningEfforts: [],
                 defaultReasoningEffort: null,
                 isDefault: false,
+                serviceTiers: [],
               ),
               CodexModelDto(
                 id: "  ",
@@ -131,6 +162,7 @@ void main() {
                 supportedReasoningEfforts: [],
                 defaultReasoningEffort: null,
                 isDefault: false,
+                serviceTiers: [],
               ),
             ],
             nextCursor: null,
@@ -175,6 +207,7 @@ void main() {
                 ],
                 defaultReasoningEffort: "medium",
                 isDefault: false,
+                serviceTiers: [],
               ),
             ],
             nextCursor: null,
@@ -188,6 +221,58 @@ void main() {
       expect(catalog.models.single.defaultVariant, "medium");
     });
 
+    test("declares fast-mode support only for a model offering the priority service tier", () async {
+      final repository = CodexModelRepository(
+        appServerApi: _StubAppServerApi(
+          response: const CodexModelListResponseDto(
+            data: [
+              CodexModelDto(
+                id: "gpt-6-astra",
+                displayName: "GPT-6 Astra",
+                hidden: false,
+                supportedReasoningEfforts: [],
+                defaultReasoningEffort: null,
+                isDefault: false,
+                serviceTiers: [
+                  CodexModelServiceTierDto(
+                    id: "priority",
+                    name: "Fast",
+                    description: "2x speed, increased usage",
+                  ),
+                ],
+              ),
+              CodexModelDto(
+                id: "gpt-5.5",
+                displayName: "GPT-5.5",
+                hidden: false,
+                supportedReasoningEfforts: [],
+                defaultReasoningEffort: null,
+                isDefault: false,
+                serviceTiers: [],
+              ),
+              CodexModelDto(
+                id: "gpt-5.6-sol",
+                displayName: "GPT-5.6 Sol",
+                hidden: false,
+                supportedReasoningEfforts: [],
+                defaultReasoningEffort: null,
+                isDefault: false,
+                serviceTiers: null,
+              ),
+            ],
+            nextCursor: null,
+          ),
+        ),
+      );
+
+      final catalog = await repository.listModels();
+
+      final supportsFastModeById = {for (final model in catalog.models) model.id: model.supportsFastMode};
+      expect(supportsFastModeById["gpt-6-astra"], isTrue);
+      expect(supportsFastModeById["gpt-5.5"], isFalse);
+      expect(supportsFastModeById["gpt-5.6-sol"], isFalse);
+    });
+
     test("lists models newest generation first, then Astra, Sol, Terra, Luna, bare, other", () async {
       CodexModelDto model(String id) => CodexModelDto(
         id: id,
@@ -196,6 +281,7 @@ void main() {
         supportedReasoningEfforts: const [],
         defaultReasoningEffort: null,
         isDefault: false,
+        serviceTiers: const [],
       );
       final repository = CodexModelRepository(
         appServerApi: _StubAppServerApi(

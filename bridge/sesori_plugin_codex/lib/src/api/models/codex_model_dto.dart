@@ -22,6 +22,7 @@ sealed class CodexModelDto with _$CodexModelDto {
     @CodexReasoningEffortListConverter() required List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts,
     required String? defaultReasoningEffort,
     required bool? isDefault,
+    required List<CodexModelServiceTierDto>? serviceTiers,
   }) = _CodexModelDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexModelDtoFromJson(json);
@@ -37,6 +38,22 @@ sealed class CodexReasoningEffortOptionDto with _$CodexReasoningEffortOptionDto 
   factory fromJson(
     Map<String, dynamic> json,
   ) => _$CodexReasoningEffortOptionDtoFromJson(json);
+}
+
+/// One entry of a Codex model's `serviceTiers`, e.g. the "priority" (Fast)
+/// tier: `{id: "priority", name: "Fast", description: "2x speed, increased
+/// usage"}`.
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexModelServiceTierDto with _$CodexModelServiceTierDto {
+  const factory({
+    required String? id,
+    required String? name,
+    required String? description,
+  }) = _CodexModelServiceTierDto;
+
+  factory fromJson(
+    Map<String, dynamic> json,
+  ) => _$CodexModelServiceTierDtoFromJson(json);
 }
 
 class const CodexModelListConverter() implements JsonConverter<List<CodexModelDto>, Object?> {

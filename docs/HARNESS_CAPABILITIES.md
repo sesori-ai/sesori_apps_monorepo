@@ -208,6 +208,26 @@ variants only when labels carry the matching suffix. Its pre-chat catalog uses
 one retained hidden no-prompt native session because the pinned runtime exposes
 models only from new/resume responses and has no deletion capability.
 
+## Fast mode
+
+| Harness | Status |
+|---|---|
+| Codex | ✅ Implemented in the bridge; the composer ⚡ control ships in a later step. |
+| Claude | ⬜ Not implemented yet; Claude Code supports it over stream-json `apply_flag_settings {fastMode}`. |
+| OpenCode, Antigravity, Copilot, Cursor, Hermes, Pi, OMP, DeepSeek, Grok | ⬜ Not implemented (not assessed). |
+
+Codex advertises fast mode per model as a `model/list` service tier: a model
+offering a `serviceTiers` entry with id `"priority"` (Codex's "Fast" tier, e.g.
+"2x speed, increased usage") sets `PluginModel.supportsFastMode`. A selected
+session's `fastMode` is sent as `serviceTier` on every `turn/start` —
+`"priority"` when on, `"default"` when off, which explicitly returns the
+thread to standard speed rather than leaving it on whatever tier a prior turn
+set (verified against codex-cli 0.156.1's `generate-json-schema` output: the
+sibling `TurnStartParams.serviceTierForTurn` field documents 'Use "default"
+for standard speed', and `serviceTier` shares the same tier vocabulary) — and
+on `thread/start` when a new session is created with fast mode on, so its
+first turn already runs fast.
+
 ## Agent selection and harness modes
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
