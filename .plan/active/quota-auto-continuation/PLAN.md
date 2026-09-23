@@ -172,11 +172,10 @@ record supports reconnect reads and bridge restart; deleting a session deletes
 its record. Disabled observations are harmless and permit an explicit later
 enable against the currently detected blockage.
 
-A bridge service owns policy. Two thin trigger adapters (normalized quota
-events and due-time ticks) feed it, composed in `bridge/app/lib/src/orchestrator.dart`.
-The event listener owns one ordered subscription to the existing normalized
-source; its peer timer listener owns **one 30-second timer**
-for due records, not a timer/map per session. A non-overlapping self-rescheduling
+A bridge service owns policy. The existing ordered normalized-event owner in
+`bridge/app/lib/src/orchestrator.dart` awaits quota/supersession processing before
+acknowledging a subsequent terminal handoff. A thin timer listener owns
+**one 30-second timer** for due records, not a timer/map per session. A non-overlapping self-rescheduling
 tick invokes the service, then schedules its next tick. Persist normalized live
 quota observations through the existing event consumption path after identity
 translation and generation validation. Broadcast changes through the current
@@ -277,8 +276,8 @@ feature's storage; it does not reconstruct old quota interruptions.
 
 New durable state: **one record per affected session**, with preference and one
 sealed observation/outcome. New long-lived runtime state: **one timer and its
-ordinary lifecycle flags**, plus **one normalized-event subscription** owned
-by its peer listener. Publication reuses the existing mutation stream.
+ordinary lifecycle flags**. Reuse the existing ordered normalized-event owner
+and mutation stream; add no event subscription.
 Claude/Pi may retain **one candidate inside existing active-turn state each** to
 wait for terminal settlement. Codex uses a failure-triggered read, not a new
 account cache. No per-session timers, second prompt queue, general job system,
@@ -287,7 +286,9 @@ distributed leases, watchdog process, or client background execution.
 Safeguards above address observed multi-day waits and ordinary manual actions,
 native retries, multiple clients, and restarts. The accepted crash window can
 miss one send; unfamiliar/localized error formats can be unschedulable; imported
-pre-feature errors are not automatically armed. Do not add machinery to erase
+pre-feature errors are not automatically armed. Generation retirement before
+durable admission can reject a quota observation; only persisted waits promise
+restart recovery, and clients never show a schedule before that commit. Do not add machinery to erase
 these bounded limits. If implementation exceeds this state budget, reconsider
 the owning seam before adding coordination.
 
@@ -297,8 +298,8 @@ and no reporting consumer has been selected. Keep operation context, original
 errors and stacks in local logs; do not copy prompts into diagnostics.
 
 Cleanup assessment: no existing scheduler or setting becomes obsolete. Preserve
-native retry/error rendering. Remove Claude's intentionally ignored rate-limit
-dispatch branch when its replacement lands; update stale capability claims and
+native retry/error rendering. Replace Claude's unhandled rate-limit
+path with service-owned quota processing; keep the dispatcher presentation-only; update stale capability claims and
 tests alongside it. No unrelated architecture refactor is planned.
 
 ## PR sequence

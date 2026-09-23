@@ -38,6 +38,8 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **6 PRs
   readiness-before-history, and wrapped the long documentation tables.
 - Follow-up feedback: explicit per-plugin ownership, repository-owned selection,
   service-owned scheduled transitions, and durable cancellation before Stop/archive.
+- Further review: corrected Codex evidence status, single-owner plugin decisions,
+  and awaited quota handling in the existing event/handoff order.
 - Plan links / diff checks: passed on the final documentation revision.
 - Product tests / live scheduled continuation: not run; no implementation exists.
 - Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.

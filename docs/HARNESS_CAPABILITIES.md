@@ -36,7 +36,7 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
 |---|---|---|
 | Claude Code | Tagged local errors; SDK `resetsAt` | ⬜ Not implemented; verify turn association. |
 | Pi | Some local `openai-codex` errors | ⬜ Not implemented for evidenced timed errors. |
-| Codex | Local and documented reset timestamps | ⬜ Not implemented; verify applicable buckets. |
+| Codex | Local and documented reset timestamps | Unverified; failed-turn bucket binding needs proof. |
 | OpenCode | Raw error data reaches mapper | Reset payload/provider attribution unverified. |
 | GitHub Copilot | ACP payload needs inspection | Reset reporting unverified. |
 | Cursor | Headless payload needs inspection | Reset reporting unverified. |

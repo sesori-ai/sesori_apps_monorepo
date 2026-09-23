@@ -135,14 +135,16 @@ fixed reset buffer, fixed five-minute pause recheck delay and clock. Owns setEna
 observeSupersedingActivity, runDue and all scheduled-attempt transitions. Computes resetCutoff = now - buffer
 and pausedRecheckCutoff = now; no direct PluginRuntime dependency or mutable job list.
 
-### Owner / layer: Bridge event trigger
+### Owner / layer: Existing bridge event trigger
 
-**Proposed file/class:** `listeners/session_quota_event_listener.dart`: `SessionQuotaEventListener`
+**Existing file/class:** `orchestrator.dart` / `OrchestratorSession` ordered normalized-event path.
 
-**Constructor dependencies and responsibility:** Takes typed post-normalization event source and
-continuation service. Owns start/subscription/dispose; sequentially delegates quota/new-user/selection
-signals, with source-generation fencing again at repository commit. Uses existing event producer, no new
-controller/map.
+**Dependency and responsibility:** Inject continuation service. The existing
+_processPluginEventInOrder chain awaits quota/supersession handling through
+_processPluginEvent before releasing that source and acknowledging a later
+terminal handoff. This is trigger delegation only; policy remains in the service.
+Reuse the existing subscription and per-plugin processing tail; no additional
+listener, subscription, controller or completion map is needed.
 
 ### Owner / layer: Bridge time trigger
 
@@ -255,9 +257,11 @@ deletion removes the record; this feature adds no cascade algorithm.
    a backend-neutral repository value.
 2. Existing PluginEventListener -> SessionEventDispatcher ->
    SessionEventService.normalize supplies identity and generation validation.
-   SessionQuotaEventListener subscribes to this typed post-validation source,
-   preserving order. It adds no event producer and does not intercept raw frames.
-3. Both peer listeners call SessionContinuationService. observeQuota enters
+   OrchestratorSession's existing ordered normalized-event owner awaits the continuation
+   service for quota/new-user/selection payloads before finishing that event.
+   It adds no event producer and does not intercept raw frames.
+3. The existing ordered event owner and new timer listener call
+   SessionContinuationService. observeQuota enters
    SessionOperationDispatcher, then calls the repository's generation-fenced
    already-reserved write. The repository uses PluginRuntime.commitCurrentGeneration
    for the supplied source generation; policy never calls runtime directly.
@@ -278,14 +282,25 @@ deletion removes the record; this feature adds no cascade algorithm.
    the same state. GetSession/list/reconnect use SessionViewService projection.
    Shared body/menu/notice render it. Clients only format authoritative times.
 
-Construct repositories before services and listeners after services in
-orchestrator.dart. Both listeners expose start/dispose and own one trigger:
-normalized event subscription versus self-rescheduling timer. Start after
-routing/event normalization is ready; restart recreates them and runs an
-immediate due tick. No separate availability subscription: paused records
-re-enter the due query only at their persisted recheckAt deadline. Dispose both listeners before draining the existing
-operation dispatcher. Total new runtime resources: one subscription and one
-timer, their lifecycle flags, and no controller/map/job registry.
+Construct repositories before services and the timer listener after services
+in orchestrator.dart. The timer owns start/tick/dispose; start it after event
+normalization/routing is ready and run an immediate due tick on restart.
+Quota handling is awaited inside the existing _processPluginEventInOrder tail,
+so a later terminalHandoffConsumed acknowledgement cannot overtake an admitted
+quota write waiting on the session lane. No separate availability subscription:
+paused records re-enter the query at recheckAt. Dispose the timer and drain the
+existing event owner before draining the session-operation dispatcher. Total
+new runtime resources: one timer and its lifecycle flags; no subscription,
+controller, completion map or job registry.
+
+Retain the existing generation admission fence: an event whose generation stops
+being routable before its durable write is admitted is rejected and never shown
+as scheduled. This plan promises restart recovery for persisted observations,
+not durable delivery of every emitted/normalized frame. Do not add a stop-time
+write permit or broaden runtime eligibility to erase that bounded capture gap.
+Test a quota event queued behind a session operation followed by terminal handoff:
+its admitted write must settle before handoff acknowledgement. Also test generation
+rejection before admission, with no false scheduled view.
 
 ## Dispatch preflight and cancellation
 

@@ -17,11 +17,14 @@ its pinned runtime passes the parser, terminal-reporting and readiness checks.
   recognized tagged error fallback into `PluginQuotaInterruption`. It is
   stateless: named inputs supply the stable error ID, original observation time,
   and typed provider data. Time-zone parsing remains inside this plugin.
-- **Turn lifecycle:** `claude_event_dispatcher.dart` / `ClaudeEventDispatcher`
-  uses the mapper for quota evidence. `services/claude_session_service.dart` /
-  `ClaudeSessionService` retains at most one candidate in its existing turn state
-  and releases it only after terminal settlement. Reuse the existing dispatcher
-  result/event path; neither owner gains a peer callback or new event stream.
+- **Turn lifecycle:** `services/claude_session_service.dart` /
+  `ClaudeSessionService` alone invokes the mapper from its existing process-event
+  handling, retains at most one candidate in its turn state, and releases it
+  after terminal settlement. Inject the stateless mapper into that service.
+  Reuse the stable message-ID mapping used by live/history error projection.
+  `claude_event_dispatcher.dart` / `ClaudeEventDispatcher` continues presentation
+  mapping only; no candidate must cross between these peer owners. The service
+  emits the result through its existing event path, without another stream.
 - **Readiness:** `ClaudeSessionService` owns the named-session decision using
   its existing `ClaudeSessionProcessRepository`, `ClaudeApprovalRegistry`, clock
   and turn/queue state. Add data-only named-session process queries to
@@ -30,7 +33,7 @@ its pinned runtime passes the parser, terminal-reporting and readiness checks.
   resident-map entry alone never proves idle; prove normal startup/process
   ownership for non-resident sessions, otherwise return unknown.
 - **Boundary/composition:** `claude_plugin_impl.dart` / `ClaudePlugin` delegates
-  readiness to its existing session service and wires the mapper. The descriptor
+  readiness to its existing session service and wires its mapper dependency. The descriptor
   in `runtime/claude_plugin_descriptor.dart` declares conditional reporting.
   No raw provider fields or Claude identifiers leave the plugin contract.
 
@@ -57,10 +60,11 @@ its pinned runtime passes the parser, terminal-reporting and readiness checks.
   Pending extension input, retry, compaction or queued work cannot report idle.
   Confirm non-resident process ownership, or return unknown without guessing.
 - **Boundary/composition:** `pi_plugin_impl.dart` / `PiPlugin` delegates to its
-  session service and wires the mapper. `runtime/pi_plugin_descriptor.dart`
+  session service and supplies the mapper to PiEventDispatcher.
+  `runtime/pi_plugin_descriptor.dart`
   declares conditional reporting only for verified error/provider shapes.
 
-## Codex — `bridge/sesori_plugin_codex`
+## Codex candidate — `bridge/sesori_plugin_codex`
 
 - **API:** extend `api/codex_app_server_api.dart` / `CodexAppServerApi` with a
   typed account-rate-limit read. New `api/models/codex_rate_limits_dto.dart` /
@@ -78,16 +82,21 @@ its pinned runtime passes the parser, terminal-reporting and readiness checks.
   failure-triggered quota lookup to `services/codex_session_service.dart` /
   `CodexSessionService`. Inject `CodexQuotaRepository` into that service; publish
   the normalized result through the plugin's current event path.
-- **Readiness:** `CodexSessionService` gains `CodexThreadRepository` for a typed
-  named-thread read. That repository already depends on `CodexAppServerApi`.
-  `CodexPlugin` supplies the locally known turn/pending-input/queued-work result
-  from its existing owners as a typed readiness value; the service combines it
-  with native thread evidence. Extend existing thread DTO/domain mappings as
-  needed. Omitted local status never implies idle, and uncertain native status
-  returns unknown. Do not add another activity map or child traversal.
+- **Readiness:** `CodexSessionService` alone derives readiness. It gains
+  `CodexThreadRepository` for a typed named-thread read; that repository already
+  depends on `CodexAppServerApi`. New immutable
+  `repositories/models/codex_local_session_facts.dart` / `CodexLocalSessionFacts`
+  carries observed native status, active turn ID, pending-input/request facts
+  and queued-work facts copied from existing owners. `CodexPlugin` passes that
+  snapshot as a named input without interpreting it as readiness. The service
+  combines those facts with native thread evidence and returns the enum. There
+  is no reverse callback or dependency on CodexPlugin. Extend existing thread
+  DTO/domain mappings as needed; missing/uncertain facts cannot imply idle.
+  No activity map or child traversal is added.
 - **Boundary/composition:** `CodexPlugin` exposes the readiness operation and
   wires the new dependencies in existing construction.
-  `runtime/codex_plugin_descriptor.dart` declares conditional reporting.
+  `runtime/codex_plugin_descriptor.dart` remains unavailable until failed-turn
+  bucket attribution is verified, then may declare conditional reporting.
 
 ## Other registered harnesses
 
