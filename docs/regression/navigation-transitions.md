@@ -25,7 +25,9 @@ desktop main-pane transitions distinct.
 - Desktop main-pane pages cross-fade in place over 150 ms: the sidebar never
   moves, nothing slides, and the page underneath shows until the fade ends.
   Reduced motion switches at once. Dialogs, popups, and the desktop settings
-  window keep their own motion.
+  window keep their own motion. The new-session page changes in place without
+  a fade, both when it switches project and when its first prompt turns it
+  into the session.
 
 ## Regression Levels
 

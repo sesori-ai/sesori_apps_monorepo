@@ -32,3 +32,18 @@ window's own navigator and root dialogs keep their current motion.
   150 ms fade at half opacity with the old page still shown, and the instant
   reduced-motion switch. `dart analyze --fatal-infos lib test/core`: no issues.
 - Regression docs: `tools-and-file-changes.md`, `navigation-transitions.md`.
+
+## Review round 1
+
+- Fixed: `context.isReducedMotion` read only `MediaQuery.disableAnimations`,
+  which misses iOS Reduce Motion. It now delegates to `prefersReducedMotion`,
+  which uses null-safe lookups so synthetic route-test contexts still resolve
+  to "no preference". Every shared-UI caller gains iOS Reduce Motion.
+  Verified: module_app_ui tool, message list, bubble and image viewer tests
+  (110 passed), app routing, onboarding and bridge-offline tests (59 passed),
+  module_prego (330 passed), desktop router (14 passed); analyzers clean.
+- Declined: the reverse fade duration (the framework's
+  `reverseTransitionDuration` returns `transitionDuration`), the
+  replace-driven new-session change (an in-place continuation, now stated in
+  `navigation-transitions.md`), and a 120-character table-row limit that the
+  regression docs do not follow.

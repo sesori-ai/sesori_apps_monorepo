@@ -251,19 +251,27 @@ void main() {
     expect(height(), closed);
   });
 
-  testWidgets("reduced motion opens shell details at once", (tester) async {
-    await tester.pumpWidget(
-      _app(
-        disableAnimations: true,
-        part: _part(status: ToolStatus.completed, command: "pwd", output: "result", error: null),
-      ),
-    );
-    await tester.tap(find.byKey(_toggle));
-    await tester.pump();
-    expect(find.byType(AnimatedSize), findsNothing);
-    expect(tester.getSize(find.byKey(_viewport)).height, 144);
-    expect(tester.takeException(), isNull);
-  });
+  // Android's "Remove animations" arrives through MediaQuery, iOS's "Reduce
+  // Motion" only through the accessibility features.
+  for (final (source, disableAnimations) in [("Remove animations", true), ("Reduce Motion", false)]) {
+    testWidgets("$source opens shell details at once", (tester) async {
+      if (!disableAnimations) {
+        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      }
+      await tester.pumpWidget(
+        _app(
+          disableAnimations: disableAnimations,
+          part: _part(status: ToolStatus.completed, command: "pwd", output: "result", error: null),
+        ),
+      );
+      await tester.tap(find.byKey(_toggle));
+      await tester.pump();
+      expect(find.byType(AnimatedSize), findsNothing);
+      expect(tester.getSize(find.byKey(_viewport)).height, 144);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets("long tool output eases open behind Show more", (tester) async {
     await tester.pumpWidget(
