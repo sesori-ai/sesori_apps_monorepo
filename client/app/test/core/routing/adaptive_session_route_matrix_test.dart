@@ -115,7 +115,7 @@ void main() {
           await _pumpDiffFrames(tester);
 
           expect(find.byKey(const ValueKey("session-diffs-session-1")), findsOneWidget);
-          expect(find.text("File Changes"), findsOneWidget);
+          expect(find.text("File changes"), findsOneWidget);
 
           if (width == 390) {
             expect(find.byKey(const Key("session-split-left-pane")), findsNothing);

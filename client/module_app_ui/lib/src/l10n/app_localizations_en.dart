@@ -146,25 +146,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopBridgeTakenOver => 'Another bridge currently owns this account connection.';
 
   @override
-  String get desktopBridgeTakeOver => 'Take Over';
+  String get desktopBridgeTakeOver => 'Take over';
 
   @override
   String get desktopBridgeLoginRequired => 'Your Sesori account is required before the local bridge can start.';
 
   @override
-  String get desktopBridgeStart => 'Start Bridge';
+  String get desktopBridgeStart => 'Start bridge';
 
   @override
   String get desktopBridgeCrashGiveUp => 'The local bridge stopped after repeated crashes.';
 
   @override
-  String get desktopBridgeOpenLogs => 'Open Logs';
+  String get desktopBridgeOpenLogs => 'Open logs';
 
   @override
   String get desktopLocalBridgeTitle => 'Local bridge';
 
   @override
-  String get desktopBridgeStop => 'Stop Bridge';
+  String get desktopBridgeStop => 'Stop bridge';
 
   @override
   String get desktopBridgeSettings => 'Bridge settings…';
@@ -196,7 +196,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectListLoadingSemantics => 'Loading projects';
 
   @override
-  String get projectListDefaultName => 'Default Project';
+  String get projectListDefaultName => 'Default project';
 
   @override
   String get projectListRefreshSuccess => 'Projects updated';
@@ -317,7 +317,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsDesktopStartBridgeInfo => 'Start the local bridge to load your projects and sessions in Sesori.';
 
   @override
-  String get connectionLostTitle => 'Connection Lost';
+  String get connectionLostTitle => 'Connection lost';
 
   @override
   String get connectionLostReconnect => 'Reconnect';
@@ -337,7 +337,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsLogout => 'Log Out';
+  String get settingsLogout => 'Log out';
 
   @override
   String get settingsSectionAccount => 'Account';
@@ -747,7 +747,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessAuthenticationPastedCodeNotConfirmed => 'The code could not be confirmed. Submit it again.';
 
   @override
-  String get harnessesRegisteredSection => 'Registered Harnesses';
+  String get harnessesRegisteredSection => 'Registered harnesses';
 
   @override
   String get harnessesEmptyTitle => 'No harnesses registered';
@@ -872,7 +872,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionAnalytics => 'Analytics';
 
   @override
-  String get settingsBasicUsageAnalyticsTitle => 'Basic Usage Analytics';
+  String get settingsBasicUsageAnalyticsTitle => 'Basic usage analytics';
 
   @override
   String get settingsBasicUsageAnalyticsDescription => 'Share basic feature usage — never your code or messages.';
@@ -938,10 +938,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionLegal => 'Legal';
 
   @override
-  String get settingsLegalTerms => 'Terms of Service';
+  String get settingsLegalTerms => 'Terms of service';
 
   @override
-  String get settingsLegalPrivacy => 'Privacy Policy';
+  String get settingsLegalPrivacy => 'Privacy policy';
 
   @override
   String get legalDocumentRetry => 'Retry';
@@ -958,7 +958,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get notificationSectionAi => 'AI Notifications';
+  String get notificationSectionAi => 'AI notifications';
 
   @override
   String get notificationSectionSystem => 'System';
@@ -982,26 +982,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationPreferenceUpdating => 'Updating notification preference';
 
   @override
-  String get notificationCategoryAiInteraction => 'AI Interactions';
+  String get notificationCategoryAiInteraction => 'AI interactions';
 
   @override
   String get notificationCategoryAiInteractionDescription =>
       'Questions and permission requests from active AI sessions';
 
   @override
-  String get notificationCategorySessionMessage => 'Session Messages';
+  String get notificationCategorySessionMessage => 'Session messages';
 
   @override
   String get notificationCategorySessionMessageDescription => 'New assistant messages from running sessions';
 
   @override
-  String get notificationCategoryConnectionStatus => 'Connection Status';
+  String get notificationCategoryConnectionStatus => 'Connection status';
 
   @override
   String get notificationCategoryConnectionStatusDescription => 'Bridge online and offline status changes';
 
   @override
-  String get notificationCategorySystemUpdate => 'System Updates';
+  String get notificationCategorySystemUpdate => 'System updates';
 
   @override
   String get sessionListTitle => 'Sessions';
@@ -1527,7 +1527,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginWithGoogle => 'Sign in with Google';
 
   @override
-  String get signInWithEmail => 'Sign in with Email';
+  String get signInWithEmail => 'Sign in with email';
 
   @override
   String get emailLabel => 'Email';
@@ -1649,7 +1649,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceRecordingLimitReached => 'Recording limit reached (15 minutes)';
 
   @override
-  String get addProject => 'Add Project';
+  String get addProject => 'Add project';
 
   @override
   String get addAsNewProject => 'Add as new project';
@@ -1703,7 +1703,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectHideFailed => 'Failed to hide project';
 
   @override
-  String get hideProject => 'Hide Project';
+  String get hideProject => 'Hide project';
 
   @override
   String get hide => 'Hide';
@@ -1725,7 +1725,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sesori will commit all non-ignored files to enable history and parallel sessions with dedicated worktrees.';
 
   @override
-  String get addProjectContinueWithoutGit => 'Continue Without Git';
+  String get addProjectContinueWithoutGit => 'Continue without Git';
 
   @override
   String get addProjectEnableGit => 'Enable Git';
@@ -1779,10 +1779,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rename => 'Rename';
 
   @override
-  String get renameSessionTitle => 'Rename Session';
+  String get renameSessionTitle => 'Rename session';
 
   @override
-  String get renameProjectTitle => 'Rename Project';
+  String get renameProjectTitle => 'Rename project';
 
   @override
   String get renameSessionHint => 'Session title';
@@ -1928,7 +1928,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Harness status could not be refreshed. The last known status is shown.';
 
   @override
-  String get sessionDetailOpenHarnessSettings => 'Open Harness Settings';
+  String get sessionDetailOpenHarnessSettings => 'Open harness settings';
 
   @override
   String get sessionListArchiveConfirmAction => 'Archive';
@@ -1940,7 +1940,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListForceMessage => 'The following issues were found:';
 
   @override
-  String get sessionListForceDeleteAction => 'Force Delete';
+  String get sessionListForceDeleteAction => 'Force delete';
 
   @override
   String get sessionListCleanupIssueUnstagedChanges => 'Worktree has unstaged changes';
@@ -2010,7 +2010,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diffPermissionAlwaysAllow => 'Always approve';
 
   @override
-  String get diffFileChangesTitle => 'File Changes';
+  String get diffFileChangesTitle => 'File changes';
 
   @override
   String diffFilesChangedCount(int count) {

@@ -760,7 +760,7 @@ void main() {
     await tester.tap(find.text("Sesori Desktop"), buttons: kSecondaryMouseButton);
     await tester.pumpAndSettle();
     expect(find.text("Rename"), findsOneWidget);
-    expect(find.text("Hide Project"), findsOneWidget);
+    expect(find.text("Hide project"), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -1577,7 +1577,7 @@ void main() {
     expect(find.text(message), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
     verifyNever(bridgeControlCubit.startBridge);
-    expect(find.text("Open Logs"), findsNothing);
+    expect(find.text("Open logs"), findsNothing);
     await tester.ensureVisible(find.text("Retry"));
     await tester.tap(find.text("Retry"));
     verify(bridgeControlCubit.startBridge).called(1);
@@ -1599,7 +1599,7 @@ void main() {
     );
     expect(find.text("The local bridge stopped after repeated crashes."), findsOneWidget);
     await tester.tap(find.text("Retry"));
-    await tester.tap(find.text("Open Logs"));
+    await tester.tap(find.text("Open logs"));
     verify(bridgeControlCubit.recoverConnection).called(1);
     verify(bridgeControlCubit.openLogs).called(1);
   });
@@ -1607,7 +1607,7 @@ void main() {
   testWidgets("offers takeover from the integrated supervision surface", (tester) async {
     when(bridgeControlCubit.takeOver).thenAnswer((_) async {});
     await tester.pumpWidget(app(state: _state(processState: const BridgeProcessContention())));
-    await tester.tap(find.text("Take Over"));
+    await tester.tap(find.text("Take over"));
     verify(bridgeControlCubit.takeOver).called(1);
   });
 
@@ -1621,9 +1621,9 @@ void main() {
         ),
       ),
     );
-    expect(find.text("Take Over"), findsOneWidget);
-    expect(find.text("Start Bridge"), findsNothing);
-    await tester.tap(find.text("Take Over"));
+    expect(find.text("Take over"), findsOneWidget);
+    expect(find.text("Start bridge"), findsNothing);
+    await tester.tap(find.text("Take over"));
     verify(bridgeControlCubit.takeOver).called(1);
   });
 
@@ -1632,7 +1632,7 @@ void main() {
     await tester.pumpWidget(app(state: _state(processState: const BridgeProcessLoginRequired())));
     expect(find.textContaining("account is required"), findsOneWidget);
     expect(find.textContaining("install"), findsNothing);
-    await tester.tap(find.text("Start Bridge"));
+    await tester.tap(find.text("Start bridge"));
     verify(bridgeControlCubit.recoverConnection).called(1);
   });
 }

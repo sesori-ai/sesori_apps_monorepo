@@ -61,13 +61,13 @@ void main() {
       // The diffs screen is now a PregoGlassScaffold: its bar is a GlassAppBar
       // (not a Material AppBar) and its back affordance is the glass bar button
       // (chevron_left), not a stock BackButton. A pushed page, so its single
-      // "File Changes" is the bar's inline title rather than a large title.
+      // "File changes" is the bar's inline title rather than a large title.
       final rightPane = find.byKey(const Key("session-split-right-pane"));
       final bar = find.descendant(of: rightPane, matching: find.byType(GlassAppBar));
       expect(bar, findsOneWidget);
       expect(find.descendant(of: rightPane, matching: find.byIcon(TablerRegular.chevron_left)), findsOneWidget);
-      expect(find.descendant(of: rightPane, matching: find.text("File Changes")), findsOneWidget);
-      expect(find.descendant(of: bar, matching: find.text("File Changes")), findsOneWidget);
+      expect(find.descendant(of: rightPane, matching: find.text("File changes")), findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text("File changes")), findsOneWidget);
     });
   });
 }

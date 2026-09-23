@@ -59,7 +59,7 @@ void main() {
 
     await pumpBanner(tester: tester, cubit: cubit);
 
-    expect(find.text("Connection Lost"), findsOneWidget);
+    expect(find.text("Connection lost"), findsOneWidget);
     expect(find.text("Reconnect"), findsOneWidget);
     await tester.tap(find.text("Reconnect"));
     expect(cubit.reconnectCalls, 1);

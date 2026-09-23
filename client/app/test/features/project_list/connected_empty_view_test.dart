@@ -156,6 +156,6 @@ void main() {
 
     expect(find.byType(AddProjectDialog), findsOneWidget);
     expect(find.text("This directory is empty"), findsOneWidget);
-    expect(find.text("Add Project"), findsNothing);
+    expect(find.text("Add project"), findsNothing);
   });
 }

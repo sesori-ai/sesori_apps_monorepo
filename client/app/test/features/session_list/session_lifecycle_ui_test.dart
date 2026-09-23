@@ -560,7 +560,7 @@ void main() {
         find.text("Worktree is on branch 'feature/xyz' instead of expected 'main'"),
         findsOneWidget,
       );
-      expect(find.text("Force Delete"), findsOneWidget);
+      expect(find.text("Force delete"), findsOneWidget);
       expect(find.text("Cancel"), findsOneWidget);
     });
   });

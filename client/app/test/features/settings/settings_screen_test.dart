@@ -231,7 +231,7 @@ void main() {
     await tester.tap(find.text("Profile"));
     await tester.pumpAndSettle();
 
-    expect(find.text("Basic Usage Analytics"), findsOneWidget);
+    expect(find.text("Basic usage analytics"), findsOneWidget);
   });
 
   testWidgets("Harnesses precedes Notifications and navigates without changing other sections", (tester) async {
@@ -690,7 +690,7 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Privacy Policy"));
+    await tester.tap(find.text("Privacy policy"));
     await tester.pumpAndSettle();
 
     verify(() => legalRepository.getMarkdown(document: LegalDocument.privacy)).called(1);
@@ -711,7 +711,7 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Terms of Service"));
+    await tester.tap(find.text("Terms of service"));
     await tester.pumpAndSettle();
 
     expect(find.text("Connection failed — check your network and try again."), findsOneWidget);
@@ -743,12 +743,12 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.text("Basic Usage Analytics"), findsNothing);
+    expect(find.text("Basic usage analytics"), findsNothing);
 
     await tester.tap(find.text("Profile"));
     await tester.pumpAndSettle();
 
-    expect(find.text("Basic Usage Analytics"), findsOneWidget);
+    expect(find.text("Basic usage analytics"), findsOneWidget);
     expect(
       find.text("Share basic feature usage — never your code or messages."),
       findsOneWidget,
@@ -756,7 +756,7 @@ void main() {
     expect(find.textContaining("automatic installation events"), findsNothing);
     expect(find.textContaining("retention"), findsNothing);
 
-    await tester.tap(find.text("Basic Usage Analytics"));
+    await tester.tap(find.text("Basic usage analytics"));
     await tester.pump();
 
     verify(
@@ -837,11 +837,11 @@ void main() {
 
     await tester.tap(find.text("Profile"));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("Log Out"));
+    await tester.tap(find.text("Log out"));
     await tester.pump();
 
     expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNull);
-    await tester.tap(find.text("Basic Usage Analytics"));
+    await tester.tap(find.text("Basic usage analytics"));
     await tester.pump();
     verifyNever(
       () => productAnalyticsService.setPreference(preference: any(named: "preference")),
@@ -871,7 +871,7 @@ void main() {
     await tester.tap(find.text("Profile"));
     await tester.pumpAndSettle();
 
-    expect(find.text("Basic Usage Analytics"), findsOneWidget);
+    expect(find.text("Basic usage analytics"), findsOneWidget);
     expect(find.textContaining("unavailable for this app run"), findsNothing);
   });
 }
