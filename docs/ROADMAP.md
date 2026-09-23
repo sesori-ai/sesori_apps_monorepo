@@ -46,6 +46,9 @@
   Its visual follow-up (Activity that only lists sessions in motion, a floating sidebar panel, a unified
   macOS title bar, pointer-sized pages and menus) is recorded in `.plan/completed/desktop-ui-polish/PLAN.md`.
   Its 2026-09-22 retirement accepts unexecuted live, device and Windows/Linux visual checks.
+  The cross-surface hierarchy series after it (one title ladder, readable greys, one meaning per colour,
+  a grouped live transcript, phone search and a desktop command palette) is planned in
+  `.plan/active/visual-hierarchy/PLAN.md`.
 - **Later consideration (recorded, not planned):** a loopback local data path
   for the desktop cockpit. The cockpit reuses the relay like the phone; a
   bridge-hosted loopback data transport (the `--debug-port` `DebugServer` is
