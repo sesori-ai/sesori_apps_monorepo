@@ -96,6 +96,7 @@ class const DesktopBridgeRecoveryView({
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // An illustration, not a glyph: no icon token applies.
               Icon(
                 TablerRegular.device_laptop,
                 size: 48,
@@ -155,6 +156,7 @@ class const _DesktopHomeEmptyView({
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // An illustration, not a glyph: no icon token applies.
               Icon(
                 hasProjects ? TablerRegular.layout_sidebar_left_expand : TablerRegular.folder,
                 size: 48,

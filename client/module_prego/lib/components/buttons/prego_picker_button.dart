@@ -63,7 +63,7 @@ class const PregoPickerButton({
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    Icon(leadingIcon, size: 14, color: foreground),
+                    Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
                     const SizedBox(width: 6),
                     Expanded(
                       child: PregoStartEllipsisText(
@@ -72,7 +72,7 @@ class const PregoPickerButton({
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Icon(Icons.unfold_more, size: 14, color: foreground),
+                    Icon(Icons.unfold_more, size: PregoIconSize.sm, color: foreground),
                   ],
                 ),
               ),

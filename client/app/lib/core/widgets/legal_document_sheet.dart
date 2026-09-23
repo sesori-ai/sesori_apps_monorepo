@@ -78,6 +78,7 @@ class const _FailureView({required final RemoteFailureReason reason}) extends St
         child: Column(
           mainAxisSize: .min,
           children: [
+            // An illustration, not a glyph: no icon token applies.
             Icon(
               TablerRegular.alert_circle,
               size: 32,

@@ -141,7 +141,7 @@ class const _HarnessTrigger({
                   ),
                 ),
                 SizedBox(width: prego.spacing.sm),
-                Icon(TablerRegular.selector, size: 16, color: prego.colors.textPrimary),
+                Icon(TablerRegular.selector, size: PregoIconSize.sm, color: prego.colors.textPrimary),
               ],
             ),
           ),
@@ -180,7 +180,7 @@ class const _HarnessesMenuHeader({required final double height, required final V
               onPressed: onSettingsPressed,
               icon: Icon(
                 TablerRegular.adjustments_horizontal,
-                size: 20,
+                size: PregoIconSize.md,
                 color: prego.colors.textTertiary,
                 semanticLabel: loc.newSessionHarnessSettings,
               ),

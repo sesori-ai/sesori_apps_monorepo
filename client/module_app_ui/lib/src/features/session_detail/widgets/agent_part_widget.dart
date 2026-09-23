@@ -16,7 +16,7 @@ class const AgentPartWidget({super.key, required final String agentName}) extend
         children: [
           Icon(
             Icons.smart_toy_outlined,
-            size: 14,
+            size: PregoIconSize.sm,
             color: prego.colors.textSecondary,
           ),
           const SizedBox(width: 6),

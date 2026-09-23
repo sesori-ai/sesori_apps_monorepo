@@ -368,7 +368,7 @@ class const _HarnessInstallation({
             LinearProgressIndicator(
               value: _downloadFraction(progress: progress),
               minHeight: 6,
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(PregoRadius.xs),
               color: context.prego.colors.fgBrandPrimary,
               backgroundColor: context.prego.colors.bgSurface1,
             ),

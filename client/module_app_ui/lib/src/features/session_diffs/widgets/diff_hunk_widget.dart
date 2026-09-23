@@ -1,20 +1,16 @@
 import "package:material_ui/material_ui.dart";
 
-import "../../../extensions/text_style_x.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../models/diff_file_view_model.dart";
 import "../utils/diff_theme.dart";
 
 /// Renders a diff hunk header showing the @@ range.
 class const DiffHunkWidget({super.key, required final DiffHunkViewModel viewModel}) extends StatelessWidget {
-  static final _headerTextStyle = const TextStyle(
-    fontSize: 12,
-    height: 1.4,
-  ).monospace;
-
   @override
   Widget build(BuildContext context) {
     final theme = DiffTheme.of(context);
+    final headerTextStyle = context.prego.textTheme.code;
 
     return SelectionContainer.disabled(
       child: Container(
@@ -28,7 +24,7 @@ class const DiffHunkWidget({super.key, required final DiffHunkViewModel viewMode
         ),
         child: Text(
           viewModel.hunk.header,
-          style: _headerTextStyle.copyWith(color: theme.hunkHeaderText),
+          style: headerTextStyle.copyWith(color: theme.hunkHeaderText),
         ),
       ),
     );

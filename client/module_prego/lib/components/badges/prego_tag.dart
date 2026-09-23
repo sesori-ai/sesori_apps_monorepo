@@ -35,7 +35,7 @@ class const PregoTag({
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 14, color: prego.colors.textTertiary),
+              Icon(icon, size: PregoIconSize.sm, color: prego.colors.textTertiary),
               const SizedBox(width: PregoSpacing.xs),
             ],
             Text(

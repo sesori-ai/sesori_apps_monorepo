@@ -437,7 +437,7 @@ Widget _retryButton({required BuildContext context}) => IconButton.filled(
     backgroundColor: context.prego.colors.bgSurface1.withValues(alpha: 0.88),
     foregroundColor: context.prego.colors.textPrimary,
   ),
-  icon: const Icon(Icons.refresh, size: 20),
+  icon: const Icon(Icons.refresh, size: PregoIconSize.md),
 );
 
 class const _ImageDecodeFailure() extends StatelessWidget {

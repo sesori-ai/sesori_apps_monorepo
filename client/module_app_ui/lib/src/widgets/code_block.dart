@@ -3,7 +3,6 @@ import "package:markdown/markdown.dart" as md;
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../extensions/text_style_x.dart";
 import "../utils/code_highlighter.dart";
 import "../utils/copy_text_to_clipboard.dart";
 
@@ -98,9 +97,7 @@ class _CodeBlockState() extends State<CodeBlock> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final brightness = Theme.of(context).brightness;
-    final baseStyle = const TextStyle(fontSize: 13, height: 1.4).monospace.copyWith(
-      color: prego.colors.textPrimary,
-    );
+    final baseStyle = prego.textTheme.code.copyWith(color: prego.colors.textPrimary);
     final span = _spanFor(brightness: brightness, baseStyle: baseStyle);
     final language = widget.language;
 
@@ -110,7 +107,7 @@ class _CodeBlockState() extends State<CodeBlock> {
         clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
           color: prego.colors.bgQuaternary,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(PregoRadius.md),
           border: Border.all(color: prego.colors.borderSecondary),
         ),
         child: Column(

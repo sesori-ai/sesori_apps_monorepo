@@ -229,13 +229,13 @@ class const _InfoLabel({
     return Row(
       mainAxisAlignment: centered ? MainAxisAlignment.center : MainAxisAlignment.start,
       children: [
-        // The info icon's 40px tap target holds its 12px glyph against its
-        // start, leaving 24px of dead space at the end. An equal gap in front
+        // The info icon's 40px tap target holds its 14px glyph 4px from its
+        // start, leaving 22px of dead space at the end. An equal gap in front
         // centres what the user actually sees rather than the hit box — and
         // keeps it centred once the title grows wide enough to claim the whole
         // row, where the spacer becomes the leading margin matching the glyph's
         // trailing one.
-        if (centered) const SizedBox(width: 24),
+        if (centered) const SizedBox(width: 22),
         Flexible(
           child: Text(
             title,
@@ -260,7 +260,7 @@ class const _InfoLabel({
               behavior: HitTestBehavior.opaque,
               onTap: toggle,
               // 40×40 hit area keeps the tap target comfortably above the
-              // touch-target minimum while the 12px glyph stays visually snug
+              // touch-target minimum while the 14px glyph stays visually snug
               // against the step title via the small leading inset.
               child: SizedBox(
                 width: 40,
@@ -269,7 +269,7 @@ class const _InfoLabel({
                   alignment: AlignmentDirectional.centerStart,
                   child: Padding(
                     padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                    child: Icon(TablerRegular.info_circle, size: 12, color: prego.colors.textSecondary),
+                    child: Icon(TablerRegular.info_circle, size: PregoIconSize.sm, color: prego.colors.textSecondary),
                   ),
                 ),
               ),
@@ -792,7 +792,7 @@ class _CommandActionRowState() extends State<_CommandActionRow> {
     final prego = context.prego;
     final colors = prego.colors;
     final loc = context.loc;
-    final mono = prego.textTheme.textXs.regular.copyWith(color: colors.textSecondary).monospace;
+    final mono = prego.textTheme.code.copyWith(color: colors.textSecondary);
 
     return Container(
       width: double.infinity,
@@ -875,7 +875,7 @@ class const _CommandIconButton({
             width: 40,
             height: 44,
             child: Center(
-              child: Icon(icon, size: 18, color: colors.textSecondary),
+              child: Icon(icon, size: PregoIconSize.md, color: colors.textSecondary),
             ),
           ),
         ),

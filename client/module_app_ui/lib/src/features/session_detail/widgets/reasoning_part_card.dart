@@ -89,7 +89,7 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
         child: Container(
           decoration: BoxDecoration(
             color: prego.colors.bgSecondary,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(PregoRadius.md),
             border: Border.all(color: prego.colors.borderSecondary),
           ),
           child: Column(
@@ -105,7 +105,7 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
                   children: [
                     Icon(
                       Icons.psychology,
-                      size: 18,
+                      size: PregoIconSize.md,
                       color: prego.colors.textSecondary,
                     ),
                     const SizedBox(width: 8),
@@ -120,7 +120,7 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
                     ),
                     Icon(
                       Icons.unfold_more,
-                      size: 16,
+                      size: PregoIconSize.sm,
                       color: prego.colors.textSecondary,
                     ),
                   ],

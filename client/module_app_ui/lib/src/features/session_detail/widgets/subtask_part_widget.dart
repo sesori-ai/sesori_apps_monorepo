@@ -36,9 +36,9 @@ class const SubtaskPartWidget({
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Material(
         color: prego.colors.bgSecondary,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(PregoRadius.md),
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(PregoRadius.md),
           onTap: targetSessionId != null && targetProjectId != null
               ? () => SessionDetailPresentationScope.read(context).openSession(
                   projectId: targetProjectId,
@@ -49,7 +49,7 @@ class const SubtaskPartWidget({
               : null,
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(PregoRadius.md),
               border: Border.all(color: prego.colors.borderSecondary),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -94,7 +94,7 @@ class const SubtaskPartWidget({
                 if (targetSessionId != null && targetProjectId != null)
                   Icon(
                     Icons.chevron_right,
-                    size: 20,
+                    size: PregoIconSize.md,
                     color: prego.colors.textSecondary,
                   ),
               ],
@@ -113,14 +113,14 @@ class const SubtaskPartWidget({
     ),
     ToolStatus.completed => Icon(
       Icons.check_circle,
-      size: 16,
+      size: PregoIconSize.sm,
       color: prego.colors.bgBrandSolid,
     ),
-    ToolStatus.error => Icon(Icons.error, size: 16, color: prego.colors.fgErrorPrimary),
-    ToolStatus.cancelled => Icon(Icons.cancel, size: 16, color: prego.colors.textSecondary),
+    ToolStatus.error => Icon(Icons.error, size: PregoIconSize.sm, color: prego.colors.fgErrorPrimary),
+    ToolStatus.cancelled => Icon(Icons.cancel, size: PregoIconSize.sm, color: prego.colors.textSecondary),
     ToolStatus.unknown => Icon(
       Icons.play_circle_outline,
-      size: 16,
+      size: PregoIconSize.sm,
       color: prego.colors.borderPrimary,
     ),
   };
@@ -142,12 +142,12 @@ class const SubtaskPartWidget({
     ),
     SessionStatusIdle() => Icon(
       Icons.check_circle,
-      size: 16,
+      size: PregoIconSize.sm,
       color: prego.colors.bgBrandSolid,
     ),
     null => Icon(
       Icons.play_circle_outline,
-      size: 16,
+      size: PregoIconSize.sm,
       color: prego.colors.borderPrimary,
     ),
   };

@@ -202,7 +202,7 @@ class const _PasswordVisibilityToggle({
       child: GestureDetector(
         onTap: onPressed,
         // Fill the field's trailing slot so the whole minimum-size touch target
-        // is tappable, not just the 16pt glyph.
+        // is tappable, not just the 14pt glyph.
         behavior: HitTestBehavior.opaque,
         child: SizedBox(
           width: PregoInputField.trailingSlotSize,
@@ -210,7 +210,7 @@ class const _PasswordVisibilityToggle({
           child: Center(
             child: Icon(
               isObscured ? TablerRegular.eye_off : TablerRegular.eye,
-              size: 16,
+              size: PregoIconSize.sm,
               color: context.prego.colors.fgQuaternary,
             ),
           ),

@@ -124,7 +124,7 @@ class const _AccordionIconButton({
         onTap: onTap,
         borderRadius: BorderRadius.circular(PregoRadius.full),
         containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
-        child: Icon(icon, size: 18, color: prego.colors.textPrimary),
+        child: Icon(icon, size: PregoIconSize.md, color: prego.colors.textPrimary),
       ),
     );
   }

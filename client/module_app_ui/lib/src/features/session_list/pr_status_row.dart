@@ -63,7 +63,7 @@ class const PrStatusRow({super.key, required final PullRequestInfo pr}) extends 
             const SizedBox(width: 8),
             Tooltip(
               message: tooltip,
-              child: Icon(icon, size: 12, color: color),
+              child: Icon(icon, size: PregoIconSize.sm, color: color),
             ),
           ],
           if (_checkIndicator(colors: context.prego.colors, loc: loc, status: pr.checkStatus)
@@ -71,7 +71,7 @@ class const PrStatusRow({super.key, required final PullRequestInfo pr}) extends 
             const SizedBox(width: 4),
             Tooltip(
               message: tooltip,
-              child: Icon(icon, size: 12, color: color),
+              child: Icon(icon, size: PregoIconSize.sm, color: color),
             ),
           ],
         ],

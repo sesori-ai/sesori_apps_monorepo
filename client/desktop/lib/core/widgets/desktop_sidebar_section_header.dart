@@ -64,7 +64,7 @@ class const DesktopSidebarSectionHeader({
                                         const SizedBox(width: PregoSpacing.xs),
                                         Icon(
                                           collapsed ? TablerRegular.chevron_right : TablerRegular.chevron_down,
-                                          size: 14,
+                                          size: PregoIconSize.sm,
                                           color: color,
                                         ),
                                       ],

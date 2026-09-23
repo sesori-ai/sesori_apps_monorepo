@@ -377,7 +377,7 @@ class const SessionTile({
           key: key,
           tooltip: tooltip,
           onPressed: onTap,
-          icon: Icon(icon, size: 16),
+          icon: Icon(icon, size: PregoIconSize.md),
           // Inside the title's line box, so revealing them never moves the row.
           style: IconButton.styleFrom(
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,

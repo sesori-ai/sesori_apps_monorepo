@@ -21,6 +21,7 @@ class const RemoteFailureView({
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // An illustration, not a glyph: no icon token applies.
             Icon(Icons.error_outline, size: 48, color: prego.colors.fgErrorPrimary),
             const SizedBox(height: 16),
             Text(title, style: prego.textTheme.textMd.bold),
