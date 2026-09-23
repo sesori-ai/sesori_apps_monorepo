@@ -36,7 +36,8 @@ reaches the backend so the turn continues.
   must never appear as ordinary plain-text input.
 - Allow once, allow always, and reject each reach the backend with the meaning
   the user chose. Once is never escalated to a broader grant.
-- Permission dialogs use the shared floating Prego action sheet in both themes:
+- Permission dialogs use the shared Prego action sheet in both themes, floating
+  on phone and a centred dialog on desktop, as the question form is:
   a generic action heading, the complete backend tool label and selectable,
   copyable Markdown description, then full-width stacked **Allow**, optional
   **Always approve**, and **Don’t allow** actions. **Allow** means once only.
@@ -44,7 +45,7 @@ reaches the backend so the turn continues.
   cramped relative to the text scale, the whole sheet scrolls so every decision
   remains reachable; enlarged text can cause this breakpoint to be crossed.
   Keyboard and safe-area insets keep the floating surface clear of system UI.
-  Scrim/swipe dismissal leaves the request pending; external settlement closes
+  Scrim, swipe, or Escape dismissal leaves the request pending; external settlement closes
   it without a reply.
 - A plugin advertising ACP form elicitation maps supported string, string-enum,
   boolean, and finite string-choice array properties to questions and returns

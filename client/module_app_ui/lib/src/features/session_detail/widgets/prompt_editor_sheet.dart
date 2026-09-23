@@ -24,7 +24,7 @@ class const PromptEditorSheet({
     required Action<PasteTextIntent> pasteAction,
     required EditableTextContextMenuBuilder contextMenuBuilder,
   }) {
-    return showPregoBottomSheet<void>(
+    return showPregoModal<void>(
       context: context,
       title: context.loc.sessionDetailEditorTitle,
       bodySize: PregoBottomSheetBodySize.full,

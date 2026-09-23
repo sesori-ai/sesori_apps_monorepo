@@ -36,7 +36,7 @@ Future<void> showEmailLoginSheet({
   // is up only the email form can fail, so the inline alert only ever reflects
   // an email attempt.
   cubit.onDismissedLoginFailureError();
-  await showPregoBottomSheet<void>(
+  await showPregoModal<void>(
     context: context,
     title: context.loc.signInWithEmail,
     builder: (_) => BlocProvider<LoginCubit>.value(

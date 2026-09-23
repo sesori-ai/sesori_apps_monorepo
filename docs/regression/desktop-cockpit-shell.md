@@ -238,7 +238,7 @@ The main pane hosts one full-width routed page.
   A title-only line's natural height fits the toolbar without vertical clipping.
   Longer tab labels wrap while the tab rail itself scrolls.
   Escape/outside dismiss;
-  active text editing and owned sheets retain their closer dismissal order.
+  active text editing and owned dialogs retain their closer dismissal order.
 - General contains appearance, launch-at-login, desktop app-update guidance and support/legal information.
   Desktop's composer is text-only, so General does not advertise an ineffective Voice/Text preference.
   Bridge distinguishes connected-bridge configuration from local
@@ -246,7 +246,7 @@ The main pane hosts one full-width routed page.
   Account owns supervised logout; failed logout stays open, and delayed success
   cannot pop the opener. External auth rejection also dismisses the root modal.
 - One harness controller spans its modal overview/detail navigator. Back stays
-  inside that flow; Close removes its sheets without cancelling upstream auth.
+  inside that flow; Close removes its dialogs without cancelling upstream auth.
   Only harness detail has Back; Account's title and Close do not duplicate it.
   Modal blur/dim respects Prego accessibility/quality policy; macOS uses dim
   rather than sampling native indicators. Reduced motion removes the fade.
@@ -277,7 +277,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Project/no-project keyboard entry, nullable route-name propagation, platform modifiers, held-key repeat suppression,
   text-field/popup precedence, layout persistence, narrow-window no-op and truthful per-project hints.
 - Modal tab/entry selection, keyboard entry, route/element/draft preservation, nested Back/Close,
-  text-edit/sheet Escape order, logout failure/late completion/auth rejection, every tab and Close at minimum size
+  text-edit/dialog Escape order, logout failure/late completion/auth rejection, every tab and Close at minimum size
   with 100%/200%/250% text. Use packaged fonts for geometry checks; preserve the requested text scaler.
 - Root-popup activity visibility across nested navigators; notification popup dismissal,
   same-page/Back preservation, different-session replacement, readiness and logged-failure ordering.

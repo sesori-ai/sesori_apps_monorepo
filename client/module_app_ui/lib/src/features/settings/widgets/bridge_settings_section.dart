@@ -285,7 +285,7 @@ Future<void> _editInterval({
   required BridgeSettingsReady state,
 }) async {
   final cubit = context.read<BridgeSettingsCubit>();
-  final result = await showPregoBottomSheet<String>(
+  final result = await showPregoModal<String>(
     context: context,
     title: context.loc.settingsPullRequestRefreshDialogTitle,
     builder: (_) => _RefreshIntervalSheet(

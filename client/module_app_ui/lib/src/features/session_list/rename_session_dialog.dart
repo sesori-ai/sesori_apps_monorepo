@@ -11,7 +11,7 @@ Future<void> showRenameSessionDialog({
   required Session session,
   required SessionListCubit cubit,
 }) {
-  return showPregoBottomSheet<void>(
+  return showPregoModal<void>(
     context: context,
     title: context.loc.renameSessionTitle,
     builder: (_) {

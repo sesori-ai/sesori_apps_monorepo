@@ -2,7 +2,9 @@ import "dart:math" as math;
 
 import "package:material_ui/material_ui.dart";
 
+import "../../interactions/prego_interaction_scope.dart";
 import "../../theme/prego_theme.dart";
+import "prego_modal.dart";
 
 /// A floating, content-sized sheet for a short decision flow.
 ///
@@ -10,6 +12,10 @@ import "../../theme/prego_theme.dart";
 /// The caller owns route presentation and dismissal. Long content scrolls above
 /// the action slot, keeping the decision controls visible. Compact viewports and
 /// enlarged text use one scrollable flow so fixed actions cannot overflow.
+///
+/// Under a pointer [PregoInteractionScope] it is a [PregoModalWidth.request]
+/// dialog instead, whose close button pops its route; present it with
+/// [showPregoModalRoute].
 class const PregoActionSheet({
   super.key,
   required final String title,
@@ -22,6 +28,30 @@ class const PregoActionSheet({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    if (PregoInteractionScope.of(context) == PregoInteractionMode.pointer) {
+      return PregoModalSurface(
+        title: title,
+        subtitle: null,
+        onBack: null,
+        // ignore: no_slop_linter/avoid_navigator_of, design module has no go_router dep; the caller's route owns this sheet
+        onClose: () => Navigator.maybePop(context),
+        width: PregoModalWidth.request,
+        handleBottomSafeArea: true,
+        topInset: topInset,
+        child: Padding(
+          padding: EdgeInsetsDirectional.fromSTEB(prego.spacing.xl, 0, prego.spacing.xl, prego.spacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(child: SingleChildScrollView(child: child)),
+              SizedBox(height: prego.spacing.xl),
+              actions,
+            ],
+          ),
+        ),
+      );
+    }
     final media = MediaQuery.of(context);
     final bottomInset = media.viewInsets.bottom > 0 ? media.viewInsets.bottom : media.padding.bottom;
     final outerBottom = math.max(bottomInset, prego.spacing.xl);

@@ -44,11 +44,12 @@ class const ReasoningModal({
   required final double topInset,
   required final ExternalLinkOpener openExternalLink,
 }) extends StatefulWidget {
-  /// Opens the reasoning modal as a bottom sheet, forwarding the presenting
-  /// context's [SessionDetailCubit] into the sheet's own route.
+  /// Opens the reasoning modal as a bottom sheet on touch, or a dialog on
+  /// pointer, forwarding the presenting context's [SessionDetailCubit] into
+  /// the modal's own route.
   ///
-  /// Presents a [PregoBottomSheet] directly (not via [showPregoBottomSheet])
-  /// because the sheet title tracks the live streaming state.
+  /// Presents a [PregoModalSurface] (not via [showPregoModal]) because the
+  /// title tracks the live streaming state.
   static Future<void> show(
     BuildContext context, {
     required String partId,
@@ -58,13 +59,8 @@ class const ReasoningModal({
     final cubit = context.read<SessionDetailCubit>();
     // Capture before presenting: inside the route the top inset reads as 0.
     final topInset = MediaQuery.paddingOf(context).top;
-    return showModalBottomSheet<void>(
+    return showPregoModalRoute<void>(
       context: context,
-      isScrollControlled: true,
-      // PregoBottomSheet paints the rounded surface; keep the route
-      // transparent. The sheet caps itself below the status bar.
-      backgroundColor: Colors.transparent,
-      useSafeArea: false,
       builder: (_) => BlocProvider.value(
         value: cubit,
         child: ReasoningModal(
@@ -129,13 +125,15 @@ class _ReasoningModalState() extends State<ReasoningModal> {
       _follow.scheduleJumpToEdge();
     }
 
-    return PregoBottomSheet(
+    return PregoModalSurface(
       title: data.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
+      subtitle: null,
+      onBack: null,
       topInset: widget.topInset,
       onClose: () => context.pop(),
+      width: PregoModalWidth.reading,
       // Full-bleed body; the list pads itself (including the home-indicator
       // inset, taken as scroll padding rather than a hard bottom edge).
-      contentPadding: EdgeInsetsDirectional.zero,
       handleBottomSafeArea: false,
       child: ConstrainedBox(
         // The body hosts its own scroll view (the follow/detach list needs to

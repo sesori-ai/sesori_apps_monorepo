@@ -28,13 +28,18 @@ desktop main-pane transitions distinct.
   window keep their own motion. The new-session page changes in place without
   a fade, both when it switches project and when its first prompt turns it
   into the session.
+- Modals that rise as bottom sheets on phone open as centred dialogs on
+  desktop and fade in and out: forms, confirmations, agent questions,
+  permission requests, reasoning, and the folder browser. A dialog opened from
+  a dialog stacks on it, and Escape closes only the top one. Reduced motion
+  opens and closes them at once.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated route-table coverage proves every route supplies a standalone page and preserves each custom page type; desktop router coverage proves the 150 ms main-pane fade and the instant reduced-motion switch. |
+| L2 Routine | Automated route-table coverage proves every route supplies a standalone page and preserves each custom page type; desktop router coverage proves the 150 ms main-pane fade and the instant reduced-motion switch; Prego modal coverage proves the phone sheet, the desktop dialog, stacked dialogs closing top first on Escape, and the instant reduced-motion open. |
 | L3 Release | Client end to end on iOS and Android: exercise a standard push/pop, compact session navigation, a settings child, and the settings modal. |
 | L4 Extended | Client end to end on macOS and with reduced motion enabled: repeat the transition matrix and exercise split-view pane fading where the viewport supports it. |
 | L5 Full | No additional coverage. |
@@ -46,6 +51,9 @@ desktop main-pane transitions distinct.
 - A settings child rises as a modal, or the settings modal slides horizontally.
 - Compact and split session layouts use each other's transition.
 - A desktop main-pane page slides, moves the sidebar, or fades under reduced
+  motion.
+- A desktop modal rises as a bottom sheet, a phone modal opens as a dialog,
+  Escape closes more than the top dialog, or a dialog fades under reduced
   motion.
 - Returning from a base compact session detail produces an unmatchable sessions
   URL, especially when a project identifier contains filesystem-path separators,
@@ -60,3 +68,5 @@ desktop main-pane transitions distinct.
 - `client/app/test/features/session_detail/adaptive_session_detail_routing_test.dart`
 - `client/desktop/lib/core/routing/desktop_router.dart`
 - `client/desktop/test/core/routing/desktop_router_test.dart`
+- `client/module_prego/lib/components/surfaces/prego_modal.dart`
+- `client/module_prego/test/components/prego_modal_test.dart`
