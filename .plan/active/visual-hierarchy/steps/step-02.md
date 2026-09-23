@@ -59,3 +59,11 @@ window's own navigator and root dialogs keep their current motion.
   (19 passed), including the panel still present mid-collapse and gone after,
   and both reduced-motion sources opening and closing in one frame;
   `dart analyze --fatal-infos` clean.
+
+## Review round 3
+
+- Fixed: the shell panel's close ran `Curves.easeOut` backwards, so it started
+  slowly and sped up into the end. It now closes on `Curves.easeIn`, which
+  run backwards decelerates like the open. Verified: `tool_part_widget_test.dart`
+  (19 passed), now asserting that both directions are past halfway at half
+  time; `dart analyze --fatal-infos` clean.

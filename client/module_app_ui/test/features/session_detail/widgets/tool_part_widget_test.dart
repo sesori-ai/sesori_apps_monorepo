@@ -245,12 +245,15 @@ void main() {
     final opening = height();
     await tester.pumpAndSettle();
     final open = height();
-    expect(opening, allOf(greaterThan(closed), lessThan(open)));
+    // Halfway through, a decelerating open has covered more than half.
+    final halfway = (closed + open) / 2;
+    expect(opening, allOf(greaterThan(halfway), lessThan(open)));
 
     await tester.tap(find.byKey(_toggle));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
-    expect(height(), allOf(greaterThan(closed), lessThan(open)));
+    // The close decelerates too, so it has also covered more than half.
+    expect(height(), allOf(greaterThan(closed), lessThan(halfway)));
     // The details stay on screen while they close, rather than leaving a
     // blank area to collapse.
     expect(find.byKey(_panel), findsOneWidget);

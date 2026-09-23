@@ -136,7 +136,12 @@ class const _ShellToolPreview({required final String command, required final Too
 
 class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTickerProviderStateMixin {
   late final AnimationController _disclosure = AnimationController(vsync: this, duration: _disclosureDuration);
-  late final CurvedAnimation _panelSize = CurvedAnimation(parent: _disclosure, curve: Curves.easeOut);
+  // Both directions decelerate: easeIn run backwards starts the close fast.
+  late final CurvedAnimation _panelSize = CurvedAnimation(
+    parent: _disclosure,
+    curve: Curves.easeOut,
+    reverseCurve: Curves.easeIn,
+  );
   final _verticalController = ScrollController();
   final _horizontalController = ScrollController();
 
