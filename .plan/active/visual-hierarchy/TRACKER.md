@@ -19,7 +19,7 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 1 | `visual-hierarchy/plan` | [1/38](#pr-titles) | ≤ 1,000 | done |
 | [x] | 2 | `visual-hierarchy/motion` | [2/38](#pr-titles) | ≤ 250 | done |
 | [x] | 3 | `visual-hierarchy/modal-entry` | [3/38](#pr-titles) | ≤ 600 | done |
-| [ ] | 4 | `visual-hierarchy/anchored-pickers` | [4/41](#pr-titles) | ≤ 600 | in-progress |
+| [ ] | 4 | `visual-hierarchy/anchored-pickers-{a,b,c}` | [4/41](#pr-titles) | ≤ 600 each | in-progress |
 | [ ] | 5 | `visual-hierarchy/grey-ramp` | [5/41](#pr-titles) | ≤ 500 | pending |
 | [ ] | 6 | `visual-hierarchy/title-ladder` | [6/41](#pr-titles) | ≤ 600 | pending |
 | [ ] | 7 | `visual-hierarchy/desktop-header` | [7/41](#pr-titles) | ≤ 500 | pending |
@@ -52,7 +52,7 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [ ] | 34 | `visual-hierarchy/changes-count` | [34/41](#pr-titles) | ≤ 800 | pending |
 | [ ] | 35 | `visual-hierarchy/modal-lint` | [35/41](#pr-titles) | ≤ 600 | pending |
 | [ ] | 36 | `visual-hierarchy/compaction-row` | [36/41](#pr-titles) | ≤ 900 | pending |
-| [ ] | 37 | `visual-hierarchy/turn-navigation` | [37/41](#pr-titles) | set after the discussion | blocked on discussion |
+| [ ] | 37 | `visual-hierarchy/turn-navigation` | [37/41](#pr-titles) | later | blocked on discussion |
 | [ ] | 38 | `desktop-sign-in/plan` | [38/41](#pr-titles) | ≤ 600 | blocked on scoping |
 | [ ] | 39 | `visual-hierarchy/header-backdrop` | [39/41](#pr-titles) | set at approval | blocked on approval |
 | [ ] | 40 | `visual-hierarchy/regression-docs` | [40/41](#pr-titles) | ≤ 600 | pending |
@@ -80,7 +80,10 @@ Answered 2026-09-23; every answer took the recommended option.
 1. `🌱 [visual-hierarchy] Plan the cross-surface visual hierarchy series [step 1/38]`
 2. `🌿 [visual-hierarchy] Animate tool details and desktop page changes [step 2/38]`
 3. `⚙️ [visual-hierarchy] Open sheets and dialogs through one modal entry point [step 3/38]`
-4. `⚙️ [visual-hierarchy] Open model and command pickers as anchored popovers [step 4/41]`
+4. Three PRs:
+   - `⚙️ [visual-hierarchy] Let popovers cap their height and follow a moving trigger [step 4.a/41]`
+   - `⚙️ [visual-hierarchy] Open the model picker as an anchored popover [step 4.b/41]`
+   - `⚙️ [visual-hierarchy] Open the command picker as an anchored popover [step 4.c/41]`
 5. `⚙️ [visual-hierarchy] Make tertiary text readable and section headers quieter [step 5/41]`
 6. `⚙️ [visual-hierarchy] Give phone screens one title ladder [step 6/41]`
 7. `⚙️ [visual-hierarchy] Add a breadcrumb header to desktop pages [step 7/41]`

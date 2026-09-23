@@ -724,7 +724,8 @@ time.
 
 ## Delivery Plan
 
-41 PRs, one at a time in order; exact titles and branches are in
+41 steps, one PR at a time in order; step 4 lands as three PRs (4.a–4.c), so
+the series has 43 PRs; exact titles and branches are in
 [TRACKER](TRACKER.md#pr-titles). Targets count additions plus deletions
 across every path.
 
