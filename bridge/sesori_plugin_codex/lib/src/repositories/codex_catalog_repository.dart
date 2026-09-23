@@ -193,7 +193,10 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       );
     }
     final metadata = _parsedRollouts[rolloutPath]?.metadata;
-    if (metadata != null && metadata.id != sessionId) return null;
+    if (metadata != null && metadata.id != sessionId) {
+      Log.w("[codex] rollout session id mismatch: filename=$sessionId header=${metadata.id}");
+      return null;
+    }
     return _toRecord(
       id: sessionId,
       rolloutPath: rolloutPath,
@@ -401,8 +404,9 @@ class const _CodexSessionMetadata({
   required final String? parentId,
 });
 
-/// A parsed rollout header. [shortFileLength] mirrors
-/// [CodexRolloutHeader.shortFileLength]: null means the header is final.
+/// A parsed rollout header. Rollouts are append-only, so a header that filled
+/// its line window is final ([shortFileLength] null); a short one stays valid
+/// only while the file keeps [shortFileLength] bytes.
 class const _ParsedRollout({
   required final _CodexSessionMetadata? metadata,
   required final int? shortFileLength,
@@ -475,7 +479,7 @@ _ParsedRollout? _parseRollout({
             agentPath: agentPath,
             parentId: parentId,
           ),
-    shortFileLength: header.shortFileLength,
+    shortFileLength: header.reachedLineLimit ? null : header.fileLength,
   );
 }
 

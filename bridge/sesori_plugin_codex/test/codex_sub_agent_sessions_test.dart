@@ -883,7 +883,8 @@ class _HeaderRolloutApi() extends CodexRolloutApi {
       ),
     };
     return CodexRolloutHeader(
-      shortFileLength: null,
+      reachedLineLimit: true,
+      fileLength: 1,
       lines: [
         CodexRolloutLineDto.sessionMetadata(timestamp: meta.timestamp, payload: meta),
         if (rolloutPath != _root)

@@ -363,7 +363,8 @@ class _DiagnosticsRolloutApi({required final String rolloutId}) extends CodexRol
 
   @override
   CodexRolloutHeader readHeader({required String rolloutPath}) => CodexRolloutHeader(
-    shortFileLength: null,
+    reachedLineLimit: true,
+    fileLength: 1,
     lines: [
       CodexRolloutLineDto.sessionMetadata(
         timestamp: "2026-08-01T00:00:00Z",
@@ -416,7 +417,8 @@ class _LogLevelCheckingRolloutApi() extends CodexRolloutApi {
           ),
         ),
       ],
-      shortFileLength: null,
+      reachedLineLimit: true,
+      fileLength: 1,
     );
   }
 }

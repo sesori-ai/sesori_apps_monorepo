@@ -451,7 +451,7 @@ void main() {
         _sessionMetadataPayload(line: read.lines.first).id,
         "session-id",
       );
-      expect(read.shortFileLength, isNull);
+      expect(read.reachedLineLimit, isTrue);
     });
 
     test("readTranscript warns for malformed non-final rows", () {

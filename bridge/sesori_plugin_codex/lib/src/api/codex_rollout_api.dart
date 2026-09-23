@@ -23,12 +23,12 @@ class const CodexRolloutTailPosition({
   required final List<int> trailingBytes,
 });
 
-/// The bounded leading window of a rollout. Rollouts are append-only, so a
-/// full window never changes; a short one ([shortFileLength] non-null) stays
-/// valid only while the file keeps that byte length.
+/// The bounded leading window of a rollout, with the file length observed
+/// before reading it.
 class const CodexRolloutHeader({
   required final List<CodexRolloutLineDto> lines,
-  required final int? shortFileLength,
+  required final bool reachedLineLimit,
+  required final int fileLength,
 });
 
 class const CodexDesktopStateReadException({required final Object cause}) implements Exception {
@@ -126,7 +126,7 @@ class CodexRolloutApi({Map<String, String>? environment}) {
 
   CodexRolloutHeader readHeader({required String rolloutPath}) {
     final file = File(rolloutPath);
-    if (!file.existsSync()) return const CodexRolloutHeader(lines: [], shortFileLength: 0);
+    if (!file.existsSync()) return const CodexRolloutHeader(lines: [], reachedLineLimit: false, fileLength: 0);
     // Measured before reading so a concurrent append only ever invalidates.
     final fileLength = file.lengthSync();
     final (:lines, :isComplete) = _readPrefixLines(file: file, maxLines: 32);
@@ -135,15 +135,16 @@ class CodexRolloutApi({Map<String, String>? environment}) {
         lines,
         malformedWarning: "[codex] skipping malformed rollout header record",
       ),
-      shortFileLength: isComplete ? null : fileLength,
+      reachedLineLimit: isComplete,
+      fileLength: fileLength,
     );
   }
 
-  /// Null once the rollout is gone.
+  /// Null when the rollout can no longer be stat'ed (removed or inaccessible).
   int? rolloutLength({required String rolloutPath}) {
     try {
       return File(rolloutPath).lengthSync();
-    } on PathNotFoundException {
+    } on FileSystemException {
       return null;
     }
   }
