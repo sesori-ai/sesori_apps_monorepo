@@ -90,7 +90,9 @@ Answered 2026-09-23; every answer took the recommended option.
 8. `🌿 [visual-hierarchy] Keep blue for selection and calm the email form [step 8/41]`
 9. `⚙️ [visual-hierarchy] Add icon size, radius and code text tokens [step 9/41]`
 10. `⚙️ [visual-hierarchy] Derive diff colours from status tokens [step 10/41]`
-11. `⚙️ [visual-hierarchy] Use one icon set and sentence case everywhere [step 11/41]`
+11. Split in two:
+   - `🌿 [visual-hierarchy] Use one icon set everywhere [step 11.a/41]`
+   - `🌿 [visual-hierarchy] Use sentence case everywhere [step 11.b/41]`
 12. `⚙️ [visual-hierarchy] Rebuild the desktop sidebar hierarchy [step 12/41]`
 13. `⚙️ [visual-hierarchy] Lead session rows with status and keep the time visible [step 13/41]`
 14. `⚙️ [visual-hierarchy] Dock one amber needs-you card above the composer [step 14/41]`

@@ -73,7 +73,11 @@ class const SessionListPanel({
                         ),
                       ),
                       IconButton(
-                        icon: Icon(showArchived ? TablerRegular.archive : TablerRegular.archive),
+                        // Tint when the archived filter is active: Tabler has no filled archive glyph.
+                        icon: Icon(
+                          TablerRegular.archive,
+                          color: showArchived ? context.prego.colors.bgBrandSolid : null,
+                        ),
                         tooltip: loc.sessionListToggleArchived,
                         onPressed: onOpenArchived,
                       ),

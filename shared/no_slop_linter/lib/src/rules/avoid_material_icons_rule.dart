@@ -29,7 +29,10 @@ class AvoidMaterialIconsRule extends NoSlopRule {
     RuleVisitorRegistry registry,
     RuleContext context,
   ) {
-    registry.addPrefixedIdentifier(this, _Visitor(this));
+    final visitor = _Visitor(this);
+    registry.addPrefixedIdentifier(this, visitor);
+    // `material.Icons.add`, through an import prefix.
+    registry.addPropertyAccess(this, visitor);
   }
 }
 
@@ -41,11 +44,21 @@ class _Visitor extends SimpleAstVisitor<void> {
   @override
   void visitPrefixedIdentifier(PrefixedIdentifier node) {
     if (rule.isCurrentFileExcluded) return;
-    final prefix = node.prefix.element;
-    if (prefix is! ClassElement || prefix.name != 'Icons') return;
-    final library = prefix.library.identifier;
-    if (library.startsWith('package:material_ui/') || library.startsWith('package:flutter/')) {
+    if (_isMaterialIcons(node.prefix.element)) rule.reportAtNode(node);
+  }
+
+  @override
+  void visitPropertyAccess(PropertyAccess node) {
+    if (rule.isCurrentFileExcluded) return;
+    final target = node.target;
+    if (target is PrefixedIdentifier && _isMaterialIcons(target.identifier.element)) {
       rule.reportAtNode(node);
     }
+  }
+
+  bool _isMaterialIcons(Element? element) {
+    if (element is! ClassElement || element.name != 'Icons') return false;
+    final library = element.library.identifier;
+    return library.startsWith('package:material_ui/') || library.startsWith('package:flutter/');
   }
 }

@@ -41,6 +41,18 @@ const icon = Icons.close;
     ]);
   }
 
+  void test_reportsImportPrefixedMaterialIcons() async {
+    final source = r'''
+import 'package:material_ui/material_ui.dart' as material;
+
+const icon = material.Icons.close;
+''';
+
+    await assertDiagnostics(source, [
+      lint(source.indexOf('material.Icons.close'), 'material.Icons.close'.length),
+    ]);
+  }
+
   void test_allowsTablerAndOtherIconsClasses() async {
     await assertNoDiagnostics(r'''
 import 'package:theme_prego/theme_prego.dart';
