@@ -9,6 +9,10 @@ const _toggle = ValueKey("shellTool.toggle");
 const _panel = ValueKey("shellTool.panel");
 const _viewport = ValueKey("shellTool.viewport");
 
+/// The command row plus whatever part of the panel is showing.
+double _shellHeight(WidgetTester tester) =>
+    tester.getSize(find.ancestor(of: find.byKey(_toggle), matching: find.byType(Column)).first).height;
+
 MessagePartTool _part({
   required ToolStatus status,
   required String? command,
@@ -233,7 +237,7 @@ void main() {
         part: _part(status: ToolStatus.completed, command: "pwd", output: "result", error: null),
       ),
     );
-    double height() => tester.getSize(find.byType(AnimatedSize)).height;
+    double height() => _shellHeight(tester);
     final closed = height();
     await tester.tap(find.byKey(_toggle));
     await tester.pump();
@@ -247,8 +251,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(height(), allOf(greaterThan(closed), lessThan(open)));
+    // The details stay on screen while they close, rather than leaving a
+    // blank area to collapse.
+    expect(find.byKey(_panel), findsOneWidget);
     await tester.pumpAndSettle();
     expect(height(), closed);
+    expect(find.byKey(_panel), findsNothing);
   });
 
   // Android's "Remove animations" arrives through MediaQuery, iOS's "Reduce
@@ -265,10 +273,19 @@ void main() {
           part: _part(status: ToolStatus.completed, command: "pwd", output: "result", error: null),
         ),
       );
+      double height() => _shellHeight(tester);
+      final closed = height();
       await tester.tap(find.byKey(_toggle));
       await tester.pump();
-      expect(find.byType(AnimatedSize), findsNothing);
-      expect(tester.getSize(find.byKey(_viewport)).height, 144);
+      final open = height();
+      expect(open, greaterThan(closed));
+      await tester.pumpAndSettle();
+      expect(height(), open);
+
+      await tester.tap(find.byKey(_toggle));
+      await tester.pump();
+      expect(height(), closed);
+      expect(find.byKey(_panel), findsNothing);
       expect(tester.takeException(), isNull);
     });
   }

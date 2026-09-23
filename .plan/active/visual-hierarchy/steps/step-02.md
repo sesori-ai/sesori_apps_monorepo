@@ -47,3 +47,15 @@ window's own navigator and root dialogs keep their current motion.
   replace-driven new-session change (an in-place continuation, now stated in
   `navigation-transitions.md`), and a 120-character table-row limit that the
   regression docs do not follow.
+
+## Review round 2
+
+- Fixed: collapsing the shell panel removed its details at once and left a
+  blank area to shrink, because `AnimatedSize` only resizes around the new
+  child. The panel now runs on its own controller through a `SizeTransition`
+  and stays mounted until it has closed; completion of the user's expand
+  replaces the one-shot reveal flag. Show more keeps `AnimatedSize`, where the
+  grey output box fills the shrinking area. Verified: `tool_part_widget_test.dart`
+  (19 passed), including the panel still present mid-collapse and gone after,
+  and both reduced-motion sources opening and closing in one frame;
+  `dart analyze --fatal-infos` clean.

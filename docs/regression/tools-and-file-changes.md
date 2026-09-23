@@ -34,7 +34,8 @@ sub-agent parts, plus the signal that a tool changed files.
   viewport. Copy command and Copy output preserve their respective exact text.
   Status stays visible outside the viewport; streamed updates do not close an
   open panel. The panel eases open and shut over 200 ms, growing down from the
-  row; expanding a historical command then glides it into view in the reversed
+  row, and its details stay visible while it closes; expanding a historical
+  command then glides it into view in the reversed
   transcript, and screen safe-area insets do not displace its scrollbars.
   Reduced motion opens and closes it at once.
   Tool attachments remain visible when details are collapsed.
@@ -208,8 +209,9 @@ guarantee.
   completion.
 - Shell details grow without bound, lose long command/output text, copy a
   truncated preview, close during updates, or hide tool attachments when collapsed.
-- Tool details jump open or shut instead of easing, animate under reduced
-  motion, or a later resize of an open panel scrolls the transcript again.
+- Tool details jump open or shut instead of easing, vanish before a blank area
+  collapses, animate under reduced motion, or a later resize of an open panel
+  scrolls the transcript again.
 - Backend naming or payload shape reaches the client unnormalized, or a local
   path or unsafe URL crosses the attachment contract.
 - A part carries fields owned by another variant, or a released known-type
