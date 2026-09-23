@@ -159,11 +159,13 @@ historical transcript backfill is required. Persist:
 
 - the enabled preference, independent of the current interruption;
 - one sealed current outcome: no observation, reset known, reset unknown,
-  consumed or cancelled observation, failed automatic submission, or paused known reset.
+  consumed observation, confirmed submission, cancelled observation, failed automatic submission,
+  or paused known reset.
   Paused preserves its observation/reset, bounded reason and next recheck time.
   Each variant owns only
   its valid required fields. Known reset includes observation ID/time and reset
-  time; consumed/cancelled preserve the observation ID to avoid rearming the same event;
+  time; consumed/submitted/cancelled preserve the observation ID to avoid rearming the same event;
+  confirmed submission also retains the prompt ID and acceptance time;
   failed submission retains a bounded failure reason and the consumed ID.
 
 Do not independently persist a countdown, a second copy of reset + buffer, or a
@@ -176,7 +178,8 @@ A bridge service owns policy. The existing ordered normalized-event owner in
 `bridge/app/lib/src/orchestrator.dart` awaits quota/supersession processing before
 acknowledging a subsequent terminal handoff. A thin timer listener owns
 **one 30-second timer** for due records, not a timer/map per session. A non-overlapping self-rescheduling
-tick invokes the service, then schedules its next tick. Persist normalized live
+tick invokes the service, logs original errors/stacks if it fails, and rearms in
+finally unless disposed. Persist normalized live
 quota observations through the existing event consumption path after identity
 translation and generation validation. Broadcast changes through the current
 session-update stream; SessionViewService supplies the same view after reconnect.
@@ -196,6 +199,10 @@ the session is promptable and idle, and native retry/queued user work is not in
 progress. Use existing status/queue authority. Persist consumption **before**
 calling the harness, so a restart cannot blindly resubmit an uncertain send.
 Use the accepted-prompt ID mechanism already owned by `SessionPromptService`.
+After successful submission, persist a submitted outcome and expose its
+acceptance time. A consumed outcome without that confirmation remains an
+unconfirmed attempt. Failure to persist confirmation is logged and must never
+turn an accepted send into a failed submission or cause a resend.
 
 A wait becomes due only when resetAt <= now - buffer, never from observedAt.
 Before consuming it, check the plugin-owned `getQuotaContinuationReadiness`
@@ -214,8 +221,9 @@ startup-wide sweep, or additional event subscription.
 
 This is one automatic submission attempt per observation, not an exactly-once
 distributed delivery claim. A crash between durable consumption and backend
-acceptance can miss one continuation. Leave that observation consumed and make
-the uncertain attempt visible after reconnect; a user can continue manually.
+acceptance can miss one continuation. A crash after acceptance but before its
+confirmation write can also leave consumed. Make that uncertainty visible after
+reconnect; a user can inspect the conversation and continue manually.
 Do not add an outbox, lease registry, or speculative backend reconciliation.
 
 Ordinary reachable flows to handle at existing authoritative seams:
@@ -391,7 +399,8 @@ supported harness/provider, without model-name allowlists in shared code.
 - **Automated/headless bridge, representative plugin:** Off by default; enable during wait; future
   interruptions; reset + buffer rather than observation + buffer; paused recheck backoff and
   readiness-before-history; one send per observation; same-observation replay; disable/manual
-  send/Stop/archive/delete; persistence; failure; host clock passed while asleep. Exercise actual routes,
+  send/Stop/archive/delete; persistence; failed-tick recovery; confirmed versus unconfirmed attempts;
+  post-acceptance write failure without resend; host clock passed while asleep. Exercise actual routes,
   DAO and normal prompt service with controllable time.
 
 - **Live plugin, every declared supporting production harness/provider seam:** Prove the pinned runtime's

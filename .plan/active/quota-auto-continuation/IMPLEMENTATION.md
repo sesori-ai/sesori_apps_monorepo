@@ -57,7 +57,8 @@ Update all implementors together.
 `AutoContinuationAvailability`, sealed `SessionAutoContinuationStatus`, enum `AutoContinuationPauseReason`
 
 **Constructor dependencies and responsibility:** Independent enabled preference, reporting availability, and
-status: idle, resetKnown(resetAt, continueAt), resetUnknown, attempted, submissionFailed(reason),
+status: idle, resetKnown(resetAt, continueAt), resetUnknown, attemptUnconfirmed, submitted(acceptedAt),
+submissionFailed(reason),
 paused(resetAt, continueAt, reason). Reasons are bounded enums. Known-reset evidence can exist while off; UI
 claims scheduled only when on and not paused.
 
@@ -84,7 +85,8 @@ outcome JSON. No business policy in SQL.
 
 **Constructor dependencies and responsibility:** Durable variants: none; resetKnown(errorMessageId,
 observedAt, resetAt); resetUnknown(errorMessageId, observedAt); consumed(errorMessageId, promptId,
-attemptedAt); cancelled(errorMessageId); submissionFailed(errorMessageId, reason);
+attemptedAt); submitted(errorMessageId, promptId, acceptedAt); cancelled(errorMessageId);
+submissionFailed(errorMessageId, reason);
 paused(errorMessageId, observedAt, resetAt, reason,
 recheckAt). Paused retains the observation and a persisted recheck deadline.
 
@@ -152,7 +154,9 @@ listener, subscription, controller or completion map is needed.
 `SessionContinuationTimerListener`
 
 **Constructor dependencies and responsibility:** Takes continuation service and timer factory. Owns
-start/tick/dispose and one self-rescheduling timer; awaits runDue before rearming.
+start/tick/dispose and one self-rescheduling timer; awaits runDue without overlap. Catch a failed tick
+and log the original error/stack; rearm at the normal interval in finally unless disposed. A failed tick
+must not permanently stop scheduling, and disposal during an in-flight tick must not start another timer.
 
 ### Owner / layer: Bridge routing / Consumer
 
@@ -343,10 +347,18 @@ then calls SessionPromptService.sendPromptAlreadyReserved with those typed
 values. That narrow method delegates to existing _sendPrompt without acquiring
 a second lane. It owns normal prompt acceptance only: no quota reads, clock,
 pause scheduling, consume/failure decisions or continuation-view publication.
-The continuation service publishes the outcome. Preserve original submission
-error/stack in logs, record bounded failure, and do not retry the consumed
-observation. AcceptedPromptsRepository remains the deduplication owner; this
-does not close the documented crash window. Cancellation from any already
+After the prompt call returns successfully, the continuation service persists
+submitted with the same observation/prompt IDs and acceptance time, then
+publishes the outcome. Keep submission-error handling separate from this
+post-acceptance write/publication: preserve original submission error/stack in
+logs and record bounded failure, without retrying the observation. A failed
+post-acceptance write leaves consumed; log its original error/stack without
+turning the accepted send into submissionFailed or resending it. A publication
+failure leaves the durable outcome intact and is logged. Reconnect projects
+submitted as confirmed submission and consumed as attemptUnconfirmed.
+AcceptedPromptsRepository remains the deduplication owner; the submitted outcome
+only records this feature's result and does not close the documented crash
+window. Cancellation from any already
 reserved service body calls cancelCurrentObservationAlreadyReserved directly
 on the repository and publishes after success; it never calls a dispatcher-
 entering continuation method. External toggles, observations and due attempts
@@ -401,9 +413,13 @@ advancing past observedAt + buffer cannot select it, while resetAt + buffer
 can. For paused states, repeated 30-second ticks before recheckAt must cause
 no plugin or history calls; at the deadline, non-idle readiness still skips
 history. Restart preserves the recheck deadline and visible state.
+Also exercise a failed tick followed by a successful tick and disposal during
+an in-flight tick. Verify successful submission persists submitted across
+restart, a crash after consumption restores attemptUnconfirmed, and a failed
+post-acceptance outcome write leaves consumed without another send.
 
 Fresh resetAt must be strictly after observedAt; relative duration must be
 positive and finite. Invalid fresh values become resetUnknown. Persisted valid
 waits remain eligible when resetAt becomes earlier than now during sleep.
-Consumed and cancelled observation IDs never rearm. No new dedupe set, restart cache or
+Consumed, submitted and cancelled observation IDs never rearm. No new dedupe set, restart cache or
 account polling is needed.
