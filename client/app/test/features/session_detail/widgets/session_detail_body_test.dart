@@ -2564,11 +2564,11 @@ void main() {
     expect(find.byIcon(TablerRegular.slash), findsOneWidget);
 
     await tester.tap(find.byIcon(TablerRegular.slash));
-    // Bounded pumps: the picker sheet shows a loading shimmer while its
-    // entries are prepared, which never settles.
+    // Bounded pumps: the picker shows a spinner while its entries are
+    // prepared, which never settles.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text("Slash commands"), findsOneWidget);
+    expect(find.byType(CommandPicker), findsOneWidget);
   });
 
   testWidgets("expand button opens the fullscreen editor sharing the composer text", (tester) async {

@@ -1,5 +1,5 @@
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
-import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -31,49 +31,55 @@ List<CommandInfo> _commands() {
   ];
 }
 
+/// A composer-like harness: the trigger sits at the bottom start corner, where
+/// the composer's slash button is.
 Widget _buildApp({
   required List<CommandInfo> commands,
-  required ValueChanged<CommandInfo?> onClosed,
+  required ValueChanged<CommandInfo> onSelected,
+  // ignore: no_slop_linter/prefer_required_named_parameters, most cases run on the phone
+  PregoInteractionMode mode = PregoInteractionMode.touch,
 }) {
-  final router = GoRouter(
-    routes: [
-      GoRoute(
-        path: "/",
-        builder: (context, state) => Scaffold(
-          body: FilledButton(
-            onPressed: () async {
-              final selected = await CommandPickerSheet.show(context, commands: commands);
-              onClosed(selected);
-            },
-            child: const Text("Open picker"),
+  return PregoInteractionScope(
+    mode: mode,
+    child: MaterialApp(
+      theme: buildPregoThemeData(brightness: Brightness.light),
+      darkTheme: buildPregoThemeData(brightness: Brightness.dark),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: Align(
+          alignment: AlignmentDirectional.bottomStart,
+          child: PregoPickerPopover(
+            pointerWidth: 360,
+            triggerBuilder: (context, toggle) => TextButton(onPressed: toggle, child: const Text("Open picker")),
+            contentBuilder: (context, close) => CommandPicker(
+              commands: commands,
+              onCommandSelected: (command) {
+                close();
+                onSelected(command);
+              },
+              onClose: close,
+            ),
           ),
         ),
       ),
-    ],
-  );
-
-  return MaterialApp.router(
-    routerConfig: router,
-    theme: buildPregoThemeData(brightness: Brightness.light),
-    darkTheme: buildPregoThemeData(brightness: Brightness.dark),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+    ),
   );
 }
 
 /// Opens the picker. The entry computation runs in a real isolate via
 /// compute(), which the fake-async test clock cannot settle on its own, so
-/// the sheet deterministically shows its loading state at this point.
-Future<void> _openPicker(WidgetTester tester) async {
+/// the picker deterministically shows its loading state at this point.
+Future<void> _openPicker({required WidgetTester tester}) async {
   await tester.tap(find.text("Open picker"));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 50));
 }
 
-/// Lets the compute() isolate finish and the sheet rebuild with its result.
+/// Lets the compute() isolate finish and the picker rebuild with its result.
 /// Alternates [WidgetTester.runAsync] and [WidgetTester.pump]; pumpAndSettle
 /// cannot be used with compute's real isolates.
-Future<void> _waitForEntries(WidgetTester tester, {required Finder until}) async {
+Future<void> _waitForEntries({required WidgetTester tester, required Finder until}) async {
   for (var i = 0; i < 40 && until.evaluate().isEmpty; i++) {
     await tester.runAsync(() async {
       await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -83,36 +89,35 @@ Future<void> _waitForEntries(WidgetTester tester, {required Finder until}) async
   expect(until, findsWidgets, reason: "command picker content did not finish loading");
 }
 
+Rect _panel({required WidgetTester tester}) => tester.getRect(find.byType(CommandPicker));
+
 void main() {
   testWidgets("opens with a loading indicator, then shows the sorted commands", (tester) async {
-    await tester.pumpWidget(_buildApp(commands: _commands(), onClosed: (_) {}));
+    await tester.pumpWidget(_buildApp(commands: _commands(), onSelected: (_) {}));
 
-    await _openPicker(tester);
+    await _openPicker(tester: tester);
 
-    expect(find.text("Slash commands"), findsOneWidget);
+    expect(find.byType(CommandPicker), findsOneWidget);
     expect(find.byType(PregoActivityIndicator), findsOneWidget);
     expect(find.text("/deploy"), findsNothing);
 
-    await _waitForEntries(tester, until: find.text("/deploy"));
+    await _waitForEntries(tester: tester, until: find.text("/deploy"));
 
     expect(find.byType(PregoActivityIndicator), findsNothing);
     expect(find.text("/release"), findsOneWidget);
     expect(find.text("Ship the app"), findsOneWidget);
     expect(find.text("version"), findsOneWidget);
-    expect(find.byType(PregoInputField), findsOneWidget);
-    expect(tester.widget<TextField>(find.byType(TextField)).decoration?.hintText, "Name, description, or arguments");
-    expect(find.byType(PregoGroupedRows), findsNWidgets(2));
-    expect(find.byType(PregoGroupedRow), findsNWidgets(2));
+    expect(tester.widget<TextField>(find.byType(TextField)).decoration?.hintText, "Search commands");
     expect(find.byType(PregoTag), findsNWidgets(2));
     expect(tester.getTopLeft(find.text("/deploy")).dy, lessThan(tester.getTopLeft(find.text("/release")).dy));
   });
 
   for (final query in ["  RELEASE  ", "Cut a release", "version"]) {
     testWidgets("search filters by name, description, or hints: $query", (tester) async {
-      await tester.pumpWidget(_buildApp(commands: _commands(), onClosed: (_) {}));
+      await tester.pumpWidget(_buildApp(commands: _commands(), onSelected: (_) {}));
 
-      await _openPicker(tester);
-      await _waitForEntries(tester, until: find.text("/deploy"));
+      await _openPicker(tester: tester);
+      await _waitForEntries(tester: tester, until: find.text("/deploy"));
 
       await tester.enterText(find.byType(TextField), query);
       await tester.pump();
@@ -128,12 +133,12 @@ void main() {
   }
 
   testWidgets("keeps a query typed while commands are loading", (tester) async {
-    await tester.pumpWidget(_buildApp(commands: _commands(), onClosed: (_) {}));
-    await _openPicker(tester);
+    await tester.pumpWidget(_buildApp(commands: _commands(), onSelected: (_) {}));
+    await _openPicker(tester: tester);
     expect(find.byType(PregoActivityIndicator), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), "version");
-    await _waitForEntries(tester, until: find.text("/release"));
+    await _waitForEntries(tester: tester, until: find.text("/release"));
 
     expect(find.text("/deploy"), findsNothing);
   });
@@ -146,11 +151,11 @@ void main() {
           for (var i = 0; i < sources.length; i++)
             _command(name: "command-$i", description: null, hints: null, source: sources[i]),
         ],
-        onClosed: (_) {},
+        onSelected: (_) {},
       ),
     );
-    await _openPicker(tester);
-    await _waitForEntries(tester, until: find.text("/command-0"));
+    await _openPicker(tester: tester);
+    await _waitForEntries(tester: tester, until: find.text("/command-0"));
 
     expect(find.widgetWithText(PregoTag, "Command"), findsOneWidget);
     expect(find.widgetWithText(PregoTag, "MCP"), findsOneWidget);
@@ -159,30 +164,27 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("tapping a command returns it through the show() future and closes the sheet", (tester) async {
-    CommandInfo? selected;
-    await tester.pumpWidget(_buildApp(commands: _commands(), onClosed: (command) => selected = command));
+  testWidgets("tapping a command returns it and closes the picker", (tester) async {
+    final selected = <CommandInfo>[];
+    await tester.pumpWidget(_buildApp(commands: _commands(), onSelected: selected.add));
 
-    await _openPicker(tester);
-    await _waitForEntries(tester, until: find.text("/deploy"));
-    // Let the sheet's entrance animation finish: while the route is still
-    // animating, the navigator ignores pointer events on its content.
-    await tester.pump(const Duration(milliseconds: 400));
+    await _openPicker(tester: tester);
+    await _waitForEntries(tester: tester, until: find.text("/deploy"));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text("/deploy"));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
 
-    expect(selected, _commands().last);
-    expect(find.text("Slash commands"), findsNothing);
+    expect(selected, [_commands().last]);
+    expect(find.byType(CommandPicker), findsNothing);
   });
 
   testWidgets("shows the empty message when no commands are available", (tester) async {
-    await tester.pumpWidget(_buildApp(commands: const [], onClosed: (_) {}));
+    await tester.pumpWidget(_buildApp(commands: const [], onSelected: (_) {}));
 
-    await _openPicker(tester);
+    await _openPicker(tester: tester);
     await _waitForEntries(
-      tester,
+      tester: tester,
       until: find.text("No slash commands are available for this project."),
     );
 
@@ -190,14 +192,14 @@ void main() {
   });
 
   testWidgets("can recover from a search with no matches", (tester) async {
-    await tester.pumpWidget(_buildApp(commands: _commands(), onClosed: (_) {}));
-    await _openPicker(tester);
-    await _waitForEntries(tester, until: find.text("/deploy"));
+    await tester.pumpWidget(_buildApp(commands: _commands(), onSelected: (_) {}));
+    await _openPicker(tester: tester);
+    await _waitForEntries(tester: tester, until: find.text("/deploy"));
 
     await tester.enterText(find.byType(TextField), "not-a-command");
     await tester.pump();
     expect(find.text("No slash commands are available for this project."), findsOneWidget);
-    expect(find.byType(PregoGroupedRow), findsNothing);
+    expect(find.byType(PregoTag), findsNothing);
 
     await tester.enterText(find.byType(TextField), "deploy");
     await tester.pump();
@@ -205,7 +207,7 @@ void main() {
   });
 
   for (final brightness in Brightness.values) {
-    testWidgets("long content fits a narrow picker with large text in ${brightness.name} mode", (tester) async {
+    testWidgets("long content fits a narrow phone with large text in ${brightness.name} mode", (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(320, 740);
       tester.platformDispatcher.textScaleFactorTestValue = 2;
@@ -219,30 +221,29 @@ void main() {
         hints: ["a-long-argument-name", "another-argument-name"],
         source: CommandSource.command,
       );
-      CommandInfo? selected;
-      await tester.pumpWidget(_buildApp(commands: [command], onClosed: (command) => selected = command));
-      await _openPicker(tester);
-      await _waitForEntries(tester, until: find.text("/${command.name}"));
-      await tester.pump(const Duration(milliseconds: 400));
+      final selected = <CommandInfo>[];
+      await tester.pumpWidget(_buildApp(commands: [command], onSelected: selected.add));
+      await _openPicker(tester: tester);
+      await _waitForEntries(tester: tester, until: find.text("/${command.name}"));
+      await tester.pumpAndSettle();
 
-      final card = tester.getRect(find.byType(PregoGroupedRows));
+      // On the phone the picker spans the screen inside its edge padding.
+      final panel = _panel(tester: tester);
       final tag = tester.getRect(find.byType(PregoTag));
-      expect(card.left, greaterThanOrEqualTo(PregoSpacing.xl));
-      expect(card.right, lessThanOrEqualTo(320 - PregoSpacing.xl));
-      expect(tag.right, lessThan(card.right));
+      expect(panel.left, greaterThanOrEqualTo(12));
+      expect(panel.right, lessThanOrEqualTo(320 - 12));
+      expect(tag.right, lessThan(panel.right));
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text("/${command.name}"));
       await tester.pumpAndSettle();
-      expect(selected, command);
+      expect(selected, [command]);
     });
   }
 
-  testWidgets("keeps a large catalog lazy and the last row reachable above the keyboard", (tester) async {
+  testWidgets("keeps a large catalog lazy and its last command reachable", (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
-    tester.view.padding = const FakeViewPadding(top: 47, bottom: 34);
-    tester.view.viewPadding = const FakeViewPadding(top: 47, bottom: 34);
     addTearDown(tester.view.reset);
     final commands = [
       for (var i = 0; i < 40; i++)
@@ -253,57 +254,57 @@ void main() {
           source: CommandSource.skill,
         ),
     ];
-    CommandInfo? selected;
-    await tester.pumpWidget(_buildApp(commands: commands, onClosed: (command) => selected = command));
-    await _openPicker(tester);
-    await _waitForEntries(tester, until: find.text("/command-00"));
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.byType(PregoGroupedRow).evaluate().length, lessThan(commands.length));
-    expect(find.text("/command-39"), findsNothing);
-
-    await tester.showKeyboard(find.byType(TextField));
-    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    final selected = <CommandInfo>[];
+    await tester.pumpWidget(_buildApp(commands: commands, onSelected: selected.add));
+    await _openPicker(tester: tester);
+    await _waitForEntries(tester: tester, until: find.text("/command-00"));
     await tester.pumpAndSettle();
+
+    expect(find.byType(PregoTag).evaluate().length, lessThan(commands.length));
+    expect(find.text("/command-39"), findsNothing);
+    expect(_panel(tester: tester).height, lessThanOrEqualTo(PregoPickerPopover.maxHeight));
+
     await tester.scrollUntilVisible(
       find.text("/command-39"),
       250,
       scrollable: find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)),
     );
     await tester.pumpAndSettle();
-
-    final lastCard = find.ancestor(of: find.text("/command-39"), matching: find.byType(PregoGroupedRows));
-    expect(tester.getBottomRight(lastCard).dy, lessThanOrEqualTo(844 - 300));
     expect(tester.takeException(), isNull);
     await tester.tap(find.text("/command-39"));
     await tester.pumpAndSettle();
-    expect(selected, commands.last);
+    expect(selected, [commands.last]);
   });
 
-  testWidgets("caps the body at the space left below the sheet header", (tester) async {
-    // A status bar tall enough that the default 70%-of-screen body no longer
-    // fits under the sheet header: the body must cap at the remaining space
-    // (mirroring the model picker) instead of giving the outer sheet scroll
-    // range of its own on top of the inner list.
-    const topInset = 140.0;
-    final dpr = tester.view.devicePixelRatio;
-    tester.view.padding = FakeViewPadding(top: topInset * dpr);
-    tester.view.viewPadding = FakeViewPadding(top: topInset * dpr);
+  testWidgets("on the desktop, typing after the slash button filters and Enter picks the first match", (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1000, 700);
     addTearDown(tester.view.reset);
-
-    await tester.pumpWidget(_buildApp(commands: _commands(), onClosed: (_) {}));
-    await _openPicker(tester);
-    // Let the sheet's entrance animation finish before measuring.
-    await tester.pump(const Duration(milliseconds: 400));
-
-    final screenHeight = tester.view.physicalSize.height / dpr;
-    final maxBody = screenHeight - topInset - PregoBottomSheet.contentTopInset;
-    // Premise guard: the cap must actually bite in this geometry, otherwise
-    // this test silently stops exercising it.
-    expect(maxBody, lessThan(screenHeight * 0.7));
-
-    expect(
-      tester.getSize(find.byType(CommandPickerSheet)).height,
-      moreOrLessEquals(maxBody),
+    final selected = <CommandInfo>[];
+    await tester.pumpWidget(
+      _buildApp(commands: _commands(), onSelected: selected.add, mode: PregoInteractionMode.pointer),
     );
+    await _openPicker(tester: tester);
+    await _waitForEntries(tester: tester, until: find.text("/deploy"));
+    await tester.pumpAndSettle();
+
+    // The picker sits above its trigger and inside the window edge.
+    final panel = _panel(tester: tester);
+    expect(panel.width, lessThanOrEqualTo(360));
+    expect(panel.left, greaterThanOrEqualTo(12));
+    expect(panel.bottom, lessThanOrEqualTo(tester.getRect(find.text("Open picker")).top));
+
+    // The field already has focus, so typing goes straight to the search:
+    // the platform text input reaches only the focused field.
+    tester.testTextInput.enterText("re");
+    await tester.pump();
+    expect(find.text("/deploy"), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(selected, [_commands().first]);
+    expect(find.byType(CommandPicker), findsNothing);
   });
 }

@@ -690,10 +690,6 @@
   "sessionDetailCommandArgumentsHint": "Optional arguments",
   "sessionDetailCommandPickerTitle": "Slash commands",
   "sessionDetailCommandSearch": "Search commands",
-  "sessionDetailCommandSearchHint": "Name, description, or arguments",
-  "@sessionDetailCommandSearchHint": {
-    "description": "Placeholder describing the searchable fields in the slash-command picker."
-  },
   "sessionDetailNoCommands": "No slash commands are available for this project.",
   "sessionDetailSend": "Send",
   "sessionDetailAbort": "Stop",

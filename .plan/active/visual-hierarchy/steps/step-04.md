@@ -80,3 +80,45 @@ stand alone, following the plan's `31.a` convention:
 - `dart analyze --fatal-infos` is clean in module_app_ui and app.
 - Size: about 1,200 changed lines; about 580 are deleted sheet code, and
   about 230 are the rewritten test.
+
+## 4.c — Command picker
+
+### What changed
+
+- The composer's "/" button opens `CommandPicker` in a `PregoPickerPopover` on
+  both apps, replacing `command_picker_sheet.dart`.
+  - The catalog still loads in a background isolate behind a spinner.
+  - Search matches names, descriptions and hints, including a query typed
+    while it loads.
+  - Rows show the name, source tag, description and hints, and drop the
+    grouped-card style.
+  - A selection closes the popover and refocuses the composer, unless an app
+    shortcut changed the session under the open picker.
+- "Filters as you type after /" is the popover's focused search field on
+  desktop. The composer text itself does not open the picker.
+- The no-match state keeps the existing "No slash commands are available for
+  this project." text.
+- Removed: the sheet, its test, and the unused search hint string.
+- Regression docs: `session-creation-and-options.md` describes both pickers,
+  their desktop keys, and new failure signals.
+
+### Verification
+
+- `client/app`: `command_picker_test.dart` covers:
+  - loading, then sorted rows;
+  - search, including a query typed during loading;
+  - every source label;
+  - tap selection;
+  - empty and no-match states, and recovering from no match;
+  - a narrow phone with large text in both themes;
+  - a lazy 40-command catalog within the height cap, with the last row
+    reachable;
+  - the desktop placement above a bottom-corner trigger inside the window,
+    with typing and Enter.
+
+  The picker tests passed (19), and `session_detail_body_test` with
+  `agent_model_buttons_test` passed (132).
+- `client/module_app_ui`: `test/features/session_detail` passed (217).
+- `client/module_prego`: `test/components` passed (302).
+- `dart analyze --fatal-infos` is clean in module_prego, module_app_ui, app
+  and desktop, apart from local render files that are never committed.
