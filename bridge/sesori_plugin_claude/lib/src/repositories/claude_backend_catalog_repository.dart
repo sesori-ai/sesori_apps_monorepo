@@ -46,6 +46,10 @@ final class const ClaudeBackendCatalogRepository() {
   static const List<String> _families = ["fable", "opus", "sonnet", "haiku"];
   static const ClaudeEffortLevel _defaultEffort = ClaudeEffortLevel.high;
 
+  /// Claude's native `/fast` toggle is not offered: the session's fast-mode
+  /// selection owns that setting, and the process state it tracks would drift.
+  static const String _fastModeCommand = "fast";
+
   ClaudeBackendCatalog map({required Map<String, Object?> handshake}) {
     final dto = ClaudeBackendCatalogDto.fromJson(handshake);
     final models = CatalogStrengthOrder.models(
@@ -157,7 +161,7 @@ final class const ClaudeBackendCatalogRepository() {
 
   PluginCommand? _command(ClaudeCommandDto dto) {
     final name = dto.name?.trim();
-    if (name == null || name.isEmpty) return null;
+    if (name == null || name.isEmpty || name == _fastModeCommand) return null;
     final description = dto.description?.trim();
     final hint = dto.argumentHint?.trim();
     return PluginCommand(

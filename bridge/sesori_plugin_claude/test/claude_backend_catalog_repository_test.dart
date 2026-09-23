@@ -132,6 +132,19 @@ void main() {
       expect(catalog.providers.providers.single.models.single.name, "claude-sonnet-test");
     });
 
+    test("omits the native /fast command owned by the fast-mode selection", () {
+      final catalog = repository.map(
+        handshake: {
+          "commands": [
+            {"name": "fast", "description": "Toggle fast mode", "argumentHint": "[on|off]"},
+            {"name": "review", "description": "Review changes"},
+          ],
+        },
+      );
+
+      expect(catalog.commands.map((command) => command.name), ["review"]);
+    });
+
     test("returns agents but no provider for an empty model catalog", () {
       final catalog = repository.map(handshake: const {});
 
