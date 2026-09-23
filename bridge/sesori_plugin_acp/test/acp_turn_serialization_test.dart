@@ -189,6 +189,7 @@ void main() {
 
     Future<String> createSession(String directory, String sessionId) async {
       final creating = plugin.createSession(
+        fastMode: false,
         directory: directory,
         parentSessionId: null,
         parts: const [],
@@ -207,6 +208,7 @@ void main() {
     Future<String> sendPrompt(String sessionId, String text) async {
       final promptId = "prompt-${++promptSequence}";
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: promptId,
         sessionId: sessionId,
         parts: [PluginPromptPart.text(text: text)],
@@ -673,6 +675,7 @@ void main() {
       emitted.clear();
 
       final creating = plugin.createSession(
+        fastMode: false,
         directory: cwd,
         parentSessionId: null,
         parts: [
@@ -724,6 +727,7 @@ void main() {
           emitted.clear();
 
           final creating = plugin.createSession(
+            fastMode: false,
             directory: cwd,
             parentSessionId: null,
             parts: [
@@ -768,6 +772,7 @@ void main() {
       emitted.clear();
 
       await plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
         command: "review",
@@ -1145,6 +1150,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = gated.createSession(
+        fastMode: false,
         directory: cwd,
         parentSessionId: null,
         parts: const [],
@@ -1162,6 +1168,7 @@ void main() {
       final gate = Completer<void>();
       gated.selectionGate = gate;
       await gated.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PluginPromptPart.text(text: "hi")],
@@ -1454,6 +1461,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = respawning.createSession(
+        fastMode: false,
         directory: cwd,
         parentSessionId: null,
         parts: const [],
@@ -1472,6 +1480,7 @@ void main() {
 
       var respawnPromptSequence = 0;
       Future<void> send(String text) => respawning.sendPrompt(
+        fastMode: false,
         promptId: "respawn-prompt-${++respawnPromptSequence}",
         sessionId: "s1",
         parts: [PluginPromptPart.text(text: text)],

@@ -40,6 +40,7 @@ void main() {
         updatedAt: 1,
       );
       await database.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "root",
         backendSessionId: "backend-root",
         projectId: "project",

@@ -495,6 +495,7 @@ Future<void> _insertRoot({
   required String creationBranch,
 }) {
   return database.sessionDao.insertSession(
+    fastMode: false,
     pluginId: "opencode",
     preservePullRequestScope: false,
     sessionId: sessionId,

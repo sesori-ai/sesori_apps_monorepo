@@ -492,6 +492,7 @@ void main() {
       expect(await plugin.healthCheck(), isTrue);
       final socket = await socketReady.future;
       await plugin.sendPrompt(
+        fastMode: false,
         sessionId: "child-1",
         promptId: "prompt-1",
         parts: const [PluginPromptPart.text(text: "continue")],

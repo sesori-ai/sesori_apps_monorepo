@@ -78,6 +78,7 @@ void main() {
 
     Future<void> sendCommand({String command = "review"}) {
       return service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "extra args")],
@@ -102,6 +103,7 @@ void main() {
 
       await expectLater(
         service.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "s1",
           parts: const [PromptPart.text(text: "hello")],
@@ -162,6 +164,7 @@ void main() {
         agentModel: null,
       );
       await service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-defaults-command",
         parts: const [PromptPart.text(text: "")],
@@ -198,6 +201,7 @@ void main() {
       final changeFuture = service.promptDefaultsChanges.first;
 
       await service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-defaults-event",
         parts: const [PromptPart.text(text: "Hello")],
@@ -213,6 +217,61 @@ void main() {
       expect(change.promptDefaults.model?.providerID, "openai");
       expect(change.promptDefaults.model?.modelID, "gpt-5");
       expect(change.promptDefaults.model?.variant, "high");
+    });
+
+    test("forwards fast mode to the plugin and stores it as the session's choice", () async {
+      final changeFuture = service.promptDefaultsChanges.first;
+
+      await service.sendPrompt(
+        promptId: "prompt-fast",
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "Hello")],
+        variant: null,
+        fastMode: true,
+        agent: "planner",
+        model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
+        command: null,
+      );
+      await service.sendPrompt(
+        promptId: "prompt-fast-command",
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "args")],
+        variant: null,
+        fastMode: true,
+        agent: "planner",
+        model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
+        command: "review",
+      );
+
+      expect(plugin.lastSendPromptFastMode, isTrue);
+      expect(plugin.lastSendCommandFastMode, isTrue);
+      expect((await changeFuture).promptDefaults.fastMode, isTrue);
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.fastMode, isTrue);
+    });
+
+    test("backend-reported prompt defaults keep the stored fast mode", () async {
+      await service.sendPrompt(
+        promptId: "prompt-fast",
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "Hello")],
+        variant: null,
+        fastMode: true,
+        agent: "planner",
+        model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
+        command: null,
+      );
+
+      // Backend prompt-default events and history replay persist through this path.
+      await sessionRepository.updatePromptDefaults(
+        sessionId: "s1",
+        agent: "builder",
+        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-5-mini", variant: null),
+      );
+
+      final session = await sessionRepository.getCatalogSession(sessionId: "s1");
+      expect(session?.promptDefaults?.agent, "builder");
+      expect(session?.promptDefaults?.model?.modelID, "gpt-5-mini");
+      expect(session?.promptDefaults?.fastMode, isTrue);
     });
 
     test("suppresses completion immediately while backend actions retain arrival order", () async {
@@ -234,6 +293,7 @@ void main() {
       plugin.sendCommandCompleter = commandGate;
 
       final command = service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "arguments")],
@@ -251,6 +311,7 @@ void main() {
         useAtomicStop: false,
       );
       final prompt = service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "later")],
@@ -272,6 +333,7 @@ void main() {
 
     test("plain prompts are unaffected and delegate to sendPrompt", () async {
       await service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "Hello")],
@@ -287,6 +349,7 @@ void main() {
 
     test("a repeated prompt or command id succeeds without reaching the plugin again", () async {
       Future<void> sendHello() => service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "Hello")],
@@ -308,6 +371,7 @@ void main() {
 
     test("a send the plugin rejects stays retryable with the same prompt id", () async {
       Future<void> sendHello() => service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "Hello")],
@@ -349,6 +413,7 @@ void main() {
 
       await expectLater(
         service.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "s1",
           parts: const [PromptPart.text(text: "Hello")],

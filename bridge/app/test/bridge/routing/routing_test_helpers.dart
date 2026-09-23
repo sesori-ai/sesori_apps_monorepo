@@ -155,6 +155,7 @@ class FakeSessionDao() {
     required String pluginId,
   }) async {
     _sessions[sessionId] = SessionDto(
+      fastMode: false,
       sessionId: sessionId,
       backendSessionId: backendSessionId,
       projectId: projectId,
@@ -334,6 +335,7 @@ Future<void> recordSessionBinding({
   await database.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   if (parentSessionId == null) {
     await database.sessionDao.insertSession(
+      fastMode: false,
       sessionId: sessionId,
       backendSessionId: backendSessionId,
       projectId: projectId,
@@ -439,6 +441,7 @@ class _NoopSessionRepository() implements SessionRepository {
     required List<PromptPart> parts,
     required String? userVisibleText,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
     required bool isDedicated,
@@ -582,6 +585,14 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async {}
 
   @override
+  Future<void> updateRequestedPromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+    required bool fastMode,
+  }) async {}
+
+  @override
   Future<({String pluginId, String projectId})?> findSessionOptionsScope({required String sessionId}) async => null;
 
   @override
@@ -602,6 +613,7 @@ class _NoopSessionRepository() implements SessionRepository {
     required String arguments,
     required String? userVisibleArguments,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -616,6 +628,7 @@ class _NoopSessionRepository() implements SessionRepository {
     required String sessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -782,6 +795,7 @@ class FakeSessionRepository({
     required List<PromptPart> parts,
     required String? userVisibleText,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
     required bool isDedicated,
@@ -1085,6 +1099,14 @@ class FakeSessionRepository({
   }) async {}
 
   @override
+  Future<void> updateRequestedPromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+    required bool fastMode,
+  }) async {}
+
+  @override
   Future<({String pluginId, String projectId})?> findSessionOptionsScope({required String sessionId}) async => null;
 
   @override
@@ -1122,10 +1144,12 @@ class FakeSessionRepository({
     required String arguments,
     required String? userVisibleArguments,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) async {
     await _plugin.sendCommand(
+      fastMode: fastMode,
       promptId: "prompt-1",
       sessionId: sessionId,
       command: command,
@@ -1157,10 +1181,12 @@ class FakeSessionRepository({
     required String sessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) async {
     await _plugin.sendPrompt(
+      fastMode: fastMode,
       promptId: "prompt-1",
       sessionId: sessionId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),

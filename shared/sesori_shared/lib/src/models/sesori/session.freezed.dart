@@ -571,7 +571,8 @@ $SessionPromptDefaultsCopyWith<$Res>? get promptDefaults {
 /// @nodoc
 mixin _$SessionPromptDefaults {
 
- String? get agent; AgentModel? get model;
+ String? get agent; AgentModel? get model;/// Whether the session's turns run in the backend's fast mode.
+ bool get fastMode;
 /// Create a copy of SessionPromptDefaults
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -585,20 +586,20 @@ $SessionPromptDefaultsCopyWith<SessionPromptDefaults> get copyWith => _$SessionP
 @override
 bool operator ==(Object other) {
   final _this = this as SessionPromptDefaults;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPromptDefaults&&(identical(other.agent, _this.agent) || other.agent == _this.agent)&&(identical(other.model, _this.model) || other.model == _this.model));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPromptDefaults&&(identical(other.agent, _this.agent) || other.agent == _this.agent)&&(identical(other.model, _this.model) || other.model == _this.model)&&(identical(other.fastMode, _this.fastMode) || other.fastMode == _this.fastMode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as SessionPromptDefaults;
-  return Object.hash(runtimeType,_this.agent,_this.model);
+  return Object.hash(runtimeType,_this.agent,_this.model,_this.fastMode);
 }
 
 @override
 String toString() {
   final _this = this as SessionPromptDefaults;
-  return 'SessionPromptDefaults(agent: ${_this.agent}, model: ${_this.model})';
+  return 'SessionPromptDefaults(agent: ${_this.agent}, model: ${_this.model}, fastMode: ${_this.fastMode})';
 }
 
 
@@ -609,7 +610,7 @@ abstract mixin class $SessionPromptDefaultsCopyWith<$Res>  {
   factory $SessionPromptDefaultsCopyWith(SessionPromptDefaults value, $Res Function(SessionPromptDefaults) _then) = _$SessionPromptDefaultsCopyWithImpl;
 @useResult
 $Res call({
- String? agent, AgentModel? model
+ String? agent, AgentModel? model, bool fastMode
 });
 
 
@@ -626,11 +627,12 @@ class _$SessionPromptDefaultsCopyWithImpl<$Res>
 
 /// Create a copy of SessionPromptDefaults
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? agent = freezed,Object? model = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? agent = freezed,Object? model = freezed,Object? fastMode = null,}) {
   return _then(SessionPromptDefaults(
 agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
-as AgentModel?,
+as AgentModel?,fastMode: null == fastMode ? _self.fastMode : fastMode // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 /// Create a copy of SessionPromptDefaults
@@ -654,11 +656,13 @@ $AgentModelCopyWith<$Res>? get model {
 @JsonSerializable()
 
 class _SessionPromptDefaults implements SessionPromptDefaults {
-  const _SessionPromptDefaults({required this.agent, required this.model});
+  const _SessionPromptDefaults({required this.agent, required this.model, this.fastMode = false});
   factory _SessionPromptDefaults.fromJson(Map<String, dynamic> json) => _$SessionPromptDefaultsFromJson(json);
 
 @override final  String? agent;
 @override final  AgentModel? model;
+/// Whether the session's turns run in the backend's fast mode.
+@override@JsonKey() final  bool fastMode;
 
 /// Create a copy of SessionPromptDefaults
 /// with the given fields replaced by the non-null parameter values.
@@ -673,18 +677,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionPromptDefaults&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionPromptDefaults&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.fastMode, fastMode) || other.fastMode == fastMode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,agent,model);
+    return Object.hash(runtimeType,agent,model,fastMode);
 }
 
 @override
 String toString() {
-    return 'SessionPromptDefaults(agent: $agent, model: $model)';
+    return 'SessionPromptDefaults(agent: $agent, model: $model, fastMode: $fastMode)';
 }
 
 
@@ -695,7 +699,7 @@ abstract mixin class _$SessionPromptDefaultsCopyWith<$Res> implements $SessionPr
   factory _$SessionPromptDefaultsCopyWith(_SessionPromptDefaults value, $Res Function(_SessionPromptDefaults) _then) = __$SessionPromptDefaultsCopyWithImpl;
 @override @useResult
 $Res call({
- String? agent, AgentModel? model
+ String? agent, AgentModel? model, bool fastMode
 });
 
 
@@ -712,11 +716,12 @@ class __$SessionPromptDefaultsCopyWithImpl<$Res>
 
 /// Create a copy of SessionPromptDefaults
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? agent = freezed,Object? model = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? agent = freezed,Object? model = freezed,Object? fastMode = null,}) {
   return _then(_SessionPromptDefaults(
 agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
-as AgentModel?,
+as AgentModel?,fastMode: null == fastMode ? _self.fastMode : fastMode // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

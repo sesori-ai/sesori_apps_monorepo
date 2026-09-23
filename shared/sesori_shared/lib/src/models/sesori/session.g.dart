@@ -94,6 +94,7 @@ _SessionPromptDefaults _$SessionPromptDefaultsFromJson(Map json) =>
           : AgentModel.fromJson(
               Map<String, dynamic>.from(json['model'] as Map),
             ),
+      fastMode: json['fastMode'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$SessionPromptDefaultsToJson(
@@ -101,6 +102,7 @@ Map<String, dynamic> _$SessionPromptDefaultsToJson(
 ) => <String, dynamic>{
   'agent': ?instance.agent,
   'model': ?instance.model?.toJson(),
+  'fastMode': instance.fastMode,
 };
 
 _SessionTime _$SessionTimeFromJson(Map json) => _SessionTime(

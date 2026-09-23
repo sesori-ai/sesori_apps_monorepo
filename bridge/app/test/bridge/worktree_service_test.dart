@@ -136,6 +136,7 @@ void main() {
       // Insert a mapping for the parent session.
       await projectsDao.insertProjectsIfMissing(projectIds: [_projectId]); // satisfy v5 FK constraint
       await sessionDao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "parent-001",
@@ -1331,6 +1332,7 @@ class _FakeBridgePluginApi() extends FakeBridgePlugin {
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) => throw UnimplementedError();

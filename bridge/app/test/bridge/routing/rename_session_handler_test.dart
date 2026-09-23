@@ -104,6 +104,7 @@ void main() {
     test("returns the authoritative catalog Session without ungated PR metadata", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: "fake",
         preservePullRequestScope: false,
         sessionId: "s1",

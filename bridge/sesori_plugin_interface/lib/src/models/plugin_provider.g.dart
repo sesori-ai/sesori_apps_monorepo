@@ -15,6 +15,7 @@ Map<String, dynamic> _$PluginModelToJson(_PluginModel instance) =>
       'family': ?instance.family,
       'isAvailable': instance.isAvailable,
       'releaseDate': ?instance.releaseDate?.toIso8601String(),
+      'supportsFastMode': instance.supportsFastMode,
     };
 
 Map<String, dynamic> _$PluginProviderToJson(_PluginProvider instance) =>

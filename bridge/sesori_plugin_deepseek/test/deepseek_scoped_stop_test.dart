@@ -453,6 +453,7 @@ class _StopHarness() {
   }
 
   Future<void> queuePromptUntilLoad({required String sessionId}) => plugin.sendPrompt(
+    fastMode: false,
     sessionId: sessionId,
     promptId: "prompt-${_promptIndex++}",
     parts: const [PluginPromptPart.text(text: "Work")],

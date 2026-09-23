@@ -63,6 +63,7 @@ void main() {
   test("SessionCatalogMapper maps stable identity and projection metadata", () {
     const mapper = SessionCatalogMapper();
     const row = SessionDto(
+      fastMode: false,
       sessionId: "sesori-id",
       backendSessionId: "backend-id",
       projectId: "project-1",
@@ -105,6 +106,7 @@ void main() {
   test("SessionCatalogMapper reports live activity newer than the backend's updated time", () {
     const mapper = SessionCatalogMapper();
     const base = SessionDto(
+      fastMode: false,
       sessionId: "sesori-id",
       backendSessionId: "backend-id",
       projectId: "project-1",
@@ -149,6 +151,7 @@ void main() {
 
   test("StoredSessionMapper projects the fields repository consumers need", () {
     const row = SessionDto(
+      fastMode: false,
       sessionId: "sesori-id",
       backendSessionId: "backend-id",
       projectId: "project-1",

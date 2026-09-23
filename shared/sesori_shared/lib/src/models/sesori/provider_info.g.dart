@@ -36,6 +36,7 @@ _ProviderModel _$ProviderModelFromJson(Map json) => _ProviderModel(
   defaultVariant: json['defaultVariant'] as String?,
   family: json['family'] as String?,
   isAvailable: json['isAvailable'] as bool? ?? true,
+  supportsFastMode: json['supportsFastMode'] as bool? ?? false,
   releaseDate: _$JsonConverterFromJson<String, DateTime>(
     json['releaseDate'],
     dateConverter.fromJson,
@@ -51,6 +52,7 @@ Map<String, dynamic> _$ProviderModelToJson(_ProviderModel instance) =>
       'defaultVariant': ?instance.defaultVariant,
       'family': ?instance.family,
       'isAvailable': instance.isAvailable,
+      'supportsFastMode': instance.supportsFastMode,
       'releaseDate': ?_$JsonConverterToJson<String, DateTime>(
         instance.releaseDate,
         dateConverter.toJson,

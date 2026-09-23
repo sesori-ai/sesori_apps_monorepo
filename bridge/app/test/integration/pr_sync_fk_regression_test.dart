@@ -75,6 +75,7 @@ void main() {
         );
         await projectRepo.getProjects();
         await db.sessionDao.insertSession(
+          fastMode: false,
           sessionId: "session-X",
           backendSessionId: "session-X",
           projectId: "proj-X",
@@ -325,6 +326,7 @@ class _FakeBridgePlugin({required final List<PluginProject> _projects, required 
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}

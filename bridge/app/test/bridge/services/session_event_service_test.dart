@@ -1500,6 +1500,7 @@ Future<void> _insertRoot({
   final projectId = "project-$sessionId";
   await database.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   await database.sessionDao.insertSession(
+    fastMode: false,
     sessionId: sessionId,
     backendSessionId: backendSessionId,
     projectId: projectId,

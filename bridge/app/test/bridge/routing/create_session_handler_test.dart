@@ -170,6 +170,7 @@ void main() {
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
           variant: SessionVariant(id: "xhigh"),
+          fastMode: true,
           agent: null,
           model: null,
           command: null,
@@ -178,6 +179,7 @@ void main() {
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
       expect(worktreeService.prepareCallCount, equals(1));
+      expect(plugin.lastCreateSessionFastMode, isTrue);
       expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
       expect(plugin.lastCreateSessionParts, isNotNull);
       expect(plugin.lastCreateSessionParts, hasLength(2));
@@ -209,6 +211,7 @@ void main() {
       expect(dbSession.branchName, equals("session-001"));
       expect(dbSession.baseBranch, equals("main"));
       expect(dbSession.baseCommit, equals("abc123def456"));
+      expect(dbSession.fastMode, isTrue);
       expect(dbSession.createdAt, greaterThan(0));
     });
 
@@ -1283,6 +1286,7 @@ class _ThrowingCreateSessionPlugin({required final Object error}) extends _OpenC
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) {
@@ -1311,6 +1315,7 @@ class _OrderCheckingCommandPlugin({required final AppDatabase _database}) extend
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -1320,6 +1325,7 @@ class _OrderCheckingCommandPlugin({required final AppDatabase _database}) extend
     );
     hadStoredRowWhenCommandSent = session != null;
     await super.sendCommand(
+      fastMode: false,
       promptId: "prompt-1",
       sessionId: sessionId,
       command: command,

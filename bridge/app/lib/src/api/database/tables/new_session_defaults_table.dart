@@ -9,6 +9,7 @@ class NewSessionDefaultsTable() extends Table {
   TextColumn get pluginId => text()();
   TextColumn get agent => text().nullable()();
   TextColumn get agentModel => text().nullable().map(const AgentModelConverter())();
+  BoolColumn get fastMode => boolean().withDefault(const Constant(false))();
 
   @override
   bool get withoutRowId => true;

@@ -27,6 +27,7 @@ void main() {
         ),
       );
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "/repo",

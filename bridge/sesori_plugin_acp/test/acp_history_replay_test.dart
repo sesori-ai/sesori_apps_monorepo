@@ -349,6 +349,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = createdPlugin.createSession(
+        fastMode: false,
         directory: cwd,
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "Hello")],

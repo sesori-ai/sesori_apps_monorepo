@@ -19,6 +19,8 @@ sealed class CreateSessionRequest with _$CreateSessionRequest {
     required PromptModel? model,
     required String? command,
     required SessionVariant? variant,
+    // COMPATIBILITY 2026-09-23 (v1.9.0): Apps before fast mode omit fastMode and cannot select it, so the session starts at normal speed. Remove @Default and require the field once the minimum supported app always sends it.
+    @Default(false) bool fastMode,
     required bool dedicatedWorktree,
   }) = _CreateSessionRequest;
 

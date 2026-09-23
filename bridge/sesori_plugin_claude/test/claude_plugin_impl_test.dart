@@ -112,6 +112,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.createSession(
+        fastMode: false,
         directory: "/tmp/project",
         parentSessionId: null,
         parts: const [
@@ -165,6 +166,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: testSessionId,
           parts: const [PluginPromptPart.text(text: "hello")],
@@ -186,6 +188,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: testSessionId,
           parts: const [PluginPromptPart.text(text: "hello")],
@@ -205,6 +208,7 @@ void main() {
     test("rejects unsupported selections on session creation", () async {
       await expectLater(
         harness.plugin.createSession(
+          fastMode: false,
           directory: "/tmp/project",
           parentSessionId: null,
           parts: const [],
@@ -231,6 +235,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
         command: "review",
@@ -253,6 +258,7 @@ void main() {
       first.emit(_result());
       await pump();
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "now build it")],
@@ -274,6 +280,7 @@ void main() {
       await harness.close();
       harness = _PluginHarness(failInitialize: true);
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: "/tmp/project",
         parentSessionId: null,
         parts: const [],
@@ -288,6 +295,7 @@ void main() {
       // Accepted at enqueue: the spawn failure surfaces on the event stream
       // (queue removal plus session error), not as a send failure.
       await harness.plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
         command: "review",
@@ -318,6 +326,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "follow-up")],
@@ -351,6 +360,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prm_image",
         sessionId: testSessionId,
         parts: const [
@@ -392,6 +402,7 @@ void main() {
 
       // Accepted instantly while the first turn is still running.
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prm_steer",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "steer it")],
@@ -441,6 +452,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendCommand(
+        fastMode: false,
         promptId: "prm_cmd",
         sessionId: testSessionId,
         command: "review",
@@ -491,6 +503,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prm_unmappable",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "no uuid")],
@@ -528,6 +541,7 @@ void main() {
       await pump();
 
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prm_aborted",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "interrupted early")],
@@ -566,6 +580,7 @@ void main() {
       await waitForFrame(first, "user");
 
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prm_cancel",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "never runs")],
@@ -589,6 +604,7 @@ void main() {
       await waitForFrame(first, "user");
 
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "deeper")],
@@ -614,6 +630,7 @@ void main() {
     test("throws not found instead of creating a process for an unknown session", () async {
       await expectLater(
         harness.plugin.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: otherTestSessionId,
           parts: const [PluginPromptPart.text(text: "hello")],
@@ -807,6 +824,7 @@ void main() {
         process,
       ).where((subtype) => subtype == "set_permission_mode").length;
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "plan again")],
@@ -994,6 +1012,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
 
   Future<PluginSession> createSession() async {
     final session = await plugin.createSession(
+      fastMode: false,
       directory: "/tmp/project",
       parentSessionId: null,
       parts: const [PluginPromptPart.text(text: "hello")],

@@ -243,6 +243,7 @@ class _Harness({required final Directory directory, required final List<_Process
   }
 
   Future<PluginSession> create() => plugin.createSession(
+    fastMode: false,
     directory: "/new-cwd",
     parentSessionId: null,
     parts: const [],
@@ -256,6 +257,7 @@ class _Harness({required final Directory directory, required final List<_Process
     required ({String providerID, String modelID})? model,
     PluginSessionVariant? variant,
   }) => plugin.sendPrompt(
+    fastMode: false,
     promptId: "prompt-$session",
     sessionId: session,
     parts: const [PluginPromptPart.text(text: "synthetic")],
@@ -361,6 +363,7 @@ void main() {
     );
     await expectLater(
       h.plugin.sendCommand(
+        fastMode: false,
         promptId: "stale-command",
         sessionId: session.id,
         command: "synthetic",

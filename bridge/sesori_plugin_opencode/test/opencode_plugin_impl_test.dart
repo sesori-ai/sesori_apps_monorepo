@@ -244,6 +244,7 @@ void main() {
       server.requestLog.clear();
 
       final session = await plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Start from here")],
@@ -273,6 +274,7 @@ void main() {
       server.requestLog.clear();
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
@@ -304,6 +306,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prm_1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
@@ -357,6 +360,7 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
@@ -384,6 +388,7 @@ void main() {
       await server.waitForSseConnection();
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
@@ -435,6 +440,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "s-root",
           parts: const [PluginPromptPart.text(text: "Continue")],
@@ -485,6 +491,7 @@ void main() {
         await expectLater(
           operation == "sendPrompt"
               ? plugin.sendPrompt(
+                  fastMode: false,
                   promptId: "prompt-stale-agent",
                   sessionId: "s-root",
                   parts: const [PluginPromptPart.text(text: "Continue")],
@@ -493,6 +500,7 @@ void main() {
                   model: null,
                 )
               : plugin.sendCommand(
+                  fastMode: false,
                   promptId: "prompt-stale-agent",
                   sessionId: "s-root",
                   command: "/review-work",
@@ -522,6 +530,7 @@ void main() {
       server.requestLog.clear();
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-build",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "Continue")],
@@ -545,6 +554,7 @@ void main() {
 
         await expectLater(
           plugin.sendCommand(
+            fastMode: false,
             promptId: "prompt-stale-${testCase.name}",
             sessionId: "s-root",
             command: "/review-work",
@@ -585,6 +595,7 @@ void main() {
 
       await expectLater(
         plugin.sendCommand(
+          fastMode: false,
           promptId: "prompt-backend-failure",
           sessionId: "s-root",
           command: "/review-work",
@@ -626,6 +637,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       await plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-root",
         command: "/review-work",
@@ -689,6 +701,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          fastMode: false,
           promptId: "prompt-ambiguous",
           sessionId: "s-root",
           parts: const [PluginPromptPart.text(text: "Continue")],
@@ -738,6 +751,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       await plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-compact",
         sessionId: "s-root",
         command: OpenCodeService.compactionCommandName,
@@ -807,6 +821,7 @@ void main() {
       server.requestLog.clear();
 
       await plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-compact",
         sessionId: "s-root",
         command: OpenCodeService.compactionCommandName,
@@ -843,6 +858,7 @@ void main() {
 
       await expectLater(
         plugin.sendCommand(
+          fastMode: false,
           promptId: "prompt-compact",
           sessionId: "s-root",
           command: OpenCodeService.compactionCommandName,
@@ -868,6 +884,7 @@ void main() {
 
       await expectLater(
         plugin.sendCommand(
+          fastMode: false,
           promptId: "prompt-compact",
           sessionId: "s-root",
           command: OpenCodeService.compactionCommandName,
@@ -892,6 +909,7 @@ void main() {
       server.holdCommand = Completer<void>();
 
       await plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-root",
         command: "/review-work",
@@ -1112,6 +1130,7 @@ void main() {
       addTearDown(subscription.cancel);
       await initialProjectUpdated.future;
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-root",
         parts: const [PluginPromptPart.text(text: "long task")],

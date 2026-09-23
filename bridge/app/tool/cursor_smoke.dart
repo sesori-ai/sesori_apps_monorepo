@@ -39,6 +39,7 @@ Future<void> main(List<String> args) async {
   stdout.writeln("healthCheck: ${await plugin.healthCheck()}");
 
   final session = await plugin.createSession(
+    fastMode: false,
     directory: cwd,
     parentSessionId: null,
     parts: [PluginPromptPart.text(text: prompt)],

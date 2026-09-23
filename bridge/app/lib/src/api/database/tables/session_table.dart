@@ -46,6 +46,11 @@ class SessionTable() extends Table {
   TextColumn get baseCommit => text().nullable()();
   TextColumn get lastAgent => text().nullable()();
   TextColumn get lastAgentModel => text().nullable().map(const AgentModelConverter())();
+
+  /// Whether the session's turns run in the backend's fast mode. The bridge
+  /// owns this choice: only client create/prompt/command requests write it;
+  /// backend-reported prompt defaults never do.
+  BoolColumn get fastMode => boolean().withDefault(const Constant(false))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
   IntColumn get projectionUpdatedAt => integer()();
@@ -99,6 +104,7 @@ sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    required bool fastMode,
     required int createdAt,
     required int updatedAt,
     required int projectionUpdatedAt,

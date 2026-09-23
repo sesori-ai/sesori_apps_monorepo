@@ -301,6 +301,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
       updatedAt: _defaultTimestamp,
     );
     await database.sessionDao.insertSession(
+      fastMode: false,
       sessionId: _sessionId,
       backendSessionId: _backendSessionId,
       projectId: _projectId,
