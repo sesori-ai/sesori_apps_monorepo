@@ -21,6 +21,12 @@ its pinned runtime passes the parser, terminal-reporting and readiness checks.
   `ClaudeSessionService` alone invokes the mapper from its existing process-event
   handling, retains at most one candidate in its turn state, and releases it
   after terminal settlement. Inject the stateless mapper into that service.
+  Before quota mapping, ignore forwarded assistant/user/stream frames whose
+  parentToolUseId is non-null, including when the child identity is not yet
+  known. Claude sub-agent sessions are read-only; their quota errors must not
+  arm the root session. A process-level rate-limit status without message
+  attribution is only supporting evidence: release requires a terminal error
+  belonging to the root turn, with that root error's stable message ID.
   Reuse the stable message-ID mapping used by live/history error projection.
   `claude_event_dispatcher.dart` / `ClaudeEventDispatcher` continues presentation
   mapping only; no candidate must cross between these peer owners. The service
@@ -49,10 +55,14 @@ its pinned runtime passes the parser, terminal-reporting and readiness checks.
   duration format and returns known/unknown reset. Existing
   `pi_history_mapper.dart` and `pi_message_identity_builder.dart` remain the
   error/history identity authorities; history parsing never emits quota events.
-- **Turn lifecycle:** `services/pi_event_dispatcher.dart` / `PiEventDispatcher`
-  uses the mapper. `services/pi_session_service.dart` / `PiSessionService` keeps
-  at most one candidate in existing turn state until native retry settles, then
-  emits through the existing event path. No second retry owner is introduced.
+- **Turn lifecycle:** `services/pi_session_service.dart` / `PiSessionService`
+  alone invokes the injected stateless mapper in its existing _handleFrame
+  lifecycle path. It keeps at most one candidate in existing turn state until
+  native retry settles, discards it on successful recovery, and emits only a
+  remaining terminal quota interruption through its existing event path.
+  `services/pi_event_dispatcher.dart` / `PiEventDispatcher` continues presentation
+  mapping; its immediately emitted mapped events carry no quota candidate.
+  No candidate handoff, second event stream or second retry owner is introduced.
 - **Readiness:** `PiSessionService` uses its existing process/catalog
   repositories, event dispatcher, `PiExtensionUiService`, clock and native
   turn/queue state. `repositories/pi_session_process_repository.dart` exposes

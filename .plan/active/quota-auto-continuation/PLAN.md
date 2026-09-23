@@ -395,6 +395,9 @@ supported harness/provider, without model-name allowlists in shared code.
 - **Automated, every implemented plugin parser:** Real sanitized error fixtures; absolute/relative reset
   conversion, timezone/date/DST, missing fields, generic connection reset, generic 429, warning/billing/auth
   errors, malformed/past reset, and native retry exhaustion. Replayed history never arms.
+  Claude forwarded child quota frames never arm the root, even before child
+  identity is known. Pi quota-then-successful-retry emits no interruption;
+  terminal quota exhaustion emits one, after settlement.
 
 - **Automated/headless bridge, representative plugin:** Off by default; enable during wait; future
   interruptions; reset + buffer rather than observation + buffer; paused recheck backoff and
