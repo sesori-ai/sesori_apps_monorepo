@@ -6,13 +6,41 @@ identifiers are included. Samples demonstrate error shapes, not feature support.
 
 ## Local observations
 
-| Harness | Observation | Meaning |
-|---|---|---|
-| Claude Code | 2026-09-23 14:12:51 UTC: tagged `rate_limit` / `isApiErrorMessage` with “You've hit your session limit · resets 6:30pm (Europe/Sofia)”. A 2026-09-16 sample uses `2pm`. | A real tagged quota error carries time and named zone; minutes are optional. |
-| Pi, `openai-codex` | 2026-09-16 19:34:27 UTC: assistant `stopReason: error`, “You have hit your ChatGPT usage limit (pro plan). Try again in ~5918 min.” | A real error carries a relative duration spanning several days. The absolute reset must be anchored to this error's timestamp. |
-| Pi, `openai-codex` | 2026-09-16 19:40:40 UTC: “Codex error: The usage limit has been reached”. | The same provider can omit reset information. |
-| Pi, `openai-codex` | Connection errors containing “disconnect/reset before headers” also occur. | Searching for the word `reset` is not a quota classifier. |
-| Codex | Recent repository rollout `token_count` events contain `rate_limits.limit_id`, `primary.used_percent`, `window_minutes`, and `resets_at`. | Structured reset information exists locally, but sampled windows were not exhausted. No terminal quota error occurred in the six repository rollouts among the 30 most recently modified Codex files inspected. |
+### Harness: Claude Code
+
+**Observation:** 2026-09-23 14:12:51 UTC: tagged `rate_limit` / `isApiErrorMessage` with “You've hit your
+session limit · resets 6:30pm (Europe/Sofia)”. A 2026-09-16 sample uses `2pm`.
+
+**Meaning:** A real tagged quota error carries time and named zone; minutes are optional.
+
+### Harness: Pi, `openai-codex`
+
+**Observation:** 2026-09-16 19:34:27 UTC: assistant `stopReason: error`, “You have hit your ChatGPT usage
+limit (pro plan). Try again in ~5918 min.”
+
+**Meaning:** A real error carries a relative duration spanning several days. The absolute reset must be
+anchored to this error's timestamp.
+
+### Harness: Pi, `openai-codex`
+
+**Observation:** 2026-09-16 19:40:40 UTC: “Codex error: The usage limit has been reached”.
+
+**Meaning:** The same provider can omit reset information.
+
+### Harness: Pi, `openai-codex`
+
+**Observation:** Connection errors containing “disconnect/reset before headers” also occur.
+
+**Meaning:** Searching for the word `reset` is not a quota classifier.
+
+### Harness: Codex
+
+**Observation:** Recent repository rollout `token_count` events contain `rate_limits.limit_id`,
+`primary.used_percent`, `window_minutes`, and `resets_at`.
+
+**Meaning:** Structured reset information exists locally, but sampled windows were not exhausted. No
+terminal quota error occurred in the six repository rollouts among the 30 most recently modified Codex files
+inspected.
 
 Scope: 32 Claude repository transcript files, 35 most recently modified Pi
 repository transcript files, and the Codex sample described above. Historical
@@ -43,14 +71,14 @@ wrote every historical record. The repository Claude target is 2.1.269.
 
 ## Primary external sources
 
-- [Claude SDK rate-limit types](https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/types.py)
+- [Claude SDK rate-limit types][claude-types]
   model rejected/allowed states and reset timestamps. The
-  [wire parser](https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/_internal/message_parser.py)
+  [wire parser][claude-parser]
   confirms camel-case `resetsAt` inside `rate_limit_info`.
 - [Codex app-server account limits](https://developers.openai.com/codex/app-server#6-rate-limits-chatgpt)
   documents read/update operations, per-bucket views, and reset timestamps in
   Unix seconds. These are account signals; turn/bucket attribution still matters.
-- [Pi's current Codex transport](https://github.com/earendil-works/pi/blob/main/packages/ai/src/api/openai-codex-responses.ts)
+- [Pi's current Codex transport][pi-codex]
   distinguishes terminal limits from retryable errors and reads retry headers.
   Native HTTP handling does not prove those headers survive the Pi RPC seam.
 - [ACP schema](https://agentclientprotocol.com/protocol/v1/schema) does not provide
@@ -59,3 +87,10 @@ wrote every historical record. The repository Claude target is 2.1.269.
 
 These moving upstream sources were read on 2026-09-23. During implementation,
 verify the pinned driven runtime and commit/release before advertising support.
+
+[claude-types]:
+  https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/types.py
+[claude-parser]:
+  https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/_internal/message_parser.py
+[pi-codex]:
+  https://github.com/earendil-works/pi/blob/main/packages/ai/src/api/openai-codex-responses.ts

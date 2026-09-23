@@ -160,7 +160,7 @@ historical transcript backfill is required. Persist:
 - the enabled preference, independent of the current interruption;
 - one sealed current outcome: no observation, reset known, reset unknown,
   consumed observation, failed automatic submission, or paused known reset.
-  Paused preserves its observation/reset and bounded reason for the next check.
+  Paused preserves its observation/reset, bounded reason and next recheck time.
   Each variant owns only
   its valid required fields. Known reset includes observation ID/time and reset
   time; consumed preserves the observation ID to avoid rearming the same event;
@@ -194,15 +194,20 @@ progress. Use existing status/queue authority. Persist consumption **before**
 calling the harness, so a restart cannot blindly resubmit an uncertain send.
 Use the accepted-prompt ID mechanism already owned by `SessionPromptService`.
 
-Before consuming a due observation, read only that named session's current
-snapshot via `SessionRepository.getSessionMessages` and the plugin-owned
-`getQuotaContinuationReadiness` wrapper. The last conversation
+A wait becomes due only when resetAt <= now - buffer, never from observedAt.
+Before consuming it, check the plugin-owned `getQuotaContinuationReadiness`
+wrapper. Only idle readiness proceeds to read that named session's current
+snapshot via `SessionRepository.getSessionMessages`. The last conversation
 message must still be the stored terminal error ID. Existing snapshots return
 the session history rather than a tail page: make one read per due attempt and
 inspect its tail. Add no history pagination, recursive child reads, account
 scans, or replay system. A newer message consumes the obsolete wait.
-Uncertain current state persists a paused view instead of sending. This handles native activity
-while the bridge was offline without a restart cache or startup-wide sweep.
+Uncertain current state persists a paused view and recheckAt = now + five
+minutes instead of sending. Later ticks skip that row until its persisted
+recheck deadline; a failed recheck moves the deadline forward by five minutes.
+Non-idle readiness never loads history. This bounds expensive reads and handles
+native activity while the bridge was offline without a restart cache,
+startup-wide sweep, or additional event subscription.
 
 This is one automatic submission attempt per observation, not an exactly-once
 distributed delivery claim. A crash between durable consumption and backend
@@ -212,16 +217,29 @@ Do not add an outbox, lease registry, or speculative backend reconciliation.
 
 Ordinary reachable flows to handle at existing authoritative seams:
 
-| Flow | Required behavior and owner |
-|---|---|
-| Disable from either client while waiting | Same dispatcher orders setting change against send; disable first prevents submission. |
-| User submits a new prompt/command or changes the effective selection | Consume the old wait when the accepted operation supersedes it; keep preference on. Use existing prompt/default-change authority. |
-| User presses Stop | Cancel that pending wait through abort authority; keep preference on for future quota interruptions. No delayed surprise restart of the stopped turn. |
-| Archive/delete | Existing session mutation authority cancels/removes the wait; never reopen an archived/deleted session. |
-| Native turn resumes or queued work runs | Invalidate the old wait from authoritative new activity; do not append Continue behind active work. |
-| Host sleeps/restarts | Re-read durable due work on availability; dispatch only if the same observation is still current and session is idle. |
-| Harness disabled/unavailable or permission/question still pending | Show paused/unavailable; no forced harness enable, permission approval, or automatic queue insertion. Reuse current routing/request state. |
-| Submission rejected or reset unavailable | Surface/log failure; no prompt retry loop. A fresh terminal quota observation may establish a later schedule. |
+- **Disable from either client while waiting:** Same dispatcher orders setting change against send; disable
+  first prevents submission.
+
+- **User submits a new prompt/command or changes the effective selection:** Consume the old wait when the
+  accepted operation supersedes it; keep preference on. Use existing prompt/default-change authority.
+
+- **User presses Stop:** Cancel that pending wait through abort authority; keep preference on for future
+  quota interruptions. No delayed surprise restart of the stopped turn.
+
+- **Archive/delete:** Existing session mutation authority cancels/removes the wait; never reopen an
+  archived/deleted session.
+
+- **Native turn resumes or queued work runs:** Invalidate the old wait from authoritative new activity; do
+  not append Continue behind active work.
+
+- **Host sleeps/restarts:** Re-read durable due work on availability; dispatch only if the same observation
+  is still current and session is idle.
+
+- **Harness disabled/unavailable or permission/question still pending:** Show paused/unavailable; no forced
+  harness enable, permission approval, or automatic queue insertion. Reuse current routing/request state.
+
+- **Submission rejected or reset unavailable:** Surface/log failure; no prompt retry loop. A fresh terminal
+  quota observation may establish a later schedule.
 
 Only named-session state is added. Existing family serialization remains, but
 this feature adds no parent/child cascade, family inspection, or account-wide
@@ -277,14 +295,66 @@ All steps use slug `quota-auto-continuation`, in this order, total **6**. Estima
 are authored additions + deletions; measure complete merge-base churn including
 generated files before each push and split cleanly if needed.
 
-| Step | Exact proposed title | Deliverable / expected result | Risk and validation |
-|---|---|---|---|
-| 1 | 🌱 [quota-auto-continuation] Plan per-session quota recovery [step 1/6] | This plan, evidence, tracker, capability audit. No product/database change. | Documentation links, factual boundaries, architecture plan review. |
-| 2 | ⚙️ [quota-auto-continuation] Normalize terminal quota reset signals [step 2/6] | Internal typed event/capability and verified plugin implementations; current errors still render. No scheduled sends or database change. Estimate 600–1,000 authored lines. | Parser/dispatcher tests for each supporting seam, unknown/no-reset/false-positive/native-retry cases; analyze touched packages; matrix updated with actual evidence. |
-| 3 | 🚧 [quota-auto-continuation] Persist and dispatch session continuations [step 3/6] | Session state, shared view/route, scheduler and cancellation integration. Opt-in headless API works; new session-owned storage. Estimate 650–1,000 authored lines. | Focused DB, service, route, ordering, restart, old-peer serialization tests; headless integration. Generated Drift/Freezed churn may exceed cap: report it separately and keep it with source. |
-| 4 | ⚙️ [quota-auto-continuation] Add chat auto-continuation controls [step 4/6] | Shared hint, enabled indicator, scheduled time and overflow toggle on mobile/desktop. No new database change. Estimate 350–650 authored lines. | Cubit/service and widget behavior; client end-to-end toggle, disable, reconnect and scheduled echo. |
-| 5 | 🌿 [quota-auto-continuation] Reconcile quota recovery regression coverage [step 5/6] | Complete feature docs and final support matrix, including provider limitations. No product/database change. | Links and consistency with shipped behavior and actual test coverage. |
-| 6 | 🌿 [quota-auto-continuation] Verify quota recovery and retire the plan [step 6/6] | Run the matrix below, record results, move plan to completed only when it passes. No intended product/database change. | L4 accumulated coverage through complete authoritative boundaries; partial/blocked stays active. |
+### Step: 1
+
+**Exact proposed title:** 🌱 [quota-auto-continuation] Plan per-session quota recovery [step 1/6]
+
+**Deliverable / expected result:** This plan, evidence, tracker, capability audit. No product/database
+change.
+
+**Risk and validation:** Documentation links, factual boundaries, architecture plan review.
+
+### Step: 2
+
+**Exact proposed title:** ⚙️ [quota-auto-continuation] Normalize terminal quota reset signals [step 2/6]
+
+**Deliverable / expected result:** Internal typed event/capability and verified plugin implementations;
+current errors still render. No scheduled sends or database change. Estimate 600–1,000 authored lines.
+
+**Risk and validation:** Parser/dispatcher tests for each supporting seam,
+unknown/no-reset/false-positive/native-retry cases; analyze touched packages; matrix updated with actual
+evidence.
+
+### Step: 3
+
+**Exact proposed title:** 🚧 [quota-auto-continuation] Persist and dispatch session continuations [step 3/6]
+
+**Deliverable / expected result:** Session state, shared view/route, scheduler and cancellation integration.
+Opt-in headless API works; new session-owned storage. Estimate 650–1,000 authored lines.
+
+**Risk and validation:** Focused DB, service, route, ordering, restart, old-peer serialization tests;
+headless integration. Generated Drift/Freezed churn may exceed cap: report it separately and keep it with
+source.
+
+### Step: 4
+
+**Exact proposed title:** ⚙️ [quota-auto-continuation] Add chat auto-continuation controls [step 4/6]
+
+**Deliverable / expected result:** Shared hint, enabled indicator, scheduled time and overflow toggle on
+mobile/desktop. No new database change. Estimate 350–650 authored lines.
+
+**Risk and validation:** Cubit/service and widget behavior; client end-to-end toggle, disable, reconnect and
+scheduled echo.
+
+### Step: 5
+
+**Exact proposed title:** 🌿 [quota-auto-continuation] Reconcile quota recovery regression coverage [step
+5/6]
+
+**Deliverable / expected result:** Complete feature docs and final support matrix, including provider
+limitations. No product/database change.
+
+**Risk and validation:** Links and consistency with shipped behavior and actual test coverage.
+
+### Step: 6
+
+**Exact proposed title:** 🌿 [quota-auto-continuation] Verify quota recovery and retire the plan [step 6/6]
+
+**Deliverable / expected result:** Run the matrix below, record results, move plan to completed only when it
+passes. No intended product/database change.
+
+**Risk and validation:** L4 accumulated coverage through complete authoritative boundaries; partial/blocked
+stays active.
 
 Each production step is independently compilable. Review architecture-bearing
 production diffs using the repository review skills. Update regression docs
@@ -301,14 +371,33 @@ Affected documents: `docs/regression/session-turns.md` (primary),
 primary document becomes unwieldy. Update `docs/HARNESS_CAPABILITIES.md` per
 supported harness/provider, without model-name allowlists in shared code.
 
-| Boundary | Required evidence |
-|---|---|
-| Automated, every implemented plugin parser | Real sanitized error fixtures; absolute/relative reset conversion, timezone/date/DST, missing fields, generic connection reset, generic 429, warning/billing/auth errors, malformed/past reset, and native retry exhaustion. Replayed history never arms. |
-| Automated/headless bridge, representative plugin | Off by default; enable during wait; future interruptions; reset + buffer; one send per observation; same-observation replay; disable/manual send/Stop/archive/delete; persistence; failure; host clock passed while asleep. Exercise actual routes, DAO and normal prompt service with controllable time. |
-| Live plugin, every declared supporting production harness/provider seam | Prove the pinned runtime's raw quota payload reaches its parser and that an ordinary Continue is accepted in that session. Existing captured real quota payload plus controlled protocol replay can prove the hours-long wait; label replay explicitly. Actual post-reset recovery remains required wherever provider behavior itself is claimed. Do not spend tokens to deliberately exhaust quotas. |
-| Client end to end | iOS simulator and macOS desktop against one representative supported bridge/plugin: inline enable, three-dot enable/disable, scheduled local time, enabled idle indicator, unknown/unavailable state, actual user-message echo. One Android shared-UI smoke for menu/notice layout and action wiring. |
-| Relay/multi-client | Two clients on the same bridge observe the same setting; disable from one prevents the other's pending send. Closing all clients still allows one bridge send. Reconnect/restart restores state. |
-| Compatibility | New client/older released bridge reports unavailable without a local enabled illusion; older released client/new bridge keeps error/session decoding and ordinary send/Stop. Fixtures must correspond to the public release baseline. |
+- **Automated, every implemented plugin parser:** Real sanitized error fixtures; absolute/relative reset
+  conversion, timezone/date/DST, missing fields, generic connection reset, generic 429, warning/billing/auth
+  errors, malformed/past reset, and native retry exhaustion. Replayed history never arms.
+
+- **Automated/headless bridge, representative plugin:** Off by default; enable during wait; future
+  interruptions; reset + buffer rather than observation + buffer; paused recheck backoff and
+  readiness-before-history; one send per observation; same-observation replay; disable/manual
+  send/Stop/archive/delete; persistence; failure; host clock passed while asleep. Exercise actual routes,
+  DAO and normal prompt service with controllable time.
+
+- **Live plugin, every declared supporting production harness/provider seam:** Prove the pinned runtime's
+  raw quota payload reaches its parser and that an ordinary Continue is accepted in that session. Existing
+  captured real quota payload plus controlled protocol replay can prove the hours-long wait; label replay
+  explicitly. Actual post-reset recovery remains required wherever provider behavior itself is claimed. Do
+  not spend tokens to deliberately exhaust quotas.
+
+- **Client end to end:** iOS simulator and macOS desktop against one representative supported bridge/plugin:
+  inline enable, three-dot enable/disable, scheduled local time, enabled idle indicator, unknown/unavailable
+  state, actual user-message echo. One Android shared-UI smoke for menu/notice layout and action wiring.
+
+- **Relay/multi-client:** Two clients on the same bridge observe the same setting; disable from one prevents
+  the other's pending send. Closing all clients still allows one bridge send. Reconnect/restart restores
+  state.
+
+- **Compatibility:** New client/older released bridge reports unavailable without a local enabled illusion;
+  older released client/new bridge keeps error/session decoding and ordinary send/Stop. Fixtures must
+  correspond to the public release baseline.
 
 Fixtures prove parsing and time policy, not provider recovery. A missing account,
 runtime, client platform, or natural quota observation is **Blocked/Partial**,
