@@ -70,7 +70,7 @@ its pinned runtime passes the parser, terminal-reporting and readiness checks.
   Pending extension input, retry, compaction or queued work cannot report idle.
   Confirm non-resident process ownership, or return unknown without guessing.
 - **Boundary/composition:** `pi_plugin_impl.dart` / `PiPlugin` delegates to its
-  session service and supplies the mapper to PiEventDispatcher.
+  session service and supplies the mapper to PiSessionService.
   `runtime/pi_plugin_descriptor.dart`
   declares conditional reporting only for verified error/provider shapes.
 

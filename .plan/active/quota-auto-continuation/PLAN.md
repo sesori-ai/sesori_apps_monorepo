@@ -64,7 +64,7 @@ unverified harness/provider combinations. The capability audit also lives in
   switch discards `ClaudeRateLimitMessage`. Native `api_retry` is already mapped.
 - Pi local `openai-codex` error records include a relative reset duration, and
   others omit it. `PiHistoryMapper._assistantInfo` preserves error text.
-  `PiEventDispatcher` already owns `auto_retry_start/end` and settled events.
+  `PiEventDispatcher` maps `auto_retry_start/end`; `PiSessionService` owns turn settlement.
 - Codex rollouts expose structured account reset timestamps. Sesori's terminal
   error tests cover `usageLimitExceeded`, but do not establish a reset binding.
   The app-server's account rate-limit response is a candidate source, not proof
