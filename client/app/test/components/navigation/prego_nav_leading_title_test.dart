@@ -17,7 +17,6 @@ void main() {
     String? infoMessage,
     String? infoSemanticLabel,
     double? slotHeight,
-    PregoNavLeadingTitleEmphasis emphasis = PregoNavLeadingTitleEmphasis.muted,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -32,7 +31,6 @@ void main() {
               height: slotHeight,
               child: PregoNavLeadingTitle(
                 title: title,
-                emphasis: emphasis,
                 subtitle: subtitle == null
                     ? null
                     : PregoNavSubtitle(
@@ -109,21 +107,18 @@ void main() {
     expect(dotFinder, findsNothing);
   });
 
-  testWidgets("the prominent emphasis renders the title larger and in the primary colour", (tester) async {
+  testWidgets("the title is 18 bold primary and the subtitle 12 tertiary", (tester) async {
     await pumpBlock(tester, title: "Projects", subtitle: "Waiting for the bridge...");
-    final muted = tester.widget<Text>(find.text("Projects")).style!;
+    final colors = PregoDesignSystem.light.colors;
 
-    await pumpBlock(
-      tester,
-      title: "Projects",
-      subtitle: "Waiting for the bridge...",
-      emphasis: PregoNavLeadingTitleEmphasis.prominent,
-    );
-    final prominent = tester.widget<Text>(find.text("Projects")).style!;
+    final title = tester.widget<Text>(find.text("Projects")).style!;
+    expect(title.fontSize, 18);
+    expect(title.fontWeight, FontWeight.bold);
+    expect(title.color, colors.textPrimary);
 
-    expect(prominent.fontSize, greaterThan(muted.fontSize!));
-    expect(prominent.color, PregoDesignSystem.light.colors.textPrimary);
-    expect(muted.color, PregoDesignSystem.light.colors.textSecondary);
+    final subtitle = tester.widget<Text>(find.text("Waiting for the bridge...")).style!;
+    expect(subtitle.fontSize, 12);
+    expect(subtitle.color, colors.textTertiary);
   });
 
   testWidgets("no chevron when there is no info message", (tester) async {
@@ -179,19 +174,6 @@ void main() {
       icon: TablerSolid.brand_github,
       status: PregoNavStatus.online,
       infoMessage: "sesori-ai/Sesori_app_monorepo",
-      slotHeight: PregoTopNavigation.barHeight,
-    );
-    expect(tester.takeException(), isNull);
-
-    // The prominent title line is two points taller, so it has the least head
-    // room of the two weights — check it against the real slot too.
-    await pumpBlock(
-      tester,
-      title: "Projects",
-      subtitle: "Waiting for the bridge...",
-      icon: TablerRegular.broadcast_off,
-      status: PregoNavStatus.error,
-      emphasis: PregoNavLeadingTitleEmphasis.prominent,
       slotHeight: PregoTopNavigation.barHeight,
     );
     expect(tester.takeException(), isNull);

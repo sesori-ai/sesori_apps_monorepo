@@ -50,6 +50,20 @@ void main() {
     expect(tester.getSize(find.byType(PregoNavTitle)).height, lessThan(50));
   });
 
+  testWidgets("the title is 18 bold primary and the subtitle 12 tertiary", (tester) async {
+    await pumpTitle(tester, title: "Session title", subtitle: "feature/some-branch");
+    final colors = PregoDesignSystem.light.colors;
+
+    final title = tester.widget<Text>(find.text("Session title")).style!;
+    expect(title.fontSize, 18);
+    expect(title.fontWeight, FontWeight.bold);
+    expect(title.color, colors.textPrimary);
+
+    final subtitle = tester.widget<Text>(find.text("feature/some-branch")).style!;
+    expect(subtitle.fontSize, 12);
+    expect(subtitle.color, colors.textTertiary);
+  });
+
   testWidgets("renders title + subtitle without overflowing the bar's middle slot", (tester) async {
     // 49pt ≈ the slot height at which the old 52pt block overflowed by 3px on
     // Android (the reported bug). The tightened block must lay out cleanly here.

@@ -184,6 +184,9 @@ state.
   cubit; the sidebar never claims project viewing. Archived rows open read-only.
   Mobile retains its adaptive session split. Desktop Activity, ordinary recents, contextual shortcuts and local
   controls follow the [cockpit contract](desktop-cockpit-shell.md); the sidebar is not another full session-list pane.
+- On the phone, only the top-level Projects and Settings pages show a large 36 bold title. Projects keeps the
+  paired machine's status row under it in every state, including onboarding and bridge-offline. Every other
+  page, File Changes included, shows an 18 bold bar title with a 12 tertiary subtitle.
 - The phone's open root session page offers the row's actions from a menu in its glass bar: Rename, Mark as
   unread, Archive, Archive keeping the worktree when the session has one, and Delete, from the shared
   dispatcher. Mark as unread always sends unread, whatever local state says. Archive, Delete and Mark as

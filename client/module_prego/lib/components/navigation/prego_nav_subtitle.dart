@@ -27,23 +27,28 @@ enum PregoNavStatus() {
 /// [PregoTopNavigation.subtitle] instead of threading row parts through the
 /// bar's API.
 class const PregoNavSubtitle({
-    super.key,
-    /// The row's text, in `text-xs / medium / text-secondary`, clipped to a
+  super.key,
+
+  /// The row's text, in `text-xs / medium / text-tertiary`, clipped to a
   /// single ellipsised line.
   required final String text,
-    /// Optional icon rendered before the [text], sized to the row's `text-xs`
+
+  /// Optional icon rendered before the [text], sized to the row's `text-xs`
   /// glyphs.
   final IconData? icon,
-    /// Status dot before the row; absent when `null`.
+
+  /// Status dot before the row; absent when `null`.
   final PregoNavStatus? status,
-    /// When set, the row becomes tappable: a trailing chevron-down is shown and
+
+  /// When set, the row becomes tappable: a trailing chevron-down is shown and
   /// tapping opens a [PregoInfoPopover] with this message (e.g. the
   /// untruncated form of an ellipsised [text]).
   final String? infoMessage,
-    /// Screen-reader label for the tappable row; only used when [infoMessage]
+
+  /// Screen-reader label for the tappable row; only used when [infoMessage]
   /// is set.
   final String? infoSemanticLabel,
-  }) extends StatelessWidget {
+}) extends StatelessWidget {
   /// Status dot diameter — the Figma online-indicator size.
   static const double _dotSize = 6;
 
@@ -77,16 +82,16 @@ class const PregoNavSubtitle({
               },
             ),
           ),
-        if (icon != null) Icon(icon, size: _iconSize, color: prego.colors.textSecondary),
+        if (icon != null) Icon(icon, size: _iconSize, color: prego.colors.textTertiary),
         Flexible(
           child: Text(
             text,
-            style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary),
+            style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        if (infoMessage != null) Icon(TablerRegular.chevron_down, size: _iconSize, color: prego.colors.textSecondary),
+        if (infoMessage != null) Icon(TablerRegular.chevron_down, size: _iconSize, color: prego.colors.textTertiary),
       ],
     );
 

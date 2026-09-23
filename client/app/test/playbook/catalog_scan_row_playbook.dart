@@ -529,8 +529,6 @@ class _CatalogScanRowInActionExampleState() extends State<CatalogScanRowInAction
     return PregoGlassScaffold(
       key: const Key("catalog-scan-in-action-screen"),
       title: "Projects",
-      titleMode: PregoTopNavigationTitleMode.backLeading,
-      leadingTitleEmphasis: PregoNavLeadingTitleEmphasis.prominent,
       automaticallyImplyLeading: false,
       subtitle: const PregoNavSubtitle(
         text: "MacBook-Pro",
