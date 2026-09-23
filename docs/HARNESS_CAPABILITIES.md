@@ -18,6 +18,38 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Quota-reset auto continuation
+
+Audit date: **2026-09-23**. Sesori does **not yet implement** scheduled quota
+continuation for any harness. The
+[active plan](../.plan/active/quota-auto-continuation/PLAN.md) proposes session-level
+opt-in, a chat hint, a persistent three-dot-menu toggle, and a visible resume
+time. The [evidence record](../.plan/active/quota-auto-continuation/EVIDENCE.md)
+distinguishes observed local errors from upstream contracts and open checks.
+
+Eligibility depends on a terminal quota interruption **and** a usable reset
+time for the selected provider/account/model. Native transient retries are a
+different capability. “Unverified” below is an evidence limit, not a claim that
+the harness cannot support this feature; do not mark it 🚫 without verification.
+
+| Harness | Reset evidence through the relevant seam | Planning status / limitation |
+|---|---|---|
+| Claude Code | Local tagged quota errors name a reset time and IANA zone. SDK rate-limit frames expose `resetsAt`; Sesori currently parses but ignores those frames. | ⬜ Not implemented. Verify terminal rejection and current-turn association; warnings alone cannot schedule. |
+| Pi | Local `openai-codex` assistant errors sometimes report a relative retry duration; others give no reset. | ⬜ Not implemented for evidenced timed errors. Other providers/formats remain unverified; finish native retry before arming. |
+| Codex | Local rollouts and documented app-server account limits contain reset timestamps; terminal usage-limit errors are already rendered. | ⬜ Not implemented. Bind the failed turn to its applicable exhausted bucket(s); an account snapshot alone cannot schedule. |
+| OpenCode | Raw backend error data reaches its message mapper before presentation flattening. | Reset-bearing terminal payloads and provider attribution unverified. Do not treat every 429 or native retry as quota exhaustion. |
+| GitHub Copilot | Current adapter's ACP error payload/extensions require inspection. | Reset reporting unverified; generic ACP has no universal reset field. |
+| Cursor | Current headless error payload requires inspection. | Reset reporting unverified; displayed error text alone does not establish a schedulable timestamp. |
+| Hermes Agent | Current ACP error payload/extensions require inspection. | Reset reporting unverified; provider behavior may differ. |
+| Oh My Pi | Sesori drives ACP, not Pi's RPC session stream. | Reset reporting unverified; Pi evidence cannot establish OMP support. |
+| DeepSeek | Current ACP adapter error payload/extensions require inspection. | Reset reporting unverified; billing/credit exhaustion without a reset is not schedulable. |
+| Grok Build | Current ACP adapter error payload/extensions require inspection. | Reset reporting unverified. |
+| Antigravity | Current official ACP error payload/extensions require inspection. | Reset reporting unverified; native application UI is not evidence of the driven protocol. |
+
+Unknown reset times must remain visible and unscheduled. Implementation must
+update each row with the verified runtime/provider scope and actual delivered
+status; no shared model-name allowlist or inferred reset is planned.
+
 ## Individual queued-prompt cancellation
 
 | Harness / boundary | Status |
