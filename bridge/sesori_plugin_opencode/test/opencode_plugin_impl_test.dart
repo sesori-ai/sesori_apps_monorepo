@@ -697,22 +697,22 @@ void main() {
       server.holdCommand!.complete();
     });
 
-    test("definite prompt refusal removes its correlation", () async {
+    test("an ambiguous prompt failure still stamps a late echo", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       await plugin.initialize();
       await server.waitForSseConnection();
-      server.promptStatusCode = HttpStatus.badRequest;
+      server.promptStatusCode = HttpStatus.badGateway;
 
       await expectLater(
         plugin.sendPrompt(
-          promptId: "prompt-rejected",
+          promptId: "prompt-ambiguous",
           sessionId: "s-root",
           parts: const [PluginPromptPart.text(text: "Continue")],
           agent: null,
           variant: null,
           model: null,
         ),
-        throwsA(isA<PluginApiException>().having((error) => error.statusCode, "statusCode", 400)),
+        throwsA(isA<PluginApiException>().having((error) => error.statusCode, "statusCode", 502)),
       );
 
       final messageId = server.lastPromptBody?["messageID"] as String;
@@ -741,7 +741,7 @@ void main() {
       await _awaitEvents<BridgeSseMessageUpdated>(events, count: 1);
 
       final echoed = events.whereType<BridgeSseMessageUpdated>().single;
-      expect((echoed.info as PluginMessageUser).promptId, isNull);
+      expect((echoed.info as PluginMessageUser).promptId, equals("prompt-ambiguous"));
     });
 
     test("bare compact reuses a correlated server message and native compaction part", () async {

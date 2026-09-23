@@ -554,18 +554,15 @@ class OpenCodePlugin._({
   /// Names the user message on the bridge so its echoes can be stamped with
   /// [promptId]. Reusing a server-reserved id instead would rewrite that
   /// message with a new creation time, which the OpenCode TUI renders twice.
+  /// A failed dispatch keeps its correlation: an ambiguous failure may still
+  /// echo, and a rejected message never does.
   Future<void> _dispatchNewMessage({
     required String promptId,
     required Future<void> Function(String messageId) dispatch,
   }) async {
     final messageId = generateOpenCodeMessageId();
     _promptMessages.record(messageId: messageId, promptId: promptId);
-    try {
-      await dispatch(messageId);
-    } on Object {
-      _promptMessages.remove(messageId: messageId);
-      rethrow;
-    }
+    await dispatch(messageId);
     _syncWorkState();
   }
 
