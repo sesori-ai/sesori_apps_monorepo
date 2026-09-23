@@ -380,22 +380,6 @@ class OpenCodeService(
     _markTurnAccepted(sessionId: sessionId);
   }
 
-  Future<String> reserveMessage({
-    required String sessionId,
-    required String? agent,
-    required PluginSessionVariant? variant,
-    required ({String providerID, String modelID})? model,
-  }) {
-    final directory = _getTrackedDirectory(sessionId: sessionId);
-    return repository.reserveMessage(
-      sessionId: sessionId,
-      directory: directory,
-      agent: agent,
-      variant: variant,
-      model: model,
-    );
-  }
-
   Future<({String messageId, String partId, String? guidanceMessageId, ({String providerID, String modelID}) model})>
   reserveCompactionMessage({
     required String sessionId,

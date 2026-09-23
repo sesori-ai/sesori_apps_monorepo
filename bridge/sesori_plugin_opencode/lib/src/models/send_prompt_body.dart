@@ -1,9 +1,8 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 class const SendPromptBody({
-  /// Existing OpenCode user-message id to reuse, or null to let OpenCode name
-  /// a new message. Sesori reserves a server-named empty message, records its
-  /// id, then reuses it here so correlation never depends on the bridge clock.
+  /// User-message id to use, or null to let OpenCode name the message. Prompts
+  /// send a bridge-generated id; compaction reuses its server-reserved marker.
   required final String? messageID,
   required final List<PluginPromptPart> parts,
   required final String? agent,

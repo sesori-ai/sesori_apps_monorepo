@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart" show Harness, maxTranscriptIma
 import "../opencode_plugin.dart";
 import "assistant_message_mapper.dart";
 import "models/openapi/user_message.g.dart";
+import "opencode_message_id.dart";
 import "prompt_message_tracker.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
@@ -168,20 +169,20 @@ class OpenCodePlugin._({
     return result;
   }
 
-  /// Preserves OpenCode's synchronous reservation as the rejection boundary
-  /// while translating its generic 500 for a removed selection into the typed
-  /// stale-options contract. Discovery runs only after that ambiguous failure;
-  /// unrelated backend failures retain their original error and stack trace.
-  Future<T> _reserveWithStaleOptionsClassification<T>({
+  /// Translates the generic 500 a synchronous OpenCode endpoint returns for a
+  /// removed selection into the typed stale-options contract. Discovery runs
+  /// only after that ambiguous failure; unrelated backend failures retain their
+  /// original error and stack trace.
+  Future<T> _withStaleOptionsClassification<T>({
     required String operation,
     required String sessionId,
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
-    required Future<T> Function() reserve,
+    required Future<T> Function() action,
   }) async {
     try {
-      return await _call(reserve);
+      return await _call(action);
     } on PluginApiException catch (error, stackTrace) {
       if (error.statusCode != io.HttpStatus.internalServerError ||
           (agent == null && variant == null && model == null)) {
@@ -521,35 +522,51 @@ class OpenCodePlugin._({
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
-    // OpenCode allocates the ordered id on its own host. Its reservation echo
-    // is empty and cannot render; reusing the message below publishes the
-    // stamped, renderable envelope after this correlation is recorded.
-    final messageId = await _reserveWithStaleOptionsClassification(
-      operation: _sendPromptOperation,
-      sessionId: sessionId,
-      agent: agent,
-      variant: variant,
-      model: model,
-      reserve: () => _service.reserveMessage(
-        sessionId: sessionId,
-        agent: agent,
-        variant: variant,
-        model: model,
+    if (agent != null) await _requireOfferedAgent(sessionId: sessionId, agent: agent);
+    await _dispatchNewMessage(
+      promptId: promptId,
+      dispatch: (messageId) => _call(
+        () => _service.sendPrompt(
+          sessionId: sessionId,
+          messageId: messageId,
+          parts: parts,
+          agent: agent,
+          variant: variant,
+          model: model,
+        ),
       ),
     );
+  }
+
+  /// `prompt_async` accepts a removed agent and fails the turn later over SSE,
+  /// so check it here while the client can still pick a replacement.
+  Future<void> _requireOfferedAgent({required String sessionId, required String agent}) async {
+    final projectId = _service.tracker.getSessionDirectory(sessionId: sessionId);
+    if (projectId == null) return;
+    final agents = await _call(() => _service.getAgents(projectId: projectId));
+    if (agents.any((candidate) => candidate.name == agent)) return;
+    throw const PluginStaleOptionsException(
+      _sendPromptOperation,
+      message: "OpenCode no longer offers the selected agent.",
+    );
+  }
+
+  /// Names the user message on the bridge so its echoes can be stamped with
+  /// [promptId]. Reusing a server-reserved id instead would rewrite that
+  /// message with a new creation time, which the OpenCode TUI renders twice.
+  Future<void> _dispatchNewMessage({
+    required String promptId,
+    required Future<void> Function(String messageId) dispatch,
+  }) async {
+    final messageId = generateOpenCodeMessageId();
     _promptMessages.record(messageId: messageId, promptId: promptId);
-    await _dispatchReservedMessage(
-      sessionId: sessionId,
-      messageIds: [messageId],
-      dispatch: () => _service.sendPrompt(
-        sessionId: sessionId,
-        messageId: messageId,
-        parts: parts,
-        agent: agent,
-        variant: variant,
-        model: model,
-      ),
-    );
+    try {
+      await dispatch(messageId);
+    } on Object {
+      _promptMessages.remove(messageId: messageId);
+      rethrow;
+    }
+    _syncWorkState();
   }
 
   @override
@@ -570,13 +587,13 @@ class OpenCodePlugin._({
     required ({String providerID, String modelID})? model,
   }) async {
     if (command == OpenCodeService.compactionCommandName) {
-      final reservation = await _reserveWithStaleOptionsClassification(
+      final reservation = await _withStaleOptionsClassification(
         operation: _sendCommandOperation,
         sessionId: sessionId,
         agent: agent,
         variant: variant,
         model: model,
-        reserve: () => _service.reserveCompactionMessage(
+        action: () => _service.reserveCompactionMessage(
           sessionId: sessionId,
           arguments: arguments,
           userVisibleArguments: userVisibleArguments,
@@ -604,31 +621,23 @@ class OpenCodePlugin._({
       return;
     }
 
-    final messageId = await _reserveWithStaleOptionsClassification(
-      operation: _sendCommandOperation,
-      sessionId: sessionId,
-      agent: agent,
-      variant: variant,
-      model: model,
-      reserve: () => _service.reserveMessage(
+    await _dispatchNewMessage(
+      promptId: promptId,
+      dispatch: (messageId) => _withStaleOptionsClassification(
+        operation: _sendCommandOperation,
         sessionId: sessionId,
         agent: agent,
         variant: variant,
         model: model,
-      ),
-    );
-    _promptMessages.record(messageId: messageId, promptId: promptId);
-    await _dispatchReservedMessage(
-      sessionId: sessionId,
-      messageIds: [messageId],
-      dispatch: () => _service.sendCommand(
-        sessionId: sessionId,
-        messageId: messageId,
-        command: command,
-        arguments: arguments,
-        agent: agent,
-        variant: variant,
-        model: model,
+        action: () => _service.sendCommand(
+          sessionId: sessionId,
+          messageId: messageId,
+          command: command,
+          arguments: arguments,
+          agent: agent,
+          variant: variant,
+          model: model,
+        ),
       ),
     );
   }

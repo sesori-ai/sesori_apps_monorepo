@@ -497,10 +497,12 @@ defaults and queued client sends coherent.
 - When a plugin rejects a send before acceptance because its agent, model,
   variant, or command is no longer offered, the bridge deletes that
   options-cache row and returns the typed `staleSessionOptions` rejection.
-  OpenCode keeps the requested selection on its synchronous message reservation;
-  when that endpoint collapses a rejection into a generic 500, the plugin checks
-  fresh project options and classifies the failure as stale only when the
-  requested selection is absent or unavailable. The client force-refreshes the
+  OpenCode checks a prompt's selected agent against fresh project options before
+  dispatch, because its asynchronous prompt endpoint reports a removed agent only
+  after acceptance. When a slash command or manual-compaction reservation
+  collapses a rejection into a generic 500, the plugin checks fresh project
+  options and classifies the failure as stale only when the requested selection
+  is absent or unavailable. The client force-refreshes the
   options, replaces only unsupported queued selections without changing FIFO
   order or prompt ids, warns the user, and retries once. If a refreshed catalog
   no longer includes a rejected command, that command remains in its FIFO
@@ -515,8 +517,9 @@ defaults and queued client sends coherent.
 - Each plugin stamps that prompt id onto the user-message echo of its own
   dispatch, using the link its backend exposes — Claude's queue entry, ACP's
   accepted send, Pi's dispatcher, Codex's client-supplied identifier, and
-  OpenCode's server-reserved ordered message identifier that the bridge reuses
-  for the real dispatch. Claude compares image echoes by their semantic source
+  OpenCode's bridge-generated ordered message identifier (manual compaction
+  reuses a server-reserved one). OpenCode's own TUI must show a Sesori-sent
+  prompt once. Claude compares image echoes by their semantic source
   fields, including an image echo that omits the usual replay marker, so
   backend-added metadata cannot strand the queued row. OpenCode applies the same
   correlation to prompts, slash commands, and manual compaction.
