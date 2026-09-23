@@ -131,16 +131,8 @@ class _ProjectListViewState() extends State<ProjectListView> {
 
     return PregoGlassScaffold(
       title: loc.projectListTitle,
-      // The page wears the compact back-leading block in every state rather than
-      // a collapsing large title: the design gives the bar's second line to the
-      // machine this account is paired with, and keeping one bar shape across
-      // loading, the list, and the two disconnected setup flows means the title
-      // never changes size or place as the page moves between them.
-      titleMode: PregoTopNavigationTitleMode.backLeading,
-      // With no back button leading it, the block is the page's own title, so
-      // it takes the design's prominent weight rather than the muted one the
-      // sessions bar uses beside its back button.
-      leadingTitleEmphasis: PregoNavLeadingTitleEmphasis.prominent,
+      // A top-level page, so it keeps the large title. The subtitle row names
+      // the machine this account is paired with, in every state.
       subtitle: _subtitle(context: context, state: state, identity: identity, online: online),
       // A loaded list hosts the top-nav connection banner; the loading and
       // bridge-disconnected states own their messaging full-screen (setup

@@ -55,6 +55,7 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
           preserveEmptyLines: true,
           child: PregoGlassScaffold(
             title: context.loc.diffFileChangesTitle,
+            titleMode: PregoTopNavigationTitleMode.inline,
             subtitleText: fileCount > 0 ? context.loc.diffFilesChangedCount(fileCount, additions, deletions) : null,
             onBack: widget.onBack,
             banner: widget.banner,
