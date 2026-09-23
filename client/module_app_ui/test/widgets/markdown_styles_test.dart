@@ -30,6 +30,14 @@ void main() {
     expect(decoration?.borderRadius, BorderRadius.circular(8));
   });
 
+  test("a quote is a neutral bar with no fill in both themes", () {
+    for (final theme in [PregoDesignSystem.light, PregoDesignSystem.dark]) {
+      final decoration = buildChatMessageMarkdownStyleSheet(prego: theme).blockquoteDecoration as BoxDecoration?;
+      expect(decoration?.color, isNull);
+      expect((decoration?.border as Border?)?.left.color, theme.colors.fgQuaternary);
+    }
+  });
+
   test("buildSessionMarkdownStyleSheet overrides paragraph style when provided", () {
     const paragraphStyle = TextStyle(fontSize: 18, fontWeight: FontWeight.w600);
 
