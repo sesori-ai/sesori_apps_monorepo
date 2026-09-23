@@ -14,8 +14,8 @@ defer step 36.
 
 | Done | Step | Branch | Title | Target | State |
 |---|---|---|---|---|---|
-| [ ] | 1 | `visual-hierarchy/plan` | [1/38](#pr-titles) | ≤ 1,000 | in-progress |
-| [ ] | 2 | `visual-hierarchy/motion` | [2/38](#pr-titles) | ≤ 250 | pending |
+| [x] | 1 | `visual-hierarchy/plan` | [1/38](#pr-titles) | ≤ 1,000 | done |
+| [ ] | 2 | `visual-hierarchy/motion` | [2/38](#pr-titles) | ≤ 250 | in-progress |
 | [ ] | 3 | `visual-hierarchy/modal-entry` | [3/38](#pr-titles) | ≤ 600 | pending |
 | [ ] | 4 | `visual-hierarchy/anchored-pickers` | [4/38](#pr-titles) | ≤ 600 | pending |
 | [ ] | 5 | `visual-hierarchy/grey-ramp` | [5/38](#pr-titles) | ≤ 500 | pending |

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -88,18 +90,11 @@ void main() {
   });
 
   testWidgets("the actual cockpit boundary tracks root popups above retained nested pages", (tester) async {
-    final shell = buildDesktopRoutes().single as ShellRoute;
     final router = GoRouter(
       initialLocation: AppRouteDef.projects.path,
       routes: [
         ShellRoute(
-          builder: (context, state, child) {
-            // Retain the production visibility boundary, not production DI.
-            final gate = shell.builder!(context, state, child) as AuthGate;
-            final shortcuts = (gate.child as Builder).builder(context) as CallbackShortcuts;
-            final provider = shortcuts.child as DesktopCockpitCubitProvider;
-            return (provider.child as DesktopCockpitShell).child;
-          },
+          builder: (context, state, child) => _paneBoundary(context: context, state: state, child: child),
           routes: [
             GoRoute(
               path: AppRouteDef.projects.path,
@@ -126,6 +121,48 @@ void main() {
     expect(find.text("popup"), findsNothing);
     expect(tester.element(find.text("visible:true")), same(element));
   });
+
+  for (final reducedMotion in [false, true]) {
+    testWidgets(
+      reducedMotion ? "main-pane pages switch at once under reduced motion" : "main-pane pages cross-fade in 150 ms",
+      (tester) async {
+        if (reducedMotion) {
+          tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+            disableAnimations: true,
+          );
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        }
+        final router = GoRouter(
+          initialLocation: "/a",
+          routes: [
+            ShellRoute(
+              builder: (context, state, child) => _paneBoundary(context: context, state: state, child: child),
+              routes: [
+                GoRoute(path: "/a", builder: (_, _) => const Text("a")),
+                GoRoute(path: "/b", builder: (_, _) => const Text("b")),
+              ],
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+        await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+        unawaited(router.push<void>("/b"));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 75));
+
+        final page = tester.element(find.text("b"));
+        expect(ModalRoute.of(page)?.transitionDuration, Duration(milliseconds: reducedMotion ? 0 : 150));
+        final fade = tester.widget<FadeTransition>(
+          find.ancestor(of: find.text("b"), matching: find.byType(FadeTransition)).first,
+        );
+        expect(fade.opacity.value, reducedMotion ? 1 : closeTo(0.5, 0.01));
+        // Mid-fade the page underneath still shows; reduced motion has already hidden it.
+        expect(find.text("a"), reducedMotion ? findsNothing : findsOneWidget);
+        await tester.pumpAndSettle();
+        expect(find.text("a"), findsNothing);
+      },
+    );
+  }
 
   testWidgets("notification opens dismiss popups while preserving or replacing the canonical stack", (tester) async {
     final router = _callbackRouter(initialRoute: const AppRoute.splash());
@@ -275,6 +312,16 @@ Iterable<_RouteRegistration> _routeRegistrations({
         throw UnsupportedError("Desktop routing does not use StatefulShellRoute");
     }
   }
+}
+
+/// The production main-pane boundary, without production DI.
+Widget _paneBoundary({required BuildContext context, required GoRouterState state, required Widget child}) {
+  final shell = buildDesktopRoutes().single as ShellRoute;
+  final gate = shell.builder?.call(context, state, child);
+  if (gate is! AuthGate) fail("The desktop shell must start with its AuthGate");
+  final shortcuts = (gate.child as Builder).builder(context) as CallbackShortcuts;
+  final provider = shortcuts.child as DesktopCockpitCubitProvider;
+  return (provider.child as DesktopCockpitShell).child;
 }
 
 GoRoute _routeWithPath(String path) {

@@ -9,6 +9,10 @@ const _toggle = ValueKey("shellTool.toggle");
 const _panel = ValueKey("shellTool.panel");
 const _viewport = ValueKey("shellTool.viewport");
 
+/// The command row plus whatever part of the panel is showing.
+double _shellHeight(WidgetTester tester) =>
+    tester.getSize(find.ancestor(of: find.byKey(_toggle), matching: find.byType(Column)).first).height;
+
 MessagePartTool _part({
   required ToolStatus status,
   required String? command,
@@ -33,6 +37,7 @@ Widget _app({
   Brightness brightness = Brightness.light,
   double width = 370,
   double textScale = 1,
+  bool disableAnimations = false,
 }) => MaterialApp(
   theme: buildPregoThemeData(brightness: brightness),
   localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -42,6 +47,7 @@ Widget _app({
       data: MediaQueryData(
         textScaler: TextScaler.linear(textScale),
         padding: const EdgeInsets.only(top: 62, bottom: 34),
+        disableAnimations: disableAnimations,
       ),
       child: Align(
         alignment: Alignment.topLeft,
@@ -223,6 +229,90 @@ void main() {
     expect(header.top, greaterThan(transcript.top + 80));
     expect(panel.bottom, lessThan(transcript.bottom - 40));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("shell details ease open and shut", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        part: _part(status: ToolStatus.completed, command: "pwd", output: "result", error: null),
+      ),
+    );
+    double height() => _shellHeight(tester);
+    final closed = height();
+    await tester.tap(find.byKey(_toggle));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final opening = height();
+    await tester.pumpAndSettle();
+    final open = height();
+    // Halfway through, a decelerating open has covered more than half.
+    final halfway = (closed + open) / 2;
+    expect(opening, allOf(greaterThan(halfway), lessThan(open)));
+
+    await tester.tap(find.byKey(_toggle));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    // The close decelerates too, so it has also covered more than half.
+    expect(height(), allOf(greaterThan(closed), lessThan(halfway)));
+    // The details stay on screen while they close, rather than leaving a
+    // blank area to collapse.
+    expect(find.byKey(_panel), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(height(), closed);
+    expect(find.byKey(_panel), findsNothing);
+  });
+
+  // Android's "Remove animations" arrives through MediaQuery, iOS's "Reduce
+  // Motion" only through the accessibility features.
+  for (final (source, disableAnimations) in [("Remove animations", true), ("Reduce Motion", false)]) {
+    testWidgets("$source opens shell details at once", (tester) async {
+      if (!disableAnimations) {
+        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      }
+      await tester.pumpWidget(
+        _app(
+          disableAnimations: disableAnimations,
+          part: _part(status: ToolStatus.completed, command: "pwd", output: "result", error: null),
+        ),
+      );
+      double height() => _shellHeight(tester);
+      final closed = height();
+      await tester.tap(find.byKey(_toggle));
+      await tester.pump();
+      final open = height();
+      expect(open, greaterThan(closed));
+      await tester.pumpAndSettle();
+      expect(height(), open);
+
+      await tester.tap(find.byKey(_toggle));
+      await tester.pump();
+      expect(height(), closed);
+      expect(find.byKey(_panel), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets("long tool output eases open behind Show more", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        part: _part(
+          status: ToolStatus.completed,
+          command: null,
+          output: List.generate(20, (index) => "line $index").join("\n"),
+          error: null,
+        ),
+      ),
+    );
+    double height() => tester.getSize(find.byType(AnimatedSize)).height;
+    final collapsed = height();
+    await tester.tap(find.text("Show more"));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final opening = height();
+    await tester.pumpAndSettle();
+    expect(opening, allOf(greaterThan(collapsed), lessThan(height())));
+    expect(find.text("Show less"), findsOneWidget);
   });
 
   testWidgets("shell disclosure supports keyboard activation", (tester) async {

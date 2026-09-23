@@ -134,27 +134,68 @@ class const _ShellToolPreview({required final String command, required final Too
   State<_ShellToolPreview> createState() => _ShellToolPreviewState();
 }
 
-class _ShellToolPreviewState() extends State<_ShellToolPreview> {
-  bool _expanded = false;
+class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTickerProviderStateMixin {
+  late final AnimationController _disclosure = AnimationController(vsync: this, duration: _disclosureDuration);
+  // Both directions decelerate: easeIn run backwards starts the close fast.
+  late final CurvedAnimation _panelSize = CurvedAnimation(
+    parent: _disclosure,
+    curve: Curves.easeOut,
+    reverseCurve: Curves.easeIn,
+  );
   final _verticalController = ScrollController();
   final _horizontalController = ScrollController();
 
+  /// The user's choice. The panel itself stays mounted until it has closed.
+  bool get _expanded => _disclosure.isForwardOrCompleted;
+
+  @override
+  void initState() {
+    super.initState();
+    _disclosure.addStatusListener(_onDisclosureStatus);
+  }
+
   @override
   void dispose() {
+    _panelSize.dispose();
+    _disclosure.dispose();
     _verticalController.dispose();
     _horizontalController.dispose();
     super.dispose();
   }
 
   void _toggle() {
-    setState(() => _expanded = !_expanded);
-    if (!_expanded) return;
+    if (context.isReducedMotion) {
+      _disclosure.value = _expanded ? 0 : 1;
+    } else if (_expanded) {
+      _disclosure.reverse();
+    } else {
+      _disclosure.forward();
+    }
+    setState(() {});
+  }
+
+  void _onDisclosureStatus(AnimationStatus status) {
+    if (status.isCompleted) {
+      // Only the user's own expand completes the disclosure, so a later resize
+      // of the open panel never scrolls the transcript.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
+    } else if (status.isDismissed) {
+      // Drops the closed panel, so its copy buttons do not stay reachable at
+      // zero height.
+      setState(() {});
+    }
+  }
+
+  void _reveal() {
+    if (!mounted) return;
     // The transcript is reversed. Growing a historical row otherwise pushes
     // its header above the viewport (and behind the floating navigation).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      Scrollable.ensureVisible(context, alignment: 0.5);
-    });
+    Scrollable.ensureVisible(
+      context,
+      alignment: 0.5,
+      duration: context.isReducedMotion ? Duration.zero : _disclosureDuration,
+      curve: Curves.easeOut,
+    );
   }
 
   @override
@@ -211,81 +252,85 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> {
             ),
           ),
         ),
-        if (_expanded)
-          Container(
-            key: const ValueKey("shellTool.panel"),
-            width: double.infinity,
-            padding: EdgeInsets.all(prego.spacing.md),
-            decoration: BoxDecoration(
-              color: prego.colors.bgSurface2,
-              borderRadius: BorderRadius.circular(prego.radius.xl),
-              border: Border.all(color: prego.colors.borderPrimary),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: Text(loc.sessionDetailShell, style: style)),
-                    PregoCopyIconButton(
-                      onCopy: () => copyTextToClipboard(text: widget.command, operation: "shell command"),
-                      tooltip: loc.sessionDetailCopyCommand,
-                    ),
-                  ],
-                ),
-                SizedBox(
-                  key: const ValueKey("shellTool.viewport"),
-                  height: 144,
-                  child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                    // System safe-area insets belong to the screen, not this
-                    // embedded terminal's scrollbar tracks.
-                    child: MediaQuery.removePadding(
-                      context: context,
-                      removeTop: true,
-                      removeBottom: true,
-                      removeLeft: true,
-                      removeRight: true,
-                      child: RawScrollbar(
-                        controller: _horizontalController,
-                        scrollbarOrientation: ScrollbarOrientation.bottom,
-                        thumbVisibility: true,
-                        interactive: true,
-                        thumbColor: prego.colors.borderPrimary,
-                        thickness: 5,
-                        radius: Radius.circular(prego.radius.full),
-                        notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
+        if (!_disclosure.isDismissed)
+          SizeTransition(
+            sizeFactor: _panelSize,
+            alignment: AlignmentDirectional.topStart,
+            child: Container(
+              key: const ValueKey("shellTool.panel"),
+              width: double.infinity,
+              padding: EdgeInsets.all(prego.spacing.md),
+              decoration: BoxDecoration(
+                color: prego.colors.bgSurface2,
+                borderRadius: BorderRadius.circular(prego.radius.xl),
+                border: Border.all(color: prego.colors.borderPrimary),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(loc.sessionDetailShell, style: style)),
+                      PregoCopyIconButton(
+                        onCopy: () => copyTextToClipboard(text: widget.command, operation: "shell command"),
+                        tooltip: loc.sessionDetailCopyCommand,
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    key: const ValueKey("shellTool.viewport"),
+                    height: 144,
+                    child: ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                      // System safe-area insets belong to the screen, not this
+                      // embedded terminal's scrollbar tracks.
+                      child: MediaQuery.removePadding(
+                        context: context,
+                        removeTop: true,
+                        removeBottom: true,
+                        removeLeft: true,
+                        removeRight: true,
                         child: RawScrollbar(
-                          controller: _verticalController,
-                          scrollbarOrientation: ScrollbarOrientation.right,
+                          controller: _horizontalController,
+                          scrollbarOrientation: ScrollbarOrientation.bottom,
                           thumbVisibility: true,
                           interactive: true,
                           thumbColor: prego.colors.borderPrimary,
                           thickness: 5,
                           radius: Radius.circular(prego.radius.full),
-                          notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
-                          child: SingleChildScrollView(
+                          notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
+                          child: RawScrollbar(
                             controller: _verticalController,
-                            primary: false,
+                            scrollbarOrientation: ScrollbarOrientation.right,
+                            thumbVisibility: true,
+                            interactive: true,
+                            thumbColor: prego.colors.borderPrimary,
+                            thickness: 5,
+                            radius: Radius.circular(prego.radius.full),
+                            notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
                             child: SingleChildScrollView(
-                              controller: _horizontalController,
-                              scrollDirection: Axis.horizontal,
+                              controller: _verticalController,
                               primary: false,
-                              padding: EdgeInsetsDirectional.only(end: prego.spacing.lg, bottom: prego.spacing.lg),
-                              child: Text.rich(
-                                TextSpan(
-                                  text: "\$ ${widget.command}",
-                                  children: [
-                                    if (output != null) TextSpan(text: "\n\n$output"),
-                                    if (error != null)
-                                      TextSpan(
-                                        text: "\n\n$error",
-                                        style: TextStyle(color: prego.colors.textErrorPrimary),
-                                      ),
-                                  ],
+                              child: SingleChildScrollView(
+                                controller: _horizontalController,
+                                scrollDirection: Axis.horizontal,
+                                primary: false,
+                                padding: EdgeInsetsDirectional.only(end: prego.spacing.lg, bottom: prego.spacing.lg),
+                                child: Text.rich(
+                                  TextSpan(
+                                    text: "\$ ${widget.command}",
+                                    children: [
+                                      if (output != null) TextSpan(text: "\n\n$output"),
+                                      if (error != null)
+                                        TextSpan(
+                                          text: "\n\n$error",
+                                          style: TextStyle(color: prego.colors.textErrorPrimary),
+                                        ),
+                                    ],
+                                  ),
+                                  style: style.monospace,
+                                  softWrap: false,
                                 ),
-                                style: style.monospace,
-                                softWrap: false,
                               ),
                             ),
                           ),
@@ -293,40 +338,40 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> {
                       ),
                     ),
                   ),
-                ),
-                SizedBox(
-                  width: double.infinity,
-                  child: Wrap(
-                    alignment: output == null ? WrapAlignment.end : WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: prego.spacing.md,
-                    children: [
-                      if (output != null)
+                  SizedBox(
+                    width: double.infinity,
+                    child: Wrap(
+                      alignment: output == null ? WrapAlignment.end : WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: prego.spacing.md,
+                      children: [
+                        if (output != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(child: Text(loc.sessionDetailShellOutput, style: style)),
+                              PregoCopyIconButton(
+                                onCopy: () => copyTextToClipboard(text: output, operation: "tool output"),
+                                tooltip: loc.sessionDetailCopyOutput,
+                              ),
+                            ],
+                          ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Flexible(child: Text(loc.sessionDetailShellOutput, style: style)),
-                            PregoCopyIconButton(
-                              onCopy: () => copyTextToClipboard(text: output, operation: "tool output"),
-                              tooltip: loc.sessionDetailCopyOutput,
-                            ),
+                            if (state.status == ToolStatus.completed)
+                              Icon(TablerRegular.check, size: 16, color: prego.colors.textSecondary)
+                            else
+                              ToolPartWidget._statusIcon(status: state.status, prego: prego),
+                            SizedBox(width: prego.spacing.xs),
+                            Flexible(child: Text(statusLabel, style: style)),
                           ],
                         ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (state.status == ToolStatus.completed)
-                            Icon(TablerRegular.check, size: 16, color: prego.colors.textSecondary)
-                          else
-                            ToolPartWidget._statusIcon(status: state.status, prego: prego),
-                          SizedBox(width: prego.spacing.xs),
-                          Flexible(child: Text(statusLabel, style: style)),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
       ],
@@ -422,7 +467,7 @@ class _ToolOutputBlockState() extends State<_ToolOutputBlock> {
             monoStyle: monoStyle,
           );
 
-          return Column(
+          final block = Column(
             crossAxisAlignment: .start,
             children: [
               Stack(
@@ -465,8 +510,28 @@ class _ToolOutputBlockState() extends State<_ToolOutputBlock> {
                 ),
             ],
           );
+          return _AnimatedDisclosure(child: block);
         },
       ),
+    );
+  }
+}
+
+const _disclosureDuration = Duration(milliseconds: 200);
+
+/// Eases long tool output open and shut behind Show more, growing down from its
+/// top edge.
+class const _AnimatedDisclosure({required final Widget child}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // No wrapper at all under reduced motion: a zero-duration AnimatedSize
+    // re-dirties itself inside its own layout pass.
+    if (context.isReducedMotion) return child;
+    return AnimatedSize(
+      duration: _disclosureDuration,
+      curve: Curves.easeOut,
+      alignment: AlignmentDirectional.topStart,
+      child: child,
     );
   }
 }

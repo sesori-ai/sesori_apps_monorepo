@@ -20,14 +20,13 @@ extension BuildContextLocalization on BuildContext {
   /// True when OS accessibility settings ask to minimize motion; used to
   /// skip decorative animations.
   ///
-  /// Backed solely by the OS reduce-motion preference
-  /// (`MediaQuery.disableAnimations`). Screen-reader presence
+  /// Backed solely by the OS reduce-motion preference, through
+  /// [prefersReducedMotion]: Android's "Remove animations" and iOS's "Reduce
+  /// Motion" arrive through different sources. Screen-reader presence
   /// (`accessibleNavigation`) is intentionally excluded: it is a separate
   /// preference, and screen-reader users may rely on motion for spatial
   /// orientation.
-  bool get isReducedMotion {
-    return MediaQuery.maybeDisableAnimationsOf(this) ?? false;
-  }
+  bool get isReducedMotion => prefersReducedMotion(this);
 
   AppLocalizations get loc {
     final localizations = AppLocalizations.of(this);

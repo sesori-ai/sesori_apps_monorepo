@@ -6,6 +6,7 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../features/auth_gate/auth_gate.dart";
 import "../../features/home/desktop_home_pane.dart";
@@ -98,7 +99,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               child: Builder(
                 builder: (context) => SessionDetailRouteVisibility(
                   isVisible: ModalRoute.isCurrentOf(context) ?? false,
-                  child: child,
+                  child: _withPageFade(context: context, child: child),
                 ),
               ),
             ),
@@ -234,6 +235,33 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
     ],
   ),
 ];
+
+/// Main-pane pages cross-fade in place, the way desktop apps swap content; the
+/// sidebar never moves. Reduced motion switches instantly.
+Widget _withPageFade({required BuildContext context, required Widget child}) {
+  final fade = prefersReducedMotion(context)
+      ? const _PageFade(transitionDuration: Duration.zero)
+      : const _PageFade(transitionDuration: Duration(milliseconds: 150));
+  return Theme(
+    data: Theme.of(context).copyWith(
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {for (final platform in TargetPlatform.values) platform: fade},
+      ),
+    ),
+    child: child,
+  );
+}
+
+class const _PageFade({@override required final Duration transitionDuration}) extends PageTransitionsBuilder {
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => FadeTransition(opacity: animation, child: child);
+}
 
 AppRouteSessions _decodeSessionsRoute({required GoRouterState state}) {
   return switch (AppRoute.fromDef(
