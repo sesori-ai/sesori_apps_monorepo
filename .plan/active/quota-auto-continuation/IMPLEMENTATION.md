@@ -304,7 +304,7 @@ readiness, not merely resident-map lookup.
 The last message must still be the stored terminal PluginMessageError.id as
 projected to MessageError.id. Existing snapshots return the whole named session;
 inspect its tail without new pagination, recursive reads or cross-session
-scans. A newer message consumes the obsolete wait. Unreadable snapshot or
+scans. A newer message cancels the obsolete wait. Unreadable snapshot or
 non-idle readiness persists paused with the original observation/reset and a
 bounded reason, plus recheckAt = clock.now() + five minutes. The same delay
 applies to every pause reason; persist it in the existing record so restart

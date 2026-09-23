@@ -205,7 +205,7 @@ snapshot via `SessionRepository.getSessionMessages`. The last conversation
 message must still be the stored terminal error ID. Existing snapshots return
 the session history rather than a tail page: make one read per due attempt and
 inspect its tail. Add no history pagination, recursive child reads, account
-scans, or replay system. A newer message consumes the obsolete wait.
+scans, or replay system. A newer message cancels the obsolete wait.
 Uncertain current state persists a paused view and recheckAt = now + five
 minutes instead of sending. Later ticks skip that row until its persisted
 recheck deadline; a failed recheck moves the deadline forward by five minutes.
@@ -224,11 +224,12 @@ Ordinary reachable flows to handle at existing authoritative seams:
 - **Disable from either client while waiting:** Same dispatcher orders setting change against send; disable
   first prevents submission.
 
-- **User submits a new prompt/command or changes the effective selection:** Consume the old wait when the
-  accepted operation supersedes it; keep preference on. Use existing prompt/default-change authority.
+- **User submits a new prompt/command or changes the effective selection:** Cancel the old wait before a
+  new bridge submission, or when authoritative native activity supersedes it; keep preference on. Use
+  existing prompt/default-change authority.
 
-- **User presses Stop:** Cancel that pending wait through abort authority; keep preference on for future
-  quota interruptions. No delayed surprise restart of the stopped turn.
+- **User presses Stop:** Durably cancel the pending wait before invoking abort; keep preference on for
+  future quota interruptions. No delayed surprise restart of the stopped turn.
 
 - **Archive/delete:** Persist cancellation before archive; deletion removes the record. Never reopen an
   archived/deleted session.
