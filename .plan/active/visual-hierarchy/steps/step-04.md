@@ -34,3 +34,44 @@ stand alone, following the plan's `31.a` convention:
   edges beside a corner trigger. The package suite passed (341), and
   `dart analyze --fatal-infos` is clean.
 - `client/desktop`: `desktop_bridge_popover_test.dart` passed (7).
+
+## 4.b — Search list and model picker
+
+### What changed
+
+- New `picker_search_list.dart` in `module_app_ui`:
+  - `PickerPopover` anchors a picker to its composer button: 380 px high at
+    most, 300 or 360 wide under a pointer, and screen-wide on the phone.
+  - `PickerSearchList` is a search field over a lazy list of headings and
+    options.
+  - Under a pointer the field takes focus as it opens. Up and Down move one
+    highlight, skipping headings and holding at either end, and the mouse
+    moves the same highlight. Enter picks the highlighted option and Esc
+    closes the picker.
+  - On the phone nothing is highlighted and the keyboard waits for a tap.
+- The model pill opens `ModelPicker` in that popover on both apps. The phone
+  quick menu and its full-screen search sheet merge into this one popover.
+  - Provider headings use the menus' uppercase label style instead of the
+    sheet's brand colour.
+  - The highlight starts at the first option, not the selected model.
+  - A search that matches nothing shows an empty list, as before.
+- Removed: `model_picker_sheet.dart`, `model_picker_list_items.dart`, the
+  search affordance row, and the unused "Select Model" string.
+
+### Verification
+
+- `client/app`: `model_picker_test.dart` covers:
+  - the representative models, headings and check;
+  - opening above the pill within the height cap;
+  - search;
+  - tap selection;
+  - pointer Up, Down, mouse highlight and Enter;
+  - pointer Esc;
+  - touch with no focus or highlight.
+
+  With `agent_model_buttons_test`, `command_picker_sheet_test` and
+  `session_detail_body_test`, 151 passed.
+- `client/module_app_ui`: `test/features/session_detail` passed (217).
+- `dart analyze --fatal-infos` is clean in module_app_ui and app.
+- Size: about 1,200 changed lines; about 580 are deleted sheet code, and
+  about 230 are the rewritten test.

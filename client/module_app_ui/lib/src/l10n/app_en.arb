@@ -838,7 +838,6 @@
   "sessionDetailRemoveQueued": "Remove",
   "sessionDetailPickerAgent": "Agent",
   "sessionDetailPickerVariant": "Variant",
-  "sessionDetailSelectModel": "Select Model",
   "sessionDetailModelSearch": "Search models...",
   "subAgentsTitle": "Sub-agents",
   "subAgentsSummary": "{count, plural, =1{1 sub-agent} other{{count} sub-agents}}, {running} working",
