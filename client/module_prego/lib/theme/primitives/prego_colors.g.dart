@@ -72,8 +72,8 @@ abstract final class PregoColorsDark {
   /// Figma: Colors/Text/text-success-primary (600) → Success/400
   static const Color textSuccessPrimary = PregoColorPrimitives.success400;
 
-  /// Figma: Colors/Text/text-tertiary (450) → Gray/430
-  static const Color textTertiary = PregoColorPrimitives.gray430;
+  /// Figma: Colors/Text/text-tertiary (450) → Gray/425
+  static const Color textTertiary = PregoColorPrimitives.gray425;
 
   /// Figma: Colors/Text/text-tertiary_hover → Gray/425
   static const Color textTertiaryHover = PregoColorPrimitives.gray425;

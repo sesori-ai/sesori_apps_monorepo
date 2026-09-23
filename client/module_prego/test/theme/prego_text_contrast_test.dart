@@ -13,7 +13,7 @@ double _contrast({required Color foreground, required Color background}) {
 void main() {
   for (final (name, colors) in [("light", PregoColors.light), ("dark", PregoColors.dark)]) {
     test("$name tertiary text stays readable and below secondary on page and card surfaces", () {
-      for (final background in [colors.bgSurface1, colors.bgSecondary]) {
+      for (final background in [colors.bgSurface1, colors.bgSecondary, colors.bgSurface3, colors.bgSurface4]) {
         final tertiary = _contrast(foreground: colors.textTertiary, background: background);
         expect(tertiary, greaterThanOrEqualTo(4.5));
         expect(_contrast(foreground: colors.textSecondary, background: background), greaterThan(tertiary));

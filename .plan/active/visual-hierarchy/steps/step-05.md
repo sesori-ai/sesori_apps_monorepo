@@ -2,12 +2,16 @@
 
 ## What changed
 
-- `figma_tokens.json` adds two grey primitives, `Gray/430` `#8A8A8A` and
-  `Gray/440` `#6A6A6A`. `text-tertiary` now maps to `Gray/440` in light and
-  `Gray/430` in dark, instead of `Gray/450` `#5C5C5C` in both. The generated
+- `figma_tokens.json` adds one grey primitive, `Gray/440` `#6A6A6A`.
+  `text-tertiary` now maps to `Gray/440` in light and the existing `Gray/425`
+  `#999999` in dark, instead of `Gray/450` `#5C5C5C` in both. Review showed
+  an intermediate `#8A8A8A` fell under 4.5:1 on the lighter dark cards
+  (`bg-surface_3` and `_4`), which carry tertiary text in the chat input
+  picker and the onboarding tabs. The generated
   files were regenerated, not edited.
 - Contrast of tertiary text:
-  - dark: 5.3:1 on the page and 5.1:1 on cards, up from about 2.7:1;
+  - dark: 6.5:1 on the page, 6.2:1 on cards and 4.9:1 on the lightest card
+    surface, up from about 2.7:1;
   - light: 4.8:1 on the `#F0F0F0` page and 5.3:1 on cards, down from about
     6:1.
 
@@ -20,13 +24,14 @@
   - `SettingsSection`: 14 medium tertiary, was 16 medium secondary;
   - `DesktopSidebarSectionHeader`: 12 medium tertiary, was 12 bold secondary.
     The desktop is one step smaller.
-- Figma: the user needs to mirror the two primitives and the tertiary mapping,
+- Figma: the user needs to mirror the new primitive and the tertiary mapping,
   or the next export reverts them.
 
 ## Verification
 
 - `client/module_prego`: the new `prego_text_contrast_test.dart` checks each
-  theme on the page and card surfaces. Tertiary must reach at least 4.5:1,
+  theme on the page and all card surfaces (`bg-secondary`, `bg-surface_3`,
+  `bg-surface_4`). Tertiary must reach at least 4.5:1,
   secondary must contrast more than tertiary, and quaternary less.
   `test/theme` passed (5).
 - `client/module_app_ui`: `test/features/settings` and
