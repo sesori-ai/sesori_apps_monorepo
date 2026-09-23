@@ -8,8 +8,9 @@
 - The desktop Archived toggle turns blue (`.primary`) while on. Before, it
   used the inverse pill and would have looked like New session. D5: blue
   means on.
-- The tool output's "Show more" is primary text instead of brand blue (secondary fails 4.5:1 on the dark recessed block).
-  Step 31 removes this control.
+- The tool output's "Show more" is primary text instead of brand blue;
+  secondary fails 4.5:1 on the dark recessed block. Step 31 removes this
+  control.
 - The "Jump to latest" pill uses the `bgSurface3` surface with primary text.
   It was a brand fill. Its Material arrow becomes Tabler's `arrow_down`.
 - `PregoInputField` drops `isRequired` and its brand asterisk; the three
