@@ -23,21 +23,26 @@ class const PregoNavLeadingTitle({
   /// Null renders the title on its own.
   required final Widget? subtitle,
 }) extends StatelessWidget {
+  /// The largest text scale at which the two-line block still fits the 54pt
+  /// bar (`PregoTopNavigation.barHeight`). The title on its own keeps the
+  /// user's full text scale.
+  static const double _twoLineMaxTextScale = 1.25;
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final subtitle = this.subtitle;
 
-    return Column(
+    final block = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: PregoSpacing.xs,
       children: [
         Text(
           title,
-          // A tight single-line leading keeps the two-line block inside the
-          // 54pt bar up to 250% text scale; the token's 28pt paragraph leading
-          // is dead space here.
+          // A tight single-line leading fits the title alone in the 54pt bar
+          // at 250% text scale; the token's 28pt paragraph leading is dead
+          // space here.
           style: prego.textTheme.textLg.bold.copyWith(color: prego.colors.textPrimary, height: 1.15),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -45,5 +50,7 @@ class const PregoNavLeadingTitle({
         ?subtitle,
       ],
     );
+    if (subtitle == null) return block;
+    return MediaQuery.withClampedTextScaling(maxScaleFactor: _twoLineMaxTextScale, child: block);
   }
 }

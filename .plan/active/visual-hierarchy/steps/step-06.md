@@ -13,8 +13,14 @@
 - The large title is 36 bold, was 36 medium. `PregoGlassScaffold.subtitle`, the
   caller-composed row, now also sits under the large title. `subtitleText` is
   inline-only.
-- Projects moves from the back-leading bar to the large title and keeps the
-  machine row under it in every state. Settings already had the large title.
+- Projects moves from the back-leading bar to the large title. The status row
+  under it is unchanged: the machine name, a skeleton while it loads, the
+  onboarding's waiting row, and no row when the lookup finds nothing to name.
+  Settings already had the large title.
+- A two-line bar title caps its text scale (1.25 beside the back button, 1.4
+  centred) so it fits the fixed 54pt bar. A title on its own keeps the full
+  text scale. Before this step, both two-line blocks overflowed the bar above
+  about 130% text.
 - File Changes, the only other page with a large title, now uses the inline
   bar title with its totals as the subtitle.
 - Desktop pages that use the inline bar (settings) or `PregoNavSubtitle`
@@ -29,7 +35,9 @@
   `test/features/session_list`, `test/features/session_diffs`,
   `test/core/widgets/session_split`, `test/core/routing` and `test/playbook`
   pass.
-  - The nav tests assert each style's size, weight and colour.
+  - The nav tests assert each style's size, weight and colour, and that both
+    bar titles fit the 54pt bar at 130% and 250% text, with and without a
+    subtitle.
   - The Projects tests assert the large title in the offline, onboarding,
     loading and loaded states.
   - The split-view test asserts File Changes is the bar's inline title.

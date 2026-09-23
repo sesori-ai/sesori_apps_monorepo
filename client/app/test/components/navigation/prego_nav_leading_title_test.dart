@@ -17,10 +17,15 @@ void main() {
     String? infoMessage,
     String? infoSemanticLabel,
     double? slotHeight,
+    double textScale = 1,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child ?? const SizedBox.shrink(),
+        ),
         home: Scaffold(
           body: Align(
             alignment: Alignment.topLeft,
@@ -178,4 +183,28 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  for (final textScale in [1.3, 2.5]) {
+    testWidgets("fits the 54pt bar at ${textScale}x text, with and without a subtitle", (tester) async {
+      await pumpBlock(
+        tester,
+        title: "Sesori_app_monorepo",
+        slotHeight: PregoTopNavigation.barHeight,
+        textScale: textScale,
+      );
+      expect(tester.takeException(), isNull);
+
+      await pumpBlock(
+        tester,
+        title: "Sesori_app_monorepo",
+        subtitle: "sesori-ai/Sesori_app_monorepo",
+        icon: TablerSolid.brand_github,
+        status: PregoNavStatus.online,
+        slotHeight: PregoTopNavigation.barHeight,
+        textScale: textScale,
+      );
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(find.byType(Column).first).height, lessThanOrEqualTo(PregoTopNavigation.barHeight));
+    });
+  }
 }

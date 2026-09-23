@@ -27,7 +27,7 @@ class const PregoNavTitle({
   final String? subtitle,
 }) extends StatelessWidget {
   /// Line-height multiplier for a two-line title/subtitle block, overriding the
-  /// design tokens' body-text leading (`text-lg` 1.56×, `text-md` 1.5×).
+  /// design tokens' body-text leading (`text-lg` 1.56×, `text-xs` 1.5×).
   ///
   /// Those tokens are tuned for paragraph spacing; in this fixed-height bar they
   /// are pure dead space. With them, a title + subtitle stack measures
@@ -41,6 +41,11 @@ class const PregoNavTitle({
 
   /// Fits the 18pt title at 250% text scale into the 54pt inline toolbar.
   static const double _singleLineHeight = 1.2;
+
+  /// The largest text scale at which the two-line block still fits the 54pt
+  /// bar: (18 + 12) × 1.25 × 1.4 = 52.5pt. The title on its own keeps the
+  /// user's full text scale.
+  static const double _twoLineMaxTextScale = 1.4;
 
   @override
   Widget build(BuildContext context) {
@@ -60,19 +65,22 @@ class const PregoNavTitle({
     // an unbounded vertical constraint from a Column at large text scales.
     if (subtitle == null || subtitle.isEmpty) return titleText;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        titleText,
-        Text(
-          subtitle,
-          style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary, height: _lineHeight),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-        ),
-      ],
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: _twoLineMaxTextScale,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          titleText,
+          Text(
+            subtitle,
+            style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary, height: _lineHeight),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 }

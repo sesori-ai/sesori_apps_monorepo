@@ -734,7 +734,10 @@ class const _LargeTitleSliver({
               titleText,
               // A caller-composed widget cannot take a text alpha, so it fades
               // as a layer; the layer only exists while the title collapses.
-              Opacity(opacity: opacity, child: subtitle),
+              IgnorePointer(
+                ignoring: opacity == 0,
+                child: Opacity(opacity: opacity, child: subtitle),
+              ),
             ],
           );
         },
