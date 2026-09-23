@@ -2,6 +2,8 @@
 
 Concrete ownership supplement to [PLAN.md](PLAN.md). New names below are
 proposed; existing files retain their current responsibilities.
+[PLUGINS.md](PLUGINS.md) specifies the plugin file, class, layer and dependency
+map, including the disposition of unverified harnesses.
 
 ## Workspace map
 
@@ -82,7 +84,8 @@ outcome JSON. No business policy in SQL.
 
 **Constructor dependencies and responsibility:** Durable variants: none; resetKnown(errorMessageId,
 observedAt, resetAt); resetUnknown(errorMessageId, observedAt); consumed(errorMessageId, promptId,
-attemptedAt); submissionFailed(errorMessageId, reason); paused(errorMessageId, observedAt, resetAt, reason,
+attemptedAt); cancelled(errorMessageId); submissionFailed(errorMessageId, reason);
+paused(errorMessageId, observedAt, resetAt, reason,
 recheckAt). Paused retains the observation and a persisted recheck deadline.
 
 ### Owner / layer: Bridge Repository
@@ -91,7 +94,7 @@ recheckAt). Paused retains the observation and a persisted recheck deadline.
 `SessionContinuationRepository`
 
 **Constructor dependencies and responsibility:** Takes SessionContinuationDao and PluginRuntime. Sole
-storage write/encoding API: read/readMany, readEnabledReadyToCheck(resetCutoff, pausedRecheckCutoff),
+storage write/encoding API: read/readMany, readEnabledReadyToCheck(resetCutoff, pausedRecheckCutoff), readReadyToCheck,
 setEnabledAlreadyReserved, recordObservationForCurrentGenerationAlreadyReserved, consumeAlreadyReserved,
 pauseAlreadyReserved, recordFailureAlreadyReserved, cancelCurrentObservationAlreadyReserved. Source-driven
 writes use the existing generation fence. No timer, scheduling arithmetic, stream, peer-repository
@@ -127,9 +130,10 @@ Layer 3 owner. No existing data ownership moves.
 **Proposed file/class:** `services/session_continuation_service.dart`: `SessionContinuationService`
 
 **Constructor dependencies and responsibility:** Takes continuation repository, SessionRepository,
-SessionViewService, SessionOperationDispatcher, SessionPromptService, SessionMutationDispatcher, fixed
-buffer and clock. Owns setEnabled, observeQuota, observeSupersedingActivity, runDue. Computes resetCutoff =
-now - buffer and pausedRecheckCutoff = now; no direct PluginRuntime dependency or mutable job list.
+SessionViewService, SessionOperationDispatcher, SessionPromptService, SessionMutationDispatcher,
+fixed reset buffer, fixed five-minute pause recheck delay and clock. Owns setEnabled, observeQuota,
+observeSupersedingActivity, runDue and all scheduled-attempt transitions. Computes resetCutoff = now - buffer
+and pausedRecheckCutoff = now; no direct PluginRuntime dependency or mutable job list.
 
 ### Owner / layer: Bridge event trigger
 
@@ -214,22 +218,31 @@ outcome_json is a non-null closed tagged object. The repository serializes its
 sealed domain value; the API DTO carries text and never imports higher-layer
 domain types. A missing row projects disabled/none.
 
-DAO methods are read, readMany, readEnabledReadyToCheck and transactional
-upsert. Repository methods own transitions and ignore duplicate observations
-or consumption of the same ID. The service passes resetCutoff = now - buffer
-and pausedRecheckCutoff = now. Select only enabled records with a known reset
-where resetAt <= resetCutoff; a paused record must additionally satisfy
+DAO methods are read, readMany, readEnabled and transactional upsert. They
+return raw DTOs; readEnabled filters only the stored boolean. The repository
+maps outcome JSON and applies one eligibility predicate to both its batch
+readEnabledReadyToCheck and named-session readReadyToCheck. The service supplies
+resetCutoff = now - buffer and pausedRecheckCutoff = now. Eligible records are
+enabled, have a known reset with resetAt <= resetCutoff, and, if paused, satisfy
 recheckAt <= pausedRecheckCutoff. observedAt never determines when a wait is due.
-Repository/DAO never calculate delays or read the clock. The reset deadline is
-not duplicated; recheckAt is only the next eligibility check after a pause. Register table/DAO in
-api/database/database.dart and create the new table in the next schema step
-(current checkout 16 -> 17; use the next actual version after rebasing). Export
-schema and regenerate Drift/database.steps.dart; no transcript backfill.
+Both reads use that same repository predicate; preflight does not duplicate it.
+No SQL branch decodes outcomes or selects scheduling states. Repository/DAO
+never calculate delays or read the clock. The reset deadline is not duplicated;
+recheckAt is only the next eligibility check after a pause.
+
+Register table/DAO in api/database/database.dart and create the new table in the
+next schema step (current checkout 16 -> 17; use the next actual version after
+rebasing). Export schema and regenerate Drift/database.steps.dart; no transcript
+backfill.
 
 One repository/DAO pair owns writes. Transition authority is explicit:
-continuation service writes enabled/observed state; prompt service alone consumes
-a due attempt and records its submission failure; existing mutation services
-cancel at their reserved seams. Every writer calls the same repository, never
+continuation service owns setting changes, observations, scheduled preflight,
+pause/consume/failure transitions and publication. Existing mutation services
+only invalidate the current observation at their reserved seams through the
+repository's idempotent cancellation primitive; they contain no scheduling
+policy. Cancellation stores cancelled(errorMessageId), retaining deduplication
+identity without inventing a prompt ID; the shared view projects it as idle. Every writer calls the same
+repository, never
 the DAO. No two services independently decide to send. Existing session FK
 deletion removes the record; this feature adds no cascade algorithm.
 
@@ -250,8 +263,10 @@ deletion removes the record; this feature adds no cascade algorithm.
    for the supplied source generation; policy never calls runtime directly.
    Source-driven cancellation uses the same fence. Terminal handoff never arms
    a wait. runDue calculates both cutoffs, reads eligible records and calls
-   SessionPromptService.sendScheduledContinuation sequentially; that method
-   owns its one dispatcher entry and normal prompt acceptance.
+   its private due-attempt method sequentially. That method enters the existing
+   dispatcher once, reloads the eligible record through the repository predicate, performs
+   preflight, and owns pause/consume/failure/publication. It delegates only prompt
+   submission to SessionPromptService.sendPromptAlreadyReserved.
 4. Add SessionContinuationUpdated and a small notification method to existing
    SessionMutationDispatcher. After writing, the caller obtains the updated
    Session through SessionViewService and publishes it without another lane.
@@ -274,12 +289,10 @@ timer, their lifecycle flags, and no controller/map/job registry.
 
 ## Dispatch preflight and cancellation
 
-SessionPromptService gains continuation-repository, SessionViewService and
-mutation-dispatcher dependencies, plus a clock and fixed five-minute pause
-recheck delay. Its scheduled method reserves the existing lane, reloads
-enabled/current outcome, and validates resetAt and any paused recheckAt against
-the service-supplied cutoffs. First call getQuotaContinuationReadiness through
-the existing SessionRepository/plugin boundary; only an idle result proceeds
+SessionContinuationService owns the whole scheduled-attempt workflow. Inside
+its one reserved lane, call repository.readReadyToCheck for the named session
+with the service-supplied cutoffs; a null result skips the attempt. Then call
+getQuotaContinuationReadiness through SessionRepository; only idle proceeds
 to getSessionMessages for that named session. Do not interpret generic getSessionStatus null as
 idle. The plugin readiness operation uses its own native session owner, can
 recognize a persisted non-resident idle session, and explicitly distinguishes
@@ -310,29 +323,33 @@ SessionVariant(id: ...). Preserve meaningful nulls when the harness has no
 explicit selection. Parts are `[PromptPart.text(text: "Continue.")]`; command
 and normalizedCommand are null. Do not reconstruct or repeat the failed prompt.
 
-Persist consumed with generated promptId/attemptedAt, then invoke existing
-_sendPrompt with those typed values. Do not call public sendPrompt
-inside a reserved lane. Publish the updated view. Preserve original submission
+The continuation service persists consumed with generated promptId/attemptedAt,
+then calls SessionPromptService.sendPromptAlreadyReserved with those typed
+values. That narrow method delegates to existing _sendPrompt without acquiring
+a second lane. It owns normal prompt acceptance only: no quota reads, clock,
+pause scheduling, consume/failure decisions or continuation-view publication.
+The continuation service publishes the outcome. Preserve original submission
 error/stack in logs, record bounded failure, and do not retry the consumed
 observation. AcceptedPromptsRepository remains the deduplication owner; this
 does not close the documented crash window. Cancellation from any already
 reserved service body calls cancelCurrentObservationAlreadyReserved directly
 on the repository and publishes after success; it never calls a dispatcher-
-entering continuation method. External toggles/observations enter the lane via
-continuation service, and timer sends enter via prompt service exactly once.
+entering continuation method. External toggles, observations and due attempts
+enter the lane through continuation service exactly once. Prompt service has no
+dependency on continuation service, avoiding a cycle.
 
 - **Toggle:** SessionContinuationService.setEnabled under SessionOperationDispatcher; false prevents due
   selection after commit.
 
-- **Accepted manual prompt/command:** SessionPromptService._sendPrompt after backend acceptance inside its
-  reserved lane; cancel current wait, keep enabled. Scheduled send has already consumed it, so cancellation
-  there is a no-op.
+- **Manual prompt/command:** SessionPromptService._sendPrompt persists cancellation after existing
+  archive/accepted-ID checks and before backend submission inside its reserved lane; keep enabled. An
+  already-consumed scheduled attempt is unchanged.
 
-- **Accepted Stop:** SessionAbortService.abortSession inside its dispatched body; cancel pending wait. A
-  refused stop retains current refusal semantics.
+- **Stop:** SessionAbortService.abortSession persists cancellation inside its dispatched body before
+  invoking backend abort. A refused abort keeps its existing failure result; the wait stays cancelled.
 
-- **Archive:** SessionLifecycleService._doArchive after successful archive in its reserved path; cancel
-  wait.
+- **Archive:** SessionLifecycleService._doArchive persists cancellation before invoking archive in its
+  reserved path. A failed archive leaves the wait cancelled.
 
 - **Delete:** SessionDeletionService / SessionMutationDispatcher.deleteSession / FK removal.
 
@@ -343,7 +360,28 @@ continuation service, and timer sends enter via prompt service exactly once.
 - **Native busy/retry/queued work:** Existing status/queue blocks dispatch; accepted/native activity
   invalidates old observation. Due-session snapshot catches work performed while bridge was offline.
 
-Required focused coverage includes a reset several days after observedAt:
+SessionPromptService, SessionAbortService and SessionLifecycleService gain the
+continuation repository, SessionViewService and SessionMutationDispatcher only
+for cancellation and its view publication. They do not depend on the continuation
+service, own its clock, or decide scheduled eligibility. The prompt service's
+new already-reserved submission method reuses its existing dependencies/body.
+
+For Stop/archive, cancellation persistence is a prerequisite: if it fails, do
+not invoke the primary operation, and return that explicit failure. Once durable,
+never restore the wait, even if the primary operation fails. Publish the
+cancelled view without allowing a publication failure to change the primary
+result; log recovered publication errors with operation/session context and
+original error/stack. Reconnect reads recover the durable state. Manual prompt
+acceptance uses the same before-submission cancellation ordering inside its
+reserved body, so a failed new prompt can cancel the old wait but cannot leave
+an automatic duplicate behind. Preference remains enabled in all these cases.
+No outbox, retry job, or extra lifecycle state is required.
+
+Required focused coverage includes cancellation-write failure before Stop or
+archive (no primary call), publication failure after successful Stop/archive
+(primary success preserved, durable cancellation still blocks send), and a
+refused primary operation after cancellation (no rearming). Also cover a reset
+several days after observedAt:
 advancing past observedAt + buffer cannot select it, while resetAt + buffer
 can. For paused states, repeated 30-second ticks before recheckAt must cause
 no plugin or history calls; at the deadline, non-idle readiness still skips
@@ -352,5 +390,5 @@ history. Restart preserves the recheck deadline and visible state.
 Fresh resetAt must be strictly after observedAt; relative duration must be
 positive and finite. Invalid fresh values become resetUnknown. Persisted valid
 waits remain eligible when resetAt becomes earlier than now during sleep.
-Consumed observation IDs never rearm. No new dedupe set, restart cache or
+Consumed and cancelled observation IDs never rearm. No new dedupe set, restart cache or
 account polling is needed.

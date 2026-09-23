@@ -87,7 +87,7 @@ unverified harness/provider combinations. The capability audit also lives in
 
 [IMPLEMENTATION.md](IMPLEMENTATION.md) is part of this plan. It names the
 workspaces, proposed files/classes, dependencies, wire/storage contracts,
-trigger adapters, and ordered data flow. Names are proposed new code,
+trigger adapters, and ordered data flow. Its linked PLUGINS.md covers per-plugin ownership. Names are proposed new code,
 not claims that those classes already exist.
 
 ### Plugin boundary
@@ -159,11 +159,11 @@ historical transcript backfill is required. Persist:
 
 - the enabled preference, independent of the current interruption;
 - one sealed current outcome: no observation, reset known, reset unknown,
-  consumed observation, failed automatic submission, or paused known reset.
+  consumed or cancelled observation, failed automatic submission, or paused known reset.
   Paused preserves its observation/reset, bounded reason and next recheck time.
   Each variant owns only
   its valid required fields. Known reset includes observation ID/time and reset
-  time; consumed preserves the observation ID to avoid rearming the same event;
+  time; consumed/cancelled preserve the observation ID to avoid rearming the same event;
   failed submission retains a bounded failure reason and the consumed ID.
 
 Do not independently persist a countdown, a second copy of reset + buffer, or a
@@ -184,9 +184,13 @@ session-update stream; SessionViewService supplies the same view after reconnect
 
 ### Dispatch and cancellation
 
-Add a narrow automatic-send entry to the existing prompt service. It enters the
-existing operation dispatcher once, validates/consumes the named observation,
-then calls the existing internal send body. Do not nest dispatcher calls.
+The continuation service owns preflight, pause/consume/failure transitions and
+publication inside one existing operation-dispatcher entry. It uses the same
+repository eligibility predicate for batch selection and the reserved re-read.
+The DAO returns raw persisted data; it does not decide scheduling eligibility.
+A narrow sendPromptAlreadyReserved method in the existing prompt service calls
+its existing internal send body without a second dispatcher entry. That method
+owns ordinary submission only; no continuation policy moves into prompt service.
 
 Inside that lane, require that the setting is still on, the same reset is due,
 the session is promptable and idle, and native retry/queued user work is not in
@@ -226,7 +230,7 @@ Ordinary reachable flows to handle at existing authoritative seams:
 - **User presses Stop:** Cancel that pending wait through abort authority; keep preference on for future
   quota interruptions. No delayed surprise restart of the stopped turn.
 
-- **Archive/delete:** Existing session mutation authority cancels/removes the wait; never reopen an
+- **Archive/delete:** Persist cancellation before archive; deletion removes the record. Never reopen an
   archived/deleted session.
 
 - **Native turn resumes or queued work runs:** Invalidate the old wait from authoritative new activity; do
@@ -245,6 +249,13 @@ Only named-session state is added. Existing family serialization remains, but
 this feature adds no parent/child cascade, family inspection, or account-wide
 coordination. Independent enabled sessions may each continue after the same
 reset; account-level fairness and staggering are outside v1.
+
+Stop, archive and a new bridge prompt persist cancellation before invoking the
+backend. A cancellation-write failure prevents the primary operation; if the
+primary operation later fails, the wait stays cancelled and the preference
+stays enabled. Publication failures cannot change a completed operation's
+result: log the recovered error and recover the view on reconnect. The detailed
+ordering and failure-injection checks are in IMPLEMENTATION.md.
 
 ### Client contract and compatibility
 
