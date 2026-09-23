@@ -22,13 +22,13 @@ class const RemoteFailureView({
           mainAxisSize: MainAxisSize.min,
           children: [
             // An illustration, not a glyph: no icon token applies.
-            Icon(Icons.error_outline, size: 48, color: prego.colors.fgErrorPrimary),
+            Icon(TablerRegular.alert_circle, size: 48, color: prego.colors.fgErrorPrimary),
             const SizedBox(height: 16),
             Text(title, style: prego.textTheme.textMd.bold),
             const SizedBox(height: 8),
             Text(reason.localizedMessage(context.loc), textAlign: TextAlign.center),
             const SizedBox(height: 24),
-            FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: Text(retryLabel)),
+            FilledButton.icon(onPressed: onRetry, icon: const Icon(TablerRegular.refresh), label: Text(retryLabel)),
           ],
         ),
       ),

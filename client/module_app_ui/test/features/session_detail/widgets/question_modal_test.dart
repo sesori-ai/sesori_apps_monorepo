@@ -758,7 +758,7 @@ void main() {
 
     expect(find.byType(PregoBottomSheet), findsOneWidget);
     expect(find.text("Choose a language"), findsOneWidget);
-    expect(find.byIcon(Icons.radio_button_checked), findsOneWidget);
+    expect(find.byIcon(TablerRegular.circle_dot), findsOneWidget);
     expect(capture.rejectedRequestId, isNull);
   });
 

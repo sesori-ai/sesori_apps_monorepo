@@ -104,7 +104,7 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
                 child: Row(
                   children: [
                     Icon(
-                      Icons.psychology,
+                      TablerRegular.brain,
                       size: PregoIconSize.md,
                       color: prego.colors.textSecondary,
                     ),
@@ -119,7 +119,7 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
                       ),
                     ),
                     Icon(
-                      Icons.unfold_more,
+                      TablerRegular.selector,
                       size: PregoIconSize.sm,
                       color: prego.colors.textSecondary,
                     ),

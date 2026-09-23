@@ -15,7 +15,7 @@ class const AgentPartWidget({super.key, required final String agentName}) extend
       child: Row(
         children: [
           Icon(
-            Icons.smart_toy_outlined,
+            TablerRegular.robot,
             size: PregoIconSize.sm,
             color: prego.colors.textSecondary,
           ),

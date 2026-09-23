@@ -25,7 +25,7 @@ class const RetryPartWidget({
       child: Row(
         children: [
           Icon(
-            Icons.refresh,
+            TablerRegular.refresh,
             size: PregoIconSize.sm,
             color: prego.colors.fgSuccessPrimary,
           ),

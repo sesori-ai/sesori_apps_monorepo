@@ -598,7 +598,7 @@ void main() {
     await tester.pump();
     expect(requests, 1);
     expect(find.byTooltip("Retry"), findsOneWidget);
-    expect(find.byIcon(Icons.open_in_new), findsOneWidget);
+    expect(find.byIcon(TablerRegular.external_link), findsOneWidget);
     expect(tester.getSemantics(find.byTooltip("Retry")).getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
 
     await tester.tapAt(const Offset(12, 12));
@@ -685,9 +685,9 @@ void main() {
         .widget<InteractiveViewer>(find.byType(InteractiveViewer))
         .transformationController!;
     transformationController.value = Matrix4.diagonal3Values(2, 2, 1);
-    expect(find.byIcon(Icons.content_copy), findsNothing);
-    expect(find.byIcon(Icons.share_outlined), findsNothing);
-    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(find.byIcon(TablerRegular.copy), findsNothing);
+    expect(find.byIcon(TablerRegular.share), findsNothing);
+    expect(find.byIcon(TablerRegular.download), findsNothing);
 
     final originalBytes = Uint8List.fromList(base64Decode(_pngBase64));
     original.complete(
@@ -701,9 +701,9 @@ void main() {
     await tester.pump();
 
     expect(tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).image, same(thumbnailImage.image));
-    expect(find.byIcon(Icons.content_copy), findsNothing);
-    expect(find.byIcon(Icons.share_outlined), findsNothing);
-    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(find.byIcon(TablerRegular.copy), findsNothing);
+    expect(find.byIcon(TablerRegular.share), findsNothing);
+    expect(find.byIcon(TablerRegular.download), findsNothing);
 
     await _finishAsyncDecode(tester: tester);
 
@@ -715,12 +715,12 @@ void main() {
       tester.widget<InteractiveViewer>(find.byType(InteractiveViewer)).transformationController,
       same(transformationController),
     );
-    expect(find.byIcon(Icons.content_copy), findsOneWidget);
-    expect(find.byIcon(Icons.share_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+    expect(find.byIcon(TablerRegular.copy), findsOneWidget);
+    expect(find.byIcon(TablerRegular.share), findsOneWidget);
+    expect(find.byIcon(TablerRegular.download), findsOneWidget);
     expect(await originalProvider.obtainCacheStatus(configuration: ImageConfiguration.empty), isNotNull);
 
-    await tester.tap(find.byIcon(Icons.close));
+    await tester.tap(find.byIcon(TablerRegular.x));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -786,7 +786,7 @@ void main() {
 
     final thumbnailProvider = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).image;
     expect(find.text("Couldn’t load the original image."), findsOneWidget);
-    expect(find.byIcon(Icons.content_copy), findsNothing);
+    expect(find.byIcon(TablerRegular.copy), findsNothing);
     expect(originalRequests, 1);
     expect(
       tester.getSemantics(find.text("Retry original")).getSemanticsData().hasAction(SemanticsAction.tap),
@@ -857,9 +857,9 @@ void main() {
     expect(originalRequests, 1);
     expect(find.text("Couldn’t load the original image."), findsOneWidget);
     expect(find.text("Retry original"), findsOneWidget);
-    expect(find.byIcon(Icons.content_copy), findsNothing);
-    expect(find.byIcon(Icons.share_outlined), findsNothing);
-    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(find.byIcon(TablerRegular.copy), findsNothing);
+    expect(find.byIcon(TablerRegular.share), findsNothing);
+    expect(find.byIcon(TablerRegular.download), findsNothing);
     expect(tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey)).image, same(thumbnailProvider));
     expect(
       tester.getSemantics(find.text("Retry original")).getSemanticsData().hasAction(SemanticsAction.tap),
@@ -897,7 +897,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.broken_image), findsNothing);
+    expect(find.byIcon(TablerRegular.photo_off), findsNothing);
     expect(
       tester.widget<GestureDetector>(find.byKey(FilePartWidget.previewTapTargetKey)).onTap,
       isNotNull,
@@ -907,15 +907,15 @@ void main() {
 
     expect(find.byType(ImageAttachmentViewer), findsOneWidget);
     expect(find.byType(InteractiveViewer), findsOneWidget);
-    expect(find.byIcon(Icons.content_copy), findsOneWidget);
-    expect(find.byIcon(Icons.share_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+    expect(find.byIcon(TablerRegular.copy), findsOneWidget);
+    expect(find.byIcon(TablerRegular.share), findsOneWidget);
+    expect(find.byIcon(TablerRegular.download), findsOneWidget);
     expect(find.text("why-needed.png"), findsOneWidget);
     final fullscreen = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
     expect(identical(fullscreen.image, preview.image), isTrue);
     final memoryImage = (preview.image as ResizeImage).imageProvider as MemoryImage;
 
-    await tester.tap(find.byIcon(Icons.content_copy));
+    await tester.tap(find.byIcon(TablerRegular.copy));
     await tester.pump();
 
     expect(identical(imageClipboard.copiedBytes, memoryImage.bytes), isTrue);
@@ -937,9 +937,9 @@ void main() {
 
     await _openImageViewer(tester: tester);
 
-    expect(find.byIcon(Icons.content_copy), findsOneWidget);
-    expect(find.byIcon(Icons.share_outlined), findsNothing);
-    expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+    expect(find.byIcon(TablerRegular.copy), findsOneWidget);
+    expect(find.byIcon(TablerRegular.share), findsNothing);
+    expect(find.byIcon(TablerRegular.download), findsOneWidget);
   });
 
   testWidgets("Hero flight targets the contained image bounds from the square crop", (tester) async {
@@ -1290,7 +1290,7 @@ void main() {
 
     expect(find.text("image.png"), findsNothing);
     expect(find.text("Unknown file"), findsNothing);
-    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.tap(find.byIcon(TablerRegular.download));
     await tester.pump();
 
     expect(imageSaver.savedFilename, "image.png");
@@ -1321,12 +1321,12 @@ void main() {
         ),
       ),
     );
-    expect(find.byIcon(Icons.open_in_new), findsOneWidget);
-    expect(find.byIcon(Icons.content_copy), findsOneWidget);
-    expect(find.byIcon(Icons.share_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+    expect(find.byIcon(TablerRegular.external_link), findsOneWidget);
+    expect(find.byIcon(TablerRegular.copy), findsOneWidget);
+    expect(find.byIcon(TablerRegular.share), findsOneWidget);
+    expect(find.byIcon(TablerRegular.download), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.byIcon(Icons.download_outlined));
+    await tester.tap(find.byIcon(TablerRegular.download));
     await tester.pump();
 
     expect(imageSaver.savedFilename, "unsafe.png");
@@ -1434,7 +1434,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ImageAttachmentViewer), findsNothing);
-    expect(find.byIcon(Icons.broken_image), findsOneWidget);
+    expect(find.byIcon(TablerRegular.photo_off), findsOneWidget);
     expect(find.byTooltip("Retry"), findsOneWidget);
     final requestsAfterTap = requests;
     await tester.tap(find.byTooltip("Retry"));
@@ -1495,7 +1495,7 @@ void main() {
     await _finishAsyncDecode(tester: tester);
 
     expect(find.text("broken.png"), findsOneWidget);
-    expect(find.byIcon(Icons.broken_image), findsOneWidget);
+    expect(find.byIcon(TablerRegular.photo_off), findsOneWidget);
     expect(find.byTooltip("Retry"), findsNothing);
     expect(tester.takeException(), isNull);
   });

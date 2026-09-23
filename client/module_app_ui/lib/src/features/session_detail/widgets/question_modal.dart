@@ -783,8 +783,8 @@ class const _OptionTile({
         children: [
           Icon(
             isMultiple
-                ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
-                : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+                ? (isSelected ? TablerSolid.square_rounded_check : TablerRegular.square_rounded)
+                : (isSelected ? TablerRegular.circle_dot : TablerRegular.circle),
             color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
           ),
           const SizedBox(width: 12),
@@ -907,8 +907,8 @@ class const _CustomAnswerTile({
           Icon(
             key: const Key("custom-answer-toggle"),
             isMultiple
-                ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
-                : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+                ? (isSelected ? TablerSolid.square_rounded_check : TablerRegular.square_rounded)
+                : (isSelected ? TablerRegular.circle_dot : TablerRegular.circle),
             color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
           ),
           const SizedBox(width: 12),

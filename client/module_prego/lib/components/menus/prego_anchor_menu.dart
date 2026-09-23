@@ -6,6 +6,7 @@ import "package:flutter/gestures.dart" show kSecondaryButton;
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 
+import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_interaction_scope.dart";
 import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
@@ -662,4 +663,4 @@ TextStyle _subtitleStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary);
 
 Widget _selectedCheck(PregoDesignSystem prego) =>
-    Icon(Icons.check, size: PregoIconSize.sm, color: prego.colors.bgBrandSolid);
+    Icon(TablerRegular.check, size: PregoIconSize.sm, color: prego.colors.bgBrandSolid);

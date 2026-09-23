@@ -458,7 +458,7 @@ void main() {
 
       expect(find.byType(Scaffold), findsNothing);
       expect(find.text("Panel Session"), findsOneWidget);
-      expect(find.byIcon(Icons.add), findsOneWidget);
+      expect(find.byIcon(TablerRegular.plus), findsOneWidget);
     });
 
     testWidgets("selected session is visually marked", (tester) async {

@@ -275,7 +275,7 @@ class const _OptionRow({
                     Expanded(child: option.child),
                     if (option.isSelected) ...[
                       const SizedBox(width: 8),
-                      Icon(Icons.check, size: PregoIconSize.sm, color: prego.colors.bgBrandSolid),
+                      Icon(TablerRegular.check, size: PregoIconSize.sm, color: prego.colors.bgBrandSolid),
                     ],
                   ],
                 ),

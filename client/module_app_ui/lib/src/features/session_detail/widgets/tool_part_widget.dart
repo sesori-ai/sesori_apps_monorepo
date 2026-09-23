@@ -107,14 +107,14 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
       size: PregoIconSize.sm,
       color: prego.colors.textTertiary,
     ),
-    ToolStatus.error => Icon(Icons.error, size: PregoIconSize.sm, color: prego.colors.fgErrorPrimary),
+    ToolStatus.error => Icon(TablerSolid.alert_circle, size: PregoIconSize.sm, color: prego.colors.fgErrorPrimary),
     ToolStatus.cancelled => Icon(
-      Icons.cancel,
+      TablerSolid.circle_x,
       size: PregoIconSize.sm,
       color: prego.colors.textSecondary,
     ),
     ToolStatus.unknown => Icon(
-      Icons.circle_outlined,
+      TablerRegular.circle,
       size: PregoIconSize.sm,
       color: prego.colors.borderPrimary,
     ),

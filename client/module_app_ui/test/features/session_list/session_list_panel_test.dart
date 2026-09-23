@@ -91,7 +91,7 @@ void main() {
     expect(tester.takeException(), isNull);
     // The action collapses to an icon-only button so the title keeps its width;
     // its label moves to the tooltip (no visible label Text).
-    expect(find.byIcon(Icons.add), findsOneWidget);
+    expect(find.byIcon(TablerRegular.plus), findsOneWidget);
     expect(find.text(newSessionLabel(tester)), findsNothing);
   });
 
@@ -105,7 +105,7 @@ void main() {
     await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
 
     expect(tester.takeException(), isNull);
-    expect(find.byIcon(Icons.add), findsOneWidget);
+    expect(find.byIcon(TablerRegular.plus), findsOneWidget);
     expect(find.text(newSessionLabel(tester)), findsOneWidget);
   });
 

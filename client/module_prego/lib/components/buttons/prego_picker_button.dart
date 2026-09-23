@@ -1,5 +1,6 @@
 import "package:material_ui/material_ui.dart";
 
+import "../../icons/tabler_icons.g.dart";
 import "../../theme/prego_theme.dart";
 import "../prego_start_ellipsis_text.dart";
 import "../surfaces/prego_surfaces.dart";
@@ -15,7 +16,7 @@ import "../surfaces/prego_surfaces.dart";
 /// Usage:
 /// ```dart
 /// PregoPickerButton(
-///   leadingIcon: Icons.smart_toy_outlined,
+///   leadingIcon: TablerRegular.robot,
 ///   label: selectedAgent,
 ///   surfaceStyle: PregoComposerSurfaceStyle.subtle,
 ///   onPressed: toggle,
@@ -72,7 +73,7 @@ class const PregoPickerButton({
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Icon(Icons.unfold_more, size: PregoIconSize.sm, color: foreground),
+                    Icon(TablerRegular.selector, size: PregoIconSize.sm, color: foreground),
                   ],
                 ),
               ),

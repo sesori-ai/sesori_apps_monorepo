@@ -114,7 +114,7 @@ void main() {
         lessThanOrEqualTo(tester.getTopLeft(_menuItem("minimal")).dy),
       );
       expect(tester.state<ScrollableState>(find.byType(Scrollable)).position.maxScrollExtent, 0);
-      expect(find.descendant(of: _menuItem("minimal"), matching: find.byIcon(Icons.check)), findsOneWidget);
+      expect(find.descendant(of: _menuItem("minimal"), matching: find.byIcon(TablerRegular.check)), findsOneWidget);
 
       await tester.tap(_menuItem("xhigh"));
       await tester.pumpAndSettle();

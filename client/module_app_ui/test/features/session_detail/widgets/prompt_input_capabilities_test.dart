@@ -144,7 +144,7 @@ void main() {
     expect(find.text("Picker header"), findsNothing);
     expect(find.text("Sub-agents"), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.close));
+    await tester.tap(find.byIcon(TablerRegular.x));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
     expect(command.value, isNull);
@@ -212,7 +212,7 @@ void main() {
         ),
         findsNothing,
       );
-      await tester.tap(find.byIcon(Icons.close));
+      await tester.tap(find.byIcon(TablerRegular.x));
       await tester.pump();
       await tester.pump();
       expect(find.byType(GlassChip), findsNothing);

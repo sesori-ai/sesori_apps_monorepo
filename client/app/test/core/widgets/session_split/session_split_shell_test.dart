@@ -240,7 +240,7 @@ void main() {
 
       // Open the new-session composer — pushed imperatively onto the pane
       // navigator (mirrors the list pane's "New session" button).
-      await tester.tap(find.descendant(of: leftPane, matching: find.byIcon(Icons.add)));
+      await tester.tap(find.descendant(of: leftPane, matching: find.byIcon(TablerRegular.plus)));
       await tester.pumpAndSettle();
       expect(find.byType(NewSessionScreen), findsOneWidget);
 

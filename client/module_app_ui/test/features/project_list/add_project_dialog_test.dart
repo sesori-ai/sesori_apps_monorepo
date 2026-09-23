@@ -97,7 +97,7 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
           floatingActionButton: FloatingActionButton(
             tooltip: loc.addProject,
             onPressed: () => _showAddProjectDialog(context, context.read<ProjectListCubit>()),
-            child: const Icon(Icons.add),
+            child: const Icon(TablerRegular.plus),
           ),
           body: switch (state) {
             ProjectListLoading() => Center(
@@ -113,7 +113,7 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     onPressed: () => _showAddProjectDialog(context, context.read<ProjectListCubit>()),
-                    icon: const Icon(Icons.add),
+                    icon: const Icon(TablerRegular.plus),
                     label: Text(loc.addProject),
                   ),
                 ],

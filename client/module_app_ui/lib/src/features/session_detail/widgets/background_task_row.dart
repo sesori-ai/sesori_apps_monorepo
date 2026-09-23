@@ -38,7 +38,7 @@ class const BackgroundTaskRow({
         color: prego.colors.textSecondary,
       ),
       trailing: Icon(
-        Icons.chevron_right,
+        TablerRegular.chevron_right,
         size: PregoIconSize.md,
         color: prego.colors.textSecondary,
       ),

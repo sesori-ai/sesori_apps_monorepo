@@ -183,7 +183,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                   state.interaction.canInteract &&
                   state.pendingQuestions.isNotEmpty)
                 SessionDetailPendingBanner(
-                  icon: Icons.help_outline,
+                  icon: TablerRegular.help,
                   backgroundColor: context.prego.colors.bgBrandPrimary,
                   foregroundColor: context.prego.colors.textBrandPrimary,
                   label: questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount),
@@ -194,7 +194,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                   state.interaction.canInteract &&
                   state.pendingPermissions.isNotEmpty)
                 SessionDetailPendingBanner(
-                  icon: Icons.shield_outlined,
+                  icon: TablerRegular.shield,
                   backgroundColor: context.prego.colors.bgSuccessPrimary,
                   foregroundColor: context.prego.colors.textSuccessPrimary,
                   label: state.pendingPermissions.length == 1

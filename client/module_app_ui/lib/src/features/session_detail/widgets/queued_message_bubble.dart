@@ -219,7 +219,7 @@ class const _QueuedAttachmentPreviews({required final List<ComposerAttachment> a
                   gaplessPlayback: true,
                   errorBuilder: (_, _, _) => ColoredBox(
                     color: prego.colors.bgSurface2,
-                    child: Icon(Icons.broken_image, color: prego.colors.textSecondary),
+                    child: Icon(TablerRegular.photo_off, color: prego.colors.textSecondary),
                   ),
                 ),
               ),
