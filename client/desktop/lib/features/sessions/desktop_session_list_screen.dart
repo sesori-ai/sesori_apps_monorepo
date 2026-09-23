@@ -82,9 +82,8 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
                   key: const Key("desktop-project-page-archived"),
                   label: loc.desktopProjectPageArchived,
                   leadingIcon: TablerRegular.archive,
-                  hierarchy: showArchived
-                      ? PregoButtonsSolidHierarchy.primaryAlt
-                      : PregoButtonsSolidHierarchy.secondary,
+                  // Blue means on; the inverse pill is New session's.
+                  hierarchy: showArchived ? PregoButtonsSolidHierarchy.primary : PregoButtonsSolidHierarchy.secondary,
                   size: PregoButtonsSolidSize.sm,
                   onPressed: loaded == null ? null : cubit.toggleArchived,
                 ),
@@ -93,7 +92,7 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
                 key: const Key("desktop-project-page-new-session"),
                 label: loc.sessionListNewSession,
                 leadingIcon: TablerRegular.plus,
-                hierarchy: PregoButtonsSolidHierarchy.primary,
+                hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
                 size: PregoButtonsSolidSize.sm,
                 onPressed: onNewSession,
               ),

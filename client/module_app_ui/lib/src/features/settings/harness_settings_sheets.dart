@@ -179,7 +179,6 @@ class _TimeoutSheetState() extends State<_TimeoutSheet> {
                 key: const Key("harness_management_timeout_input"),
                 controller: _controller,
                 label: loc.harnessManagementTimeoutMinutesLabel,
-                isRequired: true,
                 autofocus: true,
                 autocorrect: false,
                 keyboardType: const TextInputType.numberWithOptions(signed: true),

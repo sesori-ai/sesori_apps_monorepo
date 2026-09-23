@@ -26,8 +26,7 @@ const double _trailingSlotSize = 44.0;
 
 /// A labelled, pill-shaped text field.
 ///
-/// The label sits above the field and carries an optional brand-coloured
-/// asterisk when [isRequired]. Validation follows the standard [FormField]
+/// The label sits above the field. Validation follows the standard [FormField]
 /// contract: supply a [validator] and drive it from an enclosing [Form], and
 /// the message renders below the pill with the border switched to
 /// `border-error`.
@@ -37,7 +36,6 @@ const double _trailingSlotSize = 44.0;
 /// PregoInputField(
 ///   controller: _emailController,
 ///   label: loc.emailLabel,
-///   isRequired: true,
 ///   keyboardType: TextInputType.emailAddress,
 ///   validator: _validateEmail,
 /// )
@@ -50,10 +48,6 @@ class const PregoInputField({
 
   /// Label rendered above the field.
   required final String label,
-
-  /// Whether to append a brand-coloured `*` to [label]. Purely presentational —
-  /// enforce the requirement in [validator].
-  final bool isRequired = false,
 
   /// Placeholder shown while the field is empty.
   final String? hintText,
@@ -101,25 +95,7 @@ class const PregoInputField({
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // The asterisk is decoration; `Text.rich` keeps label and marker in one
-        // semantics node so screen readers announce "Email *" as the field's
-        // label rather than two stray fragments.
-        Text.rich(
-          TextSpan(
-            text: label,
-            style: labelStyle,
-            children: isRequired
-                ? [
-                    TextSpan(
-                      text: " *",
-                      style: prego.textTheme.textSm.bold.copyWith(
-                        color: colors.textBrandTertiary,
-                      ),
-                    ),
-                  ]
-                : null,
-          ),
-        ),
+        Text(label, style: labelStyle),
         const SizedBox(height: PregoSpacing.sm),
         TextFormField(
           controller: controller,
@@ -147,7 +123,7 @@ class const PregoInputField({
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: prego.textTheme.textMd.regular.copyWith(
-              color: colors.textPlaceholder,
+              color: colors.textTertiary,
             ),
             filled: true,
             fillColor: enabled ? colors.bgSurface3 : colors.bgDisabledSubtle,

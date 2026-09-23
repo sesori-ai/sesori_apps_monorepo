@@ -140,7 +140,6 @@ class _EmailLoginSheetState() extends State<EmailLoginSheet> {
             PregoInputField(
               controller: _emailController,
               label: loc.emailLabel,
-              isRequired: true,
               hintText: loc.emailHint,
               enabled: !isLoading,
               autofocus: true,
@@ -156,7 +155,6 @@ class _EmailLoginSheetState() extends State<EmailLoginSheet> {
             PregoInputField(
               controller: _passwordController,
               label: loc.passwordLabel,
-              isRequired: true,
               enabled: !isLoading,
               obscureText: _obscurePassword,
               autocorrect: false,
