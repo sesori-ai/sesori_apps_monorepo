@@ -114,6 +114,7 @@ void main() {
       model: "gpt-5.6",
       effort: "high",
       collaborationMode: CodexCollaborationMode.plan,
+      fastMode: true,
     );
 
     final input = threadRepository.lastParts.single as PluginPromptPartText;
@@ -121,6 +122,7 @@ void main() {
     expect(threadRepository.lastModel, "gpt-5.6");
     expect(threadRepository.lastEffort, "high");
     expect(threadRepository.lastClientUserMessageId, "prm_1");
+    expect(threadRepository.lastFastMode, isTrue);
     expect(dispatched.turnId, "turn");
 
     final compacted = await service.sendCommand(
@@ -131,6 +133,7 @@ void main() {
       model: null,
       effort: null,
       collaborationMode: null,
+      fastMode: false,
     );
     expect(threadRepository.compactCount, 1);
     expect(compacted.turnId, isNull);
@@ -598,6 +601,7 @@ class _StubThreadRepository() extends CodexThreadRepository {
   String? lastModel;
   String? lastEffort;
   String? lastClientUserMessageId;
+  bool? lastFastMode;
 
   @override
   Future<CodexThreadRecord> resumeThread({required String threadId}) async {
@@ -624,11 +628,13 @@ class _StubThreadRepository() extends CodexThreadRepository {
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
+    required bool? fastMode,
   }) async {
     lastParts = parts;
     lastModel = model;
     lastEffort = effort;
     lastClientUserMessageId = clientUserMessageId;
+    lastFastMode = fastMode;
     return "turn";
   }
 

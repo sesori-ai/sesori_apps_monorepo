@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/codex_app_server_api.dart";
 import "../api/models/codex_model_dto.dart";
+import "../models/codex_service_tier.dart";
 
 typedef CodexModelCatalog = ({
   String? defaultModelID,
@@ -24,7 +25,7 @@ class CodexModelRepository({required final CodexAppServerApi _appServerApi}) {
       final defaultEffort = _usefulText(value: model.defaultReasoningEffort);
       models.add(
         PluginModel(
-          supportsFastMode: false,
+          supportsFastMode: _supportsFastMode(model: model),
           id: id,
           name: _usefulText(value: model.displayName) ?? id,
           variants: variants,
@@ -37,6 +38,9 @@ class CodexModelRepository({required final CodexAppServerApi _appServerApi}) {
     }
     return (defaultModelID: defaultModelID, models: CatalogStrengthOrder.models(models, idOf: (model) => model.id));
   }
+
+  bool _supportsFastMode({required CodexModelDto model}) =>
+      (model.serviceTiers ?? const <CodexModelServiceTierDto>[]).any((tier) => tier.id == CodexServiceTier.fast);
 
   List<String> _reasoningEffortVariants({required CodexModelDto model}) {
     final efforts = <String>[];

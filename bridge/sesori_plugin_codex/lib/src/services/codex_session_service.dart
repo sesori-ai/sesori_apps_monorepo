@@ -541,11 +541,13 @@ class CodexSessionService({
     required String cwd,
     required String? model,
     required String? modelProvider,
+    required bool fastMode,
   }) async {
     final thread = await _connectedThreadRepository.startThread(
       cwd: cwd,
       model: model,
       modelProvider: modelProvider,
+      fastMode: fastMode,
     );
     _loadedThreads.add(thread.id);
     _rememberThreadModel(threadId: thread.id, model: thread.model ?? model);
@@ -570,6 +572,7 @@ class CodexSessionService({
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
+    required bool? fastMode,
   }) async {
     Future<({CodexThreadRecord? resumedThread, String? resolvedModel, String? turnId, bool started})> start(
       _PreparedTurn prepared,
@@ -581,6 +584,7 @@ class CodexSessionService({
         model: prepared.model,
         effort: prepared.effort,
         collaborationMode: prepared.mode,
+        fastMode: fastMode,
       );
       if (turnId != null) {
         _rememberThreadModel(threadId: threadId, model: prepared.model);
@@ -625,6 +629,7 @@ class CodexSessionService({
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
+    required bool fastMode,
   }) async {
     Future<String?> dispatch(_PreparedTurn prepared) => _dispatchCommand(
       threadId: threadId,
@@ -634,6 +639,7 @@ class CodexSessionService({
       model: prepared.model,
       effort: prepared.effort,
       collaborationMode: prepared.mode,
+      fastMode: fastMode,
     );
 
     var prepared = await _prepareTurn(
@@ -700,6 +706,7 @@ class CodexSessionService({
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
+    required bool fastMode,
   }) async {
     if (command == compactionCommandName) {
       await _connectedThreadRepository.compactThread(threadId: threadId);
@@ -713,6 +720,7 @@ class CodexSessionService({
       model: model,
       effort: effort,
       collaborationMode: collaborationMode,
+      fastMode: fastMode,
     );
   }
 

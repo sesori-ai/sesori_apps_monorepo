@@ -161,7 +161,7 @@ as String?,
 /// @nodoc
 mixin _$CodexModelDto {
 
- String? get id; String? get displayName; bool? get hidden;@CodexReasoningEffortListConverter() List<CodexReasoningEffortOptionDto>? get supportedReasoningEfforts; String? get defaultReasoningEffort; bool? get isDefault;
+ String? get id; String? get displayName; bool? get hidden;@CodexReasoningEffortListConverter() List<CodexReasoningEffortOptionDto>? get supportedReasoningEfforts; String? get defaultReasoningEffort; bool? get isDefault; List<CodexModelServiceTierDto>? get serviceTiers;
 /// Create a copy of CodexModelDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -173,20 +173,20 @@ $CodexModelDtoCopyWith<CodexModelDto> get copyWith => _$CodexModelDtoCopyWithImp
 @override
 bool operator ==(Object other) {
   final _this = this as CodexModelDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexModelDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.hidden, _this.hidden) || other.hidden == _this.hidden)&&const DeepCollectionEquality().equals(other.supportedReasoningEfforts, _this.supportedReasoningEfforts)&&(identical(other.defaultReasoningEffort, _this.defaultReasoningEffort) || other.defaultReasoningEffort == _this.defaultReasoningEffort)&&(identical(other.isDefault, _this.isDefault) || other.isDefault == _this.isDefault));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexModelDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.hidden, _this.hidden) || other.hidden == _this.hidden)&&const DeepCollectionEquality().equals(other.supportedReasoningEfforts, _this.supportedReasoningEfforts)&&(identical(other.defaultReasoningEffort, _this.defaultReasoningEffort) || other.defaultReasoningEffort == _this.defaultReasoningEffort)&&(identical(other.isDefault, _this.isDefault) || other.isDefault == _this.isDefault)&&const DeepCollectionEquality().equals(other.serviceTiers, _this.serviceTiers));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as CodexModelDto;
-  return Object.hash(runtimeType,_this.id,_this.displayName,_this.hidden,const DeepCollectionEquality().hash(_this.supportedReasoningEfforts),_this.defaultReasoningEffort,_this.isDefault);
+  return Object.hash(runtimeType,_this.id,_this.displayName,_this.hidden,const DeepCollectionEquality().hash(_this.supportedReasoningEfforts),_this.defaultReasoningEffort,_this.isDefault,const DeepCollectionEquality().hash(_this.serviceTiers));
 }
 
 @override
 String toString() {
   final _this = this as CodexModelDto;
-  return 'CodexModelDto(id: ${_this.id}, displayName: ${_this.displayName}, hidden: ${_this.hidden}, supportedReasoningEfforts: ${_this.supportedReasoningEfforts}, defaultReasoningEffort: ${_this.defaultReasoningEffort}, isDefault: ${_this.isDefault})';
+  return 'CodexModelDto(id: ${_this.id}, displayName: ${_this.displayName}, hidden: ${_this.hidden}, supportedReasoningEfforts: ${_this.supportedReasoningEfforts}, defaultReasoningEffort: ${_this.defaultReasoningEffort}, isDefault: ${_this.isDefault}, serviceTiers: ${_this.serviceTiers})';
 }
 
 
@@ -197,7 +197,7 @@ abstract mixin class $CodexModelDtoCopyWith<$Res>  {
   factory $CodexModelDtoCopyWith(CodexModelDto value, $Res Function(CodexModelDto) _then) = _$CodexModelDtoCopyWithImpl;
 @useResult
 $Res call({
- String? id, String? displayName, bool? hidden,@CodexReasoningEffortListConverter() List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, String? defaultReasoningEffort, bool? isDefault
+ String? id, String? displayName, bool? hidden,@CodexReasoningEffortListConverter() List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, String? defaultReasoningEffort, bool? isDefault, List<CodexModelServiceTierDto>? serviceTiers
 });
 
 
@@ -214,7 +214,7 @@ class _$CodexModelDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexModelDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? displayName = freezed,Object? hidden = freezed,Object? supportedReasoningEfforts = freezed,Object? defaultReasoningEffort = freezed,Object? isDefault = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? displayName = freezed,Object? hidden = freezed,Object? supportedReasoningEfforts = freezed,Object? defaultReasoningEffort = freezed,Object? isDefault = freezed,Object? serviceTiers = freezed,}) {
   return _then(CodexModelDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -222,7 +222,8 @@ as String?,hidden: freezed == hidden ? _self.hidden : hidden // ignore: cast_nul
 as bool?,supportedReasoningEfforts: freezed == supportedReasoningEfforts ? _self.supportedReasoningEfforts : supportedReasoningEfforts // ignore: cast_nullable_to_non_nullable
 as List<CodexReasoningEffortOptionDto>?,defaultReasoningEffort: freezed == defaultReasoningEffort ? _self.defaultReasoningEffort : defaultReasoningEffort // ignore: cast_nullable_to_non_nullable
 as String?,isDefault: freezed == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,serviceTiers: freezed == serviceTiers ? _self.serviceTiers : serviceTiers // ignore: cast_nullable_to_non_nullable
+as List<CodexModelServiceTierDto>?,
   ));
 }
 
@@ -234,7 +235,7 @@ as bool?,
 @JsonSerializable(createToJson: false)
 
 class _CodexModelDto implements CodexModelDto {
-  const _CodexModelDto({required this.id, required this.displayName, required this.hidden, @CodexReasoningEffortListConverter() required  List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, required this.defaultReasoningEffort, required this.isDefault}): _supportedReasoningEfforts = supportedReasoningEfforts;
+  const _CodexModelDto({required this.id, required this.displayName, required this.hidden, @CodexReasoningEffortListConverter() required  List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, required this.defaultReasoningEffort, required this.isDefault, required  List<CodexModelServiceTierDto>? serviceTiers}): _supportedReasoningEfforts = supportedReasoningEfforts,_serviceTiers = serviceTiers;
   factory _CodexModelDto.fromJson(Map<String, dynamic> json) => _$CodexModelDtoFromJson(json);
 
 @override final  String? id;
@@ -251,6 +252,15 @@ class _CodexModelDto implements CodexModelDto {
 
 @override final  String? defaultReasoningEffort;
 @override final  bool? isDefault;
+ final  List<CodexModelServiceTierDto>? _serviceTiers;
+@override List<CodexModelServiceTierDto>? get serviceTiers {
+  final value = _serviceTiers;
+  if (value == null) return null;
+  if (_serviceTiers is EqualUnmodifiableListView) return _serviceTiers;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
 
 /// Create a copy of CodexModelDto
 /// with the given fields replaced by the non-null parameter values.
@@ -262,18 +272,18 @@ _$CodexModelDtoCopyWith<_CodexModelDto> get copyWith => __$CodexModelDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexModelDto&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&const DeepCollectionEquality().equals(other.supportedReasoningEfforts, _supportedReasoningEfforts)&&(identical(other.defaultReasoningEffort, defaultReasoningEffort) || other.defaultReasoningEffort == defaultReasoningEffort)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexModelDto&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&const DeepCollectionEquality().equals(other.supportedReasoningEfforts, _supportedReasoningEfforts)&&(identical(other.defaultReasoningEffort, defaultReasoningEffort) || other.defaultReasoningEffort == defaultReasoningEffort)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&const DeepCollectionEquality().equals(other.serviceTiers, _serviceTiers));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,displayName,hidden,const DeepCollectionEquality().hash(_supportedReasoningEfforts),defaultReasoningEffort,isDefault);
+    return Object.hash(runtimeType,id,displayName,hidden,const DeepCollectionEquality().hash(_supportedReasoningEfforts),defaultReasoningEffort,isDefault,const DeepCollectionEquality().hash(_serviceTiers));
 }
 
 @override
 String toString() {
-    return 'CodexModelDto(id: $id, displayName: $displayName, hidden: $hidden, supportedReasoningEfforts: $supportedReasoningEfforts, defaultReasoningEffort: $defaultReasoningEffort, isDefault: $isDefault)';
+    return 'CodexModelDto(id: $id, displayName: $displayName, hidden: $hidden, supportedReasoningEfforts: $supportedReasoningEfforts, defaultReasoningEffort: $defaultReasoningEffort, isDefault: $isDefault, serviceTiers: $serviceTiers)';
 }
 
 
@@ -284,7 +294,7 @@ abstract mixin class _$CodexModelDtoCopyWith<$Res> implements $CodexModelDtoCopy
   factory _$CodexModelDtoCopyWith(_CodexModelDto value, $Res Function(_CodexModelDto) _then) = __$CodexModelDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? id, String? displayName, bool? hidden,@CodexReasoningEffortListConverter() List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, String? defaultReasoningEffort, bool? isDefault
+ String? id, String? displayName, bool? hidden,@CodexReasoningEffortListConverter() List<CodexReasoningEffortOptionDto>? supportedReasoningEfforts, String? defaultReasoningEffort, bool? isDefault, List<CodexModelServiceTierDto>? serviceTiers
 });
 
 
@@ -301,7 +311,7 @@ class __$CodexModelDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexModelDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? displayName = freezed,Object? hidden = freezed,Object? supportedReasoningEfforts = freezed,Object? defaultReasoningEffort = freezed,Object? isDefault = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? displayName = freezed,Object? hidden = freezed,Object? supportedReasoningEfforts = freezed,Object? defaultReasoningEffort = freezed,Object? isDefault = freezed,Object? serviceTiers = freezed,}) {
   return _then(_CodexModelDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -309,7 +319,8 @@ as String?,hidden: freezed == hidden ? _self.hidden : hidden // ignore: cast_nul
 as bool?,supportedReasoningEfforts: freezed == supportedReasoningEfforts ? _self._supportedReasoningEfforts : supportedReasoningEfforts // ignore: cast_nullable_to_non_nullable
 as List<CodexReasoningEffortOptionDto>?,defaultReasoningEffort: freezed == defaultReasoningEffort ? _self.defaultReasoningEffort : defaultReasoningEffort // ignore: cast_nullable_to_non_nullable
 as String?,isDefault: freezed == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,serviceTiers: freezed == serviceTiers ? _self._serviceTiers : serviceTiers // ignore: cast_nullable_to_non_nullable
+as List<CodexModelServiceTierDto>?,
   ));
 }
 
@@ -447,6 +458,148 @@ class __$CodexReasoningEffortOptionDtoCopyWithImpl<$Res>
 @override @pragma('vm:prefer-inline') $Res call({Object? reasoningEffort = freezed,Object? description = freezed,}) {
   return _then(_CodexReasoningEffortOptionDto(
 reasoningEffort: freezed == reasoningEffort ? _self.reasoningEffort : reasoningEffort // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$CodexModelServiceTierDto {
+
+ String? get id; String? get name; String? get description;
+/// Create a copy of CodexModelServiceTierDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexModelServiceTierDtoCopyWith<CodexModelServiceTierDto> get copyWith => _$CodexModelServiceTierDtoCopyWithImpl<CodexModelServiceTierDto>(this as CodexModelServiceTierDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as CodexModelServiceTierDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexModelServiceTierDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as CodexModelServiceTierDto;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.description);
+}
+
+@override
+String toString() {
+  final _this = this as CodexModelServiceTierDto;
+  return 'CodexModelServiceTierDto(id: ${_this.id}, name: ${_this.name}, description: ${_this.description})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexModelServiceTierDtoCopyWith<$Res>  {
+  factory $CodexModelServiceTierDtoCopyWith(CodexModelServiceTierDto value, $Res Function(CodexModelServiceTierDto) _then) = _$CodexModelServiceTierDtoCopyWithImpl;
+@useResult
+$Res call({
+ String? id, String? name, String? description
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexModelServiceTierDtoCopyWithImpl<$Res>
+    implements $CodexModelServiceTierDtoCopyWith<$Res> {
+  _$CodexModelServiceTierDtoCopyWithImpl(this._self, this._then);
+
+  final CodexModelServiceTierDto _self;
+  final $Res Function(CodexModelServiceTierDto) _then;
+
+/// Create a copy of CodexModelServiceTierDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? name = freezed,Object? description = freezed,}) {
+  return _then(CodexModelServiceTierDto(
+id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CodexModelServiceTierDto implements CodexModelServiceTierDto {
+  const _CodexModelServiceTierDto({required this.id, required this.name, required this.description});
+  factory _CodexModelServiceTierDto.fromJson(Map<String, dynamic> json) => _$CodexModelServiceTierDtoFromJson(json);
+
+@override final  String? id;
+@override final  String? name;
+@override final  String? description;
+
+/// Create a copy of CodexModelServiceTierDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CodexModelServiceTierDtoCopyWith<_CodexModelServiceTierDto> get copyWith => __$CodexModelServiceTierDtoCopyWithImpl<_CodexModelServiceTierDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexModelServiceTierDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,id,name,description);
+}
+
+@override
+String toString() {
+    return 'CodexModelServiceTierDto(id: $id, name: $name, description: $description)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CodexModelServiceTierDtoCopyWith<$Res> implements $CodexModelServiceTierDtoCopyWith<$Res> {
+  factory _$CodexModelServiceTierDtoCopyWith(_CodexModelServiceTierDto value, $Res Function(_CodexModelServiceTierDto) _then) = __$CodexModelServiceTierDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ String? id, String? name, String? description
+});
+
+
+
+
+}
+/// @nodoc
+class __$CodexModelServiceTierDtoCopyWithImpl<$Res>
+    implements _$CodexModelServiceTierDtoCopyWith<$Res> {
+  __$CodexModelServiceTierDtoCopyWithImpl(this._self, this._then);
+
+  final _CodexModelServiceTierDto _self;
+  final $Res Function(_CodexModelServiceTierDto) _then;
+
+/// Create a copy of CodexModelServiceTierDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? name = freezed,Object? description = freezed,}) {
+  return _then(_CodexModelServiceTierDto(
+id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,
   ));

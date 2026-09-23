@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
+import "../models/codex_service_tier.dart";
 import "models/codex_account_dto.dart";
 import "models/codex_collaboration_mode_dto.dart";
 import "models/codex_model_dto.dart";
@@ -58,12 +59,18 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     required String cwd,
     required String? model,
     required String? modelProvider,
+    required bool fastMode,
   }) async {
     final params = <String, dynamic>{"cwd": cwd};
     if (model != null) {
       params["model"] = model;
       params["modelProvider"] = modelProvider;
     }
+    // Only set when true: an unset thread tier lets Codex apply the model's
+    // own default rather than forcing standard speed on every new thread.
+    // The first turn/start (below) always carries an explicit tier, so this
+    // only matters for a thread created without an immediate turn.
+    if (fastMode) params["serviceTier"] = CodexServiceTier.fast;
     final result = await _client.request(method: "thread/start", params: params);
     return _decodeResponse(result: result, operation: "thread/start");
   }
@@ -127,6 +134,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
+    required bool? fastMode,
   }) async {
     final params = <String, dynamic>{
       "threadId": threadId,
@@ -135,6 +143,18 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
       // item it publishes is traced to the send that caused it.
       "clientUserMessageId": ?clientUserMessageId,
     };
+    // serviceTier applies to this turn and subsequent ones. Sent on every
+    // turn issued through a bridge fastMode selection (true -> the "priority"
+    // fast tier, false -> the "default" tier, which explicitly returns the
+    // thread to standard speed); omitted (null) only for turns started
+    // outside that selection (e.g. an async approval answer), which inherit
+    // the thread's current tier instead of resetting it.
+    final serviceTier = switch (fastMode) {
+      null => null,
+      true => CodexServiceTier.fast,
+      false => CodexServiceTier.standard,
+    };
+    if (serviceTier != null) params["serviceTier"] = serviceTier;
     if (collaborationMode == null) {
       if (model != null) params["model"] = model;
       if (effort != null) params["effort"] = effort;

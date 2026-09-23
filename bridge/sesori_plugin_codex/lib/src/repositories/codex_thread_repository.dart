@@ -50,6 +50,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     required String cwd,
     required String? model,
     required String? modelProvider,
+    required bool fastMode,
   }) async {
     final dto = await _request(
       operation: "thread/start",
@@ -57,6 +58,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
         cwd: cwd,
         model: model,
         modelProvider: modelProvider,
+        fastMode: fastMode,
       ),
     );
     return _mapRequired(dto: dto, operation: "thread/start");
@@ -88,6 +90,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
+    required bool? fastMode,
   }) async {
     final input = <CodexTurnInputDto>[];
     var remainingInlineBytes = maxInlineMessageAttachmentBytes;
@@ -106,6 +109,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
         model: model,
         effort: effort,
         collaborationMode: collaborationMode,
+        fastMode: fastMode,
       ),
     );
     final turnId = _usefulText(response.turn?.id);

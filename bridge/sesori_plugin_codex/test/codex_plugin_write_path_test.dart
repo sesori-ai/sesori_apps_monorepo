@@ -320,6 +320,80 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.busy);
     });
 
+    test("createSession with fastMode sends the priority service tier on thread/start and turn/start", () async {
+      // Respond to: initialize, thread/start, turn/start.
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "t-fast",
+              "cwd": "/work/sample",
+              "createdAt": 1700000000,
+              "updatedAt": 1700000005,
+              "name": null,
+            },
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-fast"},
+          },
+        ),
+      ]);
+
+      await plugin.createSession(
+        fastMode: true,
+        directory: "/work/sample",
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "hello codex")],
+        userVisibleText: "hello codex",
+        variant: null,
+        agent: "Agent",
+        model: null,
+      );
+
+      expect(fake.sentParamsFor("thread/start")["serviceTier"], equals("priority"));
+      expect(fake.sentParamsFor("turn/start")["serviceTier"], equals("priority"));
+    });
+
+    test("createSession without fastMode omits thread/start's service tier and clears turn/start's", () async {
+      // Respond to: initialize, thread/start, turn/start.
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "t-standard",
+              "cwd": "/work/sample",
+              "createdAt": 1700000000,
+              "updatedAt": 1700000005,
+              "name": null,
+            },
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-standard"},
+          },
+        ),
+      ]);
+
+      await plugin.createSession(
+        fastMode: false,
+        directory: "/work/sample",
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "hello codex")],
+        userVisibleText: "hello codex",
+        variant: null,
+        agent: "Agent",
+        model: null,
+      );
+
+      expect(fake.sentParamsFor("thread/start").containsKey("serviceTier"), isFalse);
+      expect(fake.sentParamsFor("turn/start")["serviceTier"], equals("default"));
+    });
+
     test("createSession forwards inline image data to Codex turn input", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
@@ -3255,6 +3329,62 @@ void main() {
       );
 
       expect(fake.sentParamsFor("turn/start").containsKey("effort"), isFalse);
+    });
+
+    test("sendPrompt sends the priority service tier when fastMode is on", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-fast-prompt"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-1"},
+          },
+        ),
+      ]);
+
+      await plugin.sendPrompt(
+        fastMode: true,
+        promptId: "prompt-1",
+        sessionId: "t-fast-prompt",
+        parts: const [PluginPromptPart.text(text: "hi")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(fake.sentParamsFor("turn/start")["serviceTier"], equals("priority"));
+    });
+
+    test("sendPrompt sends the default service tier when fastMode is off", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-standard-prompt"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-1"},
+          },
+        ),
+      ]);
+
+      await plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: "t-standard-prompt",
+        parts: const [PluginPromptPart.text(text: "hi")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(fake.sentParamsFor("turn/start")["serviceTier"], equals("default"));
     });
 
     test("legacy codex agent selects Default mode on the first turn", () async {
