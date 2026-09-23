@@ -323,6 +323,7 @@ void main() {
         chatHistoryService: createTestChatHistory().service,
       );
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "root-session",
         backendSessionId: "backend-session",
         projectId: "/repo",
@@ -539,6 +540,7 @@ class _FakeBridgePlugin() extends FakeBridgePlugin {
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) => throw UnimplementedError();

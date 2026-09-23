@@ -482,6 +482,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
     await database.sessionDao.upsertSessionRows(
       rows: [
         SessionDto(
+          fastMode: false,
           sessionId: _sentinelSessionId,
           backendSessionId: fixture.sessions.first.id,
           projectId: fixture.projectPaths.first,

@@ -20,6 +20,7 @@ extension PluginProviderMapper on PluginProvider {
             family: m.family,
             isAvailable: m.isAvailable,
             releaseDate: m.releaseDate,
+            supportsFastMode: m.supportsFastMode,
           ),
       },
     );

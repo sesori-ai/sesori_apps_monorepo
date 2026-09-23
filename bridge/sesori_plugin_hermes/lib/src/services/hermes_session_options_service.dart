@@ -236,6 +236,7 @@ class HermesSessionOptionsService({
             [
               for (final model in entry.value)
                 PluginModel(
+                  supportsFastMode: false,
                   id: model.value,
                   name: model.name,
                   variants: const [],
@@ -263,6 +264,7 @@ class HermesSessionOptionsService({
             authType: PluginProviderAuthType.unknown,
             models: [
               PluginModel(
+                supportsFastMode: false,
                 id: modelId,
                 name: modelId,
                 variants: const [],

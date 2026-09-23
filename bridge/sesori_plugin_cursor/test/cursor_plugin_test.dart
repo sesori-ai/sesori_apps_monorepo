@@ -163,6 +163,7 @@ void main() {
         expect(await connecting, isTrue);
       }
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -174,6 +175,7 @@ void main() {
       await respond("session/new", {"sessionId": sessionId});
       final session = await creating;
       await plugin.sendPrompt(
+        fastMode: false,
         sessionId: session.id,
         promptId: "prompt-$sessionId",
         parts: const [PluginPromptPart.text(text: "delegate")],
@@ -281,6 +283,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -293,6 +296,7 @@ void main() {
       final session = await creating;
 
       await plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
         command: "compact",
@@ -336,6 +340,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -348,6 +353,7 @@ void main() {
       final session = await creating;
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
         parts: const [PluginPromptPart.text(text: "first")],
@@ -358,6 +364,7 @@ void main() {
       final firstPrompt = await waitForFrame("session/prompt");
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: session.id,
         parts: const [PluginPromptPart.text(text: "replace it")],
@@ -555,6 +562,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = promptWritePlugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -572,6 +580,7 @@ void main() {
       final session = await creating;
 
       await promptWritePlugin.sendPrompt(
+        fastMode: false,
         sessionId: session.id,
         promptId: "prompt-task-write",
         parts: const [PluginPromptPart.text(text: "delegate")],
@@ -650,6 +659,7 @@ void main() {
 
       Future<String> createSession({required String sessionId}) async {
         final creating = plugin.createSession(
+          fastMode: false,
           directory: "/repo",
           parentSessionId: null,
           parts: const [],
@@ -665,6 +675,7 @@ void main() {
       final firstSessionId = await createSession(sessionId: "s-first");
       final secondSessionId = await createSession(sessionId: "s-second");
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-first",
         sessionId: firstSessionId,
         parts: const [PluginPromptPart.text(text: "first")],
@@ -674,6 +685,7 @@ void main() {
       );
       final firstPrompt = await waitForFrame("session/prompt");
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-second",
         sessionId: secondSessionId,
         parts: const [PluginPromptPart.text(text: "second")],
@@ -777,6 +789,7 @@ void main() {
       expect(workStates.last, PluginWorkState.busy);
 
       await plugin.sendPrompt(
+        fastMode: false,
         sessionId: sessionId,
         promptId: "prompt-after-background",
         parts: const [PluginPromptPart.text(text: "must survive refusal")],

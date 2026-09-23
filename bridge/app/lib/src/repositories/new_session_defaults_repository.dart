@@ -6,8 +6,8 @@ import "../api/database/database.dart";
 class NewSessionDefaultsRepository({required final NewSessionDefaultsDao _dao}) {
   Future<SessionPromptDefaults?> read({required String pluginId}) async {
     final row = await _dao.getRow(pluginId: pluginId);
-    if (row == null || (row.agent == null && row.agentModel == null)) return null;
-    return SessionPromptDefaults(agent: row.agent, model: row.agentModel);
+    if (row == null || (row.agent == null && row.agentModel == null && !row.fastMode)) return null;
+    return SessionPromptDefaults(agent: row.agent, model: row.agentModel, fastMode: row.fastMode);
   }
 
   Future<void> write({required String pluginId, required SessionPromptDefaults defaults}) {
@@ -16,6 +16,7 @@ class NewSessionDefaultsRepository({required final NewSessionDefaultsDao _dao}) 
         pluginId: pluginId,
         agent: defaults.agent,
         agentModel: defaults.model,
+        fastMode: defaults.fastMode,
       ),
     );
   }

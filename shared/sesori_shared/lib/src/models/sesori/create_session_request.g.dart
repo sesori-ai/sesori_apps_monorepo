@@ -25,6 +25,7 @@ _CreateSessionRequest _$CreateSessionRequestFromJson(Map json) =>
           : SessionVariant.fromJson(
               Map<String, dynamic>.from(json['variant'] as Map),
             ),
+      fastMode: json['fastMode'] as bool? ?? false,
       dedicatedWorktree: json['dedicatedWorktree'] as bool,
     );
 
@@ -38,5 +39,6 @@ Map<String, dynamic> _$CreateSessionRequestToJson(
   'model': ?instance.model?.toJson(),
   'command': ?instance.command,
   'variant': ?instance.variant?.toJson(),
+  'fastMode': instance.fastMode,
   'dedicatedWorktree': instance.dedicatedWorktree,
 };

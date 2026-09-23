@@ -66,6 +66,7 @@ void main() {
     Future<PluginSession> create(String id) async {
       final expected = frames(AcpMethods.sessionNew).length + 1;
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -80,6 +81,7 @@ void main() {
     }
 
     Future<void> send(String sessionId, String text) => plugin.sendPrompt(
+      fastMode: false,
       promptId: "prompt-1",
       sessionId: sessionId,
       parts: [PluginPromptPart.text(text: text)],
@@ -156,6 +158,7 @@ void main() {
     test("does not prompt after a partially applied model selection", () async {
       await connect();
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -182,6 +185,7 @@ void main() {
       await creating;
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "session-1",
         parts: const [PluginPromptPart.text(text: "private prompt")],
@@ -349,6 +353,7 @@ void main() {
       final session = await create("session");
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
         parts: const [PluginPromptPart.text(text: "keep searching")],
@@ -359,6 +364,7 @@ void main() {
       final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: session.id,
         parts: const [PluginPromptPart.text(text: "stop")],

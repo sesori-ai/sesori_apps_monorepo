@@ -423,6 +423,7 @@ class OpenCodePlugin._({
     required String? userVisibleText,
     required String? agent,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required ({String providerID, String modelID})? model,
   }) async {
     return await _callAndSyncWorkState(
@@ -520,6 +521,7 @@ class OpenCodePlugin._({
     required List<PluginPromptPart> parts,
     required String? agent,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required ({String providerID, String modelID})? model,
   }) async {
     if (agent != null) {
@@ -583,6 +585,7 @@ class OpenCodePlugin._({
     required String? userVisibleArguments,
     required String? agent,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required ({String providerID, String modelID})? model,
   }) async {
     if (command == OpenCodeService.compactionCommandName) {

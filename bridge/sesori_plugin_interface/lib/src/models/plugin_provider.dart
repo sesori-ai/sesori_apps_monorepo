@@ -28,6 +28,9 @@ sealed class PluginModel with _$PluginModel {
     String? family,
     @Default(true) bool isAvailable,
     DateTime? releaseDate,
+
+    /// Whether the plugin can run this model in the backend's fast mode.
+    required bool supportsFastMode,
   }) = _PluginModel;
 }
 

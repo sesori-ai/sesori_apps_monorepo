@@ -257,6 +257,7 @@ void main() {
     await harness.activatePlugins();
     await harness.database.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
     await harness.database.sessionDao.insertSession(
+      fastMode: false,
       sessionId: "session",
       backendSessionId: "session",
       projectId: "project",
@@ -880,6 +881,7 @@ Future<RelayResponse> _deleteEventSession({required RoutedRequestDispatcher disp
 Future<void> _insertEventSession({required AppDatabase database, required String pluginId}) async {
   await database.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
   await database.sessionDao.insertSession(
+    fastMode: false,
     pluginId: pluginId,
     preservePullRequestScope: false,
     sessionId: "stable-session",

@@ -457,6 +457,11 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   String? get baseCommit;
   String? get lastAgent;
   AgentModel? get lastAgentModel;
+
+  /// Whether the session's turns run in the backend's fast mode. The bridge
+  /// owns this choice: only client create/prompt/command requests write it;
+  /// backend-reported prompt defaults never do.
+  bool get fastMode;
   int get createdAt;
   int get updatedAt;
   int get projectionUpdatedAt;
@@ -516,6 +521,7 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
         $SessionTableTable.$converterlastAgentModeln.toSql(lastAgentModel),
       );
     }
+    map['fast_mode'] = Variable<bool>(fastMode);
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     map['projection_updated_at'] = Variable<int>(projectionUpdatedAt);
@@ -718,6 +724,21 @@ class $SessionTableTable extends SessionTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   ).withConverter<AgentModel?>($SessionTableTable.$converterlastAgentModeln);
+  static const VerificationMeta _fastModeMeta = const VerificationMeta(
+    'fastMode',
+  );
+  @override
+  late final GeneratedColumn<bool> fastMode = GeneratedColumn<bool>(
+    'fast_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("fast_mode" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -831,6 +852,7 @@ class $SessionTableTable extends SessionTable
     baseCommit,
     lastAgent,
     lastAgentModel,
+    fastMode,
     createdAt,
     updatedAt,
     projectionUpdatedAt,
@@ -963,6 +985,12 @@ class $SessionTableTable extends SessionTable
       context.handle(
         _lastAgentMeta,
         lastAgent.isAcceptableOrUnknown(data['last_agent']!, _lastAgentMeta),
+      );
+    }
+    if (data.containsKey('fast_mode')) {
+      context.handle(
+        _fastModeMeta,
+        fastMode.isAcceptableOrUnknown(data['fast_mode']!, _fastModeMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -1113,6 +1141,10 @@ class $SessionTableTable extends SessionTable
           data['${effectivePrefix}last_agent_model'],
         ),
       ),
+      fastMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}fast_mode'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -1181,6 +1213,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String?> baseCommit;
   final Value<String?> lastAgent;
   final Value<AgentModel?> lastAgentModel;
+  final Value<bool> fastMode;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<int> projectionUpdatedAt;
@@ -1206,6 +1239,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.baseCommit = const Value.absent(),
     this.lastAgent = const Value.absent(),
     this.lastAgentModel = const Value.absent(),
+    this.fastMode = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.projectionUpdatedAt = const Value.absent(),
@@ -1232,6 +1266,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.baseCommit = const Value.absent(),
     this.lastAgent = const Value.absent(),
     this.lastAgentModel = const Value.absent(),
+    this.fastMode = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     required int projectionUpdatedAt,
@@ -1266,6 +1301,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<String>? baseCommit,
     Expression<String>? lastAgent,
     Expression<String>? lastAgentModel,
+    Expression<bool>? fastMode,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? projectionUpdatedAt,
@@ -1293,6 +1329,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (baseCommit != null) 'base_commit': baseCommit,
       if (lastAgent != null) 'last_agent': lastAgent,
       if (lastAgentModel != null) 'last_agent_model': lastAgentModel,
+      if (fastMode != null) 'fast_mode': fastMode,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (projectionUpdatedAt != null)
@@ -1322,6 +1359,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<String?>? baseCommit,
     Value<String?>? lastAgent,
     Value<AgentModel?>? lastAgentModel,
+    Value<bool>? fastMode,
     Value<int>? createdAt,
     Value<int>? updatedAt,
     Value<int>? projectionUpdatedAt,
@@ -1350,6 +1388,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       baseCommit: baseCommit ?? this.baseCommit,
       lastAgent: lastAgent ?? this.lastAgent,
       lastAgentModel: lastAgentModel ?? this.lastAgentModel,
+      fastMode: fastMode ?? this.fastMode,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       projectionUpdatedAt: projectionUpdatedAt ?? this.projectionUpdatedAt,
@@ -1416,6 +1455,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
         ),
       );
     }
+    if (fastMode.present) {
+      map['fast_mode'] = Variable<bool>(fastMode.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -1466,6 +1508,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('baseCommit: $baseCommit, ')
           ..write('lastAgent: $lastAgent, ')
           ..write('lastAgentModel: $lastAgentModel, ')
+          ..write('fastMode: $fastMode, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('projectionUpdatedAt: $projectionUpdatedAt, ')
@@ -3222,6 +3265,7 @@ mixin $NewSessionDefaultsTableTableToColumns
   String get pluginId;
   String? get agent;
   AgentModel? get agentModel;
+  bool get fastMode;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -3234,6 +3278,7 @@ mixin $NewSessionDefaultsTableTableToColumns
         $NewSessionDefaultsTableTable.$converteragentModeln.toSql(agentModel),
       );
     }
+    map['fast_mode'] = Variable<bool>(fastMode);
     return map;
   }
 }
@@ -3275,8 +3320,23 @@ class $NewSessionDefaultsTableTable extends NewSessionDefaultsTable
       ).withConverter<AgentModel?>(
         $NewSessionDefaultsTableTable.$converteragentModeln,
       );
+  static const VerificationMeta _fastModeMeta = const VerificationMeta(
+    'fastMode',
+  );
   @override
-  List<GeneratedColumn> get $columns => [pluginId, agent, agentModel];
+  late final GeneratedColumn<bool> fastMode = GeneratedColumn<bool>(
+    'fast_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("fast_mode" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [pluginId, agent, agentModel, fastMode];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -3301,6 +3361,12 @@ class $NewSessionDefaultsTableTable extends NewSessionDefaultsTable
       context.handle(
         _agentMeta,
         agent.isAcceptableOrUnknown(data['agent']!, _agentMeta),
+      );
+    }
+    if (data.containsKey('fast_mode')) {
+      context.handle(
+        _fastModeMeta,
+        fastMode.isAcceptableOrUnknown(data['fast_mode']!, _fastModeMeta),
       );
     }
     return context;
@@ -3329,6 +3395,10 @@ class $NewSessionDefaultsTableTable extends NewSessionDefaultsTable
           data['${effectivePrefix}agent_model'],
         ),
       ),
+      fastMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}fast_mode'],
+      )!,
     );
   }
 
@@ -3353,10 +3423,13 @@ class NewSessionDefaultsTableData extends DataClass
   final String? agent;
   @override
   final AgentModel? agentModel;
+  @override
+  final bool fastMode;
   const NewSessionDefaultsTableData({
     required this.pluginId,
     this.agent,
     this.agentModel,
+    required this.fastMode,
   });
   NewSessionDefaultsTableCompanion toCompanion(bool nullToAbsent) {
     return NewSessionDefaultsTableCompanion(
@@ -3367,6 +3440,7 @@ class NewSessionDefaultsTableData extends DataClass
       agentModel: agentModel == null && nullToAbsent
           ? const Value.absent()
           : Value(agentModel),
+      fastMode: Value(fastMode),
     );
   }
 
@@ -3379,6 +3453,7 @@ class NewSessionDefaultsTableData extends DataClass
       pluginId: serializer.fromJson<String>(json['pluginId']),
       agent: serializer.fromJson<String?>(json['agent']),
       agentModel: serializer.fromJson<AgentModel?>(json['agentModel']),
+      fastMode: serializer.fromJson<bool>(json['fastMode']),
     );
   }
   @override
@@ -3388,6 +3463,7 @@ class NewSessionDefaultsTableData extends DataClass
       'pluginId': serializer.toJson<String>(pluginId),
       'agent': serializer.toJson<String?>(agent),
       'agentModel': serializer.toJson<AgentModel?>(agentModel),
+      'fastMode': serializer.toJson<bool>(fastMode),
     };
   }
 
@@ -3395,10 +3471,12 @@ class NewSessionDefaultsTableData extends DataClass
     String? pluginId,
     Value<String?> agent = const Value.absent(),
     Value<AgentModel?> agentModel = const Value.absent(),
+    bool? fastMode,
   }) => NewSessionDefaultsTableData(
     pluginId: pluginId ?? this.pluginId,
     agent: agent.present ? agent.value : this.agent,
     agentModel: agentModel.present ? agentModel.value : this.agentModel,
+    fastMode: fastMode ?? this.fastMode,
   );
   NewSessionDefaultsTableData copyWithCompanion(
     NewSessionDefaultsTableCompanion data,
@@ -3409,6 +3487,7 @@ class NewSessionDefaultsTableData extends DataClass
       agentModel: data.agentModel.present
           ? data.agentModel.value
           : this.agentModel,
+      fastMode: data.fastMode.present ? data.fastMode.value : this.fastMode,
     );
   }
 
@@ -3417,20 +3496,22 @@ class NewSessionDefaultsTableData extends DataClass
     return (StringBuffer('NewSessionDefaultsTableData(')
           ..write('pluginId: $pluginId, ')
           ..write('agent: $agent, ')
-          ..write('agentModel: $agentModel')
+          ..write('agentModel: $agentModel, ')
+          ..write('fastMode: $fastMode')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(pluginId, agent, agentModel);
+  int get hashCode => Object.hash(pluginId, agent, agentModel, fastMode);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is NewSessionDefaultsTableData &&
           other.pluginId == this.pluginId &&
           other.agent == this.agent &&
-          other.agentModel == this.agentModel);
+          other.agentModel == this.agentModel &&
+          other.fastMode == this.fastMode);
 }
 
 class NewSessionDefaultsTableCompanion
@@ -3438,25 +3519,30 @@ class NewSessionDefaultsTableCompanion
   final Value<String> pluginId;
   final Value<String?> agent;
   final Value<AgentModel?> agentModel;
+  final Value<bool> fastMode;
   const NewSessionDefaultsTableCompanion({
     this.pluginId = const Value.absent(),
     this.agent = const Value.absent(),
     this.agentModel = const Value.absent(),
+    this.fastMode = const Value.absent(),
   });
   NewSessionDefaultsTableCompanion.insert({
     required String pluginId,
     this.agent = const Value.absent(),
     this.agentModel = const Value.absent(),
+    this.fastMode = const Value.absent(),
   }) : pluginId = Value(pluginId);
   static Insertable<NewSessionDefaultsTableData> custom({
     Expression<String>? pluginId,
     Expression<String>? agent,
     Expression<String>? agentModel,
+    Expression<bool>? fastMode,
   }) {
     return RawValuesInsertable({
       if (pluginId != null) 'plugin_id': pluginId,
       if (agent != null) 'agent': agent,
       if (agentModel != null) 'agent_model': agentModel,
+      if (fastMode != null) 'fast_mode': fastMode,
     });
   }
 
@@ -3464,11 +3550,13 @@ class NewSessionDefaultsTableCompanion
     Value<String>? pluginId,
     Value<String?>? agent,
     Value<AgentModel?>? agentModel,
+    Value<bool>? fastMode,
   }) {
     return NewSessionDefaultsTableCompanion(
       pluginId: pluginId ?? this.pluginId,
       agent: agent ?? this.agent,
       agentModel: agentModel ?? this.agentModel,
+      fastMode: fastMode ?? this.fastMode,
     );
   }
 
@@ -3488,6 +3576,9 @@ class NewSessionDefaultsTableCompanion
         ),
       );
     }
+    if (fastMode.present) {
+      map['fast_mode'] = Variable<bool>(fastMode.value);
+    }
     return map;
   }
 
@@ -3496,7 +3587,8 @@ class NewSessionDefaultsTableCompanion
     return (StringBuffer('NewSessionDefaultsTableCompanion(')
           ..write('pluginId: $pluginId, ')
           ..write('agent: $agent, ')
-          ..write('agentModel: $agentModel')
+          ..write('agentModel: $agentModel, ')
+          ..write('fastMode: $fastMode')
           ..write(')'))
         .toString();
   }
@@ -4394,6 +4486,7 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       Value<String?> baseCommit,
       Value<String?> lastAgent,
       Value<AgentModel?> lastAgentModel,
+      Value<bool> fastMode,
       required int createdAt,
       required int updatedAt,
       required int projectionUpdatedAt,
@@ -4421,6 +4514,7 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<String?> baseCommit,
       Value<String?> lastAgent,
       Value<AgentModel?> lastAgentModel,
+      Value<bool> fastMode,
       Value<int> createdAt,
       Value<int> updatedAt,
       Value<int> projectionUpdatedAt,
@@ -4548,6 +4642,11 @@ class $$SessionTableTableFilterComposer
   get lastAgentModel => $composableBuilder(
     column: $table.lastAgentModel,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get fastMode => $composableBuilder(
+    column: $table.fastMode,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<int> get createdAt => $composableBuilder(
@@ -4717,6 +4816,11 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get fastMode => $composableBuilder(
+    column: $table.fastMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4879,6 +4983,9 @@ class $$SessionTableTableAnnotationComposer
         builder: (column) => column,
       );
 
+  GeneratedColumn<bool> get fastMode =>
+      $composableBuilder(column: $table.fastMode, builder: (column) => column);
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -5007,6 +5114,7 @@ class $$SessionTableTableTableManager
                 Value<String?> baseCommit = const Value.absent(),
                 Value<String?> lastAgent = const Value.absent(),
                 Value<AgentModel?> lastAgentModel = const Value.absent(),
+                Value<bool> fastMode = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<int> projectionUpdatedAt = const Value.absent(),
@@ -5033,6 +5141,7 @@ class $$SessionTableTableTableManager
                 baseCommit: baseCommit,
                 lastAgent: lastAgent,
                 lastAgentModel: lastAgentModel,
+                fastMode: fastMode,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 projectionUpdatedAt: projectionUpdatedAt,
@@ -5061,6 +5170,7 @@ class $$SessionTableTableTableManager
                 Value<String?> baseCommit = const Value.absent(),
                 Value<String?> lastAgent = const Value.absent(),
                 Value<AgentModel?> lastAgentModel = const Value.absent(),
+                Value<bool> fastMode = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
                 required int projectionUpdatedAt,
@@ -5087,6 +5197,7 @@ class $$SessionTableTableTableManager
                 baseCommit: baseCommit,
                 lastAgent: lastAgent,
                 lastAgentModel: lastAgentModel,
+                fastMode: fastMode,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 projectionUpdatedAt: projectionUpdatedAt,
@@ -6406,12 +6517,14 @@ typedef $$NewSessionDefaultsTableTableCreateCompanionBuilder =
       required String pluginId,
       Value<String?> agent,
       Value<AgentModel?> agentModel,
+      Value<bool> fastMode,
     });
 typedef $$NewSessionDefaultsTableTableUpdateCompanionBuilder =
     NewSessionDefaultsTableCompanion Function({
       Value<String> pluginId,
       Value<String?> agent,
       Value<AgentModel?> agentModel,
+      Value<bool> fastMode,
     });
 
 class $$NewSessionDefaultsTableTableFilterComposer
@@ -6438,6 +6551,11 @@ class $$NewSessionDefaultsTableTableFilterComposer
     column: $table.agentModel,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnFilters<bool> get fastMode => $composableBuilder(
+    column: $table.fastMode,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$NewSessionDefaultsTableTableOrderingComposer
@@ -6463,6 +6581,11 @@ class $$NewSessionDefaultsTableTableOrderingComposer
     column: $table.agentModel,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get fastMode => $composableBuilder(
+    column: $table.fastMode,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$NewSessionDefaultsTableTableAnnotationComposer
@@ -6485,6 +6608,9 @@ class $$NewSessionDefaultsTableTableAnnotationComposer
         column: $table.agentModel,
         builder: (column) => column,
       );
+
+  GeneratedColumn<bool> get fastMode =>
+      $composableBuilder(column: $table.fastMode, builder: (column) => column);
 }
 
 class $$NewSessionDefaultsTableTableTableManager
@@ -6536,20 +6662,24 @@ class $$NewSessionDefaultsTableTableTableManager
                 Value<String> pluginId = const Value.absent(),
                 Value<String?> agent = const Value.absent(),
                 Value<AgentModel?> agentModel = const Value.absent(),
+                Value<bool> fastMode = const Value.absent(),
               }) => NewSessionDefaultsTableCompanion(
                 pluginId: pluginId,
                 agent: agent,
                 agentModel: agentModel,
+                fastMode: fastMode,
               ),
           createCompanionCallback:
               ({
                 required String pluginId,
                 Value<String?> agent = const Value.absent(),
                 Value<AgentModel?> agentModel = const Value.absent(),
+                Value<bool> fastMode = const Value.absent(),
               }) => NewSessionDefaultsTableCompanion.insert(
                 pluginId: pluginId,
                 agent: agent,
                 agentModel: agentModel,
+                fastMode: fastMode,
               ),
           withReferenceMapper: (p0) => p0
               .map(

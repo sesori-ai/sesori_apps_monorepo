@@ -147,8 +147,8 @@ void main() {
             name: "Anthropic",
             authType: PluginProviderAuthType.apiKey,
             models: [
-              PluginModel(id: "claude-3-opus", name: "Claude 3 Opus", variants: [], family: "claude-3"),
-              PluginModel(id: "claude-3-sonnet", name: "Claude 3 Sonnet", variants: []),
+              PluginModel(supportsFastMode: false, id: "claude-3-opus", name: "Claude 3 Opus", variants: [], family: "claude-3"),
+              PluginModel(supportsFastMode: false, id: "claude-3-sonnet", name: "Claude 3 Sonnet", variants: []),
             ],
             defaultModelID: "claude-3-sonnet",
           ),
@@ -185,6 +185,7 @@ void main() {
             authType: PluginProviderAuthType.apiKey,
             models: [
               PluginModel(
+                supportsFastMode: false,
                 id: "gpt-4o",
                 name: "GPT-4o",
                 variants: [],
@@ -193,6 +194,7 @@ void main() {
                 releaseDate: DateTime(2025, 1, 15),
               ),
               PluginModel(
+                supportsFastMode: false,
                 id: "gpt-3.5",
                 name: "GPT-3.5",
                 variants: [],
@@ -200,7 +202,7 @@ void main() {
                 isAvailable: false,
                 releaseDate: DateTime(2023, 3, 1),
               ),
-              const PluginModel(id: "gpt-4-turbo", name: "GPT-4 Turbo", variants: [], family: "gpt-4"),
+              const PluginModel(supportsFastMode: false, id: "gpt-4-turbo", name: "GPT-4 Turbo", variants: [], family: "gpt-4"),
             ],
             defaultModelID: "gpt-4o",
           ),
@@ -235,7 +237,7 @@ void main() {
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
             models: [
-              PluginModel(id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini", variants: [], isAvailable: true),
+              PluginModel(supportsFastMode: false, id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini", variants: [], isAvailable: true),
             ],
             defaultModelID: "openai/gpt-4.1-mini",
           ),
@@ -261,8 +263,8 @@ void main() {
             name: "Anthropic",
             authType: PluginProviderAuthType.apiKey,
             models: [
-              PluginModel(id: "m1", name: "Available", variants: [], isAvailable: true),
-              PluginModel(id: "m2", name: "Deprecated", variants: [], isAvailable: false),
+              PluginModel(supportsFastMode: false, id: "m1", name: "Available", variants: [], isAvailable: true),
+              PluginModel(supportsFastMode: false, id: "m2", name: "Deprecated", variants: [], isAvailable: false),
             ],
             defaultModelID: null,
           ),
@@ -287,7 +289,7 @@ void main() {
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
             models: [
-              PluginModel(id: "gpt-4.1", name: "GPT-4.1", variants: [], family: "gpt-4.1", isAvailable: true),
+              PluginModel(supportsFastMode: false, id: "gpt-4.1", name: "GPT-4.1", variants: [], family: "gpt-4.1", isAvailable: true),
             ],
             defaultModelID: null,
           ),

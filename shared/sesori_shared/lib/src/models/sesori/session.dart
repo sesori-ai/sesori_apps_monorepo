@@ -69,6 +69,10 @@ sealed class SessionPromptDefaults with _$SessionPromptDefaults {
   const factory({
     required String? agent,
     required AgentModel? model,
+
+    /// Whether the session's turns run in the backend's fast mode.
+    // COMPATIBILITY 2026-09-23 (v1.9.0): Bridges before fast mode omit fastMode, and their sessions never run in fast mode. Remove @Default and require the field once the minimum supported bridge always sends it.
+    @Default(false) bool fastMode,
   }) = _SessionPromptDefaults;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionPromptDefaultsFromJson(json);

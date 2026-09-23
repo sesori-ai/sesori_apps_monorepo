@@ -654,6 +654,7 @@ class _ThrowingSendPromptPlugin() extends FakeBridgePlugin {
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) {
@@ -670,6 +671,7 @@ class _ThrowingSendCommandPlugin() extends FakeBridgePlugin {
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) {
@@ -695,13 +697,14 @@ class _ThrowingUpdateSessionRepository({
       );
 
   @override
-  Future<void> updatePromptDefaults({
+  Future<void> updateRequestedPromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
+    required bool fastMode,
   }) {
     updatePromptDefaultsCallCount++;
-    throw StateError("updatePromptDefaults failed");
+    throw StateError("updateRequestedPromptDefaults failed");
   }
 
   @override

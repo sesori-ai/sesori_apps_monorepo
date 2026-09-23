@@ -44,6 +44,7 @@ void main() {
     test("exposes only bound stable root session IDs", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "stable-root",
         backendSessionId: "backend-root",
         pluginId: plugin.id,
@@ -74,6 +75,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
       for (final id in ["idle-session", "busy-session", "retry-session"]) {
         await db.sessionDao.insertSession(
+          fastMode: false,
           sessionId: "stable-$id",
           backendSessionId: id,
           pluginId: plugin.id,

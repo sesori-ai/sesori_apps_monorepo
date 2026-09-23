@@ -392,6 +392,7 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
           pluginIds: pluginIds,
         ),
         SessionDto(
+          fastMode: false,
           sessionId: _childSessionId,
           backendSessionId: "child-backend-00000",
           projectId: _projectDirectory,
@@ -554,6 +555,7 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
     return List<SessionDto>.generate(
       count,
       (index) => SessionDto(
+        fastMode: false,
         sessionId: _sessionId(prefix: idPrefix, index: index),
         backendSessionId: "$idPrefix-backend-${index.toString().padLeft(5, "0")}",
         projectId: projectId,

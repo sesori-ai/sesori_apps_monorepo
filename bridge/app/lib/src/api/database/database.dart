@@ -44,7 +44,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -298,6 +298,11 @@ class AppDatabase(super.e) extends _$AppDatabase {
       },
       from15To16: (m, schema) async {
         await m.createTable(schema.acceptedPromptsTable);
+      },
+      from16To17: (m, schema) async {
+        // Fast mode did not exist before v17, so false is the honest backfill.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.fastMode);
+        await m.addColumn(schema.newSessionDefaultsTable, schema.newSessionDefaultsTable.fastMode);
       },
     ),
     beforeOpen: (details) async {

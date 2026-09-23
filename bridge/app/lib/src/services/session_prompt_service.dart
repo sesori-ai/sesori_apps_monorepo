@@ -35,6 +35,7 @@ class SessionPromptService({
     required String? promptId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
     required String? command,
@@ -52,6 +53,7 @@ class SessionPromptService({
         promptId: promptId ?? generatePromptId(),
         parts: parts,
         variant: variant,
+        fastMode: fastMode,
         agent: agent,
         model: model,
         normalizedCommand: normalizedCommand,
@@ -64,6 +66,7 @@ class SessionPromptService({
     required String promptId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
     required String? normalizedCommand,
@@ -87,6 +90,7 @@ class SessionPromptService({
           promptId: promptId,
           parts: parts,
           variant: variant,
+          fastMode: fastMode,
           agent: agent,
           model: model,
         ),
@@ -107,6 +111,7 @@ class SessionPromptService({
           arguments: arguments ?? '',
           userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
           variant: variant,
+          fastMode: fastMode,
           agent: agent,
           model: model,
         ),
@@ -122,6 +127,7 @@ class SessionPromptService({
     await _updatePromptDefaults(
       sessionId: sessionId,
       variant: variant,
+      fastMode: fastMode,
       agent: agent,
       model: model,
     );
@@ -175,6 +181,7 @@ class SessionPromptService({
   Future<void> _updatePromptDefaults({
     required String sessionId,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) async {
@@ -186,10 +193,11 @@ class SessionPromptService({
           )
         : null;
     try {
-      await _sessionRepository.updatePromptDefaults(
+      await _sessionRepository.updateRequestedPromptDefaults(
         sessionId: sessionId,
         agent: agent,
         agentModel: agentModel,
+        fastMode: fastMode,
       );
       _promptDefaultsChangesController.add(
         SessionPromptDefaultsChange(
@@ -197,6 +205,7 @@ class SessionPromptService({
           promptDefaults: SessionPromptDefaults(
             agent: agent,
             model: agentModel,
+            fastMode: fastMode,
           ),
         ),
       );

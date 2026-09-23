@@ -145,6 +145,7 @@ void main() {
         await _handshake(fake: fake, load: capabilities.$1, resume: capabilities.$2);
         expect(await connecting, isTrue);
         final sending = plugin.sendPrompt(
+          fastMode: false,
           promptId: "p",
           sessionId: "old",
           parts: const [PluginPromptPart.text(text: "synthetic")],
@@ -196,6 +197,7 @@ void main() {
     await _handshake(fake: fake, load: true, resume: true);
     await connecting;
     final sending = plugin.sendPrompt(
+      fastMode: false,
       promptId: "p",
       sessionId: "old",
       parts: const [PluginPromptPart.text(text: "synthetic")],

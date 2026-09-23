@@ -27,6 +27,7 @@ Future<void> insertTestSession({
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   await db.sessionDao.insertSession(
+    fastMode: false,
     sessionId: sessionId,
     backendSessionId: backendSessionId,
     projectId: projectId,

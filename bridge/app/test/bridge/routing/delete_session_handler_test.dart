@@ -509,6 +509,7 @@ Future<void> _insertSession({
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]); // satisfy v5 FK constraint
   await db.sessionDao.insertSession(
+    fastMode: false,
     pluginId: pluginId,
     preservePullRequestScope: false,
     sessionId: sessionId,

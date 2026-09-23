@@ -17,6 +17,10 @@ sealed class SendPromptRequest with _$SendPromptRequest {
     required String? command,
     required SessionVariant? variant,
 
+    /// Whether this and later turns run in the backend's fast mode.
+    // COMPATIBILITY 2026-09-23 (v1.9.0): Apps before fast mode omit fastMode and cannot select it, so the turn runs at normal speed. Remove @Default and require the field once the minimum supported app always sends it.
+    @Default(false) bool fastMode,
+
     /// Client-generated identity for this prompt, stable across retries.
     ///
     /// The bridge queues, dedupes, and correlates the eventual transcript

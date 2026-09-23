@@ -1527,17 +1527,23 @@ void main() {
       expect(project.displayName, 'One');
       expect(project.prCacheGithubLogin, isNull);
 
-      final session = (await db.select(db.sessionTable).get()).single;
-      expect(session.sessionId, 'session-1');
-      expect(session.backendSessionId, 'backend-session-1');
-      expect(session.projectId, 'project-1');
-      expect(session.directory, '/worktrees/one');
-      expect(session.branchName, 'feature/cleanup-branch');
-      expect(session.currentBranchName, isNull);
-      expect(session.currentGithubRepositoryIdentity, isNull);
-      expect(session.pluginId, 'opencode');
-      expect(session.title, 'Bridge title');
-      expect(session.catalogTitle, 'Catalog title');
+      // Read raw columns: the current session row class also maps columns
+      // that later versions add.
+      final session =
+          (await db.customSelect('SELECT * FROM sessions_table').get()).single;
+      expect(session.read<String>('session_id'), 'session-1');
+      expect(session.read<String>('backend_session_id'), 'backend-session-1');
+      expect(session.read<String>('project_id'), 'project-1');
+      expect(session.read<String>('directory'), '/worktrees/one');
+      expect(session.read<String?>('branch_name'), 'feature/cleanup-branch');
+      expect(session.read<String?>('current_branch_name'), isNull);
+      expect(
+        session.read<String?>('current_github_repository_identity'),
+        isNull,
+      );
+      expect(session.read<String>('plugin_id'), 'opencode');
+      expect(session.read<String?>('title'), 'Bridge title');
+      expect(session.read<String?>('catalog_title'), 'Catalog title');
       expect(await db.select(db.pullRequestsTable).get(), isEmpty);
       expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
     },
@@ -1668,6 +1674,59 @@ void main() {
 
       expect(await db.select(db.acceptedPromptsTable).get(), isEmpty);
       await db.close();
+    },
+  );
+
+  test(
+    'migration v16 → v17 backfills fast mode off for sessions and defaults',
+    () async {
+      final schema = await verifier.schemaAt(16);
+      schema.rawDatabase.execute(
+        'INSERT INTO projects_table '
+        '(project_id, path, hidden, base_branch, display_name, created_at, '
+        'updated_at, projection_updated_at, pr_cache_github_login) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        ['p1', '/projects/one', 0, null, null, 100, 200, 150, null],
+      );
+      schema.rawDatabase.execute(
+        'INSERT INTO sessions_table '
+        '(session_id, backend_session_id, project_id, directory, '
+        'is_dedicated, created_at, updated_at, projection_updated_at, '
+        'plugin_id, last_agent) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          's1',
+          'backend-s1',
+          'p1',
+          '/projects/one',
+          0,
+          100,
+          200,
+          150,
+          'codex',
+          'build',
+        ],
+      );
+      schema.rawDatabase.execute(
+        'INSERT INTO new_session_defaults_table (plugin_id, agent, agent_model) '
+        'VALUES (?, ?, ?)',
+        ['codex', 'build', null],
+      );
+
+      final db = AppDatabase(schema.newConnection());
+      addTearDown(db.close);
+      await verifier.migrateAndValidate(
+        db,
+        17,
+        options: const ValidationOptions(validateDropped: true),
+      );
+
+      final session = await db.sessionDao.getSession(sessionId: 's1');
+      expect(session?.lastAgent, 'build');
+      expect(session?.fastMode, isFalse);
+      final defaults = await db.select(db.newSessionDefaultsTable).getSingle();
+      expect(defaults.agent, 'build');
+      expect(defaults.fastMode, isFalse);
     },
   );
 

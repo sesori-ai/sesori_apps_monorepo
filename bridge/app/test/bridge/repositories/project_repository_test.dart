@@ -721,6 +721,7 @@ void main() {
           updatedAt: 2,
         );
         await db.sessionDao.insertSession(
+          fastMode: false,
           pluginId: plugin.id,
           preservePullRequestScope: false,
           sessionId: "shared-session",
@@ -1096,6 +1097,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
       final persistedActivity = await db.projectsDao.getProject(projectId: parent);
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "w1",
         backendSessionId: "w1",
         projectId: parent,

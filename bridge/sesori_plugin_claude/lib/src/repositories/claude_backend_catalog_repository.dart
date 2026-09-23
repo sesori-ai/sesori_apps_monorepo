@@ -140,6 +140,7 @@ final class const ClaudeBackendCatalogRepository() {
           })
         : <String>[];
     return PluginModel(
+      supportsFastMode: false,
       id: id,
       name: displayName?.isNotEmpty ?? false
           ? displayName!

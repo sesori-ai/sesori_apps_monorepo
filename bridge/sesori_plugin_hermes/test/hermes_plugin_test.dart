@@ -158,6 +158,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -171,6 +172,7 @@ void main() {
       expect(session.id, "s1");
 
       final prompting = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
         parts: const [PluginPromptPart.text(text: "Hello")],
@@ -215,6 +217,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -227,6 +230,7 @@ void main() {
       final session = await creating;
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
         parts: const [PluginPromptPart.text(text: "first")],
@@ -237,6 +241,7 @@ void main() {
       final firstPrompt = await waitForFrame(method: "session/prompt");
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: session.id,
         parts: const [PluginPromptPart.text(text: "replace it")],
@@ -277,6 +282,7 @@ void main() {
       await connect();
 
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -302,6 +308,7 @@ void main() {
       await connect();
 
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -352,6 +359,7 @@ void main() {
     test("a rejected model switch fails the turn before session/prompt", () async {
       await connect();
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -385,6 +393,7 @@ void main() {
       final failedTurn = plugin.events.where((event) => event is BridgeSseSessionError).first;
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PluginPromptPart.text(text: "Hello")],
