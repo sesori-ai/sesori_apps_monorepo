@@ -58,6 +58,9 @@ abstract final class PregoColorPrimitives {
   /// Figma: Gray/425
   static const Color gray425 = Color(0xFF999999);
 
+  /// Figma: Gray/440
+  static const Color gray440 = Color(0xFF6A6A6A);
+
   /// Figma: Gray/450
   static const Color gray450 = Color(0xFF5C5C5C);
 

@@ -4,7 +4,7 @@ import "package:theme_prego/module_prego.dart";
 /// Gap between a section header and its card, from the Figma settings layout.
 const double _headerGap = 10.0;
 
-/// A titled settings section: a secondary `text-md` header above its card.
+/// A titled settings section: a tertiary `text-sm` header above its card.
 class const SettingsSection({
   super.key,
   required final String title,
@@ -21,7 +21,7 @@ class const SettingsSection({
       children: [
         Text(
           title,
-          style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary),
+          style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textTertiary),
         ),
         const SizedBox(height: _headerGap),
         child,
