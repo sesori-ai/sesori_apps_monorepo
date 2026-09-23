@@ -64,6 +64,7 @@ void main() {
             projectId: "project-1",
             projectName: "Sesori",
             onBack: () {},
+            onOpenProject: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
             onProjectSelected: ({required projectId, required projectName}) {},
@@ -121,6 +122,7 @@ void main() {
             // The route can lack the name; the loaded list supplies it.
             projectName: null,
             onBack: () {},
+            onOpenProject: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
             onProjectSelected: ({required projectId, required projectName}) => selected.add("$projectId $projectName"),
@@ -242,6 +244,7 @@ void main() {
                 projectId: "p",
                 projectName: "Project",
                 onBack: () {},
+                onOpenProject: () {},
                 onOpenHarnessSettings: screen.onOpenHarnessSettings,
                 onSessionCreated: ({required session}) {},
                 onProjectSelected: ({required projectId, required projectName}) {},

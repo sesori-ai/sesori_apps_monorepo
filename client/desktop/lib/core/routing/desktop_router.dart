@@ -69,6 +69,14 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               includeRepeats: false,
             ): () =>
                 _openSettings(context: context, initialTab: DesktopSettingsTab.general),
+            // A pushed page goes back; a page reached from the sidebar has nowhere to go.
+            SingleActivator(
+              LogicalKeyboardKey.bracketLeft,
+              meta: defaultTargetPlatform == TargetPlatform.macOS,
+              control: defaultTargetPlatform != TargetPlatform.macOS,
+              includeRepeats: false,
+            ): () =>
+                _popPushedRoute(context: context),
           },
           child: DesktopCockpitCubitProvider(
             child: DesktopCockpitShell(
@@ -163,6 +171,10 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               context: context,
               fallback: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
             ),
+            onOpenProject: () => _goRoute(
+              context: context,
+              route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+            ),
             onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
             onSessionCreated: ({required session}) => _replaceRoute(
               context: context,
@@ -187,8 +199,11 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             sessionId: route.sessionId,
             sessionTitle: route.sessionTitle,
             readOnly: route.readOnly,
-            // Direct/sidebar entry has no Back; pushed details retain their opener.
-            onBack: (ModalRoute.canPopOf(context) ?? false) ? () => _popRoute(context: context) : null,
+            projectName: route.projectName,
+            onOpenProject: () => _goRoute(
+              context: context,
+              route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+            ),
             onShowDiffs: () => _pushRoute(
               context: context,
               route: AppRoute.sessionDiffs(
@@ -365,12 +380,8 @@ void _popRouteOrGo({required BuildContext context, required AppRoute fallback}) 
   _goRoute(context: context, route: fallback);
 }
 
-void _popRoute({required BuildContext context}) {
+void _popPushedRoute({required BuildContext context}) {
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
   final GoRouter router = GoRouter.of(context);
-  if (router.canPop()) {
-    router.pop();
-    return;
-  }
-  _goDesktopHome();
+  if (router.canPop()) router.pop();
 }

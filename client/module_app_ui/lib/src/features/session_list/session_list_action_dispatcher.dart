@@ -45,7 +45,8 @@ enum SessionReadMenuEntry() {
   /// asynchronously, so a toggle could read "unseen" and mark it read instead.
   markUnread,
 
-  /// The surface offers Mark unread on its own, as the desktop toolbar does.
+  /// The surface offers Mark unread on its own, as the desktop session page
+  /// does with its shortcut.
   none,
 }
 

@@ -12,6 +12,7 @@ import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
 import "../../core/widgets/desktop_page_toolbar.dart";
+import "../../core/widgets/desktop_session_signals.dart";
 
 /// Desktop composition for the shared interactive transcript and composer.
 class const DesktopSessionDetailScreen({
@@ -20,7 +21,10 @@ class const DesktopSessionDetailScreen({
   required final String sessionId,
   required final String? sessionTitle,
   required final bool readOnly,
-  required final VoidCallback? onBack,
+  required final String? projectName,
+
+  /// Opens the project's session list from the toolbar breadcrumb.
+  required final VoidCallback onOpenProject,
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
   required final VoidCallback onOpenHarnessSettings,
@@ -63,7 +67,8 @@ class const DesktopSessionDetailScreen({
             sessionId: sessionId,
             sessionTitle: sessionTitle,
             readOnly: readOnly,
-            onBack: onBack,
+            projectName: projectName,
+            onOpenProject: onOpenProject,
             onShowDiffs: onShowDiffs,
             onOpenSession: onOpenSession,
             onOpenHarnessSettings: onOpenHarnessSettings,
@@ -87,7 +92,10 @@ class const DesktopSessionDetailView({
   required final String sessionId,
   required final String? sessionTitle,
   required final bool readOnly,
-  required final VoidCallback? onBack,
+  required final String? projectName,
+
+  /// Opens the project's session list from the toolbar breadcrumb.
+  required final VoidCallback onOpenProject,
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
   required final VoidCallback onOpenHarnessSettings,
@@ -125,7 +133,8 @@ class const DesktopSessionDetailView({
           sessionTitle: sessionTitle,
           readOnly: readOnly,
           banner: null,
-          onBack: onBack,
+          // The page goes back with Cmd/Ctrl+[, so its toolbar has no Back.
+          onBack: null,
           onShowDiffs: onShowDiffs,
           bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
               SessionDetailComposerControls(
@@ -163,26 +172,19 @@ class const DesktopSessionDetailView({
     required Session? session,
   }) {
     final loc = context.loc;
-    final onBack = this.onBack;
+    final isAwaitingInput = switch (context.read<SessionDetailCubit>().state) {
+      SessionDetailLoaded(:final pendingQuestions, :final pendingPermissions) =>
+        pendingQuestions.isNotEmpty || pendingPermissions.isNotEmpty,
+      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => false,
+    };
     return DesktopPageToolbar(
-      leading: onBack == null
-          ? null
-          : IconButton(
-              key: const Key("desktop-session-page-back"),
-              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-              onPressed: onBack,
-              icon: const Icon(TablerRegular.arrow_left, size: 18),
-            ),
+      breadcrumb: (label: projectName ?? loc.sessionListTitle, onPressed: onOpenProject),
+      status: isBusy || isAwaitingInput
+          ? DesktopSessionSignals(isAwaitingInput: isAwaitingInput, isRunning: isBusy, isUnseen: false)
+          : null,
       title: title,
       subtitle: subtitle == null ? null : PregoNavSubtitle(text: subtitle),
       actions: [
-        if (isBusy) const SizedBox.square(dimension: 18, child: PregoActivityIndicator(color: null)),
-        IconButton(
-          key: const Key("desktop-session-page-mark-unread"),
-          tooltip: loc.sessionListMarkUnread,
-          onPressed: session == null ? null : () => _markUnread(context: context, session: session),
-          icon: const Icon(TablerRegular.mail, size: 18),
-        ),
         if (onShowDiffs != null)
           PregoButtonsSolid(
             key: const Key("desktop-session-page-changes"),
@@ -198,12 +200,22 @@ class const DesktopSessionDetailView({
           acquireOpenLease: () => context.read<SessionListCubit>().retainActionScope(),
           entriesBuilder: () => session == null
               ? const []
-              : sessionActions.sessionMenuEntries(
-                  context: context,
-                  cubit: context.read<SessionListCubit>()..updateActionSession(session: session),
-                  session: session,
-                  readEntry: SessionReadMenuEntry.none,
-                ),
+              : [
+                  PregoMenuItem(
+                    leadingIcon: TablerRegular.mail,
+                    title: loc.sessionListMarkUnread,
+                    subtitle: null,
+                    isSelected: false,
+                    shortcutLabel: defaultTargetPlatform == TargetPlatform.macOS ? "⇧⌘U" : "Ctrl+Shift+U",
+                    onTap: () => _markUnread(context: context, session: session),
+                  ),
+                  ...sessionActions.sessionMenuEntries(
+                    context: context,
+                    cubit: context.read<SessionListCubit>()..updateActionSession(session: session),
+                    session: session,
+                    readEntry: SessionReadMenuEntry.none,
+                  ),
+                ],
           triggerBuilder: (context, openMenu) => IconButton(
             key: const Key("desktop-session-page-more"),
             tooltip: loc.sessionDetailMoreActions,
