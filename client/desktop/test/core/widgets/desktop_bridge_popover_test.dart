@@ -47,6 +47,8 @@ void main() {
                 alignment: Alignment.bottomLeft,
                 child: PregoPopover(
                   popoverWidth: 300,
+                  popoverMaxHeight: null,
+                  contentScrolls: false,
                   triggerBuilder: (_, toggle) => TextButton(onPressed: toggle, child: const Text("Bridge control")),
                   contentBuilder: (_, close) =>
                       DesktopBridgePopover(close: close, onOpenSettings: () => settingsOpens++),

@@ -299,6 +299,8 @@ class const _SidebarFooter({
             ),
             PregoPopover(
               popoverWidth: 300,
+              popoverMaxHeight: null,
+              contentScrolls: false,
               triggerBuilder: (context, toggle) => _SidebarButton(
                 label: loc.desktopSettingsThisComputer,
                 icon: const Icon(TablerRegular.server, size: 20),

@@ -399,6 +399,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
       borderRadius: compact ? _compactPanelRadius : widget.menuBorderRadius,
       screenPadding: widget.menuScreenPadding,
       reverseScroll: widget.reverseScroll,
+      contentScrolls: false,
       // Menu items meet the panel clip so their ink reaches its outer edges.
       // Labels, dividers, and custom content keep the original edge breathing
       // room when they bookend the menu.
