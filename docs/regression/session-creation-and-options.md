@@ -241,6 +241,19 @@ variant, and worktree mode, and creating the session with its first input.
   entered during loading; clearing it restores the catalog. Selecting a row
   returns that exact command, with the last row reachable above the keyboard
   and home indicator.
+- The model picker opens as a popover anchored to its composer pill on phone
+  and desktop, above it, inside the window edge, and no taller than 380 px;
+  its rows scroll under a search field. It groups models under uppercase
+  provider headings, shows each provider's representative models until a
+  search reveals the rest, checks the selected model, and follows a selection
+  or catalog change while open. Selecting a row returns that exact model and
+  closes the popover.
+- On desktop the model picker's search field takes focus as it opens, so
+  typing filters at once. Up and Down move one highlight across the options,
+  skipping headings and holding at either end; the mouse moves the same
+  highlight. Enter picks the highlighted option and Esc closes the picker
+  without a choice. On the phone nothing is highlighted and the keyboard stays
+  down until the field is tapped.
 - Prompt and slash-command starts are exclusive; only user-authored text is
   user-visible, and attachments appear only where declared. The session keys on
   the stable project identifier and carries title, defaults, and worktree facts.
@@ -340,7 +353,9 @@ options start visible at the bottom, the lowest remain reachable above, and
 selection still dispatches the exact variant that was tapped.
 For the command picker, vary light/dark mode, narrow widths, large text, long
 command names, every source label, missing descriptions/hints, empty/no-match
-results, and scrolling a large catalog with the keyboard open.
+results, and scrolling a large catalog with the keyboard open. For the model
+picker on desktop, vary a trigger near the window edge, keyboard versus mouse
+highlight, Enter and Esc.
 
 ## Failure Signals
 
@@ -357,6 +372,10 @@ results, and scrolling a large catalog with the keyboard open.
   top, or selects a different level from the tapped row.
 - Command rows overflow at larger text sizes, source tags disappear, search
   loses an early query, or the last command cannot be selected above the keyboard.
+- The model picker opens as a full-screen sheet, detaches from its pill,
+  crosses the window edge, or grows past its height cap; on desktop, typing
+  does not reach the search, the arrows land on a heading, or Esc applies a
+  choice.
 - A model the backend reports unavailable is selectable or offers variants on
   one surface but not another, an agent's declared model is adopted without
   being checked against the catalog, or a screen's variant list describes a

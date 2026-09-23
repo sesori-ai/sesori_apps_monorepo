@@ -32,7 +32,7 @@ export "src/features/session_detail/widgets/follow_detach_scrollable.dart";
 export "src/features/session_detail/widgets/image_attachment_viewer.dart";
 export "src/features/session_detail/widgets/jump_to_edge_pill.dart";
 export "src/features/session_detail/widgets/message_timestamp_reveal.dart";
-export "src/features/session_detail/widgets/model_picker_sheet.dart";
+export "src/features/session_detail/widgets/model_picker.dart";
 export "src/features/session_detail/widgets/pending_request_auto_dismiss.dart";
 export "src/features/session_detail/widgets/permission_modal.dart";
 export "src/features/session_detail/widgets/prompt_editor_sheet.dart";
