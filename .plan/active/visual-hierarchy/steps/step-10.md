@@ -8,7 +8,7 @@
     `fgErrorPrimary`, and a 2-point bar of the same colour at its left edge.
   - The tint and the bar belong to the row, so they run the full height of a
     wrapped line. The gutter no longer has its own fill, which removes the
-    notches (FC2). The gutter is 38 wide, so it and the bar keep the old 40.
+    notches (FC2). The bar paints over the gutter's first 2 points, so the layout keeps its old widths.
   - Hunk and file headers use `bgSecondary` and `borderSecondary`. Line
     numbers use `textQuaternary`, the +/- marker `textTertiary`, code
     `textPrimary`, and the chevron `fgTertiary`.

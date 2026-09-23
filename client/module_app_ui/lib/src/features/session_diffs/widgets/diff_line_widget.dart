@@ -53,7 +53,8 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
           // presentation-only line numbers.
           SelectionContainer.disabled(
             child: Container(
-              width: 38,
+              // The bar paints over the gutter's first 2 points; the number is right-aligned.
+              width: 40,
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               alignment: Alignment.centerRight,
               child: Text(
