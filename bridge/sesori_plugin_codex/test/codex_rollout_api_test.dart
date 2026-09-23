@@ -305,7 +305,7 @@ void main() {
         timestamp: "2026-04-17T10:00:00Z",
         cliVersion: "0.121.0",
       );
-      final line = rolloutApi.readHeader(rolloutPath: path).first;
+      final line = rolloutApi.readHeader(rolloutPath: path).lines.first;
       expect(line, isA<CodexRolloutSessionMetadataLineDto>());
       final meta = _sessionMetadataPayload(line: line);
       expect(meta.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
@@ -445,12 +445,13 @@ void main() {
         0xFF,
       ]);
 
-      final lines = rolloutApi.readHeader(rolloutPath: path);
+      final read = rolloutApi.readHeader(rolloutPath: path);
 
       expect(
-        _sessionMetadataPayload(line: lines.first).id,
+        _sessionMetadataPayload(line: read.lines.first).id,
         "session-id",
       );
+      expect(read.shortFileLength, isNull);
     });
 
     test("readTranscript warns for malformed non-final rows", () {
@@ -718,7 +719,7 @@ void main() {
       late List<CodexRolloutLineDto> header;
       late List<CodexRolloutLineDto> transcript;
       final output = _captureWarnings(() {
-        header = rolloutApi.readHeader(rolloutPath: path);
+        header = rolloutApi.readHeader(rolloutPath: path).lines;
         transcript = rolloutApi.readTranscript(rolloutPath: path);
       }, level: LogLevel.verbose);
 
@@ -889,7 +890,7 @@ void main() {
       expect(_responseItemPayload(line: transcript.last), isA<CodexRolloutUnknownResponseItemDto>());
     });
 
-    test("listSessions joins index + rollout header and sorts by updatedAt", () {
+    test("listSessions joins index + rollout header and sorts by updatedAt", () async {
       _writeRollout(
         codexHome,
         path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-aaaaaaaaaaaa.jsonl",
@@ -919,7 +920,7 @@ void main() {
         ].join("\n"),
       );
 
-      final records = catalogRepository.listSessionRecords();
+      final records = await catalogRepository.listSessionRecords();
       expect(records, hasLength(2));
       // Sorted newest-first.
       expect(records[0].threadName, equals("Newer"));
@@ -927,7 +928,7 @@ void main() {
       expect(records[0].cwd, equals("/repo/app"));
     });
 
-    test("catalog rejects a rollout whose header id mismatches its filename", () {
+    test("catalog rejects a rollout whose header id mismatches its filename", () async {
       _writeRollout(
         codexHome,
         path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-aaaaaaaaaaaa.jsonl",
@@ -936,15 +937,15 @@ void main() {
       );
 
       late final List<CodexSessionRecord> records;
-      final output = _captureWarnings(() {
-        records = catalogRepository.listSessionRecords();
+      final output = await _captureWarningsAsync(() async {
+        records = await catalogRepository.listSessionRecords();
       });
 
       expect(records, isEmpty);
       expect(output, contains("rollout session id mismatch"));
     });
 
-    test("catalog keeps leading metadata when a fork contains its parent header", () {
+    test("catalog keeps leading metadata when a fork contains its parent header", () async {
       const childId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
       const parentId = "019a0000-1111-2222-3333-bbbbbbbbbbbb";
       _writeRollout(
@@ -965,14 +966,69 @@ void main() {
       );
 
       late final List<CodexSessionRecord> records;
-      final output = _captureWarnings(() {
-        records = catalogRepository.listSessionRecords();
+      final output = await _captureWarningsAsync(() async {
+        records = await catalogRepository.listSessionRecords();
       });
 
       expect(output, isNot(contains("rollout session id mismatch")));
       expect(records, hasLength(1));
       expect(records.single.id, childId);
       expect(records.single.cwd, "/repo/child");
+    });
+
+    test("catalog rescans parse only new or growing rollouts", () async {
+      const settledId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
+      const growingId = "019a0000-1111-2222-3333-bbbbbbbbbbbb";
+      _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-$settledId.jsonl",
+        sessionId: settledId,
+        cwd: "/repo/app",
+        extraLines: List.filled(40, "{}"),
+      );
+      final growingPath = _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T11-00-00-$growingId.jsonl",
+        sessionId: growingId,
+        cwd: "/repo/app",
+      );
+      Future<String> scan() => _captureWarningsAsync(
+        () => catalogRepository.listSessionRecords(),
+        level: LogLevel.debug,
+      );
+
+      expect(await scan(), contains("parsedHeaders=2,"));
+      expect(await scan(), contains("parsedHeaders=0,"));
+      File(growingPath).writeAsStringSync("${List.filled(40, "{}").join("\n")}\n", mode: FileMode.append);
+      expect(await scan(), contains("parsedHeaders=1,"));
+      expect(await scan(), contains("parsedHeaders=0,"));
+      expect(
+        (await catalogRepository.listSessionRecords()).map((record) => record.cwd),
+        ["/repo/app", "/repo/app"],
+      );
+    });
+
+    test("catalog session lookup reads only the named rollout", () {
+      const targetId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
+      const otherId = "019a0000-1111-2222-3333-bbbbbbbbbbbb";
+      _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-$targetId.jsonl",
+        sessionId: targetId,
+        cwd: "/repo/target",
+      );
+      _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T11-00-00-$otherId.jsonl",
+        sessionId: otherId,
+        cwd: "/repo/other",
+      );
+      final countingApi = _HeaderCountingRolloutApi(environment: {"CODEX_HOME": codexHome.path});
+
+      final record = CodexCatalogRepository(rolloutApi: countingApi).findSessionById(sessionId: targetId);
+
+      expect(record?.cwd, "/repo/target");
+      expect(countingApi.headerReads.single, contains(targetId));
     });
 
     test("catalog isolate enumeration keeps the main isolate responsive", () async {
@@ -1008,7 +1064,7 @@ void main() {
       scheduleHeartbeat();
       late final List<CodexSessionRecord> records;
       try {
-        records = await catalogRepository.listSessionRecordsInIsolate();
+        records = await catalogRepository.listSessionRecords();
       } finally {
         complete = true;
       }
@@ -2680,7 +2736,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       await plugin.dispose();
     });
 
-    test("catalog repository extracts the model from turn_context", () {
+    test("catalog repository extracts the model from turn_context", () async {
       final api = CodexRolloutApi(
         environment: {"CODEX_HOME": codexHome.path},
       );
@@ -2697,9 +2753,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final record = CodexCatalogRepository(
+      final record = (await CodexCatalogRepository(
         rolloutApi: api,
-      ).listSessionRecords().single;
+      ).listSessionRecords()).single;
       expect(record.rolloutPath, path);
       expect(record.modelProvider, equals("openai"));
       expect(record.model, equals("gpt-5.2-codex"));
@@ -2882,6 +2938,31 @@ String _captureWarnings(
   try {
     Log.level = level;
     IOOverrides.runZoned(action, stderr: () => stderr);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderr.text;
+}
+
+class _HeaderCountingRolloutApi({required super.environment}) extends CodexRolloutApi {
+  final List<String> headerReads = [];
+
+  @override
+  CodexRolloutHeader readHeader({required String rolloutPath}) {
+    headerReads.add(p.basename(rolloutPath));
+    return super.readHeader(rolloutPath: rolloutPath);
+  }
+}
+
+Future<String> _captureWarningsAsync(
+  Future<void> Function() action, {
+  LogLevel level = LogLevel.warning,
+}) async {
+  final previousLevel = Log.level;
+  final stderr = BufferingStdout();
+  try {
+    Log.level = level;
+    await IOOverrides.runZoned(action, stderr: () => stderr);
   } finally {
     Log.level = previousLevel;
   }

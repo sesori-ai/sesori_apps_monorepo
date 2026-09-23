@@ -1453,7 +1453,12 @@ class CodexPlugin._({
   String _directoryForSession(String sessionId) {
     final known = _threadDirectory[sessionId];
     if (known != null) return known;
-    return _sessionService.directoryForSession(sessionId: sessionId);
+    final fromRollout = _sessionService.rolloutDirectoryForSession(sessionId: sessionId);
+    if (fromRollout == null) return normalizeProjectDirectory(directory: _projectCwd);
+    // A session's cwd never changes: learn it once rather than re-reading the
+    // rollout on every activity summary.
+    _recordThreadDirectory(sessionId, fromRollout);
+    return fromRollout;
   }
 
   /// Records [directory] as [threadId]'s normalized project directory and feeds

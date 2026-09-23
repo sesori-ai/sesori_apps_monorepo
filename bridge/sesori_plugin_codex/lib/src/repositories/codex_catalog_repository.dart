@@ -11,30 +11,34 @@ import "models/codex_session_record.dart";
 
 /// Layer-2 aggregation, mapping, selection, and deletion for the rollout catalog.
 class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
-  List<CodexSessionRecord> listSessionRecords() {
-    final rollouts = <String, String>{};
-    final rolloutPaths = _listRolloutPaths();
-    for (final path in rolloutPaths) {
-      final id = _sessionIdFromRolloutName(p.basename(path));
-      if (id != null) rollouts[id] = path;
-    }
+  /// Parsed rollout headers by path, so a rescan only parses new or growing
+  /// rollouts.
+  final Map<String, _ParsedRollout> _parsedRollouts = {};
 
-    final indexEntries = <String, CodexSessionIndexEntryDto>{};
-    for (final entry in _readSessionIndex()) {
-      final id = entry.id;
-      if (id != null && id.isNotEmpty) {
-        indexEntries[id] = entry;
+  /// Every rollout-backed session, newest first. Stale headers are parsed in a
+  /// background isolate: a cold catalog decodes tens of megabytes.
+  Future<List<CodexSessionRecord>> listSessionRecords() async {
+    final rolloutPaths = _listRolloutPaths();
+    final rollouts = _rolloutPathsById(rolloutPaths);
+    final presentPaths = rolloutPaths.toSet();
+    _parsedRollouts.removeWhere((path, _) => !presentPaths.contains(path));
+    final stalePaths = [
+      for (final path in rollouts.values)
+        if (!_hasCurrentParse(rolloutPath: path)) path,
+    ];
+    if (stalePaths.isNotEmpty) {
+      final parsed = await _parseRolloutsInIsolate(rolloutPaths: stalePaths);
+      for (final MapEntry(key: path, value: rollout) in parsed.entries) {
+        _storeParse(rolloutPath: path, rollout: rollout);
       }
     }
 
+    final indexEntries = _readSessionIndexById();
     final records = <CodexSessionRecord>[];
     var unreadableOrMissingMetadata = 0;
     var mismatchedMetadata = 0;
-    for (final id in {...rollouts.keys, ...indexEntries.keys}) {
-      final rolloutPath = rollouts[id];
-      if (rolloutPath == null) continue;
-      final indexEntry = indexEntries[id];
-      final metadata = _readMetadata(rolloutPath);
+    for (final MapEntry(key: id, value: rolloutPath) in rollouts.entries) {
+      final metadata = _parsedRollouts[rolloutPath]?.metadata;
       if (metadata == null) unreadableOrMissingMetadata++;
       if (metadata != null && metadata.id != id) {
         mismatchedMetadata++;
@@ -44,19 +48,11 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
         continue;
       }
       records.add(
-        CodexSessionRecord(
+        _toRecord(
           id: id,
           rolloutPath: rolloutPath,
-          cwd: metadata?.cwd,
-          threadName: indexEntry?.threadName,
-          createdAt: metadata?.timestamp,
-          updatedAt: _tryParseDate(indexEntry?.updatedAt) ?? metadata?.timestamp,
-          cliVersion: metadata?.cliVersion,
-          modelProvider: metadata?.modelProvider,
-          model: metadata?.model,
-          agentNickname: metadata?.agentNickname,
-          agentPath: metadata?.agentPath,
-          parentId: metadata?.parentId,
+          metadata: metadata,
+          indexEntry: indexEntries[id],
         ),
       );
     }
@@ -71,6 +67,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     Log.d(
       "[codex] rollout catalog scan: files=${rolloutPaths.length}, "
       "recognizedRollouts=${rollouts.length}, "
+      "parsedHeaders=${stalePaths.length}, "
       "indexEntries=${indexEntries.length}, "
       "unreadableOrMissingMetadata=$unreadableOrMissingMetadata, "
       "mismatchedMetadata=$mismatchedMetadata, records=${records.length}",
@@ -78,12 +75,34 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     return records;
   }
 
-  Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() {
+  Future<Map<String, _ParsedRollout?>> _parseRolloutsInIsolate({
+    required List<String> rolloutPaths,
+  }) {
+    // Locals only: the isolate must not copy this repository's cache.
+    final rolloutApi = _rolloutApi;
     final logLevel = Log.level;
     return Isolate.run(() {
       Log.level = logLevel;
-      return listSessionRecords();
+      return {
+        for (final path in rolloutPaths) path: _parseRollout(rolloutApi: rolloutApi, rolloutPath: path),
+      };
     });
+  }
+
+  bool _hasCurrentParse({required String rolloutPath}) {
+    final parsed = _parsedRollouts[rolloutPath];
+    if (parsed == null) return false;
+    final shortFileLength = parsed.shortFileLength;
+    return shortFileLength == null || _rolloutApi.rolloutLength(rolloutPath: rolloutPath) == shortFileLength;
+  }
+
+  /// An unreadable rollout is not cached, so the next scan retries it.
+  void _storeParse({required String rolloutPath, required _ParsedRollout? rollout}) {
+    if (rollout == null) {
+      _parsedRollouts.remove(rolloutPath);
+    } else {
+      _parsedRollouts[rolloutPath] = rollout;
+    }
   }
 
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
@@ -96,7 +115,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     final excludedDirectory = documentsCodexDirectory == null
         ? null
         : normalizeProjectDirectory(directory: documentsCodexDirectory);
-    final records = await listSessionRecordsInIsolate();
+    final records = await listSessionRecords();
     final sessions = <PluginSession>[];
     final projectDirectories = <String>{};
     var noiseExcluded = 0;
@@ -137,7 +156,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     required int? start,
     required int? limit,
   }) async {
-    final records = await listSessionRecordsInIsolate();
+    final records = await listSessionRecords();
     final target = normalizeProjectDirectory(directory: projectId);
     final sessions = records
         .where((record) => record.parentId == null)
@@ -154,7 +173,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
 
   /// Persisted sub-agent rollouts whose direct parent is [sessionId].
   Future<List<PluginSession>> getChildSessions({required String sessionId}) async {
-    final records = await listSessionRecordsInIsolate();
+    final records = await listSessionRecords();
     return records
         .where((record) => record.parentId == sessionId)
         .map(_toPluginSession)
@@ -162,11 +181,25 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
         .toList(growable: false);
   }
 
+  /// Reads only [sessionId]'s own rollout, so it is cheap enough for
+  /// synchronous per-session lookups.
   CodexSessionRecord? findSessionById({required String sessionId}) {
-    for (final record in listSessionRecords()) {
-      if (record.id == sessionId) return record;
+    final rolloutPath = _rolloutPathsById(_listRolloutPaths())[sessionId];
+    if (rolloutPath == null) return null;
+    if (!_hasCurrentParse(rolloutPath: rolloutPath)) {
+      _storeParse(
+        rolloutPath: rolloutPath,
+        rollout: _parseRollout(rolloutApi: _rolloutApi, rolloutPath: rolloutPath),
+      );
     }
-    return null;
+    final metadata = _parsedRollouts[rolloutPath]?.metadata;
+    if (metadata != null && metadata.id != sessionId) return null;
+    return _toRecord(
+      id: sessionId,
+      rolloutPath: rolloutPath,
+      metadata: metadata,
+      indexEntry: _readSessionIndexById()[sessionId],
+    );
   }
 
   String? findRolloutPath({required String sessionId}) {
@@ -243,14 +276,45 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     }
   }
 
-  List<CodexSessionIndexEntryDto> _readSessionIndex() {
+  /// Later index lines win, matching Codex's append-only index updates.
+  Map<String, CodexSessionIndexEntryDto> _readSessionIndexById() {
+    final List<CodexSessionIndexEntryDto> entries;
     try {
-      return _rolloutApi.readSessionIndex();
+      entries = _rolloutApi.readSessionIndex();
     } on Object catch (error, stackTrace) {
       Log.w("[codex] failed to read the session index", error, stackTrace);
-      return const [];
+      return const {};
     }
+    return {
+      for (final entry in entries)
+        if (entry.id case final id? when id.isNotEmpty) id: entry,
+    };
   }
+
+  /// A later path wins when two rollouts claim the same session id.
+  Map<String, String> _rolloutPathsById(List<String> rolloutPaths) => {
+    for (final path in rolloutPaths) ?_sessionIdFromRolloutName(p.basename(path)): path,
+  };
+
+  CodexSessionRecord _toRecord({
+    required String id,
+    required String rolloutPath,
+    required _CodexSessionMetadata? metadata,
+    required CodexSessionIndexEntryDto? indexEntry,
+  }) => CodexSessionRecord(
+    id: id,
+    rolloutPath: rolloutPath,
+    cwd: metadata?.cwd,
+    threadName: indexEntry?.threadName,
+    createdAt: metadata?.timestamp,
+    updatedAt: _tryParseDate(indexEntry?.updatedAt) ?? metadata?.timestamp,
+    cliVersion: metadata?.cliVersion,
+    modelProvider: metadata?.modelProvider,
+    model: metadata?.model,
+    agentNickname: metadata?.agentNickname,
+    agentPath: metadata?.agentPath,
+    parentId: metadata?.parentId,
+  );
 
   Future<Set<String>> _readProjectlessThreadIds() async {
     try {
@@ -280,68 +344,6 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     if (projectlessThreadIds.contains(record.id)) return true;
     if (documentsCodexDirectory == null || directory == null) return false;
     return p.equals(directory, documentsCodexDirectory) || p.isWithin(documentsCodexDirectory, directory);
-  }
-
-  _CodexSessionMetadata? _readMetadata(String rolloutPath) {
-    final List<CodexRolloutLineDto> lines;
-    try {
-      lines = _rolloutApi.readHeader(rolloutPath: rolloutPath);
-    } on Object catch (error, stackTrace) {
-      Log.w("[codex] failed to read rollout metadata", error, stackTrace);
-      return null;
-    }
-
-    String? id;
-    String? cwd;
-    DateTime? timestamp;
-    String? modelProvider;
-    String? cliVersion;
-    String? model;
-    String? agentNickname;
-    String? agentPath;
-    String? parentId;
-    for (final line in lines) {
-      switch (line) {
-        case CodexRolloutSessionMetadataLineDto(:final payload):
-          // Forked/subagent rollouts begin with their own metadata and then
-          // include the parent's copied session metadata. The leading header
-          // remains authoritative for the file.
-          if (id != null) continue;
-          final metadataId = payload.id;
-          if (metadataId == null || metadataId.isEmpty) continue;
-          id = metadataId;
-          cwd = payload.cwd;
-          timestamp = _tryParseDate(payload.timestamp);
-          modelProvider = payload.modelProvider;
-          cliVersion = payload.cliVersion;
-          if (payload.threadSource == CodexRolloutThreadSource.subagent) {
-            parentId = payload.parentThreadId;
-            agentNickname = payload.agentNickname;
-            agentPath = payload.agentPath;
-          }
-        case CodexRolloutTurnContextLineDto(:final payload):
-          final candidate = payload.model;
-          if (candidate != null && candidate.isNotEmpty) model = candidate;
-        case CodexRolloutResponseItemLineDto() ||
-            CodexRolloutEventMessageLineDto() ||
-            CodexRolloutInterAgentCommunicationMetadataLineDto() ||
-            CodexRolloutCompactedLineDto() ||
-            CodexRolloutUnknownLineDto():
-          break;
-      }
-    }
-    if (id == null) return null;
-    return _CodexSessionMetadata(
-      id: id,
-      cwd: cwd,
-      timestamp: timestamp,
-      modelProvider: modelProvider,
-      model: model,
-      cliVersion: cliVersion,
-      agentNickname: agentNickname,
-      agentPath: agentPath,
-      parentId: parentId,
-    );
   }
 
   PluginSession? _toPluginSession(CodexSessionRecord record) {
@@ -381,11 +383,6 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     return uuid.length == 36 ? uuid : null;
   }
 
-  DateTime? _tryParseDate(String? raw) {
-    if (raw == null || raw.isEmpty) return null;
-    return DateTime.tryParse(raw);
-  }
-
   String? _usefulText(String? value) {
     final normalized = value?.trim();
     return normalized == null || normalized.isEmpty ? null : normalized;
@@ -403,3 +400,86 @@ class const _CodexSessionMetadata({
   required final String? agentPath,
   required final String? parentId,
 });
+
+/// A parsed rollout header. [shortFileLength] mirrors
+/// [CodexRolloutHeader.shortFileLength]: null means the header is final.
+class const _ParsedRollout({
+  required final _CodexSessionMetadata? metadata,
+  required final int? shortFileLength,
+});
+
+/// Null when the rollout could not be read. Top-level so the parsing isolate
+/// captures only its arguments.
+_ParsedRollout? _parseRollout({
+  required CodexRolloutApi rolloutApi,
+  required String rolloutPath,
+}) {
+  final CodexRolloutHeader header;
+  try {
+    header = rolloutApi.readHeader(rolloutPath: rolloutPath);
+  } on Object catch (error, stackTrace) {
+    Log.w("[codex] failed to read rollout metadata", error, stackTrace);
+    return null;
+  }
+
+  String? id;
+  String? cwd;
+  DateTime? timestamp;
+  String? modelProvider;
+  String? cliVersion;
+  String? model;
+  String? agentNickname;
+  String? agentPath;
+  String? parentId;
+  for (final line in header.lines) {
+    switch (line) {
+      case CodexRolloutSessionMetadataLineDto(:final payload):
+        // Forked/subagent rollouts begin with their own metadata and then
+        // include the parent's copied session metadata. The leading header
+        // remains authoritative for the file.
+        if (id != null) continue;
+        final metadataId = payload.id;
+        if (metadataId == null || metadataId.isEmpty) continue;
+        id = metadataId;
+        cwd = payload.cwd;
+        timestamp = _tryParseDate(payload.timestamp);
+        modelProvider = payload.modelProvider;
+        cliVersion = payload.cliVersion;
+        if (payload.threadSource == CodexRolloutThreadSource.subagent) {
+          parentId = payload.parentThreadId;
+          agentNickname = payload.agentNickname;
+          agentPath = payload.agentPath;
+        }
+      case CodexRolloutTurnContextLineDto(:final payload):
+        final candidate = payload.model;
+        if (candidate != null && candidate.isNotEmpty) model = candidate;
+      case CodexRolloutResponseItemLineDto() ||
+          CodexRolloutEventMessageLineDto() ||
+          CodexRolloutInterAgentCommunicationMetadataLineDto() ||
+          CodexRolloutCompactedLineDto() ||
+          CodexRolloutUnknownLineDto():
+        break;
+    }
+  }
+  return _ParsedRollout(
+    metadata: id == null
+        ? null
+        : _CodexSessionMetadata(
+            id: id,
+            cwd: cwd,
+            timestamp: timestamp,
+            modelProvider: modelProvider,
+            model: model,
+            cliVersion: cliVersion,
+            agentNickname: agentNickname,
+            agentPath: agentPath,
+            parentId: parentId,
+          ),
+    shortFileLength: header.shortFileLength,
+  );
+}
+
+DateTime? _tryParseDate(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  return DateTime.tryParse(raw);
+}

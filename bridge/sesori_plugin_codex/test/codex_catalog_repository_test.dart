@@ -67,14 +67,14 @@ void main() {
       );
 
       final logs = await _captureDebugLogs(() async {
-        expect(repository.listSessionRecords(), hasLength(1));
+        expect(await repository.listSessionRecords(), hasLength(1));
       });
 
       expect(
         logs,
         contains(
           "rollout catalog scan: files=3, recognizedRollouts=1, "
-          "indexEntries=2, unreadableOrMissingMetadata=0, "
+          "parsedHeaders=1, indexEntries=2, unreadableOrMissingMetadata=0, "
           "mismatchedMetadata=0, records=1",
         ),
       );
@@ -90,7 +90,7 @@ void main() {
           rolloutApi: _LogLevelCheckingRolloutApi(),
         );
 
-        expect(await repository.listSessionRecordsInIsolate(), isEmpty);
+        expect((await repository.listSessionRecords()).single.cwd, "/repo/app");
       } finally {
         Log.level = previousLevel;
       }
@@ -295,7 +295,7 @@ class _StubCodexCatalogRepository(final List<CodexSessionRecord> records) extend
   this : super(rolloutApi: CodexRolloutApi(environment: const {}));
 
   @override
-  Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() async => records;
+  Future<List<CodexSessionRecord>> listSessionRecords() async => records;
 }
 
 class _DiscoveryStubCodexCatalogRepository({
@@ -303,7 +303,7 @@ class _DiscoveryStubCodexCatalogRepository({
   required final List<CodexSessionRecord> records,
 }) extends CodexCatalogRepository {
   @override
-  Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() async => records;
+  Future<List<CodexSessionRecord>> listSessionRecords() async => records;
 }
 
 class _DiscoveryRolloutApi({
@@ -362,37 +362,63 @@ class _DiagnosticsRolloutApi({required final String rolloutId}) extends CodexRol
   ];
 
   @override
-  List<CodexRolloutLineDto> readHeader({required String rolloutPath}) => [
-    CodexRolloutLineDto.sessionMetadata(
-      timestamp: "2026-08-01T00:00:00Z",
-      payload: CodexRolloutSessionMetadataPayloadDto(
-        id: rolloutId,
-        cwd: p.join(Directory.systemTemp.path, "private-project"),
+  CodexRolloutHeader readHeader({required String rolloutPath}) => CodexRolloutHeader(
+    shortFileLength: null,
+    lines: [
+      CodexRolloutLineDto.sessionMetadata(
         timestamp: "2026-08-01T00:00:00Z",
-        modelProvider: "openai",
-        cliVersion: "0.147.0",
-        parentThreadId: null,
-        threadSource: null,
-        agentNickname: null,
-        agentPath: null,
+        payload: CodexRolloutSessionMetadataPayloadDto(
+          id: rolloutId,
+          cwd: p.join(Directory.systemTemp.path, "private-project"),
+          timestamp: "2026-08-01T00:00:00Z",
+          modelProvider: "openai",
+          cliVersion: "0.147.0",
+          parentThreadId: null,
+          threadSource: null,
+          agentNickname: null,
+          agentPath: null,
+        ),
       ),
-    ),
-  ];
+    ],
+  );
 }
 
 class _LogLevelCheckingRolloutApi() extends CodexRolloutApi {
   this : super(environment: const {});
 
+  static const _sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
+
   @override
-  List<String> listRolloutPaths() {
-    if (Log.level != LogLevel.debug) {
-      throw StateError("Expected debug logging in the scan isolate");
-    }
-    return const [];
-  }
+  List<String> listRolloutPaths() => const ["/sessions/rollout-2026-08-01T00-00-00-$_sessionId.jsonl"];
 
   @override
   List<CodexSessionIndexEntryDto> readSessionIndex() => const [];
+
+  @override
+  CodexRolloutHeader readHeader({required String rolloutPath}) {
+    if (Log.level != LogLevel.debug) {
+      throw StateError("Expected debug logging in the scan isolate");
+    }
+    return const CodexRolloutHeader(
+      lines: [
+        CodexRolloutLineDto.sessionMetadata(
+          timestamp: "2026-08-01T00:00:00Z",
+          payload: CodexRolloutSessionMetadataPayloadDto(
+            id: _sessionId,
+            cwd: "/repo/app",
+            timestamp: "2026-08-01T00:00:00Z",
+            modelProvider: "openai",
+            cliVersion: "0.147.0",
+            parentThreadId: null,
+            threadSource: null,
+            agentNickname: null,
+            agentPath: null,
+          ),
+        ),
+      ],
+      shortFileLength: null,
+    );
+  }
 }
 
 class _DeleteFailingRolloutApi() extends CodexRolloutApi {

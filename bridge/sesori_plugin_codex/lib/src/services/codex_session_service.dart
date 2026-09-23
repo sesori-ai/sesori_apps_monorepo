@@ -111,7 +111,7 @@ class CodexSessionService({
   Future<void> hydratePersistedChildAncestry() async {
     final List<CodexSessionRecord> records;
     try {
-      records = await _catalogRepository.listSessionRecordsInIsolate();
+      records = await _catalogRepository.listSessionRecords();
     } on Object catch (error, stackTrace) {
       Log.w("[codex] failed to hydrate persisted child ancestry", error, stackTrace);
       return;
@@ -415,7 +415,7 @@ class CodexSessionService({
   Future<List<String>> getSessionSubtreeIds({required String sessionId}) async {
     List<CodexSessionRecord> persisted;
     try {
-      persisted = await _catalogRepository.listSessionRecordsInIsolate();
+      persisted = await _catalogRepository.listSessionRecords();
     } on Object catch (error, stackTrace) {
       Log.w(
         "[codex] failed to enumerate persisted descendants of $sessionId; deleting known live descendants only",
@@ -769,11 +769,14 @@ class CodexSessionService({
     _loadedThreads.remove(threadId);
   }
 
-  String directoryForSession({required String sessionId}) {
-    final record = _catalogRepository.findSessionById(sessionId: sessionId);
-    return normalizeProjectDirectory(
-      directory: record?.cwd ?? _launchDirectory,
-    );
+  String directoryForSession({required String sessionId}) =>
+      rolloutDirectoryForSession(sessionId: sessionId) ?? normalizeProjectDirectory(directory: _launchDirectory);
+
+  /// The normalized cwd recorded in [sessionId]'s rollout, or null before the
+  /// rollout exists.
+  String? rolloutDirectoryForSession({required String sessionId}) {
+    final cwd = _catalogRepository.findSessionById(sessionId: sessionId)?.cwd;
+    return cwd == null ? null : normalizeProjectDirectory(directory: cwd);
   }
 
   Future<void> _deleteSession({required String sessionId}) async {
@@ -802,7 +805,7 @@ class CodexSessionService({
     final childReplayDataById = <String, CodexSubAgentReplayData>{};
     final children = <CodexThreadRecord>[];
     if (messages.hasSubtasks) {
-      for (final record in await _catalogRepository.listSessionRecordsInIsolate()) {
+      for (final record in await _catalogRepository.listSessionRecords()) {
         if (record.parentId != sessionId) continue;
         children.add(_sessionMapper.mapPersistedThread(record: record));
         try {
@@ -861,12 +864,13 @@ class CodexSessionService({
   }
 
   /// Resolves project defaults across the rollout catalog and Codex config.
-  ({String? modelID, String providerID}) resolveModelDefaults({
+  Future<({String? modelID, String providerID})> resolveModelDefaults({
     required String projectId,
-  }) {
+  }) async {
+    final records = await _catalogRepository.listSessionRecords();
     final config = _metadataRepository.readConfigDefaults();
     final target = normalizeProjectDirectory(directory: projectId);
-    for (final record in _catalogRepository.listSessionRecords()) {
+    for (final record in records) {
       final directory = normalizeProjectDirectory(
         directory: record.cwd ?? _launchDirectory,
       );
@@ -903,10 +907,12 @@ class CodexSessionService({
     })
   >
   _resolveModelOptions({required String projectId}) async {
-    final (:modelID, :providerID) = resolveModelDefaults(
+    // Live model discovery overlaps the rollout catalog scan.
+    final catalogFuture = _listModels();
+    final (:modelID, :providerID) = await resolveModelDefaults(
       projectId: projectId,
     );
-    final catalogResult = await _listModels();
+    final catalogResult = await catalogFuture;
     final catalog = catalogResult.catalog;
     final models = catalog.models.isEmpty
         ? [
