@@ -28,6 +28,9 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **6 PRs
 - One attempt per observed reset, with an explicitly accepted possible missed
   attempt if the bridge crashes between consumption and backend acceptance.
 - No guessed reset for an unrecognized error/provider or imported old history.
+- Readiness is checked before and after history; native work beginning after
+  the final check can still race with normal prompt acceptance. No atomic native
+  admission protocol is included in v1.
 
 ## Validation record
 

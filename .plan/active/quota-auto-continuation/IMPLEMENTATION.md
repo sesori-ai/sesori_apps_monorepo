@@ -342,7 +342,9 @@ SessionVariant(id: ...). Preserve meaningful nulls when the harness has no
 explicit selection. Parts are `[PromptPart.text(text: "Continue.")]`; command
 and normalizedCommand are null. Do not reconstruct or repeat the failed prompt.
 
-The continuation service persists consumed with generated promptId/attemptedAt,
+After the history check, repeat getQuotaContinuationReadiness. If it no longer
+reports idle, persist the same paused outcome before consuming the observation.
+Otherwise the continuation service persists consumed with generated promptId/attemptedAt,
 then calls SessionPromptService.sendPromptAlreadyReserved with those typed
 values. That narrow method delegates to existing _sendPrompt without acquiring
 a second lane. It owns normal prompt acceptance only: no quota reads, clock,
@@ -365,6 +367,11 @@ entering continuation method. External toggles, observations and due attempts
 enter the lane through continuation service exactly once. Prompt service has no
 dependency on continuation service, avoiding a cycle.
 
+This final check is best effort. Independent native activity can start before
+the ordinary send is accepted and receive Continue through the harness's usual
+queue/steering behavior. The existing bridge lane cannot make that external
+sequence atomic; no conditional native-admission operation is added for v1.
+
 - **Toggle:** SessionContinuationService.setEnabled under SessionOperationDispatcher; false prevents due
   selection after commit.
 
@@ -384,8 +391,9 @@ dependency on continuation service, avoiding a cycle.
   existing operation dispatcher -> cancel old observation. A client draft picker change is not
   authoritative.
 
-- **Native busy/retry/queued work:** Existing status/queue blocks dispatch; accepted/native activity
-  invalidates old observation. Due-session snapshot catches work performed while bridge was offline.
+- **Native busy/retry/queued work:** Status/queue observed by preflight blocks dispatch; accepted/native
+  activity invalidates the old observation. The due-session snapshot catches work performed while the
+  bridge was offline; the final readiness check catches activity observed during that read.
 
 SessionPromptService, SessionAbortService and SessionLifecycleService gain the
 continuation repository, SessionViewService and SessionMutationDispatcher only
@@ -417,6 +425,9 @@ Also exercise a failed tick followed by a successful tick and disposal during
 an in-flight tick. Verify successful submission persists submitted across
 restart, a crash after consumption restores attemptUnconfirmed, and a failed
 post-acceptance outcome write leaves consumed without another send.
+If native work becomes visible during history loading, the final readiness
+check pauses without consuming or sending. A native start after that check is
+the explicitly accepted ordinary-dispatch race, not an atomic-admission test.
 
 Fresh resetAt must be strictly after observedAt; relative duration must be
 positive and finite. Invalid fresh values become resetUnknown. Persisted valid

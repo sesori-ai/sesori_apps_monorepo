@@ -212,6 +212,8 @@ message must still be the stored terminal error ID. Existing snapshots return
 the session history rather than a tail page: make one read per due attempt and
 inspect its tail. Add no history pagination, recursive child reads, account
 scans, or replay system. A newer message cancels the obsolete wait.
+After the history check, recheck plugin readiness immediately before consuming
+the observation. This catches native work that began during the history read.
 Uncertain current state persists a paused view and recheckAt = now + five
 minutes instead of sending. Later ticks skip that row until its persisted
 recheck deadline; a failed recheck moves the deadline forward by five minutes.
@@ -241,8 +243,8 @@ Ordinary reachable flows to handle at existing authoritative seams:
 - **Archive/delete:** Persist cancellation before archive; deletion removes the record. Never reopen an
   archived/deleted session.
 
-- **Native turn resumes or queued work runs:** Invalidate the old wait from authoritative new activity; do
-  not append Continue behind active work.
+- **Native turn resumes or queued work runs:** Invalidate the old wait from authoritative new activity;
+  observed active work blocks preflight. The readiness checks do not lock the native harness.
 
 - **Host sleeps/restarts:** Re-read durable due work on availability; dispatch only if the same observation
   is still current and session is idle.
@@ -299,6 +301,13 @@ durable admission can reject a quota observation; only persisted waits promise
 restart recovery, and clients never show a schedule before that commit. Do not add machinery to erase
 these bounded limits. If implementation exceeds this state budget, reconsider
 the owning seam before adding coordination.
+
+Native activity can begin after the final readiness check and before ordinary
+prompt acceptance. The bridge lane serializes bridge operations, not independent
+native work. Accept this narrow race: the single Continue can enter the harness's
+normal queue/steering behavior. Do not claim atomic idle admission or introduce
+a new conditional-admission protocol for v1. Keep the final readiness recheck
+and ordinary prompt dispatch; document this boundary with the feature behavior.
 
 Analytics assessed with `.opencode/skills/add-analytics/SKILL.md`: no new v1 event
 is planned. Client observations cannot authoritatively count headless resumes,
@@ -397,7 +406,9 @@ supported harness/provider, without model-name allowlists in shared code.
   errors, malformed/past reset, and native retry exhaustion. Replayed history never arms.
   Claude forwarded child quota frames never arm the root, even before child
   identity is known. Pi quota-then-successful-retry emits no interruption;
-  terminal quota exhaustion emits one, after settlement.
+  terminal quota exhaustion emits one, after settlement. Verify Pi's managed
+  target and supported PATH floor before reporting availability. Codex quota
+  lookup follows attach/detach/reattach and never reuses the detached API.
 
 - **Automated/headless bridge, representative plugin:** Off by default; enable during wait; future
   interruptions; reset + buffer rather than observation + buffer; paused recheck backoff and
@@ -405,6 +416,8 @@ supported harness/provider, without model-name allowlists in shared code.
   send/Stop/archive/delete; persistence; failed-tick recovery; confirmed versus unconfirmed attempts;
   post-acceptance write failure without resend; host clock passed while asleep. Exercise actual routes,
   DAO and normal prompt service with controllable time.
+  Native work observed after the history read must pause before consumption;
+  do not assert atomic exclusion of independent native work after the final check.
 
 - **Live plugin, every declared supporting production harness/provider seam:** Prove the pinned runtime's
   raw quota payload reaches its parser and that an ordinary Continue is accepted in that session. Existing

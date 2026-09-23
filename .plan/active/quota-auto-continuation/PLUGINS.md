@@ -72,7 +72,8 @@ its pinned runtime passes the parser, terminal-reporting and readiness checks.
 - **Boundary/composition:** `pi_plugin_impl.dart` / `PiPlugin` delegates to its
   session service and supplies the mapper to PiSessionService.
   `runtime/pi_plugin_descriptor.dart`
-  declares conditional reporting only for verified error/provider shapes.
+  declares conditional reporting only after the error/provider shapes and
+  terminal RPC settlement are verified on the managed target and supported PATH floor.
 
 ## Codex candidate — `bridge/sesori_plugin_codex`
 
@@ -90,11 +91,17 @@ its pinned runtime passes the parser, terminal-reporting and readiness checks.
   the terminal usage-limit event. `codex_plugin_impl.dart` / `CodexPlugin`
   preserves existing turn identity and generation handling, then delegates the
   failure-triggered quota lookup to `services/codex_session_service.dart` /
-  `CodexSessionService`. Inject `CodexQuotaRepository` into that service; publish
-  the normalized result through the plugin's current event path.
-- **Readiness:** `CodexSessionService` alone derives readiness. It gains
-  `CodexThreadRepository` for a typed named-thread read; that repository already
-  depends on `CodexAppServerApi`. New immutable
+  `CodexSessionService`; publish the normalized result through the plugin's
+  current event path. The repository is connection-scoped, not a constructor
+  dependency of the pre-connection session service. In _ensureConnected,
+  `CodexPlugin` builds it from the fresh CodexAppServerApi and supplies it through
+  a required parameter on the existing attachAppServerRepositories method.
+  detachAppServerRepositories clears it alongside the other API repositories
+  on failed connection, disconnect and disposal. Lookups while detached report
+  unavailable; a later attachment uses the fresh API, never a disposed client.
+- **Readiness:** `CodexSessionService` alone derives readiness using its existing
+  attached `CodexThreadRepository` for a typed named-thread read; that repository
+  already depends on the connection's `CodexAppServerApi`. New immutable
   `repositories/models/codex_local_session_facts.dart` / `CodexLocalSessionFacts`
   carries observed native status, active turn ID, pending-input/request facts
   and queued-work facts copied from existing owners. `CodexPlugin` passes that

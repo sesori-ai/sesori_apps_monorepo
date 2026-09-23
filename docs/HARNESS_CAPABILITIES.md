@@ -35,7 +35,7 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
 | Harness | Reset evidence | Planning status |
 |---|---|---|
 | Claude Code | Tagged local errors; SDK `resetsAt` | ⬜ Not implemented; verify turn association. |
-| Pi | Some local `openai-codex` errors | ⬜ Not implemented for evidenced timed errors. |
+| Pi | Some local `openai-codex` errors | Unverified; supported runtime/RPC settlement needs proof. |
 | Codex | Local and documented reset timestamps | Unverified; failed-turn bucket binding needs proof. |
 | OpenCode | Raw error data reaches mapper | Reset payload/provider attribution unverified. |
 | GitHub Copilot | ACP payload needs inspection | Reset reporting unverified. |
@@ -51,8 +51,10 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
   current-turn association; warnings alone cannot schedule.
 - Pi's local `openai-codex` assistant errors sometimes report a relative retry
   duration; others give no reset. Other providers/formats remain unverified.
-  Finish native retry before arming. This RPC evidence does not establish
-  support for Oh My Pi's ACP seam.
+  Historical records do not prove the supported managed target (0.85.1) or PATH
+  floor (0.84.1). Verify live RPC delivery and terminal retry settlement before
+  advertising the capability. This evidence does not establish support for
+  Oh My Pi's ACP seam.
 - Codex local rollouts and documented app-server account limits contain reset
   timestamps; terminal usage-limit errors are already rendered. Bind the failed
   turn to its applicable exhausted buckets; an account snapshot cannot schedule.

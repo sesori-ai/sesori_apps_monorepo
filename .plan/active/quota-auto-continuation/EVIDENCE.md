@@ -48,6 +48,9 @@ model labels identify examples only; eligibility must not depend on model-name
 allowlists. The installed Pi package inspected was
 `@earendil-works/pi-coding-agent` 0.87.1; that is not proof of the version that
 wrote every historical record. The repository Claude target is 2.1.269.
+The repository Pi manifest targets 0.85.1 and accepts PATH versions from 0.84.1.
+The historical files do not prove terminal quota delivery through either
+supported runtime's live RPC/retry path; that capability remains unverified.
 
 ## Code pointers
 
