@@ -73,7 +73,7 @@ class const SessionListPanel({
                         ),
                       ),
                       IconButton(
-                        icon: Icon(showArchived ? Icons.archive : Icons.archive_outlined),
+                        icon: Icon(showArchived ? TablerRegular.archive : TablerRegular.archive),
                         tooltip: loc.sessionListToggleArchived,
                         onPressed: onOpenArchived,
                       ),
@@ -84,7 +84,7 @@ class const SessionListPanel({
                         // compact, with the tooltip carrying its meaning instead.
                         if (compact)
                           IconButton.filled(
-                            icon: const Icon(Icons.add),
+                            icon: const Icon(TablerRegular.plus),
                             tooltip: loc.sessionListNewSession,
                             onPressed: onNewSession,
                           )
@@ -95,7 +95,7 @@ class const SessionListPanel({
                               padding: const EdgeInsets.symmetric(horizontal: 12),
                             ),
                             onPressed: onNewSession,
-                            icon: const Icon(Icons.add),
+                            icon: const Icon(TablerRegular.plus),
                             label: Text(loc.sessionListNewSession),
                           ),
                       ],

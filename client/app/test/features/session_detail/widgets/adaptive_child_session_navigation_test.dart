@@ -273,21 +273,21 @@ void main() {
       await pumpStatus(tester, status: ToolStatus.completed);
 
       expect(find.text("Done"), findsOneWidget);
-      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      expect(find.byIcon(TablerSolid.circle_check), findsOneWidget);
     });
 
     testWidgets("a failed subtask reports its own lifecycle", (tester) async {
       await pumpStatus(tester, status: ToolStatus.error);
 
       expect(find.text("Failed"), findsOneWidget);
-      expect(find.byIcon(Icons.error), findsOneWidget);
+      expect(find.byIcon(TablerSolid.alert_circle), findsOneWidget);
     });
 
     testWidgets("a cancelled subtask reports its own lifecycle", (tester) async {
       await pumpStatus(tester, status: ToolStatus.cancelled);
 
       expect(find.text("Cancelled"), findsOneWidget);
-      expect(find.byIcon(Icons.cancel), findsOneWidget);
+      expect(find.byIcon(TablerSolid.circle_x), findsOneWidget);
     });
 
     testWidgets("a subtask without its own lifecycle keeps following its child session", (tester) async {

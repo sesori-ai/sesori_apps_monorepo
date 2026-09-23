@@ -38,7 +38,7 @@ class const SessionDetailPendingBanner({
           leading: Icon(icon, size: PregoIconSize.md, color: foregroundColor),
           title: Text(label),
           titleStyle: prego.textTheme.textMd.bold.copyWith(color: foregroundColor),
-          trailing: Icon(Icons.chevron_right, size: PregoIconSize.md, color: foregroundColor),
+          trailing: Icon(TablerRegular.chevron_right, size: PregoIconSize.md, color: foregroundColor),
         ),
       ),
     );
@@ -60,7 +60,7 @@ class const SessionDetailArchivedNotice({super.key}) extends StatelessWidget {
         shape: const LiquidRoundedSuperellipse(borderRadius: 20),
         settings: LiquidGlassSettings(glassColor: prego.colors.bgSecondary.withValues(alpha: 0.6)),
         child: GlassListTile(
-          leading: Icon(Icons.archive_outlined, size: PregoIconSize.md, color: prego.colors.textSecondary),
+          leading: Icon(TablerRegular.archive, size: PregoIconSize.md, color: prego.colors.textSecondary),
           title: Text(context.loc.sessionDetailArchivedNotice),
           titleStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
         ),

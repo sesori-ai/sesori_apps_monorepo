@@ -21,20 +21,20 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.copy), findsOneWidget);
+    expect(find.byIcon(TablerRegular.copy), findsOneWidget);
     await tester.tap(find.byType(PregoCopyIconButton));
     await tester.pump();
     expect(calls, 1);
-    expect(find.byIcon(Icons.copy), findsOneWidget);
+    expect(find.byIcon(TablerRegular.copy), findsOneWidget);
 
     shouldSucceed = true;
     await tester.tap(find.byType(PregoCopyIconButton));
     await tester.pump();
     await tester.pump();
     expect(calls, 2);
-    expect(find.byIcon(Icons.check), findsOneWidget);
+    expect(find.byIcon(TablerRegular.check), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 1500));
-    expect(find.byIcon(Icons.copy), findsOneWidget);
+    expect(find.byIcon(TablerRegular.copy), findsOneWidget);
   });
 }

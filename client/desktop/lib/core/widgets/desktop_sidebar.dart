@@ -309,7 +309,7 @@ class const _SidebarFooter({
                 expansion: expansion,
                 selected: false,
                 // A status dot, not a glyph: no icon token applies.
-                status: (icon: Icon(Icons.circle, size: 8, color: bridgeColor), label: bridge.statusLabel),
+                status: (icon: Icon(TablerSolid.circle, size: 8, color: bridgeColor), label: bridge.statusLabel),
                 onPressed: toggle,
               ),
               contentBuilder: (context, close) => DesktopBridgePopover(

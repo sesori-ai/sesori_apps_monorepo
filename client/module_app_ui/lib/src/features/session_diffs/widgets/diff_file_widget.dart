@@ -53,7 +53,7 @@ class const DiffFileWidget({
           if (vm.deletions > 0) Text("−${vm.deletions}", style: code.copyWith(color: prego.colors.textErrorPrimary)),
           _buildStatusLetter(context: context, status: vm.status),
           Icon(
-            isExpanded ? Icons.expand_less : Icons.expand_more,
+            isExpanded ? TablerRegular.chevron_up : TablerRegular.chevron_down,
             size: PregoIconSize.md,
             color: theme.chevronColor,
           ),

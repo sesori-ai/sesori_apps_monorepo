@@ -25,8 +25,8 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 7 | `visual-hierarchy/desktop-header` | [7/41](#pr-titles) | ≤ 500 | done |
 | [x] | 8 | `visual-hierarchy/blue` | [8/41](#pr-titles) | ≤ 400 | done |
 | [x] | 9 | `visual-hierarchy/icon-mono-tokens` | [9/41](#pr-titles) | ≤ 900 | done |
-| [ ] | 10 | `visual-hierarchy/diff-colours` | [10/41](#pr-titles) | ≤ 600 | in-progress |
-| [ ] | 11 | `visual-hierarchy/icons-and-case` | [11/41](#pr-titles) | ≤ 900 | pending |
+| [x] | 10 | `visual-hierarchy/diff-colours` | [10/41](#pr-titles) | ≤ 600 | done |
+| [ ] | 11 | `visual-hierarchy/icons-and-case{,-b}` | [11/41](#pr-titles) | ≤ 900 | in-progress |
 | [ ] | 12 | `visual-hierarchy/sidebar` | [12/41](#pr-titles) | ≤ 700 | pending |
 | [ ] | 13 | `visual-hierarchy/session-rows` | [13/41](#pr-titles) | ≤ 700 | pending |
 | [ ] | 14 | `visual-hierarchy/needs-you-card` | [14/41](#pr-titles) | ≤ 600 | pending |

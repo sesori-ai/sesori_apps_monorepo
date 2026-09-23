@@ -93,7 +93,7 @@ class const SubtaskPartWidget({
                   ),
                 if (targetSessionId != null && targetProjectId != null)
                   Icon(
-                    Icons.chevron_right,
+                    TablerRegular.chevron_right,
                     size: PregoIconSize.md,
                     color: prego.colors.textSecondary,
                   ),
@@ -112,14 +112,14 @@ class const SubtaskPartWidget({
       child: PregoActivityIndicator(color: null),
     ),
     ToolStatus.completed => Icon(
-      Icons.check_circle,
+      TablerSolid.circle_check,
       size: PregoIconSize.sm,
       color: prego.colors.bgBrandSolid,
     ),
-    ToolStatus.error => Icon(Icons.error, size: PregoIconSize.sm, color: prego.colors.fgErrorPrimary),
-    ToolStatus.cancelled => Icon(Icons.cancel, size: PregoIconSize.sm, color: prego.colors.textSecondary),
+    ToolStatus.error => Icon(TablerSolid.alert_circle, size: PregoIconSize.sm, color: prego.colors.fgErrorPrimary),
+    ToolStatus.cancelled => Icon(TablerSolid.circle_x, size: PregoIconSize.sm, color: prego.colors.textSecondary),
     ToolStatus.unknown => Icon(
-      Icons.play_circle_outline,
+      TablerRegular.player_play,
       size: PregoIconSize.sm,
       color: prego.colors.borderPrimary,
     ),
@@ -141,12 +141,12 @@ class const SubtaskPartWidget({
       child: PregoActivityIndicator(color: null),
     ),
     SessionStatusIdle() => Icon(
-      Icons.check_circle,
+      TablerSolid.circle_check,
       size: PregoIconSize.sm,
       color: prego.colors.bgBrandSolid,
     ),
     null => Icon(
-      Icons.play_circle_outline,
+      TablerRegular.player_play,
       size: PregoIconSize.sm,
       color: prego.colors.borderPrimary,
     ),

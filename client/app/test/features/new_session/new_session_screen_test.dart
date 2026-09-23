@@ -1064,11 +1064,11 @@ void main() {
     await openHarnessMenu(tester);
 
     expect(
-      find.descendant(of: _harnessRow("degraded-id"), matching: find.byIcon(Icons.check)),
+      find.descendant(of: _harnessRow("degraded-id"), matching: find.byIcon(TablerRegular.check)),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: _harnessRow("other-id"), matching: find.byIcon(Icons.check)),
+      find.descendant(of: _harnessRow("other-id"), matching: find.byIcon(TablerRegular.check)),
       findsNothing,
     );
     expect(find.descendant(of: _harnessRow("degraded-id"), matching: find.text("Needs attention")), findsOneWidget);
@@ -1198,7 +1198,7 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.smart_toy_outlined), findsNothing);
+    expect(find.byIcon(TablerRegular.robot), findsNothing);
     expect(find.widgetWithText(PregoPickerButton, "Claude 3.5 Sonnet"), findsOneWidget);
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
   });
@@ -1512,7 +1512,7 @@ void main() {
     await tester.tap(_harnessRow("tool-b"));
     await tester.pump();
     expect(
-      find.descendant(of: _harnessRow("tool-a"), matching: find.byIcon(Icons.check)),
+      find.descendant(of: _harnessRow("tool-a"), matching: find.byIcon(TablerRegular.check)),
       findsOneWidget,
     );
     verifyNever(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b"));
@@ -1537,7 +1537,7 @@ void main() {
 
     await openHarnessMenu(tester);
     expect(
-      find.descendant(of: _harnessRow("tool-b"), matching: find.byIcon(Icons.check)),
+      find.descendant(of: _harnessRow("tool-b"), matching: find.byIcon(TablerRegular.check)),
       findsOneWidget,
     );
     verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b")).called(1);
