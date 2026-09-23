@@ -96,7 +96,7 @@ as bool,
 @JsonSerializable(createFactory: false)
 
 class _PluginModel implements PluginModel {
-  const _PluginModel({required this.id, required this.name, required  List<String> variants, this.defaultVariant, this.family, this.isAvailable = true, this.releaseDate, this.supportsFastMode = false}): _variants = variants;
+  const _PluginModel({required this.id, required this.name, required  List<String> variants, this.defaultVariant, this.family, this.isAvailable = true, this.releaseDate, required this.supportsFastMode}): _variants = variants;
   
 
 @override final  String id;
@@ -117,7 +117,7 @@ class _PluginModel implements PluginModel {
 @override@JsonKey() final  bool isAvailable;
 @override final  DateTime? releaseDate;
 /// Whether the plugin can run this model in the backend's fast mode.
-@override@JsonKey() final  bool supportsFastMode;
+@override final  bool supportsFastMode;
 
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.

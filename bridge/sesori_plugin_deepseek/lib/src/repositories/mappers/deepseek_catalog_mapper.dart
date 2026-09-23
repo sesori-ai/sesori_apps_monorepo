@@ -15,6 +15,7 @@ class const DeepSeekCatalogMapper() {
             models: [
               for (final model in provider.models)
                 PluginModel(
+                  supportsFastMode: false,
                   id: model.id,
                   name: model.name,
                   // Strongest first; model ids are opaque, so models keep

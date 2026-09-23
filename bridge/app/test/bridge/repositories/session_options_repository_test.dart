@@ -349,6 +349,7 @@ PluginSessionOptions _pluginOptions({required String marker}) {
           authType: PluginProviderAuthType.unknown,
           models: [
             PluginModel(
+              supportsFastMode: false,
               id: "model-1",
               name: "Model $marker",
               variants: const ["high"],

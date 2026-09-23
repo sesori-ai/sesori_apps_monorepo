@@ -24,6 +24,7 @@ class CodexModelRepository({required final CodexAppServerApi _appServerApi}) {
       final defaultEffort = _usefulText(value: model.defaultReasoningEffort);
       models.add(
         PluginModel(
+          supportsFastMode: false,
           id: id,
           name: _usefulText(value: model.displayName) ?? id,
           variants: variants,

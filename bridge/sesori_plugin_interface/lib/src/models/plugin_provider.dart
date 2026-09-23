@@ -30,7 +30,7 @@ sealed class PluginModel with _$PluginModel {
     DateTime? releaseDate,
 
     /// Whether the plugin can run this model in the backend's fast mode.
-    @Default(false) bool supportsFastMode,
+    required bool supportsFastMode,
   }) = _PluginModel;
 }
 
