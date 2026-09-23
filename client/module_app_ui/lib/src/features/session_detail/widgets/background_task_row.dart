@@ -48,7 +48,7 @@ class const BackgroundTaskRow({
   Widget _statusIcon({required SessionStatus? status, required PregoDesignSystem prego}) => switch (status) {
     // The leading slot is a tight 32px wide but leaves its height free. Center
     // re-loosens those constraints around a fixed square, sized to the drawn
-    // glyph of the 16px idle icon rather than its box.
+    // glyph of the 14px idle icon rather than its box.
     SessionStatusBusy() || SessionStatusRetry() => const Center(
       heightFactor: 1,
       child: SizedBox.square(

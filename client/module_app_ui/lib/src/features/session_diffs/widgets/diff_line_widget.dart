@@ -84,6 +84,8 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
                 ),
                 final highlightedSpan => Text.rich(
                   highlightedSpan,
+                  // The span carries colours; the code style gives it the line height.
+                  style: monoStyle.copyWith(color: theme.codeText),
                   softWrap: true,
                 ),
               },

@@ -96,6 +96,7 @@ class PregoTextTheme {
         fontFamilyFallback: monoFontFamilyFallback,
         fontSize: 12,
         height: 18 / 12,
+        leadingDistribution: TextLeadingDistribution.even,
         fontWeight: FontWeight.w400,
         color: variant.color,
       );
