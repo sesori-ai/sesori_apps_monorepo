@@ -277,12 +277,16 @@ void main() {
           BlocProvider<AppearanceCubit>.value(value: appearanceCubit),
           BlocProvider<ChatInputModeCubit>.value(value: chatInputModeCubit),
         ],
-        child: MaterialApp.router(
-          routerConfig: router,
-          theme: buildPregoThemeData(brightness: Brightness.light),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          builder: (_, child) => DesktopEscapeDismissal(child: child!),
+        // As in the desktop shell, so owned sheets open as dialogs.
+        child: PregoInteractionScope(
+          mode: PregoInteractionMode.pointer,
+          child: MaterialApp.router(
+            routerConfig: router,
+            theme: buildPregoThemeData(brightness: Brightness.light),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            builder: (_, child) => DesktopEscapeDismissal(child: child!),
+          ),
         ),
       ),
     );
@@ -433,10 +437,10 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
     expect(tester.widget<EditableText>(input).focusNode.hasFocus, isFalse);
-    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
-    expect(find.byType(PregoBottomSheet), findsNothing);
+    expect(find.byType(Dialog), findsNothing);
     expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
   });
 
@@ -611,10 +615,10 @@ void main() {
     final detail = tester.widget<HarnessSettingsDetailView>(find.byType(HarnessSettingsDetailView));
     await tester.tap(find.byKey(const Key("harness_authentication_opencode")));
     await tester.pumpAndSettle();
-    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
     detail.onClose();
     await tester.pumpAndSettle();
-    expect(find.byType(PregoBottomSheet), findsNothing);
+    expect(find.byType(Dialog), findsNothing);
     expect(find.text("open"), findsOneWidget);
     expect(pluginSnapshots.hasListener, isFalse);
     verifyNever(() => pluginService.cancelAuthentication(pluginId: "opencode"));
@@ -650,7 +654,7 @@ void main() {
     await tester.tap(find.byKey(const Key("harness_authentication_opencode")));
     await tester.pumpAndSettle();
 
-    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
     verifyNever(
       () => getIt<UrlLauncher>().launch(Uri.parse("https://auth.example/authorize"), mode: UrlLaunchMode.externalApp),
     );

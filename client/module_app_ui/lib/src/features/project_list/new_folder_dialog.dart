@@ -12,7 +12,7 @@ import "../../extensions/build_context_x.dart";
 /// reporting how that went, so the prompt closes as soon as a name is given
 /// rather than sitting open behind a spinner.
 Future<String?> showNewFolderDialog({required BuildContext context}) {
-  return showPregoBottomSheet<String>(
+  return showPregoModal<String>(
     context: context,
     title: context.loc.newFolderTitle,
     builder: (_) => const NewFolderDialog(),

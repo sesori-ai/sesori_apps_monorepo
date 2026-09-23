@@ -15,7 +15,7 @@ void _showDeleteSheet({
   required SessionDeletedRouteHandler? onSessionDeleted,
 }) {
   final release = cubit.retainActionScope();
-  final sheet = showPregoBottomSheet<void>(
+  final sheet = showPregoModal<void>(
     context: context,
     title: context.loc.sessionListDeleteConfirmTitle,
     builder: (_) => _DeleteSessionSheet(

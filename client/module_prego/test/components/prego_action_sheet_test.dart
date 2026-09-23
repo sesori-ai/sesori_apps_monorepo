@@ -42,10 +42,12 @@ void main() {
   }
 
   for (final viewport in [
-    (size: const Size(320, 568), textScale: 2.0, keyboard: 0.0),
-    (size: const Size(874, 402), textScale: 3.0, keyboard: 0.0),
-    (size: const Size(874, 402), textScale: 1.0, keyboard: 216.0),
-    (size: const Size(402, 874), textScale: 2.0, keyboard: 336.0),
+    (size: const Size(320, 568), textScale: 2.0, keyboard: 0.0, mode: PregoInteractionMode.touch),
+    (size: const Size(874, 402), textScale: 3.0, keyboard: 0.0, mode: PregoInteractionMode.touch),
+    (size: const Size(874, 402), textScale: 1.0, keyboard: 216.0, mode: PregoInteractionMode.touch),
+    (size: const Size(402, 874), textScale: 2.0, keyboard: 336.0, mode: PregoInteractionMode.touch),
+    // The desktop's minimum window with very large text.
+    (size: const Size(560, 480), textScale: 3.0, keyboard: 0.0, mode: PregoInteractionMode.pointer),
   ]) {
     testWidgets("all actions remain reachable in constrained viewport $viewport", (tester) async {
       final pressed = <String>[];
@@ -54,36 +56,39 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(extensions: [PregoDesignSystem.light]),
-          home: MediaQuery(
-            data: MediaQueryData(
-              size: viewport.size,
-              textScaler: TextScaler.linear(viewport.textScale),
-              viewInsets: EdgeInsets.only(bottom: viewport.keyboard),
-            ),
-            child: Scaffold(
-              resizeToAvoidBottomInset: false,
-              body: Align(
-                alignment: Alignment.bottomCenter,
-                child: PregoActionSheet(
-                  title: "Allow this action?",
-                  topInset: 24,
-                  actions: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    spacing: PregoSpacing.xl,
-                    children: [
-                      for (final label in ["Allow", "Always approve", "Don’t allow"])
-                        PregoButtonsSolid(
-                          label: label,
-                          hierarchy: PregoButtonsSolidHierarchy.secondary,
-                          size: PregoButtonsSolidSize.lg,
-                          fullWidth: true,
-                          onPressed: () => pressed.add(label),
-                        ),
-                    ],
+        PregoInteractionScope(
+          mode: viewport.mode,
+          child: MaterialApp(
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            home: MediaQuery(
+              data: MediaQueryData(
+                size: viewport.size,
+                textScaler: TextScaler.linear(viewport.textScale),
+                viewInsets: EdgeInsets.only(bottom: viewport.keyboard),
+              ),
+              child: Scaffold(
+                resizeToAvoidBottomInset: false,
+                body: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: PregoActionSheet(
+                    title: "Allow this action?",
+                    topInset: 24,
+                    actions: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: PregoSpacing.xl,
+                      children: [
+                        for (final label in ["Allow", "Always approve", "Don’t allow"])
+                          PregoButtonsSolid(
+                            label: label,
+                            hierarchy: PregoButtonsSolidHierarchy.secondary,
+                            size: PregoButtonsSolidSize.lg,
+                            fullWidth: true,
+                            onPressed: () => pressed.add(label),
+                          ),
+                      ],
+                    ),
+                    child: const SizedBox(height: 2000),
                   ),
-                  child: const SizedBox(height: 2000),
                 ),
               ),
             ),

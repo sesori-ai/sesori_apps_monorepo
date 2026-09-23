@@ -21,7 +21,7 @@ Future<void> showLegalDocumentSheet(
 }) {
   final loc = context.loc;
 
-  return showPregoBottomSheet<void>(
+  return showPregoModal<void>(
     context: context,
     title: switch (document) {
       LegalDocument.terms => loc.settingsLegalTerms,

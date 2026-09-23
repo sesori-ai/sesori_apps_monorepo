@@ -195,7 +195,7 @@ class const _WhyBridgeButton({
         hierarchy: PregoButtonsSolidHierarchy.tertiary,
         size: PregoButtonsSolidSize.sm,
         onPressed: () {
-          final presentation = showPregoBottomSheet<void>(
+          final presentation = showPregoModal<void>(
             context: context,
             title: loc.projectsOnboardingPcStatusWhy,
             builder: (_) => const _WhyBridgeInfoSheet(),

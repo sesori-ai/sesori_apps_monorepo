@@ -3,14 +3,14 @@ part of "../project_list_screen.dart";
 // ===========================================================================
 // "Why is this needed?" info sheet
 //
-// The onboarding "Why is this needed?" button opens this as a PregoBottomSheet.
+// The onboarding "Why is this needed?" button opens this through showPregoModal.
 // It explains why the Bridge sits between the phone and the developer's machine:
 // a lede paragraph, the connection graphic, three reassurance rows, and an FAQ.
 // ===========================================================================
 
 /// Content of the onboarding "Why is this needed?" bottom sheet. Pure
 /// presentation with only per-row FAQ expand/collapse state; opened via
-/// [showPregoBottomSheet] from [_WhyBridgeButton].
+/// [showPregoModal] from [_WhyBridgeButton].
 class const _WhyBridgeInfoSheet() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
