@@ -111,7 +111,7 @@ void main() {
       );
 
       final label = tester.widget<Text>(find.text("Awaiting input"));
-      expect(label.style?.color, kStatusAmber);
+      expect(label.style?.color, tester.element(find.byType(SessionTile)).prego.colors.textWarningPrimary);
       expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
     });
 

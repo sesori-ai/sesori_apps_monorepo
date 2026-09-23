@@ -6,10 +6,8 @@ import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "session_row_metrics.dart";
 
-// GitHub-inspired semantic status colors, chosen for light/dark contrast.
-const _kPrGreen = Color(0xFF3FB950);
-const _kPrPurple = Color(0xFFA371F7);
-const _kPrAmber = Color(0xFFD29922);
+// GitHub's merged purple: Prego has no status token that means "merged".
+const _kPrMergedPurple = Color(0xFFA371F7);
 
 /// Compact row showing PR number, state label, and review/check status dots.
 ///
@@ -85,8 +83,8 @@ class const PrStatusRow({super.key, required final PullRequestInfo pr}) extends 
 // ---------------------------------------------------------------------------
 
 Color _stateColor({required PregoColors colors, required PrState state}) => switch (state) {
-  PrState.open => _kPrGreen,
-  PrState.merged => _kPrPurple,
+  PrState.open => colors.fgSuccessPrimary,
+  PrState.merged => _kPrMergedPurple,
   PrState.closed => colors.borderPrimary,
   PrState.unknown => colors.borderPrimary,
 };
@@ -104,7 +102,7 @@ String _stateText({required AppLocalizations loc, required PrState state}) => sw
 
 /// Returns a color for the merge icon, or null to fall back to the state color.
 Color? _mergeColor({required PregoColors colors, required PrMergeableStatus status}) => switch (status) {
-  PrMergeableStatus.mergeable => _kPrGreen,
+  PrMergeableStatus.mergeable => colors.fgSuccessPrimary,
   PrMergeableStatus.conflicting => colors.fgErrorPrimary,
   PrMergeableStatus.unknown => null,
 };
@@ -131,7 +129,11 @@ String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus 
   required AppLocalizations loc,
   required PrReviewDecision decision,
 }) => switch (decision) {
-  PrReviewDecision.approved => (icon: Icons.check_circle_outline, color: _kPrGreen, tooltip: loc.prReviewApproved),
+  PrReviewDecision.approved => (
+    icon: Icons.check_circle_outline,
+    color: colors.fgSuccessPrimary,
+    tooltip: loc.prReviewApproved,
+  ),
   PrReviewDecision.changesRequested => (
     icon: Icons.cancel_outlined,
     color: colors.fgErrorPrimary,
@@ -155,9 +157,13 @@ String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus 
   required AppLocalizations loc,
   required PrCheckStatus status,
 }) => switch (status) {
-  PrCheckStatus.success => (icon: Icons.check_circle_outline, color: _kPrGreen, tooltip: loc.prChecksSuccess),
+  PrCheckStatus.success => (
+    icon: Icons.check_circle_outline,
+    color: colors.fgSuccessPrimary,
+    tooltip: loc.prChecksSuccess,
+  ),
   PrCheckStatus.failure => (icon: Icons.error_outline, color: colors.fgErrorPrimary, tooltip: loc.prChecksFailing),
-  PrCheckStatus.pending => (icon: Icons.schedule, color: _kPrAmber, tooltip: loc.prChecksPending),
+  PrCheckStatus.pending => (icon: Icons.schedule, color: colors.fgWarningPrimary, tooltip: loc.prChecksPending),
   PrCheckStatus.none => null,
   PrCheckStatus.unknown => null,
 };

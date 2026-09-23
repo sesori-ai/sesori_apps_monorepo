@@ -16,61 +16,45 @@ void main() {
   }
 
   group("DiffLineWidget", () {
-    testWidgets("added line has green background", (tester) async {
-      const vm = DiffLineViewModel(
-        line: DiffLine(
-          type: DiffLineType.added,
-          oldLineNumber: null,
-          newLineNumber: 5,
-          content: "new line",
-        ),
-      );
+    for (final brightness in Brightness.values) {
+      testWidgets("rows take a 10% status tint and a 2pt status bar in ${brightness.name}", (tester) async {
+        final colors = buildPregoThemeData(brightness: brightness).extension<PregoDesignSystem>()?.colors;
+        if (colors == null) fail("Prego design system missing");
 
-      await tester.pumpWidget(buildTestWidget(vm));
+        for (final (type, tint, bar) in [
+          (DiffLineType.added, colors.fgSuccessPrimary.withValues(alpha: 0.1), colors.fgSuccessPrimary),
+          (DiffLineType.removed, colors.fgErrorPrimary.withValues(alpha: 0.1), colors.fgErrorPrimary),
+          (DiffLineType.context, Colors.transparent, Colors.transparent),
+        ]) {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: buildPregoThemeData(brightness: brightness),
+              home: Scaffold(
+                body: DiffLineWidget(
+                  viewModel: DiffLineViewModel(
+                    line: DiffLine(type: type, oldLineNumber: 1, newLineNumber: 1, content: "line"),
+                  ),
+                ),
+              ),
+            ),
+          );
 
-      // Find the outermost ColoredBox with the background color.
-      // The DiffLineWidget root is a ColoredBox with color.
-      final containerFinder = find.byWidgetPredicate(
-        (widget) => widget is ColoredBox && widget.color == const Color(0xFFE6FFEC),
-      );
-      expect(containerFinder, findsOneWidget);
-    });
-
-    testWidgets("removed line has red background", (tester) async {
-      const vm = DiffLineViewModel(
-        line: DiffLine(
-          type: DiffLineType.removed,
-          oldLineNumber: 3,
-          newLineNumber: null,
-          content: "old line",
-        ),
-      );
-
-      await tester.pumpWidget(buildTestWidget(vm));
-
-      final containerFinder = find.byWidgetPredicate(
-        (widget) => widget is ColoredBox && widget.color == const Color(0xFFFFEBE9),
-      );
-      expect(containerFinder, findsOneWidget);
-    });
-
-    testWidgets("context line has transparent background", (tester) async {
-      const vm = DiffLineViewModel(
-        line: DiffLine(
-          type: DiffLineType.context,
-          oldLineNumber: 10,
-          newLineNumber: 12,
-          content: "unchanged",
-        ),
-      );
-
-      await tester.pumpWidget(buildTestWidget(vm));
-
-      final containerFinder = find.byWidgetPredicate(
-        (widget) => widget is ColoredBox && widget.color == Colors.transparent,
-      );
-      expect(containerFinder, findsAtLeastNWidgets(1));
-    });
+          final decoration = tester
+              .widget<DecoratedBox>(
+                find.descendant(of: find.byType(DiffLineWidget), matching: find.byType(DecoratedBox)).first,
+              )
+              .decoration;
+          expect(decoration, isA<BoxDecoration>(), reason: type.name);
+          if (decoration is! BoxDecoration) return;
+          expect(decoration.color, tint, reason: type.name);
+          expect(
+            decoration.border,
+            BorderDirectional(start: BorderSide(color: bar, width: 2)),
+            reason: type.name,
+          );
+        }
+      });
+    }
 
     testWidgets("renders single line number for context line", (tester) async {
       const vm = DiffLineViewModel(

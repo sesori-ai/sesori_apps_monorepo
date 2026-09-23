@@ -56,7 +56,13 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
           child: PregoGlassScaffold(
             title: context.loc.diffFileChangesTitle,
             titleMode: PregoTopNavigationTitleMode.inline,
-            subtitleText: fileCount > 0 ? context.loc.diffFilesChangedCount(fileCount, additions, deletions) : null,
+            subtitleText: fileCount > 0
+                ? _summary(
+                    files: context.loc.diffFilesChangedCount(fileCount),
+                    additions: additions,
+                    deletions: deletions,
+                  )
+                : null,
             onBack: widget.onBack,
             banner: widget.banner,
             // The diff viewer's pinned per-file headers must pin directly below
@@ -67,6 +73,12 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
         );
       },
     );
+  }
+
+  /// "3 files changed  +7 −2", leaving out a side whose count is zero.
+  static String _summary({required String files, required int additions, required int deletions}) {
+    final counts = [if (additions > 0) "+$additions", if (deletions > 0) "−$deletions"].join(" ");
+    return counts.isEmpty ? files : "$files  $counts";
   }
 
   List<Widget> _buildContentSlivers({required BuildContext context, required DiffState state}) {
