@@ -129,7 +129,7 @@ class PregoTextTheme {
         textMd: FontVariation.lerpVariation(a: a.textMd, b: b.textMd, t: t),
         textSm: FontVariation.lerpVariation(a: a.textSm, b: b.textSm, t: t),
         textXs: FontVariation.lerpVariation(a: a.textXs, b: b.textXs, t: t),
-        code: TextStyle.lerp(a.code, b.code, t)!,
+        code: TextStyle.lerp(a.code, b.code, t) ?? a.code,
       );
 
   new _lerped({
