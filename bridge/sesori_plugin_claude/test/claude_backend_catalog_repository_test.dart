@@ -34,6 +34,7 @@ void main() {
               "displayName": "Opus (1M context)",
               "supportsEffort": true,
               "supportedEffortLevels": ["low", "medium", "future", "high", "xhigh", "max"],
+              "supportsFastMode": true,
             },
           ],
           "account": {"email": "private@example.com"},
@@ -53,6 +54,8 @@ void main() {
       expect(provider.models.first.defaultVariant, "high");
       expect(provider.models.last.variants, isEmpty);
       expect(provider.models.last.defaultVariant, isNull);
+      expect(provider.models.first.supportsFastMode, isTrue);
+      expect(provider.models.last.supportsFastMode, isFalse, reason: "the CLI omits the field when unsupported");
       expect(
         catalog.commands,
         const [

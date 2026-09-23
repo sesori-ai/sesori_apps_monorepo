@@ -304,6 +304,7 @@ Future<void> _ensure(ClaudeSessionProcessRepository repository, {required bool c
   model: null,
   effort: null,
   permissionMode: null,
+  fastMode: false,
   allowedTools: const [],
 );
 

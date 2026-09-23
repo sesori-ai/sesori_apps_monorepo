@@ -63,6 +63,7 @@ final class ClaudeCatalogService({
         model: null,
         effort: null,
         permissionMode: null,
+        fastMode: false,
         allowedTools: const [],
       );
       final catalog = await _readCatalog(sessionId: _probeSessionId, refresh: refresh);
@@ -108,6 +109,7 @@ final class ClaudeCatalogService({
       model: modelId,
       effort: applied?.effort,
       permissionMode: applied?.permissionMode,
+      fastMode: applied?.fastMode ?? false,
     );
   }
 
@@ -125,6 +127,7 @@ final class ClaudeCatalogService({
       model: applied?.model,
       effort: applied?.effort,
       permissionMode: selection.permissionMode,
+      fastMode: applied?.fastMode ?? false,
     );
   }
 }

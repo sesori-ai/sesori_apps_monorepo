@@ -739,6 +739,7 @@ void main() {
         model: "default",
         effort: null,
         permissionMode: ClaudePermissionMode.plan,
+        fastMode: false,
       );
       process.emit({
         "type": "control_request",

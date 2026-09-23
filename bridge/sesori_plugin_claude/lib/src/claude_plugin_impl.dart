@@ -136,6 +136,7 @@ final class ClaudePlugin({
           directory: normalized,
           parts: parts,
           variant: variant,
+          fastMode: fastMode,
           agent: agent,
           model: model,
           operation: "createSession",
@@ -263,6 +264,7 @@ final class ClaudePlugin({
       directory: directory,
       parts: parts,
       variant: variant,
+      fastMode: fastMode,
       agent: agent,
       model: model,
       operation: "sendPrompt",
@@ -293,6 +295,7 @@ final class ClaudePlugin({
       directory: directory,
       parts: [PluginPromptPart.text(text: arguments.isEmpty ? "/$command" : "/$command $arguments")],
       variant: variant,
+      fastMode: fastMode,
       agent: agent,
       model: model,
       operation: "sendCommand",
@@ -363,6 +366,7 @@ final class ClaudePlugin({
           model: applied.model,
           effort: applied.effort,
           permissionMode: ClaudePermissionMode.auto,
+          fastMode: applied.fastMode,
         );
       }
       _eventBuffer.add(
@@ -455,6 +459,7 @@ final class ClaudePlugin({
     required String directory,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
     required String operation,
@@ -482,6 +487,7 @@ final class ClaudePlugin({
         model: model?.modelID,
         effort: effort,
         permissionMode: permissionMode,
+        fastMode: fastMode,
         promptId: promptId,
         displayText: displayText,
         command: command,
@@ -501,6 +507,7 @@ final class ClaudePlugin({
     required String directory,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
     required String operation,
@@ -523,6 +530,7 @@ final class ClaudePlugin({
         model: model?.modelID,
         effort: effort,
         permissionMode: permissionMode,
+        fastMode: fastMode,
       );
     } on PluginOperationException {
       rethrow;

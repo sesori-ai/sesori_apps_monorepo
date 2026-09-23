@@ -36,6 +36,10 @@ sealed class ClaudeModelDto with _$ClaudeModelDto {
     @JsonKey(fromJson: _stringOrNull) required String? displayName,
     @JsonKey(fromJson: _boolOrNull) required bool? supportsEffort,
     @JsonKey(fromJson: _stringsOrEmpty) required List<String> supportedEffortLevels,
+
+    /// Present and true only on models the CLI can run in fast mode; absent
+    /// otherwise (verified against CLI 2.1.281).
+    @JsonKey(fromJson: _boolOrNull) required bool? supportsFastMode,
   }) = _ClaudeModelDto;
 
   factory fromJson(Map<String, dynamic> json) => _$ClaudeModelDtoFromJson(json);
