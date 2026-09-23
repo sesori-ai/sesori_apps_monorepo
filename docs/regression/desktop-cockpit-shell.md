@@ -184,8 +184,8 @@ The main pane hosts one full-width routed page.
   counts for as long as its Undo window or its archive request is open, and returns if the archive is
   undone, refused or fails. Archiving the open session leaves its page. See
   `session-archiving-and-deletion.md`.
-- The new session page uses the same toolbar, titled New session under the project breadcrumb, above one centred column no
-  wider than the session page's: the shared heading and project selector (see
+- The new session page uses the same toolbar, titled New session under the project breadcrumb, above one
+  centred column no wider than the session page's: the shared heading and project selector (see
   session-creation-and-options.md), the harness chooser, the input, then Dedicated workspace and
   Refresh options. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
   Choosing another project builds a fresh cubit for it.
@@ -193,8 +193,9 @@ The main pane hosts one full-width routed page.
   breadcrumb, then the sidebar's status slot (the running sparkle, the amber awaiting glyph) leading the
   16 pt bold title, with agent and model under it; Changes on a root unarchived session; and a menu with
   Mark as unread labelled with its shortcut, Rename, Archive, Archive keeping the worktree when the
-  session has one, and Delete, the last four run by the same dispatcher as a row's menu. Session actions stay disabled until the page has the hydrated
-  session, and work for child sessions and sessions opened directly. Mark unread always sends unread,
+  session has one, and Delete, the last four run by the same dispatcher as a row's menu. Session actions
+  stay disabled until the page has the hydrated session, and work for child sessions and sessions opened
+  directly. Mark unread always sends unread,
   whatever local state says, defers the session like a row's Mark unread, and returns to the project's
   all-sessions page; Shift+Cmd/Ctrl+U does the same while focus is in the session page and is inert
   elsewhere. The transcript and composer sit in a centred column about 760 pt wide while the wheel and

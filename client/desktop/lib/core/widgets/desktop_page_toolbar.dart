@@ -57,7 +57,9 @@ class const DesktopPageToolbar({
                 Row(
                   children: [
                     if (breadcrumb != null) ...[
-                      Flexible(
+                      // A long project name gives way to the title rather than sharing the row with it.
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 200),
                         child: InkWell(
                           key: const Key("desktop-page-breadcrumb"),
                           onTap: breadcrumb.onPressed,
@@ -81,7 +83,6 @@ class const DesktopPageToolbar({
                         child: Center(child: status),
                       ),
                     Flexible(
-                      flex: 2,
                       child: Semantics(
                         header: true,
                         child: Text(

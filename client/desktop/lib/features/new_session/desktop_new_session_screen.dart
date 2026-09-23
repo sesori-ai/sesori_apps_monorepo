@@ -59,6 +59,14 @@ class const DesktopNewSessionView({
 }) extends StatelessWidget {
   static const double maxContentWidth = 760;
 
+  /// The loaded list knows the current name; the route's can be missing or stale.
+  String _projectLabel({required BuildContext context}) {
+    final current = projects.where((project) => project.id == projectId).firstOrNull;
+    return current == null
+        ? projectName ?? context.loc.projectListDefaultName
+        : projectDisplayName(loc: context.loc, project: current);
+  }
+
   @override
   Widget build(BuildContext context) {
     return NewSessionView(
@@ -75,7 +83,7 @@ class const DesktopNewSessionView({
       pageChrome: NewSessionPageChrome(
         maxContentWidth: maxContentWidth,
         topBar: DesktopPageToolbar(
-          breadcrumb: (label: projectName ?? context.loc.sessionListTitle, onPressed: onOpenProject),
+          breadcrumb: (label: _projectLabel(context: context), onPressed: onOpenProject),
           status: null,
           title: context.loc.sessionListNewSession,
           subtitle: null,

@@ -153,6 +153,10 @@ void main() {
       find.descendant(of: find.byKey(const Key("new_session_project")), matching: find.text("Sesori")),
       findsOneWidget,
     );
+    expect(
+      find.descendant(of: find.byKey(const Key("desktop-page-breadcrumb")), matching: find.text("Sesori")),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const Key("new_session_project")));
     await tester.pumpAndSettle();
