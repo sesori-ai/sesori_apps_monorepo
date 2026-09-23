@@ -136,6 +136,10 @@ class const _ShellToolPreview({required final String command, required final Too
 
 class _ShellToolPreviewState() extends State<_ShellToolPreview> {
   bool _expanded = false;
+
+  /// Set by an expand and cleared once the panel has grown, so only the user's
+  /// own expand scrolls the transcript, never a later resize of the panel.
+  bool _revealPending = false;
   final _verticalController = ScrollController();
   final _horizontalController = ScrollController();
 
@@ -147,14 +151,27 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> {
   }
 
   void _toggle() {
-    setState(() => _expanded = !_expanded);
-    if (!_expanded) return;
+    setState(() {
+      _expanded = !_expanded;
+      _revealPending = _expanded;
+    });
+    // Reduced motion has no growth to wait for.
+    if (_expanded && context.isReducedMotion) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
+    }
+  }
+
+  void _reveal() {
+    if (!_revealPending || !mounted) return;
+    _revealPending = false;
     // The transcript is reversed. Growing a historical row otherwise pushes
     // its header above the viewport (and behind the floating navigation).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      Scrollable.ensureVisible(context, alignment: 0.5);
-    });
+    Scrollable.ensureVisible(
+      context,
+      alignment: 0.5,
+      duration: context.isReducedMotion ? Duration.zero : _disclosureDuration,
+      curve: Curves.easeOut,
+    );
   }
 
   @override
@@ -169,7 +186,7 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> {
     final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
     final rowStyle = state.status == ToolStatus.error ? style.copyWith(color: prego.colors.textErrorPrimary) : style;
 
-    return Column(
+    final disclosure = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Semantics(
@@ -331,6 +348,7 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> {
           ),
       ],
     );
+    return _AnimatedDisclosure(onEnd: _reveal, child: disclosure);
   }
 }
 
@@ -422,7 +440,7 @@ class _ToolOutputBlockState() extends State<_ToolOutputBlock> {
             monoStyle: monoStyle,
           );
 
-          return Column(
+          final block = Column(
             crossAxisAlignment: .start,
             children: [
               Stack(
@@ -465,8 +483,29 @@ class _ToolOutputBlockState() extends State<_ToolOutputBlock> {
                 ),
             ],
           );
+          return _AnimatedDisclosure(onEnd: null, child: block);
         },
       ),
+    );
+  }
+}
+
+const _disclosureDuration = Duration(milliseconds: 200);
+
+/// Eases a tool detail open and shut, growing down from its top edge.
+class const _AnimatedDisclosure({required final VoidCallback? onEnd, required final Widget child})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // No wrapper at all under reduced motion: a zero-duration AnimatedSize
+    // re-dirties itself inside its own layout pass.
+    if (context.isReducedMotion) return child;
+    return AnimatedSize(
+      duration: _disclosureDuration,
+      curve: Curves.easeOut,
+      alignment: AlignmentDirectional.topStart,
+      onEnd: onEnd,
+      child: child,
     );
   }
 }

@@ -33,6 +33,7 @@ Widget _app({
   Brightness brightness = Brightness.light,
   double width = 370,
   double textScale = 1,
+  bool disableAnimations = false,
 }) => MaterialApp(
   theme: buildPregoThemeData(brightness: brightness),
   localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -42,6 +43,7 @@ Widget _app({
       data: MediaQueryData(
         textScaler: TextScaler.linear(textScale),
         padding: const EdgeInsets.only(top: 62, bottom: 34),
+        disableAnimations: disableAnimations,
       ),
       child: Align(
         alignment: Alignment.topLeft,
@@ -223,6 +225,66 @@ void main() {
     expect(header.top, greaterThan(transcript.top + 80));
     expect(panel.bottom, lessThan(transcript.bottom - 40));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("shell details ease open and shut", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        part: _part(status: ToolStatus.completed, command: "pwd", output: "result", error: null),
+      ),
+    );
+    double height() => tester.getSize(find.byType(AnimatedSize)).height;
+    final closed = height();
+    await tester.tap(find.byKey(_toggle));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final opening = height();
+    await tester.pumpAndSettle();
+    final open = height();
+    expect(opening, allOf(greaterThan(closed), lessThan(open)));
+
+    await tester.tap(find.byKey(_toggle));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(height(), allOf(greaterThan(closed), lessThan(open)));
+    await tester.pumpAndSettle();
+    expect(height(), closed);
+  });
+
+  testWidgets("reduced motion opens shell details at once", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        disableAnimations: true,
+        part: _part(status: ToolStatus.completed, command: "pwd", output: "result", error: null),
+      ),
+    );
+    await tester.tap(find.byKey(_toggle));
+    await tester.pump();
+    expect(find.byType(AnimatedSize), findsNothing);
+    expect(tester.getSize(find.byKey(_viewport)).height, 144);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("long tool output eases open behind Show more", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        part: _part(
+          status: ToolStatus.completed,
+          command: null,
+          output: List.generate(20, (index) => "line $index").join("\n"),
+          error: null,
+        ),
+      ),
+    );
+    double height() => tester.getSize(find.byType(AnimatedSize)).height;
+    final collapsed = height();
+    await tester.tap(find.text("Show more"));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final opening = height();
+    await tester.pumpAndSettle();
+    expect(opening, allOf(greaterThan(collapsed), lessThan(height())));
+    expect(find.text("Show less"), findsOneWidget);
   });
 
   testWidgets("shell disclosure supports keyboard activation", (tester) async {

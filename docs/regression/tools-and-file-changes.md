@@ -33,11 +33,14 @@ sub-agent parts, plus the signal that a tool changed files.
   full available command, output and error in a 144 px-high two-axis scroll
   viewport. Copy command and Copy output preserve their respective exact text.
   Status stays visible outside the viewport; streamed updates do not close an
-  open panel. Expanding historical commands keeps the panel in view in the
-  reversed transcript, and screen safe-area insets do not displace its scrollbars.
+  open panel. The panel eases open and shut over 200 ms, growing down from the
+  row; expanding a historical command then glides it into view in the reversed
+  transcript, and screen safe-area insets do not displace its scrollbars.
+  Reduced motion opens and closes it at once.
   Tool attachments remain visible when details are collapsed.
   Older title-only payloads keep the ordinary row and existing output-copy and
-  expansion behavior. This presentation is shared by phone and desktop.
+  expansion behavior; long output's Show more and Show less ease the same way.
+  This presentation is shared by phone and desktop.
 - Plugin and shared message parts are sealed variants, so text, tool, subtask,
   file, agent, and retry data cannot be combined with unrelated part types. The
   shared variants retain the released `type` values and normalize known payloads
@@ -172,7 +175,7 @@ sub-agent parts, plus the signal that a tool changed files.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, enlarged text and both themes; attachment visibility and title-only older-peer rendering. Authoritative tool execution still requires a live turn. |
+| L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, eased and reduced-motion disclosure, enlarged text and both themes; attachment visibility and title-only older-peer rendering. Authoritative tool execution still requires a live turn. |
 | L2 Routine | Live plugin, representative: a file-editing tool produces a lightweight tool part with name and terminal status, while a shell tool preserves its command and bounded result. |
 | L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok target coverage: a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. Grok owned-phone coverage passed completed-tile rendering, exact read-only child navigation, and genuine permission Once. File diff/invalidation, mutating-tool permission linkage, failing-tool presentation, and permission denial remain unexecuted. |
 | L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity and status intact, shell commands retain their results, and non-shell snippets remain absent; a failing shell command surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. |
@@ -205,6 +208,8 @@ guarantee.
   completion.
 - Shell details grow without bound, lose long command/output text, copy a
   truncated preview, close during updates, or hide tool attachments when collapsed.
+- Tool details jump open or shut instead of easing, animate under reduced
+  motion, or a later resize of an open panel scrolls the transcript again.
 - Backend naming or payload shape reaches the client unnormalized, or a local
   path or unsafe URL crosses the attachment contract.
 - A part carries fields owned by another variant, or a released known-type
