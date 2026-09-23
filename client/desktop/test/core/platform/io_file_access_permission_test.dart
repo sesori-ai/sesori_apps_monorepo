@@ -21,13 +21,12 @@ void main() {
     final permission = IoFileAccessPermission.forTesting(
       urlLauncher: launcher,
       isMacOS: true,
-      homeDirectory: "/synthetic/home",
       probe: ({required filePath}) async {
         probed = filePath;
       },
     );
     expect(await permission.check(), FileAccessStatus.granted);
-    expect(probed, "/synthetic/home/Library/Application Support/com.apple.TCC/TCC.db");
+    expect(probed, "/Library/Application Support/com.apple.TCC/TCC.db");
     await permission.openSystemSettings();
     verify(() => launcher.launch(settings)).called(1);
     when(() => launcher.launch(settings)).thenAnswer((_) async => false);
@@ -39,24 +38,20 @@ void main() {
       final permission = IoFileAccessPermission.forTesting(
         urlLauncher: launcher,
         isMacOS: true,
-        homeDirectory: "/synthetic/home",
         probe: ({required filePath}) async => throw FileSystemException("fixture", filePath, OSError("fixture", code)),
       );
       expect(await permission.check(), code == 1 || code == 13 ? FileAccessStatus.denied : FileAccessStatus.unknown);
     });
   }
 
-  test("unsupported platforms and missing home never probe a protected file", () async {
-    for (final macOS in [false, true]) {
-      final permission = IoFileAccessPermission.forTesting(
-        urlLauncher: launcher,
-        isMacOS: macOS,
-        homeDirectory: null,
-        probe: ({required filePath}) async => fail("unexpected I/O"),
-      );
-      expect(await permission.check(), macOS ? FileAccessStatus.unknown : FileAccessStatus.unsupported);
-      if (!macOS) await permission.openSystemSettings();
-    }
+  test("unsupported platforms never probe a protected file", () async {
+    final permission = IoFileAccessPermission.forTesting(
+      urlLauncher: launcher,
+      isMacOS: false,
+      probe: ({required filePath}) async => fail("unexpected I/O"),
+    );
+    expect(await permission.check(), FileAccessStatus.unsupported);
+    await permission.openSystemSettings();
     verifyNever(() => launcher.launch(settings));
   });
 }
