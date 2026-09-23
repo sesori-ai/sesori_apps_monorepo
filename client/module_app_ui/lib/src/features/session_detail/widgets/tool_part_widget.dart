@@ -216,6 +216,9 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
       return;
     }
     final position = scrollable.position;
+    // A transcript shorter than its viewport cannot scroll; the row grows into
+    // the empty space above it instead of bouncing against the range.
+    if (position.maxScrollExtent <= position.minScrollExtent) return;
     final double shift;
     if (growth > 0) {
       final rowBottom = row.localToGlobal(Offset(0, row.size.height)).dy;

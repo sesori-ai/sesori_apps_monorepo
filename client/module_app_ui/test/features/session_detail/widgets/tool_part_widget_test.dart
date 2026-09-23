@@ -245,6 +245,42 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("a short transcript grows the row into the space above it", (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildPregoThemeData(brightness: Brightness.light),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SizedBox(
+            height: 500,
+            child: ListView(
+              reverse: true,
+              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+              children: [
+                const SizedBox(height: 60),
+                ToolPartWidget(
+                  part: _part(status: ToolStatus.completed, command: "pwd", output: "result", error: null),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    final before = tester.getRect(find.byKey(_toggle));
+
+    await tester.tap(find.byKey(_toggle));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    // No overscroll mid-animation, which would bounce back.
+    final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+    expect(position.pixels, 0);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.byKey(_toggle)).top, lessThan(before.top));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("the newest command opens upward, clear of the composer", (tester) async {
     // The transcript pads its bottom so the newest row clears the composer.
     await tester.pumpWidget(reversedTranscript(newerContent: 0, composerInset: 120));
