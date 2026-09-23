@@ -23,7 +23,7 @@ export "src/features/session_detail/widgets/assistant_message_card.dart";
 export "src/features/session_detail/widgets/attachment_collection_widget.dart";
 export "src/features/session_detail/widgets/background_task_row.dart";
 export "src/features/session_detail/widgets/background_tasks_bar.dart";
-export "src/features/session_detail/widgets/command_picker_sheet.dart";
+export "src/features/session_detail/widgets/command_picker.dart";
 export "src/features/session_detail/widgets/composer_options_accordion.dart";
 export "src/features/session_detail/widgets/composer_surface_style.dart";
 export "src/features/session_detail/widgets/error_message_card.dart";

@@ -17,6 +17,7 @@ class const DesktopSidebarActivityPopout({
       popoverWidth: 300,
       popoverMaxHeight: null,
       contentScrolls: false,
+      onClosed: null,
       popoverBorderRadius: PregoRadius.lg,
       screenPadding: EdgeInsetsDirectional.fromSTEB(
         railStart + constraints.maxWidth + PregoSpacing.md,

@@ -168,6 +168,7 @@ class const _ModelMenu({
   Widget build(BuildContext context) {
     return PregoPickerPopover(
       pointerWidth: 300,
+      onClosed: null,
       triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.memory_outlined,
         label: _resolveModelName(context, providers: providers, selected: selected),

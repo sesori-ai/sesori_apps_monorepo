@@ -1139,9 +1139,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailCommandSearch => 'Search commands';
 
   @override
-  String get sessionDetailCommandSearchHint => 'Name, description, or arguments';
-
-  @override
   String get sessionDetailNoCommands => 'No slash commands are available for this project.';
 
   @override

@@ -15,7 +15,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../composer_presentation_scope.dart";
-import "command_picker_sheet.dart";
+import "command_picker.dart";
 import "composer_options_accordion.dart";
 import "composer_surface_style.dart";
 import "prompt_editor_sheet.dart";
@@ -191,6 +191,11 @@ class _PromptInputState() extends State<PromptInput> {
   /// until the post-frame focus request lands. Cleared when focus leaves.
   bool _typingRequested = false;
 
+  /// Keeps the typing layout while the slash-command picker is open over it:
+  /// the picker's search takes focus, and a layout swap would drop the
+  /// picker's anchor.
+  bool _typingPinnedByPicker = false;
+
   /// Whether the field holds sendable text. Mirrored into state so the
   /// composer only rebuilds when emptiness flips (layout + send/stop swap),
   /// not on every keystroke.
@@ -321,7 +326,12 @@ class _PromptInputState() extends State<PromptInput> {
   /// Whether the expanded typing container is showing (vs. the resting
   /// hold-to-talk / compact pills).
   bool get _showsTypingLayout =>
-      _typingRequested || _focusNode.hasFocus || _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
+      _typingRequested ||
+      _typingPinnedByPicker ||
+      _focusNode.hasFocus ||
+      _hasText ||
+      widget.stagedCommand != null ||
+      _attachments.isNotEmpty;
 
   /// The layout the composer would rest in right now, ignoring any pinned
   /// voice interaction.
@@ -1015,16 +1025,6 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  Future<void> _openCommandPicker() async {
-    final selected = await CommandPickerSheet.show(
-      context,
-      commands: widget.availableCommands,
-    );
-    if (!mounted || selected == null) return;
-    widget.onCommandSelected(selected);
-    _focusComposerField();
-  }
-
   Future<void> _openEditorSheet() async {
     await PromptEditorSheet.show(
       context,
@@ -1694,12 +1694,32 @@ class _PromptInputState() extends State<PromptInput> {
   static const double _actionButtonSize = 44;
 
   Widget _buildOptionsAccordion() {
-    return ComposerOptionsAccordion(
-      actionsEnabled: _voicePresentation == _VoicePresentation.idle,
-      alwaysOpen: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
-      showAttachImage: widget.attachmentsSupported ?? false,
-      onSlashCommandsTap: _openCommandPicker,
-      onAttachImageTap: _handleAttachImage,
+    return PregoPickerPopover(
+      pointerWidth: 360,
+      onClosed: () {
+        if (mounted) _updateComposerState(update: () => _typingPinnedByPicker = false);
+      },
+      triggerBuilder: (context, toggle) => ComposerOptionsAccordion(
+        actionsEnabled: _voicePresentation == _VoicePresentation.idle,
+        alwaysOpen: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
+        showAttachImage: widget.attachmentsSupported ?? false,
+        onSlashCommandsTap: () {
+          _typingPinnedByPicker = _layout == ComposerSurfaceLayout.typing;
+          toggle();
+        },
+        onAttachImageTap: _handleAttachImage,
+      ),
+      contentBuilder: (context, close) => CommandPicker(
+        commands: widget.availableCommands,
+        onCommandSelected: (command) {
+          close();
+          // App shortcuts can change the session under the open picker.
+          if (!mounted) return;
+          widget.onCommandSelected(command);
+          _focusComposerField();
+        },
+        onClose: close,
+      ),
     );
   }
 

@@ -2167,12 +2167,6 @@ abstract class AppLocalizations {
   /// **'Search commands'**
   String get sessionDetailCommandSearch;
 
-  /// Placeholder describing the searchable fields in the slash-command picker.
-  ///
-  /// In en, this message translates to:
-  /// **'Name, description, or arguments'**
-  String get sessionDetailCommandSearchHint;
-
   /// No description provided for @sessionDetailNoCommands.
   ///
   /// In en, this message translates to:
