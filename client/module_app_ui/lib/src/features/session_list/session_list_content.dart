@@ -133,8 +133,8 @@ class const SessionListContent({
                       padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 12),
                       child: Text(
                         heading,
-                        style: context.prego.textTheme.textSm.regular.copyWith(
-                          color: context.prego.colors.textSecondary,
+                        style: context.prego.textTheme.textSm.medium.copyWith(
+                          color: context.prego.colors.textTertiary,
                         ),
                       ),
                     ),

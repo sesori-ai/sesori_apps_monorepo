@@ -18,7 +18,7 @@ class const DesktopSidebarSectionHeader({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final color = prego.colors.textSecondary;
+    final color = prego.colors.textTertiary;
     return DesktopSidebarPhaseBuilder(
       expansion: expansion,
       // A hidden header must not stay in the focus order.
@@ -58,7 +58,7 @@ class const DesktopSidebarSectionHeader({
                                             label,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: prego.textTheme.textXs.bold.copyWith(color: color),
+                                            style: prego.textTheme.textXs.medium.copyWith(color: color),
                                           ),
                                         ),
                                         const SizedBox(width: PregoSpacing.xs),
