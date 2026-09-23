@@ -301,6 +301,7 @@ class const _SidebarFooter({
               popoverWidth: 300,
               popoverMaxHeight: null,
               contentScrolls: false,
+              onClosed: null,
               triggerBuilder: (context, toggle) => _SidebarButton(
                 label: loc.desktopSettingsThisComputer,
                 icon: const Icon(TablerRegular.server, size: 20),

@@ -94,6 +94,11 @@ stand alone, following the plan's `31.a` convention:
     grouped-card style.
   - A selection closes the popover and refocuses the composer, unless an app
     shortcut changed the session under the open picker.
+- An open picker reloads a catalog the session refreshes, and ignores an
+  older load that finishes late.
+- The composer keeps its typing layout while the picker is open. The search
+  takes focus from the composer, and the layout swap would drop the picker's
+  anchor. `PregoPopover` gains `onClosed` for this.
 - "Filters as you type after /" is the popover's focused search field on
   desktop. The composer text itself does not open the picker.
 - The no-match state keeps the existing "No slash commands are available for

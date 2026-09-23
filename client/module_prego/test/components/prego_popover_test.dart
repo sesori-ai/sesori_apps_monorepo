@@ -20,6 +20,7 @@ Widget _harness({
         child: PregoPopover(
           popoverMaxHeight: popoverMaxHeight,
           contentScrolls: contentScrolls,
+          onClosed: null,
           triggerBuilder: (context, toggle) => IconButton(
             onPressed: toggle,
             icon: const Icon(Icons.more_horiz),

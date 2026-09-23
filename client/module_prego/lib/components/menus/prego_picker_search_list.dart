@@ -26,6 +26,7 @@ class const PregoPickerPopover({
   required final double pointerWidth,
   required final PregoPopoverTriggerBuilder triggerBuilder,
   required final PregoPopoverContentBuilder contentBuilder,
+  required final VoidCallback? onClosed,
 }) extends StatelessWidget {
   /// How tall a composer picker or menu may grow before its rows scroll. It
   /// sizes itself to its rows below this; the cap only stops a long catalog
@@ -44,6 +45,7 @@ class const PregoPickerPopover({
       popoverBorderRadius: pointer ? PregoRadius.md : PregoRadius.x4l,
       triggerBuilder: triggerBuilder,
       contentBuilder: contentBuilder,
+      onClosed: onClosed,
     );
   }
 }

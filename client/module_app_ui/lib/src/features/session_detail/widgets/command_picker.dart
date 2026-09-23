@@ -40,17 +40,26 @@ class _CommandPickerState() extends State<CommandPicker> {
     unawaited(_loadEntries());
   }
 
+  @override
+  void didUpdateWidget(CommandPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The session refreshed its catalog under the open picker.
+    if (!identical(oldWidget.commands, widget.commands)) unawaited(_loadEntries());
+  }
+
   Future<void> _loadEntries() async {
+    final commands = widget.commands;
     List<CommandPickerEntry> entries;
     try {
-      entries = await compute(_buildEntries, widget.commands);
+      entries = await compute(_buildEntries, commands);
     } catch (error, stackTrace) {
       // Fail soft: show the empty state rather than leaving the picker stuck
       // on the spinner with an uncaught async error.
       loge("Command picker entry build failed", error, stackTrace);
       entries = const [];
     }
-    if (!mounted) return;
+    // A newer catalog arrived while this one loaded.
+    if (!mounted || !identical(commands, widget.commands)) return;
     setState(() {
       _entries = entries;
       _rows = _rowsFor(entries: entries);

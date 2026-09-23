@@ -46,6 +46,9 @@ class const PregoPopover({
   /// pinned above a list, instead of the popover scrolling it.
   required final bool contentScrolls,
 
+  /// Called once the popover has closed, however it was dismissed.
+  required final VoidCallback? onClosed,
+
   /// Corner radius of the open popover.
   final double popoverBorderRadius = 24,
 
@@ -63,7 +66,10 @@ class const PregoPopover({
         reverseMotion: const Spring.snappy(),
         // No alignment: the panel positions itself from the trigger rect so it can
         // clamp to the screen edges.
-        triggerBuilder: (context, showModal) => triggerBuilder(context, () => unawaited(showModal())),
+        triggerBuilder: (context, showModal) => triggerBuilder(
+          context,
+          () => unawaited(showModal().then((_) => onClosed?.call())),
+        ),
         builder: (context, triggerRect) => AnchoredFlatPanel(
           triggerRect: triggerRect,
           placement: AnchoredPanelPlacement.besideTrigger,

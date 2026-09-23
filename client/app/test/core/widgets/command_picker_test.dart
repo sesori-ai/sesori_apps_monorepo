@@ -51,6 +51,7 @@ Widget _buildApp({
           alignment: AlignmentDirectional.bottomStart,
           child: PregoPickerPopover(
             pointerWidth: 360,
+            onClosed: null,
             triggerBuilder: (context, toggle) => TextButton(onPressed: toggle, child: const Text("Open picker")),
             contentBuilder: (context, close) => CommandPicker(
               commands: commands,
@@ -110,6 +111,22 @@ void main() {
     expect(tester.widget<TextField>(find.byType(TextField)).decoration?.hintText, "Search commands");
     expect(find.byType(PregoTag), findsNWidgets(2));
     expect(tester.getTopLeft(find.text("/deploy")).dy, lessThan(tester.getTopLeft(find.text("/release")).dy));
+  });
+
+  testWidgets("an open picker loads a catalog the session refreshes", (tester) async {
+    await tester.pumpWidget(_buildApp(commands: _commands(), onSelected: (_) {}));
+    await _openPicker(tester: tester);
+    await _waitForEntries(tester: tester, until: find.text("/deploy"));
+
+    await tester.pumpWidget(
+      _buildApp(
+        commands: [_command(name: "review", description: null, hints: null, source: CommandSource.skill)],
+        onSelected: (_) {},
+      ),
+    );
+    await _waitForEntries(tester: tester, until: find.text("/review"));
+
+    expect(find.text("/deploy"), findsNothing);
   });
 
   for (final query in ["  RELEASE  ", "Cut a release", "version"]) {

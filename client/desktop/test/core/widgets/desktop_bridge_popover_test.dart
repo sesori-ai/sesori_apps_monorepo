@@ -49,6 +49,7 @@ void main() {
                   popoverWidth: 300,
                   popoverMaxHeight: null,
                   contentScrolls: false,
+                  onClosed: null,
                   triggerBuilder: (_, toggle) => TextButton(onPressed: toggle, child: const Text("Bridge control")),
                   contentBuilder: (_, close) =>
                       DesktopBridgePopover(close: close, onOpenSettings: () => settingsOpens++),

@@ -2571,6 +2571,26 @@ void main() {
     expect(find.byType(CommandPicker), findsOneWidget);
   });
 
+  testWidgets("the picker's search taking focus keeps the empty typing composer under it", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    final composerField = find.descendant(of: find.byType(PromptInput), matching: find.byType(EditableText));
+    expect(composerField, findsOneWidget);
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.slash));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.descendant(of: find.byType(CommandPicker), matching: find.byType(EditableText)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(CommandPicker), findsOneWidget);
+    expect(composerField, findsOneWidget);
+  });
+
   testWidgets("expand button opens the fullscreen editor sharing the composer text", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();

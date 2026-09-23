@@ -191,6 +191,11 @@ class _PromptInputState() extends State<PromptInput> {
   /// until the post-frame focus request lands. Cleared when focus leaves.
   bool _typingRequested = false;
 
+  /// Keeps the typing layout while the slash-command picker is open over it:
+  /// the picker's search takes focus, and a layout swap would drop the
+  /// picker's anchor.
+  bool _typingPinnedByPicker = false;
+
   /// Whether the field holds sendable text. Mirrored into state so the
   /// composer only rebuilds when emptiness flips (layout + send/stop swap),
   /// not on every keystroke.
@@ -321,7 +326,12 @@ class _PromptInputState() extends State<PromptInput> {
   /// Whether the expanded typing container is showing (vs. the resting
   /// hold-to-talk / compact pills).
   bool get _showsTypingLayout =>
-      _typingRequested || _focusNode.hasFocus || _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
+      _typingRequested ||
+      _typingPinnedByPicker ||
+      _focusNode.hasFocus ||
+      _hasText ||
+      widget.stagedCommand != null ||
+      _attachments.isNotEmpty;
 
   /// The layout the composer would rest in right now, ignoring any pinned
   /// voice interaction.
@@ -1686,11 +1696,17 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildOptionsAccordion() {
     return PregoPickerPopover(
       pointerWidth: 360,
+      onClosed: () {
+        if (mounted) _updateComposerState(update: () => _typingPinnedByPicker = false);
+      },
       triggerBuilder: (context, toggle) => ComposerOptionsAccordion(
         actionsEnabled: _voicePresentation == _VoicePresentation.idle,
         alwaysOpen: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
         showAttachImage: widget.attachmentsSupported ?? false,
-        onSlashCommandsTap: toggle,
+        onSlashCommandsTap: () {
+          _typingPinnedByPicker = _layout == ComposerSurfaceLayout.typing;
+          toggle();
+        },
         onAttachImageTap: _handleAttachImage,
       ),
       contentBuilder: (context, close) => CommandPicker(
