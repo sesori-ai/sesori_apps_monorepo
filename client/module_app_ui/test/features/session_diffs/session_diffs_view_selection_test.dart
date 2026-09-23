@@ -62,7 +62,7 @@ void main() {
     final selectionDisabled = find.byWidgetPredicate(
       (widget) => widget is SelectionContainer && widget.delegate == null,
     );
-    final titleElements = find.text("File Changes").evaluate().toList(growable: false);
+    final titleElements = find.text("File changes").evaluate().toList(growable: false);
     expect(titleElements, isNotEmpty);
     for (final titleElement in titleElements) {
       expect(

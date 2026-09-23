@@ -81,7 +81,7 @@ void main() {
       await tester.tap(find.text("Sign in with GitHub"), warnIfMissed: false);
       await tester.tap(find.text("Sign in with Apple"), warnIfMissed: false);
       await tester.tap(find.text("Sign in with Google"), warnIfMissed: false);
-      await tester.tap(find.text("Sign in with Email"), warnIfMissed: false);
+      await tester.tap(find.text("Sign in with email"), warnIfMissed: false);
       await tester.pump();
 
       expect(calls, isEmpty);

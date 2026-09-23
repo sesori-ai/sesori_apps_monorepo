@@ -94,7 +94,7 @@ void main() {
       ),
     );
 
-    expect(find.text("Connection Lost"), findsOneWidget);
+    expect(find.text("Connection lost"), findsOneWidget);
     final alert = tester.widget<PregoInlineAlertsNotifications>(find.byType(PregoInlineAlertsNotifications));
     expect(alert.type, PregoInlineAlertsNotificationsType.error);
     expect(alert.icon, TablerRegular.cloud_off);

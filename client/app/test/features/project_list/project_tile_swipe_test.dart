@@ -215,6 +215,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
-    expect(find.widgetWithText(InkWell, "Hide Project"), findsOneWidget);
+    expect(find.widgetWithText(InkWell, "Hide project"), findsOneWidget);
   });
 }

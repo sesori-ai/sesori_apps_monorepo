@@ -129,7 +129,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ConnectionBanner), findsOneWidget);
-    expect(find.text("Connection Lost"), findsOneWidget);
+    expect(find.text("Connection lost"), findsOneWidget);
     expect(find.text("Reconnect"), findsOneWidget);
   });
 }

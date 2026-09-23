@@ -397,7 +397,7 @@ void main() {
     expect(find.text("Development build"), findsOneWidget);
     expect(find.text("alex"), findsNothing);
     expect(find.text("Warm harness on session open"), findsNothing);
-    expect(find.text("AI Interactions"), findsNothing);
+    expect(find.text("AI interactions"), findsNothing);
     verify(bridgeControl.refreshLaunchAtLogin).called(1);
     verifyNever(repository.load);
     await tester.tap(find.text("Dark"));
@@ -422,9 +422,9 @@ void main() {
     expect(find.text("Warm harness on session open"), findsOneWidget);
     expect(find.text("Launch Sesori at login"), findsNothing);
     expect(find.text("Quit Sesori"), findsNothing);
-    await tester.ensureVisible(find.text("Open Logs"));
+    await tester.ensureVisible(find.text("Open logs"));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("Open Logs"));
+    await tester.tap(find.text("Open logs"));
     verify(bridgeControl.openLogs).called(1);
     verifyNever(bridgeControl.refreshLaunchAtLogin);
     final interval = find.byKey(const Key("pull_request_refresh_interval"));
@@ -446,9 +446,9 @@ void main() {
 
   testWidgets("Notifications uses desktop attention and Account retains supervised logout", (tester) async {
     await open(tester: tester, tab: DesktopSettingsTab.notifications);
-    expect(find.text("AI Interactions"), findsOneWidget);
-    expect(find.text("Session Messages"), findsNothing);
-    expect(find.text("Connection Status"), findsNothing);
+    expect(find.text("AI interactions"), findsOneWidget);
+    expect(find.text("Session messages"), findsNothing);
+    expect(find.text("Connection status"), findsNothing);
     await tester.tap(find.byType(PregoSwitch));
     await tester.pumpAndSettle();
     expect(attentionPreferences.value, DesktopAttentionPreference.disabled);
@@ -457,7 +457,7 @@ void main() {
     expect(find.text("alex"), findsOneWidget);
     expect(find.bySemanticsLabel("Back"), findsNothing);
     expect(find.text("Profile"), findsNothing);
-    await tester.tap(find.text("Log Out"));
+    await tester.tap(find.text("Log out"));
     await tester.pumpAndSettle();
     verify(authGateCubit.signOut).called(1);
     expect(logoutCompletions, 1);
@@ -469,7 +469,7 @@ void main() {
     testWidgets("failed logout ${failure.name} keeps Account open", (tester) async {
       when(authGateCubit.signOut).thenAnswer((_) async => failure);
       final router = await open(tester: tester, tab: DesktopSettingsTab.account);
-      await tester.tap(find.text("Log Out"));
+      await tester.tap(find.text("Log out"));
       await tester.pumpAndSettle();
       expect(logoutCompletions, 0);
       expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
@@ -494,7 +494,7 @@ void main() {
     final logout = Completer<DesktopLogoutOutcome>();
     when(authGateCubit.signOut).thenAnswer((_) => logout.future);
     final router = await open(tester: tester, tab: DesktopSettingsTab.account);
-    await tester.tap(find.text("Log Out"));
+    await tester.tap(find.text("Log out"));
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     logout.complete(DesktopLogoutOutcome.completed);

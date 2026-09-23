@@ -328,7 +328,7 @@ abstract class AppLocalizations {
   /// Action to reclaim local or relay bridge ownership.
   ///
   /// In en, this message translates to:
-  /// **'Take Over'**
+  /// **'Take over'**
   String get desktopBridgeTakeOver;
 
   /// Sidebar notice for supervised bridge authentication recovery.
@@ -340,7 +340,7 @@ abstract class AppLocalizations {
   /// Action to recover authentication and start the local bridge.
   ///
   /// In en, this message translates to:
-  /// **'Start Bridge'**
+  /// **'Start bridge'**
   String get desktopBridgeStart;
 
   /// Sidebar notice when automatic bridge crash recovery stops.
@@ -352,7 +352,7 @@ abstract class AppLocalizations {
   /// Action to open the local bridge's diagnostic logs.
   ///
   /// In en, this message translates to:
-  /// **'Open Logs'**
+  /// **'Open logs'**
   String get desktopBridgeOpenLogs;
 
   /// Heading for controls of the bridge supervised on this computer, not the desktop relay client.
@@ -364,7 +364,7 @@ abstract class AppLocalizations {
   /// Action that turns off the supervised local bridge without quitting Sesori.
   ///
   /// In en, this message translates to:
-  /// **'Stop Bridge'**
+  /// **'Stop bridge'**
   String get desktopBridgeStop;
 
   /// Secondary popover action opening bridge configuration.
@@ -424,7 +424,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectListDefaultName.
   ///
   /// In en, this message translates to:
-  /// **'Default Project'**
+  /// **'Default project'**
   String get projectListDefaultName;
 
   /// No description provided for @projectListRefreshSuccess.
@@ -646,7 +646,7 @@ abstract class AppLocalizations {
   /// No description provided for @connectionLostTitle.
   ///
   /// In en, this message translates to:
-  /// **'Connection Lost'**
+  /// **'Connection lost'**
   String get connectionLostTitle;
 
   /// No description provided for @connectionLostReconnect.
@@ -682,7 +682,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLogout.
   ///
   /// In en, this message translates to:
-  /// **'Log Out'**
+  /// **'Log out'**
   String get settingsLogout;
 
   /// No description provided for @settingsSectionAccount.
@@ -1420,7 +1420,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessesRegisteredSection.
   ///
   /// In en, this message translates to:
-  /// **'Registered Harnesses'**
+  /// **'Registered harnesses'**
   String get harnessesRegisteredSection;
 
   /// No description provided for @harnessesEmptyTitle.
@@ -1666,7 +1666,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBasicUsageAnalyticsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Basic Usage Analytics'**
+  /// **'Basic usage analytics'**
   String get settingsBasicUsageAnalyticsTitle;
 
   /// No description provided for @settingsBasicUsageAnalyticsDescription.
@@ -1798,13 +1798,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLegalTerms.
   ///
   /// In en, this message translates to:
-  /// **'Terms of Service'**
+  /// **'Terms of service'**
   String get settingsLegalTerms;
 
   /// No description provided for @settingsLegalPrivacy.
   ///
   /// In en, this message translates to:
-  /// **'Privacy Policy'**
+  /// **'Privacy policy'**
   String get settingsLegalPrivacy;
 
   /// Button that re-fetches a legal document after the load failed
@@ -1834,7 +1834,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationSectionAi.
   ///
   /// In en, this message translates to:
-  /// **'AI Notifications'**
+  /// **'AI notifications'**
   String get notificationSectionAi;
 
   /// No description provided for @notificationSectionSystem.
@@ -1882,7 +1882,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCategoryAiInteraction.
   ///
   /// In en, this message translates to:
-  /// **'AI Interactions'**
+  /// **'AI interactions'**
   String get notificationCategoryAiInteraction;
 
   /// No description provided for @notificationCategoryAiInteractionDescription.
@@ -1894,7 +1894,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCategorySessionMessage.
   ///
   /// In en, this message translates to:
-  /// **'Session Messages'**
+  /// **'Session messages'**
   String get notificationCategorySessionMessage;
 
   /// No description provided for @notificationCategorySessionMessageDescription.
@@ -1906,7 +1906,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCategoryConnectionStatus.
   ///
   /// In en, this message translates to:
-  /// **'Connection Status'**
+  /// **'Connection status'**
   String get notificationCategoryConnectionStatus;
 
   /// No description provided for @notificationCategoryConnectionStatusDescription.
@@ -1918,7 +1918,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCategorySystemUpdate.
   ///
   /// In en, this message translates to:
-  /// **'System Updates'**
+  /// **'System updates'**
   String get notificationCategorySystemUpdate;
 
   /// No description provided for @sessionListTitle.
@@ -2830,7 +2830,7 @@ abstract class AppLocalizations {
   /// No description provided for @signInWithEmail.
   ///
   /// In en, this message translates to:
-  /// **'Sign in with Email'**
+  /// **'Sign in with email'**
   String get signInWithEmail;
 
   /// No description provided for @emailLabel.
@@ -3052,7 +3052,7 @@ abstract class AppLocalizations {
   /// No description provided for @addProject.
   ///
   /// In en, this message translates to:
-  /// **'Add Project'**
+  /// **'Add project'**
   String get addProject;
 
   /// Primary action of the add-project sheet: registers the folder the browser is currently showing as a Sesori project.
@@ -3160,7 +3160,7 @@ abstract class AppLocalizations {
   /// No description provided for @hideProject.
   ///
   /// In en, this message translates to:
-  /// **'Hide Project'**
+  /// **'Hide project'**
   String get hideProject;
 
   /// Label on the swipe-revealed hide button of a project row. Kept short — the button is a compact pill.
@@ -3202,7 +3202,7 @@ abstract class AppLocalizations {
   /// No description provided for @addProjectContinueWithoutGit.
   ///
   /// In en, this message translates to:
-  /// **'Continue Without Git'**
+  /// **'Continue without Git'**
   String get addProjectContinueWithoutGit;
 
   /// No description provided for @addProjectEnableGit.
@@ -3298,13 +3298,13 @@ abstract class AppLocalizations {
   /// No description provided for @renameSessionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Rename Session'**
+  /// **'Rename session'**
   String get renameSessionTitle;
 
   /// No description provided for @renameProjectTitle.
   ///
   /// In en, this message translates to:
-  /// **'Rename Project'**
+  /// **'Rename project'**
   String get renameProjectTitle;
 
   /// No description provided for @renameSessionHint.
@@ -3544,7 +3544,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionDetailOpenHarnessSettings.
   ///
   /// In en, this message translates to:
-  /// **'Open Harness Settings'**
+  /// **'Open harness settings'**
   String get sessionDetailOpenHarnessSettings;
 
   /// No description provided for @sessionListArchiveConfirmAction.
@@ -3568,7 +3568,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionListForceDeleteAction.
   ///
   /// In en, this message translates to:
-  /// **'Force Delete'**
+  /// **'Force delete'**
   String get sessionListForceDeleteAction;
 
   /// No description provided for @sessionListCleanupIssueUnstagedChanges.
@@ -3700,7 +3700,7 @@ abstract class AppLocalizations {
   /// No description provided for @diffFileChangesTitle.
   ///
   /// In en, this message translates to:
-  /// **'File Changes'**
+  /// **'File changes'**
   String get diffFileChangesTitle;
 
   /// No description provided for @diffFilesChangedCount.

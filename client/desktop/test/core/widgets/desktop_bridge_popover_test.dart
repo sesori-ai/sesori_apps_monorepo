@@ -68,11 +68,11 @@ void main() {
     await pumpPopover(tester: tester, state: _state());
     expect(find.text("Local bridge"), findsOneWidget);
     expect(find.text("Off"), findsOneWidget);
-    expect(find.text("Take Over"), findsNothing);
+    expect(find.text("Take over"), findsNothing);
     expect(find.text("Quit Sesori"), findsNothing);
     expect(find.byType(PregoSwitch), findsNothing);
-    await tester.tap(find.text("Start Bridge"));
-    await tester.tap(find.text("Open Logs"));
+    await tester.tap(find.text("Start bridge"));
+    await tester.tap(find.text("Open logs"));
     verify(() => bridge.startBridge()).called(1);
     verify(() => bridge.openLogs()).called(1);
     verifyNever(() => bridge.quit());
@@ -84,13 +84,13 @@ void main() {
     await pumpPopover(tester: tester, state: _state());
     updates.add(_state(process: const BridgeProcessContention(), activity: BridgeControlActivity.toggling));
     await tester.pumpAndSettle();
-    expect(find.text("Start Bridge"), findsNothing);
+    expect(find.text("Start bridge"), findsNothing);
     expect(tester.widget<PregoButtonsSolid>(find.byType(PregoButtonsSolid)).onPressed, isNull);
-    await tester.tap(find.text("Open Logs"));
+    await tester.tap(find.text("Open logs"));
     verify(() => bridge.openLogs()).called(1);
     updates.add(_state(process: const BridgeProcessContention()));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("Take Over"));
+    await tester.tap(find.text("Take over"));
     verify(() => bridge.takeOver()).called(1);
   });
 
@@ -102,7 +102,7 @@ void main() {
         target: BridgeProcessDesiredState.off,
       ),
     );
-    expect(find.text("Stop Bridge"), findsNothing);
+    expect(find.text("Stop bridge"), findsNothing);
     await tester.tap(find.text("Retry"));
     verify(() => bridge.recoverConnection()).called(1);
   });
@@ -115,7 +115,7 @@ void main() {
         target: BridgeProcessDesiredState.off,
       ),
     );
-    await tester.tap(find.text("Stop Bridge"));
+    await tester.tap(find.text("Stop bridge"));
     updates.add(
       _state(
         process: const BridgeProcessRunning(pid: 42),
@@ -131,8 +131,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text("Take Over"), findsOneWidget);
-    await tester.tap(find.text("Stop Bridge"));
+    expect(find.text("Take over"), findsOneWidget);
+    await tester.tap(find.text("Stop bridge"));
     verify(() => bridge.stopBridge()).called(2);
     verifyNever(() => bridge.takeOver());
   });
