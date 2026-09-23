@@ -1,3 +1,5 @@
+import "dart:math";
+
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -148,9 +150,15 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
   /// The user's choice. The panel itself stays mounted until it has closed.
   bool get _expanded => _disclosure.isForwardOrCompleted;
 
+  final _panelKey = GlobalKey();
+
+  /// How much of the panel the transcript has already made room for.
+  double _shownFactor = 0;
+
   @override
   void initState() {
     super.initState();
+    _panelSize.addListener(_keepHeaderInPlace);
     _disclosure.addStatusListener(_onDisclosureStatus);
   }
 
@@ -165,7 +173,11 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
 
   void _toggle() {
     if (context.isReducedMotion) {
-      _disclosure.value = _expanded ? 0 : 1;
+      final opening = !_expanded;
+      _disclosure.value = opening ? 1 : 0;
+      // The panel is not laid out yet, so its height is known only after
+      // this frame.
+      if (opening) WidgetsBinding.instance.addPostFrameCallback((_) => _keepHeaderInPlace());
     } else if (_expanded) {
       _disclosure.reverse();
     } else {
@@ -175,27 +187,43 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
   }
 
   void _onDisclosureStatus(AnimationStatus status) {
-    if (status.isCompleted) {
-      // Only the user's own expand completes the disclosure, so a later resize
-      // of the open panel never scrolls the transcript.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
-    } else if (status.isDismissed) {
-      // Drops the closed panel, so its copy buttons do not stay reachable at
-      // zero height.
-      setState(() {});
-    }
+    // Drops the closed panel, so its copy buttons do not stay reachable at
+    // zero height.
+    if (status.isDismissed) setState(() {});
   }
 
-  void _reveal() {
+  /// Runs on every disclosure tick, before layout. A reversed transcript
+  /// grows a row upward, which would push the tapped header away (and behind
+  /// the floating navigation). Scrolling by the same amount in the same frame
+  /// keeps the header still and grows the panel downward, as long as there is
+  /// room below the row; past that, the row grows upward like new content.
+  void _keepHeaderInPlace() {
     if (!mounted) return;
-    // The transcript is reversed. Growing a historical row otherwise pushes
-    // its header above the viewport (and behind the floating navigation).
-    Scrollable.ensureVisible(
-      context,
-      alignment: 0.5,
-      duration: context.isReducedMotion ? Duration.zero : _disclosureDuration,
-      curve: Curves.easeOut,
-    );
+    final panel = _panelKey.currentContext?.findRenderObject();
+    // Not laid out yet: the growth so far is applied once it is.
+    if (panel is! RenderBox || !panel.hasSize) return;
+    final growth = panel.size.height * (_panelSize.value - _shownFactor);
+    _shownFactor = _panelSize.value;
+    final scrollable = Scrollable.maybeOf(context);
+    final row = context.findRenderObject();
+    final viewport = scrollable?.context.findRenderObject();
+    if (scrollable == null ||
+        scrollable.axisDirection != AxisDirection.up ||
+        row is! RenderBox ||
+        viewport is! RenderBox ||
+        growth == 0) {
+      return;
+    }
+    final position = scrollable.position;
+    final double shift;
+    if (growth > 0) {
+      final rowBottom = row.localToGlobal(Offset(0, row.size.height)).dy;
+      final viewportBottom = viewport.localToGlobal(Offset(0, viewport.size.height)).dy;
+      shift = min(growth, max(0, viewportBottom - rowBottom));
+    } else {
+      shift = max(growth, position.minScrollExtent - position.pixels);
+    }
+    if (shift != 0) position.jumpTo(position.pixels + shift);
   }
 
   @override
@@ -257,7 +285,7 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
             sizeFactor: _panelSize,
             alignment: AlignmentDirectional.topStart,
             child: Container(
-              key: const ValueKey("shellTool.panel"),
+              key: _panelKey,
               width: double.infinity,
               padding: EdgeInsets.all(prego.spacing.md),
               decoration: BoxDecoration(

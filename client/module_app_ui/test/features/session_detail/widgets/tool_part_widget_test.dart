@@ -6,8 +6,13 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 const _toggle = ValueKey("shellTool.toggle");
-const _panel = ValueKey("shellTool.panel");
 const _viewport = ValueKey("shellTool.viewport");
+
+/// The open details around the terminal viewport.
+final _panel = find.ancestor(
+  of: find.byKey(_viewport),
+  matching: find.byWidgetPredicate((widget) => widget is Container && widget.key is GlobalKey),
+);
 
 /// The command row plus whatever part of the panel is showing.
 double _shellHeight(WidgetTester tester) =>
@@ -70,13 +75,13 @@ void main() {
         ),
       );
       expect(find.text(r"Ran $ git status --short"), findsOneWidget);
-      expect(find.byKey(_panel), findsNothing);
+      expect(_panel, findsNothing);
       expect(tester.getSize(find.byKey(_toggle)).height, greaterThanOrEqualTo(44));
       await tester.tap(find.byKey(_toggle));
       await tester.pumpAndSettle();
 
       final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
-      final decoration = tester.widget<Container>(find.byKey(_panel)).decoration! as BoxDecoration;
+      final decoration = tester.widget<Container>(_panel).decoration! as BoxDecoration;
       expect(decoration.color, prego.colors.bgSurface2);
       expect(decoration.borderRadius, BorderRadius.circular(12));
       expect(decoration.border?.top.color, prego.colors.borderPrimary);
@@ -86,7 +91,7 @@ void main() {
       expect(find.text("\$ git status --short\n\n M file.dart"), findsOneWidget);
       await tester.tap(find.byKey(_toggle));
       await tester.pumpAndSettle();
-      expect(find.byKey(_panel), findsNothing);
+      expect(_panel, findsNothing);
       expect(tester.takeException(), isNull);
     });
   }
@@ -166,14 +171,14 @@ void main() {
     for (final scrollbar in find.byType(RawScrollbar).evaluate()) {
       expect(MediaQuery.paddingOf(scrollbar), EdgeInsets.zero);
     }
-    final panelHeight = tester.getSize(find.byKey(_panel)).height;
+    final panelHeight = tester.getSize(_panel).height;
     await tester.drag(viewport, const Offset(-150, 0));
     await tester.pumpAndSettle();
     expect(horizontal.offset, greaterThan(0));
     await tester.drag(viewport, const Offset(0, -100));
     await tester.pumpAndSettle();
     expect(vertical.offset, greaterThan(0));
-    expect(tester.getSize(find.byKey(_panel)).height, panelHeight);
+    expect(tester.getSize(_panel).height, panelHeight);
     expect(tester.takeException(), isNull);
   });
 
@@ -191,43 +196,64 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.byKey(_panel), findsOneWidget);
+    expect(_panel, findsOneWidget);
     expect(find.text("\$ make check\n\nAll checks passed"), findsOneWidget);
     expect(find.text("Done"), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("expanding a historical command stays visible in a reversed transcript", (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: buildPregoThemeData(brightness: Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: SizedBox(
-            key: const ValueKey("transcript"),
-            height: 500,
-            child: ListView(
-              reverse: true,
-              children: [
-                const SizedBox(height: 350),
-                ToolPartWidget(
-                  part: _part(status: ToolStatus.completed, command: "pwd", output: "result", error: null),
-                ),
-                const SizedBox(height: 500),
-              ],
+  Widget reversedTranscript({required double newerContent}) => MaterialApp(
+    theme: buildPregoThemeData(brightness: Brightness.light),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(
+      body: SizedBox(
+        key: const ValueKey("transcript"),
+        height: 500,
+        child: ListView(
+          reverse: true,
+          children: [
+            SizedBox(height: newerContent),
+            ToolPartWidget(
+              part: _part(status: ToolStatus.completed, command: "pwd", output: "result", error: null),
             ),
-          ),
+            const SizedBox(height: 500),
+          ],
         ),
       ),
-    );
+    ),
+  );
+
+  testWidgets("a historical command keeps its header still while it opens and closes", (tester) async {
+    await tester.pumpWidget(reversedTranscript(newerContent: 350));
+    final before = tester.getRect(find.byKey(_toggle));
+
+    await tester.tap(find.byKey(_toggle));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    // Mid-animation too: the scroll moves with the panel, not after it.
+    expect(tester.getRect(find.byKey(_toggle)), before);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.byKey(_toggle)), before);
+    final transcript = tester.getRect(find.byKey(const ValueKey("transcript")));
+    expect(tester.getRect(_panel).bottom, lessThan(transcript.bottom));
+
     await tester.tap(find.byKey(_toggle));
     await tester.pumpAndSettle();
+    expect(tester.getRect(find.byKey(_toggle)), before);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("the newest command opens upward, with no room below it", (tester) async {
+    await tester.pumpWidget(reversedTranscript(newerContent: 0));
+    final before = tester.getRect(find.byKey(_toggle));
+
+    await tester.tap(find.byKey(_toggle));
+    await tester.pumpAndSettle();
+
     final transcript = tester.getRect(find.byKey(const ValueKey("transcript")));
-    final header = tester.getRect(find.byKey(_toggle));
-    final panel = tester.getRect(find.byKey(_panel));
-    expect(header.top, greaterThan(transcript.top + 80));
-    expect(panel.bottom, lessThan(transcript.bottom - 40));
+    expect(tester.getRect(find.byKey(_toggle)).top, lessThan(before.top));
+    expect(tester.getRect(_panel).bottom, moreOrLessEquals(transcript.bottom));
     expect(tester.takeException(), isNull);
   });
 
@@ -256,10 +282,10 @@ void main() {
     expect(height(), allOf(greaterThan(closed), lessThan(halfway)));
     // The details stay on screen while they close, rather than leaving a
     // blank area to collapse.
-    expect(find.byKey(_panel), findsOneWidget);
+    expect(_panel, findsOneWidget);
     await tester.pumpAndSettle();
     expect(height(), closed);
-    expect(find.byKey(_panel), findsNothing);
+    expect(_panel, findsNothing);
   });
 
   // Android's "Remove animations" arrives through MediaQuery, iOS's "Reduce
@@ -288,7 +314,7 @@ void main() {
       await tester.tap(find.byKey(_toggle));
       await tester.pump();
       expect(height(), closed);
-      expect(find.byKey(_panel), findsNothing);
+      expect(_panel, findsNothing);
       expect(tester.takeException(), isNull);
     });
   }
@@ -324,10 +350,10 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
-    expect(find.byKey(_panel), findsOneWidget);
+    expect(_panel, findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
-    expect(find.byKey(_panel), findsNothing);
+    expect(_panel, findsNothing);
   });
 
   testWidgets("shell fits a narrow pane with enlarged text", (tester) async {
@@ -345,7 +371,7 @@ void main() {
     );
     await tester.tap(find.byKey(_toggle));
     await tester.pumpAndSettle();
-    expect(tester.getSize(find.byKey(_panel)).width, 240);
+    expect(tester.getSize(_panel).width, 240);
     expect(tester.takeException(), isNull);
   });
 
