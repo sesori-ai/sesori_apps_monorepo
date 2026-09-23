@@ -1,5 +1,6 @@
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 
@@ -48,8 +49,8 @@ class const _SkippedPlaceholder({required final FileDiffSkipReason reason}) exte
       padding: const EdgeInsets.all(16),
       child: Text(
         message,
-        style: const TextStyle(
-          color: Colors.grey,
+        style: context.prego.textTheme.textSm.regular.copyWith(
+          color: context.prego.colors.textTertiary,
           fontStyle: FontStyle.italic,
         ),
       ),

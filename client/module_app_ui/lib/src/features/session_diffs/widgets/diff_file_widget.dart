@@ -27,6 +27,8 @@ class const DiffFileWidget({
   Widget _buildHeader(BuildContext context) {
     final vm = viewModel;
     final theme = DiffTheme.of(context);
+    final prego = context.prego;
+    final code = prego.textTheme.code;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
@@ -36,42 +38,20 @@ class const DiffFileWidget({
         ),
       ),
       child: Row(
+        spacing: PregoSpacing.xs,
         children: [
-          // File name
           Expanded(
             child: Text(
               vm.fileName,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ).monospace,
+              style: code.copyWith(fontWeight: FontWeight.w500, color: prego.colors.textPrimary),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 8),
-          // +N stats
-          Text(
-            "+${vm.additions}",
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.green.shade700,
-            ).monospace,
-          ),
-          const SizedBox(width: 4),
-          // -M stats
-          Text(
-            "-${vm.deletions}",
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.red.shade700,
-            ).monospace,
-          ),
-          const SizedBox(width: 8),
-          // Status badge
-          _buildStatusBadge(vm.status),
-          const SizedBox(width: 4),
-          // Chevron
+          // A zero side says nothing, so it is left out.
+          if (vm.additions > 0) Text("+${vm.additions}", style: code.copyWith(color: prego.colors.textSuccessPrimary)),
+          if (vm.deletions > 0) Text("−${vm.deletions}", style: code.copyWith(color: prego.colors.textErrorPrimary)),
+          _buildStatusLetter(context: context, status: vm.status),
           Icon(
             isExpanded ? Icons.expand_less : Icons.expand_more,
             size: PregoIconSize.md,
@@ -82,26 +62,16 @@ class const DiffFileWidget({
     );
   }
 
-  Widget _buildStatusBadge(FileDiffStatus? status) {
+  Widget _buildStatusLetter({required BuildContext context, required FileDiffStatus? status}) {
+    final colors = context.prego.colors;
     final (label, color) = switch (status) {
-      FileDiffStatus.added => ("A", Colors.green),
-      FileDiffStatus.deleted => ("D", Colors.red),
-      FileDiffStatus.modified || null => ("M", Colors.orange),
+      FileDiffStatus.added => ("A", colors.textSuccessPrimary),
+      FileDiffStatus.deleted => ("D", colors.textErrorPrimary),
+      FileDiffStatus.modified || null => ("M", colors.textWarningPrimary),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.shade100,
-        borderRadius: BorderRadius.circular(PregoRadius.xs),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color.shade800,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+    return Text(
+      label,
+      style: context.prego.textTheme.code.copyWith(color: color, fontWeight: FontWeight.w600),
     );
   }
 }

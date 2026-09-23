@@ -1138,16 +1138,10 @@
   "diffPermissionOnce": "Allow",
   "diffPermissionAlwaysAllow": "Always approve",
   "diffFileChangesTitle": "File Changes",
-  "diffFilesChangedCount": "{count} file{count, plural, =1{} other{s}} changed  +{additions} -{deletions}",
+  "diffFilesChangedCount": "{count} file{count, plural, =1{} other{s}} changed",
   "@diffFilesChangedCount": {
     "placeholders": {
       "count": {
-        "type": "int"
-      },
-      "additions": {
-        "type": "int"
-      },
-      "deletions": {
         "type": "int"
       }
     }

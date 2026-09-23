@@ -20,10 +20,10 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
       DiffLineType.context => theme.contextBg,
     };
 
-    final gutterBg = switch (line.type) {
-      DiffLineType.added => theme.addedGutter,
-      DiffLineType.removed => theme.removedGutter,
-      DiffLineType.context => theme.contextGutter,
+    final bar = switch (line.type) {
+      DiffLineType.added => theme.addedBar,
+      DiffLineType.removed => theme.removedBar,
+      DiffLineType.context => Colors.transparent,
     };
 
     final prefix = switch (line.type) {
@@ -39,8 +39,13 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
       DiffLineType.added => line.newLineNumber,
     };
 
-    return ColoredBox(
-      color: bg,
+    // The tint and the bar belong to the whole row, so both run the full
+    // height of a wrapped line.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: bg,
+        border: BorderDirectional(start: BorderSide(color: bar, width: 2)),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -48,8 +53,7 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
           // presentation-only line numbers.
           SelectionContainer.disabled(
             child: Container(
-              color: gutterBg,
-              width: 40,
+              width: 38,
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               alignment: Alignment.centerRight,
               child: Text(
@@ -62,7 +66,6 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
           // content, so exclude it from a cross-line source selection.
           SelectionContainer.disabled(
             child: Container(
-              color: gutterBg,
               width: 16,
               padding: const EdgeInsetsDirectional.only(top: 1),
               alignment: Alignment.center,

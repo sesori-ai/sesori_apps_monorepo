@@ -3706,8 +3706,8 @@ abstract class AppLocalizations {
   /// No description provided for @diffFilesChangedCount.
   ///
   /// In en, this message translates to:
-  /// **'{count} file{count, plural, =1{} other{s}} changed  +{additions} -{deletions}'**
-  String diffFilesChangedCount(int count, int additions, int deletions);
+  /// **'{count} file{count, plural, =1{} other{s}} changed'**
+  String diffFilesChangedCount(int count);
 
   /// No description provided for @diffNoFileChanges.
   ///

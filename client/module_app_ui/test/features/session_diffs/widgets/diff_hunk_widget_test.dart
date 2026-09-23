@@ -34,7 +34,7 @@ void main() {
       expect(find.text("@@ -10,5 +12,7 @@"), findsOneWidget);
     });
 
-    testWidgets("hunk header has light blue background", (tester) async {
+    testWidgets("hunk header uses the secondary background", (tester) async {
       const vm = DiffHunkViewModel(
         hunk: DiffHunk(
           oldStart: 1,
@@ -48,11 +48,14 @@ void main() {
 
       await tester.pumpWidget(buildTestWidget(vm));
 
+      final background = tester.element(find.byType(DiffHunkWidget)).prego.colors.bgSecondary;
       final headerContainer = find.byWidgetPredicate(
         (widget) =>
             widget is Container &&
-            widget.decoration is BoxDecoration &&
-            (widget.decoration! as BoxDecoration).color == const Color(0xFFF1F8FF),
+            switch (widget.decoration) {
+              BoxDecoration(:final color) => color == background,
+              _ => false,
+            },
       );
       expect(headerContainer, findsOneWidget);
     });

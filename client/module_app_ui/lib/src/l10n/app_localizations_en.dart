@@ -2013,14 +2013,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diffFileChangesTitle => 'File Changes';
 
   @override
-  String diffFilesChangedCount(int count, int additions, int deletions) {
+  String diffFilesChangedCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
       other: 's',
       one: '',
     );
-    return '$count file$_temp0 changed  +$additions -$deletions';
+    return '$count file$_temp0 changed';
   }
 
   @override

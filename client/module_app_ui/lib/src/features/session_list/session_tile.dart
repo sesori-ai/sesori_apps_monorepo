@@ -4,7 +4,6 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
-import "../../extensions/status_colors.dart";
 import "pr_status_row.dart";
 import "session_row_metrics.dart";
 
@@ -477,7 +476,7 @@ class const SessionTile({
     final loc = context.loc;
     final prego = context.prego;
     final (label, color) = switch ((awaitingInput, isRetrying)) {
-      (true, _) => (loc.sessionListAwaitingInput, kStatusAmber),
+      (true, _) => (loc.sessionListAwaitingInput, prego.colors.textWarningPrimary),
       (_, true) => (loc.sessionListRunningRetrying, prego.colors.fgErrorPrimary),
       _ when backgroundTaskCount > 0 => (
         loc.sessionListBackgroundTasks(backgroundTaskCount),
