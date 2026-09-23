@@ -2,23 +2,17 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../extensions/text_style_x.dart";
-
 import "../models/diff_file_view_model.dart";
 import "../utils/diff_theme.dart";
 
 /// Renders a single diff line with colored background, single gutter line number,
 /// +/-/space prefix, and wrapping content.
 class const DiffLineWidget({super.key, required final DiffLineViewModel viewModel}) extends StatelessWidget {
-  static final _monoStyle = const TextStyle(
-    fontSize: 12,
-    height: 1.4,
-  ).monospace;
-
   @override
   Widget build(BuildContext context) {
     final line = viewModel.line;
     final theme = DiffTheme.of(context);
+    final monoStyle = context.prego.textTheme.code;
 
     final bg = switch (line.type) {
       DiffLineType.added => theme.addedBg,
@@ -60,7 +54,7 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
               alignment: Alignment.centerRight,
               child: Text(
                 lineNumber != null ? "$lineNumber" : "",
-                style: _monoStyle.copyWith(color: theme.lineNumberText),
+                style: monoStyle.copyWith(color: theme.lineNumberText),
               ),
             ),
           ),
@@ -74,7 +68,7 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
               alignment: Alignment.center,
               child: Text(
                 prefix,
-                style: _monoStyle.copyWith(color: theme.prefixText),
+                style: monoStyle.copyWith(color: theme.prefixText),
               ),
             ),
           ),
@@ -85,7 +79,7 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
               child: switch (viewModel.highlightedSpan) {
                 null => Text(
                   encodedContent,
-                  style: _monoStyle.copyWith(color: theme.codeText),
+                  style: monoStyle.copyWith(color: theme.codeText),
                   softWrap: true,
                 ),
                 final highlightedSpan => Text.rich(

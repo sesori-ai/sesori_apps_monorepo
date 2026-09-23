@@ -269,7 +269,7 @@ class const _InfoLabel({
                   alignment: AlignmentDirectional.centerStart,
                   child: Padding(
                     padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                    child: Icon(TablerRegular.info_circle, size: 12, color: prego.colors.textSecondary),
+                    child: Icon(TablerRegular.info_circle, size: PregoIconSize.sm, color: prego.colors.textSecondary),
                   ),
                 ),
               ),
@@ -792,7 +792,7 @@ class _CommandActionRowState() extends State<_CommandActionRow> {
     final prego = context.prego;
     final colors = prego.colors;
     final loc = context.loc;
-    final mono = prego.textTheme.textXs.regular.copyWith(color: colors.textSecondary).monospace;
+    final mono = prego.textTheme.code.copyWith(color: colors.textSecondary);
 
     return Container(
       width: double.infinity,
@@ -875,7 +875,7 @@ class const _CommandIconButton({
             width: 40,
             height: 44,
             child: Center(
-              child: Icon(icon, size: 18, color: colors.textSecondary),
+              child: Icon(icon, size: PregoIconSize.md, color: colors.textSecondary),
             ),
           ),
         ),

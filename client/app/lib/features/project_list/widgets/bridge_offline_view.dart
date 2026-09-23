@@ -157,7 +157,7 @@ class const _MachineNameRow({
           width: 20,
           height: 20,
           child: Center(
-            child: Icon(TablerRegular.device_laptop, size: 12, color: color),
+            child: Icon(TablerRegular.device_laptop, size: PregoIconSize.sm, color: color),
           ),
         ),
         Flexible(

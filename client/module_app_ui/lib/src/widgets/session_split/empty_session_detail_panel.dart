@@ -35,6 +35,7 @@ class const EmptySessionDetailPanel({
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // An illustration, not a glyph: no icon token applies.
                 Icon(
                   Icons.chat_bubble_outline,
                   size: 48,

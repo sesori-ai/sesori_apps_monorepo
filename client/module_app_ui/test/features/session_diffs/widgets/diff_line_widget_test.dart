@@ -3,10 +3,12 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/src/features/session_diffs/models/diff_file_view_model.dart";
 import "package:sesori_app_ui/src/features/session_diffs/widgets/diff_line_widget.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/module_prego.dart";
 
 void main() {
   Widget buildTestWidget(DiffLineViewModel viewModel) {
     return MaterialApp(
+      theme: buildPregoThemeData(brightness: Brightness.light),
       home: Scaffold(
         body: DiffLineWidget(viewModel: viewModel),
       ),

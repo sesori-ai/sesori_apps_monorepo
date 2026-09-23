@@ -1,7 +1,7 @@
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../../extensions/text_style_x.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../models/diff_file_view_model.dart";
 import "../utils/diff_theme.dart";
@@ -74,7 +74,7 @@ class const DiffFileWidget({
           // Chevron
           Icon(
             isExpanded ? Icons.expand_less : Icons.expand_more,
-            size: 18,
+            size: PregoIconSize.md,
             color: theme.chevronColor,
           ),
         ],
@@ -92,7 +92,7 @@ class const DiffFileWidget({
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(
         color: color.shade100,
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(PregoRadius.xs),
       ),
       child: Text(
         label,

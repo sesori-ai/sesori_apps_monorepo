@@ -124,7 +124,7 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
                   key: const Key("desktop-project-page-more"),
                   tooltip: loc.sessionDetailMoreActions,
                   onPressed: loaded == null ? null : openMenu,
-                  icon: const Icon(TablerRegular.dots, size: 18),
+                  icon: const Icon(TablerRegular.dots, size: PregoIconSize.md),
                 ),
               ),
             ],

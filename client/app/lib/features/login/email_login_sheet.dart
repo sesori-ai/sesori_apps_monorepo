@@ -210,7 +210,7 @@ class const _PasswordVisibilityToggle({
           child: Center(
             child: Icon(
               isObscured ? TablerRegular.eye_off : TablerRegular.eye,
-              size: 16,
+              size: PregoIconSize.sm,
               color: context.prego.colors.fgQuaternary,
             ),
           ),

@@ -1,5 +1,6 @@
 import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
+
 import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_interaction_scope.dart";
 import "../../theme/prego_theme.dart";
@@ -195,7 +196,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
               autocorrect: false,
               decoration: InputDecoration(
                 hintText: widget.searchHint,
-                prefixIcon: const Icon(TablerRegular.search, size: 18),
+                prefixIcon: const Icon(TablerRegular.search, size: PregoIconSize.md),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 border: OutlineInputBorder(
@@ -274,7 +275,7 @@ class const _OptionRow({
                     Expanded(child: option.child),
                     if (option.isSelected) ...[
                       const SizedBox(width: 8),
-                      Icon(Icons.check, size: 16, color: prego.colors.bgBrandSolid),
+                      Icon(Icons.check, size: PregoIconSize.sm, color: prego.colors.bgBrandSolid),
                     ],
                   ],
                 ),

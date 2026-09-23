@@ -119,7 +119,7 @@ class const _WhyFeatureRow({
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: colors.textPrimary),
+            Icon(icon, size: PregoIconSize.sm, color: colors.textPrimary),
             const SizedBox(width: PregoSpacing.lg),
             Expanded(
               child: Column(
@@ -196,7 +196,7 @@ class _WhyFaqItemState() extends State<_WhyFaqItem> {
                         // Chevron points down when collapsed, up when expanded.
                         turns: _expanded ? 0.5 : 0.0,
                         duration: const Duration(milliseconds: 200),
-                        child: Icon(TablerRegular.chevron_down, size: 20, color: colors.textSecondary),
+                        child: Icon(TablerRegular.chevron_down, size: PregoIconSize.md, color: colors.textSecondary),
                       ),
                     ],
                   ),

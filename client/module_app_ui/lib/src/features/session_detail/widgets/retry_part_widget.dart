@@ -26,7 +26,7 @@ class const RetryPartWidget({
         children: [
           Icon(
             Icons.refresh,
-            size: 14,
+            size: PregoIconSize.sm,
             color: prego.colors.fgSuccessPrimary,
           ),
           const SizedBox(width: 6),

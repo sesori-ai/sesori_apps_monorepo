@@ -8,6 +8,7 @@ import "package:theme_prego/module_prego.dart";
 void main() {
   Widget buildTestWidget(DiffHunkViewModel viewModel) {
     return MaterialApp(
+      theme: buildPregoThemeData(brightness: Brightness.light),
       home: Scaffold(
         body: SingleChildScrollView(
           child: DiffHunkWidget(viewModel: viewModel),
@@ -69,8 +70,9 @@ void main() {
       );
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
+        MaterialApp(
+          theme: buildPregoThemeData(brightness: Brightness.light),
+          home: const Scaffold(
             body: PregoReadableSelectionArea(
               child: DiffHunkWidget(viewModel: vm),
             ),

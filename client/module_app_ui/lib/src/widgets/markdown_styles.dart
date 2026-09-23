@@ -6,7 +6,6 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../extensions/text_style_x.dart";
 import "../platform/external_link_opener.dart";
 import "code_block.dart";
 
@@ -40,7 +39,7 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
     p: paragraphStyle ?? prego.textTheme.textSm.regular,
     codeblockDecoration: BoxDecoration(
       color: prego.colors.bgQuaternary,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(PregoRadius.md),
     ),
     code: TextStyle(
       fontSize: 13,
@@ -143,7 +142,7 @@ MarkdownStyleSheet buildLegalMarkdownStyleSheet({required PregoDesignSystem preg
     code: body.copyWith(color: prego.colors.textPrimary).monospace,
     codeblockDecoration: BoxDecoration(
       color: prego.colors.bgQuaternary,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(PregoRadius.md),
     ),
   );
 }

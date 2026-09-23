@@ -304,7 +304,11 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
               leading ??
               (leadingIcon == null
                   ? null
-                  : Icon(leadingIcon, size: 20, color: _iconColor(prego, isDestructive: isDestructive))),
+                  : Icon(
+                      leadingIcon,
+                      size: PregoIconSize.md,
+                      color: _iconColor(prego, isDestructive: isDestructive),
+                    )),
           titleStyle: _titleStyle(prego, isDestructive: isDestructive),
           subtitleStyle: _subtitleStyle(prego),
           trailing: isSelected ? _selectedCheck(prego) : null,
@@ -657,4 +661,5 @@ Color _iconColor(PregoDesignSystem prego, {required bool isDestructive}) =>
 TextStyle _subtitleStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary);
 
-Widget _selectedCheck(PregoDesignSystem prego) => Icon(Icons.check, size: 16, color: prego.colors.bgBrandSolid);
+Widget _selectedCheck(PregoDesignSystem prego) =>
+    Icon(Icons.check, size: PregoIconSize.sm, color: prego.colors.bgBrandSolid);

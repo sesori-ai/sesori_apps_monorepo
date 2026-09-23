@@ -155,7 +155,7 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
                                             padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
                                           ),
                                           onPressed: () => setState(() => _tab = tab),
-                                          icon: Icon(_tabIcon(tab: tab), size: 18),
+                                          icon: Icon(_tabIcon(tab: tab), size: PregoIconSize.md),
                                           label: Text(_tabLabel(context: context, tab: tab)),
                                         ),
                                       ),

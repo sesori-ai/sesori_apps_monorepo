@@ -147,7 +147,7 @@ class const _ProjectChip({required final String name}) extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(TablerSolid.brand_github, size: 14, color: prego.colors.textPrimary),
+            Icon(TablerSolid.brand_github, size: PregoIconSize.sm, color: prego.colors.textPrimary),
             SizedBox(width: prego.spacing.sm),
             Flexible(
               child: Text(

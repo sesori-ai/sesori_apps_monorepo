@@ -39,7 +39,7 @@ class const BackgroundTaskRow({
       ),
       trailing: Icon(
         Icons.chevron_right,
-        size: 20,
+        size: PregoIconSize.md,
         color: prego.colors.textSecondary,
       ),
     );
@@ -59,7 +59,7 @@ class const BackgroundTaskRow({
     // Idle is not finished: a sub-agent can be resumed, so no check mark.
     SessionStatusIdle() || null => Icon(
       TablerRegular.player_pause,
-      size: 16,
+      size: PregoIconSize.sm,
       color: prego.colors.textSecondary,
     ),
   };

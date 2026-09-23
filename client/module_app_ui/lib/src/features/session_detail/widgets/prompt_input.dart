@@ -1205,7 +1205,7 @@ class _PromptInputState() extends State<PromptInput> {
             child: GlassChip(
               label: "/${commandInfo.name}",
               onDeleted: widget.onCommandCleared,
-              deleteIcon: const Icon(Icons.close, size: 18),
+              deleteIcon: const Icon(Icons.close, size: PregoIconSize.md),
             ),
           ),
         ),
@@ -1575,7 +1575,7 @@ class _PromptInputState() extends State<PromptInput> {
                       onTap: _voicePresentation == _VoicePresentation.idle ? _openEditorSheet : null,
                       borderRadius: BorderRadius.circular(PregoRadius.full),
                       containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
-                      child: Icon(TablerRegular.maximize, size: 18, color: prego.colors.textSecondary),
+                      child: Icon(TablerRegular.maximize, size: PregoIconSize.md, color: prego.colors.textSecondary),
                     ),
                   ),
                 ),

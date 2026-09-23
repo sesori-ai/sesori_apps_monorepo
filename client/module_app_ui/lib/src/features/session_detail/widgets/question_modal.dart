@@ -682,12 +682,12 @@ class const _QuestionStep({
             ),
             _QuestionResolution.answered => Icon(
               TablerRegular.check,
-              size: 16,
+              size: PregoIconSize.sm,
               color: foregroundColor,
             ),
             _QuestionResolution.declined => Icon(
               TablerRegular.minus,
-              size: 16,
+              size: PregoIconSize.sm,
               color: foregroundColor,
             ),
           };
@@ -777,7 +777,7 @@ class const _OptionTile({
       // bgSurface1 so the card reads as raised against the sheet's
       // bgSecondary surface (bgSecondary here would vanish into it).
       color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xl)),
       onTap: onTap,
       child: Row(
         children: [
@@ -836,7 +836,7 @@ class const _DeclineQuestionTile({
         materialKey: const Key("decline-current-question"),
         color: isSelected ? prego.colors.bgQuaternary : prego.colors.bgSurface1,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(PregoRadius.xl),
           side: BorderSide(
             color: isSelected ? prego.colors.borderPrimary : prego.colors.borderSecondary,
           ),
@@ -897,7 +897,7 @@ class const _CustomAnswerTile({
       // bgSurface1 so the card reads as raised against the sheet's
       // bgSecondary surface (bgSecondary here would vanish into it).
       color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xl)),
       onTap: onTap,
       child: Row(
         // The indicator stays level with the first answer line rather than the

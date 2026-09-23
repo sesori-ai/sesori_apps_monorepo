@@ -62,7 +62,7 @@ class const VoiceCancelButton({
                   child: Center(
                     child: Icon(
                       TablerRegular.x,
-                      size: 20,
+                      size: PregoIconSize.md,
                       color:
                           Color.lerp(prego.colors.textSecondary, prego.colors.textWhite, engaged) ??
                           prego.colors.textSecondary,

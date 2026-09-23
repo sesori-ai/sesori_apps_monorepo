@@ -220,7 +220,7 @@ class const DesktopSessionDetailView({
             key: const Key("desktop-session-page-more"),
             tooltip: loc.sessionDetailMoreActions,
             onPressed: session == null ? null : openMenu,
-            icon: const Icon(TablerRegular.dots, size: 18),
+            icon: const Icon(TablerRegular.dots, size: PregoIconSize.md),
           ),
         ),
       ],

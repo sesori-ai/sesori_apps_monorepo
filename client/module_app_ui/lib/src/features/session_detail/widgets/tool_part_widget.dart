@@ -7,7 +7,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 
-import "../../../extensions/text_style_x.dart";
 import "../../../l10n/app_localizations.dart";
 import "../../../utils/copy_text_to_clipboard.dart";
 import "attachment_collection_widget.dart";
@@ -105,18 +104,18 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
     ),
     ToolStatus.completed => Icon(
       TablerRegular.tool,
-      size: 16,
+      size: PregoIconSize.sm,
       color: prego.colors.textTertiary,
     ),
-    ToolStatus.error => Icon(Icons.error, size: 16, color: prego.colors.fgErrorPrimary),
+    ToolStatus.error => Icon(Icons.error, size: PregoIconSize.sm, color: prego.colors.fgErrorPrimary),
     ToolStatus.cancelled => Icon(
       Icons.cancel,
-      size: 16,
+      size: PregoIconSize.sm,
       color: prego.colors.textSecondary,
     ),
     ToolStatus.unknown => Icon(
       Icons.circle_outlined,
-      size: 16,
+      size: PregoIconSize.sm,
       color: prego.colors.borderPrimary,
     ),
   };
@@ -265,7 +264,7 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
                 if (state.status == ToolStatus.pending || state.status == ToolStatus.running)
                   ToolPartWidget._statusIcon(status: state.status, prego: prego)
                 else
-                  Icon(TablerRegular.terminal_2, size: 16, color: rowStyle.color),
+                  Icon(TablerRegular.terminal_2, size: PregoIconSize.sm, color: rowStyle.color),
                 SizedBox(width: prego.spacing.md),
                 Expanded(
                   child: Text.rich(
@@ -363,7 +362,7 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
                                         ),
                                     ],
                                   ),
-                                  style: style.monospace,
+                                  style: prego.textTheme.code.copyWith(color: style.color),
                                   softWrap: false,
                                 ),
                               ),
@@ -395,7 +394,7 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             if (state.status == ToolStatus.completed)
-                              Icon(TablerRegular.check, size: 16, color: prego.colors.textSecondary)
+                              Icon(TablerRegular.check, size: PregoIconSize.sm, color: prego.colors.textSecondary)
                             else
                               ToolPartWidget._statusIcon(status: state.status, prego: prego),
                             SizedBox(width: prego.spacing.xs),
@@ -480,14 +479,14 @@ class _ToolOutputBlockState() extends State<_ToolOutputBlock> {
     final prego = context.prego;
     final loc = context.loc;
     final output = widget.output;
-    final monoStyle = prego.textTheme.textXs.regular.copyWith(fontSize: 11).monospace;
+    final monoStyle = prego.textTheme.code;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: prego.colors.bgQuaternary,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(PregoRadius.xs),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -526,7 +525,7 @@ class _ToolOutputBlockState() extends State<_ToolOutputBlock> {
                     child: PregoCopyIconButton(
                       onCopy: () => copyTextToClipboard(text: output, operation: "tool output"),
                       tooltip: loc.sessionDetailCopy,
-                      iconSize: 14,
+                      iconSize: PregoIconSize.sm,
                     ),
                   ),
                 ],

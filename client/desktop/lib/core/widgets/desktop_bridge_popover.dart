@@ -111,7 +111,7 @@ class const _BridgeAction({
   @override
   Widget build(BuildContext context) => TextButton.icon(
     onPressed: onPressed,
-    icon: Icon(icon, size: 18),
+    icon: Icon(icon, size: PregoIconSize.md),
     label: Text(label, style: context.prego.textTheme.textSm.medium),
     style: TextButton.styleFrom(
       foregroundColor: context.prego.colors.textSecondary,

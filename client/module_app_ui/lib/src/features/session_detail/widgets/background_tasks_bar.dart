@@ -99,7 +99,7 @@ class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
                             ),
                           ),
                         ],
-                        Icon(TablerRegular.subtask, size: 14, color: totalForeground),
+                        Icon(TablerRegular.subtask, size: PregoIconSize.sm, color: totalForeground),
                         Text("$count", style: prego.textTheme.textXs.medium.copyWith(color: totalForeground)),
                       ],
                     ),

@@ -112,7 +112,7 @@ class const DesktopSidebar({
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(TablerRegular.plus, size: 18),
+                              const Icon(TablerRegular.plus, size: PregoIconSize.md),
                               if (phase != DesktopSidebarPhase.rail)
                                 Flexible(
                                   child: FadeTransition(
@@ -156,7 +156,7 @@ class const DesktopSidebar({
                       child: _SidebarButton(
                         key: const Key("desktop-sidebar-projects"),
                         label: loc.projectListTitle,
-                        icon: const Icon(TablerRegular.folders, size: 20),
+                        icon: const Icon(TablerRegular.folders, size: PregoIconSize.md),
                         expansion: kAlwaysDismissedAnimation,
                         selected: selectedProjectId == null,
                         status: null,
@@ -195,7 +195,7 @@ class const DesktopSidebar({
                     ),
                   ProjectListFailed() => _SidebarButton(
                     label: loc.projectListRetry,
-                    icon: const Icon(TablerRegular.refresh, size: 20),
+                    icon: const Icon(TablerRegular.refresh, size: PregoIconSize.md),
                     expansion: expansion,
                     selected: false,
                     status: null,
@@ -305,9 +305,10 @@ class const _SidebarFooter({
               onClosed: null,
               triggerBuilder: (context, toggle) => _SidebarButton(
                 label: loc.desktopSettingsThisComputer,
-                icon: const Icon(TablerRegular.server, size: 20),
+                icon: const Icon(TablerRegular.server, size: PregoIconSize.md),
                 expansion: expansion,
                 selected: false,
+                // A status dot, not a glyph: no icon token applies.
                 status: (icon: Icon(Icons.circle, size: 8, color: bridgeColor), label: bridge.statusLabel),
                 onPressed: toggle,
               ),
@@ -333,7 +334,7 @@ class const _SidebarFooter({
                               child: SizedBox.square(dimension: 20, child: PregoActivityIndicator(color: null)),
                             ),
                           )
-                        : Icon(TablerRegular.refresh, size: 18, semanticLabel: loc.desktopSidebarRefresh),
+                        : Icon(TablerRegular.refresh, size: PregoIconSize.md, semanticLabel: loc.desktopSidebarRefresh),
                   ),
                 ),
                 control(
@@ -345,7 +346,7 @@ class const _SidebarFooter({
                     ),
                     padding: const EdgeInsets.all(PregoSpacing.sm),
                     onPressed: onOpenSettings,
-                    icon: Icon(TablerRegular.settings, size: 18, semanticLabel: loc.settingsTitle),
+                    icon: Icon(TablerRegular.settings, size: PregoIconSize.md, semanticLabel: loc.settingsTitle),
                   ),
                 ),
                 control(
@@ -368,7 +369,7 @@ class const _SidebarFooter({
                           railed
                               ? TablerRegular.layout_sidebar_left_expand
                               : TablerRegular.layout_sidebar_left_collapse,
-                          size: 18,
+                          size: PregoIconSize.md,
                           color: autoCollapsed ? prego.colors.textDisabled : null,
                         ),
                       );
@@ -555,7 +556,11 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                     padding: EdgeInsets.zero,
                     tooltip: context.loc.desktopSidebarNewProject,
                     onPressed: widget.onAddProject,
-                    icon: Icon(TablerRegular.folder_plus, size: 16, color: context.prego.colors.textSecondary),
+                    icon: Icon(
+                      TablerRegular.folder_plus,
+                      size: PregoIconSize.sm,
+                      color: context.prego.colors.textSecondary,
+                    ),
                   ),
                 ),
               ),
@@ -792,7 +797,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                 ),
                 RecentSessionsFailed() => TextButton.icon(
                   onPressed: () => unawaited(context.read<RecentSessionsCubit>().retry(projectId: widget.project.id)),
-                  icon: const Icon(TablerRegular.refresh, size: 14),
+                  icon: const Icon(TablerRegular.refresh, size: PregoIconSize.sm),
                   label: Text(loc.sessionListRetry, style: detailStyle),
                 ),
                 RecentSessionsLoading() || null => Padding(
@@ -880,7 +885,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                                                         defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N",
                                                       )
                                                     : loc.desktopSidebarNewSession(widget.name),
-                                                icon: const Icon(TablerRegular.plus, size: 16),
+                                                icon: const Icon(TablerRegular.plus, size: PregoIconSize.sm),
                                                 onPressed: () => widget.onNewSession(
                                                   context: actionContext,
                                                   project: widget.project,
@@ -902,7 +907,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                                                 widget.expanded
                                                     ? TablerRegular.chevron_down
                                                     : TablerRegular.chevron_right,
-                                                size: 16,
+                                                size: PregoIconSize.sm,
                                               ),
                                               onPressed: () => unawaited(
                                                 context.read<DesktopSidebarCubit>().toggleProject(

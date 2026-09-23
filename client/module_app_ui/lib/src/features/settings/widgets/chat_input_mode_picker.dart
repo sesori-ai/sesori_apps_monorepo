@@ -92,7 +92,7 @@ class const _ChatInputModeOption({
                         ChatInputMode.voiceFirst => TablerRegular.microphone,
                         ChatInputMode.textFirst => TablerRegular.keyboard,
                       },
-                      size: 14,
+                      size: PregoIconSize.sm,
                       color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
                     ),
                     Flexible(

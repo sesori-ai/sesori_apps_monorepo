@@ -6,7 +6,6 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "../../../extensions/text_style_x.dart";
 import "../../../platform/external_link_opener.dart";
 import "../../../utils/copy_text_to_clipboard.dart";
 import "../../../widgets/markdown_styles.dart";
@@ -141,7 +140,7 @@ class const PermissionModal({
               styleSheet:
                   buildSessionMarkdownStyleSheet(
                     prego: prego,
-                    paragraphStyle: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textPrimary).monospace,
+                    paragraphStyle: prego.textTheme.code.copyWith(color: prego.colors.textPrimary),
                   ).copyWith(
                     codeblockDecoration: BoxDecoration(
                       color: prego.colors.bgSurface1,

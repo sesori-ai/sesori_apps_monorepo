@@ -89,7 +89,7 @@ class _ProjectListViewState() extends State<ProjectListView> {
         action: PregoButtonsIconGlass(
           icon: TablerRegular.folder_plus,
           size: PregoButtonsIconGlassSize.xl,
-          iconSize: 22,
+          iconSize: PregoIconSize.lg,
           onPressed: () => widget.onAddProject(context: context),
         ),
         alignment: PregoFloatingActionAlignment.end,

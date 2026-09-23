@@ -69,7 +69,7 @@ class const DesktopBridgeRecoveryCard({
         key: const Key("desktop-bridge-recovery"),
         tooltip: "${notice.message} ${notice.primary.label}",
         onPressed: onPrimary,
-        icon: Icon(notice.icon, color: foreground, size: 20),
+        icon: Icon(notice.icon, color: foreground, size: PregoIconSize.md),
       );
     }
     return Padding(
@@ -91,7 +91,7 @@ class const DesktopBridgeRecoveryCard({
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(notice.icon, size: 18, color: foreground),
+                    Icon(notice.icon, size: PregoIconSize.md, color: foreground),
                     const SizedBox(width: PregoSpacing.sm),
                     Expanded(
                       child: Text(

@@ -33,7 +33,7 @@ Future<void> _showForceDialog({
                   children: [
                     Icon(
                       Icons.warning_amber_rounded,
-                      size: 18,
+                      size: PregoIconSize.md,
                       color: context.prego.colors.fgErrorPrimary,
                     ),
                     const SizedBox(width: 8),

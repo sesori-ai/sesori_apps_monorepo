@@ -32,18 +32,18 @@ class const JumpToEdgePill({
       child: Center(
         child: Material(
           elevation: 4,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(PregoRadius.x3l),
           color: prego.colors.bgSurface3,
           child: InkWell(
             key: tapTargetKey,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(PregoRadius.x3l),
             onTap: onTap,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(TablerRegular.arrow_down, size: 16, color: prego.colors.textPrimary),
+                  Icon(TablerRegular.arrow_down, size: PregoIconSize.sm, color: prego.colors.textPrimary),
                   const SizedBox(width: 6),
                   Text(
                     label,

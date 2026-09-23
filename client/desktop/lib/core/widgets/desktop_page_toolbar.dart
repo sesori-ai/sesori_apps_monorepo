@@ -74,7 +74,7 @@ class const DesktopPageToolbar({
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
-                        child: Icon(TablerRegular.chevron_right, size: 14, color: tertiary),
+                        child: Icon(TablerRegular.chevron_right, size: PregoIconSize.sm, color: tertiary),
                       ),
                     ],
                     if (status != null)

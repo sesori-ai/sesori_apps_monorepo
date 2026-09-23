@@ -194,7 +194,7 @@ class const _PregoDialogFrame({
                       tooltip: localizations.backButtonTooltip,
                       visualDensity: VisualDensity.compact,
                       onPressed: onBack,
-                      icon: const Icon(TablerRegular.arrow_left, size: 18),
+                      icon: const Icon(TablerRegular.arrow_left, size: PregoIconSize.md),
                     ),
                   Expanded(
                     child: Column(
@@ -224,7 +224,7 @@ class const _PregoDialogFrame({
                     tooltip: localizations.closeButtonTooltip,
                     visualDensity: VisualDensity.compact,
                     onPressed: onClose,
-                    icon: const Icon(TablerRegular.x, size: 18),
+                    icon: const Icon(TablerRegular.x, size: PregoIconSize.md),
                   ),
                 ],
               ),
