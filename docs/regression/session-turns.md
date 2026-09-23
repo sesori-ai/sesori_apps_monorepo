@@ -520,9 +520,11 @@ defaults and queued client sends coherent.
   accepted send, Pi's dispatcher, Codex's client-supplied identifier, and
   OpenCode's bridge-generated ordered message identifier (manual compaction
   reuses a server-reserved one). OpenCode's own TUI must show a Sesori-sent
-  prompt once. Claude compares image echoes by their semantic source
-  fields, including an image echo that omits the usual replay marker, so
-  backend-added metadata cannot strand the queued row. OpenCode applies the same
+  prompt once. Claude matches an image echo by its text and block order
+  only, including an image echo that omits the usual replay marker, because
+  the CLI adds metadata and re-encodes large images (a large PNG echoes as a
+  different JPEG); a large image prompt must not stay "Sending" once its
+  message is visible. OpenCode applies the same
   correlation to prompts, slash commands, and manual compaction.
   Compaction renders only the user-entered command arguments; bridge-authored
   guidance remains backend-only. A message authored in the backend's own UI

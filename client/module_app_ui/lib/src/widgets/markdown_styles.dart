@@ -46,6 +46,12 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
       fontSize: 13,
       color: prego.colors.textPrimary,
     ).monospace,
+    // The Material fallback fills quotes with the default purple palette's
+    // light surface, which Prego leaves unset: unreadable in dark mode.
+    blockquotePadding: const EdgeInsets.only(left: 12, top: 2, bottom: 2),
+    blockquoteDecoration: BoxDecoration(
+      border: Border(left: BorderSide(color: prego.colors.fgQuaternary, width: 3)),
+    ),
   );
 }
 
