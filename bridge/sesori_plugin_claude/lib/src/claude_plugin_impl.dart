@@ -289,6 +289,10 @@ final class ClaudePlugin({
   }) async {
     final directory = _directoryForSession(sessionId);
     if (directory == null) throw const PluginOperationException.notFound("sendCommand", message: "session not found");
+    // A catalog cached before /fast was filtered can still offer it.
+    if (command == ClaudeBackendCatalogRepository.fastModeCommand) {
+      throw const PluginStaleOptionsException("sendCommand", message: "fast mode is set through the session selection");
+    }
     final visible = userVisibleArguments?.trim();
     await _enqueueQueued(
       sessionId: sessionId,
