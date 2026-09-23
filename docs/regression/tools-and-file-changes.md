@@ -36,8 +36,9 @@ sub-agent parts, plus the signal that a tool changed files.
   open panel. The panel eases open and shut over 200 ms, growing down from the
   row, and its details stay visible while it closes. In the reversed
   transcript the tapped header stays still while the panel opens and closes
-  below it; only when no room is left below the row (the newest row) does the
-  row grow upward. Screen safe-area insets do not displace its scrollbars.
+  below it; only when no room is left above the composer (the newest row)
+  does the row grow upward. A later resize of an open panel never scrolls
+  the transcript. Screen safe-area insets do not displace its scrollbars.
   Reduced motion opens and closes it at once.
   Tool attachments remain visible when details are collapsed.
   Older title-only payloads keep the ordinary row and existing output-copy and
@@ -212,8 +213,9 @@ guarantee.
   truncated preview, close during updates, or hide tool attachments when collapsed.
 - Tool details jump open or shut instead of easing, vanish before a blank area
   collapses, or animate under reduced motion; the tapped header moves while
-  there is room below the row, or the transcript scrolls in a second step
-  after the panel has opened.
+  there is room below the row, the panel opens behind the composer, or the
+  transcript scrolls in a second step after the panel has opened or after a
+  later resize of an open panel.
 - Backend naming or payload shape reaches the client unnormalized, or a local
   path or unsafe URL crosses the attachment contract.
 - A part carries fields owned by another variant, or a released known-type

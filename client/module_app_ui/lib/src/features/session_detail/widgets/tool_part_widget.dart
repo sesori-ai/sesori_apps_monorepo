@@ -1,5 +1,6 @@
 import "dart:math";
 
+import "package:flutter/rendering.dart" show RenderSliverPadding;
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -218,7 +219,10 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
     final double shift;
     if (growth > 0) {
       final rowBottom = row.localToGlobal(Offset(0, row.size.height)).dy;
-      final viewportBottom = viewport.localToGlobal(Offset(0, viewport.size.height)).dy;
+      // The list's bottom padding keeps the newest row clear of the floating
+      // composer, so that strip is no room.
+      final covered = context.findAncestorRenderObjectOfType<RenderSliverPadding>()?.resolvedPadding?.bottom ?? 0;
+      final viewportBottom = viewport.localToGlobal(Offset(0, viewport.size.height)).dy - covered;
       shift = min(growth, max(0, viewportBottom - rowBottom));
     } else {
       shift = max(growth, position.minScrollExtent - position.pixels);

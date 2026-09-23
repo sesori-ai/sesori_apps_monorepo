@@ -202,7 +202,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  Widget reversedTranscript({required double newerContent}) => MaterialApp(
+  Widget reversedTranscript({required double newerContent, required double composerInset}) => MaterialApp(
     theme: buildPregoThemeData(brightness: Brightness.light),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -212,6 +212,7 @@ void main() {
         height: 500,
         child: ListView(
           reverse: true,
+          padding: EdgeInsets.only(bottom: composerInset),
           children: [
             SizedBox(height: newerContent),
             ToolPartWidget(
@@ -225,7 +226,7 @@ void main() {
   );
 
   testWidgets("a historical command keeps its header still while it opens and closes", (tester) async {
-    await tester.pumpWidget(reversedTranscript(newerContent: 350));
+    await tester.pumpWidget(reversedTranscript(newerContent: 350, composerInset: 0));
     final before = tester.getRect(find.byKey(_toggle));
 
     await tester.tap(find.byKey(_toggle));
@@ -244,8 +245,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("the newest command opens upward, with no room below it", (tester) async {
-    await tester.pumpWidget(reversedTranscript(newerContent: 0));
+  testWidgets("the newest command opens upward, clear of the composer", (tester) async {
+    // The transcript pads its bottom so the newest row clears the composer.
+    await tester.pumpWidget(reversedTranscript(newerContent: 0, composerInset: 120));
     final before = tester.getRect(find.byKey(_toggle));
 
     await tester.tap(find.byKey(_toggle));
@@ -253,7 +255,7 @@ void main() {
 
     final transcript = tester.getRect(find.byKey(const ValueKey("transcript")));
     expect(tester.getRect(find.byKey(_toggle)).top, lessThan(before.top));
-    expect(tester.getRect(_panel).bottom, moreOrLessEquals(transcript.bottom));
+    expect(tester.getRect(_panel).bottom, moreOrLessEquals(transcript.bottom - 120));
     expect(tester.takeException(), isNull);
   });
 
