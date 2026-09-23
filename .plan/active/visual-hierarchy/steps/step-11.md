@@ -29,3 +29,19 @@ changes Title Case strings to sentence case.
 - All module_prego and module_app_ui tests pass. In app, `test/features`,
   `test/components` and `test/core` pass; in desktop, `test/features` and
   `test/core` pass.
+
+## 11.b — What changed
+
+- 25 Title Case strings in `app_en.arb` are sentence case, for example
+  "Add project", "Connection lost", "Log out", "File changes", "Start bridge",
+  "Terms of service" and "AI notifications".
+- Names keep their capitals: Sesori, GitHub, Apple, Google, Git, X, Windows
+  PowerShell, and the macOS "Full Disk Access" and "System Settings".
+- 17 tests that matched the old wording use the new strings. Older plan and
+  regression docs that name an action in prose are unchanged.
+
+## 11.b — Verification
+
+- `flutter gen-l10n` regenerated the English localizations.
+- All module_app_ui and app tests pass; desktop `test/features` and
+  `test/core` pass, before and after merging 11.a.
