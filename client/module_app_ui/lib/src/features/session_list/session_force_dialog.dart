@@ -32,7 +32,7 @@ Future<void> _showForceDialog({
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      Icons.warning_amber_rounded,
+                      TablerRegular.alert_triangle,
                       size: PregoIconSize.md,
                       color: context.prego.colors.fgErrorPrimary,
                     ),

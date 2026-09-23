@@ -108,9 +108,9 @@ Color? _mergeColor({required PregoColors colors, required PrMergeableStatus stat
 };
 
 IconData _mergeIcon({required PrMergeableStatus status}) => switch (status) {
-  PrMergeableStatus.mergeable => Icons.merge_type,
-  PrMergeableStatus.conflicting => Icons.warning_amber_rounded,
-  PrMergeableStatus.unknown => Icons.merge_type,
+  PrMergeableStatus.mergeable => TablerRegular.git_merge,
+  PrMergeableStatus.conflicting => TablerRegular.alert_triangle,
+  PrMergeableStatus.unknown => TablerRegular.git_merge,
 };
 
 String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus status}) => switch (status) {
@@ -130,17 +130,17 @@ String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus 
   required PrReviewDecision decision,
 }) => switch (decision) {
   PrReviewDecision.approved => (
-    icon: Icons.check_circle_outline,
+    icon: TablerRegular.circle_check,
     color: colors.fgSuccessPrimary,
     tooltip: loc.prReviewApproved,
   ),
   PrReviewDecision.changesRequested => (
-    icon: Icons.cancel_outlined,
+    icon: TablerRegular.circle_x,
     color: colors.fgErrorPrimary,
     tooltip: loc.prReviewChangesRequested,
   ),
   PrReviewDecision.reviewRequired => (
-    icon: Icons.pending_outlined,
+    icon: TablerRegular.dots_circle_horizontal,
     color: colors.borderPrimary,
     tooltip: loc.prReviewRequired,
   ),
@@ -158,12 +158,12 @@ String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus 
   required PrCheckStatus status,
 }) => switch (status) {
   PrCheckStatus.success => (
-    icon: Icons.check_circle_outline,
+    icon: TablerRegular.circle_check,
     color: colors.fgSuccessPrimary,
     tooltip: loc.prChecksSuccess,
   ),
-  PrCheckStatus.failure => (icon: Icons.error_outline, color: colors.fgErrorPrimary, tooltip: loc.prChecksFailing),
-  PrCheckStatus.pending => (icon: Icons.schedule, color: colors.fgWarningPrimary, tooltip: loc.prChecksPending),
+  PrCheckStatus.failure => (icon: TablerRegular.alert_circle, color: colors.fgErrorPrimary, tooltip: loc.prChecksFailing),
+  PrCheckStatus.pending => (icon: TablerRegular.clock, color: colors.fgWarningPrimary, tooltip: loc.prChecksPending),
   PrCheckStatus.none => null,
   PrCheckStatus.unknown => null,
 };

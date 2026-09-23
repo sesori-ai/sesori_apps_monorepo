@@ -325,9 +325,9 @@ void main() {
 
     expect(find.byType(ImageAttachmentViewer), findsOneWidget);
     expect(find.byType(InteractiveViewer), findsOneWidget);
-    expect(find.byIcon(Icons.content_copy), findsNothing);
-    expect(find.byIcon(Icons.share_outlined), findsNothing);
-    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(find.byIcon(TablerRegular.copy), findsNothing);
+    expect(find.byIcon(TablerRegular.share), findsNothing);
+    expect(find.byIcon(TablerRegular.download), findsNothing);
     final fullscreen = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
     expect(identical(fullscreen.image, preview.image), isTrue);
     semantics.dispose();
@@ -380,7 +380,7 @@ void main() {
     );
 
     expect(find.byType(Image), findsNothing);
-    expect(find.byIcon(Icons.broken_image), findsOneWidget);
+    expect(find.byIcon(TablerRegular.photo_off), findsOneWidget);
     expect(find.byType(GestureDetector), findsNothing);
   });
 

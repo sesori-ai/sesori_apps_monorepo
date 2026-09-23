@@ -127,7 +127,7 @@ void main() {
     // marker is stripped from the display name.
     expect(find.text("Claude Opus Classic"), findsNothing);
     expect(
-      find.descendant(of: find.widgetWithText(InkWell, "Claude Sonnet"), matching: find.byIcon(Icons.check)),
+      find.descendant(of: find.widgetWithText(InkWell, "Claude Sonnet"), matching: find.byIcon(TablerRegular.check)),
       findsOneWidget,
     );
     // The picker opens above the pill, clear of the composer.
@@ -156,7 +156,7 @@ void main() {
 
     expect(find.text("ANTHROPIC"), findsNothing);
     expect(
-      find.descendant(of: find.widgetWithText(InkWell, "Zeta One"), matching: find.byIcon(Icons.check)),
+      find.descendant(of: find.widgetWithText(InkWell, "Zeta One"), matching: find.byIcon(TablerRegular.check)),
       findsOneWidget,
     );
   });

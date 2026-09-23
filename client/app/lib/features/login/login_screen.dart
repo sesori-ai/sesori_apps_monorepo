@@ -270,7 +270,7 @@ class _LoginScreenBodyState() extends State<_LoginScreenBody> {
                                         child: Row(
                                           children: [
                                             Icon(
-                                              Icons.error_outline,
+                                              TablerRegular.alert_circle,
                                               color: prego.colors.fgErrorPrimary,
                                             ),
                                             const SizedBox(width: 12),

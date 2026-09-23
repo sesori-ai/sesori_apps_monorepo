@@ -1205,7 +1205,7 @@ class _PromptInputState() extends State<PromptInput> {
             child: GlassChip(
               label: "/${commandInfo.name}",
               onDeleted: widget.onCommandCleared,
-              deleteIcon: const Icon(Icons.close, size: PregoIconSize.md),
+              deleteIcon: const Icon(TablerRegular.x, size: PregoIconSize.md),
             ),
           ),
         ),

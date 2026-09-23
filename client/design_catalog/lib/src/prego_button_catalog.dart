@@ -63,8 +63,8 @@ Widget _buildPlayground(BuildContext context) {
             state: state,
             iconOnly: iconOnly,
             fullWidth: fullWidth,
-            leadingIcon: leadingIcon ? material.Icons.add : null,
-            trailingIcon: trailingIcon ? material.Icons.arrow_forward : null,
+            leadingIcon: leadingIcon ? TablerRegular.plus : null,
+            trailingIcon: trailingIcon ? TablerRegular.arrow_right : null,
           )
         : _InvalidCombinationNotice(message: invalidReason),
   );
@@ -172,9 +172,9 @@ bool _fullWidthFor(CatalogButtonContent content) => switch (content) {
 material.IconData? _optionalIconFor(CatalogButtonIcon? icon) => icon == null ? null : _iconFor(icon);
 
 material.IconData _iconFor(CatalogButtonIcon icon) => switch (icon) {
-  CatalogButtonIcon.add => material.Icons.add,
-  CatalogButtonIcon.arrowRight => material.Icons.arrow_forward,
-  CatalogButtonIcon.trash => material.Icons.delete_outline,
+  CatalogButtonIcon.add => TablerRegular.plus,
+  CatalogButtonIcon.arrowRight => TablerRegular.arrow_right,
+  CatalogButtonIcon.trash => TablerRegular.trash,
 };
 
 PregoButtonsSolidSize _sizeFor(CatalogButtonSize size) => switch (size) {
@@ -227,7 +227,7 @@ class _InteractiveButtonPreviewState() extends State<_InteractiveButtonPreview> 
         : null;
     final button = widget.iconOnly
         ? PregoButtonsSolid.iconOnly(
-            leadingIcon: widget.leadingIcon ?? material.Icons.add,
+            leadingIcon: widget.leadingIcon ?? TablerRegular.plus,
             hierarchy: widget.hierarchy,
             size: widget.size,
             onPressed: onPressed,

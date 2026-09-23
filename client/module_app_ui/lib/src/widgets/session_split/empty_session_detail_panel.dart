@@ -37,7 +37,7 @@ class const EmptySessionDetailPanel({
               children: [
                 // An illustration, not a glyph: no icon token applies.
                 Icon(
-                  Icons.chat_bubble_outline,
+                  TablerRegular.message_circle,
                   size: 48,
                   color: prego.colors.textTertiary,
                 ),

@@ -39,7 +39,7 @@ void main() {
       expect(find.text("Live record"), findsOneWidget);
       expect(find.text("Archived record"), findsNothing);
       final entry = size.width > size.height
-          ? find.byIcon(Icons.archive_outlined)
+          ? find.byIcon(TablerRegular.archive)
           : find.bySemanticsLabel("Show archived");
       await tester.tap(entry);
       await tester.pumpAndSettle();
@@ -96,7 +96,7 @@ void main() {
     openerCubit.saveComposerDraft(draft: draft);
     final viewingService = GetIt.instance<SessionViewingService>() as MockSessionViewingService;
     clearInteractions(viewingService);
-    await tester.tap(find.byIcon(Icons.archive_outlined));
+    await tester.tap(find.byIcon(TablerRegular.archive));
     harness.routeSource.emitRoute(AppRouteDef.archivedSessions);
     await tester.pumpAndSettle();
     verify(() => viewingService.clearViewingSession("live")).called(1);

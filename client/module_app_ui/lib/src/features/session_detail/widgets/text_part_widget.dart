@@ -139,7 +139,7 @@ class _MarkdownMessageImageState() extends State<MarkdownMessageImage> {
     final provider = _provider;
     if (provider == null) {
       return Icon(
-        Icons.broken_image,
+        TablerRegular.photo_off,
         size: context.prego.spacing.x6l,
         color: context.prego.colors.textTertiary,
       );
@@ -185,7 +185,7 @@ class _MarkdownMessageImageState() extends State<MarkdownMessageImage> {
                       return child;
                     },
                     errorBuilder: (_, _, _) => Icon(
-                      Icons.broken_image,
+                      TablerRegular.photo_off,
                       size: context.prego.spacing.x6l,
                       color: context.prego.colors.textTertiary,
                     ),

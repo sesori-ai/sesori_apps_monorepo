@@ -136,7 +136,7 @@ class const _AgentMenu({
       acquireOpenLease: null,
       menuMaxHeight: PregoPickerPopover.maxHeight,
       triggerBuilder: (context, toggle) => PregoPickerButton(
-        leadingIcon: Icons.smart_toy_outlined,
+        leadingIcon: TablerRegular.robot,
         label: selectedAgent,
         surfaceStyle: surfaceStyle,
         onPressed: toggle,
@@ -170,7 +170,7 @@ class const _ModelMenu({
       pointerWidth: 300,
       onClosed: null,
       triggerBuilder: (context, toggle) => PregoPickerButton(
-        leadingIcon: Icons.memory_outlined,
+        leadingIcon: TablerRegular.cpu,
         label: _resolveModelName(context, providers: providers, selected: selected),
         surfaceStyle: surfaceStyle,
         onPressed: toggle,
@@ -205,7 +205,7 @@ class const _VariantMenu({
       menuMaxHeight: PregoPickerPopover.maxHeight,
       reverseScroll: true,
       triggerBuilder: (context, toggle) => PregoPickerButton(
-        leadingIcon: Icons.speed_outlined,
+        leadingIcon: TablerRegular.gauge,
         label: selectedVariant ?? availableVariants.first.id,
         surfaceStyle: surfaceStyle,
         onPressed: toggle,
