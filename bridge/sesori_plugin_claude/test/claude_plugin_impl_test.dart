@@ -341,7 +341,7 @@ void main() {
       await subscription.cancel();
     });
 
-    test("stamps an unmarked decorated image echo and consumes its queued entry", () async {
+    test("stamps an unmarked re-encoded image echo and consumes its queued entry", () async {
       await harness.createSession();
       final first = harness.processes.single;
       await waitForFrame(first, "user");
@@ -355,7 +355,7 @@ void main() {
         sessionId: testSessionId,
         parts: const [
           PluginPromptPart.text(text: "inspect image"),
-          PluginPromptPart.fileData(mime: "image/JPEG", base64: "aA==", filename: "image.jpg"),
+          PluginPromptPart.fileData(mime: "image/png", base64: "iVBORw0KGgo=", filename: "image.png"),
         ],
         variant: null,
         agent: "Agent",
@@ -364,7 +364,7 @@ void main() {
       await _waitForUserText(first, "inspect image");
       final written = first.written.lastWhere((frame) => frame["type"] == "user");
 
-      first.emit(_decoratedImageEcho(written: written, uuid: "echo-image"));
+      first.emit(_reencodedImageEcho(written: written, uuid: "echo-image"));
       await pump();
       await pump();
 
@@ -1097,7 +1097,7 @@ Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uu
   "timestamp": "2026-08-11T12:00:00.000Z",
 };
 
-Map<String, Object?> _decoratedImageEcho({required Map<String, Object?> written, required String uuid}) {
+Map<String, Object?> _reencodedImageEcho({required Map<String, Object?> written, required String uuid}) {
   final message = (written["message"]! as Map).cast<String, Object?>();
   final content = (message["content"]! as List).cast<Object?>();
   final image = (content[1]! as Map).cast<String, Object?>();
@@ -1115,7 +1115,7 @@ Map<String, Object?> _decoratedImageEcho({required Map<String, Object?> written,
           "source": {
             ...source,
             "media_type": "image/jpeg",
-            "data": "aA",
+            "data": "/9j/4AAQSkZJRg==",
             "cache_control": {"type": "ephemeral"},
           },
         },
