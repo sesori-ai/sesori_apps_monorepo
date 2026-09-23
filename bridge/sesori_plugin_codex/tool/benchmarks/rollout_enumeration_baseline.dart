@@ -5,10 +5,11 @@ import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
+import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:path/path.dart" as p;
 
 typedef _BenchmarkOptions = ({
-  _Implementation implementation,
+  _Cache cache,
   int projects,
   int samples,
   int sessions,
@@ -25,7 +26,7 @@ typedef _FixtureSummary = ({
 });
 
 const _defaultOptions = (
-  implementation: _Implementation.sync,
+  cache: _Cache.warm,
   projects: 50,
   samples: 20,
   sessions: 1000,
@@ -33,7 +34,12 @@ const _defaultOptions = (
   warmup: 2,
 );
 
-enum _Implementation() { sync, isolate }
+/// `cold` scans with a fresh repository each time; `warm` reuses one, so
+/// settled rollout headers come from its cache.
+enum _Cache() {
+  cold,
+  warm,
+}
 
 Future<void> main(List<String> arguments) async {
   Directory? codexHome;
@@ -59,13 +65,14 @@ Future<void> main(List<String> arguments) async {
     final rolloutApi = CodexRolloutApi(
       environment: {"CODEX_HOME": codexHome.path},
     );
-    final catalogRepository = CodexCatalogRepository(
+    final warmRepository = CodexCatalogRepository(
       rolloutApi: rolloutApi,
     );
-    final sessionOperation = switch (options.implementation) {
-      _Implementation.sync => "listSessionRecords",
-      _Implementation.isolate => "listSessionRecordsInIsolate",
+    Future<List<CodexSessionRecord>> listSessionRecords() => switch (options.cache) {
+      _Cache.cold => CodexCatalogRepository(rolloutApi: rolloutApi).listSessionRecords(),
+      _Cache.warm => warmRepository.listSessionRecords(),
     };
+    final sessionOperation = "listSessionRecords.${options.cache.name}";
 
     stderr.writeln("Running ${options.warmup} warmup iteration(s).");
     for (var i = 0; i < options.warmup; i++) {
@@ -81,10 +88,7 @@ Future<void> main(List<String> arguments) async {
       );
       _validateCount(
         operation: sessionOperation,
-        actual: switch (options.implementation) {
-          _Implementation.sync => catalogRepository.listSessionRecords().length,
-          _Implementation.isolate => (await catalogRepository.listSessionRecordsInIsolate()).length,
-        },
+        actual: (await listSessionRecords()).length,
         expected: options.sessions,
       );
     }
@@ -126,10 +130,7 @@ Future<void> main(List<String> arguments) async {
       });
 
       watch = Stopwatch()..start();
-      final sessions = switch (options.implementation) {
-        _Implementation.sync => catalogRepository.listSessionRecords(),
-        _Implementation.isolate => await catalogRepository.listSessionRecordsInIsolate(),
-      };
+      final sessions = await listSessionRecords();
       watch.stop();
       listSessionsMicros.add(watch.elapsedMicroseconds);
       sessionsReturned = sessions.length;
@@ -159,7 +160,7 @@ Future<void> main(List<String> arguments) async {
         "productMode": const bool.fromEnvironment("dart.vm.product"),
       },
       "parameters": {
-        "implementation": options.implementation.name,
+        "cache": options.cache.name,
         "sessions": options.sessions,
         "projects": options.projects,
         "transcriptBytesPerSession": options.transcriptBytes,
@@ -217,7 +218,7 @@ Future<void> main(List<String> arguments) async {
 }
 
 _BenchmarkOptions _parseOptions({required List<String> arguments}) {
-  var implementation = _defaultOptions.implementation;
+  var cache = _defaultOptions.cache;
   final values = <String, int>{
     "projects": _defaultOptions.projects,
     "samples": _defaultOptions.samples,
@@ -234,7 +235,7 @@ _BenchmarkOptions _parseOptions({required List<String> arguments}) {
 
     final separator = argument.indexOf("=");
     final name = separator == -1 ? argument.substring(2) : argument.substring(2, separator);
-    if (name != "implementation" && !values.containsKey(name)) {
+    if (name != "cache" && !values.containsKey(name)) {
       throw FormatException("Unknown option: --$name");
     }
 
@@ -249,12 +250,12 @@ _BenchmarkOptions _parseOptions({required List<String> arguments}) {
       rawValue = arguments[i];
     }
 
-    if (name == "implementation") {
-      implementation = switch (rawValue) {
-        "sync" => _Implementation.sync,
-        "isolate" => _Implementation.isolate,
+    if (name == "cache") {
+      cache = switch (rawValue) {
+        "cold" => _Cache.cold,
+        "warm" => _Cache.warm,
         _ => throw FormatException(
-          "--implementation must be sync or isolate, got: $rawValue",
+          "--cache must be cold or warm, got: $rawValue",
         ),
       };
       continue;
@@ -268,7 +269,7 @@ _BenchmarkOptions _parseOptions({required List<String> arguments}) {
   }
 
   final options = (
-    implementation: implementation,
+    cache: cache,
     projects: values["projects"]!,
     samples: values["samples"]!,
     sessions: values["sessions"]!,
