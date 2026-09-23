@@ -6,11 +6,6 @@ import "package:opencode_plugin/opencode_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-enum _OptionDiscoveryRequest() {
-  agents,
-  providers,
-}
-
 /// Waits until [count] events of type [T] have been delivered, or fails.
 ///
 /// These tests drive a real loopback `HttpServer`, so SSE bytes arrive on
@@ -286,21 +281,10 @@ void main() {
         model: null,
       );
 
-      expect(
-        server.requestLog,
-        equals([
-          "POST /session/s-root/message",
-          "POST /session/s-root/prompt_async",
-        ]),
-      );
+      // One write per prompt: reusing a reserved message rewrites its creation
+      // time, which makes the OpenCode TUI render the prompt twice.
+      expect(server.requestLog, equals(["POST /session/s-root/prompt_async"]));
       expect(server.lastPromptDirectoryHeader, equals("/repo"));
-      expect(
-        server.noReplyMessageBodies.single,
-        equals({
-          "parts": <dynamic>[],
-          "noReply": true,
-        }),
-      );
       expect(
         server.lastPromptBody?['parts'],
         equals([
@@ -308,7 +292,7 @@ void main() {
         ]),
       );
       expect(server.lastPromptBody?.containsKey('variant'), isFalse);
-      expect(server.lastPromptBody?['messageID'], equals(server.reservedMessageIds.single));
+      expect(server.lastPromptBody?['messageID'], matches(RegExp(r"^msg_[0-9a-f]{12}[0-9A-Za-z]{14}$")));
     });
 
     test("stamps the prompt id on the echo of the message it named", () async {
@@ -472,24 +456,14 @@ void main() {
             PluginSessionVariant? variant,
             ({String providerID, String modelID})? model,
             String expectedMessage,
-            _OptionDiscoveryRequest discoveryRequest,
           })
         >[
-          (
-            name: "agent",
-            agent: "removed-agent",
-            variant: null,
-            model: null,
-            expectedMessage: "OpenCode no longer offers the selected agent.",
-            discoveryRequest: _OptionDiscoveryRequest.agents,
-          ),
           (
             name: "model",
             agent: null,
             variant: null,
             model: (providerID: "anthropic", modelID: "removed-model"),
             expectedMessage: "OpenCode no longer offers the selected model.",
-            discoveryRequest: _OptionDiscoveryRequest.providers,
           ),
           (
             name: "variant",
@@ -497,33 +471,92 @@ void main() {
             variant: const PluginSessionVariant(id: "medium"),
             model: (providerID: "anthropic", modelID: "claude-3-opus"),
             expectedMessage: "OpenCode no longer offers the selected variant.",
-            discoveryRequest: _OptionDiscoveryRequest.providers,
           ),
         ];
 
-    for (final testCase in staleSelectionCases) {
-      test("classifies a removed ${testCase.name} after a generic reservation failure", () async {
+    for (final operation in ["sendPrompt", "sendCommand"]) {
+      test("$operation rejects a removed agent before dispatch", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
         await plugin.initialize();
         addTearDown(plugin.dispose);
         await server.waitForSseConnection();
-        server
-          ..failNoReplyMessageNumber = 1
-          ..noReplyMessageFailureStatusCode = HttpStatus.internalServerError;
         server.requestLog.clear();
 
         await expectLater(
-          plugin.sendPrompt(
+          operation == "sendPrompt"
+              ? plugin.sendPrompt(
+                  promptId: "prompt-stale-agent",
+                  sessionId: "s-root",
+                  parts: const [PluginPromptPart.text(text: "Continue")],
+                  agent: "removed-agent",
+                  variant: null,
+                  model: null,
+                )
+              : plugin.sendCommand(
+                  promptId: "prompt-stale-agent",
+                  sessionId: "s-root",
+                  command: "/review-work",
+                  arguments: "",
+                  userVisibleArguments: null,
+                  agent: "removed-agent",
+                  variant: null,
+                  model: null,
+                ),
+          throwsA(
+            isA<PluginStaleOptionsException>()
+                .having((error) => error.operation, "operation", operation)
+                .having((error) => error.message, "message", "OpenCode no longer offers the selected agent."),
+          ),
+        );
+
+        expect(server.requestLog, equals(["GET /agent"]));
+        expect(server.lastAgentDirectoryHeader, "/repo");
+      });
+    }
+
+    test("sendPrompt dispatches with an offered agent", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      server.requestLog.clear();
+
+      await plugin.sendPrompt(
+        promptId: "prompt-build",
+        sessionId: "s-root",
+        parts: const [PluginPromptPart.text(text: "Continue")],
+        agent: "build",
+        variant: null,
+        model: null,
+      );
+
+      expect(server.requestLog, equals(["GET /agent", "POST /session/s-root/prompt_async"]));
+      expect(server.lastPromptBody?["agent"], "build");
+    });
+
+    for (final testCase in staleSelectionCases) {
+      test("classifies a removed ${testCase.name} after a generic command failure", () async {
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+        await plugin.initialize();
+        addTearDown(plugin.dispose);
+        await server.waitForSseConnection();
+        server.commandStatusCode = HttpStatus.internalServerError;
+        server.requestLog.clear();
+
+        await expectLater(
+          plugin.sendCommand(
             promptId: "prompt-stale-${testCase.name}",
             sessionId: "s-root",
-            parts: const [PluginPromptPart.text(text: "Continue")],
+            command: "/review-work",
+            arguments: "",
+            userVisibleArguments: null,
             agent: testCase.agent,
             variant: testCase.variant,
             model: testCase.model,
           ),
           throwsA(
             isA<PluginStaleOptionsException>()
-                .having((error) => error.operation, "operation", "sendPrompt")
+                .having((error) => error.operation, "operation", "sendCommand")
                 .having((error) => error.message, "message", testCase.expectedMessage)
                 .having(
                   (error) => error.cause,
@@ -537,41 +570,26 @@ void main() {
           ),
         );
 
-        expect(
-          server.requestLog,
-          equals([
-            "POST /session/s-root/message",
-            switch (testCase.discoveryRequest) {
-              _OptionDiscoveryRequest.agents => "GET /agent",
-              _OptionDiscoveryRequest.providers => "GET /config/providers",
-            },
-          ]),
-        );
-        expect(server.requestLog, isNot(contains("POST /session/s-root/prompt_async")));
-        switch (testCase.discoveryRequest) {
-          case _OptionDiscoveryRequest.agents:
-            expect(server.lastAgentDirectoryHeader, "/repo");
-          case _OptionDiscoveryRequest.providers:
-            expect(server.lastProvidersDirectoryHeader, "/repo");
-        }
+        expect(server.requestLog, equals(["POST /session/s-root/command", "GET /config/providers"]));
+        expect(server.lastProvidersDirectoryHeader, "/repo");
       });
     }
 
-    test("preserves a generic reservation failure when the selected agent remains available", () async {
+    test("preserves a generic command failure when the selected agent remains available", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
-      server
-        ..failNoReplyMessageNumber = 1
-        ..noReplyMessageFailureStatusCode = HttpStatus.internalServerError;
+      server.commandStatusCode = HttpStatus.internalServerError;
       server.requestLog.clear();
 
       await expectLater(
-        plugin.sendPrompt(
+        plugin.sendCommand(
           promptId: "prompt-backend-failure",
           sessionId: "s-root",
-          parts: const [PluginPromptPart.text(text: "Continue")],
+          command: "/review-work",
+          arguments: "",
+          userVisibleArguments: null,
           agent: "build",
           variant: null,
           model: null,
@@ -588,7 +606,8 @@ void main() {
       expect(
         server.requestLog,
         equals([
-          "POST /session/s-root/message",
+          "GET /agent",
+          "POST /session/s-root/command",
           "GET /agent",
         ]),
       );
@@ -612,33 +631,27 @@ void main() {
         command: "/review-work",
         arguments: "recent changes",
         userVisibleArguments: "recent changes",
-        agent: "reviewer",
+        agent: "build",
         variant: const PluginSessionVariant(id: "xhigh"),
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
-      expect(
-        server.requestLog,
-        equals([
-          "POST /session/s-root/message",
-          "POST /session/s-root/command",
-        ]),
-      );
+      expect(server.requestLog, equals(["GET /agent", "POST /session/s-root/command"]));
       expect(server.lastCommandDirectoryHeader, equals("/repo"));
+      final messageId = server.lastCommandBody?["messageID"] as String;
       expect(
         server.lastCommandBody,
         equals({
-          "messageID": server.reservedMessageIds.single,
+          "messageID": messageId,
           "command": "/review-work",
           "arguments": "recent changes",
-          "agent": "reviewer",
+          "agent": "build",
           "variant": "xhigh",
           "model": "openai/gpt-4.1",
         }),
       );
       expect(plugin.currentWorkState, PluginWorkState.busy);
 
-      final messageId = server.reservedMessageIds.single;
       for (final created in [1, 2]) {
         await server.emitRawSse(
           jsonEncode({
@@ -668,26 +681,25 @@ void main() {
       server.holdCommand!.complete();
     });
 
-    test("definite prompt refusal removes its correlation and reserved message", () async {
+    test("an ambiguous prompt failure still stamps a late echo", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       await plugin.initialize();
       await server.waitForSseConnection();
-      server.promptStatusCode = HttpStatus.badRequest;
+      server.promptStatusCode = HttpStatus.badGateway;
 
       await expectLater(
         plugin.sendPrompt(
-          promptId: "prompt-rejected",
+          promptId: "prompt-ambiguous",
           sessionId: "s-root",
           parts: const [PluginPromptPart.text(text: "Continue")],
           agent: null,
           variant: null,
           model: null,
         ),
-        throwsA(isA<PluginApiException>().having((error) => error.statusCode, "statusCode", 400)),
+        throwsA(isA<PluginApiException>().having((error) => error.statusCode, "statusCode", 502)),
       );
 
-      final messageId = server.reservedMessageIds.single;
-      expect(server.deletedMessageIds, equals([messageId]));
+      final messageId = server.lastPromptBody?["messageID"] as String;
 
       final events = <BridgeSseEvent>[];
       final subscription = plugin.events.listen(events.add);
@@ -713,7 +725,7 @@ void main() {
       await _awaitEvents<BridgeSseMessageUpdated>(events, count: 1);
 
       final echoed = events.whereType<BridgeSseMessageUpdated>().single;
-      expect((echoed.info as PluginMessageUser).promptId, isNull);
+      expect((echoed.info as PluginMessageUser).promptId, equals("prompt-ambiguous"));
     });
 
     test("bare compact reuses a correlated server message and native compaction part", () async {

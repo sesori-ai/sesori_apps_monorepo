@@ -1,7 +1,7 @@
 /// Remembers which prompt created which OpenCode user message.
 ///
-/// OpenCode first reserves the user message on its own host, then Sesori reuses
-/// that server-generated id for the real dispatch. A message id this tracker
+/// Sesori names each dispatched user message (manual compaction reuses a
+/// server-reserved one) and records it here before sending. A message id this tracker
 /// does not know — one OpenCode named for the TUI, or one evicted by the bound
 /// below — simply resolves to null and that echo stays unattributed.
 class PromptMessageTracker() {
