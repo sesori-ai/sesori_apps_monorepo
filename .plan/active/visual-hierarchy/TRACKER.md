@@ -20,8 +20,8 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 2 | `visual-hierarchy/motion` | [2/38](#pr-titles) | ≤ 250 | done |
 | [x] | 3 | `visual-hierarchy/modal-entry` | [3/38](#pr-titles) | ≤ 600 | done |
 | [x] | 4 | `visual-hierarchy/anchored-pickers-{a,b,c}` | [4/41](#pr-titles) | see PLAN | done |
-| [ ] | 5 | `visual-hierarchy/grey-ramp` | [5/41](#pr-titles) | ≤ 500 | in-progress |
-| [ ] | 6 | `visual-hierarchy/title-ladder` | [6/41](#pr-titles) | ≤ 600 | pending |
+| [x] | 5 | `visual-hierarchy/grey-ramp` | [5/41](#pr-titles) | ≤ 500 | done |
+| [ ] | 6 | `visual-hierarchy/title-ladder` | [6/41](#pr-titles) | ≤ 600 | in-progress |
 | [ ] | 7 | `visual-hierarchy/desktop-header` | [7/41](#pr-titles) | ≤ 500 | pending |
 | [ ] | 8 | `visual-hierarchy/blue` | [8/41](#pr-titles) | ≤ 400 | pending |
 | [ ] | 9 | `visual-hierarchy/size-tokens` | [9/41](#pr-titles) | ≤ 900 | pending |
