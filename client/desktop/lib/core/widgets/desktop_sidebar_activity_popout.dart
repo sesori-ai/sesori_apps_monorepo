@@ -15,6 +15,8 @@ class const DesktopSidebarActivityPopout({
     // may begin past that and the rail's width.
     builder: (context, constraints) => PregoPopover(
       popoverWidth: 300,
+      popoverMaxHeight: null,
+      contentScrolls: false,
       popoverBorderRadius: PregoRadius.lg,
       screenPadding: EdgeInsetsDirectional.fromSTEB(
         railStart + constraints.maxWidth + PregoSpacing.md,

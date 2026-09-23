@@ -1,13 +1,25 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:theme_prego/components/menus/anchored_flat_panel.dart";
 import "package:theme_prego/module_prego.dart";
 
-Widget _harness({required PregoPopoverContentBuilder contentBuilder}) {
+Widget _harness({
+  required PregoPopoverContentBuilder contentBuilder,
+  // ignore: no_slop_linter/prefer_required_named_parameters, most cases open a content-sized popover in the middle
+  Alignment alignment = Alignment.center,
+  // ignore: no_slop_linter/prefer_required_named_parameters, most cases open a content-sized popover in the middle
+  double? popoverMaxHeight,
+  // ignore: no_slop_linter/prefer_required_named_parameters, most cases open a content-sized popover in the middle
+  bool contentScrolls = false,
+}) {
   return MaterialApp(
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
     home: Scaffold(
-      body: Center(
+      body: Align(
+        alignment: alignment,
         child: PregoPopover(
+          popoverMaxHeight: popoverMaxHeight,
+          contentScrolls: contentScrolls,
           triggerBuilder: (context, toggle) => IconButton(
             onPressed: toggle,
             icon: const Icon(Icons.more_horiz),
@@ -17,6 +29,22 @@ Widget _harness({required PregoPopoverContentBuilder contentBuilder}) {
       ),
     ),
   );
+}
+
+Widget _rows(BuildContext context, VoidCallback close) => Column(
+  mainAxisSize: MainAxisSize.min,
+  children: [for (var i = 0; i < 40; i++) const SizedBox(height: 60, child: Text("row"))],
+);
+
+Rect _panel({required WidgetTester tester}) =>
+    tester.getRect(find.descendant(of: find.byType(AnchoredFlatPanel), matching: find.byType(Material)).first);
+
+Rect _trigger({required WidgetTester tester}) => tester.getRect(find.byType(IconButton));
+
+void _useSmallPhone({required WidgetTester tester}) {
+  tester.view.physicalSize = const Size(375, 667);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
 }
 
 // Free-form content with its own dismiss affordance — the case a menu can't
@@ -57,14 +85,7 @@ void main() {
     // A column taller than the room beside the trigger. Without the panel owning
     // a scroll view this overflows (a RenderFlex error); the panel must cap the
     // height and scroll the content instead.
-    await tester.pumpWidget(
-      _harness(
-        contentBuilder: (context, close) => Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [for (var i = 0; i < 40; i++) const SizedBox(height: 60, child: Text("row"))],
-        ),
-      ),
-    );
+    await tester.pumpWidget(_harness(contentBuilder: _rows));
 
     await tester.tap(find.byIcon(Icons.more_horiz));
     await tester.pumpAndSettle();
@@ -93,4 +114,61 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Tap outside me"), findsNothing);
   }, variant: _everyPlatform);
+
+  testWidgets("hands content that scrolls itself the capped height", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        popoverMaxHeight: 200,
+        contentScrolls: true,
+        contentBuilder: (context, close) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Pinned"),
+            Flexible(
+              child: ListView(shrinkWrap: true, children: [for (var i = 0; i < 40; i++) Text("item $i")]),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(SingleChildScrollView), findsNothing);
+    expect(_panel(tester: tester).height, 200);
+    expect(find.text("Pinned"), findsOneWidget);
+  });
+
+  testWidgets("stays above a trigger that the keyboard lifts after it opens", (tester) async {
+    _useSmallPhone(tester: tester);
+    await tester.pumpWidget(
+      _harness(alignment: Alignment.bottomCenter, popoverMaxHeight: 360, contentBuilder: _rows),
+    );
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+    expect(_panel(tester: tester).height, 360);
+
+    // A search field inside the popover raises the keyboard, and the page
+    // underneath carries the trigger up with it.
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pumpAndSettle();
+
+    final trigger = _trigger(tester: tester);
+    final panel = _panel(tester: tester);
+    expect(trigger.bottom, 367);
+    expect(panel.top, greaterThanOrEqualTo(12));
+    expect(panel.bottom, lessThanOrEqualTo(trigger.top));
+  });
+
+  testWidgets("keeps inside the window edges beside a corner trigger", (tester) async {
+    _useSmallPhone(tester: tester);
+    await tester.pumpWidget(_harness(alignment: Alignment.topRight, contentBuilder: _bodyWithClose));
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+
+    final panel = _panel(tester: tester);
+    expect(panel.right, lessThanOrEqualTo(375 - 12));
+    expect(panel.top, greaterThanOrEqualTo(_trigger(tester: tester).bottom));
+  });
 }

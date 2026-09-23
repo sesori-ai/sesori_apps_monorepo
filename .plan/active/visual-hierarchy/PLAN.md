@@ -7,12 +7,14 @@
 - **Plan date:** 2026-09-23
 - **Repository:** `sesori-ai/sesori_apps_monorepo`, implementation base `main`
   at `a845f1434c`.
-- **Delivery:** 38-step PR series titled
-  `<emoji> [visual-hierarchy] <description> [step <x>/38]`. Exact titles and
+- **Delivery:** 41-step PR series titled
+  `<emoji> [visual-hierarchy] <description> [step <x>/41]`. Steps 1–3 merged
+  as `/38`; three steps were added on 2026-09-23 (35–37). Exact titles and
   branches are in [TRACKER](TRACKER.md#pr-titles).
-- **Order:** steps 2–34 need no further input from the user and run first.
-  Step 35 waits for the user to scope the sign-in rebuild, and step 36 for
-  their approval of screenshots (D16). Steps 37–38 close the series.
+- **Order:** steps 2–36 need no further input from the user and run first.
+  Step 37 is a discussion with the user backed by prototypes. Step 38 waits
+  for the user to scope the sign-in rebuild, and step 39 for their approval of
+  screenshots (D16). Steps 40–41 close the series.
 - **Sources:** the user's verdicts on the round 1 UI review and on the motion
   review, their answers to the follow-up questions, and their round 2 answers
   of 2026-09-23 (D19–D23; [TRACKER](TRACKER.md#round-2-answers)). The review
@@ -76,8 +78,11 @@ review item is written "review D<n>"; a bare D<n> is a design decision below.
 | 32 | MS4 folded into the summary words, R1.1, R5 |
 | 33 | ST4, R2 |
 | 34 | D5 counts, R3 |
-| 35 | D12, as its own plan |
-| 36 | H6; approval gate, last |
+| 35 | the one modal entry point, enforced (user follow-up to step 3) |
+| 36 | compaction as its own row (user request, 2026-09-23) |
+| 37 | turn navigation: discussion and prototypes (user request) |
+| 38 | D12, as its own plan |
+| 39 | H6; approval gate, last |
 
 Out of scope, by the user's verdict:
 
@@ -187,8 +192,9 @@ Data paths:
 ## Design Decisions
 
 - **D1 Scope.** As in Scope. Nothing marked Not worth it or Later is built.
-- **D2 Order.** Steps that need no input first (2–34), then the sign-in plan
-  (35), then H6 (36), which the user asked to be last. Foundations come before
+- **D2 Order.** Steps that need no input first (2–36), then the turn
+  navigation discussion (37), then the sign-in plan (38), then H6 (39), which
+  the user asked to be last. Foundations come before
   the screens that use them, and the transcript (31–32) builds on the restyled
   tokens, rows and session page.
 - **D3 The sparkle stays.** It is the running and unread signal everywhere and
@@ -237,8 +243,8 @@ Data paths:
   expand costs less than keeping every hidden row alive.
 - **D15 No change to popovers on sign-out.**
 - **D16 Gates.** The round 2 answers removed the gates on steps 31–34 and
-  FC1. Step 35 waits for the user to scope the sign-in rebuild with them.
-  Step 36 is built locally and shown as before and after screenshots of the
+  FC1. Step 38 waits for the user to scope the sign-in rebuild with them.
+  Step 39 is built locally and shown as before and after screenshots of the
   running app on a local page; no PR opens before the user approves it.
 - **D17 Sends name the harness, not a start.** The SD8 mockup said "Starting
   OpenCode…", but the client cannot tell a harness start from a slow send, so
@@ -315,7 +321,9 @@ review: new shared API.
 `command_picker_sheet.dart` content opens in a popover anchored to its chip or
 button on both apps. The desktop adds Up, Down, Enter and Esc, and the command
 list filters as you type after "/". Checks: keyboard and selection tests;
-popover placement near a window edge.
+popover placement near a window edge. Lands as 4.a (Prego popover capabilities), 4.b (search
+list and model picker) and 4.c (command picker), because the whole step
+measured over three times its target.
 
 ### Foundations (steps 5–11)
 
@@ -597,19 +605,54 @@ unknown route, to a sealed unsupported result, and the cubit then stops asking
 for that page, which keeps plain "Changes". Zero sides hide (D20).
 Architecture implementation review: wire change.
 
-### Steps that wait for the user (35–36)
+### Added after the plan (35–37)
 
-**Step 35 — desktop sign-in plan (review D12).** Scope the sign-in rebuild
+**Step 35 — one modal entry point, enforced.** A `no_slop_linter` warning rule
+beside `avoid_navigator_of` reports `showDialog`, `showGeneralDialog`,
+`showModalBottomSheet`, `showBottomSheet`, the Cupertino and adaptive
+variants, `showPregoBottomSheet`, and construction of the dialog and sheet
+route types, outside `module_prego`'s surfaces. Anchored popovers, menus and
+full-screen page routes stay allowed. The remaining alert calls in
+`module_app_ui` move to one `module_prego` alert entry point; the desktop
+settings window keeps a reasoned suppression, since it is a window, not a
+modal. Rule tests follow `avoid_navigator_of_test.dart`.
+
+**Step 36 — compaction row.** Today Pi reports compaction as a
+`MessagePartCompaction` the client renders as nothing, and the Claude, OpenCode
+and Codex plugins do not detect it at all, so a harness's continuation summary
+arrives as an ordinary, very long message. Each plugin whose harness marks
+compaction maps it to the existing compaction part, and the part gains an
+optional summary text with an honest `null` default. The client renders it as
+one quiet row, "Context compacted", in the transcript's step style. Tapping it
+opens the summary in a reading-width `showPregoModal` instead of expanding in
+place, because the summary is long. An older app ignores the field and shows
+no summary, which is accepted: the summary is continuation context, not the
+user's content. A harness that cannot mark compaction is recorded in
+`docs/HARNESS_CAPABILITIES.md`. Architecture implementation review: contract
+change.
+
+**Step 37 — turn navigation (discussion first).** Finding one's own prompts
+in a long session is hard. Build rough prototypes, which may be web mocks, of
+at least: a turn-by-turn view where each prompt and its answer is one page;
+a pinch that collapses the transcript to its prompts for picking one; and the
+latest prompt pinned as a header until the next prompt scrolls in. Add any
+alternative worth testing, with a recommendation. The user tries them, and
+only the chosen direction is planned, as its own plan if it is large. No
+production code before that choice.
+
+### Steps that wait for the user (38–39)
+
+**Step 38 — desktop sign-in plan (review D12).** Scope the sign-in rebuild
 with the user, including Apple sign-in, and raise it as its own plan. This step
 is that plan's PR; its implementation runs under it.
 
-**Step 36 — header backdrop (H6).** Built last, locally. The user approves
+**Step 39 — header backdrop (H6).** Built last, locally. The user approves
 before and after screenshots of the running app first, because an over-strong
 fade looks worse than none. No PR before approval.
 
 ## Compatibility
 
-- Only steps 25, 27, 32 and 34 touch the client-bridge contract. Each adds an
+- Only steps 25, 27, 32, 34 and 36 touch the client-bridge contract. Each adds an
   optional field or a new request with an honest default, so an older bridge
   degrades to today's behaviour and an older app ignores the field. Step 32's
   kind also reads a newer bridge's unknown values as unknown. Markers use the
@@ -681,7 +724,7 @@ time.
 
 ## Delivery Plan
 
-38 PRs, one at a time in order; exact titles and branches are in
+41 PRs, one at a time in order; exact titles and branches are in
 [TRACKER](TRACKER.md#pr-titles). Targets count additions plus deletions
 across every path.
 
@@ -721,13 +764,16 @@ across every path.
 | 32 | ≤ 1,200 | 🚧 | yes |
 | 33 | ≤ 500 | ⚙️ | yes |
 | 34 | ≤ 800 | 🚧 | yes |
-| 35 | ≤ 600 | 🌱 | its own plan review |
-| 36 | set at approval | ⚙️ | — |
-| 37 | ≤ 600 | 🌱 | — |
-| 38 | ≤ 300 | 🌱 | — |
+| 35 | ≤ 600 | ⚙️ | — |
+| 36 | ≤ 900 | 🚧 | yes |
+| 37 | set after the discussion | 🌱 | — |
+| 38 | ≤ 600 | 🌱 | its own plan review |
+| 39 | set at approval | ⚙️ | — |
+| 40 | ≤ 600 | 🌱 | — |
+| 41 | ≤ 300 | 🌱 | — |
 
 Evidence for a finished step goes in `steps/step-NN.md`, written by that
-step's own PR. Step 37 reconciles `docs/regression/`. Step 38 runs the final
+step's own PR. Step 40 reconciles `docs/regression/`. Step 41 runs the final
 matrix below on the merged series, records every cell, and retires the plan to
 `.plan/completed/visual-hierarchy/`.
 
@@ -739,7 +785,7 @@ Affected feature documents:
 - `navigation-transitions.md` — desktop fades, modal frames, reduced motion
   (2–4).
 - `glass-presentation.md` — modal frames and the retired glass banner (3, 14,
-  36).
+  39).
 - `desktop-cockpit-shell.md` — header, sidebar, settings window, home, palette
   (7, 12, 15, 18, 20).
 - `projects-and-sessions.md` — rows, Activity, search, project rows, missing
@@ -748,8 +794,8 @@ Affected feature documents:
 - `questions-and-permissions.md` — the needs-you card (14).
 - `diffs-and-source-control.md` — diff colours, file list, counts (10, 16,
   34).
-- `tools-and-file-changes.md` — tool expansion, grouping, tool kinds (2, 31,
-  32).
+- `tools-and-file-changes.md` — tool expansion, grouping, tool kinds,
+  compaction (2, 31, 32, 36).
 - `session-turns.md` — send failures, live transcript (30, 31).
 - `session-creation-and-options.md` — pickers, new session page, wording (4,
   23).
@@ -792,7 +838,7 @@ because they share one mapper.
   projects with activity.
 - **YOLO can look stale on a second surface** until it reconnects or opens
   Settings (step 33). Accepted: it self-corrects and changes no behaviour.
-- **Step 36 can take several rounds.** It blocks only steps 37–38.
+- **Step 39 can take several rounds.** It blocks only steps 40–41.
 - **Search sees loaded titles only.** Accepted (D11).
 - **The palette and Activity read loaded session data.** A session the app has
   not loaded does not appear until it loads. Accepted.
