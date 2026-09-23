@@ -6,11 +6,6 @@ import "package:opencode_plugin/opencode_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-enum _OptionDiscoveryRequest() {
-  agents,
-  providers,
-}
-
 /// Waits until [count] events of type [T] have been delivered, or fails.
 ///
 /// These tests drive a real loopback `HttpServer`, so SSE bytes arrive on
@@ -461,24 +456,14 @@ void main() {
             PluginSessionVariant? variant,
             ({String providerID, String modelID})? model,
             String expectedMessage,
-            _OptionDiscoveryRequest discoveryRequest,
           })
         >[
-          (
-            name: "agent",
-            agent: "removed-agent",
-            variant: null,
-            model: null,
-            expectedMessage: "OpenCode no longer offers the selected agent.",
-            discoveryRequest: _OptionDiscoveryRequest.agents,
-          ),
           (
             name: "model",
             agent: null,
             variant: null,
             model: (providerID: "anthropic", modelID: "removed-model"),
             expectedMessage: "OpenCode no longer offers the selected model.",
-            discoveryRequest: _OptionDiscoveryRequest.providers,
           ),
           (
             name: "variant",
@@ -486,36 +471,48 @@ void main() {
             variant: const PluginSessionVariant(id: "medium"),
             model: (providerID: "anthropic", modelID: "claude-3-opus"),
             expectedMessage: "OpenCode no longer offers the selected variant.",
-            discoveryRequest: _OptionDiscoveryRequest.providers,
           ),
         ];
 
-    test("sendPrompt rejects a removed agent before dispatch", () async {
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-      await plugin.initialize();
-      addTearDown(plugin.dispose);
-      await server.waitForSseConnection();
-      server.requestLog.clear();
+    for (final operation in ["sendPrompt", "sendCommand"]) {
+      test("$operation rejects a removed agent before dispatch", () async {
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+        await plugin.initialize();
+        addTearDown(plugin.dispose);
+        await server.waitForSseConnection();
+        server.requestLog.clear();
 
-      await expectLater(
-        plugin.sendPrompt(
-          promptId: "prompt-stale-agent",
-          sessionId: "s-root",
-          parts: const [PluginPromptPart.text(text: "Continue")],
-          agent: "removed-agent",
-          variant: null,
-          model: null,
-        ),
-        throwsA(
-          isA<PluginStaleOptionsException>()
-              .having((error) => error.operation, "operation", "sendPrompt")
-              .having((error) => error.message, "message", "OpenCode no longer offers the selected agent."),
-        ),
-      );
+        await expectLater(
+          operation == "sendPrompt"
+              ? plugin.sendPrompt(
+                  promptId: "prompt-stale-agent",
+                  sessionId: "s-root",
+                  parts: const [PluginPromptPart.text(text: "Continue")],
+                  agent: "removed-agent",
+                  variant: null,
+                  model: null,
+                )
+              : plugin.sendCommand(
+                  promptId: "prompt-stale-agent",
+                  sessionId: "s-root",
+                  command: "/review-work",
+                  arguments: "",
+                  userVisibleArguments: null,
+                  agent: "removed-agent",
+                  variant: null,
+                  model: null,
+                ),
+          throwsA(
+            isA<PluginStaleOptionsException>()
+                .having((error) => error.operation, "operation", operation)
+                .having((error) => error.message, "message", "OpenCode no longer offers the selected agent."),
+          ),
+        );
 
-      expect(server.requestLog, equals(["GET /agent"]));
-      expect(server.lastAgentDirectoryHeader, "/repo");
-    });
+        expect(server.requestLog, equals(["GET /agent"]));
+        expect(server.lastAgentDirectoryHeader, "/repo");
+      });
+    }
 
     test("sendPrompt dispatches with an offered agent", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
@@ -573,22 +570,8 @@ void main() {
           ),
         );
 
-        expect(
-          server.requestLog,
-          equals([
-            "POST /session/s-root/command",
-            switch (testCase.discoveryRequest) {
-              _OptionDiscoveryRequest.agents => "GET /agent",
-              _OptionDiscoveryRequest.providers => "GET /config/providers",
-            },
-          ]),
-        );
-        switch (testCase.discoveryRequest) {
-          case _OptionDiscoveryRequest.agents:
-            expect(server.lastAgentDirectoryHeader, "/repo");
-          case _OptionDiscoveryRequest.providers:
-            expect(server.lastProvidersDirectoryHeader, "/repo");
-        }
+        expect(server.requestLog, equals(["POST /session/s-root/command", "GET /config/providers"]));
+        expect(server.lastProvidersDirectoryHeader, "/repo");
       });
     }
 
@@ -623,6 +606,7 @@ void main() {
       expect(
         server.requestLog,
         equals([
+          "GET /agent",
           "POST /session/s-root/command",
           "GET /agent",
         ]),
@@ -647,12 +631,12 @@ void main() {
         command: "/review-work",
         arguments: "recent changes",
         userVisibleArguments: "recent changes",
-        agent: "reviewer",
+        agent: "build",
         variant: const PluginSessionVariant(id: "xhigh"),
         model: (providerID: "openai", modelID: "gpt-4.1"),
       );
 
-      expect(server.requestLog, equals(["POST /session/s-root/command"]));
+      expect(server.requestLog, equals(["GET /agent", "POST /session/s-root/command"]));
       expect(server.lastCommandDirectoryHeader, equals("/repo"));
       final messageId = server.lastCommandBody?["messageID"] as String;
       expect(
@@ -661,7 +645,7 @@ void main() {
           "messageID": messageId,
           "command": "/review-work",
           "arguments": "recent changes",
-          "agent": "reviewer",
+          "agent": "build",
           "variant": "xhigh",
           "model": "openai/gpt-4.1",
         }),

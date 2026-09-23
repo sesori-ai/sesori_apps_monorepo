@@ -497,9 +497,10 @@ defaults and queued client sends coherent.
 - When a plugin rejects a send before acceptance because its agent, model,
   variant, or command is no longer offered, the bridge deletes that
   options-cache row and returns the typed `staleSessionOptions` rejection.
-  OpenCode checks a prompt's selected agent against fresh project options before
-  dispatch, because its asynchronous prompt endpoint reports a removed agent only
-  after acceptance. When a slash command or manual-compaction reservation
+  OpenCode checks a prompt's or slash command's selected agent against fresh
+  project options before dispatch, because its asynchronous prompt endpoint
+  reports a removed agent only after acceptance and a slow command can outlive
+  its fast-fail window. When a slash command or manual-compaction reservation
   collapses a rejection into a generic 500, the plugin checks fresh project
   options and classifies the failure as stale only when the requested selection
   is absent or unavailable. The client force-refreshes the

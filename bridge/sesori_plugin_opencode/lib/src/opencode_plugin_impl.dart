@@ -522,7 +522,9 @@ class OpenCodePlugin._({
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) async {
-    if (agent != null) await _requireOfferedAgent(sessionId: sessionId, agent: agent);
+    if (agent != null) {
+      await _requireOfferedAgent(operation: _sendPromptOperation, sessionId: sessionId, agent: agent);
+    }
     await _dispatchNewMessage(
       promptId: promptId,
       dispatch: (messageId) => _call(
@@ -539,16 +541,16 @@ class OpenCodePlugin._({
   }
 
   /// `prompt_async` accepts a removed agent and fails the turn later over SSE,
-  /// so check it here while the client can still pick a replacement.
-  Future<void> _requireOfferedAgent({required String sessionId, required String agent}) async {
-    final projectId = _service.tracker.getSessionDirectory(sessionId: sessionId);
-    if (projectId == null) return;
-    final agents = await _call(() => _service.getAgents(projectId: projectId));
-    if (agents.any((candidate) => candidate.name == agent)) return;
-    throw const PluginStaleOptionsException(
-      _sendPromptOperation,
-      message: "OpenCode no longer offers the selected agent.",
-    );
+  /// and `/command` can outlive its fast-fail window, so check the agent before
+  /// dispatch while the client can still pick a replacement.
+  Future<void> _requireOfferedAgent({
+    required String operation,
+    required String sessionId,
+    required String agent,
+  }) async {
+    final staleOption = await _findStaleSessionOption(sessionId: sessionId, agent: agent, variant: null, model: null);
+    if (staleOption == null) return;
+    throw PluginStaleOptionsException(operation, message: "OpenCode no longer offers the selected agent.");
   }
 
   /// Names the user message on the bridge so its echoes can be stamped with
@@ -618,6 +620,9 @@ class OpenCodePlugin._({
       return;
     }
 
+    if (agent != null) {
+      await _requireOfferedAgent(operation: _sendCommandOperation, sessionId: sessionId, agent: agent);
+    }
     await _dispatchNewMessage(
       promptId: promptId,
       dispatch: (messageId) => _withStaleOptionsClassification(
