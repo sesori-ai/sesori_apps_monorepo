@@ -245,6 +245,19 @@ void main() {
     expect(fixture.spawned, isEmpty);
   });
 
+  test("quota readiness does not treat a primed directory as a persisted session", () async {
+    final storage = _Storage(initialResolvedSession: null);
+    final fixture = _Fixture(processes: [], storageOverride: storage);
+    addTearDown(fixture.dispose);
+    fixture.catalogRepository.primeSessionDirectory(sessionId: "session", directory: "/project");
+    final service = fixture.service();
+
+    expect(await service.getQuotaContinuationReadiness(sessionId: "session"), PluginQuotaContinuationReadiness.unknown);
+    storage.resolved = _resolved();
+    expect(await service.getQuotaContinuationReadiness(sessionId: "session"), PluginQuotaContinuationReadiness.idle);
+    expect(fixture.spawned, isEmpty);
+  });
+
   test("persisted file wins over pending marker and marker resumes new when file is absent", () async {
     final resumed = FakePiProcess();
     final created = FakePiProcess();

@@ -58,6 +58,13 @@ final class PiSessionCatalogRepository({required final PiSessionStorageApi _stor
     return null;
   }
 
+  Future<bool> hasPersistedSession({required String sessionId}) async {
+    final metadata = await _storageApi.listSessionMetadata(
+      knownDirectories: {..._knownDirectories, ..._primedSessions.values.map((session) => session.directory)},
+    );
+    return metadata.any((session) => session.id == sessionId);
+  }
+
   Future<({String displaySessionId, String projectId})?> resolveDisplayScope({required String sessionId}) async {
     final sessions = await _readSessions(knownDirectories: const {});
     final byId = {for (final session in sessions) session.id: session};
