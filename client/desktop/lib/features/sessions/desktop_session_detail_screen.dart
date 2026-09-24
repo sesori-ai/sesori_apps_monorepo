@@ -194,7 +194,7 @@ class const DesktopSessionDetailView({
       },
       // Running shows as the title's shimmer; only a waiting question takes the status slot, or running
       // when reduced motion stills the shimmer.
-      status: isAwaitingInput || (isBusy && MediaQuery.disableAnimationsOf(context))
+      status: isAwaitingInput || (isBusy && prefersReducedMotion(context))
           ? DesktopSessionSignals(isAwaitingInput: isAwaitingInput, isRunning: !isAwaitingInput, isUnseen: false)
           : null,
       title: title,
