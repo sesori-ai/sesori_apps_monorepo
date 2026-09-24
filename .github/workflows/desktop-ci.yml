@@ -100,12 +100,14 @@ jobs:
               - '.github/workflows/desktop-ci.yml'
               - '.tool-versions'
             # Inputs that can break a macOS or Windows build while the Linux
-            # build stays green: native runner projects, resolved plugin
-            # versions, the desktop pubspec, and the toolchain.
+            # build stays green: native runner projects, in-repo plugin sources
+            # (theme_prego ships Darwin code), dependency declarations and
+            # resolution, and the toolchain.
             native:
-              - 'client/desktop/macos/**'
-              - 'client/desktop/windows/**'
-              - 'client/desktop/pubspec.yaml'
+              - 'client/**/macos/**'
+              - 'client/**/windows/**'
+              - 'client/**/darwin/**'
+              - 'client/**/pubspec.yaml'
               - 'client/pubspec.lock'
               - '.github/workflows/desktop-ci.yml'
               - '.tool-versions'
