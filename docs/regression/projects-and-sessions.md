@@ -266,6 +266,13 @@ state.
   read All, Running and Unread with exact counts from the loaded list and narrow
   it locally without a request. A filter that leaves nothing says so. The chips
   hide in the archived list and while the project has no sessions.
+- On the phone, a search field tops Projects and each session list once they
+  have anything to search. It narrows the loaded titles without a request,
+  ignoring case and needing every typed word: project names and Activity's
+  session titles on Projects, session titles (and the chips' counts) on a
+  session list. Nothing matching reads "No matches", and clearing the field
+  restores the full list. The desktop searches through its command palette
+  instead.
 - Session activity stays relative for 30 days. Older rows use a compact numeric
   date whose field order and separators follow the user's full device locale;
   dates from the current year omit the year, while earlier years remain explicit.
@@ -452,6 +459,9 @@ started one. Restore harness eligibility afterwards.
 
 ## Failure Signals
 
+- Phone search asks the bridge for anything, misses a title for its case or word
+  order, keeps chip counts from the unsearched list, or leaves a blank page
+  instead of "No matches".
 - Phone Activity lists an idle session, orders a running session before a waiting one, keeps a finished
   session after it stops, or a row opens the project instead of its session.
 - A catalog read starts a backend, hangs on import, returns a partial list, or an
@@ -594,7 +604,8 @@ started one. Restore harness eligibility afterwards.
   `client/app/test/playbook/catalog_scan_row_playbook.dart`,
   `client/module_core/lib/src/services/catalog_rescan_service.dart`,
   `client/module_core/lib/src/services/project_inventory_service.dart`,
-  `client/module_core/lib/src/cubits/project_inventory/project_list_cubit.dart`, and
+  `client/module_core/lib/src/cubits/project_inventory/project_list_cubit.dart`,
+  `client/module_core/lib/src/utils/title_matcher.dart`, and
   `client/module_prego/lib/components/navigation/prego_sliver_refresh_control.dart`
 - Pi metadata catalog: `bridge/sesori_plugin_pi/lib/src/api/pi_session_storage_api.dart`,
   `bridge/sesori_plugin_pi/lib/src/repositories/pi_session_catalog_repository.dart`
@@ -616,6 +627,8 @@ started one. Restore harness eligibility afterwards.
   `client/app/test/playbook/catalog_scan_row_playbook_test.dart`,
   `client/module_app_ui/test/features/project_list/add_project_dialog_test.dart`,
   `client/module_app_ui/test/features/session_list/`,
+  `client/module_core/test/utils/title_matcher_test.dart`,
+  `client/app/test/features/project_list/project_tile_display_test.dart`,
   `client/app/test/features/project_list/project_list_catalog_scan_test.dart`,
   `client/app/test/features/project_list/bridge_offline_view_test.dart`,
   `client/app/test/features/session_list/session_list_bar_test.dart`,

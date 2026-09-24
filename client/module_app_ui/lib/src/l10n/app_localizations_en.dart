@@ -120,6 +120,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSessionPageChanges => 'Changes';
 
   @override
+  String get listSearchNoMatches => 'No matches';
+
+  @override
+  String get listSearchClear => 'Clear search';
+
+  @override
+  String get projectListSearchHint => 'Search projects and sessions';
+
+  @override
+  String get sessionListSearchHint => 'Search sessions';
+
+  @override
   String get sessionListFilterEmpty => 'No sessions match this filter';
 
   @override

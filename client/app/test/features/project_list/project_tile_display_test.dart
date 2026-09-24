@@ -153,4 +153,30 @@ void main() {
     expect(find.text("…/user/legacy-app"), findsOneWidget);
     expect(find.text("legacy-app"), findsOneWidget);
   });
+
+  testWidgets("search narrows the projects by name, says No matches, and clears", (tester) async {
+    await pumpScreen(
+      tester,
+      projects: [
+        testProjectSummary(id: "/dev/web-app", path: "/dev/web-app"),
+        testProjectSummary(id: "/dev/api", path: "/dev/api"),
+      ],
+      onSessionsRoute: (_) {},
+    );
+
+    await tester.enterText(find.byType(TextField), "WEB");
+    await tester.pumpAndSettle();
+    expect(find.text("web-app"), findsOneWidget);
+    expect(find.text("api"), findsNothing);
+
+    await tester.enterText(find.byType(TextField), "nothing like it");
+    await tester.pumpAndSettle();
+    expect(find.text("No matches"), findsOneWidget);
+
+    await tester.tap(find.byTooltip("Clear search"));
+    await tester.pumpAndSettle();
+    expect(find.text("web-app"), findsOneWidget);
+    expect(find.text("api"), findsOneWidget);
+    expect(find.text("No matches"), findsNothing);
+  });
 }

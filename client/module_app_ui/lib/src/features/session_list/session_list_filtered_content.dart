@@ -8,12 +8,16 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "../../widgets/list_search_field.dart";
 import "session_list_action_dispatcher.dart";
 import "session_list_content.dart";
 import "session_tile.dart";
 
 /// The active session list under its All / Running / Unread chips, as one
 /// sliver. The chosen chip lives here, so every surface filters the same way.
+///
+/// Where [searchable], a search field above the chips narrows both the list
+/// and its counts to matching titles.
 ///
 /// A session inside the shell's archive Undo window is hidden at once, and a
 /// committed archive refreshes the list.
@@ -24,6 +28,7 @@ class const SessionListFilteredContent({
   required final SessionOpenedCallback? onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
   required final Widget archivedEmptyState,
+  required final bool searchable,
 }) extends StatefulWidget {
   @override
   State<SessionListFilteredContent> createState() => _SessionListFilteredContentState();
@@ -31,6 +36,7 @@ class const SessionListFilteredContent({
 
 class _SessionListFilteredContentState() extends State<SessionListFilteredContent> {
   SessionListQuickFilter _filter = SessionListQuickFilter.all;
+  String _query = "";
   late final StreamSubscription<PendingSessionArchiveOutcome> _archiveOutcomes;
 
   @override
@@ -64,8 +70,14 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
     // The same rule the list applies: only a still-unarchived session hides,
     // so a session being archived leaves the list and the counts at once.
     final counted =
-        loaded?.sessions.where((session) => session.time?.archived != null || !hidden.contains(session.id)).toList() ??
-        const <Session>[];
+        matchTitles(
+              items: loaded?.sessions ?? const <Session>[],
+              titleOf: (session) => session.title,
+              query: _query,
+            )
+            .map((match) => match.item)
+            .where((session) => session.time?.archived != null || !hidden.contains(session.id))
+            .toList();
     final counts = {
       SessionListQuickFilter.all: counted.length,
       SessionListQuickFilter.running: counted
@@ -76,9 +88,17 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
           .length,
     };
     final hasSessions = loaded != null && loaded.sessions.isNotEmpty;
+    final searching = _query.trim().isNotEmpty;
 
     return SliverMainAxisGroup(
       slivers: [
+        if (widget.searchable && hasSessions)
+          SliverToBoxAdapter(
+            child: ListSearchField(
+              hintText: loc.sessionListSearchHint,
+              onChanged: (query) => setState(() => _query = query),
+            ),
+          ),
         if (hasSessions && !showArchived)
           SliverToBoxAdapter(
             child: Padding(
@@ -112,18 +132,19 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
           projectName: widget.projectName,
           selectedSessionId: widget.selectedSessionId,
           quickFilter: filter,
+          query: _query,
           hiddenSessionIds: hidden,
           onSessionTap: widget.onSessionTap,
           actionDispatcher: widget.actionDispatcher,
           archivedEmptyState: widget.archivedEmptyState,
         ),
-        // All can only be empty while its last session is being archived.
-        if (filter != SessionListQuickFilter.all && counts[filter] == 0 && hasSessions)
+        // Unsearched, All can only be empty while its last session is being archived.
+        if ((searching || filter != SessionListQuickFilter.all) && counts[filter] == 0 && hasSessions)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(PregoSpacing.x3l),
               child: Text(
-                loc.sessionListFilterEmpty,
+                searching ? loc.listSearchNoMatches : loc.sessionListFilterEmpty,
                 textAlign: TextAlign.center,
                 style: context.prego.textTheme.textSm.regular.copyWith(
                   color: context.prego.colors.textTertiary,

@@ -134,6 +134,38 @@ void main() {
     expect(find.text("No sessions match this filter"), findsOneWidget);
   });
 
+  testWidgets("search narrows the list and its counts, says No matches, and clears", (tester) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    when(() => cubit.state).thenReturn(
+      SessionListState.loaded(
+        sessions: [
+          testSession(id: "s1", title: "Fix the build", updatedAt: now),
+          testSession(id: "s2", title: "Unread one", updatedAt: now, unseen: true),
+        ],
+        baseBranch: null,
+        repoSlug: null,
+      ),
+    );
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+
+    await tester.enterText(find.byType(TextField), "BUILD");
+    await tester.pumpAndSettle();
+    expect(find.text("Fix the build"), findsOneWidget);
+    expect(find.text("Unread one"), findsNothing);
+    expect(find.text("All · 1"), findsOneWidget);
+    expect(find.text("Unread · 0"), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), "nothing like it");
+    await tester.pumpAndSettle();
+    expect(find.text("No matches"), findsOneWidget);
+
+    await tester.tap(find.byTooltip("Clear search"));
+    await tester.pumpAndSettle();
+    expect(find.text("Fix the build"), findsOneWidget);
+    expect(find.text("Unread one"), findsOneWidget);
+    expect(find.text("No matches"), findsNothing);
+  });
+
   testWidgets("wide Android pane uses the Cupertino refresh control", (tester) async {
     await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
 
