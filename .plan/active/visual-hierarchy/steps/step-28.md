@@ -3,7 +3,9 @@
 ## What changed
 
 - `PregoAnimatedSliverList` animates a row's entry only when the row lands in
-  the list's visible extent. Other inserted rows enter at full size and build
+  a window that covers the list's visible extent. The window is an upper
+  bound: rows taller than the minimum leave some off-screen rows in it, and
+  those still animate. Other inserted rows enter at full size and build
   lazily as they scroll in. Before, every inserted row entered at zero height,
   so they all fit in the first frame and the list built every one of them.
 - The visible extent comes from the list's last layout. The first visible

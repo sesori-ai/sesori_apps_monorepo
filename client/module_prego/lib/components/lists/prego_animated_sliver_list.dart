@@ -103,6 +103,8 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
   /// lazily as they scroll in, and leave at once instead of each ticking a
   /// transition nobody sees. Rows are tap targets, so none is shorter than
   /// [kMinInteractiveDimension], which bounds how many the extent can show.
+  /// The window is therefore an upper bound: taller rows leave some off-screen
+  /// rows in it, and those still animate.
   bool Function(int index) _landsOnScreen() {
     final sliver = _listKey.currentContext?.findRenderObject();
     // A list that is not laid out, such as one kept offstage, has no extent.
