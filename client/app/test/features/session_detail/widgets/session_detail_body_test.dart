@@ -435,6 +435,7 @@ void main() {
               child: PromptInput(
                 isBusy: false,
                 hasMessages: false,
+                canSend: true,
                 onSend: ({required draft, required command, required attachments}) {
                   submittedDraft = draft;
                   submitted = attachments;

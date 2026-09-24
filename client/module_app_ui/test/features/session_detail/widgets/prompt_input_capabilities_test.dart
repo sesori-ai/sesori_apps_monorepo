@@ -65,6 +65,7 @@ void main() {
                 child: PromptInput(
                   isBusy: false,
                   hasMessages: false,
+                  canSend: true,
                   onSend: ({required draft, required command, required attachments}) => sent = attachments,
                   onVoiceTranscriptionCompleted: null,
                   onDraftChanged: (_) {},
@@ -253,6 +254,7 @@ void main() {
             body: PromptInput(
               isBusy: false,
               hasMessages: false,
+              canSend: true,
               onSend: ({required draft, required command, required attachments}) {},
               onVoiceTranscriptionCompleted: null,
               onDraftChanged: (_) {},
@@ -329,6 +331,7 @@ void main() {
                     PromptInput(
                       isBusy: false,
                       hasMessages: false,
+                      canSend: true,
                       onSend: ({required draft, required command, required attachments}) {},
                       onVoiceTranscriptionCompleted: null,
                       onDraftChanged: (_) {},
@@ -403,6 +406,7 @@ Future<void> _pumpCommandComposer({
         body: PromptInput(
           isBusy: false,
           hasMessages: false,
+          canSend: true,
           onSend: ({required draft, required command, required attachments}) {},
           onVoiceTranscriptionCompleted: null,
           onDraftChanged: (_) {},

@@ -17,6 +17,7 @@ class const NewSessionHeader({
   required final String? projectName,
   required final List<ProjectSummary> projects,
   required final NewSessionProjectSelected onProjectSelected,
+  required final Widget? harness,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -36,37 +37,45 @@ class const NewSessionHeader({
           textAlign: TextAlign.center,
           style: prego.textTheme.displayXs.bold.copyWith(color: prego.colors.textPrimary),
         ),
-        PregoAnchorMenu(
-          flat: true,
-          menuWidth: 260,
-          acquireOpenLease: null,
-          entriesBuilder: () => [
-            for (final project in projects)
-              PregoMenuItem(
-                title: projectDisplayName(loc: loc, project: project),
-                subtitle: null,
-                isSelected: project.id == projectId,
-                shortcutLabel: null,
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: PregoSpacing.md,
+          runSpacing: PregoSpacing.md,
+          children: [
+            PregoAnchorMenu(
+              flat: true,
+              menuWidth: 260,
+              acquireOpenLease: null,
+              entriesBuilder: () => [
+                for (final project in projects)
+                  PregoMenuItem(
+                    title: projectDisplayName(loc: loc, project: project),
+                    subtitle: null,
+                    isSelected: project.id == projectId,
+                    shortcutLabel: null,
+                    leadingIcon: TablerRegular.folder,
+                    isEnabled: true,
+                    onTap: () {
+                      if (project.id == projectId) return;
+                      onProjectSelected(
+                        projectId: project.id,
+                        projectName: projectDisplayName(loc: loc, project: project),
+                      );
+                    },
+                  ),
+              ],
+              triggerBuilder: (context, openMenu) => PregoButtonsSolid(
+                key: const Key("new_session_project"),
+                label: label,
                 leadingIcon: TablerRegular.folder,
-                isEnabled: true,
-                onTap: () {
-                  if (project.id == projectId) return;
-                  onProjectSelected(
-                    projectId: project.id,
-                    projectName: projectDisplayName(loc: loc, project: project),
-                  );
-                },
+                trailingIcon: canSwitch ? TablerRegular.chevron_down : null,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.sm,
+                onPressed: canSwitch ? openMenu : null,
               ),
+            ),
+            ?harness,
           ],
-          triggerBuilder: (context, openMenu) => PregoButtonsSolid(
-            key: const Key("new_session_project"),
-            label: label,
-            leadingIcon: TablerRegular.folder,
-            trailingIcon: canSwitch ? TablerRegular.chevron_down : null,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: canSwitch ? openMenu : null,
-          ),
         ),
       ],
     );

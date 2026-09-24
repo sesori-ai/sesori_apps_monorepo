@@ -1083,7 +1083,7 @@
   "renameSave": "Save",
   "renameSessionFailed": "Failed to rename session",
   "renameProjectFailed": "Failed to rename project",
-  "newSessionDedicatedWorkspace": "Dedicated workspace",
+  "newSessionDedicatedWorkspace": "New worktree",
   "newSessionPluginChooserLabel": "Coding tool",
   "newSessionPluginDegraded": "Needs attention",
   "newSessionPluginUnavailable": "Unavailable",
@@ -1092,7 +1092,8 @@
   "newSessionNoHarnessTitle": "No coding harness installed",
   "newSessionNoHarnessDescription": "The connected bridge has no coding harness it can run. Install one from Harness settings.",
   "newSessionOptionsLoadingSemantics": "Loading session options",
-  "newSessionOptionsRefresh": "Refresh options",
+  "newSessionOptionsRetry": "Retry loading models",
+  "newSessionOptionsLoad": "Load models",
   "newSessionAuthenticationRequiredTitle": "{plugin} login required",
   "@newSessionAuthenticationRequiredTitle": {
     "description": "Warning title shown when the selected coding harness has no authenticated provider/model available for this project.",
@@ -1102,13 +1103,7 @@
       }
     }
   },
-  "newSessionProjectUnavailable": "Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.",
-  "newSessionOptionsCached": "Using cached coding tool options.",
-  "newSessionOptionsUnavailable": "No cached options are available. You can create with defaults or refresh now.",
-  "newSessionOptionsLoadFailedUnavailable": "Couldn’t load options. You can create with defaults or try again.",
-  "newSessionOptionsLegacyBridge": "This bridge can load options only by starting the selected coding tool. You can create with defaults or refresh now.",
-  "newSessionOptionsUpdateFailedRetained": "Couldn’t update options. Previously cached options are still available.",
-  "newSessionOptionsRefreshFailedUnavailable": "Refresh failed and no valid cached options remain. You can create with defaults.",
+  "newSessionProjectUnavailable": "Couldn’t verify whether this project supports worktrees. Try again before creating the session.",
   "sessionListDeleteWorktreeCheckbox": "Delete worktree",
   "sessionDetailArchivedNotice": "This session is archived and read-only.",
   "sessionDetailHarnessFallbackName": "This harness",

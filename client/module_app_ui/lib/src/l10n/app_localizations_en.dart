@@ -1871,7 +1871,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameProjectFailed => 'Failed to rename project';
 
   @override
-  String get newSessionDedicatedWorkspace => 'Dedicated workspace';
+  String get newSessionDedicatedWorkspace => 'New worktree';
 
   @override
   String get newSessionPluginChooserLabel => 'Coding tool';
@@ -1899,7 +1899,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionOptionsLoadingSemantics => 'Loading session options';
 
   @override
-  String get newSessionOptionsRefresh => 'Refresh options';
+  String get newSessionOptionsRetry => 'Retry loading models';
+
+  @override
+  String get newSessionOptionsLoad => 'Load models';
 
   @override
   String newSessionAuthenticationRequiredTitle(String plugin) {
@@ -1908,30 +1911,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionProjectUnavailable =>
-      'Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.';
-
-  @override
-  String get newSessionOptionsCached => 'Using cached coding tool options.';
-
-  @override
-  String get newSessionOptionsUnavailable =>
-      'No cached options are available. You can create with defaults or refresh now.';
-
-  @override
-  String get newSessionOptionsLoadFailedUnavailable =>
-      'Couldn’t load options. You can create with defaults or try again.';
-
-  @override
-  String get newSessionOptionsLegacyBridge =>
-      'This bridge can load options only by starting the selected coding tool. You can create with defaults or refresh now.';
-
-  @override
-  String get newSessionOptionsUpdateFailedRetained =>
-      'Couldn’t update options. Previously cached options are still available.';
-
-  @override
-  String get newSessionOptionsRefreshFailedUnavailable =>
-      'Refresh failed and no valid cached options remain. You can create with defaults.';
+      'Couldn’t verify whether this project supports worktrees. Try again before creating the session.';
 
   @override
   String get sessionListDeleteWorktreeCheckbox => 'Delete worktree';

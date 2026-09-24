@@ -1,10 +1,8 @@
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
-import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../widgets/harness_blocked_notice.dart";
 
 class const SessionHarnessUnavailableNotice({
   super.key,
@@ -45,53 +43,14 @@ class const SessionHarnessUnavailableNotice({
         loc.sessionDetailHarnessRefreshWarning,
     ].join("\n");
     final canRecheck = blocked?.reason == SessionInteractionBlockedReason.authenticationRequired;
-    final prego = context.prego;
 
-    return Semantics(
-      container: true,
-      liveRegion: true,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: GlassContainer(
-          useOwnLayer: true,
-          clipBehavior: Clip.antiAlias,
-          padding: const EdgeInsets.all(16),
-          shape: const LiquidRoundedSuperellipse(borderRadius: 20),
-          settings: LiquidGlassSettings(glassColor: prego.colors.bgSecondary.withValues(alpha: 0.7)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(reason, style: prego.textTheme.textMd.bold),
-              if (details.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(details, style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary)),
-              ],
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  if (blocked?.reason != SessionInteractionBlockedReason.contentLoadFailed)
-                    PregoButtonsSolid(
-                      key: const Key("session_harness_settings"),
-                      label: loc.sessionDetailOpenHarnessSettings,
-                      hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-                      size: PregoButtonsSolidSize.sm,
-                      onPressed: onOpenHarnessSettings,
-                    ),
-                  if (canRecheck)
-                    TextButton(
-                      key: const Key("session_harness_recheck"),
-                      onPressed: onRecheck,
-                      child: Text(loc.sessionDetailRecheck),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    return HarnessBlockedNotice(
+      title: reason,
+      details: details,
+      onOpenHarnessSettings: blocked?.reason != SessionInteractionBlockedReason.contentLoadFailed
+          ? onOpenHarnessSettings
+          : null,
+      onRecheck: canRecheck ? onRecheck : null,
     );
   }
 }

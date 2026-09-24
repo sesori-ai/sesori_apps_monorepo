@@ -195,6 +195,7 @@ void main() {
       when(() => cubit.hasNoHarnesses).thenReturn(false);
       when(() => cubit.canCreateSession).thenReturn(true);
       when(() => cubit.canRefreshOptions).thenReturn(false);
+      when(() => cubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
       return cubit;
     }

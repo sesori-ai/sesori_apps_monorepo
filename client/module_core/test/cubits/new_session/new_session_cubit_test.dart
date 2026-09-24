@@ -7,6 +7,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/new_session/new_session_composer_presentation.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_submission_snapshot.dart";
@@ -15,6 +16,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.d
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
+import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
 import "package:sesori_dart_core/src/services/models/new_session_backend_scope.dart";
 import "package:sesori_dart_core/src/services/models/new_session_options_source.dart";
@@ -915,6 +917,33 @@ void main() {
       cubit.acknowledgeRestoredSubmission(submission: restoring.submission);
       await cubit.refreshOptions();
       expect(cubit.state, composingWith<NewSessionPhaseCreationError>());
+    });
+
+    test("a failed rediscovery after reconnect offers retry instead of a ready composer", () async {
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+      expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+
+      var failedDiscoveries = 0;
+      when(mockPluginRepository.listPlugins).thenAnswer((_) async {
+        failedDiscoveries++;
+        return ApiResponse.error(ApiError.generic());
+      });
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(
+          const ConnectionStatus.connected(
+            config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+            health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
+          ),
+        );
+      while (failedDiscoveries == 0 || (cubit.state.agentModelData?.isPluginDiscoveryInFlight ?? true)) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(cubit.composerPresentation, isA<NewSessionComposerRetry>());
+      expect(cubit.canCreateSession, isFalse);
     });
 
     test("voice completion reports a content-free outcome", () async {
@@ -2331,6 +2360,350 @@ void main() {
         saved?.variant,
         isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", model.variant),
       );
+    });
+
+    test("createSession while options are still loading sends a null agent and model", () async {
+      final agentsCompleter = Completer<ApiResponse<Agents>>();
+      when(
+        () => mockSessionService.listAgents(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer((_) => agentsCompleter.future);
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-loading")));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+
+      while (!(cubit.state.agentModelData?.backendScope.isVerified ?? false) ||
+          cubit.state.agentModelData?.projectWorktreeCapability == NewSessionProjectWorktreeCapability.loading) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(cubit.state.agentModelData?.optionsState.isLoading, isTrue);
+      expect(cubit.canCreateSession, isTrue);
+      expect(cubit.composerPresentation, isA<NewSessionComposerPending>());
+
+      await cubit.createSession(
+        attachments: const [],
+        draft: ComposerDraft.typed(text: "hello"),
+        dedicatedWorktree: false,
+        command: null,
+      );
+
+      verify(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          text: "hello",
+          attachments: const [],
+          agent: null,
+          model: null,
+          variant: null,
+          fastMode: false,
+          command: null,
+          dedicatedWorktree: false,
+        ),
+      ).called(1);
+    });
+
+    test("createSession is blocked while the harness requires authentication", () async {
+      when(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer(
+        (_) async => const SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally."),
+      );
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      expect(
+        cubit.state.agentModelData?.optionsState,
+        isA<NewSessionOptionsAuthenticationRequiredUnavailableState>(),
+      );
+      expect(cubit.canCreateSession, isFalse);
+      expect(
+        cubit.composerPresentation,
+        isA<NewSessionComposerLoginRequired>()
+            .having((presentation) => presentation.harnessName, "harnessName", "Plugin One")
+            .having((presentation) => presentation.actionHint, "actionHint", "Authenticate locally."),
+      );
+
+      await cubit.createSession(
+        attachments: const [],
+        draft: ComposerDraft.typed(text: "hello"),
+        dedicatedWorktree: false,
+        command: null,
+      );
+      verifyNever(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      );
+    });
+
+    group("composerPresentation", () {
+      test("is Pending before discovery answers", () async {
+        final discoveryCompleter = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+        when(mockPluginRepository.listPlugins).thenAnswer((_) => discoveryCompleter.future);
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+
+        expect(cubit.composerPresentation, isA<NewSessionComposerPending>());
+      });
+
+      test("is Ready once options are available", () async {
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+      });
+
+      test("is Retry when discovery fails", () async {
+        when(mockPluginRepository.listPlugins).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+        while (cubit.state.agentModelData?.isPluginDiscoveryInFlight ?? false) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        expect(cubit.composerPresentation, isA<NewSessionComposerRetry>());
+      });
+
+      test("is LoadOnDemand for a legacy bridge whose selected plugin cannot be routed yet", () async {
+        when(mockPluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(
+            PluginDiscoverySnapshot(
+              bridgeId: "bridge-1",
+              supportsSessionOptions: false,
+              plugins: const [
+                PluginMetadata(
+                  id: "plugin-1",
+                  displayName: "Plugin One",
+                  isDefault: true,
+                  state: PluginLifecycleState.failed,
+                  actionHint: null,
+                ),
+              ],
+            ),
+          ),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await Future<void>.delayed(Duration.zero);
+        while (cubit.state.agentModelData?.isPluginDiscoveryInFlight ?? false) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        expect(cubit.composerPresentation, isA<NewSessionComposerLoadOnDemand>());
+      });
+
+      test("is LoginRequired when options require authentication", () async {
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer(
+          (_) async => const SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally."),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+      });
+
+      test("is ProjectUnavailable when the project's worktree capability cannot be checked", () async {
+        when(
+          () => mockProjectRepository.getProject(projectId: any(named: "projectId")),
+        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        expect(
+          cubit.state.agentModelData?.projectWorktreeCapability,
+          NewSessionProjectWorktreeCapability.unavailable,
+        );
+        expect(cubit.composerPresentation, isA<NewSessionComposerProjectUnavailable>());
+      });
+    });
+
+    group("NewSessionCubit.newlyRequiredLogin", () {
+      test("is non-null when usable options for the same plugin newly require authentication", () async {
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+        final previous = cubit.state;
+
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer(
+          (_) async => const SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally."),
+        );
+        await cubit.refreshOptions();
+        final current = cubit.state;
+
+        final result = NewSessionCubit.newlyRequiredLogin(previous: previous, current: current);
+        expect(
+          result,
+          isA<NewSessionComposerLoginRequired>()
+              .having((presentation) => presentation.harnessName, "harnessName", "Plugin One")
+              .having((presentation) => presentation.actionHint, "actionHint", "Authenticate locally."),
+        );
+      });
+
+      test("is null when authentication was already required in the previous state", () async {
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer(
+          (_) async => const SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally."),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+        final previous = cubit.state;
+
+        await cubit.refreshOptions();
+        final current = cubit.state;
+
+        expect(NewSessionCubit.newlyRequiredLogin(previous: previous, current: current), isNull);
+      });
+
+      test("is null when the previous options were still loading", () async {
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        final response = Completer<SessionOptionsRepositoryResult>();
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer((_) => response.future);
+        final refresh = cubit.refreshOptions();
+        await Future<void>.delayed(Duration.zero);
+        final previous = cubit.state;
+        expect(previous.agentModelData?.optionsState.isLoading, isTrue);
+
+        response.complete(const SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally."));
+        await refresh;
+
+        expect(NewSessionCubit.newlyRequiredLogin(previous: previous, current: cubit.state), isNull);
+      });
+
+      test("a recheck keeps the login card and blocks creation until the bridge answers", () async {
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer(
+          (_) async => const SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally."),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        final response = Completer<SessionOptionsRepositoryResult>();
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer((_) => response.future);
+        final refresh = cubit.refreshOptions();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+        expect(cubit.canCreateSession, isFalse);
+
+        response.complete(const SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally."));
+        await refresh;
+        expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+      });
+
+      test("is null when the selected plugin changed", () async {
+        const otherPlugin = PluginMetadata(
+          id: "plugin-2",
+          displayName: "Plugin Two",
+          isDefault: false,
+          state: PluginLifecycleState.ready,
+          actionHint: null,
+        );
+        when(mockPluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(
+            PluginDiscoverySnapshot(
+              bridgeId: "bridge-1",
+              supportsSessionOptions: true,
+              plugins: const [defaultPlugin, otherPlugin],
+            ),
+          ),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+        final previous = cubit.state;
+        expect(previous.agentModelData?.plugin?.id, "plugin-1");
+
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: "plugin-2",
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer(
+          (_) async => const SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally."),
+        );
+        cubit.selectPlugin(pluginId: "plugin-2");
+        while (cubit.state.agentModelData?.optionsState.isLoading ?? true) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        final current = cubit.state;
+        expect(current.agentModelData?.plugin?.id, "plugin-2");
+
+        expect(NewSessionCubit.newlyRequiredLogin(previous: previous, current: current), isNull);
+      });
     });
   });
 }

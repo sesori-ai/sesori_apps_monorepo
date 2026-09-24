@@ -21,8 +21,9 @@ class const NewSessionPluginChooser({
   required final ValueChanged<String> onSelected,
   required final VoidCallback onSettingsPressed,
 }) extends StatelessWidget {
-  /// Height of the trigger row and of the menu's header row (Figma: 40 / 52).
-  static const double _triggerHeight = 40;
+  /// Height of the trigger pill, matching the project pill beside it, and of
+  /// the menu's header row.
+  static const double _triggerHeight = 36;
   static const double _menuHeaderHeight = 52;
 
   /// Width of the open menu, shared with the composer's pickers.
@@ -41,8 +42,9 @@ class const NewSessionPluginChooser({
     // Aligned out here rather than inside the trigger: the menu anchors to the
     // trigger's painted bounds, and a trigger stretched across the row would
     // hang the popup off the middle of the screen instead of under the name.
+    // Shrink-wrapped, but still bounded by the row so a long name ellipsizes.
     return Align(
-      alignment: AlignmentDirectional.centerStart,
+      widthFactor: 1,
       child: PregoAnchorMenu(
         // The trigger is flat, so the popup is too — a glass bubble hung off a
         // chrome-less row would read as belonging to something else.
@@ -116,33 +118,39 @@ class const _HarnessTrigger({
       button: true,
       label: context.loc.newSessionPluginChooserLabel,
       value: label,
+      onTap: onPressed,
       excludeSemantics: true,
-      child: InkWell(
-        key: const Key("new_session_plugin_trigger"),
-        onTap: onPressed,
-        borderRadius: borderRadius,
-        child: SizedBox(
-          height: height,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: prego.spacing.lg),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (pluginId != null) ...[
-                  PregoBrandLogo(pluginId: pluginId, color: prego.colors.textSecondary),
-                  SizedBox(width: prego.spacing.sm),
-                ],
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textSecondary),
+      child: Material(
+        color: prego.colors.bgSurface4,
+        shape: StadiumBorder(side: BorderSide(color: prego.colors.borderSecondary)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: const Key("new_session_plugin_trigger"),
+          onTap: onPressed,
+          borderRadius: borderRadius,
+          child: SizedBox(
+            height: height,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (pluginId != null) ...[
+                    PregoBrandLogo(pluginId: pluginId, color: prego.colors.textSecondary),
+                    SizedBox(width: prego.spacing.sm),
+                  ],
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textSecondary),
+                    ),
                   ),
-                ),
-                SizedBox(width: prego.spacing.sm),
-                Icon(TablerRegular.selector, size: PregoIconSize.sm, color: prego.colors.textPrimary),
-              ],
+                  SizedBox(width: prego.spacing.sm),
+                  Icon(TablerRegular.chevron_down, size: PregoIconSize.md, color: prego.colors.textSecondary),
+                ],
+              ),
             ),
           ),
         ),

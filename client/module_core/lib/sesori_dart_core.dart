@@ -75,6 +75,7 @@ export "src/cubits/login/login_failed_reason.dart";
 export "src/cubits/login/login_state.dart";
 export "src/cubits/message_image/message_image_cubit.dart";
 export "src/cubits/message_image/message_image_state.dart";
+export "src/cubits/new_session/new_session_composer_presentation.dart";
 export "src/cubits/new_session/new_session_cubit.dart";
 export "src/cubits/new_session/new_session_projects_cubit.dart";
 export "src/cubits/new_session/new_session_state.dart";
