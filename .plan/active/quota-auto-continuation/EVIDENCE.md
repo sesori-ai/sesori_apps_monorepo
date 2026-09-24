@@ -362,7 +362,13 @@ The composed bridge test exercises the real route, source-event translation,
 durable observation, terminal handoff and later native cancellation. Timer tests
 cover failed-tick recovery, non-overlap and disposal while a tick is active.
 
-Working folder repository root: `git diff --check` against the foundation and
-the seven-document local-link check above passed. No causal cleanup was needed;
+Working folder repository root — the exact immutable whitespace check passed,
+exit 0 (re-executed on 2026-09-24):
+
+```sh
+git diff --check 3d2c62da5ffffa551101f1556fbd9a8000de1077 e3fdb4dcd559ec724bfcd65f8b022748337d2294
+```
+
+The seven-document local-link check above also passed. No causal cleanup was needed;
 formatting-only churn outside the scheduler was removed. This checkpoint does
 not prove live provider recovery, rendered controls or the final L4 matrix.
