@@ -29,3 +29,20 @@ Split in two: 18.a turns the home into a composer with the activity sections;
   and `client/module_core`.
 - Light home render checked.
 - Architecture implementation review: approved in the first round.
+
+## 18.b What changed
+
+- The desktop project page shows the shared `NewSessionView` for its
+  project in place of the empty timeline, under the same toolbar, while the
+  active list is empty. The header names the project without a picker; a
+  created session opens through the page's session callback.
+- `DesktopSessionListScreen` resolves the cubit factory and wraps a
+  `@visibleForTesting` `DesktopSessionListView`, as the new-session page does.
+
+## 18.b Verification
+
+- `client/desktop` `test/core` and `test/features` pass, including new
+  project-page tests: the composer replaces the empty timeline (not under
+  Archived), and a created session opens.
+- `dart analyze --fatal-infos` clean in `client/desktop`.
+- Architecture implementation review: approved in the first round.

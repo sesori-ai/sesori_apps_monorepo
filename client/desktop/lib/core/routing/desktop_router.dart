@@ -156,6 +156,11 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                 ),
               ),
               actionDispatcher: _desktopSessionActions,
+              onNewSession: () => _pushRoute(
+                context: context,
+                route: AppRoute.newSession(projectId: route.projectId, projectName: route.projectName),
+              ),
+              onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
             ),
           );
         },
