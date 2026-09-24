@@ -4,6 +4,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -61,24 +62,42 @@ class const DesktopBridgePopover({
         children: [
           Text(loc.desktopLocalBridgeTitle, style: context.prego.textTheme.textSm.bold),
           const SizedBox(height: PregoSpacing.xs),
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              state.statusLabel,
-              style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+          Row(
+            children: [
+              // A status dot, not a glyph: no icon token applies.
+              Icon(
+                TablerSolid.circle,
+                size: 8,
+                color: desktopBridgeStatusColor(colors: context.prego.colors, state: state),
+              ),
+              const SizedBox(width: PregoSpacing.sm),
+              Expanded(
+                child: Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    state.statusLabel,
+                    style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Recovery actions stay a solid button; stopping a healthy bridge is
+          // routine, so it joins the quiet rows.
+          if (action.hierarchy != PregoButtonsSolidHierarchy.secondary) ...[
+            const SizedBox(height: PregoSpacing.lg),
+            PregoButtonsSolid(
+              label: action.label,
+              hierarchy: action.hierarchy,
+              size: PregoButtonsSolidSize.md,
+              fullWidth: true,
+              onPressed: state.activity.locksCommands ? null : () => unawaited(action.command()),
             ),
-          ),
-          const SizedBox(height: PregoSpacing.lg),
-          PregoButtonsSolid(
-            label: action.label,
-            hierarchy: action.hierarchy,
-            size: PregoButtonsSolidSize.md,
-            fullWidth: true,
-            onPressed: state.activity.locksCommands ? null : () => unawaited(action.command()),
-          ),
+          ],
           const SizedBox(height: PregoSpacing.sm),
           Divider(color: context.prego.colors.borderSecondary),
-          if (state.canTakeOver && state.processState is BridgeProcessRunning)
+          if (action.hierarchy == PregoButtonsSolidHierarchy.secondary ||
+              (state.canTakeOver && state.processState is BridgeProcessRunning))
             _BridgeAction(
               label: loc.desktopBridgeStop,
               icon: TablerRegular.player_stop,
@@ -120,3 +139,24 @@ class const _BridgeAction({
     ),
   );
 }
+
+/// The local bridge's status colour: green only when fully healthy, amber
+/// while it needs attention or is changing, red when it failed.
+Color desktopBridgeStatusColor({required PregoColors colors, required BridgeControlState state}) => state.canTakeOver
+    ? colors.textWarningPrimary
+    : switch (state.processState) {
+        BridgeProcessStopped() => colors.textDisabled,
+        BridgeProcessStartFailed() || BridgeProcessCrashGiveUp() => colors.textErrorPrimary,
+        BridgeProcessRunning()
+            when state.controlStatus.helperOnline &&
+                state.controlStatus.startup == ControlStartupState.ready &&
+                state.controlStatus.relay == ControlRelayConnectionState.connected &&
+                state.controlStatus.plugin != ControlPluginHealthState.degraded =>
+          colors.textSuccessPrimary,
+        BridgeProcessLoginRequired() ||
+        BridgeProcessStarting() ||
+        BridgeProcessRunning() ||
+        BridgeProcessStopping() ||
+        BridgeProcessContention() ||
+        BridgeProcessCrashRetryScheduled() => colors.textWarningPrimary,
+      };
