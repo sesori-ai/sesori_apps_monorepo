@@ -35,6 +35,15 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 
 ## Required Behavior
 
+- Quota auto continuation uses declared reporting support and named-session
+  readiness; it cannot infer support from a harness name or a generic 429.
+  Missing, busy, retrying, queued or awaiting-input readiness never authorizes
+  a send. An unavailable harness keeps an existing preference disableable, and
+  an enabled due wait pauses with bounded rechecks. Stale runtime generations
+  cannot persist or cancel current observations. See
+  [Quota auto continuation](quota-auto-continuation.md) and the
+  [capability matrix](../HARNESS_CAPABILITIES.md#quota-reset-auto-continuation).
+
 - Existing chat interaction consumes the shared management snapshot, not a separate
   poller. It resolves the session's exact plugin ID rather than the default harness;
   a missing exact entry blocks only that chat, and unrelated harness changes do not

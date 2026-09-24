@@ -7,6 +7,14 @@ entirely along with its transcript and, optionally, its worktree.
 
 ## Required Behavior
 
+- Archiving durably cancels a quota-continuation observation before the archive
+  proceeds. If that cancellation cannot be saved, archiving fails without
+  performing the primary action. Archived/read-only chat surfaces expose no
+  continuation controls. Deleting the session removes its continuation record
+  through the session foreign key. See
+  [Quota auto continuation](quota-auto-continuation.md) for action races and
+  cancellation-failure coverage.
+
 - Archiving is final. An archived session can never be unarchived, prompted,
   renamed, replied to, or otherwise mutated in place; those attempts receive the
   same archived read-only rejection evaluated on the session the caller named.

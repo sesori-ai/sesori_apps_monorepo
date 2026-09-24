@@ -102,13 +102,31 @@ provider and platform verification remains in the
   mutations, legacy route errors, incoming session updates, unavailable disable,
   all outcome explanations, local dates, and enlarged text at narrow widths.
   Phone and desktop screen tests exercise their actual top-right menu wiring.
-- **L3:** Real provider account exhaustion on each supported production harness,
-  then the eventual opt-in → reset → one scheduled `Continue.` journey. This
-  remains required in later plan steps; synthetic protocol tests do not establish
-  that end-to-end behavior.
-- **L4:** Exercise the scheduler through bridge restart, host sleep,
-  recovery, concurrent manual actions, multiple clients and alternate platforms.
-  The full live and client matrix remains pending final verification.
+- **L3 — live plugin:** For each advertised harness/provider case, use a naturally
+  observed terminal quota and usable reset to verify opt-in → post-reset ordinary
+  `Continue.` acceptance. Never deliberately exhaust an account. Synthetic
+  protocol fixtures do not prove that the real provider recovers after reset;
+  no suitable observation/account means this portion is blocked.
+- **L3 — client end to end:** iOS simulator and macOS desktop each show opt-in,
+  the acknowledged enabled/scheduled state, local date/time, menu and inline
+  disable, unavailable/unknown-reset explanations, and the ordinary user-message
+  echo. One Android smoke checks the shared notice layout and menu wiring.
+- **L4 — headless/relay recovery:** Run the real route, durable repository/DAO and
+  normal prompt pipeline with controlled time. Two connected clients observe the
+  same preference; disabling on one prevents the pending send. Closing all
+  clients does not stop the headless scheduler. Restart/reconnect restore one
+  eligible attempt; host wake catches an overdue attempt without a duplicate.
+  Race due work with manual send, Stop, archive and disable. Pause on native
+  retry/queued work, pending input or unavailable readiness, then recover.
+- **L4 — compatibility:** A new client with an older released bridge shows an
+  unavailable control without an enabled illusion; an older released client
+  ignores the new view while ordinary send/Stop and error decoding still work.
+  Use public-release wire fixtures, not an internal build as a compatibility
+  baseline. Preserve unknown future status/enum decoding.
+
+These levels are cumulative. Missing live-provider, relay or platform evidence
+stays partial/blocked; a widget render or synthetic protocol result cannot be
+reported as a client end-to-end or live-provider pass.
 
 ## Material Failure Signals
 
@@ -122,8 +140,26 @@ provider and platform verification remains in the
 - A prompt is sent before the reset buffer, twice for one observation, or after
   disable/manual cancellation; failed acceptance recording causes a retry.
 - History replay silently clears a session's fast-mode preference.
+- A failed setting request makes the UI appear enabled, a second client keeps
+  stale state after a session update, or an unsupported bridge appears schedulable.
+- A date is displayed in the wrong local day, pending input is shown as a ready
+  schedule, or an unconfirmed/failed attempt is presented as a successful send.
+- The checked menu state cannot be disabled after support becomes unavailable,
+  or read-only chat surfaces expose mutation controls.
 
 ## Harness Scope
 
 See [Harness capabilities](../HARNESS_CAPABILITIES.md#quota-reset-auto-continuation)
 for the current provider/format/version scope and unverified adapters.
+## Related Coverage and Sources
+
+- [Session turns](session-turns.md): ordinary prompt, Stop and pending input.
+- [History and recovery](session-history-and-recovery.md): replay and reconnect.
+- [Archiving and deletion](session-archiving-and-deletion.md): durable cancellation.
+- [Plugin lifecycle](plugin-setup-and-lifecycle.md): readiness and generation fences.
+- Bridge: `SessionContinuationService`, `SessionContinuationTimerListener`,
+  `SessionContinuationRepository`, `SessionViewService`, the setting route and
+  composed event/handoff tests under `bridge/app`.
+- Client: `SessionAutoContinuationService`, `SessionDetailCubit`, shared
+  `SessionAutoContinuationNotice` and menu, with focused service/cubit/widget
+  tests under `client/module_core` and `client/module_app_ui`.

@@ -8,6 +8,14 @@ defaults and queued client sends coherent.
 
 ## Required Behavior
 
+- A terminal quota interruption can offer per-session opt-in through the chat
+  hint or overflow menu. Scheduling uses the bridge's observed reset plus two
+  minutes and the ordinary prompt path with existing selection and permission
+  policy. Manual send and Stop durably cancel the observed wait; an enabled
+  preference survives for future interruptions. See
+  [Quota auto continuation](quota-auto-continuation.md) for its cumulative
+  regression matrix, pause reasons and provider-specific scope.
+
 - Staged slash-command chips use a glass-only entrance/exit transition without
   changing draft, clearing, voice, or picker behavior. The slot changes instantly
   under reduced motion; presentation coverage lives in [Glass presentation](glass-presentation.md).
