@@ -2565,7 +2565,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sessionAutoContinuationOffer(String time) {
-    return 'Continue at $time, two minutes after the quota resets, and after later quota resets. Keep your bridge running.';
+    return 'Continue at $time and two minutes after each later quota reset. Keep your bridge running.';
   }
 
   @override

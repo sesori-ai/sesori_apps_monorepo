@@ -8,8 +8,8 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 | 2 — Quota normalization | Merged | [#1641][normalization-pr]; typed terminal events and Claude/Pi reporting. |
 | 3 — Durable contracts and readiness | Merged | [#1649][foundation-pr]; durable state and readiness. |
 | 4 — Bridge scheduler | Merged | [#1654][scheduler-pr]; route, views, cancellation and dispatch. |
-| 5 — Shared chat controls | In review | [#1656][controls-pr]; shared hint, acknowledged indicator and three-dot toggle. |
-| 6 — Regression reconciliation | Ready locally | Reconciled related feature docs, provider scope and cumulative proof boundaries. |
+| 5 — Shared chat controls | In review | [#1656][controls-pr]; shared hint, indicator and three-dot toggle. |
+| 6 — Regression reconciliation | Ready locally | Reconciled feature docs, provider scope and proof boundaries. |
 | 7 — L4 verification and retirement | Not started | All recorded boundary/platform/provider coverage must pass. |
 
 [plan-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1601
@@ -84,4 +84,8 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 - Step 6: seven documentation files reconcile current support, cumulative L1–L4
   boundaries and natural-quota-only live verification. Local links and whitespace checks pass.
 - Live scheduled continuation: not run. Widget fixtures do not prove provider recovery.
+- Step 5 review fixes preserve acknowledgements during reload, keep unavailable
+  controls honest and reachable, and classify route/session errors separately.
+  Main integration passed 237 core, 135 mobile and 9 desktop tests; the unchanged
+  shared UI suite passed 13 tests before integration. All four analyzers pass.
 - Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.

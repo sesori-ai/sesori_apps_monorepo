@@ -56,7 +56,7 @@ void main() {
     ).called(1);
   });
 
-  for (final code in [404, 405, 501]) {
+  for (final code in [405, 501]) {
     test("maps HTTP $code to unavailable without losing the original error", () async {
       final error = ApiError.nonSuccessCode(errorCode: code, rawErrorString: null);
       reply(response: ApiResponse.error(error));
@@ -66,6 +66,24 @@ void main() {
       );
     });
   }
+
+  test("recognizes a legacy route-not-found response", () async {
+    final error = ApiError.nonSuccessCode(
+      errorCode: 404,
+      rawErrorString: "no handler found for PATCH /session/auto-continuation",
+    );
+    reply(response: ApiResponse.error(error));
+    await expectLater(
+      service.setEnabled(sessionId: "session-1", enabled: true),
+      throwsA(isA<SessionAutoContinuationUnavailableException>().having((e) => e.innerError, "cause", same(error))),
+    );
+  });
+
+  test("retains a missing-session failure from a supported route", () async {
+    final error = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "session session-1 was not found");
+    reply(response: ApiResponse.error(error));
+    await expectLater(service.setEnabled(sessionId: "session-1", enabled: true), throwsA(same(error)));
+  });
 
   test("retains transport failures", () async {
     final error = ApiError.generic();

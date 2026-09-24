@@ -228,6 +228,88 @@ void main() {
         expect(cubit.state.autoContinuationUpdatePending, isFalse);
       });
 
+      for (final metadataFails in [false, true]) {
+        test("preserves an acknowledgement during reload (metadata fails: $metadataFails)", () async {
+          final response = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: true))
+              .thenAnswer((_) => response.future);
+          final cubit = await loadedCubit();
+          final saving = cubit.setAutoContinuation(enabled: true);
+          final metadata = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+          final reloading = cubit.reload();
+          expect(cubit.state, isA<SessionDetailLoading>());
+          response.complete(ApiResponse.success(testSession(id: sessionId).copyWith(autoContinuation: enabled)));
+          await saving;
+          metadata.complete(
+            metadataFails
+                ? ApiResponse.error(ApiError.generic())
+                : ApiResponse.success(testSession(id: sessionId).copyWith(autoContinuation: disabled)),
+          );
+          await reloading;
+          expect(cubit.state.hydratedSession!.autoContinuation, enabled);
+          expect(cubit.state.autoContinuationUpdatePending, isFalse);
+        });
+      }
+
+      for (final historyFails in [false, true]) {
+        test("keeps a disable acknowledgement in the unavailable shell (history fails: $historyFails)", () async {
+          final session = testSession(id: sessionId).copyWith(autoContinuation: enabled);
+          stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId, session: session);
+          final management = MockPluginManagementService();
+          final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+            managementFixture(
+              pluginId: "plugin-1",
+              setup: PluginSetupState.authenticationRequired,
+              runtime: PluginRuntimeState.blocked,
+            ),
+          );
+          addTearDown(snapshots.close);
+          when(() => management.snapshots).thenAnswer((_) => snapshots);
+          when(management.refresh).thenAnswer((_) async {});
+          when(
+            () => mockSessionService.getMessages(
+              sessionId: any(named: "sessionId"),
+              limit: any(named: "limit"),
+              before: any(named: "before"),
+              storedOnly: any(named: "storedOnly"),
+            ),
+          ).thenAnswer(
+            (_) async => historyFails
+                ? ApiResponse.error(ApiError.generic())
+                : ApiResponse.success(
+                    const MessageWithPartsResponse(
+                      messages: [],
+                      nextCursor: null,
+                      replayedPromptDefaults: null,
+                      awaitingHarnessSync: true,
+                    ),
+                  ),
+          );
+          final cubit = buildCubit(pluginManagementService: management);
+          addTearDown(cubit.close);
+          await awaitState(
+            cubit: cubit,
+            predicate: (state) => state is SessionDetailHarnessUnavailable,
+            description: "unavailable shell",
+          );
+          final response = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: false))
+              .thenAnswer((_) => response.future);
+          final saving = cubit.setAutoContinuation(enabled: false);
+          final metadata = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+          final reloading = cubit.reload();
+          response.complete(ApiResponse.success(session.copyWith(autoContinuation: disabled)));
+          await saving;
+          metadata.complete(ApiResponse.success(session));
+          await reloading;
+          expect(cubit.state, isA<SessionDetailHarnessUnavailable>());
+          expect(cubit.state.hydratedSession!.autoContinuation, disabled);
+          expect(cubit.state.autoContinuationUpdatePending, isFalse);
+        });
+      }
+
       test("applies changes from another client through the normal session event", () async {
         final cubit = await loadedCubit();
         sessionEvents.add(

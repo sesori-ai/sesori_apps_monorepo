@@ -26,6 +26,20 @@ String? _resolveModelName({required AgentModel? model, required List<ProviderInf
   return model.modelID;
 }
 
+/// The harness name the bridge reported, e.g. "Claude Code"; null until the
+/// harness status loads or when an older bridge does not report it.
+String? _harnessName({required SessionInteractionState interaction}) => switch (interaction) {
+  SessionInteractionAvailable(:final displayName) => displayName,
+  SessionInteractionBlocked(:final displayName) => displayName,
+  SessionInteractionChecking() || SessionInteractionLegacyUnverified() => null,
+};
+
+/// "Claude Code · Haiku", or whichever part is known.
+String? _subtitle({required String? harnessName, required String? modelName}) {
+  final parts = [?harnessName, ?modelName];
+  return parts.isEmpty ? null : parts.join(" · ");
+}
+
 typedef SessionDetailHeaderBuilder = Widget Function({
   required BuildContext context,
   required String title,
@@ -176,18 +190,22 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       SessionDetailLoading() || SessionDetailFailed() => fallbackTitle,
     };
     final subtitle = switch (state) {
-      // Both parts are null-aware: with a null agent/model the join must yield
-      // an empty string (no subtitle), never a literal "null" under the title.
-      SessionDetailLoaded(:final agent, :final assistantAgentModel, :final availableProviders) => [
-        ?agent,
-        ?_resolveModelName(model: assistantAgentModel, providers: availableProviders),
-      ].join(" · "),
-      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => "",
+      SessionDetailLoaded(:final interaction, :final assistantAgentModel, :final availableProviders) => _subtitle(
+        harnessName: _harnessName(interaction: interaction),
+        modelName: _resolveModelName(model: assistantAgentModel, providers: availableProviders),
+      ),
+      SessionDetailHarnessUnavailable(:final interaction) => _subtitle(
+        harnessName: _harnessName(interaction: interaction),
+        modelName: null,
+      ),
+      SessionDetailLoading() || SessionDetailFailed() => null,
     };
     final canShowDiffs = state is SessionDetailLoaded && (state.isRootSession ?? false) && !state.isArchived;
     final onShowDiffs = widget.onShowDiffs;
     final menuEntriesBuilder = widget.menuEntriesBuilder;
     final session = state.hydratedSession;
+    final canConfigureContinuation =
+        !widget.readOnly && session?.time?.archived == null && !(state is SessionDetailLoaded && state.isArchived);
 
     final actions = <Widget>[
       if (widget.onClose != null)
@@ -204,16 +222,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         ),
       // Root sessions only: the actions run on the project's session list,
       // which holds no sub-agent sessions and must not gain one.
-      if (session != null &&
-          ((menuEntriesBuilder != null && session.parentID == null) ||
-              (!widget.readOnly && session.time?.archived == null)))
+      if (session != null && ((menuEntriesBuilder != null && session.parentID == null) || canConfigureContinuation))
         PregoAnchorMenu(
           flat: true,
           menuWidth: 240,
           acquireOpenLease: null,
           entriesBuilder: () => [
-            if (!widget.readOnly && session.time?.archived == null)
-              sessionAutoContinuationMenuEntry(context: context, session: session),
+            if (canConfigureContinuation) sessionAutoContinuationMenuEntry(context: context, session: session),
             if (menuEntriesBuilder != null && session.parentID == null)
               ...menuEntriesBuilder(context: context, session: session),
           ],
@@ -268,7 +283,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
             pageChrome.headerBuilder(
               context: context,
               title: title,
-              subtitle: subtitle.isEmpty ? null : subtitle,
+              subtitle: subtitle,
               isBusy: isBusy,
               onShowDiffs: canShowDiffs ? onShowDiffs : null,
               session: state.hydratedSession,
@@ -289,7 +304,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     }
     return PregoGlassScaffold(
       title: title,
-      subtitleText: subtitle.isEmpty ? null : subtitle,
+      subtitleText: subtitle,
       banner: banner,
       // A chat owns its own (reversed) scroll, so there is no top-anchored
       // scroll for a large title to collapse against. Use the fixed, centred
@@ -321,7 +336,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         // bottom and rides above the keyboard). The chat owns its own
         // reversed scroll controller, so the large title can't collapse with
         // it; the inline title is used instead, as on the new-session screen.
-        SliverFillRemaining(hasScrollBody: state is SessionDetailLoaded, child: content),
+        SliverFillRemaining(
+          hasScrollBody: state is SessionDetailLoaded || state is SessionDetailHarnessUnavailable,
+          child: content,
+        ),
       ],
     );
   }
@@ -371,18 +389,25 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                 maxContentWidth: maxContentWidth,
               ),
       SessionDetailHarnessUnavailable(:final interaction, :final session) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!widget.readOnly && session.time?.archived == null)
-              SessionAutoContinuationNotice(
-                view: session.autoContinuation,
-                updating: state.autoContinuationUpdatePending,
-                onEnabledChanged: (enabled) =>
-                    unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
-              ),
-            _buildHarnessNotice(interaction: interaction, historyUnavailable: true),
-          ],
+        child: PregoTopBarInsetBuilder(
+          builder: (context, topInset, child) => Padding(
+            padding: EdgeInsets.only(top: topInset),
+            child: SingleChildScrollView(child: child),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!widget.readOnly && session.time?.archived == null)
+                SessionAutoContinuationNotice(
+                  view: session.autoContinuation,
+                  updating: state.autoContinuationUpdatePending,
+                  canInteract: interaction.canInteract,
+                  onEnabledChanged: (enabled) =>
+                      unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
+                ),
+              _buildHarnessNotice(interaction: interaction, historyUnavailable: true),
+            ],
+          ),
         ),
       ),
       SessionDetailFailed(:final reason) => SessionDetailErrorView(

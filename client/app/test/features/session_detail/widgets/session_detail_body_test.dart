@@ -141,7 +141,7 @@ SessionDetailLoaded _loadedState({
 }) {
   final provider = testProviderListResponse().items.first;
   return SessionDetailLoaded(
-    interaction: const SessionInteractionState.available(refreshError: null),
+    interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
     messages: messages,
     olderMessagesCursor: null,
     streamingText: const {},
@@ -152,7 +152,6 @@ SessionDetailLoaded _loadedState({
     session: testConstSession,
     pluginId: pluginId,
     supportsPromptAttachments: supportsPromptAttachments,
-    agent: null,
     assistantAgentModel: null,
     children: children,
     childStatuses: childStatuses,
@@ -323,6 +322,25 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key("session-auto-continuation-toggle")));
     verify(() => cubit.setAutoContinuation(enabled: true)).called(1);
+  });
+
+  testWidgets("an archived chat without timestamps still hides auto continuation", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      isArchived: true,
+      session: testConstSession.copyWith(
+        time: null,
+        autoContinuation: const SessionAutoContinuationView(
+          enabled: true,
+          availability: AutoContinuationAvailability.conditional,
+          status: SessionAutoContinuationStatus.idle(),
+        ),
+      ),
+    );
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("session-detail-more")), findsNothing);
+    expect(find.byKey(const Key("session-auto-continuation-disable")), findsNothing);
   });
 
   testWidgets("the glass bar menu marks the open session unread whatever its local state says", (tester) async {
@@ -735,7 +753,6 @@ void main() {
   testWidgets("header resolves an opaque assistant model ID through the provider catalog", (tester) async {
     const modelID = "v1WyJkZWVwc2Vlay1vZmZpY2lhbCIsImRlZXBzZWVrLXY0LXBybyJd";
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
-      agent: "deepseek",
       assistantAgentModel: const AgentModel(
         providerID: "deepseek-official",
         modelID: modelID,
@@ -774,17 +791,20 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    expect(find.text("deepseek · DeepSeek V4 Pro"), findsOneWidget);
+    expect(find.text("Claude Code · DeepSeek V4 Pro"), findsOneWidget);
     expect(find.textContaining(modelID), findsNothing);
+  });
+
+  testWidgets("header names only the harness before the session has a model", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Claude Code"), findsOneWidget);
   });
 
   testWidgets("opens the variant picker and forwards the selection to the cubit", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
-
-    // Regression guard: the loaded state here has a null agent and model, so
-    // the bar subtitle must collapse to empty — never a literal "null".
-    expect(find.text("null"), findsNothing);
 
     await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
@@ -800,7 +820,7 @@ void main() {
   testWidgets("selecting a different variant updates the displayed variant", (tester) async {
     final initialState = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     final updatedState = SessionDetailState.loaded(
-      interaction: const SessionInteractionState.available(refreshError: null),
+      interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       messages: const [],
       olderMessagesCursor: null,
       streamingText: const {},
@@ -811,7 +831,6 @@ void main() {
       session: testConstSession,
       pluginId: "opencode",
       supportsPromptAttachments: false,
-      agent: null,
       assistantAgentModel: null,
       children: const [],
       childStatuses: const {},
@@ -985,6 +1004,72 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final hasHistory in [false, true]) {
+    testWidgets("blocked harness cannot enable continuation but can disable it (history: $hasHistory)", (
+      tester,
+    ) async {
+      for (final enabled in [false, true]) {
+        final session = testSession().copyWith(
+          autoContinuation: SessionAutoContinuationView(
+            enabled: enabled,
+            availability: AutoContinuationAvailability.conditional,
+            status: const SessionAutoContinuationStatus.resetKnown(resetAt: 100000, continueAt: 220000),
+          ),
+        );
+        final state = hasHistory
+            ? _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+                session: session,
+                interaction: authRequired,
+              )
+            : SessionDetailState.harnessUnavailable(session: session, interaction: authRequired);
+        whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+        when(() => cubit.setAutoContinuation(enabled: false)).thenAnswer((_) async {});
+        await tester.pumpWidget(_buildApp(cubit: cubit));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key("session-auto-continuation-enable")), findsNothing);
+        expect(find.textContaining("Continues at"), findsNothing);
+        if (enabled) {
+          await tester.tap(find.byKey(const Key("session-auto-continuation-disable")));
+          verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
+        }
+        await tester.tap(find.byKey(const Key("session-detail-more")));
+        await tester.pumpAndSettle();
+        final menu = tester.widget<PregoAnchorMenu>(find.byType(PregoAnchorMenu).first);
+        final entry = menu.entriesBuilder().whereType<PregoMenuItem>().single;
+        expect(entry.isEnabled, enabled);
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    });
+  }
+
+  testWidgets("unavailable continuation controls scroll into view with enlarged text", (tester) async {
+    tester.view.physicalSize = const Size(320, 480);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final session = testSession().copyWith(
+      autoContinuation: const SessionAutoContinuationView(
+        enabled: true,
+        availability: AutoContinuationAvailability.unavailable,
+        status: SessionAutoContinuationStatus.resetKnown(resetAt: 100000, continueAt: 220000),
+      ),
+    );
+    when(() => cubit.state).thenReturn(
+      SessionDetailState.harnessUnavailable(session: session, interaction: authRequired),
+    );
+    when(() => cubit.setAutoContinuation(enabled: false)).thenAnswer((_) async {});
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.ensureVisible(find.byKey(const Key("session-auto-continuation-disable")));
+    await tester.tap(find.byKey(const Key("session-auto-continuation-disable")));
+    verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
+    await tester.ensureVisible(find.byKey(const Key("session_harness_recheck")));
+    await tester.tap(find.byKey(const Key("session_harness_recheck")));
+    verify(cubit.recheckHarnessAvailability).called(1);
+  });
+
   testWidgets("unservable blocked history falls back to the full-screen notice", (tester) async {
     when(() => cubit.state).thenReturn(
       SessionDetailState.harnessUnavailable(session: testSession(), interaction: authRequired),
@@ -993,6 +1078,8 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit, onOpenHarnessSettings: () => settingsOpened++));
     await tester.pumpAndSettle();
     expect(find.byType(PromptInput), findsNothing);
+    // The subtitle still names the harness the session belongs to.
+    expect(find.text("Claude Code"), findsOneWidget);
     expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
     expect(
       find.text("Chat history for this session still needs the harness. Enable it to load the transcript."),
@@ -1150,7 +1237,7 @@ void main() {
 
   for (final (name, interaction) in [
     ("legacy", const SessionInteractionState.legacyUnverified()),
-    ("refresh-error", SessionInteractionState.available(refreshError: ApiError.generic())),
+    ("refresh-error", SessionInteractionState.available(displayName: "Claude Code", refreshError: ApiError.generic())),
   ]) {
     testWidgets("archiving hides the $name harness warning", (tester) async {
       final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(

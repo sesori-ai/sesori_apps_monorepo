@@ -376,6 +376,7 @@ not prove live provider recovery, rendered controls or the final L4 matrix.
 ## Shared chat controls checkpoint — 2026-09-24
 
 Initial verified implementation: `52f53de1e5eaeb7b9930b9a7ee2f74c615e705b1`.
+Tree: `c10960207612d6db8cc7ce3c8665dee6e2fa07a4`.
 Architecture review approved the complete UI-only range from
 `22885f2c89c4cc200a08266b7181e2c9aef1d963` to that commit.
 The following menu-copy adjustment changes no ownership or contracts.
@@ -407,7 +408,9 @@ flutter test --no-pub test/features/sessions/desktop_session_detail_screen_test.
 Working folder `client/app`, initial checkpoint — 130 tests, exit 0:
 
 ```sh
-flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart test/features/session_detail/session_detail_title_hydration_test.dart
+flutter test --no-pub \
+  test/features/session_detail/widgets/session_detail_body_test.dart \
+  test/features/session_detail/session_detail_title_hydration_test.dart
 ```
 
 After the merge, the 124 chat-body cases were rerun with a temporary fixture
@@ -417,7 +420,9 @@ distinct behavior checks. The driver was removed after capture and remains a
 private temporary artifact, not a maintained test target.
 
 ```sh
-flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart test/features/session_detail/widgets/_quota_visual_capture_test.dart
+flutter test --no-pub \
+  test/features/session_detail/widgets/session_detail_body_test.dart \
+  test/features/session_detail/widgets/_quota_visual_capture_test.dart
 ```
 
 At the integrated checkpoint, `flutter analyze --no-pub` in each of
@@ -436,3 +441,38 @@ Before/after and GIF media are on `pr-media`, commit
 `d6f9bfd7dce8d0d4362584233dc97ddee8631459`, under
 `sesori/quota-chat-controls/`. These are widget renders with simulated session
 updates, not real-device, relay, scheduler or live-provider recovery evidence.
+
+## UI review follow-up — 2026-09-24
+
+Fix checkpoint: `9f48f14d29fdc970174de3c906200d08b1f5beaa`.
+Tree: `a289853839e688b698f20d115534ddaa37e3e13f`.
+Regression tests first reproduced lost reload acknowledgements, stuck saving
+after failed metadata, incorrect missing-session 404 classification, blocked
+enable controls, archived controls without timestamps, and inaccessible actions
+with enlarged text. The fixes passed 237 core, 13 shared UI, 128 mobile and 9
+desktop tests; all four owning analyzers passed.
+
+Integrated checkpoint: `9ff8bcfe839d740cc092296a87f5c618a16ef361`.
+Tree: `2ecf6759d324feccdf7f5e3312a72a63a85a049e`.
+Merged main `9a29aef85cf8909e1cc8a614ddaa8493f3eebe95`; the Freezed conflict
+was resolved by regenerating from the merged source. Exit 0 at this checkpoint:
+
+```sh
+# client/module_core — 237 tests
+dart test test/services/session_auto_continuation_service_test.dart test/cubits/session_detail
+dart analyze --fatal-infos --format=machine
+# client/app — 135 tests
+flutter test --no-pub \
+  test/features/session_detail/widgets/session_detail_body_test.dart \
+  test/features/session_detail/session_detail_title_hydration_test.dart
+# client/desktop — 9 tests
+flutter test --no-pub test/features/sessions/desktop_session_detail_screen_test.dart
+# Each of client/module_app_ui, client/app and client/desktop
+flutter analyze --no-pub
+```
+
+Shared notice/menu tests were unchanged by main integration and passed at the fix
+checkpoint using the shared UI command above. Refreshed fixture media records
+that fix checkpoint, including the 320×480 unavailable view at text scale 2 and
+its reachable Disable/Recheck actions. The capture ran only its one fixture test.
+Media commit: `47c97f035441e0b4787ae691e097d9f15dda6a2b` on `pr-media`.

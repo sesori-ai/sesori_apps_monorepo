@@ -224,6 +224,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                     SessionAutoContinuationNotice(
                       view: state.session.autoContinuation,
                       updating: state.isUpdatingAutoContinuation,
+                      canInteract: state.interaction.canInteract,
                       onEnabledChanged: (enabled) =>
                           unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
                     ),

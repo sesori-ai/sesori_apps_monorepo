@@ -71,6 +71,8 @@ provider and platform verification remains in the
   controls are disabled and the last confirmed preference stays visible. A
   failure explains that the change could not be confirmed; it never invents a
   local schedule. Session updates from another client refresh the same view.
+  An acknowledgement received during reload survives failed metadata/history
+  reads and the unavailable-history shell; saving controls become usable again.
 - A known reset offers opt-in; the scheduled notice shows the bridge's buffered
   date/time in the viewer's local zone and says the bridge must remain running.
   Enabled idle sessions retain a compact indicator and Disable action.

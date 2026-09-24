@@ -1702,6 +1702,7 @@ class _PromptInputState() extends State<PromptInput> {
       triggerBuilder: (context, toggle) => ComposerOptionsAccordion(
         actionsEnabled: _voicePresentation == _VoicePresentation.idle,
         alwaysOpen: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
+        isTyping: _hasText,
         showAttachImage: widget.attachmentsSupported ?? false,
         onSlashCommandsTap: () {
           _typingPinnedByPicker = _layout == ComposerSurfaceLayout.typing;

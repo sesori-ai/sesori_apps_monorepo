@@ -195,7 +195,7 @@ reconnect or restart.
   that arrived while the fetch was in flight instead of replacing the transcript
   wholesale: messages and parts added or changed live survive, removals seen
   live are honored, and a fetched replacement of an older part still lands. The
-  agent and model shown for the session come from that installed transcript. An
+  model shown for the session comes from that installed transcript. An
   older-history page cannot start during a refresh, and one already in flight is
   dropped rather than spliced onto the refreshed transcript.
 - Binary and attachment payloads are never stored inline in database tables; they

@@ -169,7 +169,6 @@ void main() {
       final state = cubit.state as SessionDetailLoaded;
       expect(state.messages.length, 1);
       expect(state.messages.first.info.id, "msg-1");
-      expect(state.agent, "build");
 
       sessionEvents.add(
         const SesoriMessageUpdated(
@@ -188,7 +187,6 @@ void main() {
 
       final afterSystem = cubit.state as SessionDetailLoaded;
       expect(afterSystem.messages.map((message) => message.info.id), ["msg-1", "system-1"]);
-      expect(afterSystem.agent, "build");
       expect(afterSystem.assistantAgentModel, state.assistantAgentModel);
     });
 
@@ -244,7 +242,6 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       final state = cubit.state as SessionDetailLoaded;
-      expect(state.agent, "build");
       expect(
         state.assistantAgentModel,
         const AgentModel(providerID: "sesori-local", modelID: "test-model", variant: null),
@@ -1474,7 +1471,7 @@ void main() {
         ]);
       });
 
-      test("an assistant added during the reload sets the agent and model of the installed transcript", () async {
+      test("an assistant added during the reload sets the model of the installed transcript", () async {
         final (:cubit, :refresh, loadService: _) = await startRefresh(initial: _snapshot(messages: const []));
 
         sessionEvents.add(
@@ -1498,7 +1495,6 @@ void main() {
         );
 
         expect(state.messages.map((message) => message.info.id), ["assistant-live"]);
-        expect(state.agent, "coder");
         expect(
           state.assistantAgentModel,
           const AgentModel(providerID: "provider", modelID: "live-model", variant: null),

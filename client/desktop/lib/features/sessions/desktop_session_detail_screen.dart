@@ -172,7 +172,8 @@ class const DesktopSessionDetailView({
     required Session? session,
   }) {
     final loc = context.loc;
-    final isAwaitingInput = switch (context.read<SessionDetailCubit>().state) {
+    final state = context.read<SessionDetailCubit>().state;
+    final isAwaitingInput = switch (state) {
       SessionDetailLoaded(:final pendingQuestions, :final pendingPermissions) =>
         pendingQuestions.isNotEmpty || pendingPermissions.isNotEmpty,
       SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => false,
@@ -201,7 +202,9 @@ class const DesktopSessionDetailView({
           entriesBuilder: () => session == null
               ? const []
               : [
-                  if (!readOnly && session.time?.archived == null)
+                  if (!readOnly &&
+                      session.time?.archived == null &&
+                      !(state is SessionDetailLoaded && state.isArchived))
                     sessionAutoContinuationMenuEntry(context: context, session: session),
                   PregoMenuItem(
                     leadingIcon: TablerRegular.mail,

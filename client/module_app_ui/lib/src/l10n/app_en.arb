@@ -1633,7 +1633,7 @@
   "sessionAutoContinuationQuotaReached": "Quota reached",
   "sessionAutoContinuationOlderBridge": "Update your bridge to use auto continuation.",
   "sessionAutoContinuationUnavailable": "Auto continuation is unavailable for this harness or provider.",
-  "sessionAutoContinuationOffer": "Continue at {time}, two minutes after the quota resets, and after later quota resets. Keep your bridge running.",
+  "sessionAutoContinuationOffer": "Continue at {time} and two minutes after each later quota reset. Keep your bridge running.",
   "sessionAutoContinuationScheduled": "Continues at {time}. Keep your bridge running.",
   "sessionAutoContinuationResetUnknown": "Reset time unavailable. Auto continuation cannot be scheduled.",
   "sessionAutoContinuationPausedWork": "Paused while this session has active or queued work. Checks resume automatically.",

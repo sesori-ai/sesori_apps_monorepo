@@ -20,7 +20,7 @@ class _MockLifecycleSource() extends Mock implements LifecycleSource;
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
 const _loaded = SessionDetailState.loaded(
-  interaction: SessionInteractionState.available(refreshError: null),
+  interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
   messages: [],
   olderMessagesCursor: null,
   streamingText: {},
@@ -31,7 +31,6 @@ const _loaded = SessionDetailState.loaded(
   session: testConstSession,
   pluginId: "opencode",
   supportsPromptAttachments: false,
-  agent: null,
   assistantAgentModel: null,
   children: [],
   childStatuses: {},
