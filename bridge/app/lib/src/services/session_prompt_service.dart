@@ -223,6 +223,9 @@ class SessionPromptService({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
+
+    /// Rechecked after the write: a retired plugin generation must not reach clients.
+    required bool Function() isCurrentSource,
   }) async {
     final SessionPromptDefaults? stored;
     try {
@@ -235,7 +238,7 @@ class SessionPromptService({
       Log.w("Failed to persist backend-originated prompt defaults for session $sessionId", error, stackTrace);
       return;
     }
-    if (stored == null) return;
+    if (stored == null || !isCurrentSource()) return;
     _promptDefaultsChangesController.add(SessionPromptDefaultsChange(sessionId: sessionId, promptDefaults: stored));
   }
 
