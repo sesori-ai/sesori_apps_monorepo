@@ -178,7 +178,7 @@ class AntigravitySessionOptionsService({
                     [
                       for (final model in catalog.models)
                         PluginModel(
-                          supportsFastMode: false,
+                          fastMode: null,
                           id: model.id,
                           name: model.name,
                           variants: CatalogStrengthOrder.variants(model.variants.map((variant) => variant.kind.id)),

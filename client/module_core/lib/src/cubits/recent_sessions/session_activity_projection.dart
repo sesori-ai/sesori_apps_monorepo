@@ -3,26 +3,37 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../services/models/recent_sessions_entry.dart";
 import "recent_sessions_resolvers.dart";
 
+/// One session with the project it belongs to, for lists that mix projects.
+typedef SessionActivityItem = ({ProjectSummary project, SessionActivityEntry entry});
+
 /// Activity: the sessions in motion, derived from existing project/session
 /// owners for every surface. Sessions never leave their project; Activity is a
 /// shortcut on top.
-final class SessionActivityProjection._({required final List<SessionActivityGroup> activityGroups}) {
+final class SessionActivityProjection._({
+  required final List<SessionActivityGroup> activityGroups,
+
+  /// Sessions across projects that are neither running nor waiting, newest
+  /// first.
+  required final List<SessionActivityItem> recent,
+}) {
+
+  /// Sessions waiting on the user, in project order.
+  List<SessionActivityItem> get needsYou => [
+    for (final group in activityGroups)
+      for (final entry in group.sessions)
+        if (entry.isAwaitingInput) (project: group.project, entry: entry),
+  ];
+
+  /// Running sessions that are not waiting on the user, in project order.
+  List<SessionActivityItem> get running => [
+    for (final group in activityGroups)
+      for (final entry in group.sessions)
+        if (entry.isRunning && !entry.isAwaitingInput) (project: group.project, entry: entry),
+  ];
+
   /// The phone's Activity: sessions waiting on the user first, then running
-  /// ones, each in project order. Finished unseen sessions stay in their lists.
-  List<({ProjectSummary project, SessionActivityEntry entry})> get waitingFirst {
-    final waiting = <({ProjectSummary project, SessionActivityEntry entry})>[];
-    final running = <({ProjectSummary project, SessionActivityEntry entry})>[];
-    for (final group in activityGroups) {
-      for (final entry in group.sessions) {
-        if (entry.isAwaitingInput) {
-          waiting.add((project: group.project, entry: entry));
-        } else if (entry.isRunning) {
-          running.add((project: group.project, entry: entry));
-        }
-      }
-    }
-    return [...waiting, ...running];
-  }
+  /// ones. Finished unseen sessions stay in their lists.
+  List<SessionActivityItem> get waitingFirst => [...needsYou, ...running];
 
   /// Activity holds what is in motion: running sessions, sessions waiting on
   /// the user, and unseen sessions the user has not set aside. [deferredSessions] maps a session the user
@@ -40,6 +51,7 @@ final class SessionActivityProjection._({required final List<SessionActivityGrou
     required Set<String> hiddenSessionIds,
   }) {
     final groups = <SessionActivityGroup>[];
+    final settled = <SessionActivityItem>[];
     for (final project in projects) {
       final entry = entries[project.id];
       if (entry is! RecentSessionsLoaded) continue;
@@ -48,9 +60,22 @@ final class SessionActivityProjection._({required final List<SessionActivityGrou
         if (hiddenSessionIds.contains(session.id)) continue;
         final isRunning = entry.isRunning(session: session);
         final isUnseen = entry.isUnseen(session: session);
+        final isAwaitingInput = entry.isAwaitingInput(session: session);
+        if (!isRunning && !isAwaitingInput) {
+          settled.add(
+            (
+              project: project,
+              entry: SessionActivityEntry(
+                session: session,
+                isRunning: false,
+                isUnseen: isUnseen,
+                isAwaitingInput: false,
+              ),
+            ),
+          );
+        }
         final deferredAt = deferredSessions[session.id];
         final isSetAside = isUnseen && deferredAt != null && deferredAt == session.time?.updated;
-        final isAwaitingInput = entry.isAwaitingInput(session: session);
         // A pending question need not keep the agent running, and still needs the
         // user until they set it aside.
         final inMotion = isRunning || ((isAwaitingInput || isUnseen) && !isSetAside);
@@ -75,7 +100,12 @@ final class SessionActivityProjection._({required final List<SessionActivityGrou
         ),
       );
     }
-    return SessionActivityProjection._(activityGroups: List.unmodifiable(groups));
+    int updated(SessionActivityItem item) => item.entry.session.time?.updated ?? 0;
+    settled.sort((a, b) => updated(b).compareTo(updated(a)));
+    return SessionActivityProjection._(
+      activityGroups: List.unmodifiable(groups),
+      recent: List.unmodifiable(settled),
+    );
   }
 }
 

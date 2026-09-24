@@ -118,7 +118,7 @@ class CursorSessionOptionsService({
             [
               for (final model in models)
                 PluginModel(
-                  supportsFastMode: false,
+                  fastMode: null,
                   id: model.value,
                   name: model.name,
                   // Strongest first; Cursor's first-listed level stays the default.

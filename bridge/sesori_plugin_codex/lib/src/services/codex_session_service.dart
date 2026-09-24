@@ -926,7 +926,7 @@ class CodexSessionService({
         ? [
             if (modelID != null)
               PluginModel(
-                supportsFastMode: false,
+                fastMode: null,
                 id: modelID,
                 name: modelID,
                 variants: const [],

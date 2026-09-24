@@ -214,6 +214,34 @@ class SessionPromptService({
     }
   }
 
+  /// Records the agent and model the backend reports for [sessionId] and
+  /// publishes the stored prompt defaults, which keep the session's fast mode.
+  ///
+  /// Publishes nothing when the write fails: a report without the stored fast
+  /// mode would switch it off on the client.
+  Future<void> recordBackendPromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+
+    /// Rechecked after the write: a retired plugin generation must not reach clients.
+    required bool Function() isCurrentSource,
+  }) async {
+    final SessionPromptDefaults? stored;
+    try {
+      stored = await _sessionRepository.updatePromptDefaults(
+        sessionId: sessionId,
+        agent: agent,
+        agentModel: agentModel,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to persist backend-originated prompt defaults for session $sessionId", error, stackTrace);
+      return;
+    }
+    if (stored == null || !isCurrentSource()) return;
+    _promptDefaultsChangesController.add(SessionPromptDefaultsChange(sessionId: sessionId, promptDefaults: stored));
+  }
+
   Future<void> dispose() async {
     await _promptDefaultsChangesController.close();
   }

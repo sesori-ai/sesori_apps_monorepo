@@ -796,7 +796,9 @@ final class ClaudeSessionService({
         return;
       case ClaudeAssistantMessage():
         state.quotaCandidate = _quotaMapper.map(message: message, observedAt: _clock.now());
-      case ClaudeUserMessage() || ClaudeStreamEventMessage():
+      case ClaudeUserMessage() || ClaudeStreamEventMessage(eventType: ClaudeStreamEventType.messageStart):
+        // Trailing frames close the current message; only a new message
+        // supersedes its quota observation.
         state.quotaCandidate = null;
       case ClaudeResultMessage():
         final candidate = state.quotaCandidate;

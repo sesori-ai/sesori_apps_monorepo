@@ -1781,6 +1781,7 @@ void main() {
               defaultModelID: "claude-3-5-sonnet",
               models: {
                 "claude-3-5-sonnet": ProviderModel(
+                  fastMode: null,
                   id: "claude-3-5-sonnet",
                   providerID: "anthropic",
                   name: "Claude 3.5 Sonnet",
@@ -1832,6 +1833,7 @@ void main() {
               defaultModelID: "claude-3-5-sonnet",
               models: {
                 "claude-3-5-sonnet": ProviderModel(
+                  fastMode: null,
                   id: "claude-3-5-sonnet",
                   providerID: "anthropic",
                   name: "Claude 3.5 Sonnet",

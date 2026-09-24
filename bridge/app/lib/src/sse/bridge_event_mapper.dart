@@ -28,25 +28,8 @@ class BridgeEventMapper({
         BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
         BridgeSseSessionOptionsChanged() => null,
         BridgeSseSessionQuotaBlocked() => null,
-        BridgeSseSessionPromptDefaultsChanged(
-          :final sessionID,
-          :final agent,
-          model: final pluginModel,
-        ) =>
-          SesoriSseEvent.sessionPromptDefaultsChanged(
-            sessionID: sessionID,
-            promptDefaults: SessionPromptDefaults(
-              agent: agent,
-              model: switch (pluginModel) {
-                PluginAgentModel(:final providerID, :final modelID, :final variant) => AgentModel(
-                  providerID: providerID,
-                  modelID: modelID,
-                  variant: variant,
-                ),
-                null => null,
-              },
-            ),
-          ),
+        // Published by SessionPromptService with the session's stored fast mode.
+        BridgeSseSessionPromptDefaultsChanged() => null,
         BridgeSseSessionDeleted(:final info) => _tryParseSseEvent({"type": "session.deleted", "info": info}),
         BridgeSseSessionDiff(:final sessionID) => SesoriSseEvent.sessionDiff(sessionID: sessionID),
         BridgeSseSessionError(:final sessionID) => SesoriSseEvent.sessionError(sessionID: sessionID),

@@ -14,6 +14,7 @@ opt-in controls are subsequent steps of the
 - Claude Code reports only a tagged root session-limit error followed by a
   failed, non-aborted result. Forwarded child errors and progress do not arm or
   replace root observations. Process-wide rate-limit frames alone do not report.
+  Trailing stream frames preserve a complete error; a new root message clears it.
 - Claude's recognized clock-time/IANA-zone format is accepted only when it
   denotes one future instant on the original local date. Stale times, unresolved
   day boundaries, malformed times, unknown zones and DST gaps/ambiguity remain unknown.
@@ -39,9 +40,13 @@ opt-in controls are subsequent steps of the
   terminal quota text, transient recovery and retry exhaustion must each end in
   exactly one final settlement. See the dated
   [evidence record](../../.plan/active/quota-auto-continuation/EVIDENCE.md).
-- **L3/L4:** Real provider account exhaustion and the eventual scheduled-send
-  flow remain required in later plan steps; synthetic protocol tests do not
-  establish that end-to-end behavior.
+- **L3:** Real provider account exhaustion on each supported production harness,
+  then the eventual opt-in → reset → one scheduled `Continue.` journey. This
+  remains required in later plan steps; synthetic protocol tests do not establish
+  that end-to-end behavior.
+- **L4:** Exercise the eventual scheduler through bridge restart, host sleep,
+  recovery, concurrent manual actions, multiple clients and alternate platforms.
+  These extended scenarios also remain pending the scheduler and client steps.
 
 ## Material Failure Signals
 

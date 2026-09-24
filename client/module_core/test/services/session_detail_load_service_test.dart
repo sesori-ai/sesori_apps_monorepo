@@ -543,6 +543,7 @@ SessionOptionsCatalog _sessionOptionsCatalog() {
         defaultModelID: "gpt-4.1",
         models: {
           "gpt-4.1": ProviderModel(
+            fastMode: null,
             id: "gpt-4.1",
             providerID: "openai",
             name: "GPT-4.1",

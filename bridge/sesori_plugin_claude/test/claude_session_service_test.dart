@@ -20,7 +20,16 @@ void main() {
       await harness.dispose();
     });
 
-    for (final scenario in ["terminal", "recovered", "subagent", "aborted", "warning", "child progress"]) {
+    for (final scenario in [
+      "terminal",
+      "recovered",
+      "subagent",
+      "aborted",
+      "warning",
+      "child progress",
+      "trailing stream",
+      "new stream",
+    ]) {
       test("quota observation waits for terminal root failure: $scenario", () async {
         unawaited(harness.enqueue("prompt", model: "haiku"));
         final process = await harness.firstProcess;
@@ -48,6 +57,18 @@ void main() {
         }
         await pump();
         expect(harness.events.whereType<BridgeSseSessionQuotaBlocked>(), isEmpty);
+        if (scenario == "trailing stream" || scenario == "new stream") {
+          for (final type
+              in scenario == "new stream"
+                  ? ["message_start"]
+                  : ["content_block_stop", "message_delta", "message_stop"]) {
+            process.emit({
+              "type": "stream_event",
+              "session_id": testSessionId,
+              "event": {"type": type},
+            });
+          }
+        }
         if (scenario == "recovered" || scenario == "child progress") {
           process.emit({
             "type": "assistant",
@@ -69,7 +90,7 @@ void main() {
         await harness.waitForIdle();
         await pump();
         final reports = harness.events.whereType<BridgeSseSessionQuotaBlocked>().toList();
-        if (scenario == "terminal" || scenario == "child progress") {
+        if (scenario == "terminal" || scenario == "child progress" || scenario == "trailing stream") {
           expect(reports.single.sessionID, testSessionId);
           expect(reports.single.interruption.errorMessageId, "quota-error");
         } else {

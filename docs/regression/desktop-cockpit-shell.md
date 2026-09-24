@@ -209,7 +209,10 @@ The main pane hosts one full-width routed page.
   all-sessions page; Shift+Cmd/Ctrl+U does the same while focus is in the session page and is inert
   elsewhere. The transcript and composer sit in a centred column about 760 pt wide while the wheel and
   scrollbar keep the whole pane. The phone keeps its floating glass bar and full-width transcript.
-- Home directs an existing inventory to the sidebar; empty inventory offers
+- With projects, home starts work: the new-session composer for a picked project (the first listed until the
+  user picks another, each pick with its own draft), then Needs you, Running and Recent sections across projects.
+  Recent holds the five newest sessions that are neither running nor waiting; empty sections are left out. A row
+  opens its session, and a session started from home opens in the picked project. Empty inventory offers
   Add/Open Project. Loading is labelled, failures retry the shared inventory,
   and disconnected states offer supervised bridge recovery without CLI setup.
   Shared Prego text styles and Material themes resolve the bundled package font.
@@ -390,6 +393,9 @@ notification opens stranded behind a popup,
 wrong session-action targets, or lost navigation after switching projects. Vary project-name lengths and
 Unicode, window sizes, theme, and sidebar width; preserve any already-running
 bridge during UI-only checks.
+
+On home, watch for a session starting in a project other than the one picked, a draft following a project
+reorder or surviving a new pick, a running or waiting session under Recent, and an empty section heading.
 
 ## Maintenance Sources
 

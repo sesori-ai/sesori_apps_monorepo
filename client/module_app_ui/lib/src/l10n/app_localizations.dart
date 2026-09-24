@@ -175,11 +175,17 @@ abstract class AppLocalizations {
   /// **'Access could not be confirmed'**
   String get desktopFileAccessUnknown;
 
-  /// Desktop home guidance when projects are available but no session is open.
+  /// Desktop home section heading for sessions waiting on the user's answer.
   ///
   /// In en, this message translates to:
-  /// **'Pick a session from the sidebar to get started.'**
-  String get desktopHomePickSession;
+  /// **'Needs you'**
+  String get desktopHomeNeedsYou;
+
+  /// Desktop home section heading for the latest sessions across projects that are neither running nor waiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get desktopHomeRecent;
 
   /// Tooltip and label for the small desktop sidebar action that opens the add-project dialog.
   ///
@@ -2388,24 +2394,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ran'**
   String get sessionDetailCommandRan;
-
-  /// No description provided for @sessionDetailCopyCommand.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy command'**
-  String get sessionDetailCopyCommand;
-
-  /// No description provided for @sessionDetailShellOutput.
-  ///
-  /// In en, this message translates to:
-  /// **'Output'**
-  String get sessionDetailShellOutput;
-
-  /// No description provided for @sessionDetailCopyOutput.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy output'**
-  String get sessionDetailCopyOutput;
 
   /// No description provided for @sessionDetailFollowOutput.
   ///

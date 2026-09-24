@@ -54,8 +54,12 @@ void main() {
       expect(provider.models.first.defaultVariant, "high");
       expect(provider.models.last.variants, isEmpty);
       expect(provider.models.last.defaultVariant, isNull);
-      expect(provider.models.first.supportsFastMode, isTrue);
-      expect(provider.models.last.supportsFastMode, isFalse, reason: "the CLI omits the field when unsupported");
+      expect(
+        provider.models.first.fastMode,
+        const PluginFastModeSupport.available(promptCacheTtlSeconds: 3600),
+        reason: "a handshake without fast_mode_disabled_reason leaves fast mode available",
+      );
+      expect(provider.models.last.fastMode, isNull, reason: "the CLI omits supportsFastMode when unsupported");
       expect(
         catalog.commands,
         const [
@@ -68,6 +72,84 @@ void main() {
           ),
         ],
       );
+    });
+
+    group("fast mode availability", () {
+      PluginFastModeSupport? fastModeFor({required Object? disabledReason}) => repository
+          .map(
+            handshake: {
+              "models": [
+                {"value": "opus", "supportsFastMode": true},
+              ],
+              "fast_mode_disabled_reason": disabledReason,
+            },
+          )
+          .providers
+          .providers
+          .single
+          .models
+          .single
+          .fastMode;
+
+      test("treats a still-masked SDK opt-in requirement as available", () {
+        expect(
+          fastModeFor(disabledReason: "sdk_opt_in_required"),
+          const PluginFastModeSupport.available(promptCacheTtlSeconds: 3600),
+        );
+      });
+
+      test("treats transient states as available", () {
+        for (final raw in ["network_error", "pending"]) {
+          expect(
+            fastModeFor(disabledReason: raw),
+            const PluginFastModeSupport.available(promptCacheTtlSeconds: 3600),
+            reason: raw,
+          );
+        }
+      });
+
+      test("maps account reasons to the closed reason set", () {
+        const expected = {
+          "extra_usage_disabled": PluginFastModeUnavailableReason.extraUsageDisabled,
+          "free": PluginFastModeUnavailableReason.notOnPlan,
+          "preference": PluginFastModeUnavailableReason.disabledByOrganization,
+          "model_not_allowed": PluginFastModeUnavailableReason.disabledByOrganization,
+          "not_first_party": PluginFastModeUnavailableReason.unknown,
+          "disabled_by_env": PluginFastModeUnavailableReason.unknown,
+          "unknown": PluginFastModeUnavailableReason.unknown,
+          "a_future_reason": PluginFastModeUnavailableReason.unknown,
+        };
+        for (final MapEntry(key: raw, value: reason) in expected.entries) {
+          expect(
+            fastModeFor(disabledReason: raw),
+            PluginFastModeSupport.unavailable(reason: reason),
+            reason: raw,
+          );
+        }
+      });
+
+      test("asks for an opt-in only when the opt-in masks a fast-capable model", () {
+        Map<String, Object?> handshake({required String? reason, required bool fastCapable}) => {
+          "models": [
+            {"value": "opus", "supportsFastMode": fastCapable},
+          ],
+          "fast_mode_disabled_reason": reason,
+        };
+
+        expect(
+          repository.fastModeNeedsOptIn(handshake: handshake(reason: "sdk_opt_in_required", fastCapable: true)),
+          isTrue,
+        );
+        expect(
+          repository.fastModeNeedsOptIn(handshake: handshake(reason: "sdk_opt_in_required", fastCapable: false)),
+          isFalse,
+        );
+        expect(
+          repository.fastModeNeedsOptIn(handshake: handshake(reason: "extra_usage_disabled", fastCapable: true)),
+          isFalse,
+        );
+        expect(repository.fastModeNeedsOptIn(handshake: handshake(reason: null, fastCapable: true)), isFalse);
+      });
     });
 
     test("declares no default effort when effort support is off, even with levels listed", () {
