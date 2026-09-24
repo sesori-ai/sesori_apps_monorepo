@@ -28,3 +28,4 @@ Split in two: 18.a turns the home into a composer with the activity sections;
 - `dart analyze --fatal-infos` clean in `client/desktop`, `client/module_app_ui`
   and `client/module_core`.
 - Light home render checked.
+- Architecture implementation review: approved in the first round.
