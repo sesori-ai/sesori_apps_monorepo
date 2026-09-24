@@ -508,7 +508,7 @@ void main() {
           _entry(
             key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1"),
             response: _response(marker: "cached"),
-            capturedAt: now.subtract(const Duration(days: 1, seconds: 1)),
+            capturedAt: now.subtract(const Duration(minutes: 10, seconds: 1)),
           ),
         );
       final service = _service(

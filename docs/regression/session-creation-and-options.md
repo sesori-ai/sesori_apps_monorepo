@@ -161,7 +161,7 @@ variant, and worktree mode, and creating the session with its first input.
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
 - A normal load reports whether the cache it served has aged past the bridge's
-  freshness window or was captured before the current bridge process started
+  ten-minute freshness window or was captured before the current bridge process started
   (so an upgraded bridge fills in catalog fields an older build did not map,
   such as fast mode), and the client then refreshes it in the background: the
   options stay on screen and usable, with no loading state, and simply change if
