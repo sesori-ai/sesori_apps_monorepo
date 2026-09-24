@@ -415,6 +415,12 @@ abstract class AppLocalizations {
   /// **'Projects'**
   String get projectListTitle;
 
+  /// Heading over the sessions waiting for the user or running, across projects, at the top of Projects.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get projectListActivity;
+
   /// No description provided for @projectListLoadingSemantics.
   ///
   /// In en, this message translates to:

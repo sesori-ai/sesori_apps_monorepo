@@ -100,6 +100,50 @@ void main() {
     expect(activity(sessions: [opened, deferred], stickySessionId: "deferred"), isEmpty);
   });
 
+  test("waitingFirst lists waiting sessions, then running ones, leaving finished unseen out", () {
+    SessionActivityInfo activity({required bool awaitingInput}) => SessionActivityInfo(
+      mainAgentRunning: true,
+      awaitingInput: awaitingInput,
+      lastUserActivityAt: null,
+      updatedAt: null,
+    );
+    final running = _session(id: "running", projectId: "one");
+    final waitingOne = _session(id: "waiting-one", projectId: "one");
+    final unseen = _session(id: "unseen", projectId: "one", unseen: true);
+    final waitingTwo = _session(id: "waiting-two", projectId: "two");
+    final projection = SessionActivityProjection.from(
+      projects: const [
+        ProjectSummary(id: "one", name: "One", path: "/one", time: null),
+        ProjectSummary(id: "two", name: "Two", path: "/two", time: null),
+      ],
+      entries: {
+        "one": RecentSessionsLoaded(
+          sourceSessions: [running, waitingOne, unseen],
+          visibleSessions: [running, waitingOne, unseen],
+          activityBySessionId: {
+            "running": activity(awaitingInput: false),
+            "waiting-one": activity(awaitingInput: true),
+          },
+          listStateBySessionId: const {},
+        ),
+        "two": RecentSessionsLoaded(
+          sourceSessions: [waitingTwo],
+          visibleSessions: [waitingTwo],
+          activityBySessionId: {"waiting-two": activity(awaitingInput: true)},
+          listStateBySessionId: const {},
+        ),
+      },
+      deferredSessions: const {},
+      stickySessionId: null,
+      hiddenSessionIds: const {},
+    );
+
+    expect(
+      projection.waitingFirst.map((item) => (item.project.id, item.entry.session.id)),
+      [("one", "waiting-one"), ("two", "waiting-two"), ("one", "running")],
+    );
+  });
+
   test("Activity sessions stay in their project's rows", () {
     final sessions = [
       _session(id: "priority", projectId: "one", unseen: true),

@@ -184,6 +184,11 @@ state.
   cubit; the sidebar never claims project viewing. Archived rows open read-only.
   Mobile retains its adaptive session split. Desktop Activity, ordinary recents, contextual shortcuts and local
   controls follow the [cockpit contract](desktop-cockpit-shell.md); the sidebar is not another full session-list pane.
+- On the phone, Projects opens with an Activity group above the project list when any session is waiting on the
+  user or running: waiting sessions first, then running ones, each in project order. A waiting row carries an
+  amber dot and a "Waiting" cue before its project name; a running row carries the activity loader. A row opens
+  its session directly. Finished unseen sessions stay in their project lists, and the group and its Projects
+  heading are left out when nothing is in motion.
 - On the phone, only the top-level Projects and Settings pages show a large 36 bold title. Under the Projects
   title, a status row names the paired machine, holds a skeleton while the name loads, and says what onboarding
   waits for before any bridge is registered. The row is left out when the lookup finds no machine to name.
@@ -446,6 +451,8 @@ started one. Restore harness eligibility afterwards.
 
 ## Failure Signals
 
+- Phone Activity lists an idle session, orders a running session before a waiting one, keeps a finished
+  session after it stops, or a row opens the project instead of its session.
 - A catalog read starts a backend, hangs on import, returns a partial list, or an
   older response overwrites a post-commit snapshot.
 - An already-satisfied automatic hydration emits a misleading zero-count

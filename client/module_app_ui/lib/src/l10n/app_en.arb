@@ -122,6 +122,10 @@
   "desktopSettingsThisComputer": "This computer",
   "@desktopSettingsThisComputer": {"description": "Separates local supervised-bridge status and diagnostics from connected-bridge settings."},
   "projectListTitle": "Projects",
+  "projectListActivity": "Activity",
+  "@projectListActivity": {
+    "description": "Heading over the sessions waiting for the user or running, across projects, at the top of Projects."
+  },
   "projectListLoadingSemantics": "Loading projects",
   "projectListDefaultName": "Default project",
   "projectListRefreshSuccess": "Projects updated",

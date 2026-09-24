@@ -7,6 +7,23 @@ import "recent_sessions_resolvers.dart";
 /// owners for every surface. Sessions never leave their project; Activity is a
 /// shortcut on top.
 final class SessionActivityProjection._({required final List<SessionActivityGroup> activityGroups}) {
+  /// The phone's Activity: sessions waiting on the user first, then running
+  /// ones, each in project order. Finished unseen sessions stay in their lists.
+  List<({ProjectSummary project, SessionActivityEntry entry})> get waitingFirst {
+    final waiting = <({ProjectSummary project, SessionActivityEntry entry})>[];
+    final running = <({ProjectSummary project, SessionActivityEntry entry})>[];
+    for (final group in activityGroups) {
+      for (final entry in group.sessions) {
+        if (entry.isAwaitingInput) {
+          waiting.add((project: group.project, entry: entry));
+        } else if (entry.isRunning) {
+          running.add((project: group.project, entry: entry));
+        }
+      }
+    }
+    return [...waiting, ...running];
+  }
+
   /// Activity holds what is in motion: running sessions and unseen sessions
   /// the user has not set aside. [deferredSessions] maps a session the user
   /// marked unread here to its `time.updated` at that moment; it stays out of
