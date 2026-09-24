@@ -280,6 +280,7 @@ class const _DesktopBridgeSettingsPage() extends StatelessWidget {
     final control = context.watch<BridgeControlCubit>();
     final access = context.watch<FileAccessCubit>();
     return SettingsWindowPage(
+      onRefresh: null,
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(PregoSpacing.xl),
@@ -336,6 +337,7 @@ class const _DesktopBridgeSettingsPage() extends StatelessWidget {
 class const _DesktopNotificationSettingsPage() extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const SettingsWindowPage(
+    onRefresh: null,
     slivers: [
       SliverPadding(
         padding: EdgeInsets.all(PregoSpacing.xl),
@@ -364,7 +366,7 @@ class _DesktopHarnessSettingsPageState() extends State<_DesktopHarnessSettingsPa
       pages: [
         MaterialPage<void>(
           child: HarnessesSettingsView(
-            presentation: HarnessSettingsPresentation.window,
+            chrome: HarnessSettingsChrome.window,
             connectionBanner: null,
             onClose: widget.onClose,
             onBack: null,
@@ -376,7 +378,7 @@ class _DesktopHarnessSettingsPageState() extends State<_DesktopHarnessSettingsPa
             key: ValueKey(pluginId),
             child: HarnessSettingsDetailView(
               pluginId: pluginId,
-              presentation: HarnessSettingsPresentation.window,
+              chrome: HarnessSettingsChrome.window,
               onBack: () => setState(() => _pluginId = null),
               onClose: widget.onClose,
               connectionBanner: null,

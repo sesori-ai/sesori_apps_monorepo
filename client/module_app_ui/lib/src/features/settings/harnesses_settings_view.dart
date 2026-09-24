@@ -5,9 +5,7 @@ const double _contentTopPadding = 10;
 class const HarnessesSettingsView({
   super.key,
 
-  /// How the page was raised, which decides how the user leaves it: a pushed
-  /// page goes back, a modal one closes.
-  required final HarnessSettingsPresentation presentation,
+  required final HarnessSettingsChrome chrome,
   required final Widget? connectionBanner,
   required final VoidCallback onClose,
   required final VoidCallback? onBack,
@@ -39,14 +37,14 @@ class const HarnessesSettingsView({
     ];
 
     final bool isModal;
-    switch (presentation) {
-      case HarnessSettingsPresentation.modal:
+    switch (chrome) {
+      case HarnessSettingsChrome.modal:
         isModal = true;
-      case HarnessSettingsPresentation.pushed:
+      case HarnessSettingsChrome.pushed:
         isModal = false;
-      case HarnessSettingsPresentation.window:
+      case HarnessSettingsChrome.window:
         // The settings window names the page and owns the close button.
-        return SettingsWindowPage(slivers: slivers);
+        return SettingsWindowPage(onRefresh: cubit.refresh, slivers: slivers);
     }
 
     return PregoGlassScaffold(

@@ -38,21 +38,31 @@ class const SettingsChromePage({
         ],
         slivers: slivers,
       ),
-    SettingsPageInWindow() => SettingsWindowPage(slivers: slivers),
+    SettingsPageInWindow() => SettingsWindowPage(onRefresh: null, slivers: slivers),
   };
 }
 
 /// A page inside the desktop settings window. It has no bar: the window's
 /// sidebar names the page and its close button floats top-right, so content
 /// starts clear of that button.
-class const SettingsWindowPage({super.key, required final List<Widget> slivers}) extends StatelessWidget {
+class const SettingsWindowPage({
+  super.key,
+
+  /// Pull-to-refresh, as on the page's own glass bar; `null` for none.
+  required final Future<void> Function()? onRefresh,
+  required final List<Widget> slivers,
+}) extends StatelessWidget {
   /// Top inset that clears the window's close button.
   static const double topInset = 44;
 
   @override
   Widget build(BuildContext context) => CustomScrollView(
     primary: false,
+    // The refresh control needs overscroll, as on PregoGlassScaffold.
+    physics: onRefresh == null ? null : const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
     slivers: [
+      if (onRefresh case final onRefresh?)
+        PregoSliverRefreshControl(onRefresh: onRefresh, deepRefresh: null, decorate: null, onPulledExtentChanged: null),
       const SliverToBoxAdapter(child: SizedBox(height: topInset)),
       ...slivers,
     ],

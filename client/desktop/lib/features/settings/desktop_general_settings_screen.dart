@@ -31,6 +31,7 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
     final control = context.watch<BridgeControlCubit>();
     final state = control.state;
     return SettingsWindowPage(
+      onRefresh: null,
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(PregoSpacing.xl),

@@ -15,16 +15,12 @@ enum HarnessSettingsPresentation() {
 
   /// Pushed as the next page of the settings stack. It slides in like any
   /// other settings page and returns with the back button.
-  pushed,
+  pushed;
 
-  /// Hosted in the desktop settings window, which owns the close button and
-  /// names the page in its sidebar. Never routed, so never parsed from a URL.
-  window;
-
-  /// Reads a routed presentation from its URL spelling, or null when the value
-  /// is absent or unknown.
+  /// Reads a presentation from its URL spelling, or null when the value is
+  /// absent or unknown.
   static HarnessSettingsPresentation? tryParse(String? value) {
-    for (final presentation in const [modal, pushed]) {
+    for (final presentation in values) {
       if (presentation.name == value) return presentation;
     }
     return null;
