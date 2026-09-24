@@ -16,4 +16,11 @@ void main() {
   test("every word must match, in any order", () {
     expect(match("build fix", ["Fix the build", "Fix the docs"]), ["Fix the build"]);
   });
+
+  test("match ranges cover every occurrence of each word, merged and sorted", () {
+    expect(titleMatchRanges(title: "Fix the build", query: "BUILD fix"), [(start: 0, end: 3), (start: 8, end: 13)]);
+    expect(titleMatchRanges(title: "aaa", query: "a"), [(start: 0, end: 3)]);
+    expect(titleMatchRanges(title: "Build a builder", query: "build uild"), [(start: 0, end: 5), (start: 8, end: 13)]);
+    expect(titleMatchRanges(title: "Fix the build", query: "  "), isEmpty);
+  });
 }

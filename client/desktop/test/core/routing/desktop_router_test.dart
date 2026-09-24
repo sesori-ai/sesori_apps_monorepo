@@ -9,6 +9,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/platform/desktop_route_dispatcher.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
+import "package:sesori_desktop/core/widgets/desktop_command_palette.dart";
 import "package:sesori_desktop/features/auth_gate/auth_gate.dart";
 import "package:sesori_desktop/features/home/desktop_home_pane.dart";
 import "package:sesori_desktop/features/new_session/desktop_new_session_screen.dart";
@@ -326,8 +327,7 @@ Widget _paneBoundary({required BuildContext context, required GoRouterState stat
   final shell = buildDesktopRoutes().single as ShellRoute;
   final gate = shell.builder?.call(context, state, child);
   if (gate is! AuthGate) fail("The desktop shell must start with its AuthGate");
-  final shortcuts = (gate.child as Builder).builder(context) as CallbackShortcuts;
-  final provider = shortcuts.child as DesktopCockpitCubitProvider;
+  final provider = (gate.child as Builder).builder(context) as DesktopCockpitCubitProvider;
   return (provider.child as DesktopCockpitShell).child;
 }
 
@@ -379,7 +379,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
     routes: [
       ShellRoute(
         builder: (context, state, child) => CallbackShortcuts(
-          bindings: _shellShortcuts(context: context, state: state).bindings,
+          bindings: _shellShortcuts(context: context, state: state),
           child: Focus(autofocus: true, child: child),
         ),
         routes: [
@@ -445,12 +445,14 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
   );
 }
 
-/// The production shell's key bindings, bound to [context].
-CallbackShortcuts _shellShortcuts({required BuildContext context, required GoRouterState state}) {
+/// The production shell's Go back binding, bound to [context].
+Map<ShortcutActivator, VoidCallback> _shellShortcuts({required BuildContext context, required GoRouterState state}) {
   final shell = buildDesktopRoutes().single as ShellRoute;
   final gate = shell.builder?.call(context, state, const SizedBox());
   if (gate is! AuthGate) fail("The desktop shell must start with its AuthGate");
-  return (gate.child as Builder).builder(context) as CallbackShortcuts;
+  final provider = (gate.child as Builder).builder(context) as DesktopCockpitCubitProvider;
+  final cockpit = provider.child as DesktopCockpitShell;
+  return {desktopShortcut(key: LogicalKeyboardKey.bracketLeft): cockpit.onGoBack};
 }
 
 Future<void> _commandBracket(WidgetTester tester) async {

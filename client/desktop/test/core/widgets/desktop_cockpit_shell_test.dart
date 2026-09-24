@@ -104,6 +104,7 @@ void main() {
                 onOpenBridgeSettings: _noOp,
                 onOpenProjects: _noOp,
                 onOpenSettings: _noOp,
+                onGoBack: _noOp,
                 child: GestureDetector(
                   key: const Key("cockpit-content"),
                   behavior: HitTestBehavior.opaque,
@@ -141,6 +142,7 @@ void main() {
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
+          onGoBack: _noOp,
           child: TextField(focusNode: focus),
         ),
       ),
@@ -238,6 +240,7 @@ void main() {
             onOpenBridgeSettings: () => opens++,
             onOpenProjects: () => opens++,
             onOpenSettings: () => opens++,
+            onGoBack: _noOp,
             child: const SizedBox.shrink(),
           ),
         ),
@@ -446,7 +449,9 @@ void main() {
         expect(refresh, findsNothing);
         // New session cannot start before projects load, and says so.
         expect(
-          tester.getSemantics(find.byKey(const Key("desktop-sidebar-new-session"))),
+          tester.getSemantics(
+            find.descendant(of: find.byKey(const Key("desktop-sidebar-new-session")), matching: find.byType(InkWell)),
+          ),
           isSemantics(isButton: true, isEnabled: false),
         );
       }
@@ -547,6 +552,7 @@ void main() {
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
+          onGoBack: _noOp,
           child: const SizedBox.shrink(),
         ),
       ),
@@ -609,6 +615,7 @@ void main() {
         onOpenBridgeSettings: _noOp,
         onOpenProjects: _noOp,
         onOpenSettings: _noOp,
+        onGoBack: _noOp,
         child: const SizedBox.shrink(),
       ),
     );
@@ -693,6 +700,7 @@ void main() {
           onOpenBridgeSettings: () => bridgeOpens++,
           onOpenProjects: () => projectOpens++,
           onOpenSettings: () => settingsOpens++,
+          onGoBack: _noOp,
           child: const SizedBox.shrink(),
         ),
       ),
@@ -740,6 +748,7 @@ void main() {
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
+          onGoBack: _noOp,
           child: const SizedBox.shrink(),
         ),
       ),
@@ -850,6 +859,7 @@ void main() {
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
+          onGoBack: _noOp,
           child: SizedBox.shrink(),
         ),
       ),
@@ -983,6 +993,7 @@ void main() {
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
+          onGoBack: _noOp,
           child: const SizedBox.shrink(),
         ),
       ),
@@ -1046,6 +1057,7 @@ void main() {
         onOpenBridgeSettings: _noOp,
         onOpenProjects: _noOp,
         onOpenSettings: _noOp,
+        onGoBack: _noOp,
         child: const SizedBox.shrink(),
       ),
     );
@@ -1364,6 +1376,7 @@ void main() {
               onOpenBridgeSettings: _noOp,
               onOpenProjects: () => opens++,
               onOpenSettings: _noOp,
+              onGoBack: _noOp,
               child: const SizedBox.shrink(),
             ),
           ),
@@ -1455,6 +1468,7 @@ void main() {
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
+          onGoBack: _noOp,
           child: const TextField(autofocus: true),
         ),
       );
@@ -1761,6 +1775,122 @@ void main() {
     await tester.tap(find.text("Start bridge"));
     verify(bridgeControlCubit.recoverConnection).called(1);
   });
+
+  testWidgets("the command palette filters, picks by keyboard, closes on Esc and runs commands", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1200, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final build = testSession(id: "s1", title: "Fix the build", updatedAt: 2);
+    final docs = testSession(id: "s2", title: "Write docs", updatedAt: 1);
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: [build, docs],
+          visibleSessions: [build, docs],
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    final opened = <String>[];
+    var backs = 0;
+    await tester.pumpWidget(
+      PregoInteractionScope(
+        mode: PregoInteractionMode.pointer,
+        child: app(
+          state: running,
+          child: DesktopCockpitShell(
+            selectedProjectId: null,
+            selectedSessionId: null,
+            onOpenSession: ({required context, required project, required displayName, required session}) =>
+                opened.add(session.id),
+            onNewSession: _openProject,
+            sessionActions: _sessionActions,
+            onOpenProject: ({required context, required project, required displayName}) => opened.add(project.id),
+            onOpenBridgeSettings: _noOp,
+            onOpenProjects: _noOp,
+            onOpenSettings: _noOp,
+            onGoBack: () => backs++,
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final macOS = defaultTargetPlatform == TargetPlatform.macOS;
+    final modifier = macOS ? LogicalKeyboardKey.metaLeft : LogicalKeyboardKey.controlLeft;
+    final palette = find.byKey(const Key("desktop-command-palette"));
+    Finder inPalette(String text) => find.descendant(of: palette, matching: find.textContaining(text));
+    Future<void> press(LogicalKeyboardKey key) async {
+      await tester.sendKeyDownEvent(modifier);
+      await tester.sendKeyEvent(key);
+      await tester.sendKeyUpEvent(modifier);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> type(String query) async {
+      await tester.enterText(find.descendant(of: palette, matching: find.byType(TextField)), query);
+      await tester.pumpAndSettle();
+    }
+
+    await press(LogicalKeyboardKey.keyK);
+    expect(palette, findsOneWidget);
+    expect(inPalette("New session"), findsOneWidget);
+    expect(find.descendant(of: palette, matching: find.text(macOS ? "⌘N" : "Ctrl+N")), findsOneWidget);
+    // Sessions follow recency and name their project.
+    expect(
+      tester.getTopLeft(inPalette("Fix the build")).dy,
+      lessThan(tester.getTopLeft(inPalette("Write docs")).dy),
+    );
+    expect(find.descendant(of: palette, matching: find.text("Fix the build   Sesori Desktop")), findsOneWidget);
+
+    await type("BUILD");
+    expect(inPalette("Fix the build"), findsOneWidget);
+    expect(inPalette("Write docs"), findsNothing);
+    expect(inPalette("New session"), findsNothing);
+    await type("nothing like it");
+    expect(find.text("No matches"), findsOneWidget);
+
+    // Enter picks the first match: the session opens and the palette closes.
+    await type("docs");
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(opened, ["s2"]);
+    expect(palette, findsNothing);
+
+    // The sidebar row opens it too; Down moves from New session to Toggle sidebar.
+    await tester.tap(find.byKey(const Key("desktop-sidebar-search")));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(sidebar.state.collapsed, isTrue);
+    expect(palette, findsNothing);
+
+    await press(LogicalKeyboardKey.keyK);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(palette, findsNothing);
+
+    // A command runs from the palette, and its shortcut still works.
+    await press(LogicalKeyboardKey.keyK);
+    await type("go back");
+    expect(inPalette("Go back"), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(backs, 1);
+    await press(LogicalKeyboardKey.bracketLeft);
+    expect(backs, 2);
+
+    await press(LogicalKeyboardKey.keyK);
+    await type("sesori");
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(opened.last, "project-1");
+  }, variant: TargetPlatformVariant.desktop());
 }
 
 BridgeControlState _state({

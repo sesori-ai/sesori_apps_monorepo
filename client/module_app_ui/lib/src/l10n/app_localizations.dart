@@ -253,6 +253,36 @@ abstract class AppLocalizations {
   /// **'Resize sidebar; double-click to reset'**
   String get desktopSidebarResize;
 
+  /// Desktop sidebar row that opens the command palette.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get desktopSearch;
+
+  /// Placeholder of the desktop command palette's search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Search sessions, projects and commands'**
+  String get desktopCommandPaletteHint;
+
+  /// Desktop command palette heading over the app-wide commands.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands'**
+  String get desktopCommandPaletteCommands;
+
+  /// Desktop command palette command that collapses or expands the sidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle sidebar'**
+  String get desktopToggleSidebar;
+
+  /// Desktop command palette command that leaves a pushed page.
+  ///
+  /// In en, this message translates to:
+  /// **'Go back'**
+  String get desktopGoBack;
+
   /// Desktop project page toolbar toggle that switches the list to the project's archived sessions.
   ///
   /// In en, this message translates to:

@@ -12,6 +12,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
+import "desktop_command_palette.dart";
 import "desktop_connection_pill.dart";
 import "desktop_sidebar.dart";
 import "desktop_sidebar_expansion.dart";
@@ -74,6 +75,9 @@ class const DesktopCockpitShell({
   required final VoidCallback onOpenBridgeSettings,
   required final VoidCallback onOpenProjects,
   required final VoidCallback onOpenSettings,
+
+  /// Leaves a pushed page; a page reached from the sidebar has nowhere to go.
+  required final VoidCallback onGoBack,
   required final Widget child,
 }) extends StatelessWidget {
   static const double compactWidth = 56;
@@ -132,6 +136,44 @@ class const DesktopCockpitShell({
     return LayoutBuilder(
       builder: (context, constraints) {
         final autoCollapsed = constraints.maxWidth < autoCollapseBreakpoint;
+        final loc = context.loc;
+        // Page-only commands, such as Mark as unread, stay with their page.
+        final commands = [
+          DesktopCommand(
+            label: loc.sessionListNewSession,
+            icon: TablerRegular.plus,
+            shortcut: desktopShortcut(key: LogicalKeyboardKey.keyN),
+            run: startNewSession,
+          ),
+          // An auto-collapsed sidebar cannot open, so it has no toggle.
+          if (!autoCollapsed)
+            DesktopCommand(
+              label: loc.desktopToggleSidebar,
+              icon: TablerRegular.layout_sidebar_left_collapse,
+              shortcut: desktopShortcut(key: LogicalKeyboardKey.keyB),
+              run: () => unawaited(sidebar.toggleCollapsed()),
+            ),
+          DesktopCommand(
+            label: loc.settingsTitle,
+            icon: TablerRegular.settings,
+            shortcut: desktopShortcut(key: LogicalKeyboardKey.comma),
+            run: onOpenSettings,
+          ),
+          DesktopCommand(
+            label: loc.desktopGoBack,
+            icon: TablerRegular.arrow_left,
+            shortcut: desktopShortcut(key: LogicalKeyboardKey.bracketLeft),
+            run: onGoBack,
+          ),
+        ];
+        void openPalette() => unawaited(
+          showDesktopCommandPalette(
+            context: context,
+            commands: commands,
+            onOpenSession: onOpenSession,
+            onOpenProject: onOpenProject,
+          ),
+        );
         bool collapsed(BuildContext context) =>
             context.select((DesktopSidebarCubit cubit) => cubit.state.collapsed) || autoCollapsed;
         // Depth delimits: the sidebar floats as a panel over the base surface
@@ -148,6 +190,7 @@ class const DesktopCockpitShell({
                 onOpenSession: onOpenSession,
                 onNewSession: onNewSession,
                 onStartNewSession: startNewSession,
+                onOpenSearch: openPalette,
                 sessionActions: sessionActions,
                 onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
                 onOpenProjects: onOpenProjects,
@@ -181,20 +224,8 @@ class const DesktopCockpitShell({
         );
         return CallbackShortcuts(
           bindings: {
-            SingleActivator(
-              LogicalKeyboardKey.keyB,
-              meta: defaultTargetPlatform == TargetPlatform.macOS,
-              control: defaultTargetPlatform != TargetPlatform.macOS,
-              includeRepeats: false,
-            ): () {
-              if (!autoCollapsed) unawaited(sidebar.toggleCollapsed());
-            },
-            SingleActivator(
-              LogicalKeyboardKey.keyN,
-              meta: defaultTargetPlatform == TargetPlatform.macOS,
-              control: defaultTargetPlatform != TargetPlatform.macOS,
-              includeRepeats: false,
-            ): startNewSession,
+            for (final command in commands) command.shortcut: command.run,
+            desktopShortcut(key: LogicalKeyboardKey.keyK): openPalette,
           },
           child: Focus(autofocus: true, child: scaffold),
         );

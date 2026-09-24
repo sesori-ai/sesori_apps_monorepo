@@ -1,7 +1,5 @@
 import "dart:async";
 
-import "package:flutter/foundation.dart";
-import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -60,55 +58,37 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
     builder: (BuildContext context, GoRouterState state, Widget child) => AuthGate(
       child: Builder(
         // Root overlays must capture AuthGate from inside its provider.
-        builder: (context) => CallbackShortcuts(
-          bindings: {
-            SingleActivator(
-              LogicalKeyboardKey.comma,
-              meta: defaultTargetPlatform == TargetPlatform.macOS,
-              control: defaultTargetPlatform != TargetPlatform.macOS,
-              includeRepeats: false,
-            ): () =>
-                _openSettings(context: context, initialTab: DesktopSettingsTab.general),
-            // A pushed page goes back; a page reached from the sidebar has nowhere to go.
-            SingleActivator(
-              LogicalKeyboardKey.bracketLeft,
-              meta: defaultTargetPlatform == TargetPlatform.macOS,
-              control: defaultTargetPlatform != TargetPlatform.macOS,
-              includeRepeats: false,
-            ): () =>
-                _popPushedRoute(context: context),
-          },
-          child: DesktopCockpitCubitProvider(
-            child: DesktopCockpitShell(
-              selectedProjectId: state.pathParameters[projectIdPathParam],
-              selectedSessionId: state.pathParameters[sessionIdPathParam],
-              sessionActions: _desktopSessionActions,
-              onOpenSession: ({required context, required project, required displayName, required session}) => _goRoute(
-                context: context,
-                route: AppRoute.sessionDetail(
-                  projectId: project.id,
-                  projectName: displayName,
-                  sessionId: session.id,
-                  sessionTitle: session.title,
-                  readOnly: session.time?.archived != null,
-                ),
+        builder: (context) => DesktopCockpitCubitProvider(
+          child: DesktopCockpitShell(
+            selectedProjectId: state.pathParameters[projectIdPathParam],
+            selectedSessionId: state.pathParameters[sessionIdPathParam],
+            sessionActions: _desktopSessionActions,
+            onOpenSession: ({required context, required project, required displayName, required session}) => _goRoute(
+              context: context,
+              route: AppRoute.sessionDetail(
+                projectId: project.id,
+                projectName: displayName,
+                sessionId: session.id,
+                sessionTitle: session.title,
+                readOnly: session.time?.archived != null,
               ),
-              onNewSession: ({required context, required project, required displayName}) => _pushRoute(
-                context: context,
-                route: AppRoute.newSession(projectId: project.id, projectName: displayName),
-              ),
-              onOpenProject: ({required context, required project, required displayName}) => _goRoute(
-                context: context,
-                route: AppRoute.sessions(projectId: project.id, projectName: displayName),
-              ),
-              onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
-              onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
-              onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
-              child: Builder(
-                builder: (context) => SessionDetailRouteVisibility(
-                  isVisible: ModalRoute.isCurrentOf(context) ?? false,
-                  child: _withPageFade(context: context, child: child),
-                ),
+            ),
+            onNewSession: ({required context, required project, required displayName}) => _pushRoute(
+              context: context,
+              route: AppRoute.newSession(projectId: project.id, projectName: displayName),
+            ),
+            onOpenProject: ({required context, required project, required displayName}) => _goRoute(
+              context: context,
+              route: AppRoute.sessions(projectId: project.id, projectName: displayName),
+            ),
+            onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
+            onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
+            onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
+            onGoBack: () => _popPushedRoute(context: context),
+            child: Builder(
+              builder: (context) => SessionDetailRouteVisibility(
+                isVisible: ModalRoute.isCurrentOf(context) ?? false,
+                child: _withPageFade(context: context, child: child),
               ),
             ),
           ),

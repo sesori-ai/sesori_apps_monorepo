@@ -123,6 +123,14 @@ The main pane hosts one full-width routed page.
   like the disabled control. Cmd/Ctrl+, opens Settings. Held-key repeats do not repeat these commands; text-field
   focus remains usable and root popups own their focus. Hints use the platform modifier; the sidebar's New session row
   shows the shortcut. Windows and Linux retain native window chrome.
+- Cmd/Ctrl+K and the sidebar's Search row (under New session, labelled with the shortcut) open the command
+  palette: a search field over Commands (New session, Toggle sidebar while the window is wide enough to
+  expand it, Settings, Go back, each with its shortcut), the recent Sessions newest first with their
+  project, and Projects. Typing narrows all three by title words, bolding the matched letters; nothing
+  matching reads "No matches". Up/Down move the highlight past headings, Enter or a click closes the palette
+  and runs the pick, and Esc closes it. The palette shows the lists as they stood when it opened. One
+  command list in the shell drives both the palette and the shortcuts; page-only commands such as Mark as
+  unread stay on their page.
 - Project hover/keyboard focus reveals New session. Right-click project and
   session menus reuse the shared rename/hide and session action flows.
   Session title tooltips, selection, running/awaiting/unread signals and
@@ -325,6 +333,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   and order, the breadcrumb opening the project, session actions disabled until the session is hydrated,
   Mark unread sending unread and leaving the page from the menu (which shows its shortcut) and from
   Shift+Cmd/Ctrl+U, and a menu without Mark as read.
+- The command palette opened by Cmd/Ctrl+K and the Search row: recency order with project names, filtering
+  with No matches, Enter opening a session or project, Down skipping a heading, Esc, and a command run from
+  the palette and by its shortcut (`desktop_cockpit_shell_test`).
 - Cmd/Ctrl+[ popping a pushed page and doing nothing on a direct one; the new session and session
   breadcrumbs opening the project's sessions.
 - Filter chip counts, local narrowing, the filtered-empty message and chips hidden under Archived; hover and
