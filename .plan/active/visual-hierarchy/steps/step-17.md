@@ -42,3 +42,4 @@ phone its own session inventory and an Activity group at the top of Projects.
 - `dart analyze --fatal-infos` clean in `client/app`, `client/module_app_ui`
   and `client/module_core`.
 - Light and dark phone renders checked.
+- Architecture implementation review: approved in the first round.
