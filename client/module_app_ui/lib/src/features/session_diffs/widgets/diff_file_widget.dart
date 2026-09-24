@@ -1,10 +1,10 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "package:theme_prego/module_prego.dart";
 
 import "../models/diff_file_view_model.dart";
 import "../utils/diff_theme.dart";
+import "diff_file_list.dart";
 
 /// Renders a single file diff header with file name, +/- stats,
 /// status badge, and expand/collapse chevron.
@@ -48,10 +48,10 @@ class const DiffFileWidget({
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          // A zero side says nothing, so it is left out.
-          if (vm.additions > 0) Text("+${vm.additions}", style: code.copyWith(color: prego.colors.textSuccessPrimary)),
-          if (vm.deletions > 0) Text("−${vm.deletions}", style: code.copyWith(color: prego.colors.textErrorPrimary)),
-          _buildStatusLetter(context: context, status: vm.status),
+          // A skipped file has no counts, and an empty slot would still take a gap.
+          if (vm.additions > 0 || vm.deletions > 0)
+            DiffCounts(additions: vm.additions, deletions: vm.deletions, style: code),
+          DiffStatusLetter(status: vm.status),
           Icon(
             isExpanded ? TablerRegular.chevron_up : TablerRegular.chevron_down,
             size: PregoIconSize.md,
@@ -59,19 +59,6 @@ class const DiffFileWidget({
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStatusLetter({required BuildContext context, required FileDiffStatus? status}) {
-    final colors = context.prego.colors;
-    final (label, color) = switch (status) {
-      FileDiffStatus.added => ("A", colors.textSuccessPrimary),
-      FileDiffStatus.deleted => ("D", colors.textErrorPrimary),
-      FileDiffStatus.modified || null => ("M", colors.textWarningPrimary),
-    };
-    return Text(
-      label,
-      style: context.prego.textTheme.code.copyWith(color: color, fontWeight: FontWeight.w600),
     );
   }
 }
