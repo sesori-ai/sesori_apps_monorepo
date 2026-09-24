@@ -156,12 +156,7 @@ void main() {
       final first = ProjectListCubit(inventoryService: inventory);
       expect(first.state, same(inventory.state));
       await first.close();
-      mockSseEventTracker.emitProjectActivity({"A": 1});
-      await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded && state.activityById["A"] == 1);
       final second = ProjectListCubit(inventoryService: inventory);
-      expect(second.state, same(inventory.state));
-      mockSseEventTracker.emitProjectActivity({"A": 2});
-      await second.stream.firstWhere((state) => state is ProjectListLoaded && state.activityById["A"] == 2);
       expect(second.state, same(inventory.state));
       await second.close();
       verify(mockProjectRepository.listProjects).called(1);
@@ -1747,29 +1742,6 @@ void main() {
       expect: () => <ProjectListState>[],
     );
 
-    // -------------------------------------------------------------------------
-    // Test 10: activity stream update propagates to state
-    // -------------------------------------------------------------------------
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "projectActivity update: emits loaded state with updated activityById",
-      build: () {
-        when(
-          () => mockProjectRepository.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProjectSummary()])));
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        mockSseEventTracker.emitProjectActivity({_projectId: 3});
-        await Future<void>.delayed(Duration.zero);
-      },
-      skip: 1,
-      expect: () => [
-        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_projectId: 3}),
-      ],
-    );
-
     blocTest<ProjectListCubit, ProjectListState>(
       "running activity received after REST creates an activity-ordered prefix",
       build: () {
@@ -1839,66 +1811,6 @@ void main() {
 
       expect((cubit.state as ProjectListLoaded).projects.map((project) => project.id), ["B", "A"]);
     });
-
-    // -------------------------------------------------------------------------
-    // Test 11: activity update ignored when not loaded
-    // -------------------------------------------------------------------------
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "projectActivity update: ignored when state is not ProjectListLoaded",
-      build: () {
-        final completer = Completer<ApiResponse<Projects>>();
-        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => completer.future);
-        return buildCubit();
-      },
-      act: (cubit) async {
-        mockSseEventTracker.emitProjectActivity({_projectId: 2});
-        await Future<void>.delayed(Duration.zero);
-      },
-      expect: () => <ProjectListState>[],
-    );
-
-    // -------------------------------------------------------------------------
-    // Test 12: load preserves existing activity from repository
-    // -------------------------------------------------------------------------
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "_fetchProjects: seeds activityById from repository at load time",
-      build: () {
-        mockSseEventTracker.emitProjectActivity({_projectId: 2});
-        when(
-          () => mockProjectRepository.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProjectSummary()])));
-        return buildCubit();
-      },
-      expect: () => [
-        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_projectId: 2}),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
-    // Test 13: activity clears when no projects are active
-    // -------------------------------------------------------------------------
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "projectActivity update: activity clears when repository emits empty map",
-      build: () {
-        mockSseEventTracker.emitProjectActivity({_projectId: 1});
-        when(
-          () => mockProjectRepository.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProjectSummary()])));
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        mockSseEventTracker.emitProjectActivity(const {});
-        await Future<void>.delayed(Duration.zero);
-      },
-      skip: 1,
-      expect: () => [
-        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", isEmpty),
-      ],
-    );
 
     // =========================================================================
     // Project timestamp updates (no fetch)

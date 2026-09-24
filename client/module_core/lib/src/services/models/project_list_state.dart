@@ -12,7 +12,6 @@ sealed class ProjectListState with _$ProjectListState {
 
   const factory loaded({
     required List<ProjectSummary> projects,
-    required Map<String, int> activityById,
 
     /// Map of project ID -> its running root sessions. Projects with none are
     /// absent; a session only waiting for input is not running.

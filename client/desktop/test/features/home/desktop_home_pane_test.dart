@@ -87,7 +87,7 @@ void main() {
         .thenAnswer((_) => states.add(const FileAccessState(status: FileAccessStatus.denied, dismissed: true)));
     await pumpHome(
       tester: tester,
-      state: const ProjectListState.loaded(projects: [], activityById: {}),
+      state: const ProjectListState.loaded(projects: []),
     );
     expect(find.text("Full Disk Access"), findsOneWidget);
     await tester.ensureVisible(find.text("Open System Settings"));
@@ -148,7 +148,7 @@ void main() {
   testWidgets("empty home offers the shared add-project action", (tester) async {
     await pumpHome(
       tester: tester,
-      state: const ProjectListState.loaded(projects: [], activityById: {}),
+      state: const ProjectListState.loaded(projects: []),
     );
     final button = tester.widget<PregoButtonsSolid>(find.byType(PregoButtonsSolid));
     expect(button.onPressed, isNotNull);

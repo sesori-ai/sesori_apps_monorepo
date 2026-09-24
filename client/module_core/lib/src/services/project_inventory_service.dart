@@ -75,10 +75,7 @@ class ProjectInventoryService({
     );
     unawaited(_loadInitialProjects());
 
-    // 1. Immediate activity badge updates (no API call).
-    _subscriptions.add(
-      _sseEventTracker.projectActivity.listen(_onActivityUpdated),
-    );
+    // 1. Immediate session activity updates (no API call).
     _subscriptions.add(
       _sseEventTracker.sessionActivity.listen(_onSessionActivityUpdated),
     );
@@ -212,31 +209,6 @@ class ProjectInventoryService({
     return {
       for (final project in projects) project.id: live[project.id] ?? project.hasUnseenChanges,
     };
-  }
-
-  void _onActivityUpdated(Map<String, int> activityById) {
-    try {
-      if (state case final ProjectListLoaded loaded) {
-        if (_state.isClosed) return;
-        _emit(state: loaded.copyWith(activityById: activityById));
-      }
-    } catch (e, st) {
-      loge("Activity update handler error", e, st);
-      unawaited(
-        _failureReporter
-            .recordFailure(
-              error: e,
-              stackTrace: st,
-              uniqueIdentifier: "project_list_activity",
-              fatal: false,
-              reason: "Failed to handle project activity update",
-              information: [activityById.toString()],
-            )
-            .catchError((Object error, StackTrace stackTrace) {
-              loge("Failed to report project activity update error", error, stackTrace);
-            }),
-      );
-    }
   }
 
   void _onSessionActivityUpdated(Map<String, Map<String, SessionActivityInfo>> activityByProjectId) {
@@ -884,7 +856,6 @@ class ProjectInventoryService({
           _emit(
             state: ProjectListState.loaded(
               projects: sortedProjects,
-              activityById: _sseEventTracker.currentProjectActivity,
               runningByProjectId: runningByProjectId,
               unseenByProjectId: _unseenByProjectId(projects: sortedProjects),
               catalogScan: _catalogRescanService.state.value,

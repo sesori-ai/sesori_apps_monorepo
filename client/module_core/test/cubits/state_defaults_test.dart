@@ -54,7 +54,7 @@ void main() {
   });
 
   test("ProjectListLoaded.isRefreshing defaults to false", () {
-    const state = ProjectListState.loaded(projects: [], activityById: {});
+    const state = ProjectListState.loaded(projects: []);
     expect((state as ProjectListLoaded).isRefreshing, isFalse);
   });
 }
