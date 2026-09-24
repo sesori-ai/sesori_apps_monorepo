@@ -39,9 +39,16 @@ on:
       - '.github/workflows/submit-release.yml'
       - '.tool-versions'
 
+concurrency:
+  group: mobile-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  toolchain:
     runs-on: ubuntu-latest
+    outputs:
+      flutter-version: ${{ steps.flutter-version.outputs.version }}
+      flutter-channel: ${{ steps.flutter-version.outputs.channel }}
     steps:
       - uses: actions/checkout@v6
 
@@ -49,6 +56,7 @@ jobs:
         run: python3 .github/scripts/test_publish_firebase_analytics_release_cutoff.py
 
       - name: Read Flutter version from .tool-versions
+        id: flutter-version
         shell: bash
         run: |
           TOOL_SPEC=$(awk '$1 == "flutter" { print $2 }' .tool-versions)
@@ -63,62 +71,67 @@ jobs:
             FLUTTER_VERSION="$TOOL_SPEC"
             FLUTTER_CHANNEL="stable"
           fi
-          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
-          echo "FLUTTER_CHANNEL=$FLUTTER_CHANNEL" >> "$GITHUB_ENV"
+          echo "version=$FLUTTER_VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$FLUTTER_CHANNEL" >> "$GITHUB_OUTPUT"
+
+  analyze:
+    needs: toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter-version: ${{ needs.toolchain.outputs.flutter-version }}
+          channel: ${{ needs.toolchain.outputs.flutter-channel }}
+          cache: true
 
       - name: Get dependencies (workspace)
         run: dart pub get
         working-directory: client
 
-      - name: Analyze client/app
-        run: dart analyze --fatal-infos
-        working-directory: client/app
+      - name: Analyze mobile packages
+        shell: bash
+        working-directory: client
+        run: |
+          for module in app module_core module_auth module_prego module_app_ui; do
+            echo "::group::analyze $module"
+            (cd "$module" && dart analyze --fatal-infos)
+            echo "::endgroup::"
+          done
 
-      - name: Analyze module_core
-        run: dart analyze --fatal-infos
-        working-directory: client/module_core
+  # One job per package so the slowest suite, not the sum, sets the wall time.
+  # no_slop_linter tests run in Bridge CI, which triggers on every shared/** change.
+  test:
+    needs: toolchain
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: app
+            runner: flutter
+          - package: module_core
+            runner: dart
+          - package: module_auth
+            runner: dart
+          - package: module_prego
+            runner: flutter
+          - package: module_app_ui
+            runner: flutter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
 
-      - name: Analyze module_auth
-        run: dart analyze --fatal-infos
-        working-directory: client/module_auth
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ needs.toolchain.outputs.flutter-version }}
+          channel: ${{ needs.toolchain.outputs.flutter-channel }}
+          cache: true
 
-      - name: Analyze module_prego
-        run: dart analyze --fatal-infos
-        working-directory: client/module_prego
-
-      - name: Analyze module_app_ui
-        run: dart analyze --fatal-infos
-        working-directory: client/module_app_ui
-
-      - name: Run tests for module_core
-        run: dart test
-        working-directory: client/module_core
-
-      - name: Run tests for module_auth
-        run: dart test
-        working-directory: client/module_auth
-
-      - name: Run tests for module_prego
-        run: flutter test
-        working-directory: client/module_prego
-
-      - name: Run tests for module_app_ui
-        run: flutter test
-        working-directory: client/module_app_ui
-
-      - name: Run tests for client/app
-        run: flutter test
-        working-directory: client/app
-
-      - name: Get dependencies (no_slop_linter)
+      - name: Get dependencies (workspace)
         run: dart pub get
-        working-directory: shared/no_slop_linter
+        working-directory: client
 
-      - name: Run tests for no_slop_linter
-        run: dart test
-        working-directory: shared/no_slop_linter
+      - name: Run tests for ${{ matrix.package }}
+        run: ${{ matrix.runner }} test
+        working-directory: client/${{ matrix.package }}

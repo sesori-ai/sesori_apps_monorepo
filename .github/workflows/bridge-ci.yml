@@ -17,6 +17,10 @@ on:
       - 'install.ps1'
       - '.tool-versions'
 
+concurrency:
+  group: bridge-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   toolchain:
     runs-on: ubuntu-latest
@@ -29,8 +33,14 @@ jobs:
         id: dart-version
         uses: ./.github/actions/resolve-flutter-dart-version
 
+  # Parallel slices so the slowest one, not the sum, sets the wall time.
+  # `app` tests alone take as long as every other bridge package combined.
   test:
     needs: toolchain
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [analyze, test-app, test-packages, shared]
     runs-on: ubuntu-latest
     env:
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
@@ -55,6 +65,7 @@ jobs:
         working-directory: shared/no_slop_linter
 
       - name: Analyze bridge packages
+        if: matrix.task == 'analyze'
         shell: bash
         working-directory: bridge
         run: |
@@ -65,10 +76,15 @@ jobs:
           done
 
       - name: Run bridge tests
+        if: startsWith(matrix.task, 'test-')
         shell: bash
         working-directory: bridge
+        env:
+          TASK: ${{ matrix.task }}
         run: |
           for module in $(sed -n 's/^MODULES := //p' Makefile); do
+            if [ "$TASK" = test-app ] && [ "$module" != app ]; then continue; fi
+            if [ "$TASK" = test-packages ] && [ "$module" = app ]; then continue; fi
             if [ -d "$module/test" ]; then
               echo "::group::test $module"
               (cd "$module" && dart test)
@@ -77,6 +93,7 @@ jobs:
           done
 
       - name: Analyze and test shared packages
+        if: matrix.task == 'shared'
         shell: bash
         working-directory: shared
         run: |

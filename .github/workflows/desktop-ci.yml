@@ -31,6 +31,7 @@ jobs:
     outputs:
       desktop: ${{ steps.filter.outputs.desktop }}
       supervised_e2e: ${{ steps.filter.outputs.supervised_e2e }}
+      build-matrix: ${{ steps.build-matrix.outputs.matrix }}
       flutter-version: ${{ steps.flutter-version.outputs.version }}
       flutter-channel: ${{ steps.flutter-version.outputs.channel }}
     steps:
@@ -98,6 +99,34 @@ jobs:
               - 'shared/no_slop_linter/**'
               - '.github/workflows/desktop-ci.yml'
               - '.tool-versions'
+            # Inputs that can break a macOS or Windows build while the Linux
+            # build stays green: native runner projects, resolved plugin
+            # versions, the desktop pubspec, and the toolchain.
+            native:
+              - 'client/desktop/macos/**'
+              - 'client/desktop/windows/**'
+              - 'client/desktop/pubspec.yaml'
+              - 'client/pubspec.lock'
+              - '.github/workflows/desktop-ci.yml'
+              - '.tool-versions'
+
+      # PRs build Linux only unless a native input changed. Pushes to main
+      # always build every platform, so a rare Dart-only macOS or Windows
+      # break still surfaces right after merge.
+      - name: Choose desktop build targets
+        id: build-matrix
+        shell: bash
+        env:
+          ALL_PLATFORMS: ${{ github.event_name == 'push' || steps.filter.outputs.native == 'true' }}
+        run: |
+          linux='{"os":"ubuntu-latest","target":"linux"}'
+          macos='{"os":"macos-latest","target":"macos"}'
+          windows='{"os":"windows-latest","target":"windows"}'
+          if [ "$ALL_PLATFORMS" = true ]; then
+            echo "matrix=[$macos,$windows,$linux]" >> "$GITHUB_OUTPUT"
+          else
+            echo "matrix=[$linux]" >> "$GITHUB_OUTPUT"
+          fi
 
   analyze-test:
     needs: changes
@@ -186,13 +215,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-latest
-            target: macos
-          - os: windows-latest
-            target: windows
-          - os: ubuntu-latest
-            target: linux
+        include: ${{ fromJSON(needs.changes.outputs.build-matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
