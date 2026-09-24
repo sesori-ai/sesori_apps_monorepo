@@ -156,6 +156,8 @@ defaults and queued client sends coherent.
   A stop or deletion accepted before
   the child's `turn/started` queues its interrupt until the turn id arrives.
   Closing an active child emits its idle status before any deferred root release.
+  Unloading a completed child (`notLoaded`) keeps it idle and does not make its
+  parent busy again.
 - A plain Claude prompt sent while its resident process is working is written
   immediately with `priority: next`. Claude absorbs it at the next tool
   boundary when possible, within the active agent turn; otherwise Claude keeps
@@ -761,8 +763,8 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   reports awaiting input without returning the child's actionable request from
   the root snapshot, accepts a pre-start child stop or deletion without
   interrupting the arriving turn, re-announces deleted child activity, or leaves
-  a closed child's visible status busy. Scoped-stop confirmation mutates input
-  or transport state, counts inactive persisted children, derives the named
+  a closed or unloaded child's visible status busy. Scoped-stop confirmation
+  mutates input or transport state, counts inactive persisted children, derives the named
   thread's running flag from descendants, touches an ancestor or sibling,
   prevents later snapshot targets after one interrupt fails, claims atomic
   descendant handling, or lets a selected late `turn/started` escape.

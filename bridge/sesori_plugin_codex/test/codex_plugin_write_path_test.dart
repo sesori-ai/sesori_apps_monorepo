@@ -3973,6 +3973,84 @@ void main() {
       expect(statuses["child-pending-start"], isA<PluginSessionStatusIdle>());
     });
 
+    test("unloading a completed child keeps the child and root idle", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "child-unloaded",
+              "parentThreadId": "root-unloaded",
+              "agentNickname": "Raman",
+              "cwd": "/work/sample",
+            },
+          },
+        ),
+      ]);
+      Future<T> next<T extends BridgeSseEvent>({required bool Function(T event) where}) => plugin.events
+          .where((event) => event is T && where(event))
+          .cast<T>()
+          .first
+          .timeout(const Duration(seconds: 2));
+      await plugin.healthCheck();
+      fake.pushNotification("thread/started", {
+        "thread": {"id": "root-unloaded", "cwd": "/work/sample"},
+      });
+      fake.pushNotification("turn/started", {
+        "threadId": "root-unloaded",
+        "turn": {"id": "root-turn"},
+      });
+      final childCreated = next<BridgeSseSessionCreated>(
+        where: (event) => event.info["id"] == "child-unloaded",
+      );
+      fake.pushNotification("item/started", {
+        "threadId": "root-unloaded",
+        "item": {
+          "type": "subAgentActivity",
+          "id": "spawn-unloaded",
+          "kind": "started",
+          "agentThreadId": "child-unloaded",
+          "agentPath": "/root/reviewer",
+        },
+      });
+      await childCreated;
+      final childBusy = next<BridgeSseSessionStatus>(
+        where: (event) => event.sessionID == "child-unloaded" && event.status is PluginSessionStatusBusy,
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": "child-unloaded",
+        "turn": {"id": "child-turn"},
+      });
+      await childBusy;
+      final rootUpdated = next<BridgeSseSessionUpdated>(
+        where: (event) => event.info["id"] == "root-unloaded",
+      );
+      fake.pushNotification("turn/completed", {
+        "threadId": "root-unloaded",
+        "turn": {"id": "root-turn"},
+      });
+      await rootUpdated;
+      expect((await plugin.getSessionStatuses())["root-unloaded"], isA<PluginSessionStatusBusy>());
+
+      final rootIdle = next<BridgeSseSessionIdle>(where: (event) => event.sessionID == "root-unloaded");
+      fake.pushNotification("turn/completed", {
+        "threadId": "child-unloaded",
+        "turn": {"id": "child-turn"},
+      });
+      await rootIdle;
+      final unloaded = next<BridgeSseSessionStatus>(where: (event) => event.sessionID == "child-unloaded");
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "child-unloaded",
+        "status": {"type": "notLoaded"},
+      });
+      expect((await unloaded).status, isA<PluginSessionStatusIdle>());
+      final statuses = await plugin.getSessionStatuses();
+      expect(statuses["root-unloaded"], isA<PluginSessionStatusIdle>());
+      expect(statuses["child-unloaded"], isA<PluginSessionStatusIdle>());
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
     test("deleting a busy root cancels and clears its live descendants", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
