@@ -9,7 +9,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 | 3 — Durable contracts and readiness | Merged | [#1649][foundation-pr]; durable state and readiness. |
 | 4 — Bridge scheduler | Merged | [#1654][scheduler-pr]; route, views, cancellation and dispatch. |
 | 5 — Shared chat controls | In review | [#1656][controls-pr]; shared hint, acknowledged indicator and three-dot toggle. |
-| 6 — Regression reconciliation | In progress locally | Reconcile related feature docs, provider scope and cumulative proof boundaries. |
+| 6 — Regression reconciliation | Ready locally | Reconciled related feature docs, provider scope and cumulative proof boundaries. |
 | 7 — L4 verification and retirement | Not started | All recorded boundary/platform/provider coverage must pass. |
 
 [plan-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1601
@@ -79,5 +79,9 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 - Step 5 controls: 384 focused tests pass; all four owning client modules analyze
   cleanly. Architecture review approved. Fixture-only before/after and flow media
   were inspected and published; affected screen tests pass after integration with main.
+- Step 5 CI follow-up: corrected the shared mobile routing fixture; all 51 affected
+  routing/split-screen tests pass and mobile analysis is clean.
+- Step 6: seven documentation files reconcile current support, cumulative L1–L4
+  boundaries and natural-quota-only live verification. Local links and whitespace checks pass.
 - Live scheduled continuation: not run. Widget fixtures do not prove provider recovery.
 - Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.
