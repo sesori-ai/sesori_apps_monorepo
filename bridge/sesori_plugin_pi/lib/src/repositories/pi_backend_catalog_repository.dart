@@ -266,6 +266,7 @@ class PiBackendCatalogRepository({
             [
               for (final model in entry.value)
                 PluginModel(
+                  fastMode: null,
                   id: model.id!,
                   name: _displayName(model),
                   // Strongest first; Pi's first-listed level stays the default.

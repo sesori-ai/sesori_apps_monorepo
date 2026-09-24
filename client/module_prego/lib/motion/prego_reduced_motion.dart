@@ -13,8 +13,8 @@ import "package:material_ui/material_ui.dart";
 /// Changes to the second source don't rebuild dependents on their own —
 /// [PregoReducedMotionStateMixin] owns the observer that reacts to them.
 bool prefersReducedMotion(BuildContext context) {
-  if (MediaQuery.disableAnimationsOf(context)) return true;
-  return View.of(context).platformDispatcher.accessibilityFeatures.reduceMotion;
+  if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return true;
+  return View.maybeOf(context)?.platformDispatcher.accessibilityFeatures.reduceMotion ?? false;
 }
 
 /// Keeps a repeating animation in step with the platform's reduced-motion

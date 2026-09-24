@@ -1,17 +1,24 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/trackers/session_event_tracker.dart";
+import "package:sesori_bridge/src/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/services/session_event_service.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
@@ -25,6 +32,8 @@ void main() {
     late SessionRepository repository;
     late SessionEventTracker eventTracker;
     late SessionEventService service;
+    late SessionOperationDispatcher promptDispatcher;
+    late SessionPromptService promptService;
     late CapturingFailureReporter failureReporter;
 
     setUp(() {
@@ -43,8 +52,17 @@ void main() {
       );
       eventTracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1024);
       failureReporter = CapturingFailureReporter();
+      promptDispatcher = SessionOperationDispatcher(sessionRepository: repository);
+      promptService = SessionPromptService(
+        sessionRepository: repository,
+        acceptedPromptsRepository: AcceptedPromptsRepository(dao: AcceptedPromptsDao(database: database)),
+        dispatcher: promptDispatcher,
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
+        sessionOptionsService: FakeSessionOptionsService(),
+      );
       service = SessionEventService(
         sessionRepository: repository,
+        sessionPromptService: promptService,
         pluginRuntime: pluginRuntime,
         eventMapper: const SessionEventMapper(),
         eventTracker: eventTracker,
@@ -53,6 +71,8 @@ void main() {
     });
 
     tearDown(() async {
+      await promptService.dispose();
+      await promptDispatcher.dispose();
       await database.close();
     });
 
@@ -246,13 +266,22 @@ void main() {
       );
     });
 
-    test("persists backend-originated prompt defaults under the stable session", () async {
+    test("persists backend-originated prompt defaults and publishes them with the stored fast mode", () async {
       await _insertRoot(
         database: database,
         pluginId: plugin.id,
         sessionId: "stable-root",
         backendSessionId: "backend-root",
       );
+      await database.sessionDao.updateRequestedPromptDefaults(
+        sessionId: "stable-root",
+        agent: null,
+        agentModel: null,
+        fastMode: true,
+      );
+      final published = <SessionPromptDefaultsChange>[];
+      final subscription = promptService.promptDefaultsChanges.listen(published.add);
+      addTearDown(subscription.cancel);
 
       final normalized = await service.normalize(
         allowDuringStop: false,
@@ -268,15 +297,48 @@ void main() {
         ),
       );
 
-      final event = normalized.single as BridgeSseSessionPromptDefaultsChanged;
-      expect(event.sessionID, "stable-root");
-      expect(event.agent, "Default");
+      expect(normalized, isEmpty, reason: "the prompt service is the only publisher");
+      expect(published.map((change) => change.sessionId), ["stable-root"]);
+      expect(
+        published.single.promptDefaults,
+        const SessionPromptDefaults(agent: "Default", model: null, fastMode: true),
+      );
       final stored = await database.sessionDao.getSession(sessionId: "stable-root");
       expect(stored?.lastAgent, "Default");
       expect(stored?.lastAgentModel, isNull);
+      expect(stored?.fastMode, isTrue);
     });
 
-    test("publishes backend-originated prompt defaults when persistence fails", () async {
+    test("publishes nothing when the plugin generation retires during the prompt-defaults write", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      sessionDao.duringNextPromptDefaultsUpdate = () => pluginRuntime.currentGeneration = 2;
+      final published = <SessionPromptDefaultsChange>[];
+      final subscription = promptService.promptDefaultsChanges.listen(published.add);
+      addTearDown(subscription.cancel);
+
+      await service.normalize(
+        allowDuringStop: false,
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 1,
+          event: const BridgeSseSessionPromptDefaultsChanged(
+            sessionID: "backend-root",
+            agent: "Default",
+            model: null,
+          ),
+        ),
+      );
+
+      expect(published, isEmpty, reason: "a retired generation must not update clients");
+    });
+
+    test("publishes nothing when backend-originated prompt defaults fail to persist", () async {
       await _insertRoot(
         database: database,
         pluginId: plugin.id,
@@ -284,6 +346,9 @@ void main() {
         backendSessionId: "backend-root",
       );
       sessionDao.failNextPromptDefaultsUpdate();
+      final published = <SessionPromptDefaultsChange>[];
+      final subscription = promptService.promptDefaultsChanges.listen(published.add);
+      addTearDown(subscription.cancel);
 
       final normalized = await service.normalize(
         allowDuringStop: false,
@@ -299,7 +364,8 @@ void main() {
         ),
       );
 
-      expect(normalized.single, isA<BridgeSseSessionPromptDefaultsChanged>());
+      expect(normalized, isEmpty);
+      expect(published, isEmpty, reason: "a report without the stored fast mode would switch it off on the client");
       expect(failureReporter.recordedIdentifiers, isEmpty);
     });
 
@@ -1461,16 +1527,22 @@ class _TransactionGatedSessionDao(super.attachedDatabase) extends SessionDao {
     _failPromptDefaultsUpdate = true;
   }
 
+  /// Runs while the next prompt-defaults write is in flight.
+  void Function()? duringNextPromptDefaultsUpdate;
+
   @override
-  Future<void> updatePromptDefaults({
+  Future<SessionDto?> updatePromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
   }) {
     if (_failPromptDefaultsUpdate) {
       _failPromptDefaultsUpdate = false;
-      return Future<void>.error(StateError("prompt defaults write failed"));
+      return Future<SessionDto?>.error(StateError("prompt defaults write failed"));
     }
+    final during = duringNextPromptDefaultsUpdate;
+    duringNextPromptDefaultsUpdate = null;
+    during?.call();
     return super.updatePromptDefaults(sessionId: sessionId, agent: agent, agentModel: agentModel);
   }
 
@@ -1500,6 +1572,7 @@ Future<void> _insertRoot({
   final projectId = "project-$sessionId";
   await database.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   await database.sessionDao.insertSession(
+    fastMode: false,
     sessionId: sessionId,
     backendSessionId: backendSessionId,
     projectId: projectId,

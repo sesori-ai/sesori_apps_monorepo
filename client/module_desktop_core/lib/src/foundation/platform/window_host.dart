@@ -14,6 +14,13 @@ enum WindowHostState() {
   hidden,
 }
 
+/// The native window chrome's appearance. A closed value of its own because
+/// this module is pure Dart and cannot name Flutter's brightness.
+enum WindowBrightness() {
+  light,
+  dark,
+}
+
 /// Platform-neutral native window size in logical pixels.
 @immutable
 class const WindowSize({
@@ -90,6 +97,15 @@ abstract interface class WindowHost() {
   Future<void> show();
 
   Future<void> hide();
+
+  /// Hands the pointer-down in progress to the native window as a drag.
+  Future<void> startDragging();
+
+  /// Zooms the window to fill its display, or restores the size it had.
+  Future<void> toggleZoom();
+
+  /// Forces the native chrome light or dark; hosts cannot follow the system.
+  Future<void> setBrightness({required WindowBrightness brightness});
 
   Future<void> dispose();
 }

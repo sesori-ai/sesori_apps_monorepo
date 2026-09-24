@@ -42,12 +42,8 @@ class const PermissionModal({
     required ExternalLinkOpener openExternalLink,
   }) {
     final topInset = MediaQuery.paddingOf(context).top;
-    return showModalBottomSheet<void>(
+    return showPregoModalRoute<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      useSafeArea: false,
-      showDragHandle: false,
       builder: (_) => PendingRequestAutoDismiss(
         isPendingStream: isPendingStream,
         isPending: isPending,

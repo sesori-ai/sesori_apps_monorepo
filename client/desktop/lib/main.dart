@@ -4,6 +4,7 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "app.dart";
 import "core/di/injection.dart";
@@ -11,6 +12,7 @@ import "core/platform/desktop_launch_arguments.dart";
 import "core/routing/desktop_router.dart";
 
 Future<void> main(List<String> arguments) async {
+  logi("Desktop startup: entered Dart main");
   final bool hiddenLaunch = isDesktopHiddenLaunch(arguments: arguments);
   WidgetsFlutterBinding.ensureInitialized();
   configureDesktopDependencies(
@@ -18,13 +20,16 @@ Future<void> main(List<String> arguments) async {
     routerReady: desktopRouterReady,
   );
   final DesktopStartupOrchestrator startupOrchestrator = getIt();
+  logi("Desktop startup: claiming primary process");
   if (!await startupOrchestrator.preparePrimaryLaunch()) {
     return;
   }
+  logi("Desktop startup: primary process claimed");
   setLogSink(sink: getIt<LogSink>());
 
   // Only the primary process renders UI; premium remains disabled.
   await LiquidGlassWidgets.initialize(warmUpMode: GlassWarmUpMode.never);
+  await PregoSystemDatePatterns.load();
 
   logi("Desktop startup: reading appearance and input preferences");
   final AppearanceMode initialAppearance = await getIt<AppearanceStore>().read();

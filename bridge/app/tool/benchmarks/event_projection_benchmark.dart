@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/services/session_event_service.dart";
+import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/sse/bridge_event_mapper.dart";
 import "package:sesori_bridge/src/sse/sse_event_delivery.dart";
 import "package:sesori_bridge/src/sse/sse_manager.dart";
@@ -86,6 +87,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
       );
       final failureReporter = _BenchmarkFailureReporter();
       final service = SessionEventService(
+        sessionPromptService: const _UnusedSessionPromptService(),
         sessionRepository: repository,
         pluginRuntime: runtime,
         eventMapper: const SessionEventMapper(),
@@ -301,6 +303,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
       updatedAt: _defaultTimestamp,
     );
     await database.sessionDao.insertSession(
+      fastMode: false,
       sessionId: _sessionId,
       backendSessionId: _backendSessionId,
       projectId: _projectId,
@@ -428,4 +431,11 @@ class _BenchmarkFailureReporter() implements FailureReporter {
 
   @override
   void setGlobalKey({required String key, required Object value}) {}
+}
+
+/// The benchmark plugins report no prompt defaults, so nothing reaches this.
+final class const _UnusedSessionPromptService() implements SessionPromptService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnsupportedError("benchmark does not publish prompt defaults: ${invocation.memberName}");
 }

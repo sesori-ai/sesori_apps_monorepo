@@ -294,6 +294,10 @@ void main() {
     final preview = tester.widget<Image>(find.descendant(of: markdownImage, matching: find.byType(Image)));
     expect(preview.image, isA<ResizeImage>());
     expect((preview.image as ResizeImage).imageProvider, isA<MemoryImage>());
+    expect(preview.fit, BoxFit.cover);
+    expect(tester.getSize(find.descendant(of: markdownImage, matching: find.byType(Image))), const Size(100, 100));
+    final clip = tester.widget<ClipRRect>(find.descendant(of: markdownImage, matching: find.byType(ClipRRect)));
+    expect(clip.borderRadius, BorderRadius.circular(4));
     await tester.runAsync(
       () => precacheImage(
         preview.image,
@@ -314,16 +318,16 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 130));
 
-    expect(find.byKey(ImageAttachmentViewer.flightCropImageKey), findsNothing);
+    expect(find.byKey(ImageAttachmentViewer.flightCropImageKey), findsOneWidget);
     expect(find.byKey(ImageAttachmentViewer.flightFullImageKey), findsOneWidget);
 
     await tester.pumpAndSettle();
 
     expect(find.byType(ImageAttachmentViewer), findsOneWidget);
     expect(find.byType(InteractiveViewer), findsOneWidget);
-    expect(find.byIcon(Icons.content_copy), findsNothing);
-    expect(find.byIcon(Icons.share_outlined), findsNothing);
-    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(find.byIcon(TablerRegular.copy), findsNothing);
+    expect(find.byIcon(TablerRegular.share), findsNothing);
+    expect(find.byIcon(TablerRegular.download), findsNothing);
     final fullscreen = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
     expect(identical(fullscreen.image, preview.image), isTrue);
     semantics.dispose();
@@ -376,7 +380,7 @@ void main() {
     );
 
     expect(find.byType(Image), findsNothing);
-    expect(find.byIcon(Icons.broken_image), findsOneWidget);
+    expect(find.byIcon(TablerRegular.photo_off), findsOneWidget);
     expect(find.byType(GestureDetector), findsNothing);
   });
 

@@ -32,6 +32,7 @@ void main() {
       defaults: const SessionPromptDefaults(
         agent: "plan",
         model: AgentModel(providerID: "provider-a", modelID: "model-c", variant: "xhigh"),
+        fastMode: true,
       ),
     );
 
@@ -40,6 +41,7 @@ void main() {
       const SessionPromptDefaults(
         agent: "plan",
         model: AgentModel(providerID: "provider-a", modelID: "model-c", variant: "xhigh"),
+        fastMode: true,
       ),
     );
     expect(

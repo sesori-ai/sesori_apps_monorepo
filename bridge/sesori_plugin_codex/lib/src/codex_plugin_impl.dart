@@ -618,6 +618,10 @@ class CodexPlugin._({
         promptId: null,
         parts: [PluginPromptPart.text(text: text)],
         collaborationMode: null,
+        // Unlike model/effort, this async-answer path has no bridge-supplied
+        // fastMode selection to apply; omitting it (see _startTurn) leaves
+        // the thread's current service tier untouched instead of resetting it.
+        fastMode: null,
       ),
     );
     _approvalRegistry = registry;
@@ -879,6 +883,7 @@ class CodexPlugin._({
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -887,6 +892,7 @@ class CodexPlugin._({
       cwd: directory,
       model: model?.modelID,
       modelProvider: model?.providerID,
+      fastMode: fastMode,
     );
     _eventMapper.setThreadTime(thread);
     final threadId = thread.id;
@@ -916,6 +922,7 @@ class CodexPlugin._({
         promptId: null,
         parts: parts,
         variant: variant,
+        fastMode: fastMode,
         collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
       );
     }
@@ -932,6 +939,7 @@ class CodexPlugin._({
     required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -942,6 +950,7 @@ class CodexPlugin._({
       parts: parts,
       model: model,
       variant: variant,
+      fastMode: fastMode,
       collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
     );
   }
@@ -960,6 +969,7 @@ class CodexPlugin._({
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -979,6 +989,7 @@ class CodexPlugin._({
         model: model?.modelID,
         effort: variant?.id,
         collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
+        fastMode: fastMode,
       );
       _applyResumedThread(
         threadId: sessionId,
@@ -1236,6 +1247,7 @@ class CodexPlugin._({
     ({String providerID, String modelID})? model,
     PluginSessionVariant? variant,
     required CodexCollaborationMode? collaborationMode,
+    required bool? fastMode,
   }) async {
     if (model != null) {
       // A turn/start model override applies to this turn and subsequent ones,
@@ -1263,6 +1275,7 @@ class CodexPlugin._({
         model: model?.modelID,
         effort: effort == null || effort.isEmpty ? null : effort,
         collaborationMode: collaborationMode,
+        fastMode: fastMode,
       );
       if (!dispatch.started) {
         _clearPendingTurnRequest(
@@ -1453,7 +1466,12 @@ class CodexPlugin._({
   String _directoryForSession(String sessionId) {
     final known = _threadDirectory[sessionId];
     if (known != null) return known;
-    return _sessionService.directoryForSession(sessionId: sessionId);
+    final fromRollout = _sessionService.rolloutDirectoryForSession(sessionId: sessionId);
+    if (fromRollout == null) return normalizeProjectDirectory(directory: _projectCwd);
+    // A session's cwd never changes: learn it once rather than re-reading the
+    // rollout on every activity summary.
+    _recordThreadDirectory(sessionId, fromRollout);
+    return fromRollout;
   }
 
   /// Records [directory] as [threadId]'s normalized project directory and feeds

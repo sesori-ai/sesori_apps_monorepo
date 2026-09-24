@@ -67,7 +67,8 @@ fi
 
 # Write BEFORE version checks, store queries or builds: failure/cancellation
 # needs no cleanup job, and inability to persist the marker prevents uploads.
-# Manual branch builds stay supported but cannot overwrite main's checkpoint.
+# Defense in depth: the owning workflow rejects non-main dispatches before this
+# script. Only main may own the rolling checkpoint.
 if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
   git push --force origin "${GITHUB_SHA}:refs/tags/${ATTEMPT_TAG}"
 fi

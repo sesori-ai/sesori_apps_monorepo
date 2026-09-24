@@ -11,6 +11,20 @@ void main() {
   };
 
   group("SessionEventMapper", () {
+    test("routes quota internally using the bridge session ID and original error identity", () {
+      final interruption = PluginQuotaInterruption(
+        errorMessageId: "visible-error",
+        observedAt: DateTime.utc(2026, 9, 23),
+        reset: const PluginQuotaResetUnknown(),
+      );
+      final event = BridgeSseSessionQuotaBlocked(sessionID: "backend-session", interruption: interruption);
+      expect(mapper.backendSessionIds(event: event), {"backend-session"});
+      final mapped = mapper.map(event: event, sessionIdsByBackendId: ids)! as BridgeSseSessionQuotaBlocked;
+      expect(mapped.sessionID, "ses-session");
+      expect(mapped.interruption, same(interruption));
+      expect(mapper.map(event: event, sessionIdsByBackendId: const {}), isNull);
+    });
+
     test("rewrites every session-bearing event variant", () {
       final sessionInfo = _sessionInfo(
         sessionId: "backend-session",

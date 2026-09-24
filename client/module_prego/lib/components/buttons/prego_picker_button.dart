@@ -1,6 +1,8 @@
 import "package:material_ui/material_ui.dart";
 
+import "../../icons/tabler_icons.g.dart";
 import "../../theme/prego_theme.dart";
+import "../prego_ellipsis_text.dart";
 import "../surfaces/prego_surfaces.dart";
 
 /// A solid pill that opens a picker: leading glyph, one-line [label], and a
@@ -8,12 +10,13 @@ import "../surfaces/prego_surfaces.dart";
 ///
 /// Its surface matches the composer's background, border, and elevation on
 /// every platform, while its press feedback uses the same Material ripple.
-/// The pill fills its parent's width and ellipsizes long labels.
+/// The pill fills its parent's width. A long label keeps its end, the part
+/// that tells names apart, behind a leading ellipsis.
 ///
 /// Usage:
 /// ```dart
 /// PregoPickerButton(
-///   leadingIcon: Icons.smart_toy_outlined,
+///   leadingIcon: TablerRegular.robot,
 ///   label: selectedAgent,
 ///   surfaceStyle: PregoComposerSurfaceStyle.subtle,
 ///   onPressed: toggle,
@@ -25,7 +28,7 @@ class const PregoPickerButton({
   /// The glyph rendered before the label.
   required final IconData leadingIcon,
 
-  /// One-line button text; ellipsizes when it doesn't fit.
+  /// One-line button text; ellipsized from the start when it doesn't fit.
   required final String label,
 
   /// Outline emphasis shared with the current composer state.
@@ -61,18 +64,17 @@ class const PregoPickerButton({
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    Icon(leadingIcon, size: 14, color: foreground),
+                    Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: PregoEllipsisText(
+                        text: label,
+                        ellipsis: PregoEllipsis.start,
                         style: prego.textTheme.textXs.medium.copyWith(color: foreground),
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Icon(Icons.unfold_more, size: 14, color: foreground),
+                    Icon(TablerRegular.selector, size: PregoIconSize.sm, color: foreground),
                   ],
                 ),
               ),

@@ -76,6 +76,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -179,6 +180,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -243,6 +245,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -311,6 +314,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -378,6 +382,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -442,6 +447,7 @@ void main() {
         ..writeAsStringSync(after);
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "unicode-session",
@@ -501,6 +507,7 @@ void main() {
     test("skips an oversized base blob without invoking git show", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "large-base-session",

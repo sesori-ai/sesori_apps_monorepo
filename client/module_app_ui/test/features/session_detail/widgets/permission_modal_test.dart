@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/services.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -28,7 +29,7 @@ class _ReplyCapture() {
   String? sessionId;
   PermissionReply? reply;
   bool isPending = true;
-  final pending = StreamController<bool>();
+  final pending = StreamController<bool>.broadcast();
 
   void onReply({
     required String requestId,
@@ -109,7 +110,10 @@ void main() {
       await tester.pumpWidget(_buildApp(router: router));
       await _openPermissionModal(tester);
       expect(find.text("Allow this command?"), findsOneWidget);
-      expect(find.byWidgetPredicate((widget) => widget is SelectableText && widget.data == command), findsOneWidget);
+      final commandText = find.byWidgetPredicate((widget) => widget is SelectableText && widget.data == command);
+      expect(commandText, findsOneWidget);
+      final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
+      expect(tester.widget<SelectableText>(commandText).style, prego.textTheme.code);
       expect(
         tester.widget<MarkdownBody>(find.byType(MarkdownBody)).data,
         "Review **this command** before allowing it.",
@@ -146,6 +150,38 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets("desktop rich approval remains a dialog with passive Escape and owning-session replies", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      permission: _permission.copyWith(details: const PermissionDetails.command(command: _command)),
+      capture: capture,
+    );
+    await tester.pumpWidget(
+      PregoInteractionScope(
+        mode: PregoInteractionMode.pointer,
+        child: _buildApp(router: router),
+      ),
+    );
+    await _openPermissionModal(tester);
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text("Allow this command?"), findsOneWidget);
+    expect(find.text(_command), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(PermissionModal), findsNothing);
+    expect(capture.reply, isNull);
+    expect(capture.isPending, isTrue);
+
+    await _openPermissionModal(tester);
+    await tester.tap(find.text("Allow"));
+    await tester.pumpAndSettle();
+    expect(capture.reply, PermissionReply.once);
+    expect(capture.sessionId, _permission.sessionID);
+    expect(capture.requestId, _permission.requestID);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets("network approval keeps target and command and hides unsupported Always", (tester) async {
     final router = _createRouter(

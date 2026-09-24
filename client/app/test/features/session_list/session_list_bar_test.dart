@@ -35,25 +35,33 @@ void main() {
     await tester.pumpWidget(
       BlocProvider<ConnectionOverlayCubit>(
         create: (_) => StubConnectionOverlayCubit(initialState: overlay),
-        child: MaterialApp(
-          theme: ThemeData(extensions: [PregoDesignSystem.light]),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaler: textScaler),
-            child: child!,
-          ),
-          home: BlocProvider<SessionListCubit>.value(
-            value: cubit,
-            child: SessionListScaffold(
-              onOpenArchived: cubit.toggleArchived,
-              projectName: projectName,
-              onBack: null,
-              onNewSession: () {},
-              onSessionTap: ({required session}) {},
-              actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
-              archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
-              connectionBanner: null,
+        child: BlocProvider(
+          create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+          child: MaterialApp(
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+              child: child!,
+            ),
+            home: BlocProvider<SessionListCubit>.value(
+              value: cubit,
+              child: SessionListScaffold(
+                onOpenArchived: cubit.toggleArchived,
+                projectName: projectName,
+                onBack: null,
+                onNewSession: () {},
+                onSessionTap: ({required session}) {},
+                actionDispatcher: const SessionListActionDispatcher(
+                  deleteConfirmation: SessionDeleteConfirmation.sheet,
+                  onSessionArchived: null,
+                  onSessionDeleted: null,
+                  onSessionMarkedUnread: null,
+                ),
+                archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+                connectionBanner: null,
+              ),
             ),
           ),
         ),
@@ -176,13 +184,14 @@ void main() {
     expect(dotColor(tester), PregoDesignSystem.light.colors.fgDisabledSubtle);
   });
 
-  testWidgets("tapping the subtitle row pops over the untruncated repo slug", (tester) async {
+  testWidgets("the repo slug has no chevron, and a long press shows it whole", (tester) async {
     await pumpScaffold(tester, state: loadedState(repoSlug: "sesori-ai/sesori_apps_monorepo"));
+    expect(find.byIcon(TablerRegular.chevron_down), findsNothing);
 
-    await tester.tap(find.text("sesori-ai/sesori_apps_monorepo"));
+    await tester.longPress(find.text("sesori-ai/sesori_apps_monorepo"));
     await tester.pumpAndSettle();
 
-    // The popover shows the same (already-complete) slug — a second occurrence.
+    // The tooltip repeats the slug — a second occurrence.
     expect(find.text("sesori-ai/sesori_apps_monorepo"), findsNWidgets(2));
   });
 
@@ -203,10 +212,10 @@ void main() {
 
     final lastTile = find.ancestor(of: find.text("Task 11"), matching: find.byType(SessionTile));
     final loc = AppLocalizations.of(tester.element(find.byType(SessionListScaffold)))!;
-    final newTaskButton = find.widgetWithText(PregoButtonsSolid, loc.sessionListNewTask);
+    final newSessionButton = find.widgetWithText(PregoButtonsSolid, loc.sessionListNewSession);
     expect(lastTile, findsOneWidget);
-    expect(newTaskButton, findsOneWidget);
-    expect(tester.getSize(newTaskButton).height, greaterThan(80));
-    expect(tester.getBottomLeft(lastTile).dy, lessThan(tester.getTopLeft(newTaskButton).dy));
+    expect(newSessionButton, findsOneWidget);
+    expect(tester.getSize(newSessionButton).height, greaterThan(80));
+    expect(tester.getBottomLeft(lastTile).dy, lessThan(tester.getTopLeft(newSessionButton).dy));
   });
 }

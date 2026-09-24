@@ -304,6 +304,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          fastMode: false,
           pluginId: "opencode",
           sessionId: "s1",
           backendSessionId: "s1",
@@ -379,6 +380,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          fastMode: false,
           pluginId: "opencode",
           sessionId: "s1",
           backendSessionId: "s1",
@@ -447,6 +449,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          fastMode: false,
           pluginId: "opencode",
           sessionId: "s1",
           backendSessionId: "s1",
@@ -475,6 +478,7 @@ void main() {
       );
       sessionDao.setSession(
         const SessionDto(
+          fastMode: false,
           pluginId: "opencode",
           sessionId: "s2",
           backendSessionId: "s2",
@@ -527,6 +531,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          fastMode: false,
           pluginId: "opencode",
           sessionId: "s1",
           backendSessionId: "s1",
@@ -576,6 +581,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          fastMode: false,
           pluginId: "opencode",
           sessionId: "s1",
           backendSessionId: "s1",
@@ -742,6 +748,7 @@ void main() {
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: "fake",
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -1371,6 +1378,7 @@ void main() {
 
 SessionDto _storedSession({required String currentBranchName}) {
   return SessionDto(
+    fastMode: false,
     pluginId: "fake",
     sessionId: "s1",
     backendSessionId: "s1",

@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:claude_plugin/claude_plugin.dart";
 import "package:claude_plugin/claude_testing.dart";
+import "package:claude_plugin/src/repositories/mappers/claude_quota_interruption_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -32,7 +33,7 @@ void main() {
       );
 
       final observed = options as PluginSessionOptionsDiscoveryObserved;
-      expect(observed.options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(observed.options.agents.map((agent) => agent.name), ["Agent"]);
       expect(observed.options.providers.providers.single.models, hasLength(2));
       expect(observed.options.commands.single.name, "review");
       expect(harness.processes, hasLength(1));
@@ -112,6 +113,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.createSession(
+        fastMode: false,
         directory: "/tmp/project",
         parentSessionId: null,
         parts: const [
@@ -165,6 +167,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: testSessionId,
           parts: const [PluginPromptPart.text(text: "hello")],
@@ -186,6 +189,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: testSessionId,
           parts: const [PluginPromptPart.text(text: "hello")],
@@ -205,6 +209,7 @@ void main() {
     test("rejects unsupported selections on session creation", () async {
       await expectLater(
         harness.plugin.createSession(
+          fastMode: false,
           directory: "/tmp/project",
           parentSessionId: null,
           parts: const [],
@@ -231,6 +236,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
         command: "review",
@@ -248,6 +254,26 @@ void main() {
         (event) => event.part.text == "/review src",
       );
       expect(visible, hasLength(1));
+
+      // Naming the advertised agent returns the session to the default mode.
+      first.emit(_result());
+      await pump();
+      await harness.plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-2",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "now build it")],
+        variant: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "small"),
+      );
+      await _waitForUserText(first, "now build it");
+      final modes = [
+        for (final frame in first.written)
+          if (frame["type"] == "control_request" && _request(frame)["subtype"] == "set_permission_mode")
+            _request(frame)["mode"],
+      ];
+      expect(modes, ["plan", "default"]);
       await subscription.cancel();
     });
 
@@ -255,6 +281,7 @@ void main() {
       await harness.close();
       harness = _PluginHarness(failInitialize: true);
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: "/tmp/project",
         parentSessionId: null,
         parts: const [],
@@ -269,6 +296,7 @@ void main() {
       // Accepted at enqueue: the spawn failure surfaces on the event stream
       // (queue removal plus session error), not as a send failure.
       await harness.plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
         command: "review",
@@ -289,6 +317,26 @@ void main() {
       await subscription.cancel();
     });
 
+    test("rejects the native /fast command as a stale option", () async {
+      await harness.createSession();
+
+      await expectLater(
+        harness.plugin.sendCommand(
+          fastMode: true,
+          promptId: "prompt-fast",
+          sessionId: testSessionId,
+          command: "fast",
+          arguments: "on",
+          userVisibleArguments: "on",
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(isA<PluginStaleOptionsException>()),
+      );
+      expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
+    });
+
     test("renders a follow-up prompt from its replayed user frame", () async {
       await harness.createSession();
       final first = harness.processes.single;
@@ -299,6 +347,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "follow-up")],
@@ -322,7 +371,7 @@ void main() {
       await subscription.cancel();
     });
 
-    test("stamps an unmarked decorated image echo and consumes its queued entry", () async {
+    test("stamps an unmarked re-encoded image echo and consumes its queued entry", () async {
       await harness.createSession();
       final first = harness.processes.single;
       await waitForFrame(first, "user");
@@ -332,11 +381,12 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prm_image",
         sessionId: testSessionId,
         parts: const [
           PluginPromptPart.text(text: "inspect image"),
-          PluginPromptPart.fileData(mime: "image/JPEG", base64: "aA==", filename: "image.jpg"),
+          PluginPromptPart.fileData(mime: "image/png", base64: "iVBORw0KGgo=", filename: "image.png"),
         ],
         variant: null,
         agent: "Agent",
@@ -345,7 +395,7 @@ void main() {
       await _waitForUserText(first, "inspect image");
       final written = first.written.lastWhere((frame) => frame["type"] == "user");
 
-      first.emit(_decoratedImageEcho(written: written, uuid: "echo-image"));
+      first.emit(_reencodedImageEcho(written: written, uuid: "echo-image"));
       await pump();
       await pump();
 
@@ -373,6 +423,7 @@ void main() {
 
       // Accepted instantly while the first turn is still running.
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prm_steer",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "steer it")],
@@ -422,6 +473,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendCommand(
+        fastMode: false,
         promptId: "prm_cmd",
         sessionId: testSessionId,
         command: "review",
@@ -472,6 +524,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prm_unmappable",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "no uuid")],
@@ -509,6 +562,7 @@ void main() {
       await pump();
 
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prm_aborted",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "interrupted early")],
@@ -547,6 +601,7 @@ void main() {
       await waitForFrame(first, "user");
 
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prm_cancel",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "never runs")],
@@ -570,6 +625,7 @@ void main() {
       await waitForFrame(first, "user");
 
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "deeper")],
@@ -595,6 +651,7 @@ void main() {
     test("throws not found instead of creating a process for an unknown session", () async {
       await expectLater(
         harness.plugin.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: otherTestSessionId,
           parts: const [PluginPromptPart.text(text: "hello")],
@@ -703,6 +760,7 @@ void main() {
         model: "default",
         effort: null,
         permissionMode: ClaudePermissionMode.plan,
+        fastMode: false,
       );
       process.emit({
         "type": "control_request",
@@ -788,6 +846,7 @@ void main() {
         process,
       ).where((subtype) => subtype == "set_permission_mode").length;
       await harness.plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
         parts: const [PluginPromptPart.text(text: "plan again")],
@@ -928,6 +987,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
     sessionService = ClaudeSessionService(
       processes: processRepository,
       approvals: approvals,
+      quotaMapper: ClaudeQuotaInterruptionMapper(contentMapper: const ClaudeContentMapper()),
       clock: const _NeverIdleClock(),
       resolveIdleTimeout: () => const Duration(minutes: 5),
       idleTimeoutChanges: const Stream<Duration?>.empty(),
@@ -975,6 +1035,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
 
   Future<PluginSession> createSession() async {
     final session = await plugin.createSession(
+      fastMode: false,
       directory: "/tmp/project",
       parentSessionId: null,
       parts: const [PluginPromptPart.text(text: "hello")],
@@ -1078,7 +1139,7 @@ Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uu
   "timestamp": "2026-08-11T12:00:00.000Z",
 };
 
-Map<String, Object?> _decoratedImageEcho({required Map<String, Object?> written, required String uuid}) {
+Map<String, Object?> _reencodedImageEcho({required Map<String, Object?> written, required String uuid}) {
   final message = (written["message"]! as Map).cast<String, Object?>();
   final content = (message["content"]! as List).cast<Object?>();
   final image = (content[1]! as Map).cast<String, Object?>();
@@ -1096,7 +1157,7 @@ Map<String, Object?> _decoratedImageEcho({required Map<String, Object?> written,
           "source": {
             ...source,
             "media_type": "image/jpeg",
-            "data": "aA",
+            "data": "/9j/4AAQSkZJRg==",
             "cache_control": {"type": "ephemeral"},
           },
         },

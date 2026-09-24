@@ -177,6 +177,29 @@ void main() {
     });
   });
 
+  testWidgets("the Flutter spinner shrinks its ticks to fit a box under its natural size", (tester) async {
+    await onPlatform(TargetPlatform.android, () async {
+      Future<void> expectScale({required double dimension, required double scale}) async {
+        await tester.pumpWidget(
+          Center(
+            child: SizedBox.square(
+              dimension: dimension,
+              child: const PregoSteppedActivityIndicator(color: color, animating: false),
+            ),
+          ),
+        );
+        expect(
+          find.descendant(of: find.byType(PregoSteppedActivityIndicator), matching: find.byType(CustomPaint)),
+          paints..something((method, arguments) => method == #scale && arguments.first == scale),
+        );
+      }
+
+      // The ticks reach a 10 px radius, so a 12 px box draws them at 0.6.
+      await expectScale(dimension: 12, scale: 0.6);
+      await expectScale(dimension: 36, scale: 1);
+    });
+  });
+
   testWidgets("reduced motion shows a static stepped frame", (tester) async {
     await onPlatform(TargetPlatform.android, () async {
       await tester.pumpWidget(

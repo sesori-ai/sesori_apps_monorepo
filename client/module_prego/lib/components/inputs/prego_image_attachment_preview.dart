@@ -62,6 +62,7 @@ class const PregoImageAttachmentPreview({
                         width: 14,
                         height: 14,
                         decoration: BoxDecoration(color: prego.colors.bgSurface5, shape: BoxShape.circle),
+                        // Fits the 14pt badge; smaller than any icon token.
                         child: Icon(TablerRegular.x, size: 10, color: prego.colors.textPrimary),
                       ),
                     ),

@@ -1,5 +1,6 @@
 import "dart:convert";
 import "dart:io";
+import "dart:typed_data";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
@@ -20,6 +21,14 @@ class const CodexRolloutTailChunk({
 class const CodexRolloutTailPosition({
   required final int offset,
   required final List<int> trailingBytes,
+});
+
+/// The bounded leading window of a rollout, with the file length observed
+/// before reading it.
+class const CodexRolloutHeader({
+  required final List<CodexRolloutLineDto> lines,
+  required final bool reachedLineLimit,
+  required final int fileLength,
 });
 
 class const CodexDesktopStateReadException({required final Object cause}) implements Exception {
@@ -115,13 +124,29 @@ class CodexRolloutApi({Map<String, String>? environment}) {
     ];
   }
 
-  List<CodexRolloutLineDto> readHeader({required String rolloutPath}) {
+  CodexRolloutHeader readHeader({required String rolloutPath}) {
     final file = File(rolloutPath);
-    if (!file.existsSync()) return const [];
-    return _decodeRolloutLines(
-      _readPrefixLines(file: file, maxLines: 32),
-      malformedWarning: "[codex] skipping malformed rollout header record",
+    if (!file.existsSync()) return const CodexRolloutHeader(lines: [], reachedLineLimit: false, fileLength: 0);
+    // Measured before reading so a concurrent append only ever invalidates.
+    final fileLength = file.lengthSync();
+    final (:lines, :isComplete) = _readPrefixLines(file: file, maxLines: 32);
+    return CodexRolloutHeader(
+      lines: _decodeRolloutLines(
+        lines,
+        malformedWarning: "[codex] skipping malformed rollout header record",
+      ),
+      reachedLineLimit: isComplete,
+      fileLength: fileLength,
     );
+  }
+
+  /// Null when the rollout can no longer be stat'ed (removed or inaccessible).
+  int? rolloutLength({required String rolloutPath}) {
+    try {
+      return File(rolloutPath).lengthSync();
+    } on FileSystemException {
+      return null;
+    }
   }
 
   List<CodexRolloutLineDto> readTranscript({required String rolloutPath}) {
@@ -300,26 +325,32 @@ class CodexRolloutApi({Map<String, String>? environment}) {
     return decoded;
   }
 
-  List<String> _readPrefixLines({required File file, required int maxLines}) {
-    final bytes = <int>[];
+  ({List<String> lines, bool isComplete}) _readPrefixLines({required File file, required int maxLines}) {
+    final bytes = BytesBuilder(copy: false);
     final handle = file.openSync();
+    var lineCount = 0;
     try {
-      var lineCount = 0;
       while (lineCount < maxLines) {
-        final chunk = handle.readSync(8192);
+        final chunk = handle.readSync(64 * 1024);
         if (chunk.isEmpty) break;
-        for (final byte in chunk) {
-          bytes.add(byte);
-          if (byte == 0x0A) {
-            lineCount += 1;
-            if (lineCount == maxLines) break;
+        var end = chunk.length;
+        for (var i = 0; i < chunk.length; i++) {
+          if (chunk[i] != 0x0A) continue;
+          lineCount += 1;
+          if (lineCount == maxLines) {
+            end = i + 1;
+            break;
           }
         }
+        bytes.add(Uint8List.sublistView(chunk, 0, end));
       }
     } finally {
       handle.closeSync();
     }
-    return const LineSplitter().convert(utf8.decode(bytes));
+    return (
+      lines: const LineSplitter().convert(utf8.decode(bytes.takeBytes())),
+      isComplete: lineCount == maxLines,
+    );
   }
 }
 

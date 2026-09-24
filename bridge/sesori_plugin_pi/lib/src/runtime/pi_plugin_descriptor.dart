@@ -101,6 +101,9 @@ final class const PiPluginDescriptor({
   @override
   bool get supportsPromptAttachments => true;
 
+  @override
+  PluginQuotaReportingSupport get quotaReportingSupport => PluginQuotaReportingSupport.conditional;
+
   /// Pi owns idle reclamation per session: each RPC child is reaped on the
   /// user-configured timeout and resumed transparently on the next turn.
   /// Whole-plugin suspension would duplicate that timer and can race the

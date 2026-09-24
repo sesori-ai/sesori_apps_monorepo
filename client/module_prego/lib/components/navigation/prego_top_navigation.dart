@@ -45,9 +45,8 @@ enum PregoTopNavigationTitleMode() {
 ///    Self-contained; use it for a standalone bar or for bodies that own
 ///    their own scroll.
 /// 3. **Back leading** ([PregoTopNavigationTitleMode.backLeading]) — a fixed
-///    [title] block ([PregoNavLeadingTitle], weighted by
-///    [leadingTitleEmphasis]) sitting left-aligned beside the back button
-///    instead of centred, with the caller-composed [subtitle] widget
+///    [title] block ([PregoNavLeadingTitle]) sitting left-aligned beside the
+///    back button instead of centred, with the caller-composed [subtitle] widget
 ///    (typically a [PregoNavSubtitle]) beneath it. There is no large or
 ///    centred title in this mode; [scrollController] is ignored.
 ///
@@ -75,41 +74,47 @@ enum PregoTopNavigationTitleMode() {
 /// )
 /// ```
 class const PregoTopNavigation({
-    super.key,
-    /// Primary title — fixed (inline and back-leading modes) or fading in as the
+  super.key,
+
+  /// Primary title — fixed (inline and back-leading modes) or fading in as the
   /// large title collapses (collapsing mode), depending on [titleMode].
   required final String title,
-    /// The back-leading title block's second line — a self-contained,
+
+  /// The back-leading title block's second line — a self-contained,
   /// caller-composed widget (typically a [PregoNavSubtitle]) holding
   /// everything the row needs: icon, status dot, tap affordance. Back-leading
   /// mode only; null renders the title on its own.
   final Widget? subtitle,
-    /// Optional second text line rendered beneath the centred [title] in the
+
+  /// Optional second text line rendered beneath the centred [title] in the
   /// bar's own muted style (inline mode). A `null` or empty value renders the
   /// title on its own.
   final String? subtitleText,
-    /// How the bar presents its title. See the class doc for the three modes.
+
+  /// How the bar presents its title. See the class doc for the three modes.
   final PregoTopNavigationTitleMode titleMode = PregoTopNavigationTitleMode.collapsing,
-    /// Weight of the back-leading title line ([PregoNavLeadingTitle.emphasis]).
-  /// Back-leading mode only.
-  final PregoNavLeadingTitleEmphasis leadingTitleEmphasis = PregoNavLeadingTitleEmphasis.muted,
-    /// Drives the collapsing title in collapsing mode: the bar fades its title in
+
+  /// Drives the collapsing title in collapsing mode: the bar fades its title in
   /// as this controller's offset crosses [collapseDistance]. Ignored in the
   /// other modes. Typically [PregoGlassScaffold]'s own controller.
   final ScrollController? scrollController,
-    /// Trailing bar actions. Build these with [PregoButtonsIconGlass] so they
+
+  /// Trailing bar actions. Build these with [PregoButtonsIconGlass] so they
   /// match the leading/back button.
   final List<Widget>? actions,
-    /// Overrides the leading slot entirely. Takes precedence over [onBack] and
+
+  /// Overrides the leading slot entirely. Takes precedence over [onBack] and
   /// [automaticallyImplyLeading].
   final Widget? leading,
-    /// When set (and [leading] is null), renders a glass back button that invokes
+
+  /// When set (and [leading] is null), renders a glass back button that invokes
   /// this callback instead of relying on the enclosing navigator.
   final VoidCallback? onBack,
-    /// Whether the bar may infer a back button from the navigator when neither
+
+  /// Whether the bar may infer a back button from the navigator when neither
   /// [leading] nor [onBack] is supplied.
   final bool automaticallyImplyLeading = true,
-  }) extends StatelessWidget implements PreferredSizeWidget {
+}) extends StatelessWidget implements PreferredSizeWidget {
   /// [GlassAppBar]'s content height — matches the Figma design. Bodies that own
   /// their own scroll behind the bar (see [PregoGlassScaffold] with
   /// `reserveBarSpace: false`) should take their top inset from
@@ -205,7 +210,7 @@ class const PregoTopNavigation({
         Expanded(
           child: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: PregoNavLeadingTitle(title: title, subtitle: subtitle, emphasis: leadingTitleEmphasis),
+            child: PregoNavLeadingTitle(title: title, subtitle: subtitle),
           ),
         ),
         if (actions != null) ...[

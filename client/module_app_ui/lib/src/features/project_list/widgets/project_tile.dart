@@ -24,6 +24,12 @@ typedef ProjectOpenedCallback = void Function({
 /// parse — the platform-local basename would return a Windows path unchanged.
 String projectDirectoryBasename(ProjectSummary project) => p.posix.basename(_toPosix(project.path));
 
+/// The name shown for [project]: its stored name, else its directory.
+String projectDisplayName({required AppLocalizations loc, required ProjectSummary project}) {
+  final basename = projectDirectoryBasename(project);
+  return project.name ?? (basename.isEmpty ? loc.projectListDefaultName : basename);
+}
+
 /// [project]'s directory, shortened to the part that tells projects apart.
 ///
 /// A row is far too narrow for a real path, and clipping one with an ellipsis
@@ -82,6 +88,7 @@ class const ProjectTile({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: _menuWidth,
+      acquireOpenLease: null,
       // While the menu is open the rest of the list blurs back and this row
       // stays sharp, so which project the actions will hit is unambiguous.
       spotlight: PregoMenuSpotlight.listRow,
@@ -101,6 +108,7 @@ class const ProjectTile({
         title: loc.rename,
         subtitle: null,
         isSelected: false,
+        shortcutLabel: null,
         onTap: () => _renameProject(context: context, project: project),
       ),
       PregoMenuItem(
@@ -108,6 +116,7 @@ class const ProjectTile({
         title: loc.hideProject,
         subtitle: null,
         isSelected: false,
+        shortcutLabel: null,
         onTap: () => unawaited(_hideProject(context: context, project: project)),
       ),
     ];
@@ -131,7 +140,7 @@ class const ProjectTile({
   static Future<void> _hideProject({required BuildContext context, required ProjectSummary project}) async {
     final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
     final loc = context.loc;
-    final hidden = await context.read<ProjectListCubit>().hideProject(project.id);
+    final hidden = await context.read<ProjectListCubit>().hideProject(projectId: project.id);
     popupAlertPresenter.show(
       title: hidden ? loc.projectHidden : loc.projectHideFailed,
       variant: hidden ? PregoPopupAlertsNotificationsVariant.success : PregoPopupAlertsNotificationsVariant.error,
@@ -141,7 +150,7 @@ class const ProjectTile({
   Widget _buildRow({required BuildContext context, required VoidCallback openMenu}) {
     final loc = context.loc;
     final prego = context.prego;
-    final displayName = project.name ?? _fallbackName(loc: loc);
+    final displayName = projectDisplayName(loc: loc, project: project);
 
     return PregoSwipeActions(
       showBottomHairline: true,
@@ -295,11 +304,6 @@ class const ProjectTile({
         ),
       ],
     );
-  }
-
-  String _fallbackName({required AppLocalizations loc}) {
-    final lastSegment = projectDirectoryBasename(project);
-    return lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName;
   }
 
   void _open({required BuildContext context, required String displayName}) {

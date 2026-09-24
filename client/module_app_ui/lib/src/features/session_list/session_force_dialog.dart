@@ -1,25 +1,24 @@
 part of "session_list_action_dispatcher.dart";
 
 // ---------------------------------------------------------------------------
-// Force delete / archive dialog (409 rejection)
+// Force delete dialog (409 rejection)
 // ---------------------------------------------------------------------------
 
-void _showForceDialog({
+Future<void> _showForceDialog({
   required BuildContext context,
   required SessionListCubit cubit,
   required String sessionId,
   required SessionCleanupRejection rejection,
-  required bool isDelete,
   required bool deleteWorktree,
   required SessionDeletedRouteHandler? onSessionDeleted,
 }) {
   final loc = context.loc;
 
-  showDialog<void>(
+  return showDialog<void>(
     context: context,
     builder: (dialogContext) {
       return AlertDialog(
-        title: Text(isDelete ? loc.sessionListForceDeleteTitle : loc.sessionListForceArchiveTitle),
+        title: Text(loc.sessionListForceDeleteTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,8 +32,8 @@ void _showForceDialog({
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      Icons.warning_amber_rounded,
-                      size: 18,
+                      TablerRegular.alert_triangle,
+                      size: PregoIconSize.md,
                       color: context.prego.colors.fgErrorPrimary,
                     ),
                     const SizedBox(width: 8),
@@ -54,7 +53,8 @@ void _showForceDialog({
           TextButton(
             onPressed: () {
               dialogContext.pop();
-              if (isDelete) {
+              final release = cubit.retainActionScope();
+              unawaited(
                 _deleteSession(
                   context: context,
                   cubit: cubit,
@@ -62,19 +62,11 @@ void _showForceDialog({
                   deleteWorktree: deleteWorktree,
                   force: true,
                   onSessionDeleted: onSessionDeleted,
-                );
-              } else {
-                _archiveSession(
-                  context: context,
-                  cubit: cubit,
-                  sessionId: sessionId,
-                  deleteWorktree: deleteWorktree,
-                  force: true,
-                );
-              }
+                ).whenComplete(release),
+              );
             },
             child: Text(
-              isDelete ? loc.sessionListForceDeleteAction : loc.sessionListForceArchiveAction,
+              loc.sessionListForceDeleteAction,
               style: TextStyle(color: context.prego.colors.fgErrorPrimary),
             ),
           ),

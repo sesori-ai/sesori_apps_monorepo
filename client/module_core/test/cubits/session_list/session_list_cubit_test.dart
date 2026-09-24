@@ -532,134 +532,6 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 6. archiveSession success — optimistic removal, API succeeds, returns true
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "archiveSession: optimistically hides session and returns true on API success",
-      build: () {
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
-        when(
-          () => mockSessionService.archiveSession(
-            sessionId: "s1",
-            deleteWorktree: any(named: "deleteWorktree"),
-            force: any(named: "force"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
-        return buildCubit();
-      },
-      act: (cubit) async {
-        // Drain the constructor-triggered loadSessions() before acting.
-        await Future<void>.delayed(Duration.zero);
-        final result = await cubit.archiveSession(
-          sessionId: "s1",
-          deleteWorktree: false,
-          force: false,
-        );
-        expect(result, isTrue);
-      },
-      // Skip the initial SessionListLoaded emitted by loadSessions().
-      skip: 1,
-      expect: () => [
-        isA<SessionListLoaded>().having(
-          (s) => s.sessions,
-          "sessions after optimistic archive",
-          isEmpty,
-        ),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
-    // 7. archiveSession failure — optimistic removal then rollback, returns false
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "archiveSession: rolls back session and returns false on API failure",
-      build: () {
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
-        when(
-          () => mockSessionService.archiveSession(
-            sessionId: "s1",
-            deleteWorktree: any(named: "deleteWorktree"),
-            force: any(named: "force"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        final result = await cubit.archiveSession(
-          sessionId: "s1",
-          deleteWorktree: false,
-          force: false,
-        );
-        expect(result, isFalse);
-      },
-      skip: 1,
-      expect: () => [
-        // Optimistic: session hidden (archived, showArchived=false).
-        isA<SessionListLoaded>().having(
-          (s) => s.sessions,
-          "sessions after optimistic archive",
-          isEmpty,
-        ),
-        // Rollback: original session restored.
-        isA<SessionListLoaded>().having(
-          (s) => s.sessions.length,
-          "sessions after rollback",
-          1,
-        ),
-      ],
-    );
-
-    blocTest<SessionListCubit, SessionListState>(
-      "archiveSession: stores cleanup rejection and rolls back on 409",
-      build: () {
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
-        when(
-          () => mockSessionService.archiveSession(
-            sessionId: "s1",
-            deleteWorktree: any(named: "deleteWorktree"),
-            force: any(named: "force"),
-          ),
-        ).thenThrow(
-          _cleanupRejected(const CleanupIssue.unstagedChanges()),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        final result = await cubit.archiveSession(
-          sessionId: "s1",
-          deleteWorktree: true,
-          force: false,
-        );
-        expect(result, isFalse);
-        expect(cubit.lastCleanupRejection?.issues.length, 1);
-      },
-      skip: 1,
-      expect: () => [
-        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after optimistic archive", isEmpty),
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions after rollback", 1),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
     // 7. deleteSession success — optimistic removal, API succeeds, returns true
     // -------------------------------------------------------------------------
 
@@ -2489,6 +2361,67 @@ void main() {
       ).called(1);
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"]?.unseen, isTrue);
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
+    });
+
+    test("action scope close retains a dialog through rename, mark recovery and delete", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projects);
+      final session = testSession(id: "s1", unseen: true);
+      final renameReply = Completer<ApiResponse<Session>>();
+      final markReply = Completer<ApiResponse<void>>();
+      final deleteReply = Completer<ApiResponse<void>>();
+      when(
+        () => mockSessionService.renameSession(sessionId: session.id, title: "Renamed"),
+      ).thenAnswer((_) => renameReply.future);
+      when(
+        () => mockSessionService.markSessionSeen(sessionId: session.id, read: true),
+      ).thenAnswer((_) => markReply.future);
+      when(
+        () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
+      ).thenAnswer((_) => deleteReply.future);
+      when(
+        () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
+      final cubit = SessionListCubit(
+        mode: SessionListMode.actions(sessions: [session]),
+        sessionRepository: mockSessionService,
+        sessionListService: sessionListService,
+        projectRepository: mockProjectRepository,
+        connectionService: mockConnectionService,
+        sseEventTracker: mockSseEventTracker,
+        sessionUnseenTracker: fakeSessionUnseenTracker,
+        projectViewingService: mockProjectViewingService,
+        routeSource: mockRouteSource,
+        projectId: projectId,
+        failureReporter: mockFailureReporter,
+        catalogRescanService: fakeCatalogRescanService,
+      );
+
+      final releaseDialog = cubit.retainActionScope();
+      final close = cubit.close();
+      expect(cubit.isClosed, isFalse);
+      final rename = cubit.renameSession(sessionId: session.id, title: "Renamed");
+      final mutation = cubit.markSessionSeen(sessionId: session.id, read: true);
+      final deletion = cubit.deleteSession(sessionId: session.id, deleteWorktree: true, force: false);
+      releaseDialog();
+      releaseDialog();
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isFalse);
+
+      markReply.complete(ApiResponse.error(ApiError.generic()));
+      await mutation;
+      expect(cubit.isClosed, isFalse);
+      deleteReply.complete(ApiResponse.success(null));
+      expect(await deletion, isTrue);
+      expect(cubit.isClosed, isFalse);
+      renameReply.complete(ApiResponse.error(ApiError.generic()));
+      expect(await rename, isFalse);
+      await close;
+
+      expect(cubit.isClosed, isTrue);
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isTrue);
+      verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
+      verify(
+        () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
+      ).called(1);
     });
 
     group("catalog scan", () {

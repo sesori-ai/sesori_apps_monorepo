@@ -1,14 +1,15 @@
 import "package:collection/collection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../services/models/recent_sessions_entry.dart";
 import "../../services/session_activity_calculator.dart";
-import "recent_sessions_state.dart";
 
 /// Surface-neutral presentation derivation, following SessionListResolvers.
 /// Ordering/filtering remain owned by SessionListService; this chooses its head.
 extension RecentSessionsResolvers on RecentSessionsLoaded {
-  List<Session> rows({required String? selectedSessionId}) {
-    final recent = visibleSessions.take(3).toList();
+  /// The first [limit] sessions, plus the selected one when it sits further down.
+  List<Session> rows({required String? selectedSessionId, required int limit}) {
+    final recent = visibleSessions.take(limit).toList();
     final selected = visibleSessions.firstWhereOrNull((session) => session.id == selectedSessionId);
     return [
       ...recent,

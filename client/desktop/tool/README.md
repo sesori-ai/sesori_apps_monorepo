@@ -73,15 +73,23 @@ Signing refuses a nonempty build-recorded source patch; commit those source chan
 and retry from a fresh committed checkout rather than signing a dirty build.
 
 Only the explicit preflight/packaging signing step consumes `MACOS_CERT_P12_BASE64`,
-`MACOS_CERT_PASSWORD`, `MACOS_KEYCHAIN_PASSWORD`, `APPLE_ID`,
-`APPLE_APP_SPECIFIC_PASSWORD`, and the `APPLE_TEAM_ID` repository variable. Signing
-uses the established Developer ID publisher. Temporary certificate/Keychain/profile
-files stay outside the checkout and artifact paths and are removed after use.
-Passwords never become Python packager arguments or exception text. These existing
-repository-level secrets assume trusted repository writers; manual dispatch is not
-an access-control boundary against them. Owner-approved migration to protected
-environments, including shared CLI callers and removal of repository-wide copies,
-is a public-publication prerequisite, not an already-enforced qualification guard.
+`MACOS_CERT_PASSWORD`, `MACOS_KEYCHAIN_PASSWORD`, `APPLE_ID`, and
+`APPLE_APP_SPECIFIC_PASSWORD` from the `macos-signing` environment, plus the
+`APPLE_TEAM_ID` repository variable. The environment admits workflows dispatched from
+`main` and intentionally has no reviewers or wait timer, preserving automatic CLI
+signing. GitHub requires each trusted reusable-workflow caller to use `secrets: inherit`
+before the called job can resolve environment secrets; callers do not map signing values,
+and signing steps reference only the three declared macOS names. Treat changes to the
+called workflow as secret-bearing because inheritance exposes caller-visible secrets to it.
+Desktop publication remains a separate human-gated operation. Temporary certificate,
+Keychain, and profile files stay outside checkout and artifact paths and are removed after
+use. Passwords never become Python packager arguments or exception text.
+
+The five same-named repository copies were removed after environment-only native CLI
+signing and desktop preflight passed on both CPUs. All five values now live only in
+`macos-signing`; `APPLE_TEAM_ID` remains a repository variable. A non-main signing
+dispatch is not valid evidence and must fail environment admission or explicit preflight.
+TestFlight/App Store Connect and Match credentials are separate and unchanged.
 
 Private artifacts `desktop-macos-packages-{x64,arm64}` contain
 `Sesori-macos-<arch>.dmg` and `.zip`; matching `desktop-macos-evidence-<arch>`
@@ -109,7 +117,43 @@ gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo 
   --ref main -f mode=macos-gui-probe -f packaging_run="$PACKAGING_RUN"
 ```
 
+For a private manual-replacement probe, select two retained successful package runs
+whose sealed identities increase strictly. Dispatch only from `main`. Both packages
+must contain the requested compiled channel; the sole exception is the exact pinned
+retained 1.8.4 baseline that predates channel metadata. This mode uses no signing
+credentials and never republishes either package:
+
+```bash
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-upgrade-probe -f channel=stable \
+  -f previous_packaging_run="$PREVIOUS_RUN" -f packaging_run="$CURRENT_RUN"
+```
+
+Each native job verifies producer provenance, clean source, accepted notarization,
+DMG hashes, Developer ID identity, tickets and Gatekeeper before copying the prior app
+from its DMG into Applications. It launches the real signed app with persisted Bridge
+Off and, after the initial startup interval, retries the read-only visible-window check
+for up to 45 additional seconds while the owned process remains alive. It records a
+process-owned status item with AXPress capability, validates its small menu-bar frame
+and clicks that exact frame. It then performs a system-wide z-order hit test beside the
+frame, accepts only an anchored menu owned by the exact app PID, invokes the exact Quit
+item found only inside that menu, then rejects relaunch/orphans,
+replaces the complete app from the newer DMG, and repeats while checking bounded
+desktop, shared CLI-data, attachment and valid login-registration sentinels. Existing
+app, bridge, registration or relevant state root causes refusal; cleanup is limited to
+probe-owned paths on the fresh Actions host. Main-only run `35405646668` accepted
+signed replacement with persisted Bridge Off intent but did not inspect live helper
+absence. After the correction merged, main-only run `35411687826`, source
+`8d99cd2925c9866dc121323ed348b0d130bc6aca`, tree
+`777f3a353ff04eaeab29f6a6ff3f81e514b04cf1`, passed x64 job `105812464127` and
+arm64 job `105812464132`. Both prior/current `*-helper-off.log` files on both CPUs
+record `NO_INSTALLED_HELPER`, and every implemented report check is true. Exact
+artifact IDs, digests and retention are in the
+[step 6 evidence](../../../.plan/active/desktop-distribution/steps/step-06.md).
+This accepts the private helper-Off boundary on both native CPUs.
+
 This pipeline does not publish a release/feed or prove installed GUI authentication,
-Keychain restoration, TCC, autostart, minimum-OS operation, updates or public-release
-readiness. Keep those checks explicit in the distribution plan and
+authenticated helper-On/failed-stop behavior, real-account Keychain/TCC, minimum-OS
+operation, public retrieval or public-release readiness. Keep those checks explicit in
+the distribution plan and
 [macOS packaging regression](../../../docs/regression/desktop-macos-packaging.md).

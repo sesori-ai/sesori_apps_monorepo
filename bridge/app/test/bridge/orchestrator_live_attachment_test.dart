@@ -424,6 +424,7 @@ Future<void> _insertRootSession({required AppDatabase database}) async {
   const projectId = "project-live";
   await database.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   await database.sessionDao.insertSession(
+    fastMode: false,
     sessionId: _sessionId,
     backendSessionId: _backendSessionId,
     projectId: projectId,

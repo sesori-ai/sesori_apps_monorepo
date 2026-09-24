@@ -7,7 +7,9 @@ class PushRateLimiter({DateTime Function()? now}) {
   final Map<String, DateTime> _lastSent = {};
 
   static const _cooldowns = {
-    NotificationCategory.aiInteraction: Duration(seconds: 5),
+    // Each question or permission can block the agent. Suppressed sends are
+    // discarded, not deferred, so interactions must not throttle one another.
+    NotificationCategory.aiInteraction: Duration.zero,
     NotificationCategory.sessionMessage: Duration(seconds: 30),
     NotificationCategory.systemUpdate: Duration.zero,
   };

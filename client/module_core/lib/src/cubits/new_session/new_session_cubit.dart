@@ -16,6 +16,7 @@ import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/models/new_session_selection_intent.dart";
@@ -23,6 +24,7 @@ import "../../services/new_session_options_service.dart";
 import "../../services/new_session_plugin_service.dart";
 import "../../services/new_session_selection_tracker.dart";
 import "../../services/product_analytics_service.dart";
+import "../../services/session_selection_calculator.dart";
 import "new_session_state.dart";
 import "new_session_submission_snapshot.dart";
 
@@ -56,6 +58,9 @@ class NewSessionCubit({
     unawaited(_discoverPlugins());
     unawaited(_loadProjectCapability());
   }
+
+  static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
+  static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
 
   ComposerDraft _composerDraft = _composerDraftRepository.readForNewSession(projectId: _projectId);
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
@@ -722,6 +727,34 @@ class NewSessionCubit({
     }
   }
 
+  /// What tapping the fast-mode control should do, or null while no options
+  /// are loaded. A new session has no prompt cache to drop, so a tap never
+  /// needs confirming.
+  FastModeToggleDecision? fastModeToggleDecision() {
+    final data = state.agentModelData;
+    if (data == null || data.optionsState.data == null) return null;
+    return _fastModeToggle.decide(
+      support: _selection.fastModeSupport(providers: data.providers, model: data.agentModel),
+      fastMode: data.runsFastMode,
+      hasHistory: false,
+      lastModelActivity: null,
+      now: DateTime.now(),
+    );
+  }
+
+  void setFastMode(bool fastMode) {
+    if (!_canEditComposer) return;
+    final options = state.agentModelData?.optionsState.data;
+    if (options == null) return;
+    _replaceOptionsData(
+      options: _newSessionOptionsService.selectFastMode(options: options, fastMode: fastMode),
+    );
+    final pluginId = _selectedPluginId;
+    if (pluginId != null) {
+      _selectionTracker.recordFastMode(projectId: _projectId, pluginId: pluginId, fastMode: fastMode);
+    }
+  }
+
   void stageCommand(CommandInfo command) {
     if (!_canEditComposer) return;
     final options = state.agentModelData?.optionsState.data;
@@ -830,6 +863,7 @@ class NewSessionCubit({
           ? null
           : PromptModel(providerID: selectedAgentModel.providerID, modelID: selectedAgentModel.modelID),
       variant: selectedVariant == null ? null : SessionVariant(id: selectedVariant),
+      fastMode: config.runsFastMode,
       command: switch (submission) {
         NewSessionTextSubmissionSnapshot() => null,
         NewSessionCommandSubmissionSnapshot(:final command) => command,

@@ -51,6 +51,7 @@ void main() {
         ],
       );
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -78,6 +79,7 @@ void main() {
     test("preserves PR scope when retrying the same project and branch binding", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -103,6 +105,7 @@ void main() {
       );
 
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: true,
         sessionId: "s1",
@@ -126,6 +129,7 @@ void main() {
     test("looks up a divergent stable id by its plugin/backend binding", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "stable-root-id",
@@ -161,6 +165,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       Future<void> insert({required String pluginId, required String sessionId, required String backendSessionId}) =>
           dao.insertSession(
+            fastMode: false,
             pluginId: pluginId,
             preservePullRequestScope: false,
             sessionId: sessionId,
@@ -198,6 +203,7 @@ void main() {
     test("archive clears prompt defaults while observed upsert preserves other bridge metadata", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "stable-root-id",

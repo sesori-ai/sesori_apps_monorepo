@@ -3,11 +3,14 @@
 set -euo pipefail
 
 case "$MACOS_DISTRIBUTION_MODE" in
-  macos-signing-preflight|macos-packaging) ;;
+  macos-signing-preflight|macos-packaging|macos-authenticated-upgrade-probe) ;;
   *) echo "Unsupported macOS distribution mode: $MACOS_DISTRIBUTION_MODE" >&2; exit 1 ;;
 esac
-for name in MACOS_CERT_P12_BASE64 MACOS_CERT_PASSWORD MACOS_KEYCHAIN_PASSWORD \
-  APPLE_TEAM_ID APPLE_ID APPLE_APP_SPECIFIC_PASSWORD; do
+required=(MACOS_CERT_P12_BASE64 MACOS_CERT_PASSWORD MACOS_KEYCHAIN_PASSWORD APPLE_TEAM_ID)
+if [[ "$MACOS_DISTRIBUTION_MODE" != macos-authenticated-upgrade-probe ]]; then
+  required+=(APPLE_ID APPLE_APP_SPECIFIC_PASSWORD)
+fi
+for name in "${required[@]}"; do
   if [[ -z "${!name}" ]]; then
     echo "Required signing configuration is missing: $name" >&2
     exit 1
@@ -34,10 +37,25 @@ security import "$certificate" -k "$keychain" -P "$MACOS_CERT_PASSWORD" -T /usr/
 security set-key-partition-list -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PASSWORD" "$keychain" >/dev/null
 # Required by codesign lookup on the qualified runners, even with --keychain.
 security list-keychains -d user -s "$keychain" login.keychain
+unset MACOS_CERT_P12_BASE64 MACOS_CERT_PASSWORD MACOS_KEYCHAIN_PASSWORD
 security find-identity -v -p codesigning "$keychain"
+
+if [[ "$MACOS_DISTRIBUTION_MODE" == macos-authenticated-upgrade-probe ]]; then
+  # Keep QA-only code outside the app/packages, and remove signing material before QA credentials enter the job.
+  helper=build/desktop-macos-authenticated-upgrade/tools/keychain-writer
+  mkdir -p "$(dirname "$helper")"
+  xcrun swiftc .github/scripts/write_desktop_macos_keychain.swift -framework Security -o "$helper"
+  codesign --sign "$identity" --keychain "$keychain" --timestamp --options runtime --force "$helper"
+  # A leading '=' selects literal requirement text; without it codesign opens a file.
+  codesign --verify --strict -R \
+    '=anchor apple generic and certificate leaf[subject.OU] = "AQNCF7663C"' "$helper"
+  echo 'Native QA Keychain helper signed and verified; no product submission or publication.'
+  exit 0
+fi
+
 xcrun notarytool store-credentials "$profile" --keychain "$keychain" --apple-id "$APPLE_ID" \
   --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID"
-unset MACOS_CERT_P12_BASE64 MACOS_CERT_PASSWORD MACOS_KEYCHAIN_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD
+unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD
 xcrun notarytool history --keychain-profile "$profile" --keychain "$keychain" --output-format json > "$history"
 echo 'Notarization profile authentication verified.'
 

@@ -41,7 +41,7 @@ void main() {
     });
 
     test("reuse performs one catalog ensure and returns plugin-global coherent output", () async {
-      _seedCompleteCatalog(catalogTracker);
+      _seedCompleteCatalog(catalogTracker, loadedModeId: "agent");
       commandTracker.consume(
         _commandUpdate([
           {"name": "review"},
@@ -62,13 +62,25 @@ void main() {
       final secondOptions = (second as PluginSessionOptionsDiscoveryObserved).options;
       expect(firstOptions, secondOptions);
       expect(firstOptions.completeness, PluginSessionOptionsCompleteness.complete);
-      expect(firstOptions.agents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(firstOptions.agents.map((agent) => agent.name), ["Agent"]);
       expect(firstOptions.providers.providers.single.models.single.id, "model");
       expect(firstOptions.commands.map((command) => command.name), ["review", "compact"]);
     });
 
+    test("a new session that loads in Plan still advertises Agent", () async {
+      _seedCompleteCatalog(catalogTracker, loadedModeId: "plan");
+
+      final result = await service.getSessionOptions(
+        projectId: "/project-a",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+      );
+
+      final options = (result as PluginSessionOptionsDiscoveryObserved).options;
+      expect(options.agents.map((agent) => agent.name), ["Agent"]);
+    });
+
     test("refresh uses one forced operation rather than bounded reuse", () async {
-      _seedCompleteCatalog(catalogTracker);
+      _seedCompleteCatalog(catalogTracker, loadedModeId: "agent");
       commandTracker.consume(_commandUpdate(const []));
 
       final result = await service.getSessionOptions(
@@ -82,7 +94,7 @@ void main() {
     });
 
     test("forced discovery failure is failed, not stale observed partial", () async {
-      _seedCompleteCatalog(catalogTracker);
+      _seedCompleteCatalog(catalogTracker, loadedModeId: "agent");
       commandTracker.consume(_commandUpdate(const []));
       catalogService.refreshSucceeds = false;
 
@@ -103,7 +115,7 @@ void main() {
   });
 }
 
-void _seedCompleteCatalog(CursorCatalogTracker tracker) {
+void _seedCompleteCatalog(CursorCatalogTracker tracker, {required String loadedModeId}) {
   tracker.applySnapshot(
     snapshot: CursorCatalogSnapshot(
       modelConfigId: "model-picker",
@@ -114,7 +126,7 @@ void _seedCompleteCatalog(CursorCatalogTracker tracker) {
         CursorCatalogOption(value: "agent", name: "Agent", description: "Acts"),
         CursorCatalogOption(value: "plan", name: "Plan", description: "Plans"),
       ],
-      loadedModeId: "agent",
+      loadedModeId: loadedModeId,
       thoughtLevel: CursorThoughtLevelSnapshot(
         configId: "effort",
         variants: const ["medium", "high"],

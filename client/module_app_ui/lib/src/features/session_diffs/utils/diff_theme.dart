@@ -1,49 +1,48 @@
 import "package:material_ui/material_ui.dart";
+import "package:theme_prego/module_prego.dart";
 
-/// Theme-aware colors for diff rendering. Returns appropriate colors based on
-/// the current [Brightness] (light or dark mode).
-class const DiffTheme._({required final Brightness brightness}) {
-  factory of(BuildContext context) => DiffTheme._(brightness: Theme.of(context).brightness);
+/// Diff colours, derived from Prego's status and neutral tokens so both themes
+/// follow the palette.
+class const DiffTheme._({required final PregoColors colors}) {
+  factory of(BuildContext context) => DiffTheme._(colors: context.prego.colors);
 
-  bool get _isDark => brightness == Brightness.dark;
+  /// A changed line is tinted, not filled, so its text stays the loudest thing.
+  static const double _lineTint = 0.1;
 
-  // ── Line backgrounds ──────────────────────────────────────────────────
+  // ── Lines ─────────────────────────────────────────────────────────────
 
-  Color get addedBg => _isDark ? const Color(0xFF0D2818) : const Color(0xFFE6FFEC);
+  Color get addedBg => colors.fgSuccessPrimary.withValues(alpha: _lineTint);
 
-  Color get removedBg => _isDark ? const Color(0xFF2C0B0E) : const Color(0xFFFFEBE9);
+  Color get removedBg => colors.fgErrorPrimary.withValues(alpha: _lineTint);
 
   Color get contextBg => Colors.transparent;
 
-  // ── Gutter backgrounds ────────────────────────────────────────────────
+  /// The 2-point bar at a changed line's left edge.
+  Color get addedBar => colors.fgSuccessPrimary;
 
-  Color get addedGutter => _isDark ? const Color(0xFF0F3A1E) : const Color(0xFFCCFFC9);
-
-  Color get removedGutter => _isDark ? const Color(0xFF3D0F12) : const Color(0xFFFFDBD9);
-
-  Color get contextGutter => _isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF8F8F8);
+  Color get removedBar => colors.fgErrorPrimary;
 
   // ── Hunk header ───────────────────────────────────────────────────────
 
-  Color get hunkHeaderBg => _isDark ? const Color(0xFF161B22) : const Color(0xFFF1F8FF);
+  Color get hunkHeaderBg => colors.bgSecondary;
 
-  Color get hunkHeaderBorder => _isDark ? const Color(0xFF30363D) : const Color(0xFFD1E5F0);
+  Color get hunkHeaderBorder => colors.borderSecondary;
 
-  Color get hunkHeaderText => _isDark ? const Color(0xFF8B949E) : const Color(0xFF57606A);
+  Color get hunkHeaderText => colors.textTertiary;
 
   // ── File header ───────────────────────────────────────────────────────
 
-  Color get fileHeaderBg => _isDark ? const Color(0xFF161B22) : const Color(0xFFF6F8FA);
+  Color get fileHeaderBg => colors.bgSecondary;
 
-  Color get fileHeaderBorder => _isDark ? const Color(0xFF30363D) : const Color(0xFFD0D7DE);
+  Color get fileHeaderBorder => colors.borderSecondary;
 
-  // ── Text colors ───────────────────────────────────────────────────────
+  // ── Text ──────────────────────────────────────────────────────────────
 
-  Color get lineNumberText => _isDark ? const Color(0xFF484F58) : const Color(0xFF999999);
+  Color get lineNumberText => colors.textQuaternary;
 
-  Color get prefixText => _isDark ? const Color(0xFF8B949E) : const Color(0xFF666666);
+  Color get prefixText => colors.textTertiary;
 
-  Color get codeText => _isDark ? const Color(0xFFE6EDF3) : const Color(0xFF24292F);
+  Color get codeText => colors.textPrimary;
 
-  Color get chevronColor => _isDark ? const Color(0xFF8B949E) : Colors.grey.shade600;
+  Color get chevronColor => colors.fgTertiary;
 }

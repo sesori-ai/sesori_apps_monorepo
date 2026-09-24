@@ -18,7 +18,8 @@ mixin _$PluginModel {
  String get id; String get name;/// Effort/thinking variants in the order pickers list them.
  List<String> get variants;/// The variant a session runs at when none was chosen. Null means the
 /// first of [variants], or nothing when the model offers none.
- String? get defaultVariant; String? get family; bool get isAvailable; DateTime? get releaseDate;
+ String? get defaultVariant; String? get family; bool get isAvailable; DateTime? get releaseDate;/// The model's fast mode, or null when the model has none.
+ PluginFastModeSupport? get fastMode;
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -32,20 +33,20 @@ $PluginModelCopyWith<PluginModel> get copyWith => _$PluginModelCopyWithImpl<Plug
 @override
 bool operator ==(Object other) {
   final _this = this as PluginModel;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginModel&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&const DeepCollectionEquality().equals(other.variants, _this.variants)&&(identical(other.defaultVariant, _this.defaultVariant) || other.defaultVariant == _this.defaultVariant)&&(identical(other.family, _this.family) || other.family == _this.family)&&(identical(other.isAvailable, _this.isAvailable) || other.isAvailable == _this.isAvailable)&&(identical(other.releaseDate, _this.releaseDate) || other.releaseDate == _this.releaseDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginModel&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&const DeepCollectionEquality().equals(other.variants, _this.variants)&&(identical(other.defaultVariant, _this.defaultVariant) || other.defaultVariant == _this.defaultVariant)&&(identical(other.family, _this.family) || other.family == _this.family)&&(identical(other.isAvailable, _this.isAvailable) || other.isAvailable == _this.isAvailable)&&(identical(other.releaseDate, _this.releaseDate) || other.releaseDate == _this.releaseDate)&&(identical(other.fastMode, _this.fastMode) || other.fastMode == _this.fastMode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as PluginModel;
-  return Object.hash(runtimeType,_this.id,_this.name,const DeepCollectionEquality().hash(_this.variants),_this.defaultVariant,_this.family,_this.isAvailable,_this.releaseDate);
+  return Object.hash(runtimeType,_this.id,_this.name,const DeepCollectionEquality().hash(_this.variants),_this.defaultVariant,_this.family,_this.isAvailable,_this.releaseDate,_this.fastMode);
 }
 
 @override
 String toString() {
   final _this = this as PluginModel;
-  return 'PluginModel(id: ${_this.id}, name: ${_this.name}, variants: ${_this.variants}, defaultVariant: ${_this.defaultVariant}, family: ${_this.family}, isAvailable: ${_this.isAvailable}, releaseDate: ${_this.releaseDate})';
+  return 'PluginModel(id: ${_this.id}, name: ${_this.name}, variants: ${_this.variants}, defaultVariant: ${_this.defaultVariant}, family: ${_this.family}, isAvailable: ${_this.isAvailable}, releaseDate: ${_this.releaseDate}, fastMode: ${_this.fastMode})';
 }
 
 
@@ -56,11 +57,11 @@ abstract mixin class $PluginModelCopyWith<$Res>  {
   factory $PluginModelCopyWith(PluginModel value, $Res Function(PluginModel) _then) = _$PluginModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, List<String> variants, String? defaultVariant, String? family, bool isAvailable, DateTime? releaseDate
+ String id, String name, List<String> variants, String? defaultVariant, String? family, bool isAvailable, DateTime? releaseDate, PluginFastModeSupport? fastMode
 });
 
 
-
+$PluginFastModeSupportCopyWith<$Res>? get fastMode;
 
 }
 /// @nodoc
@@ -73,7 +74,7 @@ class _$PluginModelCopyWithImpl<$Res>
 
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? variants = null,Object? defaultVariant = freezed,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? variants = null,Object? defaultVariant = freezed,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,Object? fastMode = freezed,}) {
   return _then(PluginModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -82,10 +83,23 @@ as List<String>,defaultVariant: freezed == defaultVariant ? _self.defaultVariant
 as String?,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
 as String?,isAvailable: null == isAvailable ? _self.isAvailable : isAvailable // ignore: cast_nullable_to_non_nullable
 as bool,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,fastMode: freezed == fastMode ? _self.fastMode : fastMode // ignore: cast_nullable_to_non_nullable
+as PluginFastModeSupport?,
   ));
 }
+/// Create a copy of PluginModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginFastModeSupportCopyWith<$Res>? get fastMode {
+    if (_self.fastMode == null) {
+    return null;
+  }
 
+  return $PluginFastModeSupportCopyWith<$Res>(_self.fastMode!, (value) {
+    return _then(_self.copyWith(fastMode: value));
+  });
+}
 }
 
 
@@ -94,7 +108,7 @@ as DateTime?,
 @JsonSerializable(createFactory: false)
 
 class _PluginModel implements PluginModel {
-  const _PluginModel({required this.id, required this.name, required  List<String> variants, this.defaultVariant, this.family, this.isAvailable = true, this.releaseDate}): _variants = variants;
+  const _PluginModel({required this.id, required this.name, required  List<String> variants, this.defaultVariant, this.family, this.isAvailable = true, this.releaseDate, required this.fastMode}): _variants = variants;
   
 
 @override final  String id;
@@ -114,6 +128,8 @@ class _PluginModel implements PluginModel {
 @override final  String? family;
 @override@JsonKey() final  bool isAvailable;
 @override final  DateTime? releaseDate;
+/// The model's fast mode, or null when the model has none.
+@override final  PluginFastModeSupport? fastMode;
 
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
@@ -128,18 +144,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.variants, _variants)&&(identical(other.defaultVariant, defaultVariant) || other.defaultVariant == defaultVariant)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.variants, _variants)&&(identical(other.defaultVariant, defaultVariant) || other.defaultVariant == defaultVariant)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate)&&(identical(other.fastMode, fastMode) || other.fastMode == fastMode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(_variants),defaultVariant,family,isAvailable,releaseDate);
+    return Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(_variants),defaultVariant,family,isAvailable,releaseDate,fastMode);
 }
 
 @override
 String toString() {
-    return 'PluginModel(id: $id, name: $name, variants: $variants, defaultVariant: $defaultVariant, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
+    return 'PluginModel(id: $id, name: $name, variants: $variants, defaultVariant: $defaultVariant, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate, fastMode: $fastMode)';
 }
 
 
@@ -150,11 +166,11 @@ abstract mixin class _$PluginModelCopyWith<$Res> implements $PluginModelCopyWith
   factory _$PluginModelCopyWith(_PluginModel value, $Res Function(_PluginModel) _then) = __$PluginModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, List<String> variants, String? defaultVariant, String? family, bool isAvailable, DateTime? releaseDate
+ String id, String name, List<String> variants, String? defaultVariant, String? family, bool isAvailable, DateTime? releaseDate, PluginFastModeSupport? fastMode
 });
 
 
-
+@override $PluginFastModeSupportCopyWith<$Res>? get fastMode;
 
 }
 /// @nodoc
@@ -167,7 +183,7 @@ class __$PluginModelCopyWithImpl<$Res>
 
 /// Create a copy of PluginModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? variants = null,Object? defaultVariant = freezed,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? variants = null,Object? defaultVariant = freezed,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,Object? fastMode = freezed,}) {
   return _then(_PluginModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -176,7 +192,203 @@ as List<String>,defaultVariant: freezed == defaultVariant ? _self.defaultVariant
 as String?,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
 as String?,isAvailable: null == isAvailable ? _self.isAvailable : isAvailable // ignore: cast_nullable_to_non_nullable
 as bool,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,fastMode: freezed == fastMode ? _self.fastMode : fastMode // ignore: cast_nullable_to_non_nullable
+as PluginFastModeSupport?,
+  ));
+}
+
+/// Create a copy of PluginModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginFastModeSupportCopyWith<$Res>? get fastMode {
+    if (_self.fastMode == null) {
+    return null;
+  }
+
+  return $PluginFastModeSupportCopyWith<$Res>(_self.fastMode!, (value) {
+    return _then(_self.copyWith(fastMode: value));
+  });
+}
+}
+
+/// @nodoc
+mixin _$PluginFastModeSupport {
+
+
+
+  /// Serializes this PluginFastModeSupport to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginFastModeSupport);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'PluginFastModeSupport()';
+}
+
+
+}
+
+/// @nodoc
+class $PluginFastModeSupportCopyWith<$Res>  {
+$PluginFastModeSupportCopyWith(PluginFastModeSupport _, $Res Function(PluginFastModeSupport) __);
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginFastModeAvailable implements PluginFastModeSupport {
+  const PluginFastModeAvailable({required this.promptCacheTtlSeconds,  String? $type}): $type = $type ?? 'available';
+  
+
+ final  int promptCacheTtlSeconds;
+
+@JsonKey(name: 'runtimeType')
+final String $type;
+
+
+/// Create a copy of PluginFastModeSupport
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginFastModeAvailableCopyWith<PluginFastModeAvailable> get copyWith => _$PluginFastModeAvailableCopyWithImpl<PluginFastModeAvailable>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginFastModeAvailableToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginFastModeAvailable&&(identical(other.promptCacheTtlSeconds, promptCacheTtlSeconds) || other.promptCacheTtlSeconds == promptCacheTtlSeconds));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,promptCacheTtlSeconds);
+}
+
+@override
+String toString() {
+    return 'PluginFastModeSupport.available(promptCacheTtlSeconds: $promptCacheTtlSeconds)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginFastModeAvailableCopyWith<$Res> implements $PluginFastModeSupportCopyWith<$Res> {
+  factory $PluginFastModeAvailableCopyWith(PluginFastModeAvailable value, $Res Function(PluginFastModeAvailable) _then) = _$PluginFastModeAvailableCopyWithImpl;
+@useResult
+$Res call({
+ int promptCacheTtlSeconds
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginFastModeAvailableCopyWithImpl<$Res>
+    implements $PluginFastModeAvailableCopyWith<$Res> {
+  _$PluginFastModeAvailableCopyWithImpl(this._self, this._then);
+
+  final PluginFastModeAvailable _self;
+  final $Res Function(PluginFastModeAvailable) _then;
+
+/// Create a copy of PluginFastModeSupport
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? promptCacheTtlSeconds = null,}) {
+  return _then(PluginFastModeAvailable(
+promptCacheTtlSeconds: null == promptCacheTtlSeconds ? _self.promptCacheTtlSeconds : promptCacheTtlSeconds // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginFastModeUnavailable implements PluginFastModeSupport {
+  const PluginFastModeUnavailable({required this.reason,  String? $type}): $type = $type ?? 'unavailable';
+  
+
+ final  PluginFastModeUnavailableReason reason;
+
+@JsonKey(name: 'runtimeType')
+final String $type;
+
+
+/// Create a copy of PluginFastModeSupport
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginFastModeUnavailableCopyWith<PluginFastModeUnavailable> get copyWith => _$PluginFastModeUnavailableCopyWithImpl<PluginFastModeUnavailable>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginFastModeUnavailableToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginFastModeUnavailable&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,reason);
+}
+
+@override
+String toString() {
+    return 'PluginFastModeSupport.unavailable(reason: $reason)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginFastModeUnavailableCopyWith<$Res> implements $PluginFastModeSupportCopyWith<$Res> {
+  factory $PluginFastModeUnavailableCopyWith(PluginFastModeUnavailable value, $Res Function(PluginFastModeUnavailable) _then) = _$PluginFastModeUnavailableCopyWithImpl;
+@useResult
+$Res call({
+ PluginFastModeUnavailableReason reason
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginFastModeUnavailableCopyWithImpl<$Res>
+    implements $PluginFastModeUnavailableCopyWith<$Res> {
+  _$PluginFastModeUnavailableCopyWithImpl(this._self, this._then);
+
+  final PluginFastModeUnavailable _self;
+  final $Res Function(PluginFastModeUnavailable) _then;
+
+/// Create a copy of PluginFastModeSupport
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
+  return _then(PluginFastModeUnavailable(
+reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as PluginFastModeUnavailableReason,
   ));
 }
 

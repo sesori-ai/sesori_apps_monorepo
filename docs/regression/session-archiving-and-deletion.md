@@ -16,6 +16,19 @@ entirely along with its transcript and, optionally, its worktree.
   unavailable the export may proceed from stored content only and must record
   that honestly, never claiming completeness it lacks. The archived session
   stays readable through the same history path, served from that record.
+- On the phone and the desktop alike, Archive asks nothing for an idle session: the session leaves its lists
+  at once, the desktop sidebar included, and an Archived alert offers Undo for five seconds. Nothing reaches
+  the bridge until that window closes, so Undo simply brings the session back. Archiving another session, or
+  the window ending, sends the archive; quitting inside the window sends nothing. The window belongs to the
+  app shell, not to a page, so leaving the project or the session list neither cancels nor loses the
+  archive. Only a running session is confirmed first, and a session with a worktree also offers Archive,
+  keep worktree. The phone's swipe pill, full swipe and row menu all archive this way.
+- When the bridge refuses the archive because its worktree is not safe to delete, the session
+  returns to the lists and a compact alert names the issues and offers Archive and keep the worktree, the
+  default, or Delete it anyway. That second choice archives at once with no further Undo. Any other failure
+  returns the session and shows an error alert.
+- Desktop Delete asks in a compact centred alert that names the session; Cancel is the default button and
+  the destructive button never is. The phone keeps its delete sheet.
 - Deletion removes the session record immediately and is destructive and not
   recoverable. History, spilled content, and the archive record are purged
   best-effort after row deletion; a logged failure leaves residue for startup
@@ -69,11 +82,11 @@ entirely along with its transcript and, optionally, its worktree.
 - Clients present archiving as permanent, hide mutation affordances there, and
   list archived sessions. Archived row menus omit Rename and Archive but retain
   permanent Delete and read-state actions.
-- Mobile opens archived tasks in a full-screen modal from both portrait and
+- Mobile opens archived sessions in a full-screen modal from both portrait and
   split-pane session lists. The live list remains active-only. The modal contains
   only archived rows, grouped by their actual archive date, newest first; an
   active-only project shows the archive artwork and “No archived sessions”. It
-  has no new-task button or bottom floating navigation.
+  has no new-session button or bottom floating navigation.
 - Archived detail is read-only from its first frame. Back returns to the retained
   archive list; X closes the entire modal to its original opener, preserving its
   list/scroll and draft. Both controls remain available during loading and errors,
@@ -95,9 +108,9 @@ entirely along with its transcript and, optionally, its worktree.
 - Deletion completed in the archive flow returns to its archive list only when
   the currently open audit record matches both project and session. Stale or
   unrelated completions leave navigation unchanged; X still restores the opener.
-- Archive and delete confirmation sheets identify the action, default worktree
-  cleanup on only when a dedicated worktree exists, and keep deletion's confirm
-  action visually destructive. Cancelling performs neither operation.
+- The phone's delete confirmation sheet identifies the action, defaults worktree
+  cleanup on only when a dedicated worktree exists, and keeps its confirm action
+  visually destructive. Cancelling deletes nothing.
 - After successful deletion, mobile and desktop leave the deleted session's
   current detail or diffs route for its project list, preserving the project
   name. Deleting another session, or completing deletion after navigation to
@@ -132,7 +145,7 @@ restart before explicit re-import.
 
 ## Failure Signals
 
-- Mobile mixes active rows into archives, shows a new-task floating button in
+- Mobile mixes active rows into archives, shows a new-session floating button in
   the modal, loses the opener on X, or navigates out of the modal on detail Back.
 - Opening or closing an audit record consumes the underlying live project's
   claim, preventing its declaration from returning when the opener is visible.
@@ -161,6 +174,9 @@ restart before explicit re-import.
 
 ## Known Limitations
 
+- On both shells the Undo offer lives in the single popup alert slot. Another alert shown inside the
+  five-second window replaces it, and the archive still commits when the window ends, as it would had the user closed
+  the alert.
 - Archiving is intentionally irreversible; deletion additionally destroys the
   audit record. The read-only rule covers the named session only, not ancestors,
   descendants, or related sessions.
@@ -198,4 +214,6 @@ worktree service; shared cleanup rejection model; OMP cleanup service; shared
 ACP tombstone behavior used by Antigravity, Copilot and Grok; Antigravity composed deletion tests; Grok package deletion
 tests; client list/detail surfaces; shared `session_detail_activity_owner_test`,
 mobile `session_detail_activity_navigation_test` and
-`archived_sessions_navigation_test`, desktop `desktop_session_detail_screen_test`.
+`archived_sessions_navigation_test`, desktop `desktop_session_detail_screen_test`, shared
+`pending_archive_alerts_test`, `pending_session_archive_cubit_test` and
+`session_cleanup_flow_test`.

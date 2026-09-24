@@ -757,6 +757,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       );
@@ -912,6 +913,7 @@ ProviderListResponse _providers() {
         defaultModelID: "claude-3-5-sonnet",
         models: {
           "claude-3-5-sonnet": ProviderModel(
+            fastMode: null,
             id: "claude-3-5-sonnet",
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",

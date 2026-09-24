@@ -3,6 +3,8 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
 import "../../foundation/models/session_interaction_state.dart";
+import "../../services/fast_mode_toggle_calculator.dart";
+import "../../services/session_selection_calculator.dart";
 import "queued_session_submission.dart";
 
 part "session_detail_state.freezed.dart";
@@ -30,6 +32,9 @@ sealed class SessionDetailState with _$SessionDetailState {
     required List<SesoriPermissionAsked> pendingPermissions,
     // Session title — updated reactively via SSE `session.updated` events.
     required String? sessionTitle,
+    // The hydrated session, for surfaces that act on it (rename, archive,
+    // delete).
+    required Session session,
     // The harness running this session, or null when it could not be resolved.
     required String? pluginId,
     // Null when the plugin metadata lookup could not resolve the capability.
@@ -66,6 +71,11 @@ sealed class SessionDetailState with _$SessionDetailState {
     // Currently selected agent and model (pre-populated from defaults, never null once loaded).
     required String selectedAgent,
     required AgentModel? selectedAgentModel,
+
+    /// The user's fast-mode choice, reconciled from the bridge's prompt
+    /// defaults. It only runs while the selected model's fast mode is
+    /// available; see [SessionDetailLoadedX.runsFastMode].
+    required bool fastMode,
     required CommandInfo? stagedCommand,
     required bool isRefreshing,
     @Default([]) List<SessionVariant> availableVariants,
@@ -83,9 +93,30 @@ sealed class SessionDetailState with _$SessionDetailState {
   const factory failed({required RemoteFailureReason reason}) = SessionDetailFailed;
 }
 
+extension SessionDetailStateX on SessionDetailState {
+  /// The hydrated session, for the variants that have one.
+  Session? get hydratedSession => switch (this) {
+    SessionDetailLoaded(:final session) || SessionDetailHarnessUnavailable(:final session) => session,
+    SessionDetailLoading() || SessionDetailFailed() => null,
+  };
+}
+
 extension SessionDetailLoadedX on SessionDetailLoaded {
+  static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
+  static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
+
   String? get retryErrorMessage => switch (sessionStatus) {
     SessionStatusRetry(:final message) => message,
     SessionStatusIdle() || SessionStatusBusy() => null,
   };
+
+  /// The selected model's fast mode, or null when it has none.
+  FastModeSupport? get fastModeSupport =>
+      _selection.fastModeSupport(providers: availableProviders, model: selectedAgentModel);
+
+  /// Whether the next prompt runs in fast mode.
+  bool get runsFastMode =>
+      _selection.resolvedFastMode(providers: availableProviders, model: selectedAgentModel, requested: fastMode);
+
+  FastModeControl get fastModeControl => _fastModeToggle.control(support: fastModeSupport, fastMode: runsFastMode);
 }

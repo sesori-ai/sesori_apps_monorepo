@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -54,6 +55,7 @@ const _emptyState = SessionDetailState.loaded(
   pendingQuestions: [],
   pendingPermissions: [],
   sessionTitle: null,
+  session: testConstSession,
   pluginId: "opencode",
   supportsPromptAttachments: false,
   agent: null,
@@ -69,6 +71,7 @@ const _emptyState = SessionDetailState.loaded(
   availableCommands: [],
   selectedAgent: "build",
   selectedAgentModel: null,
+  fastMode: false,
   stagedCommand: null,
   isRefreshing: false,
 );
@@ -82,6 +85,7 @@ const _nonEmptyState = SessionDetailState.loaded(
   pendingQuestions: [],
   pendingPermissions: [],
   sessionTitle: null,
+  session: testConstSession,
   pluginId: "opencode",
   supportsPromptAttachments: false,
   agent: null,
@@ -97,6 +101,7 @@ const _nonEmptyState = SessionDetailState.loaded(
   availableCommands: [],
   selectedAgent: "build",
   selectedAgentModel: null,
+  fastMode: false,
   stagedCommand: null,
   isRefreshing: false,
 );

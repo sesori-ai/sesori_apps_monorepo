@@ -31,6 +31,7 @@ void main() {
     }) async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: sessionId,
         backendSessionId: sessionId,
         projectId: parent,
@@ -56,6 +57,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       if (parentStableId == null) {
         await db.sessionDao.insertSession(
+          fastMode: false,
           sessionId: stableId,
           backendSessionId: backendId,
           projectId: projectId,
@@ -339,6 +341,7 @@ void main() {
         updatedAt: 1,
       );
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "stable-w1",
         backendSessionId: "w1",
         projectId: projectId,

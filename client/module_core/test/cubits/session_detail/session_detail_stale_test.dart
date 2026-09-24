@@ -331,6 +331,7 @@ void main() {
                 defaultModelID: "claude-3-5-sonnet",
                 models: {
                   "claude-3-5-sonnet": ProviderModel(
+                    fastMode: null,
                     id: "claude-3-5-sonnet",
                     providerID: "anthropic",
                     name: "Claude 3.5 Sonnet",
@@ -368,6 +369,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "low"),
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -394,6 +396,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "low"),
+          fastMode: false,
           command: null,
         ),
       ).called(1);
@@ -439,6 +442,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "sesori-local", modelID: "test-model"),
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -468,6 +472,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "sesori-local", modelID: "test-model"),
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).called(1);
@@ -1518,6 +1523,7 @@ ProviderListResponse _providers() {
         defaultModelID: "claude-3-5-sonnet",
         models: {
           "claude-3-5-sonnet": ProviderModel(
+            fastMode: null,
             id: "claude-3-5-sonnet",
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",

@@ -9,6 +9,7 @@ import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/trackers/session_event_tracker.dart";
 import "../runtime/plugin_runtime.dart";
+import "session_prompt_service.dart";
 
 typedef SourcedBridgeEvent = ({
   String pluginId,
@@ -21,6 +22,7 @@ typedef _ProjectedSession = ({StoredSession binding, bool inserted});
 
 class SessionEventService({
   required final SessionRepository _sessionRepository,
+  required final SessionPromptService _sessionPromptService,
   required final PluginRuntime _pluginRuntime,
   required final SessionEventMapper _eventMapper,
   required final SessionEventTracker _eventTracker,
@@ -463,16 +465,19 @@ class SessionEventService({
             ),
             null => null,
           };
-          try {
-            await _sessionRepository.updatePromptDefaults(sessionId: sessionID, agent: agent, agentModel: model);
-          } on Object catch (error, stackTrace) {
-            Log.w("Failed to persist backend-originated prompt defaults for session $sessionID", error, stackTrace);
-          }
-          return BridgeSseSessionPromptDefaultsChanged(
-            sessionID: sessionID,
+          // Clients hear about it from SessionPromptService, which publishes
+          // the stored defaults including the session's fast mode.
+          await _sessionPromptService.recordBackendPromptDefaults(
+            sessionId: sessionID,
             agent: agent,
-            model: pluginModel,
+            agentModel: model,
+            isCurrentSource: () => isCurrentEvent(
+              pluginId: source.pluginId,
+              generation: source.generation,
+              allowDuringStop: allowDuringStop,
+            ),
           );
+          return null;
         }(),
       BridgeSseSessionCreated() => switch (translatedSession) {
         final session? => switch (await _catalogSession(session: session)) {

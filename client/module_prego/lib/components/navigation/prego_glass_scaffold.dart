@@ -62,10 +62,10 @@ enum PregoFloatingActionAlignment() {
 /// that collapses on scroll. Use it for screens whose body owns its own
 /// scroll (e.g. a chat with a reversed controller), where a collapsing large
 /// title has nothing to collapse against. Set it to
-/// [PregoTopNavigationTitleMode.backLeading] for the muted title block beside
-/// the back button, with the caller-composed [subtitle] widget (typically a
+/// [PregoTopNavigationTitleMode.backLeading] for the title block beside the
+/// back button, with the caller-composed [subtitle] widget (typically a
 /// [PregoNavSubtitle]) beneath it; like inline, this mode hosts no large
-/// title below the bar.
+/// title below the bar. The large title is for top-level pages only.
 ///
 /// Usage:
 /// ```dart
@@ -77,29 +77,31 @@ enum PregoFloatingActionAlignment() {
 /// )
 /// ```
 class const PregoGlassScaffold({
-    super.key,
-    /// Primary title — shown large below the bar and, once collapsed, inline.
+  super.key,
+
+  /// Primary title — shown large below the bar and, once collapsed, inline.
   required final String title,
-    /// The page's content slivers, rendered below the auto-injected spacer and
+
+  /// The page's content slivers, rendered below the auto-injected spacer and
   /// large title. Non-scrolling states (loading, empty, error) should be a
   /// single [SliverFillRemaining].
   required final List<Widget> slivers,
-    /// The back-leading title block's second line — a self-contained,
-  /// caller-composed widget (typically a [PregoNavSubtitle]) holding
-  /// everything the row needs: icon, status dot, tap affordance.
-  /// [PregoTopNavigationTitleMode.backLeading] only; null renders the title
-  /// on its own.
+
+  /// The title's second line — a self-contained, caller-composed widget
+  /// (typically a [PregoNavSubtitle]) holding everything the row needs: icon,
+  /// status dot, tap affordance. Shown under the large title (collapsing mode)
+  /// or the back-leading title block; null renders the title on its own.
   final Widget? subtitle,
-    /// Optional second text line rendered beneath the [title] in the bar's own
-  /// muted style — the large title's second line (collapsing mode) or the
-  /// centred inline subtitle (inline mode).
+
+  /// Optional second text line rendered beneath the centred inline [title] in
+  /// the bar's own muted style. Inline mode only.
   final String? subtitleText,
-    /// How the bar presents its title — collapsing large title (default), fixed
+
+  /// How the bar presents its title — collapsing large title (default), fixed
   /// centred inline title, or the back-leading title block. See the class doc.
   final PregoTopNavigationTitleMode titleMode = PregoTopNavigationTitleMode.collapsing,
-    /// Weight of the back-leading title line. Back-leading [titleMode] only.
-  final PregoNavLeadingTitleEmphasis leadingTitleEmphasis = PregoNavLeadingTitleEmphasis.muted,
-    /// An inline alert hosted in the top-navigation area, below the status bar
+
+  /// An inline alert hosted in the top-navigation area, below the status bar
   /// and above the bar row (e.g. a [PregoInlineAlertsNotifications]).
   ///
   /// Going `null` → non-null slides the alert down from under the status bar,
@@ -114,45 +116,58 @@ class const PregoGlassScaffold({
   /// banner's rendered height feeds that inset, so reading it back from inside
   /// the banner would oscillate between the two layouts.
   final Widget? banner,
-    /// Trailing bar actions. Build these with PregoButtonsIconGlass components so
+
+  /// Trailing bar actions. Build these with PregoButtonsIconGlass components so
   /// they match the leading/back button.
   final List<Widget>? actions,
-    /// Overrides the leading slot entirely. Takes precedence over [onBack] and
+
+  /// Overrides the leading slot entirely. Takes precedence over [onBack] and
   /// [automaticallyImplyLeading].
   final Widget? leading,
-    /// When set (and [leading] is null), renders a glass back button that invokes
+
+  /// When set (and [leading] is null), renders a glass back button that invokes
   /// this callback instead of relying on the enclosing navigator.
   final VoidCallback? onBack,
-    /// Whether the bar may infer a back button from the navigator when neither
+
+  /// Whether the bar may infer a back button from the navigator when neither
   /// [leading] nor [onBack] is supplied.
   final bool automaticallyImplyLeading = true,
-    /// Optional floating action button, hosted by the standalone [Scaffold].
+
+  /// Optional floating action button, hosted by the standalone [Scaffold].
   final Widget? floatingActionButton,
-    /// Where [floatingActionButton] sits horizontally. Defaults to the trailing
+
+  /// Where [floatingActionButton] sits horizontally. Defaults to the trailing
   /// edge.
   final PregoFloatingActionAlignment floatingActionAlignment = PregoFloatingActionAlignment.end,
-    /// A full-screen overlay painted above the body but below the bar, so the
+
+  /// A full-screen overlay painted above the body but below the bar, so the
   /// bar (and its back button) stays interactive while it is shown. Use for a
   /// modal scrim such as a blocking loading indicator. Null shows nothing.
   final Widget? overlay,
-    /// When set, an in-scroll refresh control opens below the top bar and pushes
+
+  /// When set, an in-scroll refresh control opens below the top bar and pushes
   /// the caller-provided content down while it is pulled.
   final Future<void> Function()? onRefresh,
-    /// An optional second stage for [onRefresh]. Pulling past a deeper
+
+  /// An optional second stage for [onRefresh]. Pulling past a deeper
   /// threshold runs it **immediately**, not on release: the underlying refresh
   /// control has no release-gated commit, so a crossed pull cannot be taken
   /// back and the surface must offer its own cancel.
   final PregoDeepRefresh? deepRefresh,
-    /// Page background painted behind the glass. Defaults to `bgSurface1`.
+
+  /// Page background painted behind the glass. Defaults to `bgSurface1`.
   final Color? backgroundColor,
-    /// Whether the body scrolls behind the bar. Defaults to `true`. Set `false`
+
+  /// Whether the body scrolls behind the bar. Defaults to `true`. Set `false`
   /// for bodies with pinned slivers that must pin below the bar.
   final bool extendBodyBehindBar = true,
-    /// Whether to inject the top spacer that pushes the first content below the
+
+  /// Whether to inject the top spacer that pushes the first content below the
   /// bar. Defaults to `true`. Set `false` when the body owns its own scroll and
   /// insets itself (see the class doc).
   final bool reserveBarSpace = true,
-    /// Whether the page itself scrolls. Defaults to `true`
+
+  /// Whether the page itself scrolls. Defaults to `true`
   /// ([AlwaysScrollableScrollPhysics]). Set `false`
   /// ([NeverScrollableScrollPhysics]) for screens whose body fills the viewport
   /// and owns its own scroll (e.g. a reversed chat list): the outer page then
@@ -161,15 +176,16 @@ class const PregoGlassScaffold({
   /// own scrollable moves. Incompatible with [onRefresh], which needs the page
   /// to be draggable.
   final bool scrollable = true,
-  }) extends StatefulWidget {
-  this : assert(
-         scrollable || onRefresh == null,
-         "onRefresh requires scrollable to be true (the refresh control needs a draggable page)",
-       ),
-       assert(
-         deepRefresh == null || onRefresh != null,
-         "deepRefresh is a second stage of onRefresh, so it needs one to extend",
-       );
+}) extends StatefulWidget {
+  this
+    : assert(
+        scrollable || onRefresh == null,
+        "onRefresh requires scrollable to be true (the refresh control needs a draggable page)",
+      ),
+      assert(
+        deepRefresh == null || onRefresh != null,
+        "deepRefresh is a second stage of onRefresh, so it needs one to extend",
+      );
 
   @override
   State<PregoGlassScaffold> createState() => _PregoGlassScaffoldState();
@@ -302,7 +318,6 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
       subtitle: widget.subtitle,
       subtitleText: widget.subtitleText,
       titleMode: widget.titleMode,
-      leadingTitleEmphasis: widget.leadingTitleEmphasis,
       scrollController: _scrollController,
       actions: widget.actions,
       leading: widget.leading,
@@ -407,7 +422,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
         if (collapsing)
           _LargeTitleSliver(
             title: widget.title,
-            subtitle: widget.subtitleText,
+            subtitle: widget.subtitle,
             scrollController: _scrollController,
             onHeightChanged: _onLargeTitleHeightChanged,
             pulledExtent: onRefresh == null ? null : () => _refreshPulledExtent,
@@ -536,9 +551,11 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
 class const _AnimatedBannerSlot({
   /// The current banner, or `null` when nothing should show.
   required final Widget? banner,
+
   /// Reports the slot's rendered height after every layout in which it
   /// changed — each frame of the show/hide animation, and once at rest.
-  required final ValueChanged<double> onHeightChanged}) extends StatefulWidget {
+  required final ValueChanged<double> onHeightChanged,
+}) extends StatefulWidget {
   static const Duration _duration = Duration(milliseconds: 300);
   static const Curve _curve = Curves.easeInOutCubic;
 
@@ -624,7 +641,8 @@ class _AnimatedBannerSlotState() extends State<_AnimatedBannerSlot> {
 /// offset while converting overscroll into a held refresh extent. A widget-level
 /// transform rebuilt during that correction can observe the new scroll offset
 /// with the old sliver geometry for one frame, making the title jump.
-class const _OverscrollPinnedBox({required final ValueGetter<double> pulledExtent, required super.child}) extends SingleChildRenderObjectWidget {
+class const _OverscrollPinnedBox({required final ValueGetter<double> pulledExtent, required super.child})
+    extends SingleChildRenderObjectWidget {
   @override
   RenderObject createRenderObject(BuildContext context) => _RenderOverscrollPinnedBox(pulledExtent);
 
@@ -669,12 +687,12 @@ class _RenderOverscrollPinnedBox(var ValueGetter<double> _pulledExtent) extends 
 }
 
 class const _LargeTitleSliver({
-    required final String title,
-    required final String? subtitle,
-    required final ScrollController scrollController,
-    required final ValueChanged<double> onHeightChanged,
-    required final ValueGetter<double>? pulledExtent,
-  }) extends StatelessWidget {
+  required final String title,
+  required final Widget? subtitle,
+  required final ScrollController scrollController,
+  required final ValueChanged<double> onHeightChanged,
+  required final ValueGetter<double>? pulledExtent,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -699,27 +717,27 @@ class const _LargeTitleSliver({
           // Fade via text alpha instead of an Opacity layer — no saveLayer per frame.
           final opacity = (1 - collapseProgress).clamp(0.0, 1.0);
 
+          final titleText = Text(
+            title,
+            style: prego.textTheme.displayMd.bold.copyWith(
+              color: prego.colors.textPrimary.withMultipliedOpacity(opacity),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          );
+          if (subtitle == null) return titleText;
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                title,
-                style: prego.textTheme.displayMd.medium.copyWith(
-                  color: prego.colors.textPrimary.withMultipliedOpacity(opacity),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              titleText,
+              // A caller-composed widget cannot take a text alpha, so it fades
+              // as a layer; the layer only exists while the title collapses.
+              IgnorePointer(
+                ignoring: opacity == 0,
+                child: Opacity(opacity: opacity, child: subtitle),
               ),
-              if (subtitle != null && subtitle.isNotEmpty)
-                Text(
-                  subtitle,
-                  style: prego.textTheme.textMd.regular.copyWith(
-                    color: prego.colors.textSecondary.withMultipliedOpacity(opacity),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
             ],
           );
         },

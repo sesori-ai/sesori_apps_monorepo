@@ -11,6 +11,8 @@ and render above the current route, below the top navigation bar.
   accent treatment from the Prego design system.
 - An alert without supporting text stays compact; supporting text and optional
   actions expand the card without clipping at accessibility text sizes.
+- An alert with actions but no supporting text keeps its icon, title, actions,
+  and close button on one vertically centred row.
 - The card is centered with 16 px screen margins and a 343 px maximum width.
 - A newly presented alert replaces the alert already visible on the same route,
   including while the previous alert is still dismissing.
@@ -19,6 +21,8 @@ and render above the current route, below the top navigation bar.
 - Alerts dismiss after three seconds by default, immediately when the close
   button is tapped, and on an upward swipe that follows the finger and completes
   on release.
+- An alert may carry an action and its own duration. The Archived alert offers Undo and stays for
+  the whole undo window instead of the three-second default; pressing Undo dismisses it.
 - Alerts presented from asynchronous operations remain visible when the source
   row or modal is removed, and alerts raised from a modal or full-screen image
   viewer render above that route rather than behind it.

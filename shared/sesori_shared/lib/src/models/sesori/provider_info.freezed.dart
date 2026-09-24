@@ -175,7 +175,8 @@ mixin _$ProviderModel {
  String get id; String get providerID; String get name;/// Effort/thinking variants in the order pickers list them.
  List<String> get variants;/// The variant a session runs at when none was chosen. Null means the
 /// first of [variants], or nothing when the model offers none.
- String? get defaultVariant; String? get family; bool get isAvailable;@dateConverter DateTime? get releaseDate;
+ String? get defaultVariant; String? get family; bool get isAvailable;/// The model's fast mode, or null when the model has none.
+ FastModeSupport? get fastMode;@dateConverter DateTime? get releaseDate;
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -189,20 +190,20 @@ $ProviderModelCopyWith<ProviderModel> get copyWith => _$ProviderModelCopyWithImp
 @override
 bool operator ==(Object other) {
   final _this = this as ProviderModel;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderModel&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.providerID, _this.providerID) || other.providerID == _this.providerID)&&(identical(other.name, _this.name) || other.name == _this.name)&&const DeepCollectionEquality().equals(other.variants, _this.variants)&&(identical(other.defaultVariant, _this.defaultVariant) || other.defaultVariant == _this.defaultVariant)&&(identical(other.family, _this.family) || other.family == _this.family)&&(identical(other.isAvailable, _this.isAvailable) || other.isAvailable == _this.isAvailable)&&(identical(other.releaseDate, _this.releaseDate) || other.releaseDate == _this.releaseDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderModel&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.providerID, _this.providerID) || other.providerID == _this.providerID)&&(identical(other.name, _this.name) || other.name == _this.name)&&const DeepCollectionEquality().equals(other.variants, _this.variants)&&(identical(other.defaultVariant, _this.defaultVariant) || other.defaultVariant == _this.defaultVariant)&&(identical(other.family, _this.family) || other.family == _this.family)&&(identical(other.isAvailable, _this.isAvailable) || other.isAvailable == _this.isAvailable)&&(identical(other.fastMode, _this.fastMode) || other.fastMode == _this.fastMode)&&(identical(other.releaseDate, _this.releaseDate) || other.releaseDate == _this.releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as ProviderModel;
-  return Object.hash(runtimeType,_this.id,_this.providerID,_this.name,const DeepCollectionEquality().hash(_this.variants),_this.defaultVariant,_this.family,_this.isAvailable,_this.releaseDate);
+  return Object.hash(runtimeType,_this.id,_this.providerID,_this.name,const DeepCollectionEquality().hash(_this.variants),_this.defaultVariant,_this.family,_this.isAvailable,_this.fastMode,_this.releaseDate);
 }
 
 @override
 String toString() {
   final _this = this as ProviderModel;
-  return 'ProviderModel(id: ${_this.id}, providerID: ${_this.providerID}, name: ${_this.name}, variants: ${_this.variants}, defaultVariant: ${_this.defaultVariant}, family: ${_this.family}, isAvailable: ${_this.isAvailable}, releaseDate: ${_this.releaseDate})';
+  return 'ProviderModel(id: ${_this.id}, providerID: ${_this.providerID}, name: ${_this.name}, variants: ${_this.variants}, defaultVariant: ${_this.defaultVariant}, family: ${_this.family}, isAvailable: ${_this.isAvailable}, fastMode: ${_this.fastMode}, releaseDate: ${_this.releaseDate})';
 }
 
 
@@ -213,11 +214,11 @@ abstract mixin class $ProviderModelCopyWith<$Res>  {
   factory $ProviderModelCopyWith(ProviderModel value, $Res Function(ProviderModel) _then) = _$ProviderModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String providerID, String name, List<String> variants, String? defaultVariant, String? family, bool isAvailable,@dateConverter DateTime? releaseDate
+ String id, String providerID, String name, List<String> variants, String? defaultVariant, String? family, bool isAvailable, FastModeSupport? fastMode,@dateConverter DateTime? releaseDate
 });
 
 
-
+$FastModeSupportCopyWith<$Res>? get fastMode;
 
 }
 /// @nodoc
@@ -230,7 +231,7 @@ class _$ProviderModelCopyWithImpl<$Res>
 
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? variants = null,Object? defaultVariant = freezed,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? variants = null,Object? defaultVariant = freezed,Object? family = freezed,Object? isAvailable = null,Object? fastMode = freezed,Object? releaseDate = freezed,}) {
   return _then(ProviderModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
@@ -239,11 +240,24 @@ as String,variants: null == variants ? _self.variants : variants // ignore: cast
 as List<String>,defaultVariant: freezed == defaultVariant ? _self.defaultVariant : defaultVariant // ignore: cast_nullable_to_non_nullable
 as String?,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
 as String?,isAvailable: null == isAvailable ? _self.isAvailable : isAvailable // ignore: cast_nullable_to_non_nullable
-as bool,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
+as bool,fastMode: freezed == fastMode ? _self.fastMode : fastMode // ignore: cast_nullable_to_non_nullable
+as FastModeSupport?,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
 }
+/// Create a copy of ProviderModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FastModeSupportCopyWith<$Res>? get fastMode {
+    if (_self.fastMode == null) {
+    return null;
+  }
 
+  return $FastModeSupportCopyWith<$Res>(_self.fastMode!, (value) {
+    return _then(_self.copyWith(fastMode: value));
+  });
+}
 }
 
 
@@ -252,7 +266,7 @@ as DateTime?,
 @JsonSerializable()
 
 class _ProviderModel implements ProviderModel {
-  const _ProviderModel({required this.id, required this.providerID, required this.name, required  List<String> variants, required this.defaultVariant, required this.family, this.isAvailable = true, @dateConverter required this.releaseDate}): _variants = variants;
+  const _ProviderModel({required this.id, required this.providerID, required this.name, required  List<String> variants, required this.defaultVariant, required this.family, this.isAvailable = true, required this.fastMode, @dateConverter required this.releaseDate}): _variants = variants;
   factory _ProviderModel.fromJson(Map<String, dynamic> json) => _$ProviderModelFromJson(json);
 
 @override final  String id;
@@ -272,6 +286,8 @@ class _ProviderModel implements ProviderModel {
 @override final  String? defaultVariant;
 @override final  String? family;
 @override@JsonKey() final  bool isAvailable;
+/// The model's fast mode, or null when the model has none.
+@override final  FastModeSupport? fastMode;
 @override@dateConverter final  DateTime? releaseDate;
 
 /// Create a copy of ProviderModel
@@ -287,18 +303,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.variants, _variants)&&(identical(other.defaultVariant, defaultVariant) || other.defaultVariant == defaultVariant)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.variants, _variants)&&(identical(other.defaultVariant, defaultVariant) || other.defaultVariant == defaultVariant)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.fastMode, fastMode) || other.fastMode == fastMode)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,providerID,name,const DeepCollectionEquality().hash(_variants),defaultVariant,family,isAvailable,releaseDate);
+    return Object.hash(runtimeType,id,providerID,name,const DeepCollectionEquality().hash(_variants),defaultVariant,family,isAvailable,fastMode,releaseDate);
 }
 
 @override
 String toString() {
-    return 'ProviderModel(id: $id, providerID: $providerID, name: $name, variants: $variants, defaultVariant: $defaultVariant, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
+    return 'ProviderModel(id: $id, providerID: $providerID, name: $name, variants: $variants, defaultVariant: $defaultVariant, family: $family, isAvailable: $isAvailable, fastMode: $fastMode, releaseDate: $releaseDate)';
 }
 
 
@@ -309,11 +325,11 @@ abstract mixin class _$ProviderModelCopyWith<$Res> implements $ProviderModelCopy
   factory _$ProviderModelCopyWith(_ProviderModel value, $Res Function(_ProviderModel) _then) = __$ProviderModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String providerID, String name, List<String> variants, String? defaultVariant, String? family, bool isAvailable,@dateConverter DateTime? releaseDate
+ String id, String providerID, String name, List<String> variants, String? defaultVariant, String? family, bool isAvailable, FastModeSupport? fastMode,@dateConverter DateTime? releaseDate
 });
 
 
-
+@override $FastModeSupportCopyWith<$Res>? get fastMode;
 
 }
 /// @nodoc
@@ -326,7 +342,7 @@ class __$ProviderModelCopyWithImpl<$Res>
 
 /// Create a copy of ProviderModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? variants = null,Object? defaultVariant = freezed,Object? family = freezed,Object? isAvailable = null,Object? releaseDate = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? providerID = null,Object? name = null,Object? variants = null,Object? defaultVariant = freezed,Object? family = freezed,Object? isAvailable = null,Object? fastMode = freezed,Object? releaseDate = freezed,}) {
   return _then(_ProviderModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,providerID: null == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
@@ -335,13 +351,269 @@ as String,variants: null == variants ? _self._variants : variants // ignore: cas
 as List<String>,defaultVariant: freezed == defaultVariant ? _self.defaultVariant : defaultVariant // ignore: cast_nullable_to_non_nullable
 as String?,family: freezed == family ? _self.family : family // ignore: cast_nullable_to_non_nullable
 as String?,isAvailable: null == isAvailable ? _self.isAvailable : isAvailable // ignore: cast_nullable_to_non_nullable
-as bool,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
+as bool,fastMode: freezed == fastMode ? _self.fastMode : fastMode // ignore: cast_nullable_to_non_nullable
+as FastModeSupport?,releaseDate: freezed == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,
+  ));
+}
+
+/// Create a copy of ProviderModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FastModeSupportCopyWith<$Res>? get fastMode {
+    if (_self.fastMode == null) {
+    return null;
+  }
+
+  return $FastModeSupportCopyWith<$Res>(_self.fastMode!, (value) {
+    return _then(_self.copyWith(fastMode: value));
+  });
+}
+}
+
+FastModeSupport _$FastModeSupportFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['type']) {
+                  case 'available':
+          return FastModeAvailable.fromJson(
+            json
+          );
+                case 'unavailable':
+          return FastModeUnavailable.fromJson(
+            json
+          );
+        
+          default:
+            return FastModeSupportUnknown.fromJson(
+  json
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$FastModeSupport {
+
+
+
+  /// Serializes this FastModeSupport to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FastModeSupport);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'FastModeSupport()';
+}
+
+
+}
+
+/// @nodoc
+class $FastModeSupportCopyWith<$Res>  {
+$FastModeSupportCopyWith(FastModeSupport _, $Res Function(FastModeSupport) __);
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class FastModeAvailable implements FastModeSupport {
+  const FastModeAvailable({required this.promptCacheTtlSeconds,  String? $type}): $type = $type ?? 'available';
+  factory FastModeAvailable.fromJson(Map<String, dynamic> json) => _$FastModeAvailableFromJson(json);
+
+ final  int promptCacheTtlSeconds;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of FastModeSupport
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$FastModeAvailableCopyWith<FastModeAvailable> get copyWith => _$FastModeAvailableCopyWithImpl<FastModeAvailable>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$FastModeAvailableToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FastModeAvailable&&(identical(other.promptCacheTtlSeconds, promptCacheTtlSeconds) || other.promptCacheTtlSeconds == promptCacheTtlSeconds));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,promptCacheTtlSeconds);
+}
+
+@override
+String toString() {
+    return 'FastModeSupport.available(promptCacheTtlSeconds: $promptCacheTtlSeconds)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $FastModeAvailableCopyWith<$Res> implements $FastModeSupportCopyWith<$Res> {
+  factory $FastModeAvailableCopyWith(FastModeAvailable value, $Res Function(FastModeAvailable) _then) = _$FastModeAvailableCopyWithImpl;
+@useResult
+$Res call({
+ int promptCacheTtlSeconds
+});
+
+
+
+
+}
+/// @nodoc
+class _$FastModeAvailableCopyWithImpl<$Res>
+    implements $FastModeAvailableCopyWith<$Res> {
+  _$FastModeAvailableCopyWithImpl(this._self, this._then);
+
+  final FastModeAvailable _self;
+  final $Res Function(FastModeAvailable) _then;
+
+/// Create a copy of FastModeSupport
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? promptCacheTtlSeconds = null,}) {
+  return _then(FastModeAvailable(
+promptCacheTtlSeconds: null == promptCacheTtlSeconds ? _self.promptCacheTtlSeconds : promptCacheTtlSeconds // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
 
 }
+
+/// @nodoc
+@JsonSerializable()
+
+class FastModeUnavailable implements FastModeSupport {
+  const FastModeUnavailable({@JsonKey(unknownEnumValue: FastModeUnavailableReason.unknown) required this.reason,  String? $type}): $type = $type ?? 'unavailable';
+  factory FastModeUnavailable.fromJson(Map<String, dynamic> json) => _$FastModeUnavailableFromJson(json);
+
+@JsonKey(unknownEnumValue: FastModeUnavailableReason.unknown) final  FastModeUnavailableReason reason;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of FastModeSupport
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$FastModeUnavailableCopyWith<FastModeUnavailable> get copyWith => _$FastModeUnavailableCopyWithImpl<FastModeUnavailable>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$FastModeUnavailableToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FastModeUnavailable&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,reason);
+}
+
+@override
+String toString() {
+    return 'FastModeSupport.unavailable(reason: $reason)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $FastModeUnavailableCopyWith<$Res> implements $FastModeSupportCopyWith<$Res> {
+  factory $FastModeUnavailableCopyWith(FastModeUnavailable value, $Res Function(FastModeUnavailable) _then) = _$FastModeUnavailableCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(unknownEnumValue: FastModeUnavailableReason.unknown) FastModeUnavailableReason reason
+});
+
+
+
+
+}
+/// @nodoc
+class _$FastModeUnavailableCopyWithImpl<$Res>
+    implements $FastModeUnavailableCopyWith<$Res> {
+  _$FastModeUnavailableCopyWithImpl(this._self, this._then);
+
+  final FastModeUnavailable _self;
+  final $Res Function(FastModeUnavailable) _then;
+
+/// Create a copy of FastModeSupport
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
+  return _then(FastModeUnavailable(
+reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as FastModeUnavailableReason,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class FastModeSupportUnknown implements FastModeSupport {
+  const FastModeSupportUnknown({ String? $type}): $type = $type ?? 'unknown';
+  factory FastModeSupportUnknown.fromJson(Map<String, dynamic> json) => _$FastModeSupportUnknownFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$FastModeSupportUnknownToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FastModeSupportUnknown);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'FastModeSupport.unknown()';
+}
+
+
+}
+
+
+
 
 
 /// @nodoc

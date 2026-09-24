@@ -619,7 +619,7 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
               fit: BoxFit.contain,
               gaplessPlayback: true,
               errorBuilder: (_, _, _) => Icon(
-                Icons.broken_image,
+                TablerRegular.photo_off,
                 size: context.prego.spacing.x6l,
                 color: context.prego.colors.textTertiary,
               ),
@@ -696,7 +696,7 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
               IconButton(
                 tooltip: context.loc.sessionDetailImageClose,
                 onPressed: _dismiss,
-                icon: Icon(Icons.close, color: prego.colors.textPrimary),
+                icon: Icon(TablerRegular.x, color: prego.colors.textPrimary),
               ),
               SizedBox(width: prego.spacing.xs),
               Expanded(
@@ -729,13 +729,13 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
                           )
                           .then<void>((_) {}),
                     ),
-                    icon: Icon(Icons.open_in_new, color: prego.colors.textPrimary),
+                    icon: Icon(TablerRegular.external_link, color: prego.colors.textPrimary),
                   ),
                 if (actionsCubit != null) ...[
                   IconButton(
                     tooltip: context.loc.sessionDetailImageCopy,
                     onPressed: () => unawaited(actionsCubit.copy()),
-                    icon: Icon(Icons.content_copy, color: prego.colors.textPrimary),
+                    icon: Icon(TablerRegular.copy, color: prego.colors.textPrimary),
                   ),
                   if (SessionDetailPresentationScope.read(context).canShareImages)
                     Builder(
@@ -746,13 +746,13 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
                             origin: _shareOrigin(originContext: buttonContext),
                           ),
                         ),
-                        icon: Icon(Icons.share_outlined, color: prego.colors.textPrimary),
+                        icon: Icon(TablerRegular.share, color: prego.colors.textPrimary),
                       ),
                     ),
                   IconButton(
                     tooltip: context.loc.sessionDetailImageSave,
                     onPressed: () => unawaited(actionsCubit.save()),
-                    icon: Icon(Icons.download_outlined, color: prego.colors.textPrimary),
+                    icon: Icon(TablerRegular.download, color: prego.colors.textPrimary),
                   ),
                 ],
               ],
@@ -864,7 +864,7 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
                                 SizedBox(width: prego.spacing.md),
                                 TextButton.icon(
                                   onPressed: widget.onRetryOriginal,
-                                  icon: const Icon(Icons.refresh),
+                                  icon: const Icon(TablerRegular.refresh),
                                   label: Text(context.loc.sessionDetailRetryOriginal),
                                 ),
                               ],

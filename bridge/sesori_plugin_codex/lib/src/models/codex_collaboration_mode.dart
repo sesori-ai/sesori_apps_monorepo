@@ -28,6 +28,10 @@ enum CodexCollaborationMode({
       // COMPATIBILITY 2026-08-19 (v1.7.0): This mode was named "Default" until
       // it was renamed to "Agent". Remove once no supported app can send it.
       "default" => defaultMode,
+      // COMPATIBILITY 2026-09-21 (v1.9.0): Plan was advertised as an agent, and
+      // catalogs captured then are served for up to 30 days, so a client can
+      // still send it. It is honoured rather than run in the editing default.
+      // Remove once no catalog captured before this date can still be served.
       "plan" => plan,
       // COMPATIBILITY 2026-07-24 (v1.6.0): Earlier Codex plugins persisted
       // their sole agent as "codex". Remove this alias after v1.6.0 prompt

@@ -68,6 +68,7 @@ sealed class BridgePluginApi() {
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   });
@@ -125,15 +126,20 @@ sealed class BridgePluginApi() {
   /// and the client can refresh and retry.
   ///
   /// [promptId] is the prompt's stable identity: queue-owning plugins key
-  /// their queued entries by it, refuse a duplicate (already queued or
-  /// recently dispatched) as an idempotent success, and stamp it on the
-  /// resulting user message's `promptId`. Plugins without a queue may
-  /// ignore it.
+  /// their queued entries by it and stamp it on the resulting user message's
+  /// `promptId`. Plugins without a queue may ignore it. The bridge answers a
+  /// repeated id itself, so each call is a new prompt.
+  ///
+  /// [fastMode] asks this and later turns of the session (including those
+  /// started by [createSession] and [sendCommand]) to run in the backend's
+  /// fast mode. The bridge sends it on every call; a plugin whose models never
+  /// advertise [PluginModel.fastMode] ignores it.
   Future<void> sendPrompt({
     required String sessionId,
     required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   });
@@ -168,6 +174,7 @@ sealed class BridgePluginApi() {
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   });

@@ -36,7 +36,7 @@ Future<void> showEmailLoginSheet({
   // is up only the email form can fail, so the inline alert only ever reflects
   // an email attempt.
   cubit.onDismissedLoginFailureError();
-  await showPregoBottomSheet<void>(
+  await showPregoModal<void>(
     context: context,
     title: context.loc.signInWithEmail,
     builder: (_) => BlocProvider<LoginCubit>.value(
@@ -140,7 +140,6 @@ class _EmailLoginSheetState() extends State<EmailLoginSheet> {
             PregoInputField(
               controller: _emailController,
               label: loc.emailLabel,
-              isRequired: true,
               hintText: loc.emailHint,
               enabled: !isLoading,
               autofocus: true,
@@ -156,7 +155,6 @@ class _EmailLoginSheetState() extends State<EmailLoginSheet> {
             PregoInputField(
               controller: _passwordController,
               label: loc.passwordLabel,
-              isRequired: true,
               enabled: !isLoading,
               obscureText: _obscurePassword,
               autocorrect: false,
@@ -204,7 +202,7 @@ class const _PasswordVisibilityToggle({
       child: GestureDetector(
         onTap: onPressed,
         // Fill the field's trailing slot so the whole minimum-size touch target
-        // is tappable, not just the 16pt glyph.
+        // is tappable, not just the 14pt glyph.
         behavior: HitTestBehavior.opaque,
         child: SizedBox(
           width: PregoInputField.trailingSlotSize,
@@ -212,7 +210,7 @@ class const _PasswordVisibilityToggle({
           child: Center(
             child: Icon(
               isObscured ? TablerRegular.eye_off : TablerRegular.eye,
-              size: 16,
+              size: PregoIconSize.sm,
               color: context.prego.colors.fgQuaternary,
             ),
           ),

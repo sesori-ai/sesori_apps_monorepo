@@ -187,6 +187,7 @@ class SessionRepository({
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    required bool fastMode,
   }) async {
     final parentBinding = parentSessionId == null
         ? null
@@ -214,6 +215,7 @@ class SessionRepository({
           parts: parts.map((part) => part.toPlugin()).toList(growable: false),
           userVisibleText: userVisibleText,
           variant: _toPluginVariant(variant),
+          fastMode: fastMode,
           agent: agent,
           model: _toPluginModel(model),
         );
@@ -248,6 +250,7 @@ class SessionRepository({
             baseCommit: baseCommit,
             lastAgent: lastAgent,
             lastAgentModel: lastAgentModel,
+            fastMode: fastMode,
             pluginId: pluginId,
             preservePullRequestScope:
                 existingBinding?.projectId == projectId && existingBinding?.branchName == branchName,
@@ -317,6 +320,7 @@ class SessionRepository({
     required String arguments,
     required String? userVisibleArguments,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) => _useSessionPlugin(
@@ -329,6 +333,7 @@ class SessionRepository({
       arguments: arguments,
       userVisibleArguments: userVisibleArguments,
       variant: _toPluginVariant(variant),
+      fastMode: fastMode,
       agent: agent,
       model: _toPluginModel(model),
     ),
@@ -339,6 +344,7 @@ class SessionRepository({
     required String promptId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) => _useSessionPlugin(
@@ -349,6 +355,7 @@ class SessionRepository({
       promptId: promptId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),
       variant: _toPluginVariant(variant),
+      fastMode: fastMode,
       agent: agent,
       model: _toPluginModel(model),
     ),
@@ -1493,15 +1500,40 @@ class SessionRepository({
     );
   }
 
-  Future<void> updatePromptDefaults({
+  /// Records the agent and model the backend reports for [sessionId] and
+  /// returns the stored prompt defaults, or null when the session has no row.
+  ///
+  /// Leaves the stored fast mode untouched: only client requests choose it
+  /// (see [updateRequestedPromptDefaults]). The returned value carries it, so
+  /// callers never publish a backend report without it.
+  Future<SessionPromptDefaults?> updatePromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
-  }) {
-    return _sessionDao.updatePromptDefaults(
+  }) async {
+    final row = await _sessionDao.updatePromptDefaults(
       sessionId: sessionId,
       agent: agent,
       agentModel: agentModel,
+    );
+    return row == null
+        ? null
+        : SessionPromptDefaults(agent: row.lastAgent, model: row.lastAgentModel, fastMode: row.fastMode);
+  }
+
+  /// Records the selection a client prompt or command ran with, including
+  /// its fast-mode choice.
+  Future<void> updateRequestedPromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+    required bool fastMode,
+  }) {
+    return _sessionDao.updateRequestedPromptDefaults(
+      sessionId: sessionId,
+      agent: agent,
+      agentModel: agentModel,
+      fastMode: fastMode,
     );
   }
 

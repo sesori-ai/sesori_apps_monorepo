@@ -97,7 +97,7 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
           floatingActionButton: FloatingActionButton(
             tooltip: loc.addProject,
             onPressed: () => _showAddProjectDialog(context, context.read<ProjectListCubit>()),
-            child: const Icon(Icons.add),
+            child: const Icon(TablerRegular.plus),
           ),
           body: switch (state) {
             ProjectListLoading() => Center(
@@ -113,7 +113,7 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     onPressed: () => _showAddProjectDialog(context, context.read<ProjectListCubit>()),
-                    icon: const Icon(Icons.add),
+                    icon: const Icon(TablerRegular.plus),
                     label: Text(loc.addProject),
                   ),
                 ],
@@ -308,7 +308,7 @@ void main() {
 
       expect(find.text("No projects"), findsOneWidget);
       expect(find.text("Add a project to get started"), findsOneWidget);
-      expect(find.widgetWithText(FilledButton, "Add Project"), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, "Add project"), findsOneWidget);
     });
 
     testWidgets("empty state add button opens dialog", (tester) async {
@@ -319,7 +319,7 @@ void main() {
 
       await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
 
-      await tester.tap(find.widgetWithText(FilledButton, "Add Project"));
+      await tester.tap(find.widgetWithText(FilledButton, "Add project"));
       await tester.pumpAndSettle();
 
       expect(_addButton, findsOneWidget);
@@ -697,7 +697,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text("Enable Git tracking?"), findsOneWidget);
-      expect(find.text("Continue Without Git"), findsOneWidget);
+      expect(find.text("Continue without Git"), findsOneWidget);
       expect(find.text("Enable Git"), findsOneWidget);
 
       await tester.tap(find.text("Enable Git"));
@@ -751,7 +751,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(_addButton);
       await tester.pumpAndSettle();
-      await tester.tap(find.text("Continue Without Git"));
+      await tester.tap(find.text("Continue without Git"));
       await tester.pumpAndSettle();
 
       verify(

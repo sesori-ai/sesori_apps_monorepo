@@ -18,6 +18,7 @@ import "package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
 import "package:sesori_mobile/core/di/injection.dart";
+import "package:sesori_shared/sesori_shared.dart" show FailureReporter;
 export "package:sesori_dart_core/testing.dart";
 
 // ---------------------------------------------------------------------------
@@ -128,6 +129,39 @@ void _registerListServices({
     getIt.unregister<CatalogRescanService>();
   }
   getIt.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
+  if (getIt.isRegistered<ProjectInventoryService>()) {
+    getIt.unregister<ProjectInventoryService>();
+  }
+  getIt.registerFactory<ProjectInventoryService>(
+    () => ProjectInventoryService(
+      projectRepository: getIt<ProjectRepository>(),
+      connectionService: getIt<ConnectionService>(),
+      sseEventTracker: getIt<SseEventTracker>(),
+      routeSource: getIt<RouteSource>(),
+      projectListService: getIt<ProjectListService>(),
+      sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+      registeredBridgesService: getIt<RegisteredBridgesService>(),
+      productAnalyticsService: getIt<ProductAnalyticsService>(),
+      failureReporter: getIt<FailureReporter>(),
+      catalogRescanService: getIt<CatalogRescanService>(),
+    ),
+  );
+  // Projects reads every project's recent sessions for its Activity group.
+  // Screens under test see none unless a test registers its own inventory.
+  if (!getIt.isRegistered<RecentSessionInventoryService>()) {
+    getIt.registerFactory<RecentSessionInventoryService>(() => stubRecentSessionInventory(entries: const {}));
+  }
+}
+
+class MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
+
+/// A recent-session inventory that holds [entries] and never reads.
+MockRecentSessionInventoryService stubRecentSessionInventory({required Map<String, RecentSessionsEntry> entries}) {
+  final inventory = MockRecentSessionInventoryService();
+  when(() => inventory.state).thenAnswer((_) => BehaviorSubject.seeded(entries).stream);
+  when(inventory.refresh).thenAnswer((_) async => true);
+  when(inventory.dispose).thenAnswer((_) async {});
+  return inventory;
 }
 
 class MockFirebaseCrashlytics() extends Mock implements FirebaseCrashlytics;

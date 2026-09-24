@@ -53,16 +53,6 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (state.children.isNotEmpty)
-          ValueListenableBuilder<PregoComposerSurfaceStyle>(
-            valueListenable: _composerSurfaceStyle,
-            builder: (context, surfaceStyle, _) => BackgroundTasksBar(
-              surfaceStyle: surfaceStyle,
-              projectId: widget.projectId,
-              children: state.children,
-              childStatuses: state.childStatuses,
-            ),
-          ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: PromptInput(
@@ -115,8 +105,23 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                 onModelSelected: context.read<SessionDetailCubit>().selectModel,
                 availableVariants: state.availableVariants,
                 onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                fastModeControl: state.fastModeControl,
+                decideFastModeToggle: context.read<SessionDetailCubit>().fastModeToggleDecision,
+                onFastModeChanged: context.read<SessionDetailCubit>().setFastMode,
+                compact: composerCapabilities.presentation == ComposerPresentation.pointer,
               ),
             ),
+            composerTrailing: state.children.isEmpty
+                ? null
+                : ValueListenableBuilder<PregoComposerSurfaceStyle>(
+                    valueListenable: _composerSurfaceStyle,
+                    builder: (context, surfaceStyle, _) => BackgroundTasksBar(
+                      surfaceStyle: surfaceStyle,
+                      projectId: widget.projectId,
+                      children: state.children,
+                      childStatuses: state.childStatuses,
+                    ),
+                  ),
             availableCommands: state.availableCommands,
             stagedCommand: state.stagedCommand,
             onCommandSelected: context.read<SessionDetailCubit>().stageCommand,

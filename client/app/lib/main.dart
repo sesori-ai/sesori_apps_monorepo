@@ -53,6 +53,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Initialize standard shaders, but do not preload the unused premium tier.
   await LiquidGlassWidgets.initialize(warmUpMode: GlassWarmUpMode.never);
+  await PregoSystemDatePatterns.load();
   // The native splash runs in fullscreen, which leaves the status/nav bars
   // hidden on iOS until the engine is told otherwise. Restore them and let
   // content draw behind them so the background image still reaches the edges.
@@ -367,7 +368,15 @@ class const _SesoriAppShell() extends StatelessWidget {
               ),
               child: SseToastListener(
                 navigatorKey: appRootNavigatorKey,
-                child: child ?? const SizedBox.shrink(),
+                // Above the router, so an archive's Undo window survives
+                // leaving the project it was started in.
+                child: BlocProvider(
+                  create: (_) => PendingSessionArchiveCubit(repository: getIt<SessionRepository>()),
+                  child: PendingArchiveAlerts(
+                    navigatorKey: appRootNavigatorKey,
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
               ),
             ),
           ),

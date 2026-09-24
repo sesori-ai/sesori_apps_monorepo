@@ -10,9 +10,9 @@ void main() {
 
       expect(
         limiter.shouldSend(
-          category: NotificationCategory.aiInteraction,
+          category: NotificationCategory.sessionMessage,
           sessionId: "session-a",
-          rateLimitKey: "ai_interaction-session-a",
+          rateLimitKey: "session_message-session-a",
         ),
         isTrue,
       );
@@ -38,9 +38,9 @@ void main() {
 
       expect(
         limiter.shouldSend(
-          category: NotificationCategory.aiInteraction,
+          category: NotificationCategory.sessionMessage,
           sessionId: "session-a",
-          rateLimitKey: "ai_interaction-session-a",
+          rateLimitKey: "session_message-session-a",
         ),
         isTrue,
       );
@@ -51,27 +51,37 @@ void main() {
       expect(limiter.retainedKeyCount, 1);
     });
 
-    test("first call sends and second call within cooldown is blocked", () {
+    test("completion is blocked within 30 seconds and allowed at the boundary", () {
       var now = DateTime(2026, 1, 1, 10, 0, 0);
       final limiter = PushRateLimiter(now: () => now);
 
       expect(
         limiter.shouldSend(
-          category: NotificationCategory.aiInteraction,
+          category: NotificationCategory.sessionMessage,
           sessionId: "session-a",
-          rateLimitKey: "ai_interaction-session-a",
+          rateLimitKey: "session_message-session-a",
         ),
         isTrue,
       );
 
-      now = now.add(const Duration(seconds: 1));
+      now = now.add(const Duration(seconds: 29, milliseconds: 999));
       expect(
         limiter.shouldSend(
-          category: NotificationCategory.aiInteraction,
+          category: NotificationCategory.sessionMessage,
           sessionId: "session-a",
-          rateLimitKey: "ai_interaction-session-a",
+          rateLimitKey: "session_message-session-a",
         ),
         isFalse,
+      );
+
+      now = now.add(const Duration(milliseconds: 1));
+      expect(
+        limiter.shouldSend(
+          category: NotificationCategory.sessionMessage,
+          sessionId: "session-a",
+          rateLimitKey: "session_message-session-a",
+        ),
+        isTrue,
       );
     });
 
@@ -94,6 +104,22 @@ void main() {
         ),
         isTrue,
       );
+    });
+
+    test("blocking interactions are always allowed without retaining cooldown keys", () {
+      final limiter = PushRateLimiter(now: () => DateTime(2026, 1, 1, 10, 0, 0));
+
+      for (var request = 0; request < 3; request++) {
+        expect(
+          limiter.shouldSend(
+            category: NotificationCategory.aiInteraction,
+            sessionId: "session-a",
+            rateLimitKey: "ai_interaction-session-a",
+          ),
+          isTrue,
+        );
+      }
+      expect(limiter.retainedKeyCount, 0);
     });
 
     test("system updates are always allowed", () {
@@ -124,9 +150,9 @@ void main() {
 
       expect(
         limiter.shouldSend(
-          category: NotificationCategory.aiInteraction,
+          category: NotificationCategory.sessionMessage,
           sessionId: "session-a",
-          rateLimitKey: "ai_interaction-session-a",
+          rateLimitKey: "session_message-session-a",
         ),
         isTrue,
       );
@@ -147,9 +173,9 @@ void main() {
 
       expect(
         limiter.shouldSend(
-          category: NotificationCategory.aiInteraction,
+          category: NotificationCategory.sessionMessage,
           sessionId: "session-a",
-          rateLimitKey: "ai_interaction-session-a",
+          rateLimitKey: "session_message-session-a",
         ),
         isTrue,
       );
@@ -159,9 +185,9 @@ void main() {
 
       expect(
         limiter.shouldSend(
-          category: NotificationCategory.aiInteraction,
+          category: NotificationCategory.sessionMessage,
           sessionId: "session-a",
-          rateLimitKey: "ai_interaction-session-a",
+          rateLimitKey: "session_message-session-a",
         ),
         isFalse,
       );

@@ -14,12 +14,10 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-/// The Projects top navigation, which is the same compact back-leading block on
-/// every state: the page title over a subtitle row naming the machine this
-/// account is paired with. No state hosts a collapsing large title, so the bar
-/// never changes size or place as the page moves between them — and the bodies,
-/// which join the scaffold's page scroll rather than nesting one of their own,
-/// scroll underneath a bar that stays put.
+/// The Projects title, which is the same large title on every state: the page
+/// title over a subtitle row naming the machine this account is paired with.
+/// The bodies join the scaffold's page scroll rather than nesting one of their
+/// own.
 ///
 /// The two disconnected surfaces are the exception in what that subtitle says:
 /// the connect-your-computer onboarding has no machine to name yet, so its row
@@ -113,7 +111,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets("the bridge-offline body scrolls under a back-leading bar naming the machine", (tester) async {
+  testWidgets("the bridge-offline page keeps the large title over the machine", (tester) async {
     await pumpScreen(
       tester,
       hasRegisteredBridges: true,
@@ -131,41 +129,31 @@ void main() {
     expect(find.byType(CustomScrollView), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsNothing);
 
-    // The bar carries the page title over the machine the body is trying to
-    // reach, so there is no large title in the scroll view to collapse.
-    expect(find.byType(PregoNavLeadingTitle), findsOneWidget);
-    expect(largeTitle("Projects"), findsNothing);
-    expect(find.text("Projects"), findsOneWidget);
+    // A top-level page: the large title carries the machine the body is trying
+    // to reach as its second line.
+    expect(largeTitle("Projects"), findsOneWidget);
+    expect(find.byType(PregoNavLeadingTitle), findsNothing);
     expect(find.byIcon(TablerRegular.device_laptop), findsNWidgets(2));
     expect(find.text("Macbook-Pro.local"), findsNWidgets(2));
 
-    // The body scrolls under a bar that stays put.
-    final barBefore = tester.getTopLeft(find.byType(PregoNavLeadingTitle));
+    // The body scrolls up with the title.
     final bodyBefore = tester.getTopLeft(find.text("Make sure the Bridge is running")).dy;
     await scrollPageUp(tester);
     expect(tester.getTopLeft(find.text("Make sure the Bridge is running")).dy, lessThan(bodyBefore));
-    expect(tester.getTopLeft(find.byType(PregoNavLeadingTitle)), barBefore);
   });
 
-  testWidgets("the connect onboarding hosts a back-leading bar instead of a large title", (tester) async {
+  testWidgets("the connect onboarding keeps the large title over what it waits for", (tester) async {
     await pumpScreen(tester, hasRegisteredBridges: false);
     // Still one page scroll owned by the scaffold, as on the offline body.
     expect(find.byType(CustomScrollView), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsNothing);
 
-    // The bar carries the page title over a status row reporting what the body
-    // is waiting for — so there is no large title in the scroll view to
-    // collapse, and the body's own caption is the only other copy of the text.
-    expect(find.byType(PregoNavLeadingTitle), findsOneWidget);
-    expect(largeTitle("Projects"), findsNothing);
-    expect(find.text("Projects"), findsOneWidget);
+    // The status row under the large title reports what the body is waiting
+    // for, and the body's own caption is the only other copy of the text.
+    expect(largeTitle("Projects"), findsOneWidget);
+    expect(find.byType(PregoNavLeadingTitle), findsNothing);
     expect(find.byIcon(TablerRegular.broadcast_off), findsOneWidget);
     expect(find.text("Waiting for the bridge..."), findsNWidgets(2));
-
-    // Scrolling moves the body without disturbing the fixed bar.
-    final barBefore = tester.getTopLeft(find.byType(PregoNavLeadingTitle));
-    await scrollPageUp(tester);
-    expect(tester.getTopLeft(find.byType(PregoNavLeadingTitle)), barBefore);
   });
 
   testWidgets("pulling the disconnected page down re-attempts the bridge connection", (tester) async {
@@ -185,7 +173,7 @@ void main() {
 
   // -------------------------------------------------------------------------
   // The connected surfaces: the loading page and the loaded list wear the same
-  // bar as the disconnected ones, with the machine name as its second line.
+  // title as the disconnected ones, with the machine name as its second line.
   //
   // The list fetch and the machine lookup are handed in as futures so a test can
   // hold either open and observe the state it asserts — a list still loading, a
@@ -250,14 +238,11 @@ void main() {
       addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
     }
 
-    testWidgets("the loaded list carries the page title over the machine name, with no large title", (tester) async {
+    testWidgets("the loaded list carries the large title over the machine name", (tester) async {
       await pumpConnected(tester, list: Future.value(oneProject()), lookup: Future.value([macbook]));
 
-      expect(find.byType(PregoNavLeadingTitle), findsOneWidget);
-      // The only "Projects" on the page is the bar's own title: the list no
-      // longer hosts a large one to scroll away.
-      expect(largeTitle("Projects"), findsNothing);
-      expect(find.text("Projects"), findsOneWidget);
+      expect(largeTitle("Projects"), findsOneWidget);
+      expect(find.byType(PregoNavLeadingTitle), findsNothing);
       expect(find.text("Macbook-Pro.local"), findsOneWidget);
       expect(find.byIcon(TablerRegular.device_laptop), findsOneWidget);
       // Reachable, so the row's dot reads as online rather than carrying the
@@ -268,7 +253,7 @@ void main() {
       );
     });
 
-    testWidgets("the loading page wears the same bar, shimmering the machine it cannot name yet", (tester) async {
+    testWidgets("the loading page wears the same title, shimmering the machine it cannot name yet", (tester) async {
       // Neither answer arrives: the page stays on its first load with nothing to
       // name yet.
       await pumpConnected(
@@ -277,9 +262,7 @@ void main() {
         lookup: Completer<List<BridgeSummary>>().future,
       );
 
-      expect(find.byType(PregoNavLeadingTitle), findsOneWidget);
-      expect(find.text("Projects"), findsOneWidget);
-      expect(largeTitle("Projects"), findsNothing);
+      expect(largeTitle("Projects"), findsOneWidget);
       // The row is held by its skeleton rather than left out, so the block keeps
       // the height it will have once the name lands.
       expect(find.byType(PregoNavSubtitleSkeleton), findsOneWidget);

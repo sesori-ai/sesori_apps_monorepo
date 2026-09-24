@@ -6,7 +6,7 @@ void main() {
   group("ClaudeBackendCatalogRepository", () {
     const repository = ClaudeBackendCatalogRepository();
 
-    test("maps models, effort variants, commands, and permission-mode agents", () {
+    test("maps models, effort variants, commands, and the default agent", () {
       final catalog = repository.map(
         handshake: {
           "commands": [
@@ -34,13 +34,14 @@ void main() {
               "displayName": "Opus (1M context)",
               "supportsEffort": true,
               "supportedEffortLevels": ["low", "medium", "future", "high", "xhigh", "max"],
+              "supportsFastMode": true,
             },
           ],
           "account": {"email": "private@example.com"},
         },
       );
 
-      expect(catalog.agents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(catalog.agents.map((agent) => agent.name), ["Agent"]);
       expect(catalog.agents.every((agent) => agent.model?.modelID == "opus[1m]"), isTrue);
       expect(catalog.agents.every((agent) => agent.model?.variant == "high"), isTrue);
       final provider = catalog.providers.providers.single;
@@ -54,6 +55,12 @@ void main() {
       expect(provider.models.last.variants, isEmpty);
       expect(provider.models.last.defaultVariant, isNull);
       expect(
+        provider.models.first.fastMode,
+        const PluginFastModeSupport.available(promptCacheTtlSeconds: 3600),
+        reason: "a handshake without fast_mode_disabled_reason leaves fast mode available",
+      );
+      expect(provider.models.last.fastMode, isNull, reason: "the CLI omits supportsFastMode when unsupported");
+      expect(
         catalog.commands,
         const [
           PluginCommand(
@@ -65,6 +72,84 @@ void main() {
           ),
         ],
       );
+    });
+
+    group("fast mode availability", () {
+      PluginFastModeSupport? fastModeFor({required Object? disabledReason}) => repository
+          .map(
+            handshake: {
+              "models": [
+                {"value": "opus", "supportsFastMode": true},
+              ],
+              "fast_mode_disabled_reason": disabledReason,
+            },
+          )
+          .providers
+          .providers
+          .single
+          .models
+          .single
+          .fastMode;
+
+      test("treats a still-masked SDK opt-in requirement as available", () {
+        expect(
+          fastModeFor(disabledReason: "sdk_opt_in_required"),
+          const PluginFastModeSupport.available(promptCacheTtlSeconds: 3600),
+        );
+      });
+
+      test("treats transient states as available", () {
+        for (final raw in ["network_error", "pending"]) {
+          expect(
+            fastModeFor(disabledReason: raw),
+            const PluginFastModeSupport.available(promptCacheTtlSeconds: 3600),
+            reason: raw,
+          );
+        }
+      });
+
+      test("maps account reasons to the closed reason set", () {
+        const expected = {
+          "extra_usage_disabled": PluginFastModeUnavailableReason.extraUsageDisabled,
+          "free": PluginFastModeUnavailableReason.notOnPlan,
+          "preference": PluginFastModeUnavailableReason.disabledByOrganization,
+          "model_not_allowed": PluginFastModeUnavailableReason.disabledByOrganization,
+          "not_first_party": PluginFastModeUnavailableReason.unknown,
+          "disabled_by_env": PluginFastModeUnavailableReason.unknown,
+          "unknown": PluginFastModeUnavailableReason.unknown,
+          "a_future_reason": PluginFastModeUnavailableReason.unknown,
+        };
+        for (final MapEntry(key: raw, value: reason) in expected.entries) {
+          expect(
+            fastModeFor(disabledReason: raw),
+            PluginFastModeSupport.unavailable(reason: reason),
+            reason: raw,
+          );
+        }
+      });
+
+      test("asks for an opt-in only when the opt-in masks a fast-capable model", () {
+        Map<String, Object?> handshake({required String? reason, required bool fastCapable}) => {
+          "models": [
+            {"value": "opus", "supportsFastMode": fastCapable},
+          ],
+          "fast_mode_disabled_reason": reason,
+        };
+
+        expect(
+          repository.fastModeNeedsOptIn(handshake: handshake(reason: "sdk_opt_in_required", fastCapable: true)),
+          isTrue,
+        );
+        expect(
+          repository.fastModeNeedsOptIn(handshake: handshake(reason: "sdk_opt_in_required", fastCapable: false)),
+          isFalse,
+        );
+        expect(
+          repository.fastModeNeedsOptIn(handshake: handshake(reason: "extra_usage_disabled", fastCapable: true)),
+          isFalse,
+        );
+        expect(repository.fastModeNeedsOptIn(handshake: handshake(reason: null, fastCapable: true)), isFalse);
+      });
     });
 
     test("declares no default effort when effort support is off, even with levels listed", () {
@@ -129,10 +214,23 @@ void main() {
       expect(catalog.providers.providers.single.models.single.name, "claude-sonnet-test");
     });
 
+    test("omits the native /fast command owned by the fast-mode selection", () {
+      final catalog = repository.map(
+        handshake: {
+          "commands": [
+            {"name": "fast", "description": "Toggle fast mode", "argumentHint": "[on|off]"},
+            {"name": "review", "description": "Review changes"},
+          ],
+        },
+      );
+
+      expect(catalog.commands.map((command) => command.name), ["review"]);
+    });
+
     test("returns agents but no provider for an empty model catalog", () {
       final catalog = repository.map(handshake: const {});
 
-      expect(catalog.agents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(catalog.agents.map((agent) => agent.name), ["Agent"]);
       expect(catalog.agents.every((agent) => agent.model == null), isTrue);
       expect(catalog.providers.providers, isEmpty);
       expect(catalog.commands, isEmpty);

@@ -15,6 +15,23 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
+    // The sidebar panel runs to the window's top edge (the Dart side hides the
+    // title bar). An empty unified toolbar makes AppKit itself set the traffic
+    // lights lower and further in, onto that panel; window_manager cannot move them.
+    let toolbar = NSToolbar()
+    self.toolbar = toolbar
+    self.toolbarStyle = .unified
+    self.titlebarSeparatorStyle = .none
+    // In full screen AppKit hides the lights and draws the toolbar as an opaque
+    // bar over the content's top, so it steps aside until the window is back.
+    let center = NotificationCenter.default
+    center.addObserver(forName: NSWindow.willEnterFullScreenNotification, object: self, queue: .main) { _ in
+      toolbar.isVisible = false
+    }
+    center.addObserver(forName: NSWindow.didExitFullScreenNotification, object: self, queue: .main) { _ in
+      toolbar.isVisible = true
+    }
+
     super.awakeFromNib()
   }
 

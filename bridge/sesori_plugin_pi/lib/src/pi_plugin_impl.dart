@@ -9,6 +9,7 @@ import "models/pi_notification_type.dart";
 import "models/pi_thinking_level.dart";
 import "pi_identity.dart";
 import "repositories/mappers/pi_history_mapper.dart";
+import "repositories/mappers/pi_quota_interruption_mapper.dart";
 import "repositories/pi_backend_catalog_repository.dart";
 import "repositories/pi_session_catalog_repository.dart";
 import "repositories/pi_session_process_repository.dart";
@@ -81,6 +82,7 @@ final class PiPlugin._({
       editorTimeout: editorTimeout,
     );
     final sessionService = PiSessionService(
+      quotaMapper: PiQuotaInterruptionMapper(historyMapper: history),
       processRepository: processRepository,
       catalogRepository: catalogRepository,
       eventDispatcher: PiEventDispatcher(
@@ -178,6 +180,7 @@ final class PiPlugin._({
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -319,6 +322,7 @@ final class PiPlugin._({
     required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -361,6 +365,7 @@ final class PiPlugin._({
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {

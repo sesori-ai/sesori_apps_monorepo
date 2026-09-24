@@ -1,44 +1,70 @@
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
+import "package:theme_prego/theme/primitives/prego_color_primitives.g.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/remote_failure_view.dart";
 
-/// A floating call-to-action pinned below the top bar when the session has a
-/// pending question or permission. Rendered as a semantic-tinted liquid-glass
-/// card (brand for questions, success for permissions) so it pops over the chat
-/// while sharing the glass language of the background-tasks card and the
-/// composer pills below.
-class const SessionDetailPendingBanner({
+/// A solid amber card docked above the composer while the session waits on
+/// the user for a question or permission: amber means it needs you. It names
+/// what is pending, shows the first request's opening line, and its button
+/// opens the existing modal.
+class const SessionDetailNeedsYouCard({
   super.key,
   required final IconData icon,
-
-  /// Semantic surface colour for the glass tint — applied with reduced alpha so
-  /// the card stays frosted and the chat refracts through its edges.
-  required final Color backgroundColor,
-  required final Color foregroundColor,
   required final String label,
-  required final VoidCallback onTap,
+  required final String request,
+  required final String action,
+  required final VoidCallback onPressed,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    // Dark on amber in both themes: white fails contrast on the warning fill.
+    const foreground = PregoColorPrimitives.gray950;
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
-      child: GlassContainer(
-        useOwnLayer: true,
-        clipBehavior: Clip.antiAlias,
-        padding: EdgeInsets.zero,
-        shape: const LiquidRoundedSuperellipse(borderRadius: 20),
-        settings: LiquidGlassSettings(glassColor: backgroundColor.withValues(alpha: 0.6)),
-        child: GlassListTile(
-          onTap: onTap,
-          leading: Icon(icon, size: 20, color: foregroundColor),
-          title: Text(label),
-          titleStyle: prego.textTheme.textMd.bold.copyWith(color: foregroundColor),
-          trailing: Icon(Icons.chevron_right, size: 20, color: foregroundColor),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, PregoSpacing.md),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: prego.colors.bgWarningSolid,
+          borderRadius: BorderRadius.circular(PregoRadius.x2l),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(PregoSpacing.lg),
+          child: Row(
+            spacing: PregoSpacing.lg,
+            children: [
+              Icon(icon, size: PregoIconSize.md, color: foreground),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: prego.textTheme.textXs.medium.copyWith(color: foreground),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      request,
+                      style: prego.textTheme.textSm.medium.copyWith(color: foreground),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              PregoButtonsSolid(
+                label: action,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.sm,
+                onPressed: onPressed,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -60,7 +86,7 @@ class const SessionDetailArchivedNotice({super.key}) extends StatelessWidget {
         shape: const LiquidRoundedSuperellipse(borderRadius: 20),
         settings: LiquidGlassSettings(glassColor: prego.colors.bgSecondary.withValues(alpha: 0.6)),
         child: GlassListTile(
-          leading: Icon(Icons.archive_outlined, size: 20, color: prego.colors.textSecondary),
+          leading: Icon(TablerRegular.archive, size: PregoIconSize.md, color: prego.colors.textSecondary),
           title: Text(context.loc.sessionDetailArchivedNotice),
           titleStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
         ),

@@ -12,6 +12,14 @@ import "session_empty_state.dart";
 import "session_list_action_dispatcher.dart";
 import "session_tile.dart";
 
+/// A widget-local narrowing of the active list. The list is fully loaded, so
+/// this filters what is shown and never asks the cubit for anything.
+enum SessionListQuickFilter() {
+  all,
+  running,
+  unread,
+}
+
 /// Chooses one stable heading for a session without changing the service-owned
 /// ordering of [SessionListLoaded.sessions]. The loaded-state resolver supplies
 /// running classification; presentation only chooses the localized heading.
@@ -23,9 +31,9 @@ String _sessionListHeading({
   required AppLocalizations loc,
 }) {
   final isArchivedList = filter == SessionListFilter.archived;
-  if (!isArchivedList && isRunning) {
-    return loc.sessionListRunning;
-  }
+  // One timeline: a running session is a row of Today, whatever its stored
+  // time, and the row itself says it is running.
+  if (!isArchivedList && isRunning) return sessionDateLabel(date: now, now: now, loc: loc);
 
   final timestamp = isArchivedList ? session.time?.archived : session.time?.updated;
   return sessionDateLabel(
@@ -55,6 +63,14 @@ class const SessionListContent({
   super.key,
   required final String? projectName,
   final String? selectedSessionId,
+  required final SessionListQuickFilter quickFilter,
+
+  /// Narrows the list to titles holding every word; blank shows all.
+  required final String query,
+
+  /// Sessions being archived elsewhere, hidden while they still read as
+  /// unarchived. Empty where archive is confirmed in a sheet.
+  required final Set<String> hiddenSessionIds,
   required final SessionOpenedCallback? onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
   required final Widget archivedEmptyState,
@@ -69,6 +85,18 @@ class const SessionListContent({
     final state = context.watch<SessionListCubit>().state;
     final onSessionTap = this.onSessionTap;
     final now = DateTime.now();
+    final sessions = state is! SessionListLoaded
+        ? const <Session>[]
+        : matchTitles(items: state.sessions, titleOf: (session) => session.title, query: query)
+              .where((session) => session.time?.archived != null || !hiddenSessionIds.contains(session.id))
+              .where(
+                (session) => switch (quickFilter) {
+                  SessionListQuickFilter.all => true,
+                  SessionListQuickFilter.running => state.isSessionRunning(session: session),
+                  SessionListQuickFilter.unread => state.isSessionUnseen(session: session),
+                },
+              )
+              .toList();
 
     return switch (state) {
       SessionListLoading() => SliverToBoxAdapter(
@@ -79,7 +107,7 @@ class const SessionListContent({
           // This sliver stays mounted when the list becomes empty, giving the
           // final removed row time to close before the empty state settles in.
           PregoAnimatedSliverList<Session>(
-            items: loaded.sessions,
+            items: sessions,
             itemKey: (session) => ValueKey(session.id),
             itemBuilder: (_, index, session) {
               final isArchived = session.time?.archived != null;
@@ -93,9 +121,9 @@ class const SessionListContent({
               );
               final previousHeading = index > 0
                   ? _sessionListHeading(
-                      session: loaded.sessions[index - 1],
+                      session: sessions[index - 1],
                       filter: loaded.filter,
-                      isRunning: loaded.isSessionRunning(session: loaded.sessions[index - 1]),
+                      isRunning: loaded.isSessionRunning(session: sessions[index - 1]),
                       now: now,
                       loc: loc,
                     )
@@ -108,8 +136,8 @@ class const SessionListContent({
                       padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 12),
                       child: Text(
                         heading,
-                        style: context.prego.textTheme.textSm.regular.copyWith(
-                          color: context.prego.colors.textSecondary,
+                        style: context.prego.textTheme.textSm.medium.copyWith(
+                          color: context.prego.colors.textTertiary,
                         ),
                       ),
                     ),
@@ -118,12 +146,12 @@ class const SessionListContent({
                     // and last rows so that space collapses with the final item.
                     padding: EdgeInsetsDirectional.only(
                       top: index == 0 ? 8 : 0,
-                      bottom: index == loaded.sessions.length - 1 ? 8 : 0,
+                      bottom: index == sessions.length - 1 ? 8 : 0,
                     ),
                     child: SessionTile(
                       session: session,
                       isArchived: isArchived,
-                      isActive: activityInfo != null,
+                      isRunning: loaded.isSessionRunning(session: session),
                       unseen: loaded.isSessionUnseen(session: session),
                       selected: selectedSessionId == session.id,
                       awaitingInput: activityInfo?.awaitingInput ?? false,
@@ -132,7 +160,12 @@ class const SessionListContent({
                       onTap: onSessionTap == null ? null : () => onSessionTap(session: session),
                       // The list's context, not the row's: archive/delete
                       // unmount the row before their follow-ups run.
-                      menuEntries: () => actionDispatcher.sessionMenuEntries(context: context, session: session),
+                      menuEntries: () => actionDispatcher.sessionMenuEntries(
+                        context: context,
+                        cubit: context.read<SessionListCubit>(),
+                        session: session,
+                        readEntry: SessionReadMenuEntry.toggle,
+                      ),
                       onArchive: () => actionDispatcher.handleSessionArchive(context: context, session: session),
                       onDelete: () => actionDispatcher.handleSessionDelete(context: context, session: session),
                       onToggleUnread: () => actionDispatcher.handleSessionToggleUnread(

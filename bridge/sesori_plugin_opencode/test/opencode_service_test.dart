@@ -697,22 +697,6 @@ void main() {
   });
 
   group("OpenCodeService.sendPrompt", () {
-    test("reserves the user-message id through the tracked directory", () async {
-      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
-      final repository = FakeOpenCodeRepository();
-      final service = OpenCodeService(repository, tracker);
-
-      final messageId = await service.reserveMessage(
-        sessionId: "ses-1",
-        agent: "build",
-        variant: null,
-        model: null,
-      );
-
-      expect(messageId, equals("msg-reserved"));
-      expect(repository.lastReservedDirectory, equals("/repo"));
-    });
-
     test("resolves session directory from tracker before delegating", () async {
       final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final repository = FakeOpenCodeRepository();
@@ -2105,18 +2089,6 @@ class FakeOpenCodeRepository._({
     if (messageId != null && parts.isEmpty) {
       compactionOperations.add("prompt");
     }
-  }
-
-  @override
-  Future<String> reserveMessage({
-    required String sessionId,
-    required String? directory,
-    required String? agent,
-    required PluginSessionVariant? variant,
-    required ({String providerID, String modelID})? model,
-  }) async {
-    lastReservedDirectory = directory;
-    return "msg-reserved";
   }
 
   @override

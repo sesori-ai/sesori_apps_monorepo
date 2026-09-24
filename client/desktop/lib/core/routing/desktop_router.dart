@@ -6,6 +6,7 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../features/auth_gate/auth_gate.dart";
 import "../../features/home/desktop_home_pane.dart";
@@ -36,7 +37,13 @@ void scheduleDesktopRouterReady() {
   });
 }
 
-const _desktopSessionActions = SessionListActionDispatcher(onSessionDeleted: _closeDeletedSessionRoute);
+const _desktopSessionActions = SessionListActionDispatcher(
+  deleteConfirmation: SessionDeleteConfirmation.alert,
+  // An archived session is read-only, so its open page gives way to the project.
+  onSessionArchived: _closeDeletedSessionRoute,
+  onSessionDeleted: _closeDeletedSessionRoute,
+  onSessionMarkedUnread: deferMarkedUnreadSession,
+);
 
 /// One routed main pane beside the sidebar, under a single authenticated shell.
 /// Only the all-sessions page owns a full session-list view claim; the sidebar's
@@ -59,8 +66,17 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               LogicalKeyboardKey.comma,
               meta: defaultTargetPlatform == TargetPlatform.macOS,
               control: defaultTargetPlatform != TargetPlatform.macOS,
+              includeRepeats: false,
             ): () =>
                 _openSettings(context: context, initialTab: DesktopSettingsTab.general),
+            // A pushed page goes back; a page reached from the sidebar has nowhere to go.
+            SingleActivator(
+              LogicalKeyboardKey.bracketLeft,
+              meta: defaultTargetPlatform == TargetPlatform.macOS,
+              control: defaultTargetPlatform != TargetPlatform.macOS,
+              includeRepeats: false,
+            ): () =>
+                _popPushedRoute(context: context),
           },
           child: DesktopCockpitCubitProvider(
             child: DesktopCockpitShell(
@@ -91,7 +107,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               child: Builder(
                 builder: (context) => SessionDetailRouteVisibility(
                   isVisible: ModalRoute.isCurrentOf(context) ?? false,
-                  child: child,
+                  child: _withPageFade(context: context, child: child),
                 ),
               ),
             ),
@@ -106,7 +122,19 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
       ),
       GoRoute(
         path: AppRouteDef.projects.path,
-        builder: (BuildContext context, GoRouterState state) => const DesktopHomePane(),
+        builder: (BuildContext context, GoRouterState state) => DesktopHomePane(
+          onOpenSession: ({required context, required project, required displayName, required session}) => _goRoute(
+            context: context,
+            route: AppRoute.sessionDetail(
+              projectId: project.id,
+              projectName: displayName,
+              sessionId: session.id,
+              sessionTitle: session.title,
+              readOnly: false,
+            ),
+          ),
+          onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
+        ),
       ),
       GoRoute(
         path: AppRouteDef.sessions.path,
@@ -127,11 +155,12 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                   readOnly: session.time?.archived != null,
                 ),
               ),
+              actionDispatcher: _desktopSessionActions,
               onNewSession: () => _pushRoute(
                 context: context,
                 route: AppRoute.newSession(projectId: route.projectId, projectName: route.projectName),
               ),
-              actionDispatcher: _desktopSessionActions,
+              onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
             ),
           );
         },
@@ -142,11 +171,22 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         builder: (BuildContext context, GoRouterState state) {
           final route = _decodeNewSessionRoute(state: state);
           return DesktopNewSessionScreen(
+            // Replacing the route reuses the page, so the key is what gives
+            // another project its own cubit.
+            key: ValueKey("desktop-new-session-${route.projectId}"),
+            onProjectSelected: ({required projectId, required projectName}) => _replaceRoute(
+              context: context,
+              route: AppRoute.newSession(projectId: projectId, projectName: projectName),
+            ),
             projectId: route.projectId,
             projectName: route.projectName,
             onBack: () => _popRouteOrGo(
               context: context,
               fallback: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+            ),
+            onOpenProject: () => _goRoute(
+              context: context,
+              route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
             ),
             onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
             onSessionCreated: ({required session}) => _replaceRoute(
@@ -172,8 +212,11 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             sessionId: route.sessionId,
             sessionTitle: route.sessionTitle,
             readOnly: route.readOnly,
-            // Direct/sidebar entry has no Back; pushed details retain their opener.
-            onBack: (ModalRoute.canPopOf(context) ?? false) ? () => _popRoute(context: context) : null,
+            projectName: route.projectName,
+            onOpenProject: () => _goRoute(
+              context: context,
+              route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+            ),
             onShowDiffs: () => _pushRoute(
               context: context,
               route: AppRoute.sessionDiffs(
@@ -183,6 +226,11 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               ),
             ),
             onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
+            sessionActions: _desktopSessionActions,
+            onMarkedUnread: () => _goRoute(
+              context: context,
+              route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+            ),
             onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
                 _pushRoute(
                   context: context,
@@ -203,11 +251,11 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           final route = _decodeSessionDiffsRoute(state: state);
           return DesktopSessionDiffsScreen(
             key: ValueKey((projectId: route.projectId, sessionId: route.sessionId)),
-            projectId: route.projectId,
+            projectName: route.projectName,
             sessionId: route.sessionId,
-            onBack: () => _popRouteOrGo(
+            onOpenProject: () => _goRoute(
               context: context,
-              fallback: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+              route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
             ),
           );
         },
@@ -215,6 +263,33 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
     ],
   ),
 ];
+
+/// Main-pane pages cross-fade in place, the way desktop apps swap content; the
+/// sidebar never moves. Reduced motion switches instantly.
+Widget _withPageFade({required BuildContext context, required Widget child}) {
+  final fade = prefersReducedMotion(context)
+      ? const _PageFade(transitionDuration: Duration.zero)
+      : const _PageFade(transitionDuration: Duration(milliseconds: 150));
+  return Theme(
+    data: Theme.of(context).copyWith(
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {for (final platform in TargetPlatform.values) platform: fade},
+      ),
+    ),
+    child: child,
+  );
+}
+
+class const _PageFade({@override required final Duration transitionDuration}) extends PageTransitionsBuilder {
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => FadeTransition(opacity: animation, child: child);
+}
 
 AppRouteSessions _decodeSessionsRoute({required GoRouterState state}) {
   return switch (AppRoute.fromDef(
@@ -318,12 +393,8 @@ void _popRouteOrGo({required BuildContext context, required AppRoute fallback}) 
   _goRoute(context: context, route: fallback);
 }
 
-void _popRoute({required BuildContext context}) {
+void _popPushedRoute({required BuildContext context}) {
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
   final GoRouter router = GoRouter.of(context);
-  if (router.canPop()) {
-    router.pop();
-    return;
-  }
-  _goDesktopHome();
+  if (router.canPop()) router.pop();
 }

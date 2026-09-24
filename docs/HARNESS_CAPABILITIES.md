@@ -18,6 +18,65 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Quota-reset auto continuation
+
+Audit date: **2026-09-24**. Internal terminal quota reporting is implemented for
+the Claude Code and Pi cases below. Sesori does **not yet implement** scheduled
+quota continuation for any harness. The
+[active plan](../.plan/active/quota-auto-continuation/PLAN.md) proposes session-level
+opt-in, a chat hint, a persistent three-dot-menu toggle, and a visible resume
+time. The [evidence record](../.plan/active/quota-auto-continuation/EVIDENCE.md)
+distinguishes observed local errors from upstream contracts and open checks.
+
+Eligibility depends on a terminal quota interruption **and** a usable reset
+time for the selected provider/account/model. Native transient retries are a
+different capability. “Unverified” below is an evidence limit, not a claim that
+the harness cannot support this feature; do not mark it 🚫 without verification.
+
+| Harness | Reset evidence | Reporting status |
+|---|---|---|
+| Claude Code | Tagged session-limit error with IANA zone | ✅ Conditional; root terminal error only. |
+| Pi | Recognized `openai-codex` error text | ✅ Conditional; final RPC settlement verified on 0.85.1 / 0.84.1. |
+| Codex | Local and documented reset timestamps | Unverified; failed-turn bucket binding needs proof. |
+| OpenCode | Raw error data reaches mapper | Reset payload/provider attribution unverified. |
+| GitHub Copilot | ACP payload needs inspection | Reset reporting unverified. |
+| Cursor | Headless payload needs inspection | Reset reporting unverified. |
+| Hermes Agent | ACP payload needs inspection | Reset reporting unverified. |
+| Oh My Pi | ACP seam differs from Pi RPC | Reset reporting unverified. |
+| DeepSeek | ACP payload needs inspection | Reset reporting unverified. |
+| Grok Build | ACP payload needs inspection | Reset reporting unverified. |
+| Antigravity | Official ACP payload needs inspection | Reset reporting unverified. |
+
+- Claude recognizes the tagged `rate_limit` assistant error beginning “You've
+  hit your session limit”. The observed time/zone format yields a UTC reset
+  only when it identifies one future time on the original local date. Unrecognized
+  dates, past times, unknown zones, and ambiguous/nonexistent DST times remain
+  unknown. Root errors report only after an unsuccessful, non-aborted result;
+  forwarded subagent traffic cannot arm or replace the root candidate.
+  Process-wide SDK rate-limit frames remain ignored because their rejected
+  window has no verified message attribution.
+- Pi's local `openai-codex` assistant errors sometimes report a relative retry
+  duration; others give no reset. Other providers/formats remain unverified.
+  A positive duration is anchored to the original assistant timestamp. Unknown
+  or malformed resets remain unknown. Synthetic-provider RPC probes on the
+  managed target (0.85.1) and PATH floor (0.84.1) confirmed that `agent_settled`
+  follows final retry resolution. Those probes did not exhaust a real account;
+  provider-format evidence comes from local errors and pinned upstream source.
+  This evidence does not establish support for Oh My Pi's ACP seam.
+- Codex local rollouts and documented app-server account limits contain reset
+  timestamps; terminal usage-limit errors are already rendered. Bind the failed
+  turn to its applicable exhausted buckets; an account snapshot cannot schedule.
+- OpenCode raw backend errors reach the mapper before presentation flattening.
+  Generic 429 responses and native retries do not establish quota exhaustion.
+- Generic ACP has no universal reset field. Inspect each adapter's actual error
+  data/extensions; provider behavior can differ. Billing/credit exhaustion with
+  no reset is unschedulable. Native application UI or displayed text alone does
+  not establish a usable timestamp through Sesori's driven protocol.
+
+Existing error messages remain visible, including errors with unknown resets.
+Other descriptors report quota support as unavailable until their provider and
+terminal-turn binding are verified. There is no shared model-name allowlist.
+
 ## Individual queued-prompt cancellation
 
 | Harness / boundary | Status |
@@ -171,6 +230,69 @@ Exact account IDs ending in `-high`, `-medium`, or `-low` become strongest-first
 variants only when labels carry the matching suffix. Its pre-chat catalog uses
 one retained hidden no-prompt native session because the pinned runtime exposes
 models only from new/resume responses and has no deletion capability.
+
+## Fast mode
+
+| Harness | Status |
+|---|---|
+| Codex | ✅ Implemented. |
+| Claude | ✅ Implemented for the Opus models the CLI reports as supporting it; fast turns draw on the account's extra usage. |
+| OpenCode, Antigravity, Copilot, Cursor, Hermes, Pi, OMP, DeepSeek, Grok | ⬜ Not implemented (not assessed). |
+
+Codex advertises fast mode per model as a `model/list` service tier: a model
+offering a `serviceTiers` entry with id `"priority"` (Codex's "Fast" tier, e.g.
+"2x speed, increased usage") reports `PluginModel.fastMode` as available with
+a 30-minute prompt-cache lifetime; Codex has no account-level availability
+signal. A selected
+session's `fastMode` is sent as `serviceTier` on every `turn/start` —
+`"priority"` when on, `"default"` when off, which explicitly returns the
+thread to standard speed rather than leaving it on whatever tier a prior turn
+set (verified against codex-cli 0.156.1's `generate-json-schema` output: the
+sibling `TurnStartParams.serviceTierForTurn` field documents 'Use "default"
+for standard speed', and `serviceTier` shares the same tier vocabulary) — and
+on `thread/start` when a new session is created with fast mode on, so its
+first turn already runs fast.
+
+Claude Code reports fast-mode support per model as `supportsFastMode: true` in
+the stream-json `initialize` response (omitted for models without it; in CLI
+2.1.281 only some Opus models carry it), which sets `PluginModel.fastMode` with a
+60-minute prompt-cache lifetime. Fast mode is not a launch flag: a fresh process
+starts with it off, and the plugin sends the `apply_flag_settings`
+control request (`{"subtype":"apply_flag_settings","settings":{"fastMode":…}}`, the shape the Agent SDK's `applyFlagSettings` sends) before a turn whenever the session's choice
+differs from what the resident process last applied. The CLI acknowledges the
+setting even when the model or account cannot use fast mode (for example, extra
+usage turned off) and then serves at standard speed. The plugin reads the
+handshake's account-level `fast_mode_disabled_reason` and reports those models
+as unavailable with a closed reason: extra usage disabled (`extra_usage_disabled`),
+not on the plan (`free`), disabled by the organization (`preference`,
+`model_not_allowed`), or unknown (`not_first_party`, `disabled_by_env`,
+`unknown`, and unmapped values, which are logged). In CLI 2.1.281 the
+`sdk_opt_in_required` reason precedes the account checks and masks them, so the
+global catalog probe opts in with `apply_flag_settings {fastMode: true}` and
+sends a second `initialize`, whose reason is the real account state (verified
+live: `sdk_opt_in_required` became `extra_usage_disabled`). The flag is
+process-scoped (no settings file changes) and the probe is torn down afterwards.
+Only the probe feeds the catalog; user-session handshakes are never used for
+availability. If the opt-in or re-read fails, the failure is logged and fast
+mode stays offered. The transient `network_error` and `pending` reasons also
+keep it offered, with a log. Per-turn reasons from result messages are not tracked.
+
+## Agent selection and harness modes
+
+| Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Agent choice offered in the composer | 🚫 | ✅ | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| Harness mode control (for example Plan or Ask) | ⬜ | ✅ | 🚫 | ⬜ | ⬜ | ⬜ | 🚫 | 🚫 | ⬜ | 🚫 | 🚫 |
+
+Only OpenCode has real agents, and its plan agent is how its mode is chosen.
+The composer shows the agent entry only when a harness advertises more than
+one selectable agent, so it appears for OpenCode alone. Claude, Codex,
+Copilot, Cursor and OMP have modes such as Plan and Ask that Sesori used to
+list as agents; since 2026-09-21 each advertises only its default mode
+(Cursor always its Agent mode) and Sesori offers no mode control. A mode name
+that still arrives from a catalog captured earlier is honoured, never run in
+the default mode. Naming the advertised default returns a session left in
+another mode to the default with its next prompt.
 
 ## ACP multi-select form questions
 

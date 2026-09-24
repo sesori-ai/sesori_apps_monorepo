@@ -51,7 +51,7 @@ class const DesktopConnectionPill({super.key}) extends StatelessWidget {
                     children: [
                       Icon(
                         state is ConnectionOverlayBridgeOffline ? TablerRegular.broadcast_off : TablerRegular.cloud_off,
-                        size: 18,
+                        size: PregoIconSize.md,
                         color: foreground,
                       ),
                       const SizedBox(width: PregoSpacing.sm),

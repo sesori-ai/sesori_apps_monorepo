@@ -57,6 +57,7 @@ class SessionCreationService({
               modelID: requestedModel.modelID,
               variant: request.variant?.id,
             ),
+      fastMode: request.fastMode,
     );
     final userTexts = _extractTexts(parts: request.parts);
     final firstText = userTexts.firstOrNull;
@@ -83,6 +84,7 @@ class SessionCreationService({
       ),
       userVisibleText: normalizedCommand == null ? userVisibleText : null,
       variant: normalizedCommand == null || normalizedCommand.isEmpty ? request.variant : null,
+      fastMode: request.fastMode,
       agent: normalizedCommand == null || normalizedCommand.isEmpty ? request.agent : null,
       model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
       isDedicated: worktreeState.isDedicated,
@@ -102,6 +104,7 @@ class SessionCreationService({
       ),
       userVisibleArguments: firstText,
       variant: request.variant,
+      fastMode: request.fastMode,
       agent: request.agent,
       model: request.model,
     );
@@ -183,6 +186,7 @@ class SessionCreationService({
     required String arguments,
     required String? userVisibleArguments,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) async {
@@ -196,6 +200,7 @@ class SessionCreationService({
       arguments: arguments,
       userVisibleArguments: userVisibleArguments,
       variant: variant,
+      fastMode: fastMode,
       agent: agent,
       model: model,
     );

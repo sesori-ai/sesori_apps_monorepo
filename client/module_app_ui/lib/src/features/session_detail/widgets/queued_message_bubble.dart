@@ -64,7 +64,7 @@ class const QueuedMessageBubble({
             prego: prego,
             icon: Icon(
               isCommand ? TablerRegular.terminal : TablerRegular.clock,
-              size: 14,
+              size: PregoIconSize.sm,
               color: prego.colors.textTertiary,
             ),
             label: isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
@@ -73,7 +73,7 @@ class const QueuedMessageBubble({
           const SizedBox(width: PregoSpacing.xs),
           TextButton.icon(
             onPressed: onCancel,
-            icon: const Icon(TablerRegular.x, size: 14),
+            icon: const Icon(TablerRegular.x, size: PregoIconSize.sm),
             label: Text(loc.sessionDetailCancelQueued),
             style: TextButton.styleFrom(
               foregroundColor: prego.colors.textTertiary,
@@ -92,7 +92,7 @@ class const QueuedMessageBubble({
         prego: prego,
         icon: Icon(
           isCommand ? TablerRegular.terminal : TablerRegular.clock,
-          size: 14,
+          size: PregoIconSize.sm,
           color: prego.colors.textTertiary,
         ),
         label: isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
@@ -105,7 +105,7 @@ class const QueuedMessageBubble({
             prego: prego,
             icon: Icon(
               TablerRegular.alert_circle,
-              size: 14,
+              size: PregoIconSize.sm,
               color: prego.colors.fgErrorPrimary,
             ),
             label: loc.sessionDetailUnavailableCommand,
@@ -115,7 +115,7 @@ class const QueuedMessageBubble({
             const SizedBox(width: PregoSpacing.xs),
             TextButton.icon(
               onPressed: onRemove,
-              icon: const Icon(TablerRegular.x, size: 14),
+              icon: const Icon(TablerRegular.x, size: PregoIconSize.sm),
               label: Text(loc.sessionDetailRemoveQueued),
               style: TextButton.styleFrom(
                 foregroundColor: prego.colors.textErrorPrimary,
@@ -219,7 +219,7 @@ class const _QueuedAttachmentPreviews({required final List<ComposerAttachment> a
                   gaplessPlayback: true,
                   errorBuilder: (_, _, _) => ColoredBox(
                     color: prego.colors.bgSurface2,
-                    child: Icon(Icons.broken_image, color: prego.colors.textSecondary),
+                    child: Icon(TablerRegular.photo_off, color: prego.colors.textSecondary),
                   ),
                 ),
               ),
@@ -239,7 +239,7 @@ class const _QueuedAttachmentCount({required final int count}) extends Stateless
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(TablerRegular.photo, size: 16, color: prego.colors.textBrandPrimary),
+          Icon(TablerRegular.photo, size: PregoIconSize.sm, color: prego.colors.textBrandPrimary),
           const SizedBox(width: PregoSpacing.xs),
           Text(
             context.loc.sessionDetailQueuedAttachmentCount(count),

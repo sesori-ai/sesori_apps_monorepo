@@ -14,24 +14,15 @@ void main() {
     setUp(() => controller = TextEditingController());
     tearDown(() => controller.dispose());
 
-    testWidgets("renders the label without an asterisk by default", (tester) async {
+    testWidgets("renders the plain label and a tertiary placeholder", (tester) async {
       await tester.pumpWidget(
-        _harness(PregoInputField(controller: controller, label: "Email")),
+        _harness(PregoInputField(controller: controller, label: "Email", hintText: "you@example.com")),
       );
 
       expect(find.text("Email"), findsOneWidget);
-    });
-
-    testWidgets("appends a required marker to the label", (tester) async {
-      await tester.pumpWidget(
-        _harness(
-          PregoInputField(controller: controller, label: "Email", isRequired: true),
-        ),
-      );
-
-      // Label and marker share one Text.rich so screen readers announce them
-      // together; assert on the flattened string rather than a separate node.
-      expect(find.text("Email *", findRichText: true), findsOneWidget);
+      expect(find.textContaining("*"), findsNothing);
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.decoration?.hintStyle?.color, PregoDesignSystem.light.colors.textTertiary);
     });
 
     testWidgets("writes typed text into the controller", (tester) async {

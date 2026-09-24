@@ -53,14 +53,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopFileAccessUnknown => 'Access could not be confirmed';
 
   @override
-  String get desktopHomePickSession => 'Pick a session from the sidebar to get started.';
+  String get desktopHomeNeedsYou => 'Needs you';
+
+  @override
+  String get desktopHomeRecent => 'Recent';
 
   @override
   String get desktopSidebarNewProject => 'New project';
 
   @override
-  String desktopSidebarAllSessions(int count) {
-    return 'All sessions · $count';
+  String desktopSidebarShowMore(int count) {
+    return 'Show $count more';
+  }
+
+  @override
+  String desktopSidebarActivity(int count) {
+    return 'Activity · $count';
+  }
+
+  @override
+  String desktopSidebarActivitySession(String sessionTitle, String projectName) {
+    return '$sessionTitle in $projectName';
   }
 
   @override
@@ -79,6 +92,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String desktopShortcutHint(String label, String shortcut) {
+    return '$label ($shortcut)';
+  }
+
+  @override
   String get desktopSidebarCollapse => 'Collapse sidebar';
 
   @override
@@ -88,28 +106,82 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSidebarResize => 'Resize sidebar; double-click to reset';
 
   @override
+  String get desktopProjectPageArchived => 'Archived';
+
+  @override
+  String sessionListFilterAll(int count) {
+    return 'All · $count';
+  }
+
+  @override
+  String get newSessionHeading => 'What should we work on?';
+
+  @override
+  String get desktopSessionPageChanges => 'Changes';
+
+  @override
+  String get listSearchNoMatches => 'No matches';
+
+  @override
+  String get listSearchClear => 'Clear search';
+
+  @override
+  String get projectListSearchHint => 'Search projects and sessions';
+
+  @override
+  String get sessionListSearchHint => 'Search sessions';
+
+  @override
+  String get sessionListFilterEmpty => 'No sessions match this filter';
+
+  @override
+  String sessionListFilterRunning(int count) {
+    return 'Running · $count';
+  }
+
+  @override
+  String sessionListFilterUnread(int count) {
+    return 'Unread · $count';
+  }
+
+  @override
+  String get desktopProjectPageRefresh => 'Refresh sessions';
+
+  @override
+  String get desktopSidebarRefresh => 'Refresh projects and sessions';
+
+  @override
+  String get desktopSidebarRefreshing => 'Refreshing projects and sessions';
+
+  @override
+  String get desktopSidebarRefreshSuccess => 'Projects and sessions updated';
+
+  @override
+  String get desktopSidebarRefreshFailed => 'Could not refresh projects and sessions';
+
+  @override
   String get desktopBridgeTakenOver => 'Another bridge currently owns this account connection.';
 
   @override
-  String get desktopBridgeTakeOver => 'Take Over';
+  String get desktopBridgeTakeOver => 'Take over';
 
   @override
   String get desktopBridgeLoginRequired => 'Your Sesori account is required before the local bridge can start.';
 
   @override
-  String get desktopBridgeStart => 'Start Bridge';
+  String get desktopBridgeStart => 'Start bridge';
 
   @override
   String get desktopBridgeCrashGiveUp => 'The local bridge stopped after repeated crashes.';
 
   @override
-  String get desktopBridgeOpenLogs => 'Open Logs';
+  String get desktopBridgeOpenLogs => 'Open logs';
 
   @override
   String get desktopLocalBridgeTitle => 'Local bridge';
 
   @override
-  String get desktopBridgeStop => 'Stop Bridge';
+  String get desktopBridgeStop => 'Stop bridge';
 
   @override
   String get desktopBridgeSettings => 'Bridge settings…';
@@ -135,16 +207,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSettingsThisComputer => 'This computer';
 
   @override
-  String get desktopBridgeTitle => 'Bridge';
+  String get projectListTitle => 'Projects';
 
   @override
-  String get projectListTitle => 'Projects';
+  String get projectListActivity => 'Activity';
 
   @override
   String get projectListLoadingSemantics => 'Loading projects';
 
   @override
-  String get projectListDefaultName => 'Default Project';
+  String get projectListDefaultName => 'Default project';
 
   @override
   String get projectListRefreshSuccess => 'Projects updated';
@@ -265,7 +337,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsDesktopStartBridgeInfo => 'Start the local bridge to load your projects and sessions in Sesori.';
 
   @override
-  String get connectionLostTitle => 'Connection Lost';
+  String get connectionLostTitle => 'Connection lost';
 
   @override
   String get connectionLostReconnect => 'Reconnect';
@@ -285,7 +357,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsLogout => 'Log Out';
+  String get settingsLogout => 'Log out';
 
   @override
   String get settingsSectionAccount => 'Account';
@@ -695,7 +767,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessAuthenticationPastedCodeNotConfirmed => 'The code could not be confirmed. Submit it again.';
 
   @override
-  String get harnessesRegisteredSection => 'Registered Harnesses';
+  String get harnessesRegisteredSection => 'Registered harnesses';
 
   @override
   String get harnessesEmptyTitle => 'No harnesses registered';
@@ -817,10 +889,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionAppearance => 'Appearance';
 
   @override
+  String get desktopSettingsTheme => 'Theme';
+
+  @override
   String get settingsSectionAnalytics => 'Analytics';
 
   @override
-  String get settingsBasicUsageAnalyticsTitle => 'Basic Usage Analytics';
+  String get settingsBasicUsageAnalyticsTitle => 'Basic usage analytics';
 
   @override
   String get settingsBasicUsageAnalyticsDescription => 'Share basic feature usage — never your code or messages.';
@@ -886,10 +961,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionLegal => 'Legal';
 
   @override
-  String get settingsLegalTerms => 'Terms of Service';
+  String get settingsLegalTerms => 'Terms of service';
 
   @override
-  String get settingsLegalPrivacy => 'Privacy Policy';
+  String get settingsLegalPrivacy => 'Privacy policy';
 
   @override
   String get legalDocumentRetry => 'Retry';
@@ -906,7 +981,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get notificationSectionAi => 'AI Notifications';
+  String get notificationSectionAi => 'AI notifications';
 
   @override
   String get notificationSectionSystem => 'System';
@@ -930,32 +1005,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationPreferenceUpdating => 'Updating notification preference';
 
   @override
-  String get notificationCategoryAiInteraction => 'AI Interactions';
+  String get notificationCategoryAiInteraction => 'AI interactions';
 
   @override
   String get notificationCategoryAiInteractionDescription =>
       'Questions and permission requests from active AI sessions';
 
   @override
-  String get notificationCategorySessionMessage => 'Session Messages';
+  String get notificationCategorySessionMessage => 'Session messages';
 
   @override
   String get notificationCategorySessionMessageDescription => 'New assistant messages from running sessions';
 
   @override
-  String get notificationCategoryConnectionStatus => 'Connection Status';
+  String get notificationCategoryConnectionStatus => 'Connection status';
 
   @override
   String get notificationCategoryConnectionStatusDescription => 'Bridge online and offline status changes';
 
   @override
-  String get notificationCategorySystemUpdate => 'System Updates';
+  String get notificationCategorySystemUpdate => 'System updates';
 
   @override
   String get sessionListTitle => 'Sessions';
-
-  @override
-  String get sessionListRepoInfoSemantics => 'Show full repository name';
 
   @override
   String sessionListTitleWithName(String name) {
@@ -966,7 +1038,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListLoadingSemantics => 'Loading sessions';
 
   @override
-  String get sessionListEmptyTitle => 'Start your first task';
+  String get sessionListEmptyTitle => 'Start your first session';
 
   @override
   String get sessionListUntitled => 'Untitled session';
@@ -988,9 +1060,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListNewSession => 'New session';
-
-  @override
-  String get sessionListNewTask => 'New task';
 
   @override
   String get sessionDetailTitle => 'Session';
@@ -1088,9 +1157,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailCommandSearch => 'Search commands';
-
-  @override
-  String get sessionDetailCommandSearchHint => 'Name, description, or arguments';
 
   @override
   String get sessionDetailNoCommands => 'No slash commands are available for this project.';
@@ -1229,6 +1295,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailToolCancelled => 'Cancelled';
 
   @override
+  String get sessionDetailShell => 'Shell';
+
+  @override
+  String get sessionDetailCommandRan => 'Ran';
+
+  @override
   String get sessionDetailFollowOutput => 'Follow';
 
   @override
@@ -1353,47 +1425,66 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailPickerVariant => 'Variant';
 
   @override
-  String get sessionDetailSelectModel => 'Select Model';
+  String get sessionDetailFastMode => 'Fast mode';
+
+  @override
+  String get sessionDetailFastModeConfirmTitle => 'Switch speed?';
+
+  @override
+  String get sessionDetailFastModeConfirmEnableBody =>
+      'Switching speed drops the prompt cache, so the next message re-reads the whole conversation. Fast mode also uses more of your usage.';
+
+  @override
+  String get sessionDetailFastModeConfirmDisableBody =>
+      'Switching speed drops the prompt cache, so the next message re-reads the whole conversation.';
+
+  @override
+  String get sessionDetailFastModeConfirmAction => 'Switch';
+
+  @override
+  String get sessionDetailFastModeCancel => 'Cancel';
+
+  @override
+  String get sessionDetailFastModeUnavailableTitle => 'Fast mode is unavailable';
+
+  @override
+  String get sessionDetailFastModeUnavailableExtraUsageDisabled =>
+      'Turn on extra usage for your account to use fast mode.';
+
+  @override
+  String get sessionDetailFastModeUnavailableNotOnPlan => 'Your plan doesn\'t include fast mode.';
+
+  @override
+  String get sessionDetailFastModeUnavailableDisabledByOrganization => 'Your organization has turned off fast mode.';
+
+  @override
+  String get sessionDetailFastModeUnavailableUnknown => 'Fast mode can\'t be used with this account right now.';
 
   @override
   String get sessionDetailModelSearch => 'Search models...';
 
   @override
-  String backgroundTasksRunning(int count) {
+  String get subAgentsTitle => 'Sub-agents';
+
+  @override
+  String subAgentsSummary(int count, int running) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count Tasks Running',
-      one: '1 Task Running',
+      other: '$count sub-agents',
+      one: '1 sub-agent',
     );
-    return '$_temp0';
+    return '$_temp0, $running working';
   }
 
   @override
-  String get backgroundTasksCompleted => 'All tasks completed';
-
-  @override
-  String get backgroundTaskStatusIdle => 'Completed';
+  String get backgroundTaskStatusIdle => 'Idle';
 
   @override
   String get backgroundTaskStatusBusy => 'Running';
 
   @override
   String get backgroundTaskStatusRetry => 'Retrying';
-
-  @override
-  String backgroundTasksShowCompleted(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'Show $count completed tasks',
-      one: 'Show 1 completed task',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get backgroundTasksHideCompleted => 'Hide completed';
 
   @override
   String get sessionListToggleArchived => 'Show archived';
@@ -1415,6 +1506,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListArchived => 'Session archived';
+
+  @override
+  String get sessionListArchiveUndo => 'Undo';
+
+  @override
+  String get sessionListArchiveKeepWorktree => 'Archive, keep worktree';
+
+  @override
+  String get sessionListArchiveRunningTitle => 'Archive a running session?';
+
+  @override
+  String sessionListArchiveRunningMessage(String title) {
+    return '“$title” is still running. Archiving makes it permanently read-only.';
+  }
+
+  @override
+  String get sessionListArchiveRefusedTitle => 'The worktree can’t be deleted safely';
+
+  @override
+  String get sessionListArchiveDeleteAnyway => 'Delete it anyway';
+
+  @override
+  String sessionListDeleteNamedTitle(String title) {
+    return 'Delete “$title”?';
+  }
+
+  @override
+  String get sessionListDeleteWorktreeKeepsBranch => 'Delete the worktree too (the branch is kept)';
 
   @override
   String get sessionListDeleted => 'Session deleted';
@@ -1455,7 +1574,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginWithGoogle => 'Sign in with Google';
 
   @override
-  String get signInWithEmail => 'Sign in with Email';
+  String get signInWithEmail => 'Sign in with email';
 
   @override
   String get emailLabel => 'Email';
@@ -1509,15 +1628,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListNewActivity => 'New activity';
 
   @override
-  String sessionListHarness(String harness) {
-    return '$harness session';
-  }
-
-  @override
   String get sessionListRunningRetrying => 'Running (retrying)';
 
   @override
   String get sessionListAwaitingInput => 'Awaiting input';
+
+  @override
+  String get sessionListWaiting => 'Waiting';
 
   @override
   String sessionListBackgroundTasks(int count) {
@@ -1577,7 +1694,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceRecordingLimitReached => 'Recording limit reached (15 minutes)';
 
   @override
-  String get addProject => 'Add Project';
+  String get addProject => 'Add project';
 
   @override
   String get addAsNewProject => 'Add as new project';
@@ -1631,7 +1748,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectHideFailed => 'Failed to hide project';
 
   @override
-  String get hideProject => 'Hide Project';
+  String get hideProject => 'Hide project';
 
   @override
   String get hide => 'Hide';
@@ -1653,7 +1770,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sesori will commit all non-ignored files to enable history and parallel sessions with dedicated worktrees.';
 
   @override
-  String get addProjectContinueWithoutGit => 'Continue Without Git';
+  String get addProjectContinueWithoutGit => 'Continue without Git';
 
   @override
   String get addProjectEnableGit => 'Enable Git';
@@ -1696,6 +1813,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permissionReplyFailed => 'Failed to send permission response. Please try again.';
 
   @override
+  String get needsYouAnswer => 'Answer';
+
+  @override
+  String get needsYouReview => 'Review';
+
+  @override
   String get permissionBannerSingle => '1 permission request pending';
 
   @override
@@ -1707,10 +1830,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rename => 'Rename';
 
   @override
-  String get renameSessionTitle => 'Rename Session';
+  String get renameSessionTitle => 'Rename session';
 
   @override
-  String get renameProjectTitle => 'Rename Project';
+  String get renameProjectTitle => 'Rename project';
 
   @override
   String get renameSessionHint => 'Session title';
@@ -1856,14 +1979,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Harness status could not be refreshed. The last known status is shown.';
 
   @override
-  String get sessionDetailOpenHarnessSettings => 'Open Harness Settings';
-
-  @override
-  String get sessionListArchiveConfirmTitle => 'Archive session?';
-
-  @override
-  String get sessionListArchiveConfirmMessage =>
-      'Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.';
+  String get sessionDetailOpenHarnessSettings => 'Open harness settings';
 
   @override
   String get sessionListArchiveConfirmAction => 'Archive';
@@ -1872,16 +1988,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListForceDeleteTitle => 'Force delete?';
 
   @override
-  String get sessionListForceArchiveTitle => 'Force archive?';
-
-  @override
   String get sessionListForceMessage => 'The following issues were found:';
 
   @override
-  String get sessionListForceDeleteAction => 'Force Delete';
-
-  @override
-  String get sessionListForceArchiveAction => 'Force Archive';
+  String get sessionListForceDeleteAction => 'Force delete';
 
   @override
   String get sessionListCleanupIssueUnstagedChanges => 'Worktree has unstaged changes';
@@ -1974,17 +2084,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diffPermissionAlwaysAllow => 'Always approve';
 
   @override
-  String get diffFileChangesTitle => 'File Changes';
+  String get diffFileChangesTitle => 'File changes';
 
   @override
-  String diffFilesChangedCount(int count, int additions, int deletions) {
+  String diffFilesChangedCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
       other: 's',
       one: '',
     );
-    return '$count file$_temp0 changed  +$additions -$deletions';
+    return '$count file$_temp0 changed';
   }
 
   @override
@@ -2123,7 +2233,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingWhyNotifiedTitle => 'Get notified';
 
   @override
-  String get projectsOnboardingWhyNotifiedSubtitle => 'Know when a task needs you.';
+  String get projectsOnboardingWhyNotifiedSubtitle => 'Know when a session needs you.';
 
   @override
   String get projectsOnboardingWhyFaqHeader => 'FAQs';
@@ -2414,7 +2524,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessesStatusRunning => 'Running';
 
   @override
-  String get archivedSessionsTitle => 'Archived tasks';
+  String get archivedSessionsTitle => 'Archived sessions';
 
   @override
   String get archivedSessionsClose => 'Close archived sessions';

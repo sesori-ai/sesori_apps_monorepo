@@ -163,6 +163,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    required bool fastMode,
     required String pluginId,
     required bool preservePullRequestScope,
   }) async {
@@ -188,6 +189,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
         baseCommit: Value(baseCommit),
         lastAgent: Value(lastAgent),
         lastAgentModel: Value(lastAgentModel),
+        fastMode: Value(fastMode),
         createdAt: Value(createdAt),
         updatedAt: Value(createdAt),
         projectionUpdatedAt: Value(createdAt),
@@ -215,21 +217,39 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
           baseCommit: Value(baseCommit),
           lastAgent: Value(lastAgent),
           lastAgentModel: Value(lastAgentModel),
+          fastMode: Value(fastMode),
         ),
         target: [sessionTable.sessionId],
       ),
     );
   }
 
-  Future<void> updatePromptDefaults({
+  /// Returns the updated row, or null when [sessionId] has none.
+  Future<SessionDto?> updatePromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
+  }) async {
+    final rows = await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).writeReturning(
+      SessionTableCompanion(
+        lastAgent: Value(agent),
+        lastAgentModel: Value(agentModel),
+      ),
+    );
+    return rows.firstOrNull;
+  }
+
+  Future<void> updateRequestedPromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+    required bool fastMode,
   }) async {
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
       SessionTableCompanion(
         lastAgent: Value(agent),
         lastAgentModel: Value(agentModel),
+        fastMode: Value(fastMode),
       ),
     );
   }

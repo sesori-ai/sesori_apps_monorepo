@@ -171,10 +171,14 @@ import 'package:sesori_dart_core/src/services/product_analytics_preference_servi
     as _i555;
 import 'package:sesori_dart_core/src/services/product_analytics_service.dart'
     as _i204;
+import 'package:sesori_dart_core/src/services/project_inventory_service.dart'
+    as _i870;
 import 'package:sesori_dart_core/src/services/project_list_service.dart'
     as _i703;
 import 'package:sesori_dart_core/src/services/project_viewing_service.dart'
     as _i413;
+import 'package:sesori_dart_core/src/services/recent_session_inventory_service.dart'
+    as _i623;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
     as _i699;
 import 'package:sesori_dart_core/src/services/session_abort_service.dart'
@@ -591,6 +595,7 @@ extension GetItInjectableX on _i174.GetIt {
         repository: gh<_i80.ProjectRepository>(),
         activityCalculator: gh<_i84.SessionActivityCalculator>(),
       ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i763.SessionListService>(
       () => _i763.SessionListService(
@@ -619,12 +624,36 @@ extension GetItInjectableX on _i174.GetIt {
         connectionService: gh<_i369.ConnectionService>(),
       ),
     );
+    gh.factory<_i870.ProjectInventoryService>(
+      () => _i870.ProjectInventoryService(
+        projectRepository: gh<_i80.ProjectRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        sseEventTracker: gh<_i508.SseEventTracker>(),
+        routeSource: gh<_i366.RouteSource>(),
+        projectListService: gh<_i703.ProjectListService>(),
+        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
+        registeredBridgesService: gh<_i699.RegisteredBridgesService>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+        failureReporter: gh<_i553.FailureReporter>(),
+        catalogRescanService: gh<_i572.CatalogRescanService>(),
+      ),
+    );
     gh.lazySingleton<_i72.MessageThumbnailCacheService>(
       () => _i72.MessageThumbnailCacheService(
         repository: gh<_i531.MessageImageRepository>(),
         authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.factory<_i623.RecentSessionInventoryService>(
+      () => _i623.RecentSessionInventoryService(
+        sessionListService: gh<_i763.SessionListService>(),
+        projectListService: gh<_i703.ProjectListService>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        sseEventTracker: gh<_i508.SseEventTracker>(),
+        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
+        catalogRescanService: gh<_i572.CatalogRescanService>(),
+      ),
     );
     return this;
   }

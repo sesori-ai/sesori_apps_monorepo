@@ -46,7 +46,7 @@ class const VoiceCancelButton({
             builder: (context, value, _) {
               final engaged = value.clamp(0.0, 1.0);
               // The explicit box carries the footprint: a CustomPaint with a
-              // child sizes to that child, and the centred 20px icon would
+              // child sizes to that child, and the centred 18px icon would
               // shrink both the ring and the tap target.
               return SizedBox.square(
                 dimension: _size,
@@ -62,7 +62,7 @@ class const VoiceCancelButton({
                   child: Center(
                     child: Icon(
                       TablerRegular.x,
-                      size: 20,
+                      size: PregoIconSize.md,
                       color:
                           Color.lerp(prego.colors.textSecondary, prego.colors.textWhite, engaged) ??
                           prego.colors.textSecondary,

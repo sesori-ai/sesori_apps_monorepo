@@ -23,6 +23,22 @@ void main() {
       return mapper.map(event: event, pluginId: "test-plugin");
     }
 
+    test("internal quota reports never become client SSE payloads", () {
+      expect(
+        mapEvent(
+          BridgeSseSessionQuotaBlocked(
+            sessionID: "session",
+            interruption: PluginQuotaInterruption(
+              errorMessageId: "error",
+              observedAt: DateTime.utc(2026, 9, 23),
+              reset: const PluginQuotaResetUnknown(),
+            ),
+          ),
+        ),
+        isNull,
+      );
+    });
+
     test("finalized part events require the store-before-delivery mapping seam", () {
       expect(
         mapper.map(
@@ -55,21 +71,17 @@ void main() {
       );
     });
 
-    test("maps backend-originated prompt defaults to the existing wire event", () {
-      final result = mapEvent(
-        const BridgeSseSessionPromptDefaultsChanged(
-          sessionID: "stable-session",
-          agent: "Default",
-          model: null,
-        ),
-      );
-
+    test("leaves backend-originated prompt defaults to the prompt service", () {
+      // SessionPromptService publishes them with the session's stored fast mode.
       expect(
-        result,
-        const SesoriSessionPromptDefaultsChanged(
-          sessionID: "stable-session",
-          promptDefaults: SessionPromptDefaults(agent: "Default", model: null),
+        mapEvent(
+          const BridgeSseSessionPromptDefaultsChanged(
+            sessionID: "stable-session",
+            agent: "Default",
+            model: null,
+          ),
         ),
+        isNull,
       );
     });
 

@@ -124,12 +124,9 @@ void main() {
 
       await pumpScreen(tester);
 
-      // Once in the body, once as the top bar's subtitle.
+      // Once as the large title's subtitle, then once in the body below it.
       expect(find.text("Macbook-Pro.local"), findsNWidgets(2));
-      final bodyName = find.descendant(
-        of: find.byType(CustomScrollView),
-        matching: find.text("Macbook-Pro.local"),
-      );
+      final bodyName = find.text("Macbook-Pro.local").last;
       final status = find.textContaining("Disconnected");
       expect(tester.getTopLeft(bodyName).dy, lessThan(tester.getTopLeft(status).dy));
     });

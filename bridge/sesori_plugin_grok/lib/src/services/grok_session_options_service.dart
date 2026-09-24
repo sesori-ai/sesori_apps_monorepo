@@ -243,6 +243,7 @@ class GrokSessionOptionsService({
                     [
                       for (final model in catalog.models)
                         PluginModel(
+                          fastMode: null,
                           id: model.id,
                           name: model.name,
                           variants: model.reasoningEfforts,

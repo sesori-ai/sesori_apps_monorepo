@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:claude_plugin/claude_plugin.dart";
 import "package:claude_plugin/claude_testing.dart";
+import "package:claude_plugin/src/repositories/mappers/claude_quota_interruption_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -18,6 +19,88 @@ void main() {
     tearDown(() async {
       await harness.dispose();
     });
+
+    for (final scenario in [
+      "terminal",
+      "recovered",
+      "subagent",
+      "aborted",
+      "warning",
+      "child progress",
+      "trailing stream",
+      "new stream",
+    ]) {
+      test("quota observation waits for terminal root failure: $scenario", () async {
+        unawaited(harness.enqueue("prompt", model: "haiku"));
+        final process = await harness.firstProcess;
+        await _waitForUserFrames(process, 1);
+        process.emit(_replayOf(_userFrames(process).single, uuid: "user-replay"));
+        final error = <String, Object?>{
+          "type": "assistant",
+          "session_id": testSessionId,
+          "error": "rate_limit",
+          "timestamp": "2026-09-23T14:12:51Z",
+          "message": {
+            "id": "quota-error",
+            "content": [
+              {"type": "text", "text": "You've hit your session limit · resets 6:30pm (Europe/Sofia)"},
+            ],
+          },
+        };
+        if (scenario == "warning") {
+          process.emit({
+            "type": "rate_limit_event",
+            "rate_limit_info": {"status": "rejected", "resetsAt": 1790000000},
+          });
+        } else {
+          process.emit({...error, if (scenario == "subagent") "parent_tool_use_id": "child-tool"});
+        }
+        await pump();
+        expect(harness.events.whereType<BridgeSseSessionQuotaBlocked>(), isEmpty);
+        if (scenario == "trailing stream" || scenario == "new stream") {
+          for (final type
+              in scenario == "new stream"
+                  ? ["message_start"]
+                  : ["content_block_stop", "message_delta", "message_stop"]) {
+            process.emit({
+              "type": "stream_event",
+              "session_id": testSessionId,
+              "event": {"type": type},
+            });
+          }
+        }
+        if (scenario == "recovered" || scenario == "child progress") {
+          process.emit({
+            "type": "assistant",
+            "session_id": testSessionId,
+            if (scenario == "child progress") "parent_tool_use_id": "child-tool",
+            "message": {
+              "id": "success",
+              "content": [
+                {"type": "text", "text": "Done"},
+              ],
+            },
+          });
+        }
+        process.emit({
+          ..._result(),
+          "is_error": scenario != "recovered",
+          if (scenario == "aborted") "terminal_reason": "aborted_streaming",
+        });
+        await harness.waitForIdle();
+        await pump();
+        final reports = harness.events.whereType<BridgeSseSessionQuotaBlocked>().toList();
+        if (scenario == "terminal" || scenario == "child progress" || scenario == "trailing stream") {
+          expect(reports.single.sessionID, testSessionId);
+          expect(reports.single.interruption.errorMessageId, "quota-error");
+        } else {
+          expect(reports, isEmpty);
+        }
+        process.emit({..._result(), "is_error": true});
+        await pump();
+        expect(harness.events.whereType<BridgeSseSessionQuotaBlocked>().length, reports.length);
+      });
+    }
 
     test("dispatches same-effort prompts as steering input", () async {
       unawaited(harness.enqueue("first", model: "haiku"));
@@ -61,6 +144,92 @@ void main() {
       await _waitForUserFrames(process, 2);
       process.emit(_replayOf(_userFrames(process).last, uuid: "replay-second"));
       process.emit(_result());
+      await harness.waitForIdle();
+    });
+
+    test("turns fast mode on after a fresh launch, before the first turn", () async {
+      unawaited(harness.enqueue("first", fastMode: true));
+      final process = await harness.firstProcess;
+
+      final fast = await _waitForControlSubtype(process, "apply_flag_settings");
+      expect((fast["request"]! as Map)["settings"], {"fastMode": true});
+      expect(_userFrames(process), isEmpty, reason: "the turn waits for the setting to apply");
+      process.emitControlResponse(requestId: fast["request_id"]! as String, payload: const {});
+      await _waitForUserFrames(process, 1);
+      expect(harness.repository.appliedSelection(sessionId: testSessionId)?.fastMode, isTrue);
+      process.emit(_replayOf(_userFrames(process).single, uuid: "replay-first"));
+      process.emit(_result());
+      await harness.waitForIdle();
+    });
+
+    test("sends fast mode only when it changes, at a turn boundary", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      unawaited(harness.enqueue("second"));
+      await _waitForUserFrames(process, 2);
+      expect(_controlSubtypes(process), isNot(contains("apply_flag_settings")), reason: "a fresh process starts off");
+
+      unawaited(harness.enqueue("third", fastMode: true));
+      await pump();
+      expect(
+        _controlSubtypes(process),
+        isNot(contains("apply_flag_settings")),
+        reason: "the running turn keeps its speed",
+      );
+      process.emit(_replayOf(_userFrames(process)[0], uuid: "replay-first"));
+      process.emit(_replayOf(_userFrames(process)[1], uuid: "replay-second"));
+      process.emit(_result());
+
+      final fast = await _waitForControlSubtype(process, "apply_flag_settings");
+      expect((fast["request"]! as Map)["settings"], {"fastMode": true});
+      process.emitControlResponse(requestId: fast["request_id"]! as String, payload: const {});
+      await _waitForUserFrames(process, 3);
+      process.emit(_replayOf(_userFrames(process).last, uuid: "replay-third"));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      unawaited(harness.enqueue("fourth", fastMode: true));
+      await _waitForUserFrames(process, 4);
+      expect(_controlSubtypes(process).where((subtype) => subtype == "apply_flag_settings"), hasLength(1));
+      process.emit(_replayOf(_userFrames(process).last, uuid: "replay-fourth"));
+      process.emit(_result());
+      await harness.waitForIdle();
+    });
+
+    test("a rejected fast-mode setting fails the queued turn without writing it", () async {
+      unawaited(harness.enqueue("first", fastMode: true));
+      final process = await harness.firstProcess;
+      final fast = await _waitForControlSubtype(process, "apply_flag_settings");
+      process.emitControlError(requestId: fast["request_id"]! as String, error: "fast mode unavailable");
+      await harness.waitForIdle();
+
+      expect(_userFrames(process), isEmpty);
+      expect(harness.events.whereType<BridgeSseSessionError>(), hasLength(1));
+      expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+      expect(harness.repository.appliedSelection(sessionId: testSessionId)?.fastMode, isFalse);
+    });
+
+    test("a rejected fast-mode setting fails the blocking initial turn's acceptance", () async {
+      final acceptance = harness.service.enqueueInitialTurn(
+        sessionId: testSessionId,
+        directory: "/tmp/project",
+        createNew: true,
+        parts: [const PluginPromptPart.text(text: "initial")],
+        model: null,
+        effort: null,
+        permissionMode: null,
+        fastMode: true,
+      );
+      final process = await harness.firstProcess;
+      final fast = await _waitForControlSubtype(process, "apply_flag_settings");
+      process.emitControlError(requestId: fast["request_id"]! as String, error: "fast mode unavailable");
+
+      await expectLater(
+        acceptance,
+        throwsA(isA<ClaudeControlException>().having((error) => error.message, "message", "fast mode unavailable")),
+      );
+      expect(_userFrames(process), isEmpty);
       await harness.waitForIdle();
     });
 
@@ -476,31 +645,6 @@ void main() {
       expect(finalUpdate.prompts, isEmpty);
     });
 
-    test("refuses a duplicate prompt id as an accepted no-op", () async {
-      unawaited(harness.enqueue("first", promptId: "prm_dup"));
-      final process = await harness.firstProcess;
-      await waitForFrame(process, "user");
-
-      await harness.enqueue("first-again", promptId: "prm_dup");
-      process.emit(_result());
-      await harness.waitForIdle();
-
-      expect(_userFrames(process), hasLength(1), reason: "the retry must not become a second turn");
-    });
-
-    test("refuses a recently dispatched prompt id after its turn completed", () async {
-      unawaited(harness.enqueue("first", promptId: "prm_done"));
-      final process = await harness.firstProcess;
-      await waitForFrame(process, "user");
-      process.emit(_result());
-      await harness.waitForIdle();
-
-      await harness.enqueue("first-retry", promptId: "prm_done");
-      await pump();
-
-      expect(_userFrames(process), hasLength(1));
-    });
-
     test("cancels a pending entry before dispatch and refuses a dispatched one", () async {
       unawaited(harness.enqueue("first"));
       unawaited(harness.enqueue("second"));
@@ -612,6 +756,7 @@ void main() {
             model: null,
             effort: null,
             permissionMode: null,
+            fastMode: false,
           )
           .then((_) => accepted = true);
       await pump();
@@ -851,6 +996,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
     service = ClaudeSessionService(
       processes: repository,
       approvals: approvals,
+      quotaMapper: ClaudeQuotaInterruptionMapper(contentMapper: const ClaudeContentMapper()),
       clock: clock,
       resolveIdleTimeout: () => idleTimeout,
       idleTimeoutChanges: idleTimeoutChanges.stream,
@@ -890,6 +1036,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
     String? promptId,
     String? command,
     ClaudePermissionMode? permissionMode,
+    bool fastMode = false,
   }) {
     return service
         .enqueueTurn(
@@ -900,6 +1047,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
           model: model,
           effort: null,
           permissionMode: permissionMode,
+          fastMode: fastMode,
           promptId: promptId ?? "prompt-$text",
           displayText: text,
           command: command,

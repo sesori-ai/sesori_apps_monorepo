@@ -21,6 +21,13 @@ _CodexModelDto _$CodexModelDtoFromJson(Map json) => _CodexModelDto(
   ),
   defaultReasoningEffort: json['defaultReasoningEffort'] as String?,
   isDefault: json['isDefault'] as bool?,
+  serviceTiers: (json['serviceTiers'] as List<dynamic>?)
+      ?.map(
+        (e) => CodexModelServiceTierDto.fromJson(
+          Map<String, dynamic>.from(e as Map),
+        ),
+      )
+      .toList(),
 );
 
 _CodexReasoningEffortOptionDto _$CodexReasoningEffortOptionDtoFromJson(
@@ -29,3 +36,10 @@ _CodexReasoningEffortOptionDto _$CodexReasoningEffortOptionDtoFromJson(
   reasoningEffort: json['reasoningEffort'] as String?,
   description: json['description'] as String?,
 );
+
+_CodexModelServiceTierDto _$CodexModelServiceTierDtoFromJson(Map json) =>
+    _CodexModelServiceTierDto(
+      id: json['id'] as String?,
+      name: json['name'] as String?,
+      description: json['description'] as String?,
+    );

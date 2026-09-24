@@ -16,6 +16,13 @@ _DesktopSidebarLayout _$DesktopSidebarLayoutFromJson(
           ?.map((e) => e as String)
           .toSet() ??
       const {},
+  deferredSessions:
+      (json['deferredSessions'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, (e as num).toInt()),
+      ) ??
+      const {},
+  activitySectionCollapsed: json['activitySectionCollapsed'] as bool? ?? false,
+  projectsSectionCollapsed: json['projectsSectionCollapsed'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$DesktopSidebarLayoutToJson(
@@ -24,4 +31,7 @@ Map<String, dynamic> _$DesktopSidebarLayoutToJson(
   'width': instance.width,
   'collapsed': instance.collapsed,
   'collapsedProjectIds': instance.collapsedProjectIds.toList(),
+  'deferredSessions': instance.deferredSessions,
+  'activitySectionCollapsed': instance.activitySectionCollapsed,
+  'projectsSectionCollapsed': instance.projectsSectionCollapsed,
 };

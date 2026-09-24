@@ -16,6 +16,9 @@ class _EmptyRouteSource() implements RouteSource {
   ValueStream<AppRouteDef?> get currentRouteStream => _route.stream;
 
   @override
+  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
+
+  @override
   String? get currentLocation => null;
 
   Future<void> dispose() => _route.close();

@@ -1,5 +1,6 @@
-import "dart:ui" show Offset, Rect, Size;
+import "dart:ui" show Brightness, Offset, Rect, Size;
 
+import "package:flutter/foundation.dart" show TargetPlatform, debugDefaultTargetPlatformOverride;
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:screen_retriever/screen_retriever.dart";
@@ -176,6 +177,50 @@ void main() {
       () => manager.setSkipTaskbar(false),
       () => manager.show(),
       () => manager.focus(),
+    ]);
+  });
+
+  test("only macOS hides the title bar, and it keeps its traffic lights", () async {
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    Future<WindowOptions> optionsOn({required TargetPlatform platform}) async {
+      debugDefaultTargetPlatformOverride = platform;
+      final host = createHost();
+      addTearDown(host.dispose);
+      await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
+      final options = verify(() => manager.waitUntilReadyToShow(captureAny())).captured.single as WindowOptions;
+      return options;
+    }
+
+    final macOS = await optionsOn(platform: TargetPlatform.macOS);
+    expect(macOS.titleBarStyle, TitleBarStyle.hidden);
+    expect(macOS.windowButtonVisibility, isTrue);
+    // A null style leaves the native chrome alone.
+    expect((await optionsOn(platform: TargetPlatform.windows)).titleBarStyle, isNull);
+    expect((await optionsOn(platform: TargetPlatform.linux)).titleBarStyle, isNull);
+  });
+
+  test("drags, zooms and sets the chrome's brightness through the native window", () async {
+    when(manager.startDragging).thenAnswer((_) async {});
+    when(manager.maximize).thenAnswer((_) async {});
+    when(manager.unmaximize).thenAnswer((_) async {});
+    when(() => manager.setBrightness(Brightness.dark)).thenAnswer((_) async {});
+    final host = createHost();
+    addTearDown(host.dispose);
+    await expectLater(host.startDragging(), throwsStateError);
+    await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
+
+    await host.startDragging();
+    when(manager.isMaximized).thenAnswer((_) async => false);
+    await host.toggleZoom();
+    when(manager.isMaximized).thenAnswer((_) async => true);
+    await host.toggleZoom();
+    await host.setBrightness(brightness: WindowBrightness.dark);
+
+    verifyInOrder(<void Function()>[
+      () => manager.startDragging(),
+      () => manager.maximize(),
+      () => manager.unmaximize(),
+      () => manager.setBrightness(Brightness.dark),
     ]);
   });
 

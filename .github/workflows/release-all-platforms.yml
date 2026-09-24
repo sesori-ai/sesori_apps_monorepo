@@ -41,6 +41,12 @@ jobs:
       should_release: ${{ steps.gate.outputs.should_release }}
       version: ${{ steps.check.outputs.version }}
     steps:
+      - name: Require main before any store query or upload
+        run: |
+          if [[ "$GITHUB_REF" != 'refs/heads/main' ]]; then
+            echo 'Internal all-platform releases must be dispatched from main.' >&2
+            exit 1
+          fi
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -139,10 +145,7 @@ jobs:
     uses: ./.github/workflows/_reusable-bridge-build.yml
     with:
       version: ${{ needs.preflight.outputs.version }}-internal.${{ needs.next-build-number.outputs.build_number }}
-    secrets:
-      MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
-      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
-      MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+    secrets: inherit
 
   # All-or-nothing: runs only when iOS, Android AND all six bridge targets
   # succeeded, so every internal tag maps to a complete set (both store builds

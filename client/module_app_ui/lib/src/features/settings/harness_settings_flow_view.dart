@@ -13,11 +13,17 @@ import "../../extensions/build_context_x.dart";
 import "../../utils/copy_text_to_clipboard.dart";
 import "../../widgets/catalog_scan_row.dart";
 import "widgets/settings_section.dart";
+import "widgets/settings_window_page.dart";
 
 part "harness_settings_sheets.dart";
 part "harness_settings_presentation.dart";
 part "harness_settings_detail_view.dart";
 part "harnesses_settings_view.dart";
+
+/// Who draws the harness pages' chrome: their own bar, closed as a modal or
+/// left by going back, or the desktop settings window, which owns the close
+/// button and names the page.
+enum HarnessSettingsChrome() { modal, pushed, window }
 
 /// Owns transient presentation once for the entire nested harness navigator.
 class const HarnessSettingsFlowView({super.key, required final Widget child}) extends StatelessWidget {

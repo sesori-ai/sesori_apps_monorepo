@@ -11,6 +11,7 @@ import "../session_detail/composer_presentation_scope.dart";
 import "../session_detail/widgets/agent_model_buttons.dart";
 import "../session_detail/widgets/composer_surface_style.dart";
 import "../session_detail/widgets/prompt_input.dart";
+import "new_session_header.dart";
 import "new_session_no_harness_notice.dart";
 import "new_session_options_skeleton.dart";
 import "new_session_plugin_chooser.dart";
@@ -18,17 +19,34 @@ import "new_session_plugin_chooser.dart";
 typedef NewSessionComposerScopeBuilder = Widget Function({required Widget child});
 typedef NewSessionCreatedCallback = void Function({required Session session});
 
+/// A pointer surface's frame for the page: [topBar] replaces the glass bar, and
+/// the header, the options and the composer form one centred column no wider
+/// than [maxContentWidth], instead of anchoring the composer to the bottom.
+/// [footer] follows the composer in that column.
+class const NewSessionPageChrome({
+  required final Widget topBar,
+  required final double maxContentWidth,
+  required final Widget? footer,
+});
+
 /// Shared new-session presentation below shell-owned routing, DI, and platform
 /// composer capabilities.
 class const NewSessionView({
   super.key,
   required final String projectId,
+  required final String? projectName,
+
+  /// The projects the header's selector offers; empty shows the project only.
+  required final List<ProjectSummary> projects,
+  required final NewSessionProjectSelected onProjectSelected,
   required final VoidCallback onBack,
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
   required final NewSessionComposerScopeBuilder composerScopeBuilder,
-  required final Widget? subtitle,
   required final Widget? banner,
+
+  /// Null keeps the glass bar over options with a bottom-anchored composer.
+  required final NewSessionPageChrome? pageChrome,
 }) extends StatefulWidget {
   @override
   State<NewSessionView> createState() => _NewSessionViewState();
@@ -161,6 +179,10 @@ class _NewSessionViewState() extends State<NewSessionView> {
         onModelSelected: cubit.selectModel,
         availableVariants: data.availableVariants,
         onVariantSelected: cubit.selectVariant,
+        fastModeControl: data.fastModeControl,
+        decideFastModeToggle: cubit.fastModeToggleDecision,
+        onFastModeChanged: cubit.setFastMode,
+        compact: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
       ),
     );
   }
@@ -296,6 +318,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
     required ({String message, bool isFailure})? status,
     required bool needsHarnessDiscovery,
     required bool hasNoHarnesses,
+    required bool includeWorkspaceRow,
   }) {
     if (data == null || (data.plugins.isEmpty && data.isPluginDiscoveryInFlight)) {
       return const NewSessionOptionsSkeleton(
@@ -318,6 +341,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
     }
 
     final hasPlugins = data.plugins.isNotEmpty;
+    final workspaceRow = includeWorkspaceRow ? _buildWorkspaceRow(data: data) : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -329,14 +353,77 @@ class _NewSessionViewState() extends State<NewSessionView> {
           onSettingsPressed: widget.onOpenHarnessSettings,
         ),
         if (status != null) _buildOptionsStatus(status: status),
-        if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.supported) ...[
+        if (workspaceRow != null) ...[
           if (hasPlugins) const SizedBox(height: _optionRowSpacing),
-          _DedicatedWorkspaceRow(
-            value: _dedicatedWorktree,
-            onChanged: (value) => setState(() => _dedicatedWorktree = value),
-          ),
+          workspaceRow,
         ],
       ],
+    );
+  }
+
+  Widget? _buildWorkspaceRow({required AgentModelData? data}) {
+    if (data?.projectWorktreeCapability != NewSessionProjectWorktreeCapability.supported) return null;
+    return _DedicatedWorkspaceRow(
+      value: _dedicatedWorktree,
+      onChanged: (value) => setState(() => _dedicatedWorktree = value),
+    );
+  }
+
+  /// The page under [chrome]: one centred column that scrolls as a whole when
+  /// the pane is too short for it.
+  Widget _buildChromePage({
+    required NewSessionPageChrome chrome,
+    required NewSessionCubit cubit,
+    required NewSessionState state,
+    required Widget launchStatus,
+    required Widget header,
+    required Widget Function({required bool includeWorkspaceRow}) options,
+    required Widget? composer,
+    required bool showsRefresh,
+  }) {
+    final data = state.agentModelData;
+    final settled =
+        data != null && !cubit.needsHarnessDiscovery && !(data.plugins.isEmpty && data.isPluginDiscoveryInFlight);
+    return Scaffold(
+      body: Column(
+        children: [
+          chrome.topBar,
+          ?widget.banner,
+          Expanded(
+            child: state.phase is NewSessionPhaseSending
+                ? launchStatus
+                : Center(
+                    child: SingleChildScrollView(
+                      key: const Key("new_session_options_scroll"),
+                      padding: const EdgeInsets.all(PregoSpacing.xl),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: chrome.maxContentWidth),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          spacing: PregoSpacing.lg,
+                          children: [
+                            header,
+                            options(includeWorkspaceRow: false),
+                            ?composer,
+                            if (settled) ?_buildWorkspaceRow(data: data),
+                            if (showsRefresh)
+                              Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: _buildOptionsRefresh(
+                                  cubit: cubit,
+                                  isLoading: _refreshPress != null && (data?.isLoading ?? false),
+                                ),
+                              ),
+                            ?chrome.footer,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -392,6 +479,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
                   state: state,
                   surfaceStyleController: surfaceStyleController,
                 ),
+                composerTrailing: null,
                 availableCommands: composerData?.commands ?? const [],
                 stagedCommand: composerData?.stagedCommand,
                 onCommandSelected: context.read<NewSessionCubit>().stageCommand,
@@ -436,8 +524,51 @@ class _NewSessionViewState() extends State<NewSessionView> {
     // The listener can run while this route is being torn down. The route
     // object stays stable, so `isCurrent` remains safe to read at event time.
     final modalRoute = ModalRoute.of(context);
+    final launchStatus = PregoLaunchStatus(
+      semanticsLabel: loc.newSessionLoadingSemantics,
+      messages: [
+        loc.newSessionLoadingMessage1,
+        loc.newSessionLoadingMessage2,
+        loc.newSessionLoadingMessage3,
+      ],
+    );
+    Widget options({required bool includeWorkspaceRow}) => _buildOptions(
+      data: composerData,
+      status: optionsStatus,
+      needsHarnessDiscovery: needsHarnessDiscovery,
+      hasNoHarnesses: hasNoHarnesses,
+      includeWorkspaceRow: includeWorkspaceRow,
+    );
+    final composer = hasNoHarnesses
+        ? null
+        : _buildComposer(
+            isComposerEnabled: isComposerEnabled,
+            restoringSubmission: restoringSubmission,
+            restoredAttachments: restoredAttachments,
+            composerData: composerData,
+            state: state,
+          );
+    final header = NewSessionHeader(
+      projectId: widget.projectId,
+      projectName: widget.projectName,
+      projects: widget.projects,
+      onProjectSelected: widget.onProjectSelected,
+    );
+    final chromePage = switch (widget.pageChrome) {
+      null => null,
+      final chrome => _buildChromePage(
+        chrome: chrome,
+        cubit: cubit,
+        state: state,
+        launchStatus: launchStatus,
+        header: header,
+        options: options,
+        composer: composer,
+        showsRefresh: showsRefresh,
+      ),
+    };
 
-    return BlocListener<NewSessionCubit, NewSessionState>(
+    Widget listening({required Widget child}) => BlocListener<NewSessionCubit, NewSessionState>(
       listenWhen: (previous, current) {
         final currentAuthentication = _authenticationNotice(current);
         return current is NewSessionCreated ||
@@ -463,17 +594,20 @@ class _NewSessionViewState() extends State<NewSessionView> {
           duration: const Duration(seconds: 8),
         );
       },
+      child: child,
+    );
+    if (chromePage != null) return listening(child: chromePage);
+
+    return listening(
       child: PregoGlassScaffold(
         title: loc.sessionListNewSession,
         // Toolbar navigation is explicit: unlike Android system back, it must
         // not be vetoed by the composer's keyboard-dismissal PopScope.
         onBack: _dismissScreen,
-        // The same back-leading block the sessions list wears, so stepping into
-        // the composer keeps the project's repository in view. Only the title
-        // line changes — this screen is about the session being started, not
-        // the project it belongs to.
+        // The header's project selector names the project, so the bar carries
+        // no subtitle.
         titleMode: isSending ? PregoTopNavigationTitleMode.inline : PregoTopNavigationTitleMode.backLeading,
-        subtitle: isSending ? null : widget.subtitle,
+        subtitle: null,
         reserveBarSpace: false,
         scrollable: false,
         banner: widget.banner,
@@ -481,14 +615,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
             ? [
                 SliverFillRemaining(
                   hasScrollBody: false,
-                  child: PregoLaunchStatus(
-                    semanticsLabel: loc.newSessionLoadingSemantics,
-                    messages: [
-                      loc.newSessionLoadingMessage1,
-                      loc.newSessionLoadingMessage2,
-                      loc.newSessionLoadingMessage3,
-                    ],
-                  ),
+                  child: launchStatus,
                 ),
               ]
             : [
@@ -541,25 +668,20 @@ class _NewSessionViewState() extends State<NewSessionView> {
                                   ),
                               ],
                             ),
-                            child: _buildOptions(
-                              data: composerData,
-                              status: optionsStatus,
-                              needsHarnessDiscovery: needsHarnessDiscovery,
-                              hasNoHarnesses: hasNoHarnesses,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              spacing: _optionRowSpacing,
+                              children: [
+                                // The keyboard leaves this pane a few rows tall;
+                                // they belong to the options being typed against.
+                                if (MediaQuery.viewInsetsOf(context).bottom == 0) header,
+                                options(includeWorkspaceRow: true),
+                              ],
                             ),
                           ),
                         ),
-                        if (!hasNoHarnesses)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: _buildComposer(
-                              isComposerEnabled: isComposerEnabled,
-                              restoringSubmission: restoringSubmission,
-                              restoredAttachments: restoredAttachments,
-                              composerData: composerData,
-                              state: state,
-                            ),
-                          ),
+                        if (composer != null)
+                          Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: composer),
                       ],
                     ),
                   ),

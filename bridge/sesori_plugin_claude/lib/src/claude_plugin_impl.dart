@@ -108,6 +108,7 @@ final class ClaudePlugin({
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -135,6 +136,7 @@ final class ClaudePlugin({
           directory: normalized,
           parts: parts,
           variant: variant,
+          fastMode: fastMode,
           agent: agent,
           model: model,
           operation: "createSession",
@@ -244,6 +246,7 @@ final class ClaudePlugin({
     required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -261,6 +264,7 @@ final class ClaudePlugin({
       directory: directory,
       parts: parts,
       variant: variant,
+      fastMode: fastMode,
       agent: agent,
       model: model,
       operation: "sendPrompt",
@@ -279,17 +283,23 @@ final class ClaudePlugin({
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
     final directory = _directoryForSession(sessionId);
     if (directory == null) throw const PluginOperationException.notFound("sendCommand", message: "session not found");
+    // A catalog cached before /fast was filtered can still offer it.
+    if (command == ClaudeBackendCatalogRepository.fastModeCommand) {
+      throw const PluginStaleOptionsException("sendCommand", message: "fast mode is set through the session selection");
+    }
     final visible = userVisibleArguments?.trim();
     await _enqueueQueued(
       sessionId: sessionId,
       directory: directory,
       parts: [PluginPromptPart.text(text: arguments.isEmpty ? "/$command" : "/$command $arguments")],
       variant: variant,
+      fastMode: fastMode,
       agent: agent,
       model: model,
       operation: "sendCommand",
@@ -350,6 +360,8 @@ final class ClaudePlugin({
     if (!_approvals.replyQuestion(id: questionId, answers: answers)) {
       throw const PluginOperationException("replyToQuestion", message: "Claude rejected the question response");
     }
+    // COMPATIBILITY 2026-09-21 (v1.9.0): Only an honoured "Plan" selection reaches plan
+    // exit now. Remove with `ClaudeAgentSelection.plan`.
     if (exitsPlanMode) {
       final applied = _processes.appliedSelection(sessionId: sessionId);
       if (applied != null) {
@@ -358,6 +370,7 @@ final class ClaudePlugin({
           model: applied.model,
           effort: applied.effort,
           permissionMode: ClaudePermissionMode.auto,
+          fastMode: applied.fastMode,
         );
       }
       _eventBuffer.add(
@@ -450,6 +463,7 @@ final class ClaudePlugin({
     required String directory,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
     required String operation,
@@ -477,6 +491,7 @@ final class ClaudePlugin({
         model: model?.modelID,
         effort: effort,
         permissionMode: permissionMode,
+        fastMode: fastMode,
         promptId: promptId,
         displayText: displayText,
         command: command,
@@ -496,6 +511,7 @@ final class ClaudePlugin({
     required String directory,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
     required String operation,
@@ -518,6 +534,7 @@ final class ClaudePlugin({
         model: model?.modelID,
         effort: effort,
         permissionMode: permissionMode,
+        fastMode: fastMode,
       );
     } on PluginOperationException {
       rethrow;

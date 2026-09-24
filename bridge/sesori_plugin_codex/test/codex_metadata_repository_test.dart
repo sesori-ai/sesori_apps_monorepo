@@ -65,7 +65,7 @@ void main() {
     }
 
     group("resolveModelDefaults", () {
-      test("the selected project's own latest rollout wins over a newer rollout elsewhere", () {
+      test("the selected project's own latest rollout wins over a newer rollout elsewhere", () async {
         _writeRollout(
           codexHome,
           id: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
@@ -85,16 +85,16 @@ void main() {
         );
 
         final repository = newRepositories().sessions;
-        final launchDefaults = repository.resolveModelDefaults(projectId: launchProject.path);
+        final launchDefaults = await repository.resolveModelDefaults(projectId: launchProject.path);
         expect(launchDefaults.modelID, equals("gpt-5.4-codex"));
         expect(launchDefaults.providerID, equals("openai"));
 
-        final otherDefaults = repository.resolveModelDefaults(projectId: otherProject.path);
+        final otherDefaults = await repository.resolveModelDefaults(projectId: otherProject.path);
         expect(otherDefaults.modelID, equals("claude-x"));
         expect(otherDefaults.providerID, equals("anthropic"));
       });
 
-      test("a newer dedicated-worktree session inside the project tree wins the parent project's defaults", () {
+      test("a newer dedicated-worktree session inside the project tree wins the parent project's defaults", () async {
         _writeRollout(
           codexHome,
           id: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
@@ -114,11 +114,11 @@ void main() {
           model: "gpt-5.5",
         );
 
-        final defaults = newRepositories().sessions.resolveModelDefaults(projectId: launchProject.path);
+        final defaults = await newRepositories().sessions.resolveModelDefaults(projectId: launchProject.path);
         expect(defaults.modelID, equals("gpt-5.5"));
       });
 
-      test("a worktree session does not leak into an unrelated project's defaults", () {
+      test("a worktree session does not leak into an unrelated project's defaults", () async {
         _writeRollout(
           codexHome,
           id: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
@@ -128,12 +128,12 @@ void main() {
           model: "gpt-5.5",
         );
 
-        final defaults = newRepositories().sessions.resolveModelDefaults(projectId: otherProject.path);
+        final defaults = await newRepositories().sessions.resolveModelDefaults(projectId: otherProject.path);
         expect(defaults.modelID, isNull);
         expect(defaults.providerID, equals("openai"));
       });
 
-      test("a rollout without a cwd groups under the launch directory", () {
+      test("a rollout without a cwd groups under the launch directory", () async {
         _writeRollout(
           codexHome,
           id: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
@@ -143,11 +143,11 @@ void main() {
           model: "gpt-5.4-codex",
         );
 
-        final defaults = newRepositories().sessions.resolveModelDefaults(projectId: launchProject.path);
+        final defaults = await newRepositories().sessions.resolveModelDefaults(projectId: launchProject.path);
         expect(defaults.modelID, equals("gpt-5.4-codex"));
       });
 
-      test("a project with no sessions falls back to config.toml", () {
+      test("a project with no sessions falls back to config.toml", () async {
         File(p.join(codexHome.path, "config.toml")).writeAsStringSync(
           'model = "gpt-5.5"\nmodel_provider = "azure"\n',
         );
@@ -160,13 +160,13 @@ void main() {
           model: "claude-x",
         );
 
-        final defaults = newRepositories().sessions.resolveModelDefaults(projectId: launchProject.path);
+        final defaults = await newRepositories().sessions.resolveModelDefaults(projectId: launchProject.path);
         expect(defaults.modelID, equals("gpt-5.5"));
         expect(defaults.providerID, equals("azure"));
       });
 
-      test("no sessions and no config resolves to a null model and openai", () {
-        final defaults = newRepositories().sessions.resolveModelDefaults(projectId: launchProject.path);
+      test("no sessions and no config resolves to a null model and openai", () async {
+        final defaults = await newRepositories().sessions.resolveModelDefaults(projectId: launchProject.path);
         expect(defaults.modelID, isNull);
         expect(defaults.providerID, equals("openai"));
       });

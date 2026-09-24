@@ -17,13 +17,13 @@ void main() {
 
     await tester.tap(find.text("Finish"));
     await tester.pump(const Duration(milliseconds: 150));
-    expect(tester.widget<SessionTile>(row).isActive, isFalse);
+    expect(tester.widget<SessionTile>(row).isRunning, isFalse);
     expect(tester.widget<PregoAiLoader>(detail).animate, isFalse);
     expect(tester.state(detail), same(initialState));
 
     await tester.tap(find.text("Start working"));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(tester.widget<SessionTile>(row).isActive, isTrue);
+    expect(tester.widget<SessionTile>(row).isRunning, isTrue);
     expect(tester.widget<PregoAiLoader>(detail).animate, isTrue);
     expect(tester.state(detail), same(initialState));
     expect(tester.takeException(), isNull);

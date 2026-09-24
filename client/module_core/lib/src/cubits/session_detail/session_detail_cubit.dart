@@ -27,6 +27,7 @@ import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
@@ -100,8 +101,13 @@ class SessionDetailCubit(
   /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
   final Duration eventRefreshMinInterval = const Duration(seconds: 5),
+
+  /// Reads the time a fast-mode tap is decided at. Overridable so tests can
+  /// place a tap inside or outside the prompt-cache lifetime.
+  final ClockProvider _clock = const ClockProvider(),
 }) extends Cubit<SessionDetailState> {
   static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
+  static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
   static const TranscriptSnapshotCalculator _transcript = TranscriptSnapshotCalculator();
 
   /// Shown when a catalog offers no agent at all, so the composer still names
@@ -393,6 +399,7 @@ class SessionDetailCubit(
             emit(
               _buildLoadedState(
                 snapshot: snapshot,
+                session: session,
                 parkEpochAtFetch: parkEpochAtFetch,
                 interaction: becameAvailable ? interactionAtLoad : _interaction,
               ),
@@ -879,6 +886,7 @@ class SessionDetailCubit(
               availableCommands: availableCommands,
               supportsPromptAttachments: snapshot.supportsPromptAttachments,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
+              session: session,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
               stagedCommand: _selection.resolveStagedCommand(
@@ -1291,13 +1299,22 @@ class SessionDetailCubit(
 
   void _onSessionUpdated(Session session) {
     final current = state;
+    if (isClosed) return;
+    // The unavailable shell still offers the session's actions, so a rename or
+    // an archive has to reach it too.
+    if (current is SessionDetailHarnessUnavailable) {
+      // A later availability change rebuilds this variant from the cache.
+      _sessionMetadata = session;
+      emit(current.copyWith(session: session));
+      return;
+    }
     if (current is! SessionDetailLoaded) return;
     final sessionTime = session.time;
 
-    if (isClosed) return;
     emit(
       current.copyWith(
         sessionTitle: session.title,
+        session: session,
         isArchived: sessionTime == null ? current.isArchived : sessionTime.archived != null,
       ),
     );
@@ -1324,6 +1341,8 @@ class SessionDetailCubit(
         selectedAgent: reconciled.agentName ?? current.selectedAgent,
         selectedAgentModel: reconciled.model,
         availableVariants: reconciled.availableVariants,
+        // The bridge owns the stored choice and sends it with every change.
+        fastMode: promptDefaults.fastMode,
       ),
     );
   }
@@ -1856,6 +1875,7 @@ class SessionDetailCubit(
 
     final selectedAgent = current is SessionDetailLoaded ? current.selectedAgent : null;
     final selectedAgentModel = current is SessionDetailLoaded ? current.selectedAgentModel : null;
+    final fastMode = current is SessionDetailLoaded && current.runsFastMode;
     // The id survives retries of the same submission, so a send whose
     // response was lost re-lands on the bridge as an idempotent no-op.
     final promptId = _generatePromptId();
@@ -1867,6 +1887,7 @@ class SessionDetailCubit(
             attachments: attachments,
             agent: selectedAgent,
             agentModel: selectedAgentModel,
+            fastMode: fastMode,
           )
         : QueuedSessionSubmission.command(
             promptId: promptId,
@@ -1874,6 +1895,7 @@ class SessionDetailCubit(
             command: normalizedCommand,
             agent: selectedAgent,
             agentModel: selectedAgentModel,
+            fastMode: fastMode,
           );
     _promptQueue.enqueue(submission);
     _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
@@ -2005,6 +2027,7 @@ class SessionDetailCubit(
           null => null,
           final variant => SessionVariant(id: variant),
         },
+        fastMode: submission.fastMode,
         command: submission.command,
       );
 
@@ -2177,9 +2200,8 @@ class SessionDetailCubit(
         final selectedModel = reconciled.model;
 
         _promptQueue.replacePending(
-          update: (submission) => submission.withSelection(
-            agent: _validatedQueuedAgent(candidate: submission.agent, agents: agents),
-            agentModel: submission.agentModel == null
+          update: (submission) {
+            final agentModel = submission.agentModel == null
                 ? null
                 : _selection
                       .reconcile(
@@ -2189,8 +2211,17 @@ class SessionDetailCubit(
                         modelCandidates: [submission.agentModel],
                         retainedModel: null,
                       )
-                      .model,
-          ),
+                      .model;
+            return submission.withSelection(
+              agent: _validatedQueuedAgent(candidate: submission.agent, agents: agents),
+              agentModel: agentModel,
+              fastMode: _selection.resolvedFastMode(
+                providers: providers,
+                model: agentModel,
+                requested: submission.fastMode,
+              ),
+            );
+          },
         );
 
         emit(
@@ -2617,6 +2648,29 @@ class SessionDetailCubit(
     emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant.id)));
   }
 
+  /// What tapping the fast-mode control should do right now, or null before
+  /// the session has loaded.
+  FastModeToggleDecision? fastModeToggleDecision() {
+    final current = state;
+    if (current is! SessionDetailLoaded) return null;
+    return _fastModeToggle.decide(
+      support: current.fastModeSupport,
+      fastMode: current.runsFastMode,
+      hasHistory: current.messages.isNotEmpty,
+      lastModelActivity: _fastModeToggle.lastModelActivity(messages: current.messages, session: current.session),
+      now: _clock(),
+    );
+  }
+
+  void setFastMode(bool fastMode) {
+    if (_refuseWhenInteractionBlocked(action: "change fast mode")) return;
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    if (isClosed) return;
+    emit(current.copyWith(fastMode: fastMode));
+  }
+
   void stageCommand(CommandInfo command) {
     if (_refuseWhenInteractionBlocked(action: "stage a command")) return;
     final current = state;
@@ -2707,6 +2761,7 @@ class SessionDetailCubit(
 
   SessionDetailLoaded _buildLoadedState({
     required SessionDetailSnapshot snapshot,
+    required Session session,
     required int parkEpochAtFetch,
     required SessionInteractionState interaction,
   }) {
@@ -2744,6 +2799,7 @@ class SessionDetailCubit(
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
       bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
       sessionTitle: snapshot.canonicalSessionTitle,
+      session: session,
       pluginId: snapshot.pluginId,
       supportsPromptAttachments: snapshot.supportsPromptAttachments,
       agent: latestAssistant?.agent,
@@ -2760,6 +2816,7 @@ class SessionDetailCubit(
       availableCommands: snapshot.commands,
       selectedAgent: reconciled.agentName ?? _fallbackAgentName,
       selectedAgentModel: reconciled.model,
+      fastMode: snapshot.promptDefaults?.fastMode ?? false,
       stagedCommand: null,
       isRefreshing: false,
       availableVariants: reconciled.availableVariants,

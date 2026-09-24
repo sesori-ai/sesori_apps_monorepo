@@ -426,6 +426,7 @@ Future<void> _storeSession({
 }) async {
   await database.projectsDao.setActivity(projectId: projectId, createdAt: 100, updatedAt: 100);
   await database.sessionDao.insertSession(
+    fastMode: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,

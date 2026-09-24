@@ -175,23 +175,41 @@ abstract class AppLocalizations {
   /// **'Access could not be confirmed'**
   String get desktopFileAccessUnknown;
 
-  /// Desktop home guidance when projects are available but no session is open.
+  /// Desktop home section heading for sessions waiting on the user's answer.
   ///
   /// In en, this message translates to:
-  /// **'Pick a session from the sidebar to get started.'**
-  String get desktopHomePickSession;
+  /// **'Needs you'**
+  String get desktopHomeNeedsYou;
 
-  /// Label for the prominent desktop sidebar action that opens the add-project dialog.
+  /// Desktop home section heading for the latest sessions across projects that are neither running nor waiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get desktopHomeRecent;
+
+  /// Tooltip and label for the small desktop sidebar action that opens the add-project dialog.
   ///
   /// In en, this message translates to:
   /// **'New project'**
   String get desktopSidebarNewProject;
 
-  /// Sidebar link to a project's full session list, with its active visible session count.
+  /// Sidebar button that reveals up to {count} more of a project's sessions in place.
   ///
   /// In en, this message translates to:
-  /// **'All sessions · {count}'**
-  String desktopSidebarAllSessions(int count);
+  /// **'Show {count} more'**
+  String desktopSidebarShowMore(int count);
+
+  /// Collapsible desktop sidebar section of sessions in motion across every project, with how many.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity · {count}'**
+  String desktopSidebarActivity(int count);
+
+  /// Accessible identity of a priority sidebar session with its project context.
+  ///
+  /// In en, this message translates to:
+  /// **'{sessionTitle} in {projectName}'**
+  String desktopSidebarActivitySession(String sessionTitle, String projectName);
 
   /// Tooltip for the sidebar project's new-session button, revealed on hover or keyboard focus.
   ///
@@ -211,6 +229,12 @@ abstract class AppLocalizations {
   /// **'Expand {projectName}'**
   String desktopSidebarExpandProject(String projectName);
 
+  /// Desktop control tooltip with its available platform-specific keyboard shortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} ({shortcut})'**
+  String desktopShortcutHint(String label, String shortcut);
+
   /// Tooltip for switching desktop navigation to the compact project rail.
   ///
   /// In en, this message translates to:
@@ -229,6 +253,102 @@ abstract class AppLocalizations {
   /// **'Resize sidebar; double-click to reset'**
   String get desktopSidebarResize;
 
+  /// Desktop project page toolbar toggle that switches the list to the project's archived sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived'**
+  String get desktopProjectPageArchived;
+
+  /// Session list filter chip showing every active session, with their count.
+  ///
+  /// In en, this message translates to:
+  /// **'All · {count}'**
+  String sessionListFilterAll(int count);
+
+  /// Heading of the new session page, above the project selector and the prompt input.
+  ///
+  /// In en, this message translates to:
+  /// **'What should we work on?'**
+  String get newSessionHeading;
+
+  /// Desktop session page toolbar button that opens the session's file changes.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get desktopSessionPageChanges;
+
+  /// Shown under a list's search field when no loaded title matches the query.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get listSearchNoMatches;
+
+  /// Accessibility label of the button that empties a list's search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get listSearchClear;
+
+  /// Placeholder of the search field above the phone's projects list.
+  ///
+  /// In en, this message translates to:
+  /// **'Search projects and sessions'**
+  String get projectListSearchHint;
+
+  /// Placeholder of the search field above the phone's session list.
+  ///
+  /// In en, this message translates to:
+  /// **'Search sessions'**
+  String get sessionListSearchHint;
+
+  /// Shown in the session list when the Running or Unread filter leaves no session.
+  ///
+  /// In en, this message translates to:
+  /// **'No sessions match this filter'**
+  String get sessionListFilterEmpty;
+
+  /// Session list filter chip showing only sessions an agent is working in, with their count.
+  ///
+  /// In en, this message translates to:
+  /// **'Running · {count}'**
+  String sessionListFilterRunning(int count);
+
+  /// Session list filter chip showing only sessions with unopened activity, with their count.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread · {count}'**
+  String sessionListFilterUnread(int count);
+
+  /// Desktop project page overflow menu action that reloads the project's session list.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh sessions'**
+  String get desktopProjectPageRefresh;
+
+  /// Tooltip for explicitly refreshing both desktop sidebar inventories.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh projects and sessions'**
+  String get desktopSidebarRefresh;
+
+  /// Accessible busy label while both desktop sidebar inventories refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing projects and sessions'**
+  String get desktopSidebarRefreshing;
+
+  /// Confirmation after both desktop sidebar inventories refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects and sessions updated'**
+  String get desktopSidebarRefreshSuccess;
+
+  /// Failure notice when either desktop sidebar inventory could not refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh projects and sessions'**
+  String get desktopSidebarRefreshFailed;
+
   /// Sidebar recovery notice when bridge ownership can be reclaimed.
   ///
   /// In en, this message translates to:
@@ -238,7 +358,7 @@ abstract class AppLocalizations {
   /// Action to reclaim local or relay bridge ownership.
   ///
   /// In en, this message translates to:
-  /// **'Take Over'**
+  /// **'Take over'**
   String get desktopBridgeTakeOver;
 
   /// Sidebar notice for supervised bridge authentication recovery.
@@ -250,7 +370,7 @@ abstract class AppLocalizations {
   /// Action to recover authentication and start the local bridge.
   ///
   /// In en, this message translates to:
-  /// **'Start Bridge'**
+  /// **'Start bridge'**
   String get desktopBridgeStart;
 
   /// Sidebar notice when automatic bridge crash recovery stops.
@@ -262,7 +382,7 @@ abstract class AppLocalizations {
   /// Action to open the local bridge's diagnostic logs.
   ///
   /// In en, this message translates to:
-  /// **'Open Logs'**
+  /// **'Open logs'**
   String get desktopBridgeOpenLogs;
 
   /// Heading for controls of the bridge supervised on this computer, not the desktop relay client.
@@ -274,7 +394,7 @@ abstract class AppLocalizations {
   /// Action that turns off the supervised local bridge without quitting Sesori.
   ///
   /// In en, this message translates to:
-  /// **'Stop Bridge'**
+  /// **'Stop bridge'**
   String get desktopBridgeStop;
 
   /// Secondary popover action opening bridge configuration.
@@ -319,17 +439,17 @@ abstract class AppLocalizations {
   /// **'This computer'**
   String get desktopSettingsThisComputer;
 
-  /// Label of the pinned desktop navigation entry for local bridge controls.
-  ///
-  /// In en, this message translates to:
-  /// **'Bridge'**
-  String get desktopBridgeTitle;
-
   /// No description provided for @projectListTitle.
   ///
   /// In en, this message translates to:
   /// **'Projects'**
   String get projectListTitle;
+
+  /// Heading over the sessions waiting for the user or running, across projects, at the top of Projects.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get projectListActivity;
 
   /// No description provided for @projectListLoadingSemantics.
   ///
@@ -340,7 +460,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectListDefaultName.
   ///
   /// In en, this message translates to:
-  /// **'Default Project'**
+  /// **'Default project'**
   String get projectListDefaultName;
 
   /// No description provided for @projectListRefreshSuccess.
@@ -562,7 +682,7 @@ abstract class AppLocalizations {
   /// No description provided for @connectionLostTitle.
   ///
   /// In en, this message translates to:
-  /// **'Connection Lost'**
+  /// **'Connection lost'**
   String get connectionLostTitle;
 
   /// No description provided for @connectionLostReconnect.
@@ -598,7 +718,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLogout.
   ///
   /// In en, this message translates to:
-  /// **'Log Out'**
+  /// **'Log out'**
   String get settingsLogout;
 
   /// No description provided for @settingsSectionAccount.
@@ -1336,7 +1456,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessesRegisteredSection.
   ///
   /// In en, this message translates to:
-  /// **'Registered Harnesses'**
+  /// **'Registered harnesses'**
   String get harnessesRegisteredSection;
 
   /// No description provided for @harnessesEmptyTitle.
@@ -1573,6 +1693,12 @@ abstract class AppLocalizations {
   /// **'Appearance'**
   String get settingsSectionAppearance;
 
+  /// No description provided for @desktopSettingsTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get desktopSettingsTheme;
+
   /// No description provided for @settingsSectionAnalytics.
   ///
   /// In en, this message translates to:
@@ -1582,7 +1708,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBasicUsageAnalyticsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Basic Usage Analytics'**
+  /// **'Basic usage analytics'**
   String get settingsBasicUsageAnalyticsTitle;
 
   /// No description provided for @settingsBasicUsageAnalyticsDescription.
@@ -1714,13 +1840,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLegalTerms.
   ///
   /// In en, this message translates to:
-  /// **'Terms of Service'**
+  /// **'Terms of service'**
   String get settingsLegalTerms;
 
   /// No description provided for @settingsLegalPrivacy.
   ///
   /// In en, this message translates to:
-  /// **'Privacy Policy'**
+  /// **'Privacy policy'**
   String get settingsLegalPrivacy;
 
   /// Button that re-fetches a legal document after the load failed
@@ -1750,7 +1876,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationSectionAi.
   ///
   /// In en, this message translates to:
-  /// **'AI Notifications'**
+  /// **'AI notifications'**
   String get notificationSectionAi;
 
   /// No description provided for @notificationSectionSystem.
@@ -1798,7 +1924,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCategoryAiInteraction.
   ///
   /// In en, this message translates to:
-  /// **'AI Interactions'**
+  /// **'AI interactions'**
   String get notificationCategoryAiInteraction;
 
   /// No description provided for @notificationCategoryAiInteractionDescription.
@@ -1810,7 +1936,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCategorySessionMessage.
   ///
   /// In en, this message translates to:
-  /// **'Session Messages'**
+  /// **'Session messages'**
   String get notificationCategorySessionMessage;
 
   /// No description provided for @notificationCategorySessionMessageDescription.
@@ -1822,7 +1948,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCategoryConnectionStatus.
   ///
   /// In en, this message translates to:
-  /// **'Connection Status'**
+  /// **'Connection status'**
   String get notificationCategoryConnectionStatus;
 
   /// No description provided for @notificationCategoryConnectionStatusDescription.
@@ -1834,7 +1960,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCategorySystemUpdate.
   ///
   /// In en, this message translates to:
-  /// **'System Updates'**
+  /// **'System updates'**
   String get notificationCategorySystemUpdate;
 
   /// No description provided for @sessionListTitle.
@@ -1842,12 +1968,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sessions'**
   String get sessionListTitle;
-
-  /// Screen-reader label for the sessions-list bar subtitle row, which opens a popover with the untruncated repository name.
-  ///
-  /// In en, this message translates to:
-  /// **'Show full repository name'**
-  String get sessionListRepoInfoSemantics;
 
   /// No description provided for @sessionListTitleWithName.
   ///
@@ -1864,7 +1984,7 @@ abstract class AppLocalizations {
   /// Headline on the sessions list when a project has no active sessions yet, inviting the user to begin.
   ///
   /// In en, this message translates to:
-  /// **'Start your first task'**
+  /// **'Start your first session'**
   String get sessionListEmptyTitle;
 
   /// No description provided for @sessionListUntitled.
@@ -1903,17 +2023,11 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get sessionListRetry;
 
-  /// No description provided for @sessionListNewSession.
+  /// Label of the primary action that starts a new session: the sessions list button and the desktop sidebar button.
   ///
   /// In en, this message translates to:
   /// **'New session'**
   String get sessionListNewSession;
-
-  /// Label of the primary button on the sessions list that starts a new task (session).
-  ///
-  /// In en, this message translates to:
-  /// **'New task'**
-  String get sessionListNewTask;
 
   /// No description provided for @sessionDetailTitle.
   ///
@@ -2088,12 +2202,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search commands'**
   String get sessionDetailCommandSearch;
-
-  /// Placeholder describing the searchable fields in the slash-command picker.
-  ///
-  /// In en, this message translates to:
-  /// **'Name, description, or arguments'**
-  String get sessionDetailCommandSearchHint;
 
   /// No description provided for @sessionDetailNoCommands.
   ///
@@ -2298,6 +2406,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancelled'**
   String get sessionDetailToolCancelled;
+
+  /// No description provided for @sessionDetailShell.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell'**
+  String get sessionDetailShell;
+
+  /// No description provided for @sessionDetailCommandRan.
+  ///
+  /// In en, this message translates to:
+  /// **'Ran'**
+  String get sessionDetailCommandRan;
 
   /// No description provided for @sessionDetailFollowOutput.
   ///
@@ -2527,11 +2647,71 @@ abstract class AppLocalizations {
   /// **'Variant'**
   String get sessionDetailPickerVariant;
 
-  /// No description provided for @sessionDetailSelectModel.
+  /// No description provided for @sessionDetailFastMode.
   ///
   /// In en, this message translates to:
-  /// **'Select Model'**
-  String get sessionDetailSelectModel;
+  /// **'Fast mode'**
+  String get sessionDetailFastMode;
+
+  /// No description provided for @sessionDetailFastModeConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch speed?'**
+  String get sessionDetailFastModeConfirmTitle;
+
+  /// No description provided for @sessionDetailFastModeConfirmEnableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching speed drops the prompt cache, so the next message re-reads the whole conversation. Fast mode also uses more of your usage.'**
+  String get sessionDetailFastModeConfirmEnableBody;
+
+  /// No description provided for @sessionDetailFastModeConfirmDisableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching speed drops the prompt cache, so the next message re-reads the whole conversation.'**
+  String get sessionDetailFastModeConfirmDisableBody;
+
+  /// No description provided for @sessionDetailFastModeConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get sessionDetailFastModeConfirmAction;
+
+  /// No description provided for @sessionDetailFastModeCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get sessionDetailFastModeCancel;
+
+  /// No description provided for @sessionDetailFastModeUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast mode is unavailable'**
+  String get sessionDetailFastModeUnavailableTitle;
+
+  /// No description provided for @sessionDetailFastModeUnavailableExtraUsageDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on extra usage for your account to use fast mode.'**
+  String get sessionDetailFastModeUnavailableExtraUsageDisabled;
+
+  /// No description provided for @sessionDetailFastModeUnavailableNotOnPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plan doesn\'t include fast mode.'**
+  String get sessionDetailFastModeUnavailableNotOnPlan;
+
+  /// No description provided for @sessionDetailFastModeUnavailableDisabledByOrganization.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organization has turned off fast mode.'**
+  String get sessionDetailFastModeUnavailableDisabledByOrganization;
+
+  /// No description provided for @sessionDetailFastModeUnavailableUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast mode can\'t be used with this account right now.'**
+  String get sessionDetailFastModeUnavailableUnknown;
 
   /// No description provided for @sessionDetailModelSearch.
   ///
@@ -2539,22 +2719,22 @@ abstract class AppLocalizations {
   /// **'Search models...'**
   String get sessionDetailModelSearch;
 
-  /// No description provided for @backgroundTasksRunning.
+  /// No description provided for @subAgentsTitle.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 Task Running} other{{count} Tasks Running}}'**
-  String backgroundTasksRunning(int count);
+  /// **'Sub-agents'**
+  String get subAgentsTitle;
 
-  /// No description provided for @backgroundTasksCompleted.
+  /// Tooltip and screen-reader label of the sub-agents pill in the composer.
   ///
   /// In en, this message translates to:
-  /// **'All tasks completed'**
-  String get backgroundTasksCompleted;
+  /// **'{count, plural, =1{1 sub-agent} other{{count} sub-agents}}, {running} working'**
+  String subAgentsSummary(int count, int running);
 
   /// No description provided for @backgroundTaskStatusIdle.
   ///
   /// In en, this message translates to:
-  /// **'Completed'**
+  /// **'Idle'**
   String get backgroundTaskStatusIdle;
 
   /// No description provided for @backgroundTaskStatusBusy.
@@ -2568,18 +2748,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retrying'**
   String get backgroundTaskStatusRetry;
-
-  /// No description provided for @backgroundTasksShowCompleted.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{Show 1 completed task} other{Show {count} completed tasks}}'**
-  String backgroundTasksShowCompleted(int count);
-
-  /// No description provided for @backgroundTasksHideCompleted.
-  ///
-  /// In en, this message translates to:
-  /// **'Hide completed'**
-  String get backgroundTasksHideCompleted;
 
   /// No description provided for @sessionListToggleArchived.
   ///
@@ -2622,6 +2790,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Session archived'**
   String get sessionListArchived;
+
+  /// Action on the desktop 'Session archived' alert that cancels the archive before it is sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get sessionListArchiveUndo;
+
+  /// Desktop session menu entry, and the default button of the refusal alert, that archives a session without deleting its worktree.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive, keep worktree'**
+  String get sessionListArchiveKeepWorktree;
+
+  /// Title of the desktop alert shown before archiving a session that is still running.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive a running session?'**
+  String get sessionListArchiveRunningTitle;
+
+  /// Body of the desktop alert shown before archiving a running session.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” is still running. Archiving makes it permanently read-only.'**
+  String sessionListArchiveRunningMessage(String title);
+
+  /// Title of the desktop alert shown when the bridge refuses to delete a session's worktree while archiving.
+  ///
+  /// In en, this message translates to:
+  /// **'The worktree can’t be deleted safely'**
+  String get sessionListArchiveRefusedTitle;
+
+  /// Desktop refusal alert button that archives the session and force-deletes its worktree.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete it anyway'**
+  String get sessionListArchiveDeleteAnyway;
+
+  /// Title of the desktop delete alert, naming the session.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{title}”?'**
+  String sessionListDeleteNamedTitle(String title);
+
+  /// Checkbox in the desktop delete alert.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the worktree too (the branch is kept)'**
+  String get sessionListDeleteWorktreeKeepsBranch;
 
   /// No description provided for @sessionListDeleted.
   ///
@@ -2698,7 +2914,7 @@ abstract class AppLocalizations {
   /// No description provided for @signInWithEmail.
   ///
   /// In en, this message translates to:
-  /// **'Sign in with Email'**
+  /// **'Sign in with email'**
   String get signInWithEmail;
 
   /// No description provided for @emailLabel.
@@ -2803,12 +3019,6 @@ abstract class AppLocalizations {
   /// **'New activity'**
   String get sessionListNewActivity;
 
-  /// Screen-reader label for the harness driving a session; the visual signal is the brand logo leading the row. The harness name is a brand and is not translated.
-  ///
-  /// In en, this message translates to:
-  /// **'{harness} session'**
-  String sessionListHarness(String harness);
-
   /// Label shown next to the red dot for sessions that are active but in a retry/error state
   ///
   /// In en, this message translates to:
@@ -2820,6 +3030,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Awaiting input'**
   String get sessionListAwaitingInput;
+
+  /// Amber word leading a session row's meta line while the session waits for the user's answer or permission
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get sessionListWaiting;
 
   /// Label showing the number of active background tasks for a session
   ///
@@ -2920,7 +3136,7 @@ abstract class AppLocalizations {
   /// No description provided for @addProject.
   ///
   /// In en, this message translates to:
-  /// **'Add Project'**
+  /// **'Add project'**
   String get addProject;
 
   /// Primary action of the add-project sheet: registers the folder the browser is currently showing as a Sesori project.
@@ -3028,7 +3244,7 @@ abstract class AppLocalizations {
   /// No description provided for @hideProject.
   ///
   /// In en, this message translates to:
-  /// **'Hide Project'**
+  /// **'Hide project'**
   String get hideProject;
 
   /// Label on the swipe-revealed hide button of a project row. Kept short — the button is a compact pill.
@@ -3070,7 +3286,7 @@ abstract class AppLocalizations {
   /// No description provided for @addProjectContinueWithoutGit.
   ///
   /// In en, this message translates to:
-  /// **'Continue Without Git'**
+  /// **'Continue without Git'**
   String get addProjectContinueWithoutGit;
 
   /// No description provided for @addProjectEnableGit.
@@ -3145,6 +3361,18 @@ abstract class AppLocalizations {
   /// **'Failed to send permission response. Please try again.'**
   String get permissionReplyFailed;
 
+  /// No description provided for @needsYouAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer'**
+  String get needsYouAnswer;
+
+  /// No description provided for @needsYouReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get needsYouReview;
+
   /// No description provided for @permissionBannerSingle.
   ///
   /// In en, this message translates to:
@@ -3166,13 +3394,13 @@ abstract class AppLocalizations {
   /// No description provided for @renameSessionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Rename Session'**
+  /// **'Rename session'**
   String get renameSessionTitle;
 
   /// No description provided for @renameProjectTitle.
   ///
   /// In en, this message translates to:
-  /// **'Rename Project'**
+  /// **'Rename project'**
   String get renameProjectTitle;
 
   /// No description provided for @renameSessionHint.
@@ -3412,20 +3640,8 @@ abstract class AppLocalizations {
   /// No description provided for @sessionDetailOpenHarnessSettings.
   ///
   /// In en, this message translates to:
-  /// **'Open Harness Settings'**
+  /// **'Open harness settings'**
   String get sessionDetailOpenHarnessSettings;
-
-  /// No description provided for @sessionListArchiveConfirmTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Archive session?'**
-  String get sessionListArchiveConfirmTitle;
-
-  /// No description provided for @sessionListArchiveConfirmMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.'**
-  String get sessionListArchiveConfirmMessage;
 
   /// No description provided for @sessionListArchiveConfirmAction.
   ///
@@ -3439,12 +3655,6 @@ abstract class AppLocalizations {
   /// **'Force delete?'**
   String get sessionListForceDeleteTitle;
 
-  /// No description provided for @sessionListForceArchiveTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Force archive?'**
-  String get sessionListForceArchiveTitle;
-
   /// No description provided for @sessionListForceMessage.
   ///
   /// In en, this message translates to:
@@ -3454,14 +3664,8 @@ abstract class AppLocalizations {
   /// No description provided for @sessionListForceDeleteAction.
   ///
   /// In en, this message translates to:
-  /// **'Force Delete'**
+  /// **'Force delete'**
   String get sessionListForceDeleteAction;
-
-  /// No description provided for @sessionListForceArchiveAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Force Archive'**
-  String get sessionListForceArchiveAction;
 
   /// No description provided for @sessionListCleanupIssueUnstagedChanges.
   ///
@@ -3634,14 +3838,14 @@ abstract class AppLocalizations {
   /// No description provided for @diffFileChangesTitle.
   ///
   /// In en, this message translates to:
-  /// **'File Changes'**
+  /// **'File changes'**
   String get diffFileChangesTitle;
 
   /// No description provided for @diffFilesChangedCount.
   ///
   /// In en, this message translates to:
-  /// **'{count} file{count, plural, =1{} other{s}} changed  +{additions} -{deletions}'**
-  String diffFilesChangedCount(int count, int additions, int deletions);
+  /// **'{count} file{count, plural, =1{} other{s}} changed'**
+  String diffFilesChangedCount(int count);
 
   /// No description provided for @diffNoFileChanges.
   ///
@@ -3886,7 +4090,7 @@ abstract class AppLocalizations {
   /// Subtitle of the 'get notified' reassurance row.
   ///
   /// In en, this message translates to:
-  /// **'Know when a task needs you.'**
+  /// **'Know when a session needs you.'**
   String get projectsOnboardingWhyNotifiedSubtitle;
 
   /// Section header above the FAQ list in the 'Why is this needed?' sheet.
@@ -4306,7 +4510,7 @@ abstract class AppLocalizations {
   /// No description provided for @archivedSessionsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Archived tasks'**
+  /// **'Archived sessions'**
   String get archivedSessionsTitle;
 
   /// No description provided for @archivedSessionsClose.
@@ -4315,37 +4519,37 @@ abstract class AppLocalizations {
   /// **'Close archived sessions'**
   String get archivedSessionsClose;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'Today'**
   String get archivedSessionsToday;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'Yesterday'**
   String get archivedSessionsYesterday;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'This week'**
   String get archivedSessionsThisWeek;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'Last week'**
   String get archivedSessionsLastWeek;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'This month'**
   String get archivedSessionsThisMonth;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'One month ago'**

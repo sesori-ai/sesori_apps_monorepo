@@ -226,8 +226,8 @@ void main() {
           id: "task",
           sessionID: "s",
           messageID: "m",
-          prompt: "prompt",
-          description: "description",
+          prompt: text,
+          description: text,
           agent: "agent",
           childSessionID: "child",
           taskState: PluginToolState(
@@ -240,8 +240,8 @@ void main() {
           ),
         ).toShared(sessionId: "stable") as MessagePartSubtask;
         expect(part.childSessionID, "child");
-        expect(part.prompt, "prompt");
-        expect(part.description, "description");
+        expect(part.prompt, "😀" * maxToolOutputLength);
+        expect(part.description, text);
         expect(part.agent, "agent");
         expect(part.taskState!.status, status.toShared());
         expect(part.taskState!.title, "😀" * maxToolOutputLength);

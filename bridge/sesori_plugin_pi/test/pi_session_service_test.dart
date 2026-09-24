@@ -7,6 +7,7 @@ import "package:pi_plugin/pi_testing.dart";
 import "package:pi_plugin/src/api/models/pi_session_history_dto.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_history_mapper.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_persisted_user_text_codec.dart";
+import "package:pi_plugin/src/repositories/mappers/pi_quota_interruption_mapper.dart";
 import "package:pi_plugin/src/repositories/pi_session_process_repository.dart";
 import "package:pi_plugin/src/services/pi_event_dispatcher.dart";
 import "package:pi_plugin/src/services/pi_extension_ui_service.dart";
@@ -21,6 +22,84 @@ import "support/fake_pi_session_storage_api.dart";
 import "support/pi_rpc_client_test_factory.dart";
 
 void main() {
+  for (final outcome in ["exhausted", "recovered", "cancelled"]) {
+    test("quota waits for final native settlement after retries: $outcome", () async {
+      final process = FakePiProcess();
+      final fixture = _Fixture(processes: [process]);
+      addTearDown(fixture.dispose);
+      final service = fixture.service();
+      final events = <BridgeSseEvent>[];
+      service.events.listen(events.add);
+      await service.sendPrompt(
+        sessionId: "session",
+        promptId: "quota-prompt",
+        directory: "/project",
+        parts: [const PluginPromptPart.text(text: "prompt")],
+        userVisibleText: "prompt",
+        variant: null,
+        model: null,
+      );
+      await _answerEntries(process);
+      final prompt = await waitForCommand(process: process, type: "prompt");
+      process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+      process.emit(frame: {"type": "agent_start"});
+      final error = <String, Object?>{
+        "role": "assistant",
+        "provider": "openai-codex",
+        "stopReason": "error",
+        "content": <Object?>[],
+        "timestamp": DateTime.utc(2026, 9, 16, 19, 34, 27).millisecondsSinceEpoch,
+        "errorMessage": "You have hit your ChatGPT usage limit (pro plan). Try again in ~5918 min.",
+      };
+      process.emit(frame: {"type": "message_end", "message": error});
+      process.emit(frame: {"type": "agent_end", "willRetry": true});
+      process.emit(frame: {"type": "auto_retry_start", "attempt": 1, "delayMs": 10});
+      await pump();
+      expect(events.whereType<BridgeSseSessionQuotaBlocked>(), isEmpty);
+      if (outcome != "cancelled") {
+        process.emit(frame: {"type": "agent_start"});
+        process.emit(
+          frame: {
+            "type": "message_end",
+            "message": {
+              ...error,
+              "timestamp": (error["timestamp"]! as int) + 10,
+              if (outcome == "recovered") "stopReason": "stop",
+            },
+          },
+        );
+      }
+      process.emit(frame: {"type": "agent_end", "willRetry": false});
+      process.emit(
+        frame: {
+          "type": "auto_retry_end",
+          "success": outcome == "recovered",
+          "finalError": outcome == "cancelled" ? "Retry cancelled" : error["errorMessage"],
+        },
+      );
+      await pump();
+      expect(events.whereType<BridgeSseSessionQuotaBlocked>(), isEmpty);
+      process.emit(frame: {"type": "agent_settled"});
+      await _waitForIdle(service: service, sessionId: "session");
+      await pump();
+      final reports = events.whereType<BridgeSseSessionQuotaBlocked>().toList();
+      if (outcome == "exhausted") {
+        final visibleError = events
+            .whereType<BridgeSseMessageUpdated>()
+            .map((event) => event.info)
+            .whereType<PluginMessageError>()
+            .last;
+        expect(reports.single.interruption.errorMessageId, visibleError.id);
+        expect(reports.single.sessionID, "session");
+      } else {
+        expect(reports, isEmpty);
+      }
+      process.emit(frame: {"type": "agent_settled"});
+      await pump();
+      expect(events.whereType<BridgeSseSessionQuotaBlocked>().length, reports.length);
+    });
+  }
+
   test("new session preparation generates a valid secure id and persists its marker", () async {
     final storage = _Storage(initialResolvedSession: null);
     final fixture = _Fixture(processes: const [], storageOverride: storage);
@@ -500,7 +579,7 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
-  test("an active undispatched Pi prompt can be cancelled and immediately retried", () async {
+  test("an active undispatched Pi prompt can be cancelled before a follow-up runs", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
@@ -524,19 +603,19 @@ void main() {
 
     await service.sendPrompt(
       sessionId: "session",
-      promptId: "cancel-queued",
+      promptId: "follow-up",
       directory: "/project",
-      parts: [const PluginPromptPart.text(text: "retry me")],
-      userVisibleText: "retry me",
+      parts: [const PluginPromptPart.text(text: "follow up")],
+      userVisibleText: "follow up",
       variant: null,
       model: null,
     );
     expect(service.queuedPrompts(sessionId: "session"), hasLength(1));
 
     await _answerEntries(process);
-    final retried = await waitForCommand(process: process, type: "prompt");
-    expect(retried["message"], "retry me");
-    process.emitResponse(id: retried["id"]! as String, command: "prompt");
+    final followUp = await waitForCommand(process: process, type: "prompt");
+    expect(followUp["message"], "follow up");
+    process.emitResponse(id: followUp["id"]! as String, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
@@ -570,56 +649,6 @@ void main() {
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
     expect(process.written.where((frame) => frame["type"] == "prompt").map((frame) => frame["message"]), ["first"]);
-  });
-
-  test("a cancelled undispatched prompt id remains retryable", () async {
-    final process = FakePiProcess();
-    final fixture = _Fixture(processes: [process]);
-    addTearDown(fixture.dispose);
-    final service = fixture.service();
-
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "first",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "first")],
-      userVisibleText: "first",
-      variant: null,
-      model: null,
-    );
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "retryable",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "retry me")],
-      userVisibleText: "retry me",
-      variant: null,
-      model: null,
-    );
-
-    expect(
-      service.cancelQueuedPrompt(sessionId: "session", promptId: "retryable"),
-      isTrue,
-    );
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "retryable",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "retry me")],
-      userVisibleText: "retry me",
-      variant: null,
-      model: null,
-    );
-
-    await _answerEntries(process);
-    final first = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: first["id"]! as String, command: "prompt");
-    process.emit(frame: {"type": "agent_settled"});
-    final retried = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-    expect(retried["message"], "retry me");
-    process.emitResponse(id: retried["id"]! as String, command: "prompt");
-    process.emit(frame: {"type": "agent_settled"});
-    await _waitForIdle(service: service, sessionId: "session");
   });
 
   test("a cancelled prompt settles when its selecting process exits", () async {
@@ -1363,6 +1392,64 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
+  test("setter thinking echoes keep a fresh resident's run steerable", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "max");
+
+    // Pi writes a setter's thinking_level_changed immediately before its
+    // response, so both usually arrive in one stdout read.
+    void answerWithEcho({required Map<String, Object?> command, required String level}) {
+      final echo = {"type": "thinking_level_changed", "level": level};
+      final response = {"type": "response", "id": command["id"], "command": command["type"], "success": true};
+      process.emitRaw(bytes: utf8.encode("${jsonEncode(echo)}\n${jsonEncode(response)}\n"));
+    }
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "echo-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: variant,
+      model: model,
+    );
+    await _answerEntries(process);
+    answerWithEcho(
+      command: await waitForCommand(process: process, type: "set_model"),
+      level: "high",
+    );
+    answerWithEcho(
+      command: await waitForCommand(process: process, type: "set_thinking_level"),
+      level: "max",
+    );
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    await pump();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "echo-second",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "second")],
+      userVisibleText: "second",
+      variant: variant,
+      model: model,
+    );
+
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    expect(steeringPrompt["message"], "second");
+    expect(steeringPrompt["streamingBehavior"], "steer");
+
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
   for (final failModelUpdate in [true, false]) {
     test(
       "a failed ${failModelUpdate ? "model" : "post-model"} operation cannot leave stale cached selection",
@@ -1702,52 +1789,6 @@ void main() {
     process.emitResponse(id: nextPrompt["id"]! as String, command: "prompt");
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
-  });
-
-  test("a retried prompt id is an idempotent no-op instead of a duplicate turn", () async {
-    final process = FakePiProcess();
-    final fixture = _Fixture(processes: [process]);
-    addTearDown(fixture.dispose);
-    final service = fixture.service();
-
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "prm_retry",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "once")],
-      userVisibleText: "once",
-      variant: null,
-      model: null,
-    );
-    // The retry of a send whose response was lost.
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "prm_retry",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "once")],
-      userVisibleText: "once",
-      variant: null,
-      model: null,
-    );
-    final retriedCommand = service.sendCommand(
-      sessionId: "session",
-      promptId: "prm_retry",
-      directory: "/project",
-      command: "deploy",
-      arguments: "",
-      userVisibleArguments: null,
-      variant: null,
-      model: null,
-    );
-    await expectLater(retriedCommand, completes);
-
-    await _answerEntries(process);
-    final prompt = await waitForCommand(process: process, type: "prompt");
-    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
-    process.emit(frame: {"type": "agent_settled"});
-    await _waitForIdle(service: service, sessionId: "session");
-
-    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
   });
 
   test("slash command keeps exact backend text and privacy-safe live presentation", () async {
@@ -2466,7 +2507,7 @@ void main() {
     await _waitForIdle(service: service, sessionId: "child");
   });
 
-  test("abort settles and deduplicates a command already accepted by an extension dialog", () async {
+  test("abort settles a command already accepted by an extension dialog", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
@@ -2503,21 +2544,6 @@ void main() {
 
     final settlement = events.whereType<BridgeSsePromptSettled>().single;
     expect(settlement.promptID, "accepted-before-abort");
-
-    await expectLater(
-      service.sendCommand(
-        sessionId: "session",
-        promptId: "accepted-before-abort",
-        directory: "/project",
-        command: "configure",
-        arguments: "",
-        userVisibleArguments: null,
-        variant: null,
-        model: null,
-      ),
-      completes,
-    );
-    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
   });
 
   test("abort invalidates queue, removes compaction, sends abort, and tears down process", () async {
@@ -3274,6 +3300,7 @@ final class _Fixture({
       editorTimeout: const Duration(minutes: 1),
     );
     final service = PiSessionService(
+      quotaMapper: PiQuotaInterruptionMapper(historyMapper: historyMapper),
       processRepository: repository,
       catalogRepository: catalogRepository,
       eventDispatcher: PiEventDispatcher(

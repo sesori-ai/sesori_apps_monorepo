@@ -105,6 +105,7 @@ void main() {
           .having((error) => error.statusCode, "statusCode", 503)
           .having((error) => error.actionHint, "actionHint", isNotEmpty);
       final sending = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "session-1",
         parts: const [PluginPromptPart.text(text: "hello")],
@@ -176,6 +177,7 @@ void main() {
 
     test("a process exit during authentication remains a connection failure", () async {
       final sending = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "session-1",
         parts: const [PluginPromptPart.text(text: "hello")],

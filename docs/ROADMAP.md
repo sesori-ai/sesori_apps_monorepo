@@ -41,7 +41,14 @@
   and platform ship gates. Planning began early at the user's request; it does
   not waive the parent verification. The parallel release-readiness UX overhaul
   (two-pane sidebar cockpit, settings modal, bridge popover, autostart defaults,
-  app log files) is `.plan/active/desktop-ux/PLAN.md`, phase 1 of several.
+  app log files) is recorded in `.plan/completed/desktop-ux/PLAN.md`, phase 1 of several.
+  Its 2026-09-19 retirement accepts native/live coverage gaps; it does not qualify a native release.
+  Its visual follow-up (Activity that only lists sessions in motion, a floating sidebar panel, a unified
+  macOS title bar, pointer-sized pages and menus) is recorded in `.plan/completed/desktop-ui-polish/PLAN.md`.
+  Its 2026-09-22 retirement accepts unexecuted live, device and Windows/Linux visual checks.
+  The cross-surface hierarchy series after it (one title ladder, readable greys, one meaning per colour,
+  a grouped live transcript, phone search and a desktop command palette) is planned in
+  `.plan/active/visual-hierarchy/PLAN.md`.
 - **Later consideration (recorded, not planned):** a loopback local data path
   for the desktop cockpit. The cockpit reuses the relay like the phone; a
   bridge-hosted loopback data transport (the `--debug-port` `DebugServer` is

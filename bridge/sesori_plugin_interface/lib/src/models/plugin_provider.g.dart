@@ -15,7 +15,30 @@ Map<String, dynamic> _$PluginModelToJson(_PluginModel instance) =>
       'family': ?instance.family,
       'isAvailable': instance.isAvailable,
       'releaseDate': ?instance.releaseDate?.toIso8601String(),
+      'fastMode': ?instance.fastMode?.toJson(),
     };
+
+Map<String, dynamic> _$PluginFastModeAvailableToJson(
+  PluginFastModeAvailable instance,
+) => <String, dynamic>{
+  'promptCacheTtlSeconds': instance.promptCacheTtlSeconds,
+  'runtimeType': instance.$type,
+};
+
+Map<String, dynamic> _$PluginFastModeUnavailableToJson(
+  PluginFastModeUnavailable instance,
+) => <String, dynamic>{
+  'reason': _$PluginFastModeUnavailableReasonEnumMap[instance.reason]!,
+  'runtimeType': instance.$type,
+};
+
+const _$PluginFastModeUnavailableReasonEnumMap = {
+  PluginFastModeUnavailableReason.extraUsageDisabled: 'extraUsageDisabled',
+  PluginFastModeUnavailableReason.notOnPlan: 'notOnPlan',
+  PluginFastModeUnavailableReason.disabledByOrganization:
+      'disabledByOrganization',
+  PluginFastModeUnavailableReason.unknown: 'unknown',
+};
 
 Map<String, dynamic> _$PluginProviderToJson(_PluginProvider instance) =>
     <String, dynamic>{

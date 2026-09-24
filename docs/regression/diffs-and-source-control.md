@@ -44,6 +44,11 @@ that baseline, and the branch and worktree facts a session carries.
   copying navigation titles, change-count subtitles, file-header metadata,
   line numbers, or +/- gutters, including inside the desktop cockpit's wide
   right pane.
+- Diff colours come from the Prego status tokens in both themes. An added or
+  removed line has a 10% status tint and a 2-point status bar at its left
+  edge; both run the full height of a wrapped line. A file's status is a plain
+  coloured letter (A, D, M). Change counts leave out a zero side and use the
+  "−" sign, both on file headers and in the page subtitle.
 
 ## Regression Levels
 

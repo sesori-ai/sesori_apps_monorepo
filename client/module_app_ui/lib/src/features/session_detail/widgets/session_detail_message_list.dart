@@ -60,6 +60,10 @@ class const SessionDetailMessageList({
   /// transparent bar at full scroll, while content in between scrolls up behind
   /// it and dissolves into the bar's fade.
   final double topInset = 0,
+
+  /// Side padding that centres the rows in a wide pane. It is scroll padding,
+  /// so the wheel and the scrollbar still belong to the whole pane.
+  final double horizontalInset = 0,
 }) extends StatefulWidget {
   @override
   State<SessionDetailMessageList> createState() => _SessionDetailMessageListState();
@@ -405,7 +409,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             key: _kListViewKey,
             reverse: true,
             controller: _follow.scrollController,
-            padding: EdgeInsetsDirectional.only(top: 8 + widget.topInset, bottom: 8 + widget.bottomInset),
+            padding: EdgeInsetsDirectional.only(
+              start: widget.horizontalInset,
+              end: widget.horizontalInset,
+              top: 8 + widget.topInset,
+              bottom: 8 + widget.bottomInset,
+            ),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
             physics: const AlwaysScrollableScrollPhysics(),
             itemCount: rowIds.length,

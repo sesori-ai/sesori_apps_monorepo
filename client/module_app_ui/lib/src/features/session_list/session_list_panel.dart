@@ -8,6 +8,7 @@ import "../../l10n/app_localizations.dart";
 import "../../widgets/catalog_scan_row.dart";
 import "session_list_action_dispatcher.dart";
 import "session_list_content.dart";
+import "session_list_filtered_content.dart";
 import "session_tile.dart";
 
 class const SessionListPanel({
@@ -72,7 +73,11 @@ class const SessionListPanel({
                         ),
                       ),
                       IconButton(
-                        icon: Icon(showArchived ? Icons.archive : Icons.archive_outlined),
+                        // Tint when the archived filter is active: Tabler has no filled archive glyph.
+                        icon: Icon(
+                          TablerRegular.archive,
+                          color: showArchived ? context.prego.colors.bgBrandSolid : null,
+                        ),
                         tooltip: loc.sessionListToggleArchived,
                         onPressed: onOpenArchived,
                       ),
@@ -83,7 +88,7 @@ class const SessionListPanel({
                         // compact, with the tooltip carrying its meaning instead.
                         if (compact)
                           IconButton.filled(
-                            icon: const Icon(Icons.add),
+                            icon: const Icon(TablerRegular.plus),
                             tooltip: loc.sessionListNewSession,
                             onPressed: onNewSession,
                           )
@@ -94,7 +99,7 @@ class const SessionListPanel({
                               padding: const EdgeInsets.symmetric(horizontal: 12),
                             ),
                             onPressed: onNewSession,
-                            icon: const Icon(Icons.add),
+                            icon: const Icon(TablerRegular.plus),
                             label: Text(loc.sessionListNewSession),
                           ),
                       ],
@@ -151,12 +156,13 @@ class const SessionListPanel({
             onDismiss: () => context.read<SessionListCubit>().dismissCatalogScan(),
           ),
         ),
-        SessionListContent(
+        SessionListFilteredContent(
           projectName: projectName,
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,
           actionDispatcher: actionDispatcher,
           archivedEmptyState: archivedEmptyState,
+          searchable: true,
         ),
       ],
     );

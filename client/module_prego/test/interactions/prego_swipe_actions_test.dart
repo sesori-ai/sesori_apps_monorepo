@@ -135,6 +135,14 @@ Rect _primaryRect(WidgetTester tester, String label) =>
 Rect _leadingRect(WidgetTester tester, String label) =>
     tester.getRect(find.widgetWithText(TextButton, 'Unread $label'));
 
+/// Whether [action] is out of view: a row at rest builds no strips at all, and
+/// the other side's strip sits clipped past the row's edge.
+bool _offRow(WidgetTester tester, Finder action) {
+  if (action.evaluate().isEmpty) return true;
+  final rect = tester.getRect(action);
+  return rect.left >= _surfaceWidth || rect.right <= 0;
+}
+
 /// Moves a held gesture in steps, the way a finger streams move events.
 ///
 /// A single big `moveBy` only wins the gesture arena: with the default
@@ -161,8 +169,8 @@ void main() {
     final counters = _Counters();
     await tester.pumpWidget(_harness(rows: [_row(label: 'A', counters: counters)]));
 
-    // The strip is laid out past the row's end edge, clipped out of view.
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    // A row at rest builds no strips.
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
 
     await tester.tap(find.text('A content'));
     await tester.pumpAndSettle();
@@ -192,7 +200,7 @@ void main() {
     // ~62px after slop — under the 102px settle-open threshold.
     await _swipe(tester, label: 'A', dx: -80);
 
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
   });
 
   testWidgets('a drag past half the reveal settles open with the actions in place and tappable', (tester) async {
@@ -225,10 +233,6 @@ void main() {
       _harness(rows: [_row(label: 'A', counters: counters, primaryWidth: 100)]),
     );
 
-    // Nothing boxes the primary at rest — the strip lays it out at whatever
-    // width its content asks for.
-    expect(_primaryRect(tester, 'A').width, moreOrLessEquals(100, epsilon: 1));
-
     await _swipe(tester, label: 'A', dx: -150);
 
     // Reveal: 6 + 40 + 6 + 100 + 16 = 168 — narrower than the default
@@ -249,7 +253,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(counters.primaryTaps, 1);
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
   });
 
   testWidgets('tapping the open row closes it without activating the content, which works again after', (tester) async {
@@ -262,7 +266,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(counters.contentTaps, 0);
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
 
     await tester.tap(find.text('A content'));
     await tester.pumpAndSettle();
@@ -280,7 +284,7 @@ void main() {
     await tester.tap(find.text('B content'));
     await tester.pumpAndSettle();
 
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
   });
 
   testWidgets('opening a second row closes the first', (tester) async {
@@ -291,7 +295,7 @@ void main() {
     await _swipe(tester, label: 'A', dx: -150);
     await _swipe(tester, label: 'B', dx: -150);
 
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
     expect(_primaryRect(tester, 'B').left, lessThan(_surfaceWidth));
   });
 
@@ -311,7 +315,7 @@ void main() {
     scrollController.jumpTo(40);
     await tester.pumpAndSettle();
 
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
   });
 
   testWidgets('a full swipe past the commit threshold fires onFullSwipe once and closes', (tester) async {
@@ -323,7 +327,7 @@ void main() {
 
     expect(counters.fullSwipes, 1);
     expect(counters.primaryTaps, 0);
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
   });
 
   testWidgets('the primary action stretches during the overdrag, trailing edge pinned to the row end', (tester) async {
@@ -415,7 +419,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(counters.fullSwipes, 1);
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
   });
 
   testWidgets('re-grabbing the row while a committed swipe settles shut does not fire the commit again', (tester) async {
@@ -482,10 +486,10 @@ void main() {
     );
 
     await _swipeFrom(tester, origin: const Offset(40, 48), dx: 120);
-    expect(_leadingRect(tester, 'A').right, lessThanOrEqualTo(0));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Unread A')), isTrue);
 
     await _swipeFrom(tester, origin: const Offset(760, 48), dx: -150);
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
     expect(counters.leadingFullSwipes, 0);
     expect(counters.fullSwipes, 0);
 
@@ -521,7 +525,7 @@ void main() {
     );
 
     await _swipeFrom(tester, origin: const Offset(40, 48), dx: 120);
-    expect(_leadingRect(tester, 'A').right, lessThanOrEqualTo(0));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Unread A')), isTrue);
 
     await _swipeFrom(tester, origin: const Offset(100, 48), dx: 120);
     expect(_leadingRect(tester, 'A').left, moreOrLessEquals(16, epsilon: 1));
@@ -557,7 +561,7 @@ void main() {
     );
 
     // In RTL the actions live past the left edge and a rightward drag reveals.
-    expect(_primaryRect(tester, 'A').right, lessThanOrEqualTo(0));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
 
     await _swipe(tester, label: 'A', dx: 150);
 
@@ -591,7 +595,7 @@ void main() {
 
     // The leading strip is laid out past the row's start edge, clipped out of
     // view.
-    expect(_leadingRect(tester, 'A').right, lessThanOrEqualTo(0));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Unread A')), isTrue);
 
     // ~102px after slop — past the 71px settle-open threshold.
     await _swipe(tester, label: 'A', dx: 120);
@@ -603,7 +607,7 @@ void main() {
     expect(rect.width, moreOrLessEquals(_leadingWidth, epsilon: 1));
 
     // The trailing side rides along closed.
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
 
     await tester.tap(find.text('Unread A'));
     await tester.pumpAndSettle();
@@ -623,7 +627,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(counters.contentTaps, 0);
-    expect(_leadingRect(tester, 'A').right, lessThanOrEqualTo(0));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Unread A')), isTrue);
   });
 
   testWidgets('a full end-ward swipe commits the leading action once and closes', (tester) async {
@@ -638,7 +642,7 @@ void main() {
     expect(counters.leadingFullSwipes, 1);
     expect(counters.leadingTaps, 0);
     expect(counters.fullSwipes, 0);
-    expect(_leadingRect(tester, 'A').right, lessThanOrEqualTo(0));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Unread A')), isTrue);
   });
 
   testWidgets('the leading action stretches during the overdrag, leading edge pinned to the row start', (tester) async {
@@ -684,7 +688,7 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
     expect(_leadingRect(tester, 'A').left, moreOrLessEquals(16, epsilon: 1));
     expect(counters.fullSwipes, 0);
     expect(counters.leadingFullSwipes, 0);
@@ -713,8 +717,8 @@ void main() {
     await gesture.up(timeStamp: const Duration(milliseconds: 40));
     await tester.pumpAndSettle();
 
-    expect(_leadingRect(tester, 'A').right, lessThanOrEqualTo(0));
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Unread A')), isTrue);
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
     expect(counters.fullSwipes, 0);
     expect(counters.leadingFullSwipes, 0);
   });
@@ -741,7 +745,7 @@ void main() {
     // Close again, via the catcher covering the content.
     await tester.tap(find.text('A content'), warnIfMissed: false);
     await tester.pumpAndSettle();
-    expect(_primaryRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Hide A')), isTrue);
 
     // The mirrored flick opens the leading side.
     final endFlick = await tester.startGesture(tester.getCenter(find.text('A content')));
@@ -765,7 +769,7 @@ void main() {
 
     // In RTL the leading action lives past the right edge and a leftward drag
     // reveals it.
-    expect(_leadingRect(tester, 'A').left, greaterThanOrEqualTo(_surfaceWidth));
+    expect(_offRow(tester, find.widgetWithText(TextButton, 'Unread A')), isTrue);
 
     await _swipe(tester, label: 'A', dx: -120);
 
@@ -802,10 +806,9 @@ void main() {
 
     FocusNode nodeOf(String label) => Focus.of(tester.element(find.text(label)));
 
-    // At rest both strips are clipped off-row; their pills must not be
-    // reachable tab stops.
-    expect(nodeOf('Hide A').canRequestFocus, isFalse);
-    expect(nodeOf('Unread A').canRequestFocus, isFalse);
+    // At rest neither strip is built, so no pill is a tab stop.
+    expect(find.text('Hide A'), findsNothing);
+    expect(find.text('Unread A'), findsNothing);
 
     await _swipe(tester, label: 'A', dx: -150);
 
@@ -868,8 +871,9 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    // Landed closed: the fresh builder output applies.
+    // Landed closed, then reopened: the fresh builder output applies.
     expect(find.text('Mark unread'), findsNothing);
+    await _swipe(tester, label: 'A', dx: -150);
     expect(find.text('Mark read'), findsOneWidget);
   });
 
@@ -884,10 +888,11 @@ void main() {
           },
           primaryActionBuilder: (context, _) => const SizedBox(width: _primaryWidth),
           onFullSwipe: () {},
-          child: const SizedBox(height: 96),
+          child: const SizedBox(height: 96, child: Center(child: Text('A content'))),
         ),
       ]),
     );
+    await _swipe(tester, label: 'A', dx: -150);
 
     // A host may hold [close] across an await (a confirmation dialog, an undo
     // snackbar) while the row is removed underneath it.

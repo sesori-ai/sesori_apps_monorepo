@@ -55,6 +55,7 @@ void main() {
       });
       expect(await connecting, isTrue);
       final creating = plugin.createSession(
+        fastMode: false,
         directory: cwd,
         parentSessionId: null,
         parts: const [],
@@ -69,6 +70,7 @@ void main() {
 
     Future<void> startTurn(String sessionId) async {
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "spawn")],
@@ -198,6 +200,7 @@ void main() {
       expect(rootIdles(sessionId), isEmpty);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "again")],
@@ -243,6 +246,7 @@ void main() {
       await finishChildAndHoldRoot("c1", holdId: "wake-c1");
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "continue")],
@@ -277,6 +281,7 @@ void main() {
       await respond("session/prompt", {"stopReason": "end_turn"});
       await finishChildAndHoldRoot("c1", holdId: "wake-c1");
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "continue")],

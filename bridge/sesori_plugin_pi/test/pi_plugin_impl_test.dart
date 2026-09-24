@@ -19,6 +19,7 @@ void main() {
 
     test("creates a lazy session and buffers creation before any backend output", () async {
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [],
@@ -48,6 +49,7 @@ void main() {
       harness.writeSession(id: "session", parentPath: null);
       await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
       await harness.plugin.sendPrompt(
+        fastMode: false,
         sessionId: "session",
         promptId: "prompt",
         parts: const [PluginPromptPart.text(text: "continue")],
@@ -69,6 +71,7 @@ void main() {
 
     test("buffers created before busy when the first turn starts", () async {
       await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "hello")],
@@ -103,6 +106,7 @@ void main() {
 
       await expectLater(
         harness.plugin.createSession(
+          fastMode: false,
           directory: harness.project.path,
           parentSessionId: null,
           parts: const [],
@@ -143,6 +147,7 @@ void main() {
 
     test("reports a command missing from the current catalog as stale options", () async {
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [],
@@ -154,6 +159,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendCommand(
+          fastMode: false,
           sessionId: session.id,
           promptId: "prompt-unsupported",
           command: "removed-command",
@@ -176,6 +182,7 @@ void main() {
       final partial = _Harness(failCommandDiscovery: true);
       addTearDown(partial.dispose);
       final session = await partial.plugin.createSession(
+        fastMode: false,
         directory: partial.project.path,
         parentSessionId: null,
         parts: const [],
@@ -187,6 +194,7 @@ void main() {
 
       await expectLater(
         partial.plugin.sendCommand(
+          fastMode: false,
           sessionId: session.id,
           promptId: "prompt-review",
           command: "review",
@@ -207,6 +215,7 @@ void main() {
 
     test("starts an empty session through command acceptance and rejects missing paths", () async {
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [],
@@ -217,6 +226,7 @@ void main() {
       );
 
       final accepted = harness.plugin.sendCommand(
+        fastMode: false,
         sessionId: session.id,
         promptId: "prompt-1",
         command: "review",
@@ -245,6 +255,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendPrompt(
+          fastMode: false,
           sessionId: "missing",
           promptId: "prompt-2",
           parts: const [PluginPromptPart.text(text: "no")],
@@ -267,6 +278,7 @@ void main() {
       );
       expect(compaction.description, isNotNull);
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [],
@@ -280,6 +292,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       final accepted = harness.plugin.sendCommand(
+        fastMode: false,
         sessionId: session.id,
         promptId: "prompt-compact",
         command: PiCatalogService.compactionCommandName,
@@ -319,6 +332,7 @@ void main() {
     test("native compaction failure removes its running card", () async {
       await harness.plugin.getCommands(projectId: harness.project.path);
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [],
@@ -328,6 +342,7 @@ void main() {
         model: null,
       );
       final accepted = harness.plugin.sendCommand(
+        fastMode: false,
         sessionId: session.id,
         promptId: "prompt-failed-compact",
         command: PiCatalogService.compactionCommandName,
@@ -369,6 +384,7 @@ void main() {
       expect(commands, hasLength(1));
       expect(commands.single.description, isNull);
       final session = await custom.plugin.createSession(
+        fastMode: false,
         directory: custom.project.path,
         parentSessionId: null,
         parts: const [],
@@ -379,6 +395,7 @@ void main() {
       );
 
       final accepted = custom.plugin.sendCommand(
+        fastMode: false,
         sessionId: session.id,
         promptId: "prompt-custom-compact",
         command: PiCatalogService.compactionCommandName,
@@ -410,6 +427,7 @@ void main() {
 
     test("wrapped command failures retain the backend stack", () async {
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [],
@@ -419,6 +437,7 @@ void main() {
         model: null,
       );
       final command = harness.plugin.sendCommand(
+        fastMode: false,
         sessionId: session.id,
         promptId: "prompt-3",
         command: "review",
@@ -443,6 +462,7 @@ void main() {
 
     test("maps questions and toasts while permissions remain unsupported", () async {
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "hello")],
@@ -505,6 +525,7 @@ void main() {
       harness.writeSession(id: "child", parentPath: rootPath);
       await harness.plugin.listAllSessions(knownDirectories: {harness.project.path});
       await harness.plugin.sendPrompt(
+        fastMode: false,
         sessionId: "child",
         promptId: "prompt-4",
         parts: const [PluginPromptPart.text(text: "child work")],
@@ -564,6 +585,7 @@ void main() {
       expect(await harness.plugin.healthCheck(), isTrue);
       expect(harness.commands.calls.single, ("pi", const ["--version"]));
       await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "dispose")],
@@ -600,6 +622,7 @@ void main() {
       final bounded = _Harness(failCommandDiscovery: false, stdinCloseCompletes: false);
       addTearDown(bounded.dispose);
       await bounded.plugin.createSession(
+        fastMode: false,
         directory: bounded.project.path,
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "bounded")],
@@ -621,6 +644,7 @@ void main() {
       final bounded = _Harness(failCommandDiscovery: false, stdinCloseCompletes: false);
       addTearDown(bounded.dispose);
       await bounded.plugin.createSession(
+        fastMode: false,
         directory: bounded.project.path,
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "bounded")],

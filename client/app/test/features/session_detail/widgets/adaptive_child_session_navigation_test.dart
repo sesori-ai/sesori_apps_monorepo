@@ -273,21 +273,21 @@ void main() {
       await pumpStatus(tester, status: ToolStatus.completed);
 
       expect(find.text("Done"), findsOneWidget);
-      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      expect(find.byIcon(TablerSolid.circle_check), findsOneWidget);
     });
 
     testWidgets("a failed subtask reports its own lifecycle", (tester) async {
       await pumpStatus(tester, status: ToolStatus.error);
 
       expect(find.text("Failed"), findsOneWidget);
-      expect(find.byIcon(Icons.error), findsOneWidget);
+      expect(find.byIcon(TablerSolid.alert_circle), findsOneWidget);
     });
 
     testWidgets("a cancelled subtask reports its own lifecycle", (tester) async {
       await pumpStatus(tester, status: ToolStatus.cancelled);
 
       expect(find.text("Cancelled"), findsOneWidget);
-      expect(find.byIcon(Icons.cancel), findsOneWidget);
+      expect(find.byIcon(TablerSolid.circle_x), findsOneWidget);
     });
 
     testWidgets("a subtask without its own lifecycle keeps following its child session", (tester) async {
@@ -312,23 +312,64 @@ void main() {
   });
 
   group("BackgroundTasksBar", () {
+    testWidgets("counts sub-agents, signals work, and never calls an idle one completed", (tester) async {
+      await tester.pumpWidget(
+        _buildApp(
+          child: Scaffold(
+            body: Align(
+              alignment: Alignment.bottomRight,
+              child: BackgroundTasksBar(
+                surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                projectId: "project-1",
+                children: [
+                  _childSession(id: "task-1", title: "Idle one"),
+                  _childSession(id: "task-2", title: "Working one"),
+                ],
+                childStatuses: const {"task-2": SessionStatus.busy()},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text("2"), findsOneWidget);
+      expect(find.byType(PregoActivityIndicator), findsOneWidget);
+      expect(find.byTooltip("2 sub-agents, 1 working"), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey("sub_agents_pill")));
+      await tester.pump();
+
+      // Working first; the idle one stays listed because it can be resumed.
+      expect(
+        tester.getTopLeft(find.text("Working one")).dy,
+        lessThan(tester.getTopLeft(find.text("Idle one")).dy),
+      );
+      expect(find.textContaining("Idle"), findsWidgets);
+      expect(find.textContaining("ompleted"), findsNothing);
+    });
+
     testWidgets("tapping task row pushes route with readOnly=true outside split scope", (tester) async {
       final child = _childSession(id: "task-1", title: "Task One");
       await tester.pumpWidget(
         _buildApp(
           child: Scaffold(
-            body: BackgroundTasksBar(
-              surfaceStyle: PregoComposerSurfaceStyle.subtle,
-              projectId: "project-1",
-              children: [child],
-              childStatuses: const {},
+            // The pill lives at the composer's trailing edge; its list grows up.
+            body: Align(
+              alignment: Alignment.bottomRight,
+              child: BackgroundTasksBar(
+                surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                projectId: "project-1",
+                children: [child],
+                childStatuses: const {},
+              ),
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("All tasks completed"));
+      await tester.tap(find.byKey(const ValueKey("sub_agents_pill")));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text("Task One"));
@@ -347,11 +388,14 @@ void main() {
           child: Scaffold(
             body: SessionSplitScope(
               isSplit: true,
-              child: BackgroundTasksBar(
-                surfaceStyle: PregoComposerSurfaceStyle.subtle,
-                projectId: "project-1",
-                children: [child],
-                childStatuses: const {},
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: BackgroundTasksBar(
+                  surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                  projectId: "project-1",
+                  children: [child],
+                  childStatuses: const {},
+                ),
               ),
             ),
           ),
@@ -359,7 +403,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("All tasks completed"));
+      await tester.tap(find.byKey(const ValueKey("sub_agents_pill")));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text("Task One"));

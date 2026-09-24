@@ -236,6 +236,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo/worktree",
         parentSessionId: null,
         parts: const [],

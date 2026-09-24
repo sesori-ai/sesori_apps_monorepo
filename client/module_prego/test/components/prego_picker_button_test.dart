@@ -15,7 +15,7 @@ void main() {
     await tester.pumpWidget(
       _harness(
         PregoPickerButton(
-          leadingIcon: Icons.smart_toy_outlined,
+          leadingIcon: TablerRegular.robot,
           label: "Agent",
           surfaceStyle: PregoComposerSurfaceStyle.subtle,
           onPressed: () => taps++,
@@ -24,9 +24,9 @@ void main() {
     );
 
     expect(find.text("Agent"), findsOneWidget);
-    expect(find.byIcon(Icons.smart_toy_outlined), findsOneWidget);
+    expect(find.byIcon(TablerRegular.robot), findsOneWidget);
     // The trailing caret signals the pill opens a menu.
-    expect(find.byIcon(Icons.unfold_more), findsOneWidget);
+    expect(find.byIcon(TablerRegular.selector), findsOneWidget);
 
     await tester.tap(find.byType(PregoPickerButton));
     await tester.pumpAndSettle();
@@ -40,7 +40,7 @@ void main() {
       await tester.pumpWidget(
         _harness(
           PregoPickerButton(
-            leadingIcon: Icons.memory_outlined,
+            leadingIcon: TablerRegular.cpu,
             label: "Model",
             surfaceStyle: PregoComposerSurfaceStyle.subtle,
             onPressed: () {},
@@ -83,7 +83,7 @@ void main() {
           children: [
             Expanded(
               child: PregoPickerButton(
-                leadingIcon: Icons.memory_outlined,
+                leadingIcon: TablerRegular.cpu,
                 label: "An extremely long model name that cannot possibly fit in one pill" * 3,
                 surfaceStyle: PregoComposerSurfaceStyle.subtle,
                 onPressed: () {},
@@ -94,10 +94,12 @@ void main() {
       ),
     );
 
-    // No overflow error: the label clamps to one ellipsized line inside the pill.
+    // No overflow error: the label keeps its end on one line inside the pill.
     expect(tester.takeException(), isNull);
-    final text = tester.widget<Text>(find.byType(Text));
-    expect(text.maxLines, 1);
-    expect(text.overflow, TextOverflow.ellipsis);
+    expect(find.byType(PregoEllipsisText), findsOneWidget);
+    expect(
+      tester.getRect(find.byType(PregoEllipsisText)).right,
+      lessThanOrEqualTo(tester.getRect(find.byType(PregoPickerButton)).right),
+    );
   });
 }

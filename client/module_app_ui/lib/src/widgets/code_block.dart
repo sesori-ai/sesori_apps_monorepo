@@ -3,7 +3,6 @@ import "package:markdown/markdown.dart" as md;
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../extensions/text_style_x.dart";
 import "../utils/code_highlighter.dart";
 import "../utils/copy_text_to_clipboard.dart";
 
@@ -98,54 +97,37 @@ class _CodeBlockState() extends State<CodeBlock> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final brightness = Theme.of(context).brightness;
-    final baseStyle = const TextStyle(fontSize: 13, height: 1.4).monospace.copyWith(
-      color: prego.colors.textPrimary,
-    );
+    final baseStyle = prego.textTheme.code.copyWith(color: prego.colors.textPrimary);
     final span = _spanFor(brightness: brightness, baseStyle: baseStyle);
     final language = widget.language;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Container(
-        clipBehavior: Clip.hardEdge,
-        decoration: BoxDecoration(
-          color: prego.colors.bgQuaternary,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: prego.colors.borderSecondary),
-        ),
-        child: Column(
-          crossAxisAlignment: .start,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: prego.colors.borderSecondary)),
+    // The markdown style sheet's code block decoration draws the box around this.
+    return Column(
+      crossAxisAlignment: .start,
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: 12, end: 4, top: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  (language == null || language.isEmpty) ? "code" : language,
+                  style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary),
+                ),
               ),
-              padding: const EdgeInsetsDirectional.only(start: 12, end: 4, top: 2, bottom: 2),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      (language == null || language.isEmpty) ? "code" : language,
-                      style: prego.textTheme.textXs.medium.copyWith(
-                        color: prego.colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  PregoCopyIconButton(
-                    onCopy: () => copyTextToClipboard(text: widget.code, operation: "code block"),
-                    tooltip: widget.copyTooltip,
-                  ),
-                ],
+              PregoCopyIconButton(
+                onCopy: () => copyTextToClipboard(text: widget.code, operation: "code block"),
+                tooltip: widget.copyTooltip,
               ),
-            ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.all(12),
-              child: span != null ? Text.rich(span) : Text(widget.code, style: baseStyle),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 12),
+          child: span != null ? Text.rich(span) : Text(widget.code, style: baseStyle),
+        ),
+      ],
     );
   }
 }

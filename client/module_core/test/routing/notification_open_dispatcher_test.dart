@@ -339,6 +339,9 @@ class FakeRouteSource() implements RouteSource {
 
   @override
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRoute.stream;
+
+  @override
+  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
 }
 
 AuthState _authenticatedState() {

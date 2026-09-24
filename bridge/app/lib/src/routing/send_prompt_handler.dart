@@ -26,6 +26,7 @@ class SendPromptHandler({required final SessionPromptService _sessionPromptServi
       promptId: body.promptId,
       parts: body.parts,
       variant: body.variant,
+      fastMode: body.fastMode,
       agent: body.agent,
       model: body.model,
       command: body.command,

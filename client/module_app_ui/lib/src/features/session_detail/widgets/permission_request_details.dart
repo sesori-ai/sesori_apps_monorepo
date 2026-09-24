@@ -4,7 +4,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "../../../extensions/text_style_x.dart";
 import "../../../platform/external_link_opener.dart";
 import "../../../utils/copy_text_to_clipboard.dart";
 import "../../../widgets/markdown_styles.dart";
@@ -74,15 +73,16 @@ class const PermissionRequestDetails({
                 ),
             ],
           ),
-        if (command != null) _detailCard(context, text: command, literal: true),
-        if (permission.description != command) _detailCard(context, text: permission.description, literal: false),
+        if (command != null) _detailCard(context: context, text: command, literal: true),
+        if (permission.description != command)
+          _detailCard(context: context, text: permission.description, literal: false),
       ],
     );
   }
 
-  Widget _detailCard(BuildContext context, {required String text, required bool literal}) {
+  Widget _detailCard({required BuildContext context, required String text, required bool literal}) {
     final prego = context.prego;
-    final style = prego.textTheme.textXs.regular.copyWith(color: prego.colors.textPrimary).monospace;
+    final style = prego.textTheme.code.copyWith(color: prego.colors.textPrimary);
     return Container(
       key: Key(literal ? "permission-command-detail" : "permission-request-detail"),
       padding: EdgeInsets.all(prego.spacing.lg),

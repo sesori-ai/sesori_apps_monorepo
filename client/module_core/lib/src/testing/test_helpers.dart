@@ -315,6 +315,9 @@ class MockRouteSource({
   @override
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRoute.stream;
 
+  @override
+  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
+
   AppRouteDef? get currentRoute => _currentRoute.value;
 
   void emitRoute(AppRouteDef? route) => _currentRoute.add(route);
@@ -497,6 +500,7 @@ void delegateSessionRepository({
       agent: any(named: "agent"),
       model: any(named: "model"),
       variant: any(named: "variant"),
+      fastMode: any(named: "fastMode"),
       command: any(named: "command"),
     ),
   ).thenAnswer(
@@ -508,6 +512,7 @@ void delegateSessionRepository({
       agent: _namedArgument<String?>(invocation: invocation, name: #agent),
       model: _namedArgument<PromptModel?>(invocation: invocation, name: #model),
       variant: _namedArgument<SessionVariant?>(invocation: invocation, name: #variant),
+      fastMode: _namedArgument<bool>(invocation: invocation, name: #fastMode),
       command: _namedArgument<String?>(invocation: invocation, name: #command),
     ),
   );
@@ -615,6 +620,22 @@ ProjectSummary testProjectSummary({
     },
   });
 }
+
+/// A minimal session for const state fixtures that do not care which one.
+const Session testConstSession = Session(
+  branchName: null,
+  id: "session-1",
+  pluginId: "plugin-1",
+  projectID: "project-1",
+  directory: "/project",
+  parentID: null,
+  title: null,
+  pullRequest: null,
+  time: null,
+  promptDefaults: null,
+  lastUserActivityAt: null,
+  unseen: false,
+);
 
 Session testSession({
   String? id = _noString,
@@ -781,6 +802,7 @@ ProviderListResponse testProviderListResponse() => const ProviderListResponse(
       defaultModelID: "claude-3-5-sonnet",
       models: {
         "claude-3-5-sonnet": ProviderModel(
+          fastMode: null,
           id: "claude-3-5-sonnet",
           providerID: "anthropic",
           name: "Claude 3.5 Sonnet",

@@ -111,7 +111,7 @@ void main() {
       await subscription.cancel();
     });
 
-    test("correlates an unmarked decorated image echo with its prompt", () async {
+    test("correlates an unmarked re-encoded image echo with its prompt", () async {
       await _ensure(repository, createNew: true);
       final process = harness.processes.single;
       final promptIds = <String?>[];
@@ -124,13 +124,13 @@ void main() {
         sessionId: testSessionId,
         parts: const [
           PluginPromptPart.text(text: "inspect this"),
-          PluginPromptPart.fileData(mime: "image/JPEG", base64: "aA==", filename: "image.jpg"),
+          PluginPromptPart.fileData(mime: "image/png", base64: "iVBORw0KGgo=", filename: "image.png"),
         ],
         promptId: "prompt-image",
       );
       final written = await waitForFrame(process, "user");
 
-      process.emit(_decoratedImageEcho(written: written, uuid: "echo-image"));
+      process.emit(_reencodedImageEcho(written: written, uuid: "echo-image"));
       await pump();
 
       expect(promptIds, ["prompt-image"]);
@@ -304,6 +304,7 @@ Future<void> _ensure(ClaudeSessionProcessRepository repository, {required bool c
   model: null,
   effort: null,
   permissionMode: null,
+  fastMode: false,
   allowedTools: const [],
 );
 
@@ -344,7 +345,7 @@ Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uu
   "isReplay": true,
 };
 
-Map<String, Object?> _decoratedImageEcho({required Map<String, Object?> written, required String uuid}) {
+Map<String, Object?> _reencodedImageEcho({required Map<String, Object?> written, required String uuid}) {
   final message = (written["message"]! as Map).cast<String, Object?>();
   final content = (message["content"]! as List).cast<Object?>();
   final image = (content[1]! as Map).cast<String, Object?>();
@@ -362,7 +363,7 @@ Map<String, Object?> _decoratedImageEcho({required Map<String, Object?> written,
           "source": {
             ...source,
             "media_type": "image/jpeg",
-            "data": "aA",
+            "data": "/9j/4AAQSkZJRg==",
             "cache_control": {"type": "ephemeral"},
           },
         },

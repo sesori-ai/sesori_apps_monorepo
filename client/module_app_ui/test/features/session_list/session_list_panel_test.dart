@@ -8,6 +8,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// Layout guards for [SessionListPanel]'s header.
@@ -28,6 +29,7 @@ void main() {
     when(() => cubit.state).thenReturn(
       const SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null),
     );
+    when(() => cubit.projectId).thenReturn("project-1");
   });
 
   // Renders the real panel at a fixed width; the header sits inside the panel's
@@ -44,8 +46,11 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: BlocProvider<SessionListCubit>.value(
-            value: cubit,
+          body: MultiBlocProvider(
+            providers: [
+              BlocProvider<SessionListCubit>.value(value: cubit),
+              BlocProvider(create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository())),
+            ],
             child: Align(
               alignment: Alignment.topLeft,
               child: SizedBox(
@@ -58,7 +63,12 @@ void main() {
                   onBack: () {},
                   onNewSession: () {},
                   onSessionTap: ({required session}) {},
-                  actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
+                  actionDispatcher: const SessionListActionDispatcher(
+                    deleteConfirmation: SessionDeleteConfirmation.sheet,
+                    onSessionArchived: null,
+                    onSessionDeleted: null,
+                    onSessionMarkedUnread: null,
+                  ),
                   archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
                 ),
               ),
@@ -81,7 +91,7 @@ void main() {
     expect(tester.takeException(), isNull);
     // The action collapses to an icon-only button so the title keeps its width;
     // its label moves to the tooltip (no visible label Text).
-    expect(find.byIcon(Icons.add), findsOneWidget);
+    expect(find.byIcon(TablerRegular.plus), findsOneWidget);
     expect(find.text(newSessionLabel(tester)), findsNothing);
   });
 
@@ -95,8 +105,95 @@ void main() {
     await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
 
     expect(tester.takeException(), isNull);
-    expect(find.byIcon(Icons.add), findsOneWidget);
+    expect(find.byIcon(TablerRegular.plus), findsOneWidget);
     expect(find.text(newSessionLabel(tester)), findsOneWidget);
+  });
+
+  testWidgets("the pane shows the shared filter chips and narrows the list with them", (tester) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    when(() => cubit.state).thenReturn(
+      SessionListState.loaded(
+        sessions: [
+          testSession(id: "s1", title: "Fix the build", updatedAt: now),
+          testSession(id: "s2", title: "Unread one", updatedAt: now, unseen: true),
+        ],
+        baseBranch: null,
+        repoSlug: null,
+      ),
+    );
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+    expect(find.text("All · 2"), findsOneWidget);
+
+    await tester.tap(find.text("Unread · 1"));
+    await tester.pumpAndSettle();
+    expect(find.text("Unread one"), findsOneWidget);
+    expect(find.text("Fix the build"), findsNothing);
+
+    await tester.tap(find.text("Running · 0"));
+    await tester.pumpAndSettle();
+    expect(find.text("No sessions match this filter"), findsOneWidget);
+  });
+
+  testWidgets("search narrows the list and its counts, says No matches, and clears", (tester) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    when(() => cubit.state).thenReturn(
+      SessionListState.loaded(
+        sessions: [
+          testSession(id: "s1", title: "Fix the build", updatedAt: now),
+          testSession(id: "s2", title: "Unread one", updatedAt: now, unseen: true),
+        ],
+        baseBranch: null,
+        repoSlug: null,
+      ),
+    );
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+
+    await tester.enterText(find.byType(TextField), "BUILD");
+    await tester.pumpAndSettle();
+    expect(find.text("Fix the build"), findsOneWidget);
+    expect(find.text("Unread one"), findsNothing);
+    expect(find.text("All · 1"), findsOneWidget);
+    expect(find.text("Unread · 0"), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), "nothing like it");
+    await tester.pumpAndSettle();
+    expect(find.text("No matches"), findsOneWidget);
+
+    await tester.tap(find.byTooltip("Clear search"));
+    await tester.pumpAndSettle();
+    expect(find.text("Fix the build"), findsOneWidget);
+    expect(find.text("Unread one"), findsOneWidget);
+    expect(find.text("No matches"), findsNothing);
+  });
+
+  testWidgets("a search field that remounts still shows the query in force", (tester) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final loaded = SessionListState.loaded(
+      sessions: [
+        testSession(id: "s1", title: "Fix the build", updatedAt: now),
+        testSession(id: "s2", title: "Unread one", updatedAt: now),
+      ],
+      baseBranch: null,
+      repoSlug: null,
+    );
+    when(() => cubit.state).thenReturn(loaded);
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+    await tester.enterText(find.byType(TextField), "build");
+    await tester.pumpAndSettle();
+
+    // The last session leaves, taking the field with it, then sessions return.
+    when(() => cubit.state).thenReturn(const SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null));
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+    expect(find.byType(TextField), findsNothing);
+    when(() => cubit.state).thenReturn(loaded);
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, "build");
+    expect(find.text("Unread one"), findsNothing);
+    await tester.tap(find.byTooltip("Clear search"));
+    await tester.pumpAndSettle();
+    expect(find.text("Unread one"), findsOneWidget);
   });
 
   testWidgets("wide Android pane uses the Cupertino refresh control", (tester) async {

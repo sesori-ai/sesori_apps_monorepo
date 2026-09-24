@@ -40,6 +40,7 @@ class AcpSessionOptionsService({
                   authType: PluginProviderAuthType.unknown,
                   models: [
                     PluginModel(
+                      fastMode: null,
                       id: modelId,
                       name: modelId,
                       variants: const [],

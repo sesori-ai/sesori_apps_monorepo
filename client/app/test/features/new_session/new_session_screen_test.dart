@@ -1,7 +1,6 @@
 import "dart:async";
 import "dart:typed_data";
 
-import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
@@ -38,7 +37,7 @@ class MockPluginRepository() extends Mock implements PluginRepository;
 
 class MockPluginPreferenceRepository() extends Mock implements PluginPreferenceRepository;
 
-class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
+class _MockProjectListService() extends Mock implements ProjectListService;
 
 final Uint8List _tinyPng = Uint8List.fromList(const [
   0x89,
@@ -120,7 +119,11 @@ AgentInfo _testAgent({required String name, required String description, require
 }
 
 SessionOptionsCatalog _testSessionOptionsCatalog() => SessionOptionsCatalog(
-  agents: [_testAgent(name: "coder", description: "A coding assistant", variant: "xhigh")],
+  // Two agents, so the composer shows the agent entry these tests look for.
+  agents: [
+    _testAgent(name: "coder", description: "A coding assistant", variant: "xhigh"),
+    _testAgent(name: "reviewer", description: "A review assistant", variant: null),
+  ],
   providers: testProviderListResponse().items,
   providersConnectedOnly: testProviderListResponse().connectedOnly,
   commands: const [],
@@ -156,11 +159,6 @@ Future<void> closeHarnessMenu(WidgetTester tester) async {
 Widget _buildApp({
   bool useHarnessFlow = false,
   ThemeMode themeMode = ThemeMode.light,
-  SessionListState sessionListState = const SessionListState.loaded(
-    sessions: [],
-    baseBranch: null,
-    repoSlug: null,
-  ),
 }) {
   final router = GoRouter(
     initialLocation: "/projects/project-1/sessions/new",
@@ -171,8 +169,8 @@ Widget _buildApp({
         routes: [
           GoRoute(
             path: "projects/:projectId/sessions/new",
-            builder: (context, state) => const NewSessionScreen(
-              projectId: "project-1",
+            builder: (context, state) => NewSessionScreen(
+              projectId: state.pathParameters["projectId"] ?? "project-1",
               projectName: "Project One",
             ),
           ),
@@ -202,17 +200,10 @@ Widget _buildApp({
     ],
   );
 
-  // The screen wears the sessions bar, whose second line comes from the
-  // project's session-list cubit — the sessions shell provides it in the app.
-  final sessionListCubit = _MockSessionListCubit();
-  when(() => sessionListCubit.state).thenReturn(sessionListState);
-  whenListen(sessionListCubit, const Stream<SessionListState>.empty(), initialState: sessionListState);
-
   return MultiBlocProvider(
     providers: [
       BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
       BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
-      BlocProvider<SessionListCubit>.value(value: sessionListCubit),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -456,6 +447,18 @@ void main() {
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
     GetIt.instance.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
+    final projectListService = _MockProjectListService();
+    when(projectListService.listProjects).thenAnswer(
+      (_) async => ApiResponse.success(
+        Projects(
+          data: [
+            testProjectSummary(id: "project-1", name: "Project One"),
+            testProjectSummary(id: "project-2", name: "Project Two"),
+          ],
+        ),
+      ),
+    );
+    GetIt.instance.registerSingleton<ProjectListService>(projectListService);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<ComposerAttachmentDispatcher>(attachmentDispatcher);
     GetIt.instance.registerSingleton<ImageClipboard>(imageClipboard);
@@ -481,6 +484,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NewSessionScreen), findsNothing);
+  });
+
+  testWidgets("the header names the project and switches to another one", (tester) async {
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    expect(find.text("What should we work on?"), findsOneWidget);
+    await tester.tap(find.byKey(const Key("new_session_project")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Project Two"));
+    await tester.pumpAndSettle();
+
+    final router = GoRouter.of(tester.element(find.byType(NewSessionScreen)));
+    expect(router.state.uri.path, "/projects/project-2/sessions/new");
+    // The replaced route keeps its page; the new project still gets its own cubit.
+    verify(() => projectRepository.getProject(projectId: "project-2")).called(1);
   });
 
   testWidgets("hides the worktree toggle while project capability loads", (tester) async {
@@ -637,6 +655,7 @@ void main() {
         agent: any(named: "agent"),
         model: any(named: "model"),
         variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
@@ -660,6 +679,7 @@ void main() {
         agent: null,
         model: null,
         variant: null,
+        fastMode: false,
         command: null,
         dedicatedWorktree: true,
       ),
@@ -1046,11 +1066,11 @@ void main() {
     await openHarnessMenu(tester);
 
     expect(
-      find.descendant(of: _harnessRow("degraded-id"), matching: find.byIcon(Icons.check)),
+      find.descendant(of: _harnessRow("degraded-id"), matching: find.byIcon(TablerRegular.check)),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: _harnessRow("other-id"), matching: find.byIcon(Icons.check)),
+      find.descendant(of: _harnessRow("other-id"), matching: find.byIcon(TablerRegular.check)),
       findsNothing,
     );
     expect(find.descendant(of: _harnessRow("degraded-id"), matching: find.text("Needs attention")), findsOneWidget);
@@ -1180,13 +1200,14 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.smart_toy_outlined), findsNothing);
+    expect(find.byIcon(TablerRegular.robot), findsNothing);
     expect(find.widgetWithText(PregoPickerButton, "Claude 3.5 Sonnet"), findsOneWidget);
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
   });
 
   testWidgets("scrolls plugin and worktree options while keeping the composer pinned", (tester) async {
-    await tester.binding.setSurfaceSize(const Size(700, 400));
+    // Tall enough for the header above the options.
+    await tester.binding.setSurfaceSize(const Size(700, 560));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
@@ -1249,7 +1270,8 @@ void main() {
     // an overlay band that has to be estimated separately.
     tester.platformDispatcher.textScaleFactorTestValue = 1.5;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await tester.binding.setSurfaceSize(const Size(700, 400));
+    // Tall enough for the header above the options.
+    await tester.binding.setSurfaceSize(const Size(700, 560));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(_buildApp());
@@ -1387,7 +1409,10 @@ void main() {
       return Future.value(
         ApiResponse.success(
           Agents(
-            agents: [_testAgent(name: "coder", description: "Coder", variant: "xhigh")],
+            agents: [
+              _testAgent(name: "coder", description: "Coder", variant: "xhigh"),
+              _testAgent(name: "reviewer", description: "Reviewer", variant: null),
+            ],
           ),
         ),
       );
@@ -1424,6 +1449,7 @@ void main() {
         agent: any(named: "agent"),
         model: any(named: "model"),
         variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
@@ -1489,7 +1515,7 @@ void main() {
     await tester.tap(_harnessRow("tool-b"));
     await tester.pump();
     expect(
-      find.descendant(of: _harnessRow("tool-a"), matching: find.byIcon(Icons.check)),
+      find.descendant(of: _harnessRow("tool-a"), matching: find.byIcon(TablerRegular.check)),
       findsOneWidget,
     );
     verifyNever(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b"));
@@ -1514,7 +1540,7 @@ void main() {
 
     await openHarnessMenu(tester);
     expect(
-      find.descendant(of: _harnessRow("tool-b"), matching: find.byIcon(Icons.check)),
+      find.descendant(of: _harnessRow("tool-b"), matching: find.byIcon(TablerRegular.check)),
       findsOneWidget,
     );
     verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "tool-b")).called(1);
@@ -1621,6 +1647,7 @@ void main() {
         agent: any(named: "agent"),
         model: any(named: "model"),
         variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
@@ -1758,6 +1785,7 @@ void main() {
               defaultModelID: "claude-3-5-sonnet",
               models: {
                 "claude-3-5-sonnet": ProviderModel(
+                  fastMode: null,
                   id: "claude-3-5-sonnet",
                   providerID: "anthropic",
                   name: "Claude 3.5 Sonnet",
@@ -1809,6 +1837,7 @@ void main() {
               defaultModelID: "claude-3-5-sonnet",
               models: {
                 "claude-3-5-sonnet": ProviderModel(
+                  fastMode: null,
                   id: "claude-3-5-sonnet",
                   providerID: "anthropic",
                   name: "Claude 3.5 Sonnet",
@@ -1877,6 +1906,7 @@ void main() {
         agent: any(named: "agent"),
         model: any(named: "model"),
         variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
@@ -1913,6 +1943,7 @@ void main() {
         agent: any(named: "agent"),
         model: any(named: "model"),
         variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
@@ -1941,6 +1972,7 @@ void main() {
         agent: any(named: "agent"),
         model: any(named: "model"),
         variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
@@ -1958,6 +1990,7 @@ void main() {
         agent: any(named: "agent"),
         model: any(named: "model"),
         variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
@@ -2001,6 +2034,7 @@ void main() {
         agent: any(named: "agent"),
         model: any(named: "model"),
         variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
@@ -2049,6 +2083,7 @@ void main() {
         agent: any(named: "agent"),
         model: any(named: "model"),
         variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
@@ -2086,6 +2121,7 @@ void main() {
         agent: any(named: "agent"),
         model: any(named: "model"),
         variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
@@ -2146,6 +2182,7 @@ void main() {
         agent: any(named: "agent"),
         model: any(named: "model"),
         variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
@@ -2205,6 +2242,7 @@ void main() {
         agent: any(named: "agent"),
         model: any(named: "model"),
         variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),

@@ -9,11 +9,10 @@ import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "new_folder_dialog.dart";
 
-/// Shows the Add Project modal bottom sheet.
+/// Shows the Add Project modal: a bottom sheet on touch, a dialog on pointer.
 ///
-/// Presented directly rather than through `showPregoBottomSheet` because the
-/// header is not fixed: its title and path subtitle follow the folder the
-/// browser is showing.
+/// Presented through [showPregoModalRoute] rather than [showPregoModal]
+/// because the browser body carries its own navigation header.
 ///
 /// The [cubit] is passed explicitly so the dialog can call `discoverProject` /
 /// `createDirectory` without relying on the widget tree's BlocProvider (which
@@ -25,13 +24,8 @@ Future<void> showAddProjectDialog({
 }) {
   // Capture before presenting: inside the route the top inset reads as 0.
   final topInset = MediaQuery.paddingOf(context).top;
-  return showModalBottomSheet<void>(
+  return showPregoModalRoute<void>(
     context: context,
-    isScrollControlled: true,
-    // PregoBottomSheet paints the rounded surface; keep the route transparent.
-    backgroundColor: Colors.transparent,
-    // The sheet caps itself just below the status bar.
-    useSafeArea: false,
     builder: (_) => AddProjectDialog(
       cubit: cubit,
       connectionService: connectionService,
@@ -315,14 +309,16 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
     // user's thumb as they navigate.
     final bodyHeight = MediaQuery.heightOf(context) - widget.topInset - PregoBottomSheet.contentTopInset;
 
-    return PregoBottomSheet(
-      // Navigation lives in the browser body; the sheet header only owns its
-      // close affordance and drag handle.
+    return PregoModalSurface(
+      // Navigation lives in the browser body; the header only owns the close
+      // affordance (and the sheet's drag handle).
       title: "",
+      subtitle: null,
+      onBack: null,
       topInset: widget.topInset,
       onClose: _dismissDialog,
+      width: PregoModalWidth.browser,
       // Full-bleed body; the banner, rows, and action menu pad themselves.
-      contentPadding: EdgeInsetsDirectional.zero,
       // The action menu clears the home indicator itself, so its background
       // reaches the bottom edge instead of stopping above it.
       handleBottomSafeArea: false,

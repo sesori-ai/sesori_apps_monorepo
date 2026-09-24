@@ -11,7 +11,7 @@ Future<void> showRenameProjectDialog({
   required ProjectSummary project,
   required ProjectListCubit cubit,
 }) {
-  return showPregoBottomSheet<void>(
+  return showPregoModal<void>(
     context: context,
     title: context.loc.renameProjectTitle,
     builder: (_) => RenameProjectDialog(project: project, cubit: cubit),

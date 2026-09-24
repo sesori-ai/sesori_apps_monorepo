@@ -90,6 +90,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -141,6 +142,7 @@ void main() {
         ].forEach(fake.emit);
       };
       await plugin.sendPrompt(
+        fastMode: false,
         sessionId: "session-1",
         promptId: "prompt-1",
         parts: const [PluginPromptPart.text(text: "writing")],
@@ -221,6 +223,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -238,6 +241,7 @@ void main() {
       await creating;
 
       await plugin.sendPrompt(
+        fastMode: false,
         sessionId: "session-1",
         promptId: "prompt-1",
         parts: const [PluginPromptPart.text(text: "first")],
@@ -248,6 +252,7 @@ void main() {
       final first = await waitForFrame(method: AcpMethods.sessionPrompt);
 
       await plugin.sendPrompt(
+        fastMode: false,
         sessionId: "session-1",
         promptId: "prompt-2",
         parts: const [PluginPromptPart.text(text: "replacement")],
