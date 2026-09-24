@@ -64,7 +64,7 @@ void main() {
                 width: 320,
                 child: PromptInput(
                   isBusy: false,
-                  hasMessages: false,
+                  restingHint: "Ask anything...",
                   onSend: ({required draft, required command, required attachments}) => sent = attachments,
                   onVoiceTranscriptionCompleted: null,
                   onDraftChanged: (_) {},
@@ -244,7 +244,7 @@ void main() {
           child: Scaffold(
             body: PromptInput(
               isBusy: false,
-              hasMessages: false,
+              restingHint: "Ask anything...",
               onSend: ({required draft, required command, required attachments}) {},
               onVoiceTranscriptionCompleted: null,
               onDraftChanged: (_) {},
@@ -320,7 +320,7 @@ void main() {
                     ),
                     PromptInput(
                       isBusy: false,
-                      hasMessages: false,
+                      restingHint: "Ask anything...",
                       onSend: ({required draft, required command, required attachments}) {},
                       onVoiceTranscriptionCompleted: null,
                       onDraftChanged: (_) {},
@@ -394,7 +394,7 @@ Future<void> _pumpCommandComposer({
       child: Scaffold(
         body: PromptInput(
           isBusy: false,
-          hasMessages: false,
+          restingHint: "Ask anything...",
           onSend: ({required draft, required command, required attachments}) {},
           onVoiceTranscriptionCompleted: null,
           onDraftChanged: (_) {},

@@ -33,10 +33,16 @@ class const PregoBrandLogo({
       );
     }
 
+    // Square bounds for every mark, so a label beside one lines up with the
+    // labels beside the others. An SVG given both dimensions still shrinks its
+    // box to its own aspect ratio (OpenCode's is 4:5); the square centres it.
     return ExcludeSemantics(
-      child: asset.endsWith(".png")
-          ? Image.asset(asset, package: "theme_prego", width: size, height: size)
-          : SvgPicture.asset(asset, package: "theme_prego", width: size, height: size),
+      child: SizedBox.square(
+        dimension: size,
+        child: asset.endsWith(".png")
+            ? Image.asset(asset, package: "theme_prego", width: size, height: size)
+            : SvgPicture.asset(asset, package: "theme_prego", width: size, height: size),
+      ),
     );
   }
 

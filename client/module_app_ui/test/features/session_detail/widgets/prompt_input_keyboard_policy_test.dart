@@ -116,7 +116,7 @@ Future<void> _pumpComposer({
         child: Scaffold(
           body: PromptInput(
             isBusy: false,
-            hasMessages: true,
+            restingHint: "Follow up...",
             onSend: onSend,
             onVoiceTranscriptionCompleted: null,
             onDraftChanged: (_) {},

@@ -15,29 +15,22 @@ class const NewSessionNoHarnessNotice({super.key, required final VoidCallback on
   Widget build(BuildContext context) {
     final loc = context.loc;
 
-    // The options block sits on a narrower inset than the page content so that
-    // its chrome-less rows land on the design's margin. This card carries no
-    // such padding of its own, so it takes the difference back to align those
-    // edges.
-    return Padding(
-      padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.sm),
-      child: PregoGroupedRows(
-        key: const Key("new_session_no_harness_notice"),
-        children: [
-          PregoGroupedRow(
-            icon: TablerRegular.plug_off,
-            title: Text(loc.newSessionNoHarnessTitle),
-            subtitle: Text(loc.newSessionNoHarnessDescription),
-          ),
-          PregoGroupedRow(
-            key: const Key("new_session_no_harness_settings"),
-            icon: TablerRegular.adjustments_horizontal,
-            title: Text(loc.newSessionHarnessSettings),
-            trailing: const Icon(TablerRegular.chevron_right),
-            onTap: onSettingsPressed,
-          ),
-        ],
-      ),
+    return PregoGroupedRows(
+      key: const Key("new_session_no_harness_notice"),
+      children: [
+        PregoGroupedRow(
+          icon: TablerRegular.plug_off,
+          title: Text(loc.newSessionNoHarnessTitle),
+          subtitle: Text(loc.newSessionNoHarnessDescription),
+        ),
+        PregoGroupedRow(
+          key: const Key("new_session_no_harness_settings"),
+          icon: TablerRegular.adjustments_horizontal,
+          title: Text(loc.newSessionHarnessSettings),
+          trailing: const Icon(TablerRegular.chevron_right),
+          onTap: onSettingsPressed,
+        ),
+      ],
     );
   }
 }

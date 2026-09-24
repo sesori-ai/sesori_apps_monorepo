@@ -207,9 +207,8 @@ The main pane hosts one full-width routed page.
   undone, refused or fails. Archiving the open session leaves its page. See
   `session-archiving-and-deletion.md`.
 - The new session page uses the same toolbar, titled New session under the project breadcrumb, above one
-  centred column no wider than the session page's: the shared heading and project selector (see
-  session-creation-and-options.md), the harness chooser, the input, then Dedicated workspace and
-  Refresh options. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
+  centred column no wider than the session page's: the shared options card (Project, Harness, New git
+  worktree; see session-creation-and-options.md) above the input, on the same edges. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
   Choosing another project builds a fresh cubit for it.
 - The session page uses the same toolbar anatomy above the transcript, never over it: the project
   breadcrumb, then the sidebar's status slot (the running sparkle, the amber awaiting glyph) leading the
