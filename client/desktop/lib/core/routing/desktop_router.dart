@@ -234,11 +234,11 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           final route = _decodeSessionDiffsRoute(state: state);
           return DesktopSessionDiffsScreen(
             key: ValueKey((projectId: route.projectId, sessionId: route.sessionId)),
-            projectId: route.projectId,
+            projectName: route.projectName,
             sessionId: route.sessionId,
-            onBack: () => _popRouteOrGo(
+            onOpenProject: () => _goRoute(
               context: context,
-              fallback: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+              route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
             ),
           );
         },

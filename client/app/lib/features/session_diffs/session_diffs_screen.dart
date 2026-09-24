@@ -24,8 +24,7 @@ class const SessionDiffsScreen({
         staleRetryDelay: const Duration(seconds: 5),
       ),
       child: SessionDiffsView(
-        onBack: null,
-        banner: ConnectionBanner.maybeFor(context),
+        chrome: SessionDiffsGlassBar(onBack: null, banner: ConnectionBanner.maybeFor(context)),
       ),
     );
   }

@@ -324,7 +324,7 @@ void main() {
             supportedLocales: AppLocalizations.supportedLocales,
             home: BlocProvider<DiffCubit>.value(
               value: mockCubit,
-              child: SessionDiffsView(key: bodyKey, onBack: null, banner: null),
+              child: SessionDiffsView(key: bodyKey, chrome: const SessionDiffsGlassBar(onBack: null, banner: null)),
             ),
           ),
         ),
