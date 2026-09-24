@@ -57,6 +57,7 @@ void main() {
                     ),
                     archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
                     quickFilter: quickFilter,
+                    query: "",
                     hiddenSessionIds: const {},
                   ),
                 ],

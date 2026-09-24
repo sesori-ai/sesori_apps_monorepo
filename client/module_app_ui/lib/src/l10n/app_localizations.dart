@@ -277,6 +277,30 @@ abstract class AppLocalizations {
   /// **'Changes'**
   String get desktopSessionPageChanges;
 
+  /// Shown under a list's search field when no loaded title matches the query.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get listSearchNoMatches;
+
+  /// Accessibility label of the button that empties a list's search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get listSearchClear;
+
+  /// Placeholder of the search field above the phone's projects list.
+  ///
+  /// In en, this message translates to:
+  /// **'Search projects and sessions'**
+  String get projectListSearchHint;
+
+  /// Placeholder of the search field above the phone's session list.
+  ///
+  /// In en, this message translates to:
+  /// **'Search sessions'**
+  String get sessionListSearchHint;
+
   /// Shown in the session list when the Running or Unread filter leaves no session.
   ///
   /// In en, this message translates to:
