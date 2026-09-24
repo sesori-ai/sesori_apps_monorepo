@@ -4,9 +4,10 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 
-/// One session in the Activity group at the top of Projects: an amber dot and
-/// "Waiting" while it waits for the user, a rotating sparkle while it runs,
-/// its project under the title and when it last changed at the end.
+/// One session in a list that mixes projects: an amber dot and "Waiting" while
+/// it waits for the user, a rotating sparkle while it runs, a resting one while
+/// it is unread, its project under the title and when it last changed at the
+/// end.
 class const ActivityTile({
   super.key,
   required final SessionActivityEntry entry,
@@ -37,19 +38,25 @@ class const ActivityTile({
                 SizedBox.square(
                   dimension: _statusSlotSize,
                   child: Center(
-                    child: entry.isAwaitingInput
-                        ? Semantics(
-                            label: loc.sessionListAwaitingInput,
-                            child: Container(
-                              width: _waitingDotSize,
-                              height: _waitingDotSize,
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: prego.colors.fgWarningPrimary),
-                            ),
-                          )
-                        : Semantics(
-                            label: loc.sessionListRunning,
-                            child: const PregoAiLoader(size: _statusSlotSize),
-                          ),
+                    child: switch (entry) {
+                      SessionActivityEntry(isAwaitingInput: true) => Semantics(
+                        label: loc.sessionListAwaitingInput,
+                        child: Container(
+                          width: _waitingDotSize,
+                          height: _waitingDotSize,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: prego.colors.fgWarningPrimary),
+                        ),
+                      ),
+                      SessionActivityEntry(isRunning: true) => Semantics(
+                        label: loc.sessionListRunning,
+                        child: const PregoAiLoader(size: _statusSlotSize),
+                      ),
+                      SessionActivityEntry(isUnseen: true) => Semantics(
+                        label: loc.sessionListNewActivity,
+                        child: const PregoAiLoader(size: _statusSlotSize, animate: false),
+                      ),
+                      SessionActivityEntry() => null,
+                    },
                   ),
                 ),
                 Expanded(
