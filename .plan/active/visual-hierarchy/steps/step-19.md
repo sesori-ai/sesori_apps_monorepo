@@ -4,11 +4,12 @@
 
 - `module_core` gains `matchTitles` (`utils/title_matcher.dart`): the items
   whose title holds every whitespace-separated query word, ignoring case, in
-  their original order, with each word's first match as sorted, merged
-  ranges. A blank query keeps everything. Step 20's palette reuses it for
-  highlights.
+  their original order. A blank query keeps everything. Match ranges for
+  highlighting were deferred to step 20's palette, their first consumer
+  (review feedback).
 - `module_app_ui` gains `ListSearchField`, a filled search field with a clear
-  button that reports each edit; the list owns the query in widget state.
+  button that reports each edit; the list owns the query in widget state and
+  seeds the field from it, so a remounted field still shows the filter.
 - Projects: the field sits under the catalog scan row once projects exist. It
   narrows project names and Activity's session titles; nothing matching reads
   "No matches".

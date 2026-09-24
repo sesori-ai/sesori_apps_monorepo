@@ -88,7 +88,6 @@ class const SessionListContent({
     final sessions = state is! SessionListLoaded
         ? const <Session>[]
         : matchTitles(items: state.sessions, titleOf: (session) => session.title, query: query)
-              .map((match) => match.item)
               .where((session) => session.time?.archived != null || !hiddenSessionIds.contains(session.id))
               .where(
                 (session) => switch (quickFilter) {

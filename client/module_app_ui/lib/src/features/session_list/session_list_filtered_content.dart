@@ -69,15 +69,11 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
     final hidden = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
     // The same rule the list applies: only a still-unarchived session hides,
     // so a session being archived leaves the list and the counts at once.
-    final counted =
-        matchTitles(
-              items: loaded?.sessions ?? const <Session>[],
-              titleOf: (session) => session.title,
-              query: _query,
-            )
-            .map((match) => match.item)
-            .where((session) => session.time?.archived != null || !hidden.contains(session.id))
-            .toList();
+    final counted = matchTitles(
+      items: loaded?.sessions ?? const <Session>[],
+      titleOf: (session) => session.title,
+      query: _query,
+    ).where((session) => session.time?.archived != null || !hidden.contains(session.id)).toList();
     final counts = {
       SessionListQuickFilter.all: counted.length,
       SessionListQuickFilter.running: counted
@@ -95,6 +91,7 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
         if (widget.searchable && hasSessions)
           SliverToBoxAdapter(
             child: ListSearchField(
+              query: _query,
               hintText: loc.sessionListSearchHint,
               onChanged: (query) => setState(() => _query = query),
             ),

@@ -330,7 +330,7 @@ class _ProjectListViewState() extends State<ProjectListView> {
       items: projects,
       titleOf: (project) => projectDisplayName(loc: loc, project: project),
       query: _query,
-    ).map((match) => match.item).toList();
+    );
     final activity = _activitySlivers(context: context, projects: projects);
     return [
       if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
@@ -344,6 +344,7 @@ class _ProjectListViewState() extends State<ProjectListView> {
       if (projects.isNotEmpty)
         SliverToBoxAdapter(
           child: ListSearchField(
+            query: _query,
             hintText: context.loc.projectListSearchHint,
             onChanged: (query) => setState(() => _query = query),
           ),
@@ -406,7 +407,7 @@ class _ProjectListViewState() extends State<ProjectListView> {
       items: projection.waitingFirst,
       titleOf: (item) => item.entry.session.title,
       query: _query,
-    ).map((match) => match.item).toList();
+    );
     if (activity.isEmpty) return const [];
     final loc = context.loc;
     Widget heading(String text) => SliverToBoxAdapter(

@@ -7,6 +7,10 @@ import "../extensions/build_context_x.dart";
 /// the query and narrows what it has already loaded.
 class const ListSearchField({
   super.key,
+
+  /// The list's current query. The field starts from it, so a field that
+  /// remounts (after a reconnect, say) still shows the filter in force.
+  required final String query,
   required final String hintText,
   required final ValueChanged<String> onChanged,
 }) extends StatefulWidget {
@@ -15,7 +19,7 @@ class const ListSearchField({
 }
 
 class _ListSearchFieldState() extends State<ListSearchField> {
-  final _controller = TextEditingController();
+  late final _controller = TextEditingController(text: widget.query);
 
   @override
   void dispose() {
