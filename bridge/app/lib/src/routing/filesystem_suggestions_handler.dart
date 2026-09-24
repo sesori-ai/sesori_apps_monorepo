@@ -23,27 +23,24 @@ class FilesystemSuggestionsHandler({required final FilesystemRepository _filesys
     RelayRequest request, {
     required FilesystemSuggestionsRequest body,
   }) async {
-    final prefix = body.prefix ?? _filesystemRepository.defaultBrowsePath;
-
-    if (!p.isAbsolute(prefix)) {
-      throw buildErrorResponse(request, 400, "prefix must be an absolute path");
-    }
-    if (p.split(prefix).contains("..")) {
-      throw buildErrorResponse(request, 400, "path traversal not allowed");
+    final prefix = body.prefix;
+    if (prefix != null) {
+      if (!p.isAbsolute(prefix)) {
+        throw buildErrorResponse(request, 400, "prefix must be an absolute path");
+      }
+      if (p.split(prefix).contains("..")) {
+        throw buildErrorResponse(request, 400, "path traversal not allowed");
+      }
     }
 
     try {
-      final suggestions = _filesystemRepository.listSuggestions(prefix: prefix, maxResults: body.maxResults);
-      // Only the browser's opening request, which has no prefix, carries the
-      // drives: they do not change while it browses.
-      if (body.prefix != null) return suggestions;
-      return suggestions.copyWith(driveRoots: await _filesystemRepository.listDriveRoots());
-    } on FilesystemPermissionDeniedException {
-      throw buildErrorResponse(request, 403, "permission denied: $prefix");
+      return await _filesystemRepository.listBrowserSuggestions(prefix: prefix, maxResults: body.maxResults);
+    } on FilesystemPermissionDeniedException catch (error) {
+      throw buildErrorResponse(request, 403, "permission denied: ${error.path}");
     } on FilesystemDirectoryNotFoundException {
       throw buildErrorResponse(request, 404, "directory not found");
     } on FileSystemException catch (error, stackTrace) {
-      Log.w("FilesystemSuggestionsHandler: failed to list $prefix", error, stackTrace);
+      Log.w("FilesystemSuggestionsHandler: failed to list ${prefix ?? "the default browse path"}", error, stackTrace);
       throw buildErrorResponse(request, 500, "failed to list filesystem suggestions");
     }
   }

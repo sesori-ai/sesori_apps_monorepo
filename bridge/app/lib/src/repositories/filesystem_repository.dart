@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show FilesystemSuggestion, FilesystemSuggestions;
 
 import "../api/filesystem_api.dart";
@@ -112,22 +113,41 @@ class FilesystemRepository({
   /// The mounted drive roots of a Windows host, such as `C:\`, in letter
   /// order; empty on any other host.
   ///
-  /// Every letter is probed at once, and a probe that has not answered within
-  /// [_driveProbeTimeout] counts as unmounted, so a disconnected network drive
-  /// cannot hold up the listing it rides on.
+  /// Every letter is probed at once, and a probe that fails or has not
+  /// answered within [_driveProbeTimeout] counts as unmounted, so an
+  /// inaccessible or disconnected network drive cannot hold up or fail the
+  /// listing it rides on.
   Future<List<String>> listDriveRoots() async {
     if (!_filesystemApi.isWindows) return const [];
     final candidates = [
       for (var letter = "A".codeUnitAt(0); letter <= "Z".codeUnitAt(0); letter++) "${String.fromCharCode(letter)}:\\",
     ];
-    final mounted = await Future.wait([
-      for (final root in candidates)
-        _filesystemApi.directoryExistsAsync(root).timeout(_driveProbeTimeout, onTimeout: () => false),
-    ]);
+    final mounted = await Future.wait([for (final root in candidates) _probeDrive(root: root)]);
     return [
       for (final (index, root) in candidates.indexed)
         if (mounted[index]) root,
     ];
+  }
+
+  Future<bool> _probeDrive({required String root}) async {
+    try {
+      return await _filesystemApi.directoryExistsAsync(root).timeout(_driveProbeTimeout, onTimeout: () => false);
+    } on FileSystemException catch (error, stackTrace) {
+      Log.w("FilesystemRepository: omitting drive $root after a failed probe", error, stackTrace);
+      return false;
+    }
+  }
+
+  /// The folder browser's listing: the children of [prefix], or, for the
+  /// browser's opening request without a prefix, the children of
+  /// [defaultBrowsePath] together with the host's drive roots. Only the
+  /// opening request carries the drives: they do not change while it browses.
+  ///
+  /// Throws like [listSuggestions].
+  Future<FilesystemSuggestions> listBrowserSuggestions({required String? prefix, required int maxResults}) async {
+    if (prefix != null) return listSuggestions(prefix: prefix, maxResults: maxResults);
+    final suggestions = listSuggestions(prefix: defaultBrowsePath, maxResults: maxResults);
+    return suggestions.copyWith(driveRoots: await listDriveRoots());
   }
 
   bool isKnownBinaryFile({required String relativePath}) {

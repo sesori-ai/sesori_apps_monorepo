@@ -106,6 +106,23 @@ void main() {
       expect(browsing.driveRoots, isEmpty);
     });
 
+    test("delegates the request's prefix and limit to the repository", () async {
+      final repository = _RecordingFilesystemRepository();
+      final delegatingHandler = FilesystemSuggestionsHandler(filesystemRepository: repository);
+
+      final opening = await delegatingHandler.handle(
+        makeRequest("POST", "/filesystem/suggestions"),
+        body: const FilesystemSuggestionsRequest(maxResults: 7, prefix: null),
+      );
+      await delegatingHandler.handle(
+        makeRequest("POST", "/filesystem/suggestions"),
+        body: FilesystemSuggestionsRequest(maxResults: 9, prefix: tempDir.path),
+      );
+
+      expect(opening, same(repository.result));
+      expect(repository.calls, [(prefix: null, maxResults: 7), (prefix: tempDir.path, maxResults: 9)]);
+    });
+
     test("throws 400 for path traversal attempt with ../", () async {
       await expectLater(
         () => handler.handle(
@@ -199,4 +216,19 @@ class _WindowsFilesystemApi({required final String home}) extends FilesystemApi 
 
   @override
   Future<bool> directoryExistsAsync(String path) async => path == r"C:\" || path == r"D:\";
+}
+
+/// Records each browser listing request and answers with [result].
+class _RecordingFilesystemRepository() implements FilesystemRepository {
+  final calls = <({String? prefix, int maxResults})>[];
+  final result = const FilesystemSuggestions(data: [], path: "/home/dev", driveRoots: [r"C:\"]);
+
+  @override
+  Future<FilesystemSuggestions> listBrowserSuggestions({required String? prefix, required int maxResults}) async {
+    calls.add((prefix: prefix, maxResults: maxResults));
+    return result;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

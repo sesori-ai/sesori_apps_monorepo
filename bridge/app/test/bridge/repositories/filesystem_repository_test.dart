@@ -118,6 +118,22 @@ void main() {
       expect(await repo.listDriveRoots(), [r"C:\", r"D:\"]);
     });
 
+    test("listDriveRoots omits a drive whose probe fails and keeps the others", () async {
+      final repo = FilesystemRepository(
+        filesystemApi: _DriveFilesystemApi(
+          isWindows: true,
+          probes: {
+            r"C:\": Future.value(true),
+            r"E:\": Future.error(const FileSystemException("Access is denied", r"E:\")),
+            r"F:\": Future.value(true),
+          },
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+
+      expect(await repo.listDriveRoots(), [r"C:\", r"F:\"]);
+    });
+
     test("listDriveRoots skips a drive whose probe stalls", () {
       fakeAsync((async) {
         final repo = FilesystemRepository(
