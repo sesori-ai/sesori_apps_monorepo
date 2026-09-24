@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -174,6 +175,55 @@ void main() {
   setUp(() {
     mockCubit = MockSessionDetailCubit();
   });
+
+  for (final keyboard in [false, true]) {
+    testWidgets("reasoning disclosure opens its full content with ${keyboard ? "keyboard" : "tap"}", (tester) async {
+      const text = "**Reviewing the next step**\n\nThe complete reasoning stays available here.";
+      whenListen(
+        mockCubit,
+        const Stream<SessionDetailState>.empty(),
+        initialState: _loadedState(
+          messages: [_messageWithPart(messageId: "message", partId: "reasoning", text: text)],
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildPregoThemeData(brightness: Brightness.light),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: BlocProvider<SessionDetailCubit>.value(
+            value: mockCubit,
+            child: SessionDetailPresentationScope(
+              messageImageRepository: () => throw UnimplementedError(),
+              imageSaver: () => throw UnimplementedError(),
+              imageClipboard: () => throw UnimplementedError(),
+              imageSharer: () => throw UnimplementedError(),
+              canShareImages: false,
+              openExternalLink: ({required url, required mode}) async => true,
+              openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+              openHarnessSettings: () {},
+              child: const Scaffold(
+                body: ReasoningPartCard(text: text, isStreaming: false, partId: "reasoning", messageId: "message"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      if (keyboard) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      } else {
+        await tester.tap(find.byType(ReasoningPartCard));
+      }
+      await tester.pumpAndSettle();
+      expect(find.byType(ReasoningModal), findsOneWidget);
+      final body = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
+      expect(body.data, text);
+      expect(body.styleSheet!.p!.fontSize, 14);
+      expect(body.styleSheet!.p!.height, closeTo(20 / 14, 0.001));
+    });
+  }
 
   testWidgets("modal receives streaming updates in real-time", (tester) async {
     final controller = StreamController<SessionDetailState>.broadcast();
