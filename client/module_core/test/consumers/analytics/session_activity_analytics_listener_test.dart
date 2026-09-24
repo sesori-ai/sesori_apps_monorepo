@@ -36,7 +36,7 @@ const _activeAnalyticsState = ProductAnalyticsState(
 );
 
 const _emptyState = SessionDetailState.loaded(
-  interaction: SessionInteractionState.available(refreshError: null),
+  interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
   messages: [
     MessageWithParts(
       info: Message.user(
@@ -58,7 +58,6 @@ const _emptyState = SessionDetailState.loaded(
   session: testConstSession,
   pluginId: "opencode",
   supportsPromptAttachments: false,
-  agent: null,
   assistantAgentModel: null,
   children: [],
   childStatuses: {},
@@ -77,7 +76,7 @@ const _emptyState = SessionDetailState.loaded(
 );
 
 const _nonEmptyState = SessionDetailState.loaded(
-  interaction: SessionInteractionState.available(refreshError: null),
+  interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
   messages: [],
   olderMessagesCursor: null,
   streamingText: {},
@@ -88,7 +87,6 @@ const _nonEmptyState = SessionDetailState.loaded(
   session: testConstSession,
   pluginId: "opencode",
   supportsPromptAttachments: false,
-  agent: null,
   assistantAgentModel: null,
   children: [],
   childStatuses: {},

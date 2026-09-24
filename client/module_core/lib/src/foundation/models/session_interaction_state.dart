@@ -16,7 +16,7 @@ enum SessionInteractionBlockedReason() {
 
 @immutable
 sealed class const SessionInteractionState() {
-  const factory available({required ApiError? refreshError}) = SessionInteractionAvailable;
+  const factory available({required String displayName, required ApiError? refreshError}) = SessionInteractionAvailable;
   const factory checking() = SessionInteractionChecking;
   const factory legacyUnverified() = SessionInteractionLegacyUnverified;
   const factory blocked({
@@ -29,12 +29,16 @@ sealed class const SessionInteractionState() {
   bool get canInteract => this is SessionInteractionAvailable || this is SessionInteractionLegacyUnverified;
 }
 
-final class const SessionInteractionAvailable({required final ApiError? refreshError}) extends SessionInteractionState {
+final class const SessionInteractionAvailable({
+  required final String displayName,
+  required final ApiError? refreshError,
+}) extends SessionInteractionState {
   @override
-  bool operator ==(Object other) => other is SessionInteractionAvailable && other.refreshError == refreshError;
+  bool operator ==(Object other) =>
+      other is SessionInteractionAvailable && other.displayName == displayName && other.refreshError == refreshError;
 
   @override
-  int get hashCode => refreshError.hashCode;
+  int get hashCode => Object.hash(displayName, refreshError);
 }
 
 final class const SessionInteractionChecking() extends SessionInteractionState {

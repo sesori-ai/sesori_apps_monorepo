@@ -87,7 +87,7 @@ void main() {
 
   test("disconnect and reconnect preserve availability until management reports a result", () {
     final previousStates = [
-      const SessionInteractionState.available(refreshError: null),
+      const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       const SessionInteractionState.legacyUnverified(),
       const SessionInteractionState.checking(),
       for (final reason in SessionInteractionBlockedReason.values)
@@ -127,7 +127,7 @@ void main() {
       pluginId: "harness",
       managementResult: managementFixture(setup: PluginSetupState.ready, runtime: PluginRuntimeState.disabled),
       connectionStatus: connected,
-      previous: const SessionInteractionState.available(refreshError: null),
+      previous: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
     );
     expect(
       result,
@@ -153,7 +153,12 @@ void main() {
       previous: null,
     );
     expect(result.canInteract, isTrue);
-    expect((result as SessionInteractionAvailable).refreshError, same(error));
+    expect(
+      result,
+      isA<SessionInteractionAvailable>()
+          .having((state) => state.displayName, "displayName", "Test harness")
+          .having((state) => state.refreshError, "refreshError", same(error)),
+    );
   });
 }
 
