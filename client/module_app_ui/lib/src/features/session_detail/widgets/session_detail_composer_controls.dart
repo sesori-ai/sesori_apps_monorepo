@@ -3,7 +3,6 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../extensions/build_context_x.dart";
 import "../composer_presentation_scope.dart";
 import "agent_model_buttons.dart";
 import "background_tasks_bar.dart";
@@ -65,14 +64,12 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
             // Queued messages count: the user has already "sent"
             // something, so the composer should rest as a follow-up field
             // even before the first message lands in the list.
-            restingHint:
+            hasMessages:
                 state.hasRenderableMessages ||
-                    state.sendingSubmission != null ||
-                    state.queuedMessages.isNotEmpty ||
-                    state.awaitingBridgeSubmissions.isNotEmpty ||
-                    state.bridgeQueuedPrompts.isNotEmpty
-                ? context.loc.sessionDetailFollowUpHint
-                : context.loc.sessionDetailPromptHint,
+                state.sendingSubmission != null ||
+                state.queuedMessages.isNotEmpty ||
+                state.awaitingBridgeSubmissions.isNotEmpty ||
+                state.bridgeQueuedPrompts.isNotEmpty,
             attachmentsSupported: state.supportsPromptAttachments,
             isBusy: hasActiveWork(
               sessionStatus: state.sessionStatus,

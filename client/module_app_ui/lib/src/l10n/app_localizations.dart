@@ -295,11 +295,11 @@ abstract class AppLocalizations {
   /// **'All · {count}'**
   String sessionListFilterAll(int count);
 
-  /// Placeholder of the new session page's prompt input, before anything is typed.
+  /// Heading of the new session page, above the project selector and the prompt input.
   ///
   /// In en, this message translates to:
   /// **'What should we work on?'**
-  String get newSessionPromptHint;
+  String get newSessionHeading;
 
   /// Desktop session page toolbar button that opens the session's file changes.
   ///
@@ -3469,34 +3469,16 @@ abstract class AppLocalizations {
   /// **'Failed to rename project'**
   String get renameProjectFailed;
 
-  /// New session option that runs the session in a git worktree of its own instead of the shared project checkout.
+  /// No description provided for @newSessionDedicatedWorkspace.
   ///
   /// In en, this message translates to:
-  /// **'New git worktree'**
-  String get newSessionNewWorktree;
+  /// **'Dedicated workspace'**
+  String get newSessionDedicatedWorkspace;
 
-  /// Hint below the new git worktree option on the new session page.
+  /// No description provided for @newSessionPluginChooserLabel.
   ///
   /// In en, this message translates to:
-  /// **'Runs on a new branch in its own folder'**
-  String get newSessionNewWorktreeHint;
-
-  /// Label of the new session page's row naming the project the session starts in.
-  ///
-  /// In en, this message translates to:
-  /// **'Project'**
-  String get newSessionProjectLabel;
-
-  /// Last part of the one-line summary above the new session composer while the keyboard is up, as in 'my-project · OpenCode · worktree'. Shown only when a new git worktree is selected.
-  ///
-  /// In en, this message translates to:
-  /// **'worktree'**
-  String get newSessionSummaryWorktree;
-
-  /// Label of the new session page's row that picks the coding harness the session runs on.
-  ///
-  /// In en, this message translates to:
-  /// **'Harness'**
+  /// **'Coding tool'**
   String get newSessionPluginChooserLabel;
 
   /// No description provided for @newSessionPluginDegraded.
@@ -3556,8 +3538,14 @@ abstract class AppLocalizations {
   /// No description provided for @newSessionProjectUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Couldn’t verify whether this project supports git worktrees. Try again before creating the session.'**
+  /// **'Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.'**
   String get newSessionProjectUnavailable;
+
+  /// No description provided for @newSessionOptionsCached.
+  ///
+  /// In en, this message translates to:
+  /// **'Using cached coding tool options.'**
+  String get newSessionOptionsCached;
 
   /// No description provided for @newSessionOptionsUnavailable.
   ///

@@ -19,6 +19,7 @@ import "package:sesori_dart_core/src/repositories/plugin_preference_repository.d
 import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -154,34 +155,6 @@ Future<void> closeHarnessMenu(WidgetTester tester) async {
   await tester.tapAt(const Offset(10, 10));
   await tester.pumpAndSettle();
 }
-
-final Finder _refreshRow = find.byKey(const Key("new_session_options_refresh"));
-
-/// Presses Refresh inside the harness menu. Explicit pumps rather than
-/// pumpAndSettle: the harness row shimmers while the refresh runs.
-Future<void> tapRefresh(WidgetTester tester) async {
-  await tester.tap(find.byKey(const Key("new_session_plugin_trigger")));
-  await tester.pump();
-  await tester.pump(const Duration(seconds: 1));
-  await tester.tap(_refreshRow);
-  await tester.pump();
-  await tester.pump(const Duration(seconds: 1));
-}
-
-/// Whether the harness menu's Refresh can be pressed. Opens and closes the menu.
-Future<bool> isRefreshEnabled(WidgetTester tester) async {
-  await openHarnessMenu(tester);
-  final enabled =
-      tester.widget<InkWell>(find.descendant(of: _refreshRow, matching: find.byType(InkWell))).onTap != null;
-  await closeHarnessMenu(tester);
-  return enabled;
-}
-
-/// Whether the harness row shimmers for a load still running.
-bool isHarnessRowLoading(WidgetTester tester) => find
-    .descendant(of: find.byKey(const Key("new_session_plugin_trigger")), matching: find.byType(PregoShimmer))
-    .evaluate()
-    .isNotEmpty;
 
 Widget _buildApp({
   bool useHarnessFlow = false,
@@ -513,13 +486,10 @@ void main() {
     expect(find.byType(NewSessionScreen), findsNothing);
   });
 
-  testWidgets("the project row names the project and switches to another one", (tester) async {
+  testWidgets("the header names the project and switches to another one", (tester) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
-    expect(
-      find.descendant(of: find.byKey(const Key("new_session_project")), matching: find.text("Project One")),
-      findsOneWidget,
-    );
+    expect(find.text("What should we work on?"), findsOneWidget);
     await tester.tap(find.byKey(const Key("new_session_project")));
     await tester.pumpAndSettle();
     await tester.tap(find.text("Project Two"));
@@ -529,20 +499,6 @@ void main() {
     expect(router.state.uri.path, "/projects/project-2/sessions/new");
     // The replaced route keeps its page; the new project still gets its own cubit.
     verify(() => projectRepository.getProject(projectId: "project-2")).called(1);
-  });
-
-  testWidgets("asks the page's question as the composer placeholder", (tester) async {
-    await tester.pumpWidget(_buildApp());
-    await tester.pumpAndSettle();
-    await enterTypingMode(tester);
-
-    expect(
-      find.descendant(of: find.byType(PromptInput), matching: find.text("What should we work on?")),
-      findsOneWidget,
-    );
-    expect(find.text("What should we work on?"), findsOneWidget);
-    // Available options need no status line.
-    expect(find.text("Using cached coding tool options."), findsNothing);
   });
 
   testWidgets("hides the worktree toggle while project capability loads", (tester) async {
@@ -596,7 +552,9 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     expect(find.text(loc.newSessionProjectUnavailable), findsOneWidget);
-    expect(await isRefreshEnabled(tester), isTrue);
+    // The status line above names what is missing; the action keeps the one
+    // name it has in every state.
+    expect(find.widgetWithText(PregoButtonsSolid, loc.newSessionOptionsRefresh), findsOneWidget);
     expect(
       tester
           .widget<IgnorePointer>(
@@ -606,7 +564,7 @@ void main() {
       isTrue,
     );
 
-    await tapRefresh(tester);
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
     await tester.pumpAndSettle();
 
     expect(find.text(loc.newSessionProjectUnavailable), findsNothing);
@@ -647,6 +605,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     expect(find.text(loc.newSessionOptionsLegacyBridge), findsOneWidget);
+    expect(find.byKey(const Key("new_session_options_refresh")), findsOneWidget);
     final composerPointer = tester.widget<IgnorePointer>(
       find.ancestor(of: find.byType(PromptInput), matching: find.byType(IgnorePointer)).first,
     );
@@ -669,7 +628,7 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    await tapRefresh(tester);
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
     await tester.pumpAndSettle();
 
     verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "plugin-1")).called(1);
@@ -784,10 +743,7 @@ void main() {
       isTrue,
     );
 
-    // Let the alert, which overlays the top of the page, time out first.
-    await tester.pump(const Duration(seconds: 9));
-    await tester.pumpAndSettle();
-    await tapRefresh(tester);
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
@@ -801,7 +757,7 @@ void main() {
     );
   });
 
-  testWidgets("refresh stops shimmering the harness row for a harness the user left behind", (tester) async {
+  testWidgets("refresh action stops spinning for a harness the user left behind", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginDiscoverySnapshot(
@@ -849,12 +805,14 @@ void main() {
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
+    final refreshAction = find.byKey(const Key("new_session_options_refresh"));
 
-    await tapRefresh(tester);
-    expect(isHarnessRowLoading(tester), isTrue);
+    await tester.tap(refreshAction);
+    await tester.pump();
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).isLoading, isTrue);
 
     // Explicit pumps throughout: pumpAndSettle never returns while the
-    // harness row shimmers.
+    // indeterminate spinner is on screen.
     await tester.tap(find.byKey(const Key("new_session_plugin_trigger")));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -863,12 +821,12 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     // The second harness has its own settled options; the first harness's
-    // request is still outstanding and must not hold the row hostage.
-    expect(isHarnessRowLoading(tester), isFalse);
-    expect(await isRefreshEnabled(tester), isTrue);
+    // request is still outstanding and must not hold this action hostage.
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).isLoading, isFalse);
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).onPressed, isNotNull);
   });
 
-  testWidgets("refresh shimmers the harness row while its load runs", (tester) async {
+  testWidgets("refresh action stays in view and spins while its load runs", (tester) async {
     final refreshed = Completer<SessionOptionsRepositoryResult>();
     when(
       () => sessionRepository.loadSessionOptions(
@@ -885,16 +843,18 @@ void main() {
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
-    expect(isHarnessRowLoading(tester), isFalse);
+    final refreshAction = find.byKey(const Key("new_session_options_refresh"));
 
-    await tapRefresh(tester);
+    await tester.tap(refreshAction);
+    await tester.pump();
 
-    expect(isHarnessRowLoading(tester), isTrue);
+    expect(refreshAction, findsOneWidget);
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).isLoading, isTrue);
 
     refreshed.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
     await tester.pumpAndSettle();
 
-    expect(isHarnessRowLoading(tester), isFalse);
+    expect(tester.widget<PregoButtonsSolid>(refreshAction).isLoading, isFalse);
   });
 
   testWidgets("retained refresh failure keeps cached options visible", (tester) async {
@@ -914,10 +874,10 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
-    expect(find.text(loc.newSessionOptionsUpdateFailedRetained), findsNothing);
+    expect(find.text(loc.newSessionOptionsCached), findsOneWidget);
     expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
 
-    await tapRefresh(tester);
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
     await tester.pumpAndSettle();
 
     expect(find.text(loc.newSessionOptionsUpdateFailedRetained), findsOneWidget);
@@ -943,7 +903,7 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
     expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
 
-    await tapRefresh(tester);
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
     await tester.pumpAndSettle();
 
     expect(find.text(loc.newSessionOptionsRefreshFailedUnavailable), findsOneWidget);
@@ -1049,9 +1009,10 @@ void main() {
     expect(find.text("Needs attention"), findsOneWidget);
     expect(find.text("Failed"), findsOneWidget);
     expect(find.text("Unavailable"), findsOneWidget);
-    // The card row names the picked harness in words; the marks lead the menu
-    // rows. The plug stands in for the harness this build has no artwork for.
-    expect(findBrandLogo("codex"), findsOneWidget);
+    // Codex is the picked harness, so its mark shows twice: on the trigger and
+    // in its row. The plug stands in for the harness this build has no artwork
+    // for, which is only in the menu.
+    expect(findBrandLogo("codex"), findsNWidgets(2));
     expect(findBrandLogo("cursor"), findsOneWidget);
     expect(find.byIcon(TablerRegular.plug), findsOneWidget);
 
@@ -1245,7 +1206,7 @@ void main() {
   });
 
   testWidgets("scrolls plugin and worktree options while keeping the composer pinned", (tester) async {
-    // Short enough that the options pane has to scroll.
+    // Tall enough for the header above the options.
     await tester.binding.setSurfaceSize(const Size(700, 560));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     when(pluginRepository.listPlugins).thenAnswer(
@@ -1280,38 +1241,36 @@ void main() {
     expect(find.descendant(of: optionsScroll, matching: find.byType(PromptInput)), findsNothing);
     expect(tester.takeException(), isNull);
 
-    // One card, read top to bottom: project, harness, then the worktree option
-    // with its hint.
-    final project = find.byKey(const Key("new_session_project"));
-    final harness = find.byKey(const Key("new_session_plugin_trigger"));
+    // The refresh action shares the options scroll so it cannot cover a row.
+    // When the content fits, its fill-remaining sliver still rests it above the
+    // pinned composer and there is nothing for this drag to move.
+    final refresh = find.byKey(const Key("new_session_options_refresh"));
+    expect(find.descendant(of: optionsScroll, matching: refresh), findsOneWidget);
+
     final workspace = find.ancestor(
-      of: find.byKey(const Key("new_session_new_worktree")),
+      of: find.byKey(const Key("new_session_dedicated_workspace")),
       matching: find.byType(MergeSemantics),
     );
-    expect(find.ancestor(of: project, matching: find.byType(PregoGroupedRows)), findsOneWidget);
-    expect(find.ancestor(of: workspace, matching: find.byType(PregoGroupedRows)), findsOneWidget);
-    expect(tester.getRect(project).bottom, lessThanOrEqualTo(tester.getRect(harness).top));
-    expect(tester.getRect(harness).bottom, lessThanOrEqualTo(tester.getRect(workspace).top));
-    expect(tester.getRect(project).left, tester.getRect(workspace).left);
-    expect(find.descendant(of: workspace, matching: find.text("New git worktree")), findsOneWidget);
-    expect(
-      find.descendant(of: workspace, matching: find.text("Runs on a new branch in its own folder")),
-      findsOneWidget,
-    );
-
     final composerTop = tester.getTopLeft(find.byType(PromptInput)).dy;
-    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(composerTop));
+    final refreshRect = tester.getRect(refresh);
+    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(refreshRect.top));
+    expect(refreshRect.bottom, lessThanOrEqualTo(composerTop));
 
     await tester.drag(optionsScroll, const Offset(0, -250));
     await tester.pumpAndSettle();
 
     expect(tester.getTopLeft(find.byType(PromptInput)).dy, closeTo(composerTop, 0.01));
+    expect(tester.getRect(refresh), refreshRect);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("keeps the last card row reachable at a large text scale", (tester) async {
+  testWidgets("lays out the last option before the refresh at a large text scale", (tester) async {
+    // The refresh pill grows with the text scale. Keeping it in the scroll's
+    // normal sliver flow makes that measured height part of layout rather than
+    // an overlay band that has to be estimated separately.
     tester.platformDispatcher.textScaleFactorTestValue = 1.5;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    // Tall enough for the header above the options.
     await tester.binding.setSurfaceSize(const Size(700, 560));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -1319,17 +1278,24 @@ void main() {
     await tester.pumpAndSettle();
 
     final optionsScroll = find.byKey(const Key("new_session_options_scroll"));
-    final workspace = find.byKey(const Key("new_session_new_worktree"));
+    final refresh = find.byKey(const Key("new_session_options_refresh"));
+    final workspace = find.ancestor(
+      of: find.byKey(const Key("new_session_dedicated_workspace")),
+      matching: find.byType(MergeSemantics),
+    );
+
+    expect(find.descendant(of: optionsScroll, matching: refresh), findsOneWidget);
+    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(tester.getRect(refresh).top));
 
     final scrollRect = tester.getRect(optionsScroll);
     await tester.dragFrom(Offset(scrollRect.center.dx, scrollRect.top + 8), const Offset(0, -2000));
     await tester.pumpAndSettle();
 
-    expect(workspace.hitTestable(), findsOneWidget);
+    expect(refresh.hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("with the keyboard up, one summary line replaces the card above the composer", (tester) async {
+  testWidgets("keeps the refresh from covering workspace options with a multiline draft", (tester) async {
     tester.view.physicalSize = const Size(420, 912);
     tester.view.devicePixelRatio = 1;
     tester.view.padding = const FakeViewPadding(top: 59, bottom: 34);
@@ -1338,26 +1304,25 @@ void main() {
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
-    final summary = find.byKey(const Key("new_session_keyboard_summary"));
-    expect(summary, findsNothing);
-
     await enterTypingMode(tester);
     tester.view.viewInsets = const FakeViewPadding(bottom: 344);
     await tester.pumpAndSettle();
-
-    expect(find.byType(PregoGroupedRows), findsNothing);
-    expect(find.descendant(of: summary, matching: find.text("Project One · Plugin One · worktree")), findsOneWidget);
-    expect(tester.getRect(summary).bottom, lessThanOrEqualTo(tester.getTopLeft(find.byType(PromptInput)).dy));
-
-    tester.view.viewInsets = FakeViewPadding.zero;
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key("new_session_new_worktree")));
-    await tester.pumpAndSettle();
-    tester.view.viewInsets = const FakeViewPadding(bottom: 344);
+    await tester.enterText(
+      find.byType(EditableText),
+      "one line of a long prompt\ntwo lines\nthree lines\nfour lines\nfive lines\nsix lines",
+    );
     await tester.pumpAndSettle();
 
-    // Without a new worktree, the line names only the project and harness.
-    expect(find.descendant(of: summary, matching: find.text("Project One · Plugin One")), findsOneWidget);
+    final optionsScroll = find.byKey(const Key("new_session_options_scroll"));
+    final refresh = find.byKey(const Key("new_session_options_refresh"), skipOffstage: false);
+    final workspace = find.ancestor(
+      of: find.byKey(const Key("new_session_dedicated_workspace")),
+      matching: find.byType(MergeSemantics),
+    );
+
+    expect(find.descendant(of: optionsScroll, matching: refresh, skipOffstage: false), findsOneWidget);
+    expect(workspace.hitTestable(), findsOneWidget);
+    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(tester.getRect(refresh).top));
     expect(tester.takeException(), isNull);
   });
 
@@ -1405,7 +1370,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
-    expect(find.text(loc.newSessionNewWorktree), findsNothing);
+    expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
   });
 
   testWidgets("keeps chooser usable while clearing and reloading composer data", (tester) async {
@@ -1630,7 +1595,10 @@ void main() {
     expect(_harnessRow("plugin-1"), findsOneWidget);
     expect(_harnessRowInk(tester, "plugin-1").onTap, isNull);
     await closeHarnessMenu(tester);
-    expect(await isRefreshEnabled(tester), isFalse);
+    expect(
+      tester.widget<PregoButtonsSolid>(find.byKey(const Key("new_session_options_refresh"))).onPressed,
+      isNull,
+    );
     expect(
       find.ancestor(
         of: find.byType(PromptInput),
@@ -1640,7 +1608,7 @@ void main() {
     );
   });
 
-  testWidgets("discovery failure shows localized error with no harness or creation path", (tester) async {
+  testWidgets("discovery failure shows localized error with no chooser or creation path", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)),
     );
@@ -1652,9 +1620,8 @@ void main() {
     final loc = AppLocalizations.of(context)!;
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
     expect(find.text(loc.newSessionCreationDuplicateWarning), findsNothing);
-    await openHarnessMenu(tester);
+    expect(find.byKey(const Key("new_session_plugin_trigger")), findsNothing);
     expect(_harnessRow("plugin-1"), findsNothing);
-    await closeHarnessMenu(tester);
     expect(
       find.ancestor(
         of: find.byType(PromptInput),
@@ -1703,7 +1670,7 @@ void main() {
     expect(find.text(loc.newSessionNoHarnessTitle), findsOneWidget);
     expect(find.text(loc.newSessionNoHarnessDescription), findsOneWidget);
     expect(find.byKey(const Key("new_session_plugin_trigger")), findsNothing);
-    expect(find.text(loc.newSessionNewWorktree), findsNothing);
+    expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
     expect(find.byKey(const Key("new_session_options_refresh")), findsNothing);
     expect(find.byType(PromptInput), findsNothing);
   });
@@ -1776,11 +1743,13 @@ void main() {
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
     expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
-    expect(await isRefreshEnabled(tester), isTrue);
+    final refresh = find.byKey(const Key("new_session_options_refresh"));
+    expect(tester.widget<PregoButtonsSolid>(refresh).label, loc.newSessionOptionsRefresh);
+    expect(tester.widget<PregoButtonsSolid>(refresh).onPressed, isNotNull);
     // The bridge never confirmed an empty harness list, so the error banner is
     // the honest explanation and discovery remains retryable.
     expect(find.byKey(const Key("new_session_no_harness_notice")), findsNothing);
-    expect(find.text(loc.newSessionNewWorktree), findsNothing);
+    expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
   });
 
   testWidgets("opens harness settings from the empty harness notice", (tester) async {
@@ -2229,7 +2198,7 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
     await enterTypingMode(tester);
-    await tester.tap(find.descendant(of: find.byType(PromptInput), matching: find.byIcon(TablerRegular.chevron_right)));
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip("Attach image"));
     await tester.pumpAndSettle();

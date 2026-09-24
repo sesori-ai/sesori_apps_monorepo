@@ -46,7 +46,6 @@ void main() {
     when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
     when(() => newSessionCubit.canCreateSession).thenReturn(true);
-    when(() => newSessionCubit.canRefreshOptions).thenReturn(true);
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.voiceFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
@@ -77,22 +76,19 @@ void main() {
     await tester.pump();
 
     expect(find.text("New session"), findsOneWidget);
-    expect(find.text("New git worktree"), findsOneWidget);
-    expect(find.text("Runs on a new branch in its own folder"), findsOneWidget);
-    // The page's question is the composer's placeholder, not a heading.
-    expect(find.text("What should we work on?"), findsOneWidget);
-    expect(find.text("Ask anything..."), findsNothing);
+    expect(find.text("Dedicated workspace"), findsOneWidget);
+    expect(find.text("Ask anything..."), findsOneWidget);
     expect(find.bySemanticsLabel("Start recording"), findsNothing);
     expect(
       tester.widget<PromptInput>(find.byType(PromptInput)).surfaceStyleController.value,
       PregoComposerSurfaceStyle.emphasized,
     );
 
-    await tester.tap(find.text("What should we work on?"));
+    await tester.tap(find.text("Ask anything..."));
     await tester.pump();
     expect(find.byType(EditableText), findsOneWidget);
   });
-  testWidgets("the page is one card over the composer under the toolbar, and choosing another project reports it", (
+  testWidgets("the page is one centred column under the toolbar, and choosing another project reports it", (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1400, 900);
@@ -141,21 +137,17 @@ void main() {
     await tester.pump();
 
     final toolbar = tester.getRect(find.byType(DesktopPageToolbar));
-    final card = tester.getRect(find.byType(PregoGroupedRows));
-    final project = tester.getRect(find.byKey(const Key("new_session_project")));
-    final workspace = tester.getRect(find.text("New git worktree"));
+    final heading = tester.getRect(find.text("What should we work on?"));
     final input = tester.getRect(find.byType(PromptInput));
+    final workspace = tester.getRect(find.text("Dedicated workspace"));
     expect(toolbar.top, 0);
-    expect(card.top, greaterThan(toolbar.bottom));
-    // One alignment: the card and the composer share the column's edges.
-    expect(card.left, input.left);
-    expect(card.width, input.width);
+    expect(heading.top, greaterThan(toolbar.bottom));
     expect(input.width, DesktopNewSessionView.maxContentWidth);
     expect(input.center.dx, 700);
-    expect(project.top, lessThan(workspace.top));
-    expect(input.top, greaterThan(card.bottom));
+    expect(input.top, greaterThan(heading.bottom));
+    expect(workspace.top, greaterThan(input.bottom));
     // Centred, not anchored: the pane keeps room below the column.
-    expect(input.bottom, lessThan(800));
+    expect(workspace.bottom, lessThan(800));
 
     expect(
       find.descendant(of: find.byKey(const Key("new_session_project")), matching: find.text("Sesori")),
@@ -197,7 +189,6 @@ void main() {
       when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
       when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
       when(() => newSessionCubit.canCreateSession).thenReturn(true);
-      when(() => newSessionCubit.canRefreshOptions).thenReturn(true);
       var draft = ComposerDraft.typed(text: "");
       when(() => newSessionCubit.composerDraft).thenAnswer((_) => draft);
       when(() => newSessionCubit.saveComposerDraft(draft: any(named: "draft"))).thenAnswer((invocation) {
@@ -284,7 +275,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text("What should we work on?"));
+      await tester.tap(find.text("Ask anything..."));
       await tester.pump();
       await tester.enterText(find.byType(EditableText), "unfinished desktop idea");
       await tester.pump();
