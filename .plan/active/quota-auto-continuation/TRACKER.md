@@ -81,9 +81,6 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
   were inspected and published; affected screen tests pass after integration with main.
 - Step 5 CI follow-up: corrected the shared mobile routing fixture; all 51 affected
   routing/split-screen tests pass and mobile analysis is clean.
-- Step 6: documentation reconciles current support, cumulative L1–L4
-  boundaries and natural-quota-only live verification. Local links and whitespace checks pass.
-- Live scheduled continuation: not run. Widget fixtures do not prove provider recovery.
 - Step 5 review fixes preserve acknowledgements during reload, keep unavailable
   controls honest and reachable, and classify route/session errors separately.
   Main integration passed 237 core, 135 mobile and 9 desktop tests; the unchanged
@@ -91,4 +88,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 - Step 5 merged after 20/20 checks and the final review approved the head;
   the terminal report confirmed 21/21 checks. CI's client-workspace analyzer
   also passes after its directional-inset lint correction.
+- Step 6: documentation reconciles current support, cumulative L1–L4
+  boundaries and natural-quota-only live verification. Local links and whitespace checks pass.
+- Live scheduled continuation: not run. Widget fixtures do not prove provider recovery.
 - Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.
