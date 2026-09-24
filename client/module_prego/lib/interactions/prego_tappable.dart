@@ -233,7 +233,6 @@ class _AndroidTappableState() extends State<_AndroidTappable> {
           child: Material(
             type: .transparency,
             child: InkWell(
-              mouseCursor: WidgetStateMouseCursor.clickable,
               borderRadius: widget.useSuperellipse ? null : _rippleBorderRadius,
               customBorder: widget.useSuperellipse
                   ? RoundedSuperellipseBorder(borderRadius: _rippleBorderRadius)

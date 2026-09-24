@@ -135,7 +135,8 @@ class const SessionTile({
             child: Ink(
               color: selected ? prego.colors.bgBrandSolid.withValues(alpha: 0.08) : null,
               child: InkWell(
-                mouseCursor: WidgetStateMouseCursor.clickable,
+                // Long-press keeps the ink enabled, so the arrow must be chosen when a click does nothing.
+                mouseCursor: onTap == null ? SystemMouseCursors.basic : WidgetStateMouseCursor.clickable,
                 onTap: onTap,
                 onLongPress: openMenu,
                 hoverColor: pointer ? prego.colors.bgSecondaryHover : null,
