@@ -142,9 +142,9 @@ Shared screens (`client/module_app_ui`, used by both shells unless noted):
   presenter, which replaces a still-showing Undo.
 - `PregoAnimatedSliverList` animates every inserted row at once, which spikes
   the first frame after a filter change.
-- Project rows on both apps render `activityById`, which counts active
-  sessions, including those only waiting for input. `ProjectListService`
-  already computes running sessions per project, for ordering.
+- Project rows on both apps rendered `activityById`, which counted active
+  sessions, including those only waiting for input. Step 21 moved them to the
+  running count and #1675 removed `activityById`.
 - Neither the wire nor client state records when a session began waiting;
   `ActiveSession` has only `awaitingInput`.
 - The desktop shortcuts are inline closures in `desktop_router.dart`,
