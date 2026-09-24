@@ -189,6 +189,8 @@ The main pane hosts one full-width routed page.
   list on the left and the selected file's full path and diff on the right; the first file opens
   selected, choosing another shows it from its top, and a refresh stays on the selected file while it
   is still changed.
+- A project page with no active sessions shows the new-session composer for that project in place of the
+  timeline, under the same toolbar; Archived still shows archived sessions. A session started there opens.
 - A session being archived is hidden from the sidebar, the Activity popout, the project page and its chip
   counts for as long as its Undo window or its archive request is open, and returns if the archive is
   undone, refused or fails. Archiving the open session leaves its page. See

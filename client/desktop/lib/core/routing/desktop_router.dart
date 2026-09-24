@@ -156,6 +156,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                 ),
               ),
               actionDispatcher: _desktopSessionActions,
+              onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
             ),
           );
         },
