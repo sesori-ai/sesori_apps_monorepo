@@ -133,8 +133,9 @@ void main() {
     // to reach as its second line.
     expect(largeTitle("Projects"), findsOneWidget);
     expect(find.byType(PregoNavLeadingTitle), findsNothing);
-    expect(find.byIcon(TablerRegular.device_laptop), findsNWidgets(2));
-    expect(find.text("Macbook-Pro.local"), findsNWidgets(2));
+    // The bridge line is the only place that names the machine.
+    expect(find.byIcon(TablerRegular.device_laptop), findsOneWidget);
+    expect(find.text("Macbook-Pro.local"), findsOneWidget);
 
     // The body scrolls up with the title.
     final bodyBefore = tester.getTopLeft(find.text("Make sure the Bridge is running")).dy;

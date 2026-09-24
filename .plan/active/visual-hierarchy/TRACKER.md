@@ -41,7 +41,7 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 23 | `visual-hierarchy/new-session` | [23/41](#pr-titles) | ≤ 600 | done |
 | [x] | 24 | `visual-hierarchy/folder-browser` | [24/41](#pr-titles) | ≤ 500 | done |
 | [x] | 25 | `visual-hierarchy/windows-drives` | [25/41](#pr-titles) | ≤ 500 | done |
-| [ ] | 26 | `visual-hierarchy/settings-states` | [26/41](#pr-titles) | ≤ 600 | pending |
+| [x] | 26 | `visual-hierarchy/settings-states` | [26/41](#pr-titles) | ≤ 600 | done |
 | [ ] | 27 | `visual-hierarchy/missing-folders` | [27/41](#pr-titles) | ≤ 400 | pending |
 | [ ] | 28 | `visual-hierarchy/filtered-rows` | [28/41](#pr-titles) | ≤ 300 | pending |
 | [ ] | 29 | `visual-hierarchy/archive-alert` | [29/41](#pr-titles) | ≤ 300 | pending |

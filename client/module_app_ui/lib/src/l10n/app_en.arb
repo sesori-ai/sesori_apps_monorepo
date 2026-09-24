@@ -253,11 +253,15 @@
   },
   "projectsBridgeOfflineDisconnected": "Disconnected",
   "@projectsBridgeOfflineDisconnected": {
-    "description": "Status caption under the machine name on the bridge-offline Projects screen, used when the bridge has never reported a last-seen time."
+    "description": "Status under the machine name on the desktop's bridge-offline home."
   },
-  "projectsBridgeOfflineDisconnectedSince": "Disconnected · {lastSeen}",
-  "@projectsBridgeOfflineDisconnectedSince": {
-    "description": "Status caption under the machine name on the bridge-offline Projects screen, pairing the disconnected state with when the bridge was last seen, e.g. 'Disconnected · 5h ago'. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.",
+  "projectsBridgeOfflineTitle": "Bridge offline",
+  "@projectsBridgeOfflineTitle": {
+    "description": "Heading of the bridge-offline Projects screen, under the connection graphic. The bar's bridge line above already names the computer."
+  },
+  "projectsBridgeOfflineLastSeen": "Last seen {lastSeen}",
+  "@projectsBridgeOfflineLastSeen": {
+    "description": "Quiet line under the 'Bridge offline' heading saying when the bridge was last seen, e.g. 'Last seen 5h ago'. Omitted when the bridge has never reported a last-seen time. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.",
     "placeholders": {
       "lastSeen": {
         "type": "String",
@@ -272,10 +276,6 @@
   "projectsBridgeOfflineStartBridge": "Make sure the Bridge is running",
   "@projectsBridgeOfflineStartBridge": {
     "description": "Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge; carries a trailing info icon."
-  },
-  "projectsBridgeOfflineStartBridgeInfo": "Leave it running while you use Sesori from your phone.",
-  "@projectsBridgeOfflineStartBridgeInfo": {
-    "description": "Popover text explaining the start-the-bridge command on the bridge-offline Projects screen, opened from the info icon next to that label. Kept in the same untitled single-sentence style as the onboarding step popovers."
   },
   "projectsDesktopStartBridge": "Start the bridge",
   "@projectsDesktopStartBridge": {
@@ -299,6 +299,13 @@
     }
   },
   "settingsLogout": "Log out",
+  "settingsLogoutConfirmTitle": "Log out?",
+  "settingsLogoutConfirmMessage": "You'll need to sign in again to reach your bridges from this device.",
+  "settingsLogoutConfirmCancel": "Cancel",
+  "settingsBridgeOffline": "Connect to a bridge to change these settings.",
+  "@settingsBridgeOffline": {
+    "description": "One line above the bridge settings group while no bridge is connected; the rows below it are dimmed."
+  },
   "settingsSectionAccount": "Account",
   "settingsNotificationsTitle": "Notifications",
   "settingsHarnessesTitle": "Harnesses",
@@ -306,7 +313,6 @@
   "settingsYoloTitle": "YOLO mode",
   "settingsYoloWarning": "Automatically approves all permission requests. Use with caution.",
   "settingsYoloLoading": "Loading the bridge setting…",
-  "settingsYoloDisconnected": "Connect to a bridge to configure this setting.",
   "settingsYoloUnsupported": "Update the connected bridge to configure this setting.",
   "settingsYoloLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
   "settingsYoloUncertain": "The update status is unknown. Refresh before trying again.",
@@ -315,7 +321,6 @@
   "settingsPluginWarmupTitle": "Warm harness on session open",
   "settingsPluginWarmupDescription": "Starts the session's harness when you open it to reduce delays on your first action.",
   "settingsPluginWarmupLoading": "Loading the bridge setting…",
-  "settingsPluginWarmupDisconnected": "Connect to a bridge to configure this setting.",
   "settingsPluginWarmupUnsupported": "Update the connected bridge to configure this setting.",
   "settingsPluginWarmupLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
   "settingsPluginWarmupUncertain": "The update status is unknown. Refresh before trying again.",
@@ -324,14 +329,12 @@
   "settingsPullRequestRefreshTitle": "Pull request refresh",
   "settingsPullRequestRefreshDescription": "How often viewed projects refresh pull request status.",
   "settingsPullRequestRefreshLoading": "Loading the bridge setting…",
-  "settingsPullRequestRefreshDisconnected": "Connect to a bridge to configure this setting.",
   "settingsPullRequestRefreshUnsupported": "Update the connected bridge to configure this setting.",
   "settingsPullRequestRefreshLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
   "settingsPullRequestRefreshUncertain": "The update status is unknown. Refresh before trying again.",
   "settingsPullRequestRefreshUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
   "settingsPullRequestRefreshStateChanged": "The bridge setting changed while you were editing. Try again.",
   "settingsPullRequestRefreshUnavailable": "Unavailable",
-  "settingsPullRequestRefreshOffline": "Offline",
   "settingsPullRequestRefreshRetry": "Retry pull request refresh setting",
   "settingsPullRequestRefreshDialogTitle": "Pull request refresh interval",
   "settingsPullRequestRefreshSecondsLabel": "Seconds",
@@ -507,7 +510,6 @@
   "harnessesStatusUnknown": "Unknown",
   "harnessesWorkIdle": "Idle",
   "harnessesWorkBusy": "Busy",
-  "settingsProfileTitle": "Profile",
   "settingsSectionAppearance": "Appearance",
   "desktopSettingsTheme": "Theme",
   "settingsSectionAnalytics": "Analytics",

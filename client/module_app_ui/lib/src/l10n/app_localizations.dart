@@ -667,17 +667,23 @@ abstract class AppLocalizations {
   /// **'More information'**
   String get projectsOnboardingStepInfoSemantics;
 
-  /// Status caption under the machine name on the bridge-offline Projects screen, used when the bridge has never reported a last-seen time.
+  /// Status under the machine name on the desktop's bridge-offline home.
   ///
   /// In en, this message translates to:
   /// **'Disconnected'**
   String get projectsBridgeOfflineDisconnected;
 
-  /// Status caption under the machine name on the bridge-offline Projects screen, pairing the disconnected state with when the bridge was last seen, e.g. 'Disconnected · 5h ago'. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.
+  /// Heading of the bridge-offline Projects screen, under the connection graphic. The bar's bridge line above already names the computer.
   ///
   /// In en, this message translates to:
-  /// **'Disconnected · {lastSeen}'**
-  String projectsBridgeOfflineDisconnectedSince(String lastSeen);
+  /// **'Bridge offline'**
+  String get projectsBridgeOfflineTitle;
+
+  /// Quiet line under the 'Bridge offline' heading saying when the bridge was last seen, e.g. 'Last seen 5h ago'. Omitted when the bridge has never reported a last-seen time. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.
+  ///
+  /// In en, this message translates to:
+  /// **'Last seen {lastSeen}'**
+  String projectsBridgeOfflineLastSeen(String lastSeen);
 
   /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands.
   ///
@@ -690,12 +696,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Make sure the Bridge is running'**
   String get projectsBridgeOfflineStartBridge;
-
-  /// Popover text explaining the start-the-bridge command on the bridge-offline Projects screen, opened from the info icon next to that label. Kept in the same untitled single-sentence style as the onboarding step popovers.
-  ///
-  /// In en, this message translates to:
-  /// **'Leave it running while you use Sesori from your phone.'**
-  String get projectsBridgeOfflineStartBridgeInfo;
 
   /// Desktop project recovery action that starts or retries the supervised local bridge.
   ///
@@ -751,6 +751,30 @@ abstract class AppLocalizations {
   /// **'Log out'**
   String get settingsLogout;
 
+  /// No description provided for @settingsLogoutConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out?'**
+  String get settingsLogoutConfirmTitle;
+
+  /// No description provided for @settingsLogoutConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll need to sign in again to reach your bridges from this device.'**
+  String get settingsLogoutConfirmMessage;
+
+  /// No description provided for @settingsLogoutConfirmCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get settingsLogoutConfirmCancel;
+
+  /// One line above the bridge settings group while no bridge is connected; the rows below it are dimmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a bridge to change these settings.'**
+  String get settingsBridgeOffline;
+
   /// No description provided for @settingsSectionAccount.
   ///
   /// In en, this message translates to:
@@ -792,12 +816,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loading the bridge setting…'**
   String get settingsYoloLoading;
-
-  /// No description provided for @settingsYoloDisconnected.
-  ///
-  /// In en, this message translates to:
-  /// **'Connect to a bridge to configure this setting.'**
-  String get settingsYoloDisconnected;
 
   /// No description provided for @settingsYoloUnsupported.
   ///
@@ -847,12 +865,6 @@ abstract class AppLocalizations {
   /// **'Loading the bridge setting…'**
   String get settingsPluginWarmupLoading;
 
-  /// No description provided for @settingsPluginWarmupDisconnected.
-  ///
-  /// In en, this message translates to:
-  /// **'Connect to a bridge to configure this setting.'**
-  String get settingsPluginWarmupDisconnected;
-
   /// No description provided for @settingsPluginWarmupUnsupported.
   ///
   /// In en, this message translates to:
@@ -901,12 +913,6 @@ abstract class AppLocalizations {
   /// **'Loading the bridge setting…'**
   String get settingsPullRequestRefreshLoading;
 
-  /// No description provided for @settingsPullRequestRefreshDisconnected.
-  ///
-  /// In en, this message translates to:
-  /// **'Connect to a bridge to configure this setting.'**
-  String get settingsPullRequestRefreshDisconnected;
-
   /// No description provided for @settingsPullRequestRefreshUnsupported.
   ///
   /// In en, this message translates to:
@@ -942,12 +948,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unavailable'**
   String get settingsPullRequestRefreshUnavailable;
-
-  /// No description provided for @settingsPullRequestRefreshOffline.
-  ///
-  /// In en, this message translates to:
-  /// **'Offline'**
-  String get settingsPullRequestRefreshOffline;
 
   /// No description provided for @settingsPullRequestRefreshRetry.
   ///
@@ -1710,12 +1710,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Busy'**
   String get harnessesWorkBusy;
-
-  /// No description provided for @settingsProfileTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Profile'**
-  String get settingsProfileTitle;
 
   /// No description provided for @settingsSectionAppearance.
   ///

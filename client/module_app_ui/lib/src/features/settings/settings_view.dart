@@ -55,6 +55,8 @@ class const SettingsView({
 
     return PregoGlassScaffold(
       title: loc.settingsTitle,
+      // The close button shares the title's row.
+      largeTitleInBar: true,
       banner: connectionBanner,
       onRefresh: () async {
         await context.read<BridgeSettingsCubit>().refresh();
@@ -89,7 +91,7 @@ class const SettingsView({
                       else
                         PregoGroupedRow(
                           leading: const PregoAvatarUser(),
-                          title: Text(loc.settingsProfileTitle),
+                          title: Text(loc.settingsSectionAccount),
                           trailing: const Icon(TablerRegular.chevron_right),
                           onTap: onOpenProfile,
                         ),

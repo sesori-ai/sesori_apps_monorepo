@@ -101,6 +101,13 @@ class const PregoGlassScaffold({
   /// centred inline title, or the back-leading title block. See the class doc.
   final PregoTopNavigationTitleMode titleMode = PregoTopNavigationTitleMode.collapsing,
 
+  /// Whether the collapsing large title rests in the bar row itself, beside
+  /// the [actions], instead of on its own row below the bar. For top-level
+  /// pages with no leading button (e.g. a Settings page closed by an X), so the
+  /// title does not sit under an otherwise empty bar row. The scroll-edge fade
+  /// then appears as the title collapses rather than covering it at rest.
+  final bool largeTitleInBar = false,
+
   /// An inline alert hosted in the top-navigation area, below the status bar
   /// and above the bar row (e.g. a [PregoInlineAlertsNotifications]).
   ///
@@ -309,6 +316,10 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
     final topPad = MediaQuery.paddingOf(context).top;
     final extendBehind = widget.extendBodyBehindBar;
     final collapsing = widget.titleMode == PregoTopNavigationTitleMode.collapsing;
+    final titleInBar = collapsing && widget.largeTitleInBar;
+    // The bar-row height the body reserves above its first sliver: none when
+    // the large title rests in the bar row itself.
+    final reservedBarHeight = titleInBar ? 0.0 : PregoTopNavigation.barHeight;
     final onRefresh = widget.onRefresh;
 
     // The bar. It shares this scaffold's [_scrollController] so its collapsing
@@ -397,7 +408,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
                 builder: (context, bannerHeight, indicator) => Transform.translate(
                   offset: Offset(
                     0,
-                    topPad + topNav.preferredSize.height + bannerHeight + (collapsing ? _largeTitleHeight : 0),
+                    topPad + reservedBarHeight + bannerHeight + (collapsing ? _largeTitleHeight : 0),
                   ),
                   child: indicator,
                 ),
@@ -413,8 +424,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
           SliverToBoxAdapter(
             child: ValueListenableBuilder<double>(
               valueListenable: _bannerHeight,
-              builder: (context, bannerHeight, _) =>
-                  SizedBox(height: topPad + topNav.preferredSize.height + bannerHeight),
+              builder: (context, bannerHeight, _) => SizedBox(height: topPad + reservedBarHeight + bannerHeight),
             ),
           ),
         // The fixed-title modes (inline, back-leading) show their title in the
@@ -424,6 +434,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
             title: widget.title,
             subtitle: widget.subtitle,
             scrollController: _scrollController,
+            inBar: titleInBar,
             onHeightChanged: _onLargeTitleHeightChanged,
             pulledExtent: onRefresh == null ? null : () => _refreshPulledExtent,
           ),
@@ -452,23 +463,29 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
           left: 0,
           right: 0,
           child: IgnorePointer(
-            child: ValueListenableBuilder<double>(
-              valueListenable: _bannerHeight,
-              builder: (context, bannerHeight, _) => Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      backgroundColor.withMultipliedOpacity(0.98),
-                      backgroundColor.withMultipliedOpacity(0.88),
-                      backgroundColor.withMultipliedOpacity(0),
-                    ],
-                    stops: const [0, 0.8, 1.0],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+            child: ListenableBuilder(
+              // A title resting in the bar row would sit under the fade, so the
+              // fade follows the title's collapse instead.
+              listenable: titleInBar ? Listenable.merge([_bannerHeight, _scrollController]) : _bannerHeight,
+              builder: (context, _) {
+                // Faded through the colours rather than an Opacity layer.
+                final fade = titleInBar ? PregoTopNavigation.collapseProgressOf(_scrollController) : 1.0;
+                return Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        backgroundColor.withMultipliedOpacity(0.98 * fade),
+                        backgroundColor.withMultipliedOpacity(0.88 * fade),
+                        backgroundColor.withMultipliedOpacity(0),
+                      ],
+                      stops: const [0, 0.8, 1.0],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
                   ),
-                ),
-                height: topPad + topNav.preferredSize.height + bannerHeight,
-              ),
+                  height: topPad + topNav.preferredSize.height + _bannerHeight.value,
+                );
+              },
             ),
           ),
         ),
@@ -690,6 +707,10 @@ class const _LargeTitleSliver({
   required final String title,
   required final Widget? subtitle,
   required final ScrollController scrollController,
+
+  /// Whether the title rests in the bar row: it then takes the bar's own
+  /// horizontal inset and is centred on the bar row's height.
+  required final bool inBar,
   required final ValueChanged<double> onHeightChanged,
   required final ValueGetter<double>? pulledExtent,
 }) extends StatelessWidget {
@@ -698,14 +719,10 @@ class const _LargeTitleSliver({
     final prego = context.prego;
     final subtitle = this.subtitle;
     final pulledExtent = this.pulledExtent;
+    final horizontalInset = inBar ? PregoSpacing.xl : PregoSpacing.x3l;
 
     final titleContent = Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(
-        PregoSpacing.x3l,
-        0,
-        PregoSpacing.x3l,
-        PregoSpacing.xl,
-      ),
+      padding: EdgeInsetsDirectional.fromSTEB(horizontalInset, 0, horizontalInset, PregoSpacing.xl),
       child: ListenableBuilder(
         listenable: scrollController,
         builder: (context, _) {
@@ -717,7 +734,7 @@ class const _LargeTitleSliver({
           // Fade via text alpha instead of an Opacity layer — no saveLayer per frame.
           final opacity = (1 - collapseProgress).clamp(0.0, 1.0);
 
-          final titleText = Text(
+          final text = Text(
             title,
             style: prego.textTheme.displayMd.bold.copyWith(
               color: prego.colors.textPrimary.withMultipliedOpacity(opacity),
@@ -725,6 +742,12 @@ class const _LargeTitleSliver({
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           );
+          final titleText = inBar
+              ? ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: PregoTopNavigation.barHeight),
+                  child: Align(alignment: AlignmentDirectional.centerStart, child: text),
+                )
+              : text;
           if (subtitle == null) return titleText;
 
           return Column(
