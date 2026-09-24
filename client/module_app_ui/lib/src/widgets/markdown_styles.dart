@@ -35,22 +35,44 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
   required PregoDesignSystem prego,
   TextStyle? paragraphStyle,
 }) {
-  return MarkdownStyleSheet(
-    p: paragraphStyle ?? prego.textTheme.textSm.regular,
-    codeblockDecoration: BoxDecoration(
-      color: prego.colors.bgQuaternary,
-      borderRadius: BorderRadius.circular(PregoRadius.md),
+  return _withTablesAndRules(
+    prego: prego,
+    sheet: MarkdownStyleSheet(
+      p: paragraphStyle ?? prego.textTheme.textSm.regular,
+      // The renderer wraps every code block, a [CodeBlock] included, in this box,
+      // so it is the only one.
+      codeblockDecoration: _codeBlockDecoration(prego: prego),
+      code: TextStyle(
+        fontSize: 13,
+        color: prego.colors.textPrimary,
+      ).monospace,
+      // The Material fallback fills quotes with the default purple palette's
+      // light surface, which Prego leaves unset: unreadable in dark mode.
+      blockquotePadding: const EdgeInsets.only(left: 12, top: 2, bottom: 2),
+      blockquoteDecoration: _blockquoteDecoration(prego: prego),
     ),
-    code: TextStyle(
-      fontSize: 13,
-      color: prego.colors.textPrimary,
-    ).monospace,
-    // The Material fallback fills quotes with the default purple palette's
-    // light surface, which Prego leaves unset: unreadable in dark mode.
-    blockquotePadding: const EdgeInsets.only(left: 12, top: 2, bottom: 2),
-    blockquoteDecoration: BoxDecoration(
-      border: Border(left: BorderSide(color: prego.colors.fgQuaternary, width: 3)),
-    ),
+  );
+}
+
+BoxDecoration _codeBlockDecoration({required PregoDesignSystem prego}) => BoxDecoration(
+  color: prego.colors.bgSecondary,
+  borderRadius: BorderRadius.circular(PregoRadius.md),
+  border: Border.all(color: prego.colors.borderSecondary),
+);
+
+BoxDecoration _blockquoteDecoration({required PregoDesignSystem prego}) => BoxDecoration(
+  border: Border(left: BorderSide(color: prego.colors.fgQuaternary, width: 3)),
+);
+
+/// Explicit so no surface falls back to the SDK's Material defaults: row lines
+/// under a left-aligned header, and a hairline rule.
+MarkdownStyleSheet _withTablesAndRules({required PregoDesignSystem prego, required MarkdownStyleSheet sheet}) {
+  final line = BorderSide(color: prego.colors.borderSecondary);
+  return sheet.copyWith(
+    tableBorder: TableBorder(horizontalInside: line),
+    tableHeadAlign: TextAlign.left,
+    tableCellsPadding: const EdgeInsets.only(right: PregoSpacing.lg, top: 6, bottom: 6),
+    horizontalRuleDecoration: BoxDecoration(border: Border(top: line)),
   );
 }
 
@@ -71,7 +93,8 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
       decoration: TextDecoration.underline,
       decorationColor: foreground,
     ),
-    code: base.code?.copyWith(color: foreground),
+    // Chat renders fenced blocks as a [CodeBlock], so this only reaches inline code.
+    code: base.code?.copyWith(color: foreground, backgroundColor: prego.colors.bgTertiary),
     h1: prego.textTheme.textXl.bold.copyWith(color: foreground),
     h2: prego.textTheme.textLg.bold.copyWith(color: foreground),
     h3: prego.textTheme.textMd.bold.copyWith(color: foreground),
@@ -125,24 +148,26 @@ const sessionMarkdownBlockSyntaxes = <md.BlockSyntax>[_LiteralHtmlBlockSyntax()]
 /// occasional inline link.
 MarkdownStyleSheet buildLegalMarkdownStyleSheet({required PregoDesignSystem prego}) {
   final body = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
-  return MarkdownStyleSheet(
-    h1: prego.textTheme.textXl.bold.copyWith(color: prego.colors.textPrimary),
-    h2: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
-    h3: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textPrimary),
-    h1Padding: const EdgeInsets.only(bottom: PregoSpacing.md),
-    h2Padding: const EdgeInsets.only(top: PregoSpacing.x2l, bottom: PregoSpacing.xxs),
-    h3Padding: const EdgeInsets.only(top: PregoSpacing.lg, bottom: PregoSpacing.xxs),
-    p: body,
-    listBullet: body,
-    strong: body.copyWith(color: prego.colors.textPrimary, fontWeight: FontWeight.w600),
-    a: body.copyWith(
-      color: prego.colors.textBrandSecondary,
-      decoration: TextDecoration.underline,
-    ),
-    code: body.copyWith(color: prego.colors.textPrimary).monospace,
-    codeblockDecoration: BoxDecoration(
-      color: prego.colors.bgQuaternary,
-      borderRadius: BorderRadius.circular(PregoRadius.md),
+  return _withTablesAndRules(
+    prego: prego,
+    sheet: MarkdownStyleSheet(
+      h1: prego.textTheme.textXl.bold.copyWith(color: prego.colors.textPrimary),
+      h2: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
+      h3: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textPrimary),
+      h1Padding: const EdgeInsets.only(bottom: PregoSpacing.md),
+      h2Padding: const EdgeInsets.only(top: PregoSpacing.x2l, bottom: PregoSpacing.xxs),
+      h3Padding: const EdgeInsets.only(top: PregoSpacing.lg, bottom: PregoSpacing.xxs),
+      p: body,
+      listBullet: body,
+      strong: body.copyWith(color: prego.colors.textPrimary, fontWeight: FontWeight.w600),
+      a: body.copyWith(
+        color: prego.colors.textBrandSecondary,
+        decoration: TextDecoration.underline,
+      ),
+      code: body.copyWith(color: prego.colors.textPrimary).monospace,
+      codeblockDecoration: _codeBlockDecoration(prego: prego),
+      blockquotePadding: const EdgeInsets.only(left: 12, top: 2, bottom: 2),
+      blockquoteDecoration: _blockquoteDecoration(prego: prego),
     ),
   );
 }
