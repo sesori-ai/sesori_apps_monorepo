@@ -82,9 +82,10 @@ void main() {
 
       final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
       final decoration = tester.widget<Container>(_panel).decoration! as BoxDecoration;
-      expect(decoration.color, prego.colors.bgSurface2);
-      expect(decoration.borderRadius, BorderRadius.circular(12));
-      expect(decoration.border?.top.color, prego.colors.borderPrimary);
+      // The same raised inset as code blocks and other tool output.
+      expect(decoration.color, prego.colors.bgSurface4);
+      expect(decoration.borderRadius, BorderRadius.circular(PregoRadius.xs));
+      expect(decoration.border, isNull);
       // A short transcript keeps the panel short.
       expect(tester.getSize(find.byKey(_viewport)).height, lessThan(144));
       expect(find.text("Shell"), findsOneWidget);

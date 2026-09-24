@@ -2197,6 +2197,12 @@ abstract class AppLocalizations {
   /// **'Images can\'t be sent with slash commands.'**
   String get sessionDetailAttachmentsNotWithCommands;
 
+  /// Under a long code block in a chat message that shows only its first lines; opens the whole block in a modal.
+  ///
+  /// In en, this message translates to:
+  /// **'Open all {count} lines'**
+  String codeBlockOpenAll(int count);
+
   /// Body of a queued-message bubble whose submission has image attachments but no text, e.g. '1 image'.
   ///
   /// In en, this message translates to:

@@ -29,7 +29,8 @@ sub-agent parts, plus the signal that a tool changed files.
   command disclosure: completed calls say “Ran”; other calls retain their
   pending/running/failed/cancelled/unknown status. Tool-name strings never decide
   whether a shell panel is available.
-- Tapping or keyboard-activating a command opens a themed Shell panel with the
+- Tapping or keyboard-activating a command opens a Shell panel, on the same
+  raised inset as other tool output and code blocks, with the
   full available command, output and error in a two-axis scroll viewport that
   fits a short transcript and caps at 144 px. One Copy takes the transcript
   exactly as shown. A sideways swipe anywhere on the panel scrolls the transcript.

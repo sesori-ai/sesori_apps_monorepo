@@ -54,10 +54,11 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
   );
 }
 
+/// The same raised inset as a tool's output, so code reads alike wherever it
+/// appears and stands off the grey page in both themes.
 BoxDecoration _codeBlockDecoration({required PregoDesignSystem prego}) => BoxDecoration(
-  color: prego.colors.bgSecondary,
-  borderRadius: BorderRadius.circular(PregoRadius.md),
-  border: Border.all(color: prego.colors.borderSecondary),
+  color: prego.colors.bgSurface4,
+  borderRadius: BorderRadius.circular(PregoRadius.xs),
 );
 
 BoxDecoration _blockquoteDecoration({required PregoDesignSystem prego}) => BoxDecoration(

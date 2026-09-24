@@ -16,11 +16,14 @@ enum PregoModalWidth({required final double pixels}) {
 
   /// Long reading, such as a reasoning transcript.
   reading(pixels: 640),
+
+  /// Whole code blocks, so typical lines fit without sideways scrolling.
+  code(pixels: 880),
 }
 
 /// Presents [builder]'s content under [title] in the frame the
 /// [PregoInteractionScope] picks: [showPregoBottomSheet] for touch, a centred
-/// [PregoModalWidth.regular] dialog for pointer.
+/// dialog of [width] for pointer.
 ///
 /// Both frames close from their close button, and from a scrim tap when
 /// [isDismissible]. The dialog also closes on Esc when [isDismissible],
@@ -29,13 +32,14 @@ enum PregoModalWidth({required final double pixels}) {
 /// [bodySize] sizes the sheet's body; in the dialog, a
 /// [PregoBottomSheetBodySize.natural] body scrolls when the window is short,
 /// and a sized one gets the window's height.
-// ignore: no_slop_linter/prefer_required_named_parameters, isDismissible/bodySize keep the common modal's defaults
+// ignore: no_slop_linter/prefer_required_named_parameters, isDismissible/bodySize/width keep the common modal's defaults
 Future<T?> showPregoModal<T>({
   required BuildContext context,
   required String title,
   required WidgetBuilder builder,
   bool isDismissible = true,
   PregoBottomSheetBodySize bodySize = PregoBottomSheetBodySize.natural,
+  PregoModalWidth width = PregoModalWidth.regular,
 }) {
   return switch (PregoInteractionScope.of(context)) {
     PregoInteractionMode.touch => showPregoBottomSheet<T>(
@@ -54,7 +58,7 @@ Future<T?> showPregoModal<T>({
         onBack: null,
         // ignore: no_slop_linter/avoid_navigator_of, design module has no go_router dep; pops the dialog this helper pushed
         onClose: () => Navigator.of(dialogContext).pop(),
-        width: PregoModalWidth.regular,
+        width: width,
         contentPadding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl),
         scrolls: bodySize == PregoBottomSheetBodySize.natural,
         child: builder(dialogContext),
