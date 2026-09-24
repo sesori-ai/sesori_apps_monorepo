@@ -587,7 +587,7 @@ class ProjectInventoryService({
     required List<ProjectSummary> projects,
     required Map<String, Map<String, SessionActivityInfo>> activityByProjectId,
   }) {
-    final ordered = _projectListService.orderProjects(
+    final (projects: ordered, :runningByProjectId) = _projectListService.orderProjects(
       projects: _withOptimisticProjectNames(projects: projects),
       activityByProjectId: activityByProjectId,
       listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
@@ -595,6 +595,7 @@ class ProjectInventoryService({
     _emit(
       state: loaded.copyWith(
         projects: ordered,
+        runningByProjectId: runningByProjectId,
         unseenByProjectId: _unseenByProjectId(projects: ordered),
       ),
     );
@@ -868,7 +869,7 @@ class ProjectInventoryService({
                 timestampByProjectId: _sseEventTracker.currentProjectTimestampUpdates,
               )
               .projects;
-          final sortedProjects = _projectListService.orderProjects(
+          final (projects: sortedProjects, :runningByProjectId) = _projectListService.orderProjects(
             projects: _withOptimisticProjectNames(projects: mergedProjects),
             activityByProjectId: _sseEventTracker.currentSessionActivity,
             listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
@@ -884,6 +885,7 @@ class ProjectInventoryService({
             state: ProjectListState.loaded(
               projects: sortedProjects,
               activityById: _sseEventTracker.currentProjectActivity,
+              runningByProjectId: runningByProjectId,
               unseenByProjectId: _unseenByProjectId(projects: sortedProjects),
               catalogScan: _catalogRescanService.state.value,
             ),

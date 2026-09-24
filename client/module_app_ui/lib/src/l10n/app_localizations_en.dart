@@ -59,7 +59,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSidebarNewProject => 'New project';
 
   @override
-  String get desktopSidebarShowMore => 'Show more';
+  String desktopSidebarShowMore(int count) {
+    return 'Show $count more';
+  }
 
   @override
   String desktopSidebarActivity(int count) {

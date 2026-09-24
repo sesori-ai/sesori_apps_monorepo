@@ -187,11 +187,11 @@ abstract class AppLocalizations {
   /// **'New project'**
   String get desktopSidebarNewProject;
 
-  /// Sidebar button that reveals more of a project's sessions in place.
+  /// Sidebar button that reveals up to {count} more of a project's sessions in place.
   ///
   /// In en, this message translates to:
-  /// **'Show more'**
-  String get desktopSidebarShowMore;
+  /// **'Show {count} more'**
+  String desktopSidebarShowMore(int count);
 
   /// Collapsible desktop sidebar section of sessions in motion across every project, with how many.
   ///

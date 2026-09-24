@@ -76,9 +76,10 @@ void main() {
     );
 
     expect(
-      result.map((project) => project.id),
+      result.projects.map((project) => project.id),
       ["running-a", "running-z", "waiting-a", "inactive-b"],
     );
+    expect(result.runningByProjectId, {"running-z": 1, "running-a": 1});
   });
 
   test("live markers override summary activity and use the latest running root", () {
@@ -104,7 +105,8 @@ void main() {
       },
     );
 
-    expect(result.map((project) => project.id), ["project-a", "project-b"]);
+    expect(result.projects.map((project) => project.id), ["project-a", "project-b"]);
+    expect(result.runningByProjectId, {"project-a": 2, "project-b": 1});
   });
 
   test("a fresh summary marker overrides a stale cached marker after reconnect", () {
@@ -127,7 +129,7 @@ void main() {
       },
     );
 
-    expect(result.map((project) => project.id), ["project-a", "project-b"]);
+    expect(result.projects.map((project) => project.id), ["project-a", "project-b"]);
   });
 
   test("a live marker beats a markerless root's newer updated time", () {
@@ -150,7 +152,7 @@ void main() {
       },
     );
 
-    expect(result.map((project) => project.id), ["project-b", "project-a"]);
+    expect(result.projects.map((project) => project.id), ["project-b", "project-a"]);
   });
 
   test("old-bridge running projects fall back to project updated time and stable IDs", () {
@@ -177,7 +179,7 @@ void main() {
       listStateByProjectId: const {},
     );
 
-    expect(result.map((project) => project.id), ["newer-a", "newer-b", "older"]);
+    expect(result.projects.map((project) => project.id), ["newer-a", "newer-b", "older"]);
   });
 }
 
