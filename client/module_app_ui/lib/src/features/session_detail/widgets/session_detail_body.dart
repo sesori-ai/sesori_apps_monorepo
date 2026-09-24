@@ -7,9 +7,11 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../session_auto_continuation_menu.dart";
 import "../session_detail_presentation_scope.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
+import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
 import "session_harness_unavailable_notice.dart";
@@ -129,6 +131,24 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         PregoPopupAlertsNotificationsVariant.error,
         const Duration(seconds: 3),
       ),
+      SessionDetailAutoContinuationUnavailable() => (
+        context.loc.sessionAutoContinuationUnavailable,
+        null,
+        PregoPopupAlertsNotificationsVariant.warning,
+        const Duration(seconds: 5),
+      ),
+      SessionDetailAutoContinuationUpdateFailed() => (
+        context.loc.sessionAutoContinuationUpdateFailed,
+        null,
+        PregoPopupAlertsNotificationsVariant.error,
+        const Duration(seconds: 5),
+      ),
+      SessionDetailAutoContinuationAlreadySubmitted() => (
+        context.loc.sessionAutoContinuationAlreadySubmitted,
+        null,
+        PregoPopupAlertsNotificationsVariant.warning,
+        const Duration(seconds: 5),
+      ),
     };
     PregoPopupAlertPresenter.of(context).show(
       title: title,
@@ -184,12 +204,19 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         ),
       // Root sessions only: the actions run on the project's session list,
       // which holds no sub-agent sessions and must not gain one.
-      if (menuEntriesBuilder != null && session != null && session.parentID == null)
+      if (session != null &&
+          ((menuEntriesBuilder != null && session.parentID == null) ||
+              (!widget.readOnly && session.time?.archived == null)))
         PregoAnchorMenu(
           flat: true,
           menuWidth: 240,
           acquireOpenLease: null,
-          entriesBuilder: () => menuEntriesBuilder(context: context, session: session),
+          entriesBuilder: () => [
+            if (!widget.readOnly && session.time?.archived == null)
+              sessionAutoContinuationMenuEntry(context: context, session: session),
+            if (menuEntriesBuilder != null && session.parentID == null)
+              ...menuEntriesBuilder(context: context, session: session),
+          ],
           triggerBuilder: (context, openMenu) => PregoButtonsIconGlass(
             key: const Key("session-detail-more"),
             icon: TablerRegular.dots,
@@ -343,8 +370,20 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                       ),
                 maxContentWidth: maxContentWidth,
               ),
-      SessionDetailHarnessUnavailable(:final interaction) => Center(
-        child: _buildHarnessNotice(interaction: interaction, historyUnavailable: true),
+      SessionDetailHarnessUnavailable(:final interaction, :final session) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!widget.readOnly && session.time?.archived == null)
+              SessionAutoContinuationNotice(
+                view: session.autoContinuation,
+                updating: state.autoContinuationUpdatePending,
+                onEnabledChanged: (enabled) =>
+                    unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
+              ),
+            _buildHarnessNotice(interaction: interaction, historyUnavailable: true),
+          ],
+        ),
       ),
       SessionDetailFailed(:final reason) => SessionDetailErrorView(
         reason: reason,

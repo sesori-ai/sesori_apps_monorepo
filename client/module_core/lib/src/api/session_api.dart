@@ -251,6 +251,14 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<Session>> setAutoContinuation({required String sessionId, required bool enabled}) {
+    return _client.patch(
+      "/session/auto-continuation",
+      fromJson: Session.fromJson,
+      body: SetSessionAutoContinuationRequest(sessionId: sessionId, enabled: enabled),
+    );
+  }
+
   Future<ApiResponse<void>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,

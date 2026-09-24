@@ -33,6 +33,7 @@ import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
+import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -153,6 +154,7 @@ void main() {
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
       sessionAbortService: SessionAbortService(repository: promptDispatcher),
+      autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: sessionViewingService ?? stubbedSessionViewingService(),
@@ -1603,6 +1605,7 @@ void main() {
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: loadService,
         sessionAbortService: SessionAbortService(repository: promptDispatcher),
+        autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),

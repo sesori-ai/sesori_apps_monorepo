@@ -44,6 +44,7 @@ export "src/features/session_detail/widgets/retry_error_message_card.dart";
 export "src/features/session_detail/widgets/retry_part_widget.dart";
 export "src/features/session_detail/widgets/scroll_follow_tracker.dart";
 export "src/features/session_detail/widgets/session_detail_body.dart";
+export "src/features/session_detail/session_auto_continuation_menu.dart";
 export "src/features/session_detail/widgets/session_detail_composer_controls.dart";
 export "src/features/session_detail/widgets/session_detail_loaded_view.dart";
 export "src/features/session_detail/widgets/session_detail_message_list.dart";

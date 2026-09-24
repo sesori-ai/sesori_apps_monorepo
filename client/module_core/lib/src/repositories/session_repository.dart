@@ -40,6 +40,10 @@ class SessionRepository({
     return _api.renameSession(sessionId: sessionId, title: title);
   }
 
+  Future<ApiResponse<Session>> setAutoContinuation({required String sessionId, required bool enabled}) {
+    return _api.setAutoContinuation(sessionId: sessionId, enabled: enabled);
+  }
+
   Future<ApiResponse<void>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,

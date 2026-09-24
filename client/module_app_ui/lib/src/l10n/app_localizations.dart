@@ -4542,6 +4542,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'One month ago'**
   String get archivedSessionsLastMonth;
+
+  /// No description provided for @sessionAutoContinuationMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-continue after quota resets'**
+  String get sessionAutoContinuationMenu;
+
+  /// No description provided for @sessionAutoContinuationEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable auto continuation'**
+  String get sessionAutoContinuationEnable;
+
+  /// No description provided for @sessionAutoContinuationDisable.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get sessionAutoContinuationDisable;
+
+  /// No description provided for @sessionAutoContinuationOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto continuation on'**
+  String get sessionAutoContinuationOn;
+
+  /// No description provided for @sessionAutoContinuationQuotaReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Quota reached'**
+  String get sessionAutoContinuationQuotaReached;
+
+  /// No description provided for @sessionAutoContinuationOlderBridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your bridge to use auto continuation.'**
+  String get sessionAutoContinuationOlderBridge;
+
+  /// No description provided for @sessionAutoContinuationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto continuation is unavailable for this harness or provider.'**
+  String get sessionAutoContinuationUnavailable;
+
+  /// No description provided for @sessionAutoContinuationOffer.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue at {time}, two minutes after the quota resets, and after later quota resets. Keep your bridge running.'**
+  String sessionAutoContinuationOffer(String time);
+
+  /// No description provided for @sessionAutoContinuationScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Continues at {time}. Keep your bridge running.'**
+  String sessionAutoContinuationScheduled(String time);
+
+  /// No description provided for @sessionAutoContinuationResetUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset time unavailable. Auto continuation cannot be scheduled.'**
+  String get sessionAutoContinuationResetUnknown;
+
+  /// No description provided for @sessionAutoContinuationPausedWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused while this session has active or queued work. Checks resume automatically.'**
+  String get sessionAutoContinuationPausedWork;
+
+  /// No description provided for @sessionAutoContinuationPausedInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused until you answer the pending question or permission request.'**
+  String get sessionAutoContinuationPausedInput;
+
+  /// No description provided for @sessionAutoContinuationPausedUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused while the harness is unavailable. Checks resume automatically.'**
+  String get sessionAutoContinuationPausedUnavailable;
+
+  /// No description provided for @sessionAutoContinuationPausedUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused because the session could not be checked. Checks resume automatically.'**
+  String get sessionAutoContinuationPausedUnknown;
+
+  /// No description provided for @sessionAutoContinuationUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'The last attempt could not be confirmed. It will not be sent again automatically.'**
+  String get sessionAutoContinuationUnconfirmed;
+
+  /// No description provided for @sessionAutoContinuationSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Continuation sent at {time}. Enabled for future quota resets.'**
+  String sessionAutoContinuationSubmitted(String time);
+
+  /// No description provided for @sessionAutoContinuationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The continuation could not be sent. This attempt will not be retried automatically.'**
+  String get sessionAutoContinuationFailed;
+
+  /// No description provided for @sessionAutoContinuationStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Status unavailable. A scheduled time cannot be confirmed.'**
+  String get sessionAutoContinuationStatusUnknown;
+
+  /// No description provided for @sessionAutoContinuationUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not confirm the change. Reconnect and check auto continuation before trying again.'**
+  String get sessionAutoContinuationUpdateFailed;
+
+  /// No description provided for @sessionAutoContinuationAlreadySubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto continuation disabled. The previous continuation was already sent; future automatic sends are disabled.'**
+  String get sessionAutoContinuationAlreadySubmitted;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

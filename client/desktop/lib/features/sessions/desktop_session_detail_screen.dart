@@ -201,6 +201,8 @@ class const DesktopSessionDetailView({
           entriesBuilder: () => session == null
               ? const []
               : [
+                  if (!readOnly && session.time?.archived == null)
+                    sessionAutoContinuationMenuEntry(context: context, session: session),
                   PregoMenuItem(
                     leadingIcon: TablerRegular.mail,
                     title: loc.sessionListMarkUnread,

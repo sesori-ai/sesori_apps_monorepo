@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
 
@@ -217,7 +218,17 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
               },
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: [...needsYou, ?widget.bottomControls],
+                children: [
+                  ...needsYou,
+                  if (!widget.readOnly && !state.isArchived)
+                    SessionAutoContinuationNotice(
+                      view: state.session.autoContinuation,
+                      updating: state.isUpdatingAutoContinuation,
+                      onEnabledChanged: (enabled) =>
+                          unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
+                    ),
+                  ?widget.bottomControls,
+                ],
               ),
             ),
           ),

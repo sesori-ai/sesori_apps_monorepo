@@ -32,6 +32,7 @@ import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
 import "../../services/session_abort_service.dart";
+import "../../services/session_auto_continuation_service.dart";
 import "../../services/session_detail_load_service.dart";
 import "../../services/session_interaction_calculator.dart";
 import "../../services/session_selection_calculator.dart";
@@ -85,6 +86,7 @@ class SessionDetailCubit(
   required final PluginManagementService _pluginManagementService,
   required final SessionInteractionCalculator _interactionCalculator,
   required final SessionAbortService _sessionAbortService,
+  required final SessionAutoContinuationService _autoContinuationService,
   required SessionRepository promptDispatcher,
   required final PermissionRepository _permissionRepository,
   required final SessionViewingService _sessionViewingService,
@@ -161,6 +163,7 @@ class SessionDetailCubit(
   bool _stalePromptOptionsRefreshInFlight = false;
   bool _backgroundOptionsRefreshInFlight = false;
   bool _abortRequestInFlight = false;
+  bool _autoContinuationUpdateInFlight = false;
 
   /// Route visibility is separate from app lifecycle visibility. Desktop can
   /// cover the nested session navigator with a root-level settings route while
@@ -261,7 +264,7 @@ class SessionDetailCubit(
         if (next.canInteract) {
           unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.queuedEvent));
         } else {
-          emit(SessionDetailState.harnessUnavailable(session: session, interaction: next));
+          emit(SessionDetailState.harnessUnavailable(isUpdatingAutoContinuation: _autoContinuationUpdateInFlight, session: session, interaction: next));
         }
       case SessionDetailLoading() || SessionDetailFailed():
         break;
@@ -385,7 +388,7 @@ class SessionDetailCubit(
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
-              emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
+              emit(SessionDetailState.harnessUnavailable(isUpdatingAutoContinuation: _autoContinuationUpdateInFlight, session: session, interaction: _interaction));
               return _SessionRefreshResult.applied;
             }
             _deferredPartEvents.discardForMessagesThrough(
@@ -467,7 +470,7 @@ class SessionDetailCubit(
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
-              emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
+              emit(SessionDetailState.harnessUnavailable(isUpdatingAutoContinuation: _autoContinuationUpdateInFlight, session: session, interaction: _interaction));
               return _SessionRefreshResult.applied;
             }
             _clearBufferedEvents();
@@ -1300,11 +1303,11 @@ class SessionDetailCubit(
   void _onSessionUpdated(Session session) {
     final current = state;
     if (isClosed) return;
+    _sessionMetadata = session;
     // The unavailable shell still offers the session's actions, so a rename or
     // an archive has to reach it too.
     if (current is SessionDetailHarnessUnavailable) {
       // A later availability change rebuilds this variant from the cache.
-      _sessionMetadata = session;
       emit(current.copyWith(session: session));
       return;
     }
@@ -1318,6 +1321,41 @@ class SessionDetailCubit(
         isArchived: sessionTime == null ? current.isArchived : sessionTime.archived != null,
       ),
     );
+  }
+
+  Future<void> setAutoContinuation({required bool enabled}) async {
+    final session = state.hydratedSession;
+    if (isClosed || _autoContinuationUpdateInFlight || session == null || session.time?.archived != null) return;
+    _setAutoContinuationProgress(pending: true);
+    try {
+      final updated = await _autoContinuationService.setEnabled(sessionId: _sessionId, enabled: enabled);
+      if (isClosed) return;
+      _onSessionUpdated(updated);
+      if (!enabled && updated.autoContinuation?.status is SessionAutoContinuationSubmitted) {
+        _noticeStream.add(const SessionDetailAutoContinuationAlreadySubmitted());
+      }
+    } on SessionAutoContinuationUnavailableException catch (error, stackTrace) {
+      loge("Auto continuation unavailable for session $_sessionId", error.innerError, stackTrace);
+      if (!isClosed) _noticeStream.add(const SessionDetailAutoContinuationUnavailable());
+    } on Object catch (error, stackTrace) {
+      loge("Failed to update auto continuation for session $_sessionId", error, stackTrace);
+      if (!isClosed) _noticeStream.add(const SessionDetailAutoContinuationUpdateFailed());
+    } finally {
+      _setAutoContinuationProgress(pending: false);
+    }
+  }
+
+  void _setAutoContinuationProgress({required bool pending}) {
+    _autoContinuationUpdateInFlight = pending;
+    if (isClosed) return;
+    switch (state) {
+      case final SessionDetailLoaded current:
+        emit(current.copyWith(isUpdatingAutoContinuation: pending));
+      case final SessionDetailHarnessUnavailable current:
+        emit(current.copyWith(isUpdatingAutoContinuation: pending));
+      case SessionDetailLoading() || SessionDetailFailed():
+        break;
+    }
   }
 
   void _onPromptDefaultsChanged(SessionPromptDefaults promptDefaults) {
@@ -2790,6 +2828,7 @@ class SessionDetailCubit(
 
     _transcriptGeneration++;
     return SessionDetailLoaded(
+      isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
       interaction: interaction,
       messages: snapshot.messages,
       olderMessagesCursor: snapshot.olderMessagesCursor,
