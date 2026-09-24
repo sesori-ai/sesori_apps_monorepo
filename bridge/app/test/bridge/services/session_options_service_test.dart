@@ -525,6 +525,29 @@ void main() {
       expect(repository.captureCalls, isEmpty);
     });
 
+    test("a cache captured before this bridge process started is reported stale", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..put(
+          _entry(
+            key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1"),
+            response: _response(marker: "cached"),
+            capturedAt: now.subtract(const Duration(seconds: 1)),
+          ),
+        );
+      final service = _service(
+        repository: repository,
+        now: now,
+        scopes: const {"plugin-1": PluginSessionOptionsScope.plugin},
+      );
+
+      final outcome = await service.loadDynamic(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(outcome, isA<SessionOptionsAvailable>());
+      expect((outcome as SessionOptionsAvailable).response.stale, isTrue);
+      expect(repository.captureCalls, isEmpty);
+    });
+
     test("cache miss activates only the selected plugin with reuse discovery", () async {
       final repository = _FakeSessionOptionsRepository()
         ..projectPaths["project-1"] = "/projects/one"
