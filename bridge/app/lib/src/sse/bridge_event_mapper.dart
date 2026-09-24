@@ -27,6 +27,7 @@ class BridgeEventMapper({
         BridgeSseSessionCreated(:final info) => _tryParseSseEvent({"type": "session.created", "info": info}),
         BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
         BridgeSseSessionOptionsChanged() => null,
+        BridgeSseSessionQuotaBlocked() => null,
         // Published by SessionPromptService with the session's stored fast mode.
         BridgeSseSessionPromptDefaultsChanged() => null,
         BridgeSseSessionDeleted(:final info) => _tryParseSseEvent({"type": "session.deleted", "info": info}),

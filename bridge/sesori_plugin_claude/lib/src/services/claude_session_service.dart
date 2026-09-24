@@ -12,6 +12,7 @@ import "../models/claude_task_status.dart";
 import "../models/claude_task_type.dart";
 import "../models/claude_tool_use_result.dart";
 import "../repositories/claude_session_process_repository.dart";
+import "../repositories/mappers/claude_quota_interruption_mapper.dart";
 
 /// A queued prompt that the service wrote to Claude's stdin.
 final class const ClaudeTurnDispatched({
@@ -78,6 +79,7 @@ final class _SessionTurnState() {
   bool get hasWork => pending > 0 || selfStartedTurn != null || runningTaskIds.isNotEmpty;
 
   final List<_QueuedPrompt> queue = [];
+  PluginQuotaInterruption? quotaCandidate;
 }
 
 /// Serializes Claude dispatch and selection changes while allowing ordinary
@@ -87,6 +89,7 @@ final class ClaudeSessionService({
   required final ClaudeSessionProcessRepository _processes,
   required final ClaudeApprovalRegistry _approvals,
   required final ServerClock _clock,
+  required final ClaudeQuotaInterruptionMapper _quotaMapper,
 
   /// Resolves the current per-session idle timeout, or null when idle reaping
   /// is disabled. Read whenever an idle timer is armed.
@@ -513,6 +516,7 @@ final class ClaudeSessionService({
     }
     final aborting = Completer<void>();
     state.aborting = aborting;
+    state.quotaCandidate = null;
     try {
       state.generation++;
       state.idleGeneration++;
@@ -699,6 +703,7 @@ final class ClaudeSessionService({
   void _handleProcessEvent(ClaudeSessionProcessEvent event) {
     switch (event) {
       case final ClaudeSessionProcessMessage event:
+        _trackQuota(sessionId: event.sessionId, message: event.message);
         // Transition before arming: a frame that both begins a self-started
         // turn and carries a new `ScheduleWakeup` must keep the new schedule.
         _trackSelfStartedTurn(sessionId: event.sessionId, message: event.message);
@@ -710,6 +715,7 @@ final class ClaudeSessionService({
       case ClaudeSessionProcessExited():
         final state = _turns[event.sessionId];
         if (state != null) {
+          state.quotaCandidate = null;
           // The wakeup timer and every resident task died with the process,
           // and `--resume` does not rearm or restart them.
           state.wakeupAt = null;
@@ -777,6 +783,34 @@ final class ClaudeSessionService({
       } else if (input["delaySeconds"] case final num delaySeconds) {
         state.wakeupAt = _clock.now().add(Duration(seconds: delaySeconds.toInt()));
       }
+    }
+  }
+
+  void _trackQuota({required String sessionId, required ClaudeStreamMessage message}) {
+    final state = _turns[sessionId];
+    if (state == null || state.aborting != null) return;
+    switch (message) {
+      case ClaudeAssistantMessage(parentToolUseId: final String _) ||
+          ClaudeUserMessage(parentToolUseId: final String _) ||
+          ClaudeStreamEventMessage(parentToolUseId: final String _):
+        return;
+      case ClaudeAssistantMessage():
+        state.quotaCandidate = _quotaMapper.map(message: message, observedAt: _clock.now());
+      case ClaudeUserMessage() || ClaudeStreamEventMessage(eventType: ClaudeStreamEventType.messageStart):
+        // Trailing frames close the current message; only a new message
+        // supersedes its quota observation.
+        state.quotaCandidate = null;
+      case ClaudeResultMessage():
+        final candidate = state.quotaCandidate;
+        state.quotaCandidate = null;
+        if (candidate != null &&
+            message.isError &&
+            message.terminalReason != ClaudeTerminalReason.abortedStreaming &&
+            message.terminalReason != ClaudeTerminalReason.abortedTools) {
+          _emit(BridgeSseSessionQuotaBlocked(sessionID: sessionId, interruption: candidate));
+        }
+      case ClaudeStreamMessage():
+        break;
     }
   }
 

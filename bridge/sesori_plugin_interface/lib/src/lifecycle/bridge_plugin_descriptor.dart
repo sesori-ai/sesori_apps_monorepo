@@ -3,6 +3,7 @@ import "package:meta/meta.dart";
 import "../host/host_process_service.dart";
 import "../host/plugin_host.dart";
 import "../models/plugin_catalog_snapshot.dart";
+import "../models/plugin_quota_interruption.dart";
 import "bridge_plugin.dart";
 import "plugin_activation_policy.dart";
 import "plugin_config.dart";
@@ -50,6 +51,9 @@ abstract class const BridgePluginDescriptor() {
 
   /// Whether prompts can carry inline image attachments to this backend.
   bool get supportsPromptAttachments => false;
+
+  /// Live terminal quota reporting, available only for verified plugin seams.
+  PluginQuotaReportingSupport get quotaReportingSupport => PluginQuotaReportingSupport.unavailable;
 
   /// Layout used for the plugin's private host state.
   ///

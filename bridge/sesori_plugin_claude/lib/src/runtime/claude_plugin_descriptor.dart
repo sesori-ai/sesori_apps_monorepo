@@ -19,6 +19,7 @@ import "../repositories/claude_backend_catalog_repository.dart";
 import "../repositories/claude_session_process_repository.dart";
 import "../repositories/claude_transcript_catalog_repository.dart";
 import "../repositories/mappers/claude_content_mapper.dart";
+import "../repositories/mappers/claude_quota_interruption_mapper.dart";
 import "../repositories/trackers/claude_tool_tracker.dart";
 import "../services/claude_authentication_service.dart";
 import "../services/claude_catalog_service.dart";
@@ -92,6 +93,9 @@ final class const ClaudePluginDescriptor({
 
   @override
   bool get supportsPromptAttachments => true;
+
+  @override
+  PluginQuotaReportingSupport get quotaReportingSupport => PluginQuotaReportingSupport.conditional;
 
   /// Claude owns idle reclamation per session: the service reaps individual
   /// CLI child processes on the user-configured idle timeout
@@ -280,6 +284,7 @@ final class const ClaudePluginDescriptor({
     final sessions = ClaudeSessionService(
       processes: processes,
       approvals: approvals,
+      quotaMapper: ClaudeQuotaInterruptionMapper(contentMapper: const ClaudeContentMapper()),
       clock: host.clock,
       resolveIdleTimeout: () => host.pluginIdleTimeout,
       idleTimeoutChanges: host.pluginIdleTimeoutChanges,

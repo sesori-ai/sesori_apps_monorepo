@@ -20,8 +20,9 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 
 ## Quota-reset auto continuation
 
-Audit date: **2026-09-23**. Sesori does **not yet implement** scheduled quota
-continuation for any harness. The
+Audit date: **2026-09-24**. Internal terminal quota reporting is implemented for
+the Claude Code and Pi cases below. Sesori does **not yet implement** scheduled
+quota continuation for any harness. The
 [active plan](../.plan/active/quota-auto-continuation/PLAN.md) proposes session-level
 opt-in, a chat hint, a persistent three-dot-menu toggle, and a visible resume
 time. The [evidence record](../.plan/active/quota-auto-continuation/EVIDENCE.md)
@@ -32,10 +33,10 @@ time for the selected provider/account/model. Native transient retries are a
 different capability. “Unverified” below is an evidence limit, not a claim that
 the harness cannot support this feature; do not mark it 🚫 without verification.
 
-| Harness | Reset evidence | Planning status |
+| Harness | Reset evidence | Reporting status |
 |---|---|---|
-| Claude Code | Tagged local errors; SDK `resetsAt` | ⬜ Not implemented; verify turn association. |
-| Pi | Some local `openai-codex` errors | Unverified; supported runtime/RPC settlement needs proof. |
+| Claude Code | Tagged session-limit error with IANA zone | ✅ Conditional; root terminal error only. |
+| Pi | Recognized `openai-codex` error text | ✅ Conditional; final RPC settlement verified on 0.85.1 / 0.84.1. |
 | Codex | Local and documented reset timestamps | Unverified; failed-turn bucket binding needs proof. |
 | OpenCode | Raw error data reaches mapper | Reset payload/provider attribution unverified. |
 | GitHub Copilot | ACP payload needs inspection | Reset reporting unverified. |
@@ -46,15 +47,22 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
 | Grok Build | ACP payload needs inspection | Reset reporting unverified. |
 | Antigravity | Official ACP payload needs inspection | Reset reporting unverified. |
 
-- Claude's tagged local quota errors name a reset time and IANA zone. Sesori
-  parses but ignores SDK rate-limit frames. Verify terminal rejection and
-  current-turn association; warnings alone cannot schedule.
+- Claude recognizes the tagged `rate_limit` assistant error beginning “You've
+  hit your session limit”. The observed time/zone format yields a UTC reset
+  only when it identifies one future time on the original local date. Unrecognized
+  dates, past times, unknown zones, and ambiguous/nonexistent DST times remain
+  unknown. Root errors report only after an unsuccessful, non-aborted result;
+  forwarded subagent traffic cannot arm or replace the root candidate.
+  Process-wide SDK rate-limit frames remain ignored because their rejected
+  window has no verified message attribution.
 - Pi's local `openai-codex` assistant errors sometimes report a relative retry
   duration; others give no reset. Other providers/formats remain unverified.
-  Historical records do not prove the supported managed target (0.85.1) or PATH
-  floor (0.84.1). Verify live RPC delivery and terminal retry settlement before
-  advertising the capability. This evidence does not establish support for
-  Oh My Pi's ACP seam.
+  A positive duration is anchored to the original assistant timestamp. Unknown
+  or malformed resets remain unknown. Synthetic-provider RPC probes on the
+  managed target (0.85.1) and PATH floor (0.84.1) confirmed that `agent_settled`
+  follows final retry resolution. Those probes did not exhaust a real account;
+  provider-format evidence comes from local errors and pinned upstream source.
+  This evidence does not establish support for Oh My Pi's ACP seam.
 - Codex local rollouts and documented app-server account limits contain reset
   timestamps; terminal usage-limit errors are already rendered. Bind the failed
   turn to its applicable exhausted buckets; an account snapshot cannot schedule.
@@ -65,9 +73,9 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
   no reset is unschedulable. Native application UI or displayed text alone does
   not establish a usable timestamp through Sesori's driven protocol.
 
-Unknown reset times must remain visible and unscheduled. Implementation must
-update each row with the verified runtime/provider scope and actual delivered
-status; no shared model-name allowlist or inferred reset is planned.
+Existing error messages remain visible, including errors with unknown resets.
+Other descriptors report quota support as unavailable until their provider and
+terminal-turn binding are verified. There is no shared model-name allowlist.
 
 ## Individual queued-prompt cancellation
 

@@ -7,6 +7,7 @@ import "package:pi_plugin/pi_testing.dart";
 import "package:pi_plugin/src/api/models/pi_session_history_dto.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_history_mapper.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_persisted_user_text_codec.dart";
+import "package:pi_plugin/src/repositories/mappers/pi_quota_interruption_mapper.dart";
 import "package:pi_plugin/src/repositories/pi_session_process_repository.dart";
 import "package:pi_plugin/src/services/pi_event_dispatcher.dart";
 import "package:pi_plugin/src/services/pi_extension_ui_service.dart";
@@ -21,6 +22,84 @@ import "support/fake_pi_session_storage_api.dart";
 import "support/pi_rpc_client_test_factory.dart";
 
 void main() {
+  for (final outcome in ["exhausted", "recovered", "cancelled"]) {
+    test("quota waits for final native settlement after retries: $outcome", () async {
+      final process = FakePiProcess();
+      final fixture = _Fixture(processes: [process]);
+      addTearDown(fixture.dispose);
+      final service = fixture.service();
+      final events = <BridgeSseEvent>[];
+      service.events.listen(events.add);
+      await service.sendPrompt(
+        sessionId: "session",
+        promptId: "quota-prompt",
+        directory: "/project",
+        parts: [const PluginPromptPart.text(text: "prompt")],
+        userVisibleText: "prompt",
+        variant: null,
+        model: null,
+      );
+      await _answerEntries(process);
+      final prompt = await waitForCommand(process: process, type: "prompt");
+      process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+      process.emit(frame: {"type": "agent_start"});
+      final error = <String, Object?>{
+        "role": "assistant",
+        "provider": "openai-codex",
+        "stopReason": "error",
+        "content": <Object?>[],
+        "timestamp": DateTime.utc(2026, 9, 16, 19, 34, 27).millisecondsSinceEpoch,
+        "errorMessage": "You have hit your ChatGPT usage limit (pro plan). Try again in ~5918 min.",
+      };
+      process.emit(frame: {"type": "message_end", "message": error});
+      process.emit(frame: {"type": "agent_end", "willRetry": true});
+      process.emit(frame: {"type": "auto_retry_start", "attempt": 1, "delayMs": 10});
+      await pump();
+      expect(events.whereType<BridgeSseSessionQuotaBlocked>(), isEmpty);
+      if (outcome != "cancelled") {
+        process.emit(frame: {"type": "agent_start"});
+        process.emit(
+          frame: {
+            "type": "message_end",
+            "message": {
+              ...error,
+              "timestamp": (error["timestamp"]! as int) + 10,
+              if (outcome == "recovered") "stopReason": "stop",
+            },
+          },
+        );
+      }
+      process.emit(frame: {"type": "agent_end", "willRetry": false});
+      process.emit(
+        frame: {
+          "type": "auto_retry_end",
+          "success": outcome == "recovered",
+          "finalError": outcome == "cancelled" ? "Retry cancelled" : error["errorMessage"],
+        },
+      );
+      await pump();
+      expect(events.whereType<BridgeSseSessionQuotaBlocked>(), isEmpty);
+      process.emit(frame: {"type": "agent_settled"});
+      await _waitForIdle(service: service, sessionId: "session");
+      await pump();
+      final reports = events.whereType<BridgeSseSessionQuotaBlocked>().toList();
+      if (outcome == "exhausted") {
+        final visibleError = events
+            .whereType<BridgeSseMessageUpdated>()
+            .map((event) => event.info)
+            .whereType<PluginMessageError>()
+            .last;
+        expect(reports.single.interruption.errorMessageId, visibleError.id);
+        expect(reports.single.sessionID, "session");
+      } else {
+        expect(reports, isEmpty);
+      }
+      process.emit(frame: {"type": "agent_settled"});
+      await pump();
+      expect(events.whereType<BridgeSseSessionQuotaBlocked>().length, reports.length);
+    });
+  }
+
   test("new session preparation generates a valid secure id and persists its marker", () async {
     final storage = _Storage(initialResolvedSession: null);
     final fixture = _Fixture(processes: const [], storageOverride: storage);
@@ -3221,6 +3300,7 @@ final class _Fixture({
       editorTimeout: const Duration(minutes: 1),
     );
     final service = PiSessionService(
+      quotaMapper: PiQuotaInterruptionMapper(historyMapper: historyMapper),
       processRepository: repository,
       catalogRepository: catalogRepository,
       eventDispatcher: PiEventDispatcher(

@@ -9,6 +9,7 @@ import "models/pi_notification_type.dart";
 import "models/pi_thinking_level.dart";
 import "pi_identity.dart";
 import "repositories/mappers/pi_history_mapper.dart";
+import "repositories/mappers/pi_quota_interruption_mapper.dart";
 import "repositories/pi_backend_catalog_repository.dart";
 import "repositories/pi_session_catalog_repository.dart";
 import "repositories/pi_session_process_repository.dart";
@@ -81,6 +82,7 @@ final class PiPlugin._({
       editorTimeout: editorTimeout,
     );
     final sessionService = PiSessionService(
+      quotaMapper: PiQuotaInterruptionMapper(historyMapper: history),
       processRepository: processRepository,
       catalogRepository: catalogRepository,
       eventDispatcher: PiEventDispatcher(
