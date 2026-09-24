@@ -15,6 +15,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_chat_history.dart";
 
 void main() {
@@ -271,6 +272,9 @@ class _Fixture() {
       worktreeService: worktree,
     );
     lifecycle = SessionLifecycleService(
+      continuations: const EmptySessionContinuations(),
+      mutations: const UnusedContinuationMutations(),
+      views: const PassThroughSessionViews(),
       worktreeService: worktree,
       sessionRepository: repository,
       filesystemRepository: _MissingFilesystemRepository(),
@@ -504,6 +508,7 @@ class _SessionRecord({
   );
 
   Session get session => Session(
+    autoContinuation: null,
     id: id,
     pluginId: pluginId,
     projectID: "project-$rootId",

@@ -5,12 +5,14 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/session_view_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session/detail` — returns a single enriched session by ID.
 class GetSessionHandler({
   required final SessionRepository _sessionRepository,
   required final PrSyncService _prSyncService,
+  required final SessionViewService _sessionViews,
   final Duration _identityVerificationTimeout = const Duration(seconds: 5),
 }) extends BodyRequestHandler<SessionIdRequest, Session> {
   this
@@ -47,9 +49,11 @@ class GetSessionHandler({
         return null;
       },
     );
-    return (await _sessionRepository.enrichSessions(
-      sessions: [catalogSession],
-      verifiedGithubLogin: verifiedGithubLogin,
-    )).single;
+    return _sessionViews.enrich(
+      session: (await _sessionRepository.enrichSessions(
+        sessions: [catalogSession],
+        verifiedGithubLogin: verifiedGithubLogin,
+      )).single,
+    );
   }
 }

@@ -15,6 +15,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_session_options_service.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
 
@@ -46,6 +47,9 @@ void main() {
       dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       optionsService = FakeSessionOptionsService();
       service = SessionPromptService(
+        continuations: const EmptySessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
         acceptedPromptsRepository: AcceptedPromptsRepository(dao: AcceptedPromptsDao(database: db)),
         dispatcher: dispatcher,
@@ -276,6 +280,9 @@ void main() {
 
     test("suppresses completion immediately while backend actions retain arrival order", () async {
       final abortService = SessionAbortService(
+        continuations: const EmptySessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
         dispatcher: dispatcher,
       );

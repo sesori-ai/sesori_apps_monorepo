@@ -132,6 +132,27 @@ final class ClaudeSessionService({
   };
 
   /// The session's accepted-but-not-yet-visible prompts, in dispatch order.
+  PluginQuotaContinuationReadiness getQuotaContinuationReadiness({
+    required String sessionId,
+    required bool sessionExists,
+  }) {
+    if (_disposed) return PluginQuotaContinuationReadiness.unavailable;
+    if (_approvals.pendingQuestionsForSession(sessionId: sessionId).isNotEmpty ||
+        _approvals.pendingPermissionsForSession(sessionId: sessionId).isNotEmpty) {
+      return PluginQuotaContinuationReadiness.awaitingInput;
+    }
+    if (_retryStatuses.containsKey(sessionId)) return PluginQuotaContinuationReadiness.retrying;
+    final state = _turns[sessionId];
+    if (state?.aborting != null || _teardownsBySession.containsKey(sessionId))
+      return PluginQuotaContinuationReadiness.busy;
+    if ((state?.queue.isNotEmpty ?? false) || state?.wakeupAt != null) return PluginQuotaContinuationReadiness.queued;
+    if (state?.hasWork ?? false) return PluginQuotaContinuationReadiness.busy;
+    if (state != null || (!_processes.isResident(sessionId: sessionId) && sessionExists)) {
+      return PluginQuotaContinuationReadiness.idle;
+    }
+    return PluginQuotaContinuationReadiness.unknown;
+  }
+
   List<PluginQueuedPrompt> queuedPrompts({required String sessionId}) {
     final state = _turns[sessionId];
     if (state == null) return const [];

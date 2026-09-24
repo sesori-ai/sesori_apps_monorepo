@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/session_view_service.dart";
 import "request_handler.dart";
 
 /// Handles `GET /sessions` — returns sessions for a given project.
@@ -13,6 +14,7 @@ import "request_handler.dart";
 class GetSessionsHandler({
   required final SessionRepository _sessionRepository,
   required final PrSyncService _prSyncService,
+  required final SessionViewService _sessionViews,
   final Duration _prRefreshTimeout = const Duration(seconds: 5),
 }) extends BodyRequestHandler<SessionListRequest, SessionListResponse> {
   this
@@ -32,11 +34,13 @@ class GetSessionsHandler({
     final start = body.start;
     final limit = body.limit;
 
-    final sessionsWithoutPullRequestData = await _sessionRepository.getSessionsForProject(
-      projectId: projectId,
-      start: start,
-      limit: limit,
-      verifiedGithubLogin: null,
+    final sessionsWithoutPullRequestData = await _sessionViews.enrichMany(
+      sessions: await _sessionRepository.getSessionsForProject(
+        projectId: projectId,
+        start: start,
+        limit: limit,
+        verifiedGithubLogin: null,
+      ),
     );
     final timeoutStopwatch = Stopwatch()..start();
     final prRefreshFuture = _triggerPrRefresh(

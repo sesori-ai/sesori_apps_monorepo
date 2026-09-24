@@ -187,7 +187,14 @@ void main() {
 
     expect(
       projection.recent.map((item) => (item.project.id, item.entry.session.id)),
-      [("two", "two-unseen"), ("one", "one-4"), ("one", "one-3"), ("one", "one-2"), ("one", "one-1"), ("two", "two-old")],
+      [
+        ("two", "two-unseen"),
+        ("one", "one-4"),
+        ("one", "one-3"),
+        ("one", "one-2"),
+        ("one", "one-1"),
+        ("two", "two-old"),
+      ],
     );
     expect(projection.recent.first.entry.isUnseen, isTrue);
   });
@@ -272,6 +279,7 @@ void main() {
 }
 
 Session _session({required String id, required String projectId, bool unseen = false, int updated = 1}) => Session(
+  autoContinuation: null,
   id: id,
   title: id,
   projectID: projectId,

@@ -304,6 +304,7 @@ void main() {
   group('sessionCreated round-trip', () {
     test('serializes and deserializes Session info correctly', () {
       const session = Session(
+        autoContinuation: null,
         branchName: null,
         id: 'ses_001',
         pluginId: legacyMissingPluginId,
@@ -337,6 +338,7 @@ void main() {
   group('sessionUpdated round-trip', () {
     test('serializes and deserializes correctly', () {
       const session = Session(
+        autoContinuation: null,
         branchName: null,
         id: 'ses_002',
         pluginId: legacyMissingPluginId,
@@ -368,6 +370,7 @@ void main() {
   group('sessionDeleted round-trip', () {
     test('serializes and deserializes correctly', () {
       const session = Session(
+        autoContinuation: null,
         branchName: null,
         id: 'ses_003',
         pluginId: legacyMissingPluginId,
@@ -655,6 +658,7 @@ void main() {
     test('sessionCreated implements SesoriSessionEvent', () {
       const created = SesoriSseEvent.sessionCreated(
         info: Session(
+          autoContinuation: null,
           branchName: null,
           id: 'x',
           pluginId: legacyMissingPluginId,
@@ -674,6 +678,7 @@ void main() {
     test('sessionUpdated implements SesoriSessionEvent', () {
       const updated = SesoriSseEvent.sessionUpdated(
         info: Session(
+          autoContinuation: null,
           branchName: null,
           id: 'x',
           pluginId: legacyMissingPluginId,
@@ -693,6 +698,7 @@ void main() {
     test('sessionDeleted implements SesoriSessionEvent', () {
       const deleted = SesoriSseEvent.sessionDeleted(
         info: Session(
+          autoContinuation: null,
           branchName: null,
           id: 'x',
           pluginId: legacyMissingPluginId,
@@ -931,6 +937,7 @@ void main() {
     test('sessionCreated uses session.created', () {
       final json = const SesoriSseEvent.sessionCreated(
         info: Session(
+          autoContinuation: null,
           branchName: null,
           id: 'i',
           pluginId: legacyMissingPluginId,
@@ -950,6 +957,7 @@ void main() {
     test('sessionUpdated uses session.updated', () {
       final json = const SesoriSseEvent.sessionUpdated(
         info: Session(
+          autoContinuation: null,
           branchName: null,
           id: 'i',
           pluginId: legacyMissingPluginId,
@@ -969,6 +977,7 @@ void main() {
     test('sessionDeleted uses session.deleted', () {
       final json = const SesoriSseEvent.sessionDeleted(
         info: Session(
+          autoContinuation: null,
           branchName: null,
           id: 'i',
           pluginId: legacyMissingPluginId,

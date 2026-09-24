@@ -23,6 +23,8 @@ final class const SessionBranchUpdated({required super.session}) extends LocalSe
 
 final class const SessionDeleted({required super.session}) extends LocalSessionMutation;
 
+final class const SessionContinuationUpdated({required super.session}) extends LocalSessionMutation;
+
 /// Owns bridge-persisted session mutations and their backend propagation.
 class SessionMutationDispatcher({
   required final SessionRepository _sessionRepository,
@@ -37,6 +39,9 @@ class SessionMutationDispatcher({
   Future<void>? _disposeFuture;
 
   Stream<LocalSessionMutation> get mutations => _mutationsController.stream;
+
+  void continuationUpdated({required Session session}) =>
+      _mutationsController.add(SessionContinuationUpdated(session: session));
 
   bool shouldSuppressEventsForSession({required String sessionId}) {
     return _sessionIdsSuppressedFromEvents.contains(sessionId);

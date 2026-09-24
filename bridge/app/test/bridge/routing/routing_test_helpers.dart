@@ -16,6 +16,7 @@ import "package:sesori_bridge/src/repositories/models/pull_request_selection.dar
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/repositories/pr_source_repository.dart";
@@ -311,6 +312,7 @@ DeletedSessionSubtree _deletedSession(String sessionId) =>
     (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId]);
 
 Session _deletedSessionInfo(String sessionId) => Session(
+  autoContinuation: null,
   branchName: null,
   id: sessionId,
   pluginId: "fake",
@@ -368,6 +370,12 @@ Future<void> recordSessionBinding({
 }
 
 class _NoopSessionRepository() implements SessionRepository {
+  @override
+  AutoContinuationAvailability quotaReportingAvailability({required String pluginId}) => AutoContinuationAvailability.unavailable;
+
+  @override
+  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async => SessionContinuationReadiness.unavailable;
+
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
 
@@ -452,6 +460,7 @@ class _NoopSessionRepository() implements SessionRepository {
     required String? lastAgent,
     required AgentModel? lastAgentModel,
   }) async => const Session(
+    autoContinuation: null,
     branchName: null,
     id: "",
     pluginId: "fake",
@@ -642,6 +651,7 @@ class _NoopSessionRepository() implements SessionRepository {
 
 Session _sharedSessionFromPlugin(PluginSession session, String pluginId) {
   return Session(
+    autoContinuation: null,
     branchName: null,
     id: session.id,
     pluginId: pluginId,
@@ -672,6 +682,12 @@ class FakeSessionRepository({
   FakePullRequestRepository? pullRequestRepository,
   final AppDatabase? _persistenceDatabase,
 }) implements SessionRepository {
+  @override
+  AutoContinuationAvailability quotaReportingAvailability({required String pluginId}) => AutoContinuationAvailability.unavailable;
+
+  @override
+  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async => SessionContinuationReadiness.unavailable;
+
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
 
@@ -730,6 +746,7 @@ class FakeSessionRepository({
     final stored = await _sessionDao.getSession(sessionId: sessionId);
     if (stored == null || stored.title != null) return null;
     return Session(
+      autoContinuation: null,
       branchName: stored.branchName,
       id: stored.sessionId,
       pluginId: stored.pluginId,
@@ -806,6 +823,7 @@ class FakeSessionRepository({
     required String? lastAgent,
     required AgentModel? lastAgentModel,
   }) async => const Session(
+    autoContinuation: null,
     branchName: null,
     id: "",
     pluginId: "fake",

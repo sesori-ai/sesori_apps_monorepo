@@ -13,6 +13,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -77,14 +78,19 @@ void main() {
 
     test("root list, detail, and children complete without plugin calls", () async {
       final sessionsHandler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: repository,
         prSyncService: FakePrSyncService(),
       );
       final detailHandler = GetSessionHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: repository,
         prSyncService: FakePrSyncService(),
       );
-      final childrenHandler = GetChildSessionsHandler(sessionRepository: repository);
+      final childrenHandler = GetChildSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
+        sessionRepository: repository,
+      );
 
       final roots = await sessionsHandler
           .handle(
@@ -144,6 +150,7 @@ void main() {
       );
       final prSyncService = FakePrSyncService();
       final detailHandler = GetSessionHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: repository,
         prSyncService: prSyncService,
       );
@@ -199,6 +206,7 @@ void main() {
         ),
       );
       final detailHandler = GetSessionHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: repository,
         prSyncService: FakePrSyncService(
           identityVerificationDelays: const [Duration(milliseconds: 100)],
@@ -220,10 +228,14 @@ void main() {
     test("unknown detail and parent ids remain 404s without plugin calls", () async {
       final prSyncService = FakePrSyncService();
       final detailHandler = GetSessionHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: repository,
         prSyncService: prSyncService,
       );
-      final childrenHandler = GetChildSessionsHandler(sessionRepository: repository);
+      final childrenHandler = GetChildSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
+        sessionRepository: repository,
+      );
 
       final detail = await detailHandler.routeForTest(
         makeRequest(

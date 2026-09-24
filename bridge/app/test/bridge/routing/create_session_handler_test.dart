@@ -22,6 +22,7 @@ import "package:test/test.dart";
 
 import "../../helpers/fake_process_runner.dart";
 import "../../helpers/fake_session_options_service.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -106,7 +107,10 @@ void main() {
         sessionMutationDispatcher: sessionMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
       );
-      handler = CreateSessionHandler(sessionCreationService: sessionCreationService);
+      handler = CreateSessionHandler(
+        sessionViews: const PassThroughSessionViews(),
+        sessionCreationService: sessionCreationService,
+      );
     });
 
     tearDown(() async {
@@ -490,7 +494,10 @@ void main() {
         sessionMutationDispatcher: localMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
       );
-      final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
+      final localHandler = CreateSessionHandler(
+        sessionViews: const PassThroughSessionViews(),
+        sessionCreationService: localCreationService,
+      );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
         branchName: "session-001",
@@ -1004,7 +1011,10 @@ void main() {
         sessionMutationDispatcher: orderedMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
       );
-      final localHandler = CreateSessionHandler(sessionCreationService: orderedCreationService);
+      final localHandler = CreateSessionHandler(
+        sessionViews: const PassThroughSessionViews(),
+        sessionCreationService: orderedCreationService,
+      );
 
       await localHandler.handle(
         makeRequest("POST", "/session/create"),
@@ -1189,7 +1199,10 @@ void main() {
         sessionMutationDispatcher: throwingDispatcher,
         sessionOptionsService: sessionOptionsService,
       );
-      final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
+      final localHandler = CreateSessionHandler(
+        sessionViews: const PassThroughSessionViews(),
+        sessionCreationService: localCreationService,
+      );
 
       final result = await localHandler.handle(
         makeRequest("POST", "/session/create"),

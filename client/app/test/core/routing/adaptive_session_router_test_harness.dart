@@ -345,6 +345,7 @@ Session adaptiveTestSession({
   required String title,
 }) {
   return Session(
+    autoContinuation: null,
     branchName: null,
     id: id,
     pluginId: "plugin-1",

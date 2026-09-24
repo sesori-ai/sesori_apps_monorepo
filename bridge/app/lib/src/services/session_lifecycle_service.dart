@@ -4,19 +4,24 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/filesystem_repository.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/models/stored_session.dart";
+import "../repositories/session_continuation_repository.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
 import "chat_history_service.dart";
 import "session_cleanup_result.dart";
+import "session_mutation_dispatcher.dart";
 import "session_operation_dispatcher.dart";
+import "session_view_service.dart";
 import "worktree_service.dart";
 
-enum SessionCleanupOperation() { removeWorktree }
+enum SessionCleanupOperation() {
+  removeWorktree,
+}
 
 class SessionCleanupFailedException({
-    required final String sessionId,
-    required final SessionCleanupOperation operation,
-  }) implements Exception {
+  required final String sessionId,
+  required final SessionCleanupOperation operation,
+}) implements Exception {
   @override
   String toString() => "session cleanup failed for $sessionId while ${operation.name}";
 }
@@ -26,6 +31,7 @@ class SessionArchiveConflictException({required final SessionCleanupRejection re
 class ArchiveStatusUpdate({
   required final Session session,
   required final bool changed,
+
   /// The stored project id the session row is keyed by. A dedicated-worktree
   /// session can report its worktree directory as the enriched project id.
   required final String projectId,
@@ -34,14 +40,16 @@ class ArchiveStatusUpdate({
 class SessionNotFoundException() implements Exception;
 
 class SessionLifecycleService({
-    required final WorktreeService _worktreeService,
-    required final SessionRepository _sessionRepository,
-    required final FilesystemRepository _filesystemRepository,
-    required final SessionOperationDispatcher _sessionOperationDispatcher,
-    required final ChatHistoryService _chatHistoryService,
-    required final ArchivedSessionValidator _archivedSessionValidator,
-  }) {
-
+  required final WorktreeService _worktreeService,
+  required final SessionRepository _sessionRepository,
+  required final FilesystemRepository _filesystemRepository,
+  required final SessionOperationDispatcher _sessionOperationDispatcher,
+  required final ChatHistoryService _chatHistoryService,
+  required final ArchivedSessionValidator _archivedSessionValidator,
+  required final SessionContinuationRepository _continuations,
+  required final SessionViewService _views,
+  required final SessionMutationDispatcher _mutations,
+}) {
   /// Runs cleanup inside a session-family operation already reserved by the
   /// archive or deletion workflow.
   ///
@@ -186,6 +194,13 @@ class SessionLifecycleService({
     required bool force,
   }) async {
     final archivedAt = DateTime.now().millisecondsSinceEpoch;
+    if (await _continuations.cancelCurrentObservationAlreadyReserved(sessionId: storedSession.id)) {
+      try {
+        _mutations.continuationUpdated(session: await _views.get(sessionId: storedSession.id));
+      } on Object catch (error, stackTrace) {
+        Log.w("Could not publish quota cancellation before archive for session ${storedSession.id}", error, stackTrace);
+      }
+    }
     // Export first, before worktree cleanup: bringing the store current may
     // need the session's worktree, since directory-scoped backends replay from
     // it. Exporting afterwards could silently archive a truncated transcript.

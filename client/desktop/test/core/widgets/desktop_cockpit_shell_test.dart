@@ -1785,6 +1785,7 @@ BridgeControlState _state({
 );
 
 Session _session({required String id}) => Session(
+  autoContinuation: null,
   id: id,
   title: id,
   projectID: "project-1",

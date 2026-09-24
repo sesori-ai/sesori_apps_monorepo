@@ -16,6 +16,7 @@ import "api/archived_session_storage.dart";
 import "api/attachment_spill_storage.dart";
 import "api/database/daos/accepted_prompts_dao.dart";
 import "api/database/daos/new_session_defaults_dao.dart";
+import "api/database/daos/session_continuation_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
 import "api/database/database.dart";
 import "api/database/history/chat_history_database.dart";
@@ -39,6 +40,7 @@ import "listeners/plugin_catalog_hydration_listener.dart";
 import "listeners/plugin_event_listener.dart";
 import "listeners/plugin_warmup_setting_listener.dart";
 import "listeners/session_binding_commit_listener.dart";
+import "listeners/session_continuation_timer_listener.dart";
 import "listeners/session_mutation_listener.dart";
 import "listeners/session_options_changed_refresh_listener.dart";
 import "listeners/session_options_creation_refresh_listener.dart";
@@ -80,6 +82,7 @@ import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/pull_request_repository.dart";
 import "repositories/question_repository.dart";
+import "repositories/session_continuation_repository.dart";
 import "repositories/session_diff_repository.dart";
 import "repositories/session_metadata_repository.dart";
 import "repositories/session_options_repository.dart";
@@ -140,6 +143,7 @@ import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
+import "routing/set_session_auto_continuation_handler.dart";
 import "routing/start_catalog_import_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
@@ -167,6 +171,7 @@ import "services/project_mutation_service.dart";
 import "services/project_view_tracker.dart";
 import "services/pull_request_refresh_settings_service.dart";
 import "services/session_abort_service.dart";
+import "services/session_continuation_service.dart";
 import "services/session_creation_service.dart";
 import "services/session_deletion_service.dart";
 import "services/session_diff_service.dart";
@@ -178,6 +183,7 @@ import "services/session_operation_dispatcher.dart";
 import "services/session_options_service.dart";
 import "services/session_prompt_service.dart";
 import "services/session_unseen_service.dart";
+import "services/session_view_service.dart";
 import "services/session_view_tracker.dart";
 import "services/worktree_service.dart";
 import "services/yolo_settings_service.dart";
@@ -318,6 +324,16 @@ class Orchestrator({
     final worktreeService = WorktreeService(worktreeRepository: worktreeRepository);
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,
+    );
+    const quotaResetBuffer = Duration(minutes: 2);
+    final sessionContinuations = SessionContinuationRepository(
+      dao: SessionContinuationDao(database: _database),
+      runtime: _pluginRuntime,
+    );
+    final sessionViews = SessionViewService(
+      sessions: sessionRepository,
+      continuations: sessionContinuations,
+      resetBuffer: quotaResetBuffer,
     );
     final archivedSessionValidator = ArchivedSessionValidator(sessionRepository: sessionRepository);
     final sessionMutationDispatcher = SessionMutationDispatcher(
@@ -513,6 +529,9 @@ class Orchestrator({
       catalogImportService: catalogImportService,
     );
     final sessionPromptService = SessionPromptService(
+      continuations: sessionContinuations,
+      views: sessionViews,
+      mutations: sessionMutationDispatcher,
       sessionRepository: sessionRepository,
       acceptedPromptsRepository: AcceptedPromptsRepository(
         dao: AcceptedPromptsDao(database: _database),
@@ -520,6 +539,21 @@ class Orchestrator({
       dispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
       sessionOptionsService: sessionOptionsService,
+    );
+    final sessionContinuationService = SessionContinuationService(
+      continuations: sessionContinuations,
+      sessions: sessionRepository,
+      views: sessionViews,
+      operations: sessionOperationDispatcher,
+      prompts: sessionPromptService,
+      mutations: sessionMutationDispatcher,
+      resetBuffer: quotaResetBuffer,
+      pauseRecheckDelay: const Duration(minutes: 5),
+      clock: clock,
+    );
+    final sessionContinuationTimer = SessionContinuationTimerListener(
+      service: sessionContinuationService,
+      timerFactory: ({required delay, required callback}) => Timer(delay, callback),
     );
     final chatHistoryService = ChatHistoryService(
       chatHistoryRepository: ChatHistoryRepository(
@@ -532,6 +566,9 @@ class Orchestrator({
       bridgeIdProvider: _bridgeRegistrationService,
     );
     final sessionLifecycleService = SessionLifecycleService(
+      continuations: sessionContinuations,
+      views: sessionViews,
+      mutations: sessionMutationDispatcher,
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
       filesystemRepository: filesystemRepository,
@@ -545,6 +582,9 @@ class Orchestrator({
       chatHistoryService: chatHistoryService,
     );
     final sessionAbortService = SessionAbortService(
+      continuations: sessionContinuations,
+      views: sessionViews,
+      mutations: sessionMutationDispatcher,
       sessionRepository: sessionRepository,
       dispatcher: sessionOperationDispatcher,
     );
@@ -557,6 +597,7 @@ class Orchestrator({
       filesystemRepository: filesystemRepository,
     );
     final sessionEventService = SessionEventService(
+      sessionViews: sessionViews,
       sessionRepository: sessionRepository,
       sessionPromptService: sessionPromptService,
       pluginRuntime: _pluginRuntime,
@@ -570,7 +611,9 @@ class Orchestrator({
       sessionEventService: sessionEventService,
     );
     final sessionMutationListener = SessionMutationListener(
-      source: sessionMutationDispatcher.mutations.map(_mapLocalMutation),
+      source: sessionMutationDispatcher.mutations.asyncMap(
+        (mutation) => _mapLocalMutation(mutation: mutation, sessionViews: sessionViews),
+      ),
       dispatcher: sessionEventDispatcher,
     );
     final permissionAutoApprovalService = PermissionAutoApprovalService(
@@ -637,21 +680,25 @@ class Orchestrator({
         GetProjectsHandler(projectActivityService: projectActivityService),
         GetCommandsHandler(sessionRepository: sessionRepository),
         GetSessionStatusesHandler(sessionRepository: sessionRepository),
-        GetChildSessionsHandler(sessionRepository: sessionRepository),
+        GetChildSessionsHandler(sessionRepository: sessionRepository, sessionViews: sessionViews),
         GetSessionHandler(
+          sessionViews: sessionViews,
           sessionRepository: sessionRepository,
           prSyncService: prSyncService,
         ),
         GetSessionAttachmentHandler(chatHistoryService: chatHistoryService),
         GetSessionMessagesHandler(chatHistoryService: chatHistoryService),
         GetSessionsHandler(
+          sessionViews: sessionViews,
           sessionRepository: sessionRepository,
           prSyncService: prSyncService,
         ),
-        CreateSessionHandler(sessionCreationService: sessionCreationService),
-        RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher),
+        CreateSessionHandler(sessionCreationService: sessionCreationService, sessionViews: sessionViews),
+        RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
+        SetSessionAutoContinuationHandler(service: sessionContinuationService),
         MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
         UpdateSessionArchiveStatusHandler(
+          sessionViews: sessionViews,
           sessionLifecycleService: sessionLifecycleService,
           sessionUnseenService: sessionUnseenService,
         ),
@@ -690,6 +737,8 @@ class Orchestrator({
     final routedRequestDispatcher = RoutedRequestDispatcher(router: router);
 
     final session = OrchestratorSession._(
+      sessionContinuationService: sessionContinuationService,
+      sessionContinuationTimer: sessionContinuationTimer,
       config: config,
       client: _client,
       pluginEvents: normalizedPluginEvents,
@@ -774,13 +823,19 @@ class Orchestrator({
     );
   }
 
-  LocalSessionEvent _mapLocalMutation(LocalSessionMutation mutation) {
-    final session = mutation.session;
+  Future<LocalSessionEvent> _mapLocalMutation({
+    required LocalSessionMutation mutation,
+    required SessionViewService sessionViews,
+  }) async {
+    final session = mutation is SessionDeleted || mutation is SessionContinuationUpdated
+        ? mutation.session
+        : await sessionViews.enrich(session: mutation.session);
     return (
       pluginId: session.pluginId,
       event: switch (mutation) {
         SessionTitleUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true),
-        SessionBranchUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
+        SessionBranchUpdated() ||
+        SessionContinuationUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
         SessionDeleted() => BridgeSseSessionDeleted(info: session.toJson()),
       },
     );
@@ -827,6 +882,8 @@ class OrchestratorSession._({
   required final RoutedRequestDispatcher _routedRequestDispatcher,
   required final BridgeEventMapper _mapper,
   required final SessionPromptService _sessionPromptService,
+  required final SessionContinuationService _sessionContinuationService,
+  required final SessionContinuationTimerListener _sessionContinuationTimer,
   required Stream<CatalogImportProgress> catalogImportProgress,
   required Stream<SessionOptionsCacheUpdate> sessionOptionsCacheUpdates,
   required Stream<String> pluginManagementSnapshotTokens,
@@ -1015,6 +1072,7 @@ class OrchestratorSession._({
     _currentProjectGlossaryListener.start();
     _viewedProjectGlossaryListener.start();
     _chatHistoryActivityListener.start();
+    _sessionContinuationTimer.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
     final lifecycleFuture = Future<void>.microtask(
       () => _runLifecycle(readiness: readiness),
@@ -1191,6 +1249,7 @@ class OrchestratorSession._({
     await Future.wait([
       attempt(_subscriptions.cancel),
       attempt(_pluginEventListener.dispose),
+      attempt(_sessionContinuationTimer.dispose),
       attempt(_sessionBindingCommitListener.dispose),
       attempt(_chatHistoryListener.dispose),
       attempt(_chatHistoryActivityListener.dispose),
@@ -1209,6 +1268,7 @@ class OrchestratorSession._({
     );
     await attempt(_sessionCreationService.drain);
     Log.v("[shutdown] late session titles drained (+${teardownSw.elapsedMilliseconds}ms)");
+    await attempt(() => Future.wait(_pluginEventProcessingTails.values));
     _sessionOperationDispatcher.beginShutdown();
     await attempt(_sessionOperationDispatcher.dispose);
     Log.v("[shutdown] session operations drained (+${teardownSw.elapsedMilliseconds}ms)");
@@ -1519,7 +1579,7 @@ class OrchestratorSession._({
     };
     final eventType = switch (payload) {
       NormalizedOtherEvent(:final event) => event.runtimeType,
-      NormalizedStatusEvent() || NormalizedMessageEvent() => payload.runtimeType,
+      NormalizedStatusEvent() || NormalizedMessageEvent() || NormalizedQuotaInterruptionEvent() => payload.runtimeType,
     };
     try {
       Log.v("[sse] plugin event arrived: $eventType");
@@ -1533,7 +1593,31 @@ class OrchestratorSession._({
             allowDuringStop: allowDuringStop,
           );
           return;
+        case NormalizedQuotaInterruptionEvent(
+          :final sessionId,
+          :final errorMessageId,
+          :final observedAt,
+          :final resetAt,
+        ):
+          if (!terminalHandoff && generation != null) {
+            await _sessionContinuationService.observeQuota(
+              sessionId: sessionId,
+              pluginId: pluginId,
+              generation: generation,
+              errorMessageId: errorMessageId,
+              observedAt: observedAt,
+              resetAt: resetAt,
+            );
+          }
+          return;
         case NormalizedMessageEvent(:final message):
+          if (message is MessageUser && !terminalHandoff && generation != null) {
+            await _sessionContinuationService.observeSupersedingActivity(
+              sessionId: message.sessionID,
+              pluginId: pluginId,
+              generation: generation,
+            );
+          }
           await _deliverNormalized(
             event: _mapper.buildMessageUpdatedEvent(message: message),
             pluginId: pluginId,
@@ -1545,6 +1629,13 @@ class OrchestratorSession._({
           event = other;
       }
 
+      if (event is BridgeSseSessionPromptDefaultsChanged && !terminalHandoff && generation != null) {
+        await _sessionContinuationService.observeSupersedingActivity(
+          sessionId: event.sessionID,
+          pluginId: pluginId,
+          generation: generation,
+        );
+      }
       if (event is BridgeSsePermissionReplied) {
         final wasAutoApproved = _permissionAutoApprovalService.consumeReply(
           requestId: event.requestID,

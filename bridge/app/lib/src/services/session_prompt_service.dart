@@ -7,10 +7,13 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/accepted_prompts_repository.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/random_hex_id.dart";
+import "../repositories/session_continuation_repository.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
+import "session_mutation_dispatcher.dart";
 import "session_operation_dispatcher.dart";
 import "session_options_service.dart";
+import "session_view_service.dart";
 import "stale_session_prompt_options_exception.dart";
 
 class const SessionPromptDefaultsChange({
@@ -24,6 +27,9 @@ class SessionPromptService({
   required final SessionOperationDispatcher _dispatcher,
   required final ArchivedSessionValidator _archivedSessionValidator,
   required final SessionOptionsService _sessionOptionsService,
+  required final SessionContinuationRepository _continuations,
+  required final SessionViewService _views,
+  required final SessionMutationDispatcher _mutations,
 }) {
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
@@ -61,6 +67,25 @@ class SessionPromptService({
     );
   }
 
+  Future<void> sendPromptAlreadyReserved({
+    required String sessionId,
+    required String promptId,
+    required List<PromptPart> parts,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) => _sendPrompt(
+    sessionId: sessionId,
+    promptId: promptId,
+    parts: parts,
+    variant: variant,
+    fastMode: fastMode,
+    agent: agent,
+    model: model,
+    normalizedCommand: null,
+  );
+
   Future<void> _sendPrompt({
     required String sessionId,
     required String promptId,
@@ -81,6 +106,13 @@ class SessionPromptService({
     if (await _acceptedPromptsRepository.isAccepted(sessionId: sessionId, promptId: promptId)) {
       Log.i("Ignoring repeated prompt $promptId for session $sessionId: it was already accepted");
       return;
+    }
+    if (await _continuations.cancelCurrentObservationAlreadyReserved(sessionId: sessionId)) {
+      try {
+        _mutations.continuationUpdated(session: await _views.get(sessionId: sessionId));
+      } on Object catch (error, stackTrace) {
+        Log.w("Could not publish quota cancellation before prompt for session $sessionId", error, stackTrace);
+      }
     }
     if (normalizedCommand == null || normalizedCommand.isEmpty) {
       await _sendInvalidatingStaleOptionsCache(

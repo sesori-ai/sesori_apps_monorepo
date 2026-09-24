@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_attachm
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../helpers/test_helpers.dart";
 
 void main() {
@@ -132,6 +133,7 @@ void main() {
 
     test("createSessionWithMessage builds a request body with null variant when omitted", () async {
       const session = Session(
+        autoContinuation: null,
         branchName: null,
         id: "session-1",
         pluginId: "plugin-1",
@@ -179,6 +181,7 @@ void main() {
 
     test("attachment create yields before preserving exact generated request JSON", () async {
       const session = Session(
+        autoContinuation: null,
         branchName: null,
         id: "session-1",
         pluginId: "plugin-1",
@@ -254,6 +257,7 @@ void main() {
 
     test("attachment create omits a null filename and matches generated request JSON exactly", () async {
       const session = Session(
+        autoContinuation: null,
         branchName: null,
         id: "session-1",
         pluginId: "plugin-1",
@@ -504,8 +508,12 @@ void main() {
         ),
       );
 
-      await api.getMessages(sessionId: "session-1", limit: 50, before: 100,
-storedOnly: false,);
+      await api.getMessages(
+        sessionId: "session-1",
+        limit: 50,
+        before: 100,
+        storedOnly: false,
+      );
 
       final verification = verify(
         () => client.post<MessageWithPartsResponse>(

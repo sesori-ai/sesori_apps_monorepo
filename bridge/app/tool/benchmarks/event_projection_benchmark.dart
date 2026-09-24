@@ -5,14 +5,17 @@ import "dart:io";
 import "package:args/args.dart";
 import "package:cryptography/cryptography.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/services/session_event_service.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/services/session_view_service.dart";
 import "package:sesori_bridge/src/sse/bridge_event_mapper.dart";
 import "package:sesori_bridge/src/sse/sse_event_delivery.dart";
 import "package:sesori_bridge/src/sse/sse_manager.dart";
@@ -87,6 +90,14 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
       );
       final failureReporter = _BenchmarkFailureReporter();
       final service = SessionEventService(
+        sessionViews: SessionViewService(
+          sessions: repository,
+          continuations: SessionContinuationRepository(
+            dao: SessionContinuationDao(database: database),
+            runtime: runtime,
+          ),
+          resetBuffer: const Duration(minutes: 2),
+        ),
         sessionPromptService: const _UnusedSessionPromptService(),
         sessionRepository: repository,
         pluginRuntime: runtime,
@@ -266,6 +277,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
         generation: 1,
         event: BridgeSseSessionUpdated(
           info: Session(
+            autoContinuation: null,
             id: _backendSessionId,
             pluginId: _pluginId,
             projectID: _projectId,

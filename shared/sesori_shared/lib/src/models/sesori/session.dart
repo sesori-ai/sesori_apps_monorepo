@@ -4,6 +4,7 @@ import "agent_info.dart";
 import "message_part.dart";
 import "plugin_identity.dart";
 import "pull_request_info.dart";
+import "session_auto_continuation.dart";
 
 part "session.freezed.dart";
 
@@ -59,6 +60,8 @@ sealed class Session with _$Session {
     @Default(false) bool unseen,
     // COMPATIBILITY 2026-08-13 (v1.8.0): Older bridges omit lastUserActivityAt, which means no durable marker is known. Remove this comment after the minimum supported bridge always sends this field.
     required int? lastUserActivityAt,
+    // COMPATIBILITY 2026-09-24 (v1.9.0): Older bridges omit the continuation view. Retire null when the minimum supported bridge reports feature availability.
+    required SessionAutoContinuationView? autoContinuation,
   }) = _Session;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);

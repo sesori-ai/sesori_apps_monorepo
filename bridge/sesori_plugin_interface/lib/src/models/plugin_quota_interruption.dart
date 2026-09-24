@@ -7,6 +7,9 @@ enum PluginQuotaReportingSupport() {
   conditional,
 }
 
+/// Named-session admission evidence, including native retries and input waits.
+enum PluginQuotaContinuationReadiness { idle, busy, retrying, queued, awaitingInput, unavailable, unknown }
+
 /// The reset information attached to one terminal quota error.
 sealed class const PluginQuotaReset();
 

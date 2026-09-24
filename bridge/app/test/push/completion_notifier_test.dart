@@ -240,7 +240,13 @@ void main() {
               ProjectActivitySummary(
                 id: "project-a",
                 activeSessions: [
-                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
+                  ActiveSession(
+                    id: "root",
+                    mainAgentRunning: false,
+                    childSessionIds: ["child"],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
+                  ),
                 ],
               ),
             ],
@@ -293,7 +299,13 @@ void main() {
               ProjectActivitySummary(
                 id: "project-a",
                 activeSessions: [
-                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
+                  ActiveSession(
+                    id: "root",
+                    mainAgentRunning: false,
+                    childSessionIds: ["child"],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
+                  ),
                 ],
               ),
             ],
@@ -877,7 +889,13 @@ void main() {
               ProjectActivitySummary(
                 id: "project-a",
                 activeSessions: [
-                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
+                  ActiveSession(
+                    id: "root",
+                    mainAgentRunning: false,
+                    childSessionIds: ["child"],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
+                  ),
                 ],
               ),
             ],
@@ -923,7 +941,13 @@ void main() {
               ProjectActivitySummary(
                 id: "project-a",
                 activeSessions: [
-                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
+                  ActiveSession(
+                    id: "root",
+                    mainAgentRunning: false,
+                    childSessionIds: ["child"],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
+                  ),
                 ],
               ),
             ],
@@ -974,7 +998,13 @@ void main() {
               ProjectActivitySummary(
                 id: "project-a",
                 activeSessions: [
-                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child-1", "child-2"], lastUserActivityAt: null, updatedAt: null),
+                  ActiveSession(
+                    id: "root",
+                    mainAgentRunning: false,
+                    childSessionIds: ["child-1", "child-2"],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
+                  ),
                 ],
               ),
             ],
@@ -1025,8 +1055,20 @@ void main() {
               ProjectActivitySummary(
                 id: "project-a",
                 activeSessions: [
-                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"], lastUserActivityAt: null, updatedAt: null),
-                  ActiveSession(id: "child", mainAgentRunning: false, childSessionIds: ["grandchild"], lastUserActivityAt: null, updatedAt: null),
+                  ActiveSession(
+                    id: "root",
+                    mainAgentRunning: false,
+                    childSessionIds: ["child"],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
+                  ),
+                  ActiveSession(
+                    id: "child",
+                    mainAgentRunning: false,
+                    childSessionIds: ["grandchild"],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
+                  ),
                 ],
               ),
             ],
@@ -1102,6 +1144,7 @@ Session _session({
   String? title,
 }) {
   return Session(
+    autoContinuation: null,
     branchName: null,
     id: id,
     pluginId: "fake",

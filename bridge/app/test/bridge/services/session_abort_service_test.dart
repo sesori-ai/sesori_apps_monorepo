@@ -9,6 +9,8 @@ import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/session_continuation_test_support.dart";
+
 void main() {
   group("SessionAbortService", () {
     late _FakeSessionRepository sessionRepository;
@@ -19,6 +21,9 @@ void main() {
       sessionRepository = _FakeSessionRepository();
       dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = SessionAbortService(
+        continuations: const EmptySessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
         dispatcher: dispatcher,
       );

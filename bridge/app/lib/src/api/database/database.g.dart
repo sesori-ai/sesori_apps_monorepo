@@ -3873,6 +3873,291 @@ class AcceptedPromptsTableCompanion
   }
 }
 
+mixin $SessionContinuationTableTableToColumns
+    implements Insertable<SessionContinuationDto> {
+  String get sessionId;
+  bool get enabled;
+  String get outcomeJson;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['session_id'] = Variable<String>(sessionId);
+    map['enabled'] = Variable<bool>(enabled);
+    map['outcome_json'] = Variable<String>(outcomeJson);
+    return map;
+  }
+}
+
+class $SessionContinuationTableTable extends SessionContinuationTable
+    with TableInfo<$SessionContinuationTableTable, SessionContinuationDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SessionContinuationTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _outcomeJsonMeta = const VerificationMeta(
+    'outcomeJson',
+  );
+  @override
+  late final GeneratedColumn<String> outcomeJson = GeneratedColumn<String>(
+    'outcome_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [sessionId, enabled, outcomeJson];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'session_continuations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SessionContinuationDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_enabledMeta);
+    }
+    if (data.containsKey('outcome_json')) {
+      context.handle(
+        _outcomeJsonMeta,
+        outcomeJson.isAcceptableOrUnknown(
+          data['outcome_json']!,
+          _outcomeJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_outcomeJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sessionId};
+  @override
+  SessionContinuationDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SessionContinuationDto(
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+      outcomeJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}outcome_json'],
+      )!,
+    );
+  }
+
+  @override
+  $SessionContinuationTableTable createAlias(String alias) {
+    return $SessionContinuationTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class SessionContinuationDto extends DataClass
+    with $SessionContinuationTableTableToColumns {
+  @override
+  final String sessionId;
+  @override
+  final bool enabled;
+  @override
+  final String outcomeJson;
+  const SessionContinuationDto({
+    required this.sessionId,
+    required this.enabled,
+    required this.outcomeJson,
+  });
+  SessionContinuationTableCompanion toCompanion(bool nullToAbsent) {
+    return SessionContinuationTableCompanion(
+      sessionId: Value(sessionId),
+      enabled: Value(enabled),
+      outcomeJson: Value(outcomeJson),
+    );
+  }
+
+  factory SessionContinuationDto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SessionContinuationDto(
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      outcomeJson: serializer.fromJson<String>(json['outcomeJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'sessionId': serializer.toJson<String>(sessionId),
+      'enabled': serializer.toJson<bool>(enabled),
+      'outcomeJson': serializer.toJson<String>(outcomeJson),
+    };
+  }
+
+  SessionContinuationDto copyWith({
+    String? sessionId,
+    bool? enabled,
+    String? outcomeJson,
+  }) => SessionContinuationDto(
+    sessionId: sessionId ?? this.sessionId,
+    enabled: enabled ?? this.enabled,
+    outcomeJson: outcomeJson ?? this.outcomeJson,
+  );
+  SessionContinuationDto copyWithCompanion(
+    SessionContinuationTableCompanion data,
+  ) {
+    return SessionContinuationDto(
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      outcomeJson: data.outcomeJson.present
+          ? data.outcomeJson.value
+          : this.outcomeJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionContinuationDto(')
+          ..write('sessionId: $sessionId, ')
+          ..write('enabled: $enabled, ')
+          ..write('outcomeJson: $outcomeJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(sessionId, enabled, outcomeJson);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionContinuationDto &&
+          other.sessionId == this.sessionId &&
+          other.enabled == this.enabled &&
+          other.outcomeJson == this.outcomeJson);
+}
+
+class SessionContinuationTableCompanion
+    extends UpdateCompanion<SessionContinuationDto> {
+  final Value<String> sessionId;
+  final Value<bool> enabled;
+  final Value<String> outcomeJson;
+  const SessionContinuationTableCompanion({
+    this.sessionId = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.outcomeJson = const Value.absent(),
+  });
+  SessionContinuationTableCompanion.insert({
+    required String sessionId,
+    required bool enabled,
+    required String outcomeJson,
+  }) : sessionId = Value(sessionId),
+       enabled = Value(enabled),
+       outcomeJson = Value(outcomeJson);
+  static Insertable<SessionContinuationDto> custom({
+    Expression<String>? sessionId,
+    Expression<bool>? enabled,
+    Expression<String>? outcomeJson,
+  }) {
+    return RawValuesInsertable({
+      if (sessionId != null) 'session_id': sessionId,
+      if (enabled != null) 'enabled': enabled,
+      if (outcomeJson != null) 'outcome_json': outcomeJson,
+    });
+  }
+
+  SessionContinuationTableCompanion copyWith({
+    Value<String>? sessionId,
+    Value<bool>? enabled,
+    Value<String>? outcomeJson,
+  }) {
+    return SessionContinuationTableCompanion(
+      sessionId: sessionId ?? this.sessionId,
+      enabled: enabled ?? this.enabled,
+      outcomeJson: outcomeJson ?? this.outcomeJson,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (outcomeJson.present) {
+      map['outcome_json'] = Variable<String>(outcomeJson.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionContinuationTableCompanion(')
+          ..write('sessionId: $sessionId, ')
+          ..write('enabled: $enabled, ')
+          ..write('outcomeJson: $outcomeJson')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3890,6 +4175,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $NewSessionDefaultsTableTable(this);
   late final $AcceptedPromptsTableTable acceptedPromptsTable =
       $AcceptedPromptsTableTable(this);
+  late final $SessionContinuationTableTable sessionContinuationTable =
+      $SessionContinuationTableTable(this);
   late final Index idxProjectsPath = Index(
     'idx_projects_path',
     'CREATE INDEX idx_projects_path ON projects_table (path)',
@@ -3939,6 +4226,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     sessionOptionsCacheTable,
     newSessionDefaultsTable,
     acceptedPromptsTable,
+    sessionContinuationTable,
     idxProjectsPath,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
@@ -3969,6 +4257,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('pull_requests_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('session_continuations', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -4566,6 +4861,37 @@ final class $$SessionTableTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static MultiTypedResultKey<
+    $SessionContinuationTableTable,
+    List<SessionContinuationDto>
+  >
+  _sessionContinuationTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sessionContinuationTable,
+        aliasName:
+            'sessions_table__session_id__session_continuations__session_id',
+      );
+
+  $$SessionContinuationTableTableProcessedTableManager
+  get sessionContinuationTableRefs {
+    final manager =
+        $$SessionContinuationTableTableTableManager(
+          $_db,
+          $_db.sessionContinuationTable,
+        ).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _sessionContinuationTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$SessionTableTableFilterComposer
@@ -4738,6 +5064,33 @@ class $$SessionTableTableFilterComposer
           ),
     );
     return composer;
+  }
+
+  Expression<bool> sessionContinuationTableRefs(
+    Expression<bool> Function($$SessionContinuationTableTableFilterComposer f)
+    f,
+  ) {
+    final $$SessionContinuationTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionContinuationTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionContinuationTableTableFilterComposer(
+                $db: $db,
+                $table: $db.sessionContinuationTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
   }
 }
 
@@ -5068,6 +5421,33 @@ class $$SessionTableTableAnnotationComposer
     );
     return composer;
   }
+
+  Expression<T> sessionContinuationTableRefs<T extends Object>(
+    Expression<T> Function($$SessionContinuationTableTableAnnotationComposer a)
+    f,
+  ) {
+    final $$SessionContinuationTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionContinuationTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionContinuationTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sessionContinuationTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$SessionTableTableTableManager
@@ -5083,7 +5463,11 @@ class $$SessionTableTableTableManager
           $$SessionTableTableUpdateCompanionBuilder,
           (SessionDto, $$SessionTableTableReferences),
           SessionDto,
-          PrefetchHooks Function({bool projectId, bool parentSessionId})
+          PrefetchHooks Function({
+            bool projectId,
+            bool parentSessionId,
+            bool sessionContinuationTableRefs,
+          })
         > {
   $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
     : super(
@@ -5217,10 +5601,17 @@ class $$SessionTableTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({projectId = false, parentSessionId = false}) {
+              ({
+                projectId = false,
+                parentSessionId = false,
+                sessionContinuationTableRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
-                  explicitlyWatchedTables: [],
+                  explicitlyWatchedTables: [
+                    if (sessionContinuationTableRefs)
+                      db.sessionContinuationTable,
+                  ],
                   addJoins:
                       <
                         T extends TableManagerState<
@@ -5263,7 +5654,29 @@ class $$SessionTableTableTableManager
                         return state;
                       },
                   getPrefetchedDataCallback: (items) async {
-                    return [];
+                    return [
+                      if (sessionContinuationTableRefs)
+                        await $_getPrefetchedData<
+                          SessionDto,
+                          $SessionTableTable,
+                          SessionContinuationDto
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sessionContinuationTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionContinuationTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.sessionId == item.sessionId,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
                 );
               },
@@ -5283,7 +5696,11 @@ typedef $$SessionTableTableProcessedTableManager =
       $$SessionTableTableUpdateCompanionBuilder,
       (SessionDto, $$SessionTableTableReferences),
       SessionDto,
-      PrefetchHooks Function({bool projectId, bool parentSessionId})
+      PrefetchHooks Function({
+        bool projectId,
+        bool parentSessionId,
+        bool sessionContinuationTableRefs,
+      })
     >;
 typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
     DeletedSessionsTableCompanion Function({
@@ -6908,6 +7325,306 @@ typedef $$AcceptedPromptsTableTableProcessedTableManager =
       AcceptedPromptsTableData,
       PrefetchHooks Function()
     >;
+typedef $$SessionContinuationTableTableCreateCompanionBuilder =
+    SessionContinuationTableCompanion Function({
+      required String sessionId,
+      required bool enabled,
+      required String outcomeJson,
+    });
+typedef $$SessionContinuationTableTableUpdateCompanionBuilder =
+    SessionContinuationTableCompanion Function({
+      Value<String> sessionId,
+      Value<bool> enabled,
+      Value<String> outcomeJson,
+    });
+
+final class $$SessionContinuationTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SessionContinuationTableTable,
+          SessionContinuationDto
+        > {
+  $$SessionContinuationTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'session_continuations__session_id__sessions_table__session_id',
+      );
+
+  $$SessionTableTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<String>('session_id')!;
+
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SessionContinuationTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionContinuationTableTable> {
+  $$SessionContinuationTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get outcomeJson => $composableBuilder(
+    column: $table.outcomeJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionTableTableFilterComposer get sessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionContinuationTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionContinuationTableTable> {
+  $$SessionContinuationTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get outcomeJson => $composableBuilder(
+    column: $table.outcomeJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionTableTableOrderingComposer get sessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionContinuationTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionContinuationTableTable> {
+  $$SessionContinuationTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<String> get outcomeJson => $composableBuilder(
+    column: $table.outcomeJson,
+    builder: (column) => column,
+  );
+
+  $$SessionTableTableAnnotationComposer get sessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionContinuationTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SessionContinuationTableTable,
+          SessionContinuationDto,
+          $$SessionContinuationTableTableFilterComposer,
+          $$SessionContinuationTableTableOrderingComposer,
+          $$SessionContinuationTableTableAnnotationComposer,
+          $$SessionContinuationTableTableCreateCompanionBuilder,
+          $$SessionContinuationTableTableUpdateCompanionBuilder,
+          (SessionContinuationDto, $$SessionContinuationTableTableReferences),
+          SessionContinuationDto,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$SessionContinuationTableTableTableManager(
+    _$AppDatabase db,
+    $SessionContinuationTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SessionContinuationTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SessionContinuationTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SessionContinuationTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> sessionId = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<String> outcomeJson = const Value.absent(),
+              }) => SessionContinuationTableCompanion(
+                sessionId: sessionId,
+                enabled: enabled,
+                outcomeJson: outcomeJson,
+              ),
+          createCompanionCallback:
+              ({
+                required String sessionId,
+                required bool enabled,
+                required String outcomeJson,
+              }) => SessionContinuationTableCompanion.insert(
+                sessionId: sessionId,
+                enabled: enabled,
+                outcomeJson: outcomeJson,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $SessionContinuationTableTable,
+                    SessionContinuationDto
+                  >(table),
+                  $$SessionContinuationTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.sessionId,
+                        referencedTable:
+                            $$SessionContinuationTableTableReferences
+                                ._sessionIdTable(db),
+                        referencedColumn:
+                            $$SessionContinuationTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SessionContinuationTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SessionContinuationTableTable,
+      SessionContinuationDto,
+      $$SessionContinuationTableTableFilterComposer,
+      $$SessionContinuationTableTableOrderingComposer,
+      $$SessionContinuationTableTableAnnotationComposer,
+      $$SessionContinuationTableTableCreateCompanionBuilder,
+      $$SessionContinuationTableTableUpdateCompanionBuilder,
+      (SessionContinuationDto, $$SessionContinuationTableTableReferences),
+      SessionContinuationDto,
+      PrefetchHooks Function({bool sessionId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6937,4 +7654,9 @@ class $AppDatabaseManager {
       );
   $$AcceptedPromptsTableTableTableManager get acceptedPromptsTable =>
       $$AcceptedPromptsTableTableTableManager(_db, _db.acceptedPromptsTable);
+  $$SessionContinuationTableTableTableManager get sessionContinuationTable =>
+      $$SessionContinuationTableTableTableManager(
+        _db,
+        _db.sessionContinuationTable,
+      );
 }

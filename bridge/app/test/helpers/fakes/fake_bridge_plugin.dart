@@ -4,6 +4,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 /// General-purpose native-project plugin fake shared by bridge tests.
 class FakeBridgePlugin() implements NativeProjectsPluginApi {
+  @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
+
   final List<PluginQueuedPrompt> queuedPrompts = [];
   final List<({String sessionId, String promptId})> cancelQueuedPromptCalls = [];
 

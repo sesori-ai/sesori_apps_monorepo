@@ -20,6 +20,7 @@ import "package:test/test.dart";
 
 import "../../helpers/fakes/deletion_worktree_service_fake.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 
@@ -37,6 +38,9 @@ void main() {
       sessionRepository = _FakeSessionRepository();
       operationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = SessionLifecycleService(
+        continuations: const EmptySessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
         filesystemRepository: FilesystemRepository(
@@ -312,6 +316,9 @@ void main() {
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       service = SessionLifecycleService(
+        continuations: const EmptySessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         worktreeService: DeletionWorktreeServiceFake(),
         sessionRepository: repository,
         filesystemRepository: FilesystemRepository(

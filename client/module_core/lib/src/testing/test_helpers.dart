@@ -621,6 +621,7 @@ ProjectSummary testProjectSummary({
 
 /// A minimal session for const state fixtures that do not care which one.
 const Session testConstSession = Session(
+  autoContinuation: null,
   branchName: null,
   id: "session-1",
   pluginId: "plugin-1",
@@ -649,6 +650,7 @@ Session testSession({
   String? branchName = _noString,
 }) {
   return Session(
+    autoContinuation: null,
     branchName: branchName,
     id: id ?? "session-1",
     pluginId: pluginId,

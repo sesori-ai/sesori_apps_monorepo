@@ -55,6 +55,10 @@ void main() {
       process.emit(frame: {"type": "agent_end", "willRetry": true});
       process.emit(frame: {"type": "auto_retry_start", "attempt": 1, "delayMs": 10});
       await pump();
+      expect(
+        await service.getQuotaContinuationReadiness(sessionId: "session"),
+        PluginQuotaContinuationReadiness.retrying,
+      );
       expect(events.whereType<BridgeSseSessionQuotaBlocked>(), isEmpty);
       if (outcome != "cancelled") {
         process.emit(frame: {"type": "agent_start"});
@@ -82,6 +86,7 @@ void main() {
       process.emit(frame: {"type": "agent_settled"});
       await _waitForIdle(service: service, sessionId: "session");
       await pump();
+      expect(await service.getQuotaContinuationReadiness(sessionId: "session"), PluginQuotaContinuationReadiness.idle);
       final reports = events.whereType<BridgeSseSessionQuotaBlocked>().toList();
       if (outcome == "exhausted") {
         final visibleError = events
@@ -229,6 +234,15 @@ void main() {
     expect(warnings, contains("failed to clear stale pending marker"));
     expect(warnings, contains("marker cleanup failed"));
     expect(warnings, contains("pi_session_service_test.dart"));
+  });
+
+  test("quota readiness recognizes a persisted nonresident session without spawning Pi", () async {
+    final fixture = _Fixture(processes: []);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    expect(await service.getQuotaContinuationReadiness(sessionId: "session"), PluginQuotaContinuationReadiness.idle);
+    expect(await service.getQuotaContinuationReadiness(sessionId: "missing"), PluginQuotaContinuationReadiness.unknown);
+    expect(fixture.spawned, isEmpty);
   });
 
   test("persisted file wins over pending marker and marker resumes new when file is absent", () async {

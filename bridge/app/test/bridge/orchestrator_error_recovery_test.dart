@@ -397,6 +397,10 @@ class _TestHarness._({
 
 class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
   @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
+
+  @override
   Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
 
   @override

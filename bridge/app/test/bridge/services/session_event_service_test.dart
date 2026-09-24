@@ -20,6 +20,7 @@ import "package:test/test.dart";
 
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
 
@@ -54,6 +55,9 @@ void main() {
       failureReporter = CapturingFailureReporter();
       promptDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       promptService = SessionPromptService(
+        continuations: const EmptySessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         sessionRepository: repository,
         acceptedPromptsRepository: AcceptedPromptsRepository(dao: AcceptedPromptsDao(database: database)),
         dispatcher: promptDispatcher,
@@ -61,6 +65,7 @@ void main() {
         sessionOptionsService: FakeSessionOptionsService(),
       );
       service = SessionEventService(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: repository,
         sessionPromptService: promptService,
         pluginRuntime: pluginRuntime,
@@ -560,6 +565,7 @@ void main() {
           projectionUpdatedAt: 5,
           event: BridgeSseSessionCreated(
             info: Session(
+              autoContinuation: null,
               id: "backend-child",
               pluginId: plugin.id,
               projectID: "backend-project",
@@ -1261,6 +1267,7 @@ void main() {
           projectionUpdatedAt: 100,
           event: BridgeSseSessionUpdated(
             info: Session(
+              autoContinuation: null,
               id: "backend-root",
               pluginId: plugin.id,
               projectID: "backend-project",
@@ -1447,6 +1454,7 @@ void main() {
         await service.canPublish(
           event: BridgeSseSessionCreated(
             info: Session(
+              autoContinuation: null,
               id: "stable-root",
               pluginId: plugin.id,
               projectID: "project-stable-root",
@@ -1474,6 +1482,7 @@ void main() {
       );
       final event = BridgeSseSessionUpdated(
         info: Session(
+          autoContinuation: null,
           id: "stable-root",
           pluginId: plugin.id,
           projectID: "project-stable-root",
@@ -1596,6 +1605,7 @@ Map<String, dynamic> _sessionInfo({
   required String directory,
 }) {
   return Session(
+    autoContinuation: null,
     id: sessionId,
     pluginId: "backend",
     projectID: projectId,
