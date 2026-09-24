@@ -39,7 +39,7 @@ void main() {
       ]) {
         final line = BorderSide(color: theme.colors.borderSecondary);
         expect(sheet.tableBorder, TableBorder(horizontalInside: line));
-        expect(sheet.tableHeadAlign, TextAlign.left);
+        expect(sheet.tableHeadAlign, TextAlign.start);
         expect((sheet.horizontalRuleDecoration as BoxDecoration?)?.border, Border(top: line));
       }
     }

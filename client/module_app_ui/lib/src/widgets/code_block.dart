@@ -112,7 +112,7 @@ class _CodeBlockState() extends State<CodeBlock> {
               Expanded(
                 child: Text(
                   (language == null || language.isEmpty) ? "code" : language,
-                  style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary),
+                  style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary),
                 ),
               ),
               PregoCopyIconButton(
@@ -124,7 +124,7 @@ class _CodeBlockState() extends State<CodeBlock> {
         ),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+          padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 12),
           child: span != null ? Text.rich(span) : Text(widget.code, style: baseStyle),
         ),
       ],

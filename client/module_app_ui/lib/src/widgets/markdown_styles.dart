@@ -70,7 +70,7 @@ MarkdownStyleSheet _withTablesAndRules({required PregoDesignSystem prego, requir
   final line = BorderSide(color: prego.colors.borderSecondary);
   return sheet.copyWith(
     tableBorder: TableBorder(horizontalInside: line),
-    tableHeadAlign: TextAlign.left,
+    tableHeadAlign: TextAlign.start,
     tableCellsPadding: const EdgeInsets.only(right: PregoSpacing.lg, top: 6, bottom: 6),
     horizontalRuleDecoration: BoxDecoration(border: Border(top: line)),
   );
