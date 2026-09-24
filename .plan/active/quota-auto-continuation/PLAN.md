@@ -25,8 +25,8 @@ implemented behavior from pending UI and live-provider verification.
 
 1. Default off for every session. A detected current quota interruption with a
    known reset shows **Enable auto continuation** beside a short explanation.
-2. The chat overflow menu includes **Auto-continue after quota resets**, with its
-   current checked state. It can enable the preference before the next quota
+2. The chat overflow menu includes **Auto continuation**, with an **After quota resets**
+   subtitle and its current checked state. It can enable the preference before the next quota
    interruption and can always disable an already-enabled preference.
 3. Enabling while blocked schedules one continuation at **reset + two minutes**.
    This fixed buffer is a proposed v1 default. Display an absolute date/time in

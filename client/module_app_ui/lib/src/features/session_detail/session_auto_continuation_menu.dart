@@ -18,7 +18,7 @@ PregoMenuItem sessionAutoContinuationMenuEntry({required BuildContext context, r
     key: const Key("session-auto-continuation-toggle"),
     title: context.loc.sessionAutoContinuationMenu,
     subtitle: enabled || available
-        ? null
+        ? context.loc.sessionAutoContinuationAfterQuotaResets
         : view == null
         ? context.loc.sessionAutoContinuationOlderBridge
         : context.loc.sessionAutoContinuationUnavailable,

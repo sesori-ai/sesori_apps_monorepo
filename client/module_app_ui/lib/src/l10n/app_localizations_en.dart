@@ -2540,7 +2540,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get archivedSessionsLastMonth => 'One month ago';
 
   @override
-  String get sessionAutoContinuationMenu => 'Auto-continue after quota resets';
+  String get sessionAutoContinuationMenu => 'Auto continuation';
+
+  @override
+  String get sessionAutoContinuationAfterQuotaResets => 'After quota resets';
 
   @override
   String get sessionAutoContinuationEnable => 'Enable auto continuation';

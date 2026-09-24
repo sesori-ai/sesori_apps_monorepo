@@ -4546,8 +4546,14 @@ abstract class AppLocalizations {
   /// No description provided for @sessionAutoContinuationMenu.
   ///
   /// In en, this message translates to:
-  /// **'Auto-continue after quota resets'**
+  /// **'Auto continuation'**
   String get sessionAutoContinuationMenu;
+
+  /// No description provided for @sessionAutoContinuationAfterQuotaResets.
+  ///
+  /// In en, this message translates to:
+  /// **'After quota resets'**
+  String get sessionAutoContinuationAfterQuotaResets;
 
   /// No description provided for @sessionAutoContinuationEnable.
   ///
