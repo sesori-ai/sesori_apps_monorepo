@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 // Run from the repository root using the pinned npx commands in EVIDENCE.md.
 const version = process.argv[2];
-assert.ok(["0.85.1", "0.84.1"].includes(version), "Pass a supported probe version");
+assert.ok(["0.87.1", "0.85.1", "0.84.1"].includes(version), "Pass a supported probe version");
 const binary = process.env.PATH.split(path.delimiter)
   .map((directory) => path.join(directory, "pi"))
   .find((candidate) => existsSync(candidate));
