@@ -192,7 +192,8 @@ The main pane hosts one full-width routed page.
 - No page toolbar has a back arrow, so every toolbar starts its content at the same left edge.
   Cmd/Ctrl+[ returns a pushed page to its opener, including child-to-parent navigation, and does nothing
   on a page reached from the sidebar. The new session and session pages lead their title with the
-  project as a 14 pt tertiary breadcrumb that opens the project's all-sessions page. Archived rows open
+  project as a breadcrumb that opens the project's all-sessions page; a subtask's breadcrumb is "Main
+  session" instead. Archived rows open
   read-only. New-session creation replaces its page with detail. Deleting the open session returns to
   all sessions.
 - The Changes page uses the same toolbar: the project breadcrumb, the File changes title, and the file
@@ -214,10 +215,11 @@ The main pane hosts one full-width routed page.
 - The session page uses the same toolbar anatomy above the transcript, never over it: the breadcrumb
   and the title share one 16 pt line and baseline, the breadcrumb medium and secondary, a slash between
   them, the title bold. The amber awaiting glyph leads the title when a question or permission waits; a
-  running session instead sweeps a shimmer across its title. A root session's breadcrumb is its project; a
+  running session instead sweeps a shimmer across its title, and shows the running glyph there when
+  reduced motion stills the shimmer. A root session's breadcrumb is its project; a
   subtask's is "Main session", which returns to the session that started it (back to the kept parent
-  page when it was opened from there). No harness or model line sits under the title. Changes shows on a
-  root unarchived session; and a menu with
+  page when it was opened from there). No harness or model line sits under the title. The Changes button shows
+  on a root unarchived session; and a menu with
   Mark as unread labelled with its shortcut, Rename, Archive, Archive keeping the worktree when the
   session has one, and Delete, the last four run by the same dispatcher as a row's menu. Session actions
   stay disabled until the page has the hydrated session, and work for child sessions and sessions opened
@@ -336,7 +338,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks.
 - The session page toolbar above a centred transcript column: the breadcrumb, status slot and title styles
-  and order, the breadcrumb opening the project, session actions disabled until the session is hydrated,
+  and order, the breadcrumb opening the project or, for a subtask, "Main session" returning to its parent
+  (popping to the kept parent when opened from it, opening the parent otherwise), the title shimmering
+  only while the session runs, session actions disabled until the session is hydrated,
   Mark unread sending unread and leaving the page from the menu (which shows its shortcut) and from
   Shift+Cmd/Ctrl+U, and a menu without Mark as read.
 - The command palette opened by Cmd/Ctrl+K and the Search row: recency order with project names, filtering

@@ -255,7 +255,8 @@ Data paths:
 - **D19 Transcript groups (R1.2–R1.4).** A group of steps ends at every piece
   of text, so steps, a sentence and more steps keep their order. When the live
   row is off screen, the jump button shows it; the desktop session title
-  already shimmers while the session runs (user decision 2026-09-24). Running sub-agents are live rows too and fold into their
+  already shimmers while the session runs (user decision 2026-09-24). Running
+  sub-agents are live rows too and fold into their
   group as "2 sub-agents"; the sub-agent pill by the composer stays.
 - **D20 Summary words (R1.1, R5, R6).** The summary counts by kind in order of
   first appearance, plus failures: "Thought · read 2 files · ran 1 command".

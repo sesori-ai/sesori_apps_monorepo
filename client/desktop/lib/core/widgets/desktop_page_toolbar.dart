@@ -93,11 +93,12 @@ class const DesktopPageToolbar({
                         child: Center(child: status),
                       ),
                     Flexible(
+                      // One heading node carries the title; the shimmer is decorative.
                       child: Semantics(
                         header: true,
-                        child: isRunning
-                            ? PregoShimmer(appearDelay: Duration.zero, semanticLabel: title, child: titleText)
-                            : titleText,
+                        label: title,
+                        excludeSemantics: true,
+                        child: isRunning ? PregoShimmer(appearDelay: Duration.zero, child: titleText) : titleText,
                       ),
                     ),
                   ],
