@@ -190,6 +190,8 @@ state.
   Every other page, File Changes included, shows an 18 bold bar title, with a 12 tertiary subtitle when the
   page has one. A two-line bar title caps its text scale so it stays inside the bar; a title on its own scales
   fully.
+- A project's pages show its repository slug as that subtitle, with no chevron or popover. A slug too long for
+  the bar shortens in the middle, keeping owner and repository ends, and a long press or hover shows it whole.
 - Blue means selected, on or actionable (toggles, picker checks, the selected sidebar row, links, focus rings).
   Primary buttons are the inverse pill on both apps; the desktop Archived toggle turns blue while on. The tool
   output "Show more" and the "Jump to latest" pill are neutral. Text fields show no required-field asterisk,

@@ -1009,9 +1009,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListTitle => 'Sessions';
 
   @override
-  String get sessionListRepoInfoSemantics => 'Show full repository name';
-
-  @override
   String sessionListTitleWithName(String name) {
     return '$name — Sessions';
   }

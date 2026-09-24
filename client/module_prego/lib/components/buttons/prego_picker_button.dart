@@ -2,7 +2,7 @@ import "package:material_ui/material_ui.dart";
 
 import "../../icons/tabler_icons.g.dart";
 import "../../theme/prego_theme.dart";
-import "../prego_start_ellipsis_text.dart";
+import "../prego_ellipsis_text.dart";
 import "../surfaces/prego_surfaces.dart";
 
 /// A solid pill that opens a picker: leading glyph, one-line [label], and a
@@ -67,8 +67,9 @@ class const PregoPickerButton({
                     Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: PregoStartEllipsisText(
+                      child: PregoEllipsisText(
                         text: label,
+                        ellipsis: PregoEllipsis.start,
                         style: prego.textTheme.textXs.medium.copyWith(color: foreground),
                       ),
                     ),

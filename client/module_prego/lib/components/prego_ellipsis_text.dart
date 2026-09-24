@@ -3,9 +3,17 @@ import "dart:math" as math;
 import "package:flutter/rendering.dart";
 import "package:material_ui/material_ui.dart";
 
-/// One line of text that, when it does not fit, drops characters from its
-/// start behind an ellipsis: "…Opus 5" rather than "Claude Op…". For names
-/// whose distinguishing part comes last, the tail is what identifies them.
+/// Where [PregoEllipsisText] drops characters when its text does not fit.
+enum PregoEllipsis() {
+  /// "…Opus 5": for names whose distinguishing part comes last.
+  start,
+
+  /// "feature/que…ueing-fix": for branches and slugs, whose both ends matter.
+  middle,
+}
+
+/// One line of text that, when it does not fit, drops characters at [ellipsis]
+/// rather than at its end, as Flutter's own ellipsis does.
 ///
 /// Flutter ellipsizes the end only, so this measures the text itself. Its
 /// intrinsic width is that of the whole text, so an [IntrinsicWidth] parent
@@ -14,10 +22,11 @@ import "package:material_ui/material_ui.dart";
 ///
 /// It is a [Text] so that `find.text` and other code reading a label see the
 /// whole string; only the rendering differs.
-class const PregoStartEllipsisText({
+class const PregoEllipsisText({
   super.key,
   required final String text,
   required TextStyle style,
+  required final PregoEllipsis ellipsis,
 }) extends Text {
   this : super(text, style: style);
 
@@ -28,8 +37,9 @@ class const PregoStartEllipsisText({
     if (MediaQuery.boldTextOf(context)) {
       resolved = resolved.merge(const TextStyle(fontWeight: FontWeight.bold));
     }
-    return _StartEllipsisRenderWidget(
+    return _EllipsisRenderWidget(
       text: text,
+      ellipsis: ellipsis,
       style: resolved,
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
@@ -37,34 +47,42 @@ class const PregoStartEllipsisText({
   }
 }
 
-class const _StartEllipsisRenderWidget({
+class const _EllipsisRenderWidget({
   required final String text,
+  required final PregoEllipsis ellipsis,
   required final TextStyle style,
   required final TextDirection textDirection,
   required final TextScaler textScaler,
 }) extends LeafRenderObjectWidget {
   @override
-  RenderObject createRenderObject(BuildContext context) =>
-      RenderStartEllipsisText(text: text, style: style, textDirection: textDirection, textScaler: textScaler);
+  RenderObject createRenderObject(BuildContext context) => RenderEllipsisText(
+    text: text,
+    ellipsis: ellipsis,
+    style: style,
+    textDirection: textDirection,
+    textScaler: textScaler,
+  );
 
   @override
-  void updateRenderObject(BuildContext context, RenderStartEllipsisText renderObject) {
+  void updateRenderObject(BuildContext context, RenderEllipsisText renderObject) {
     renderObject
       ..text = text
+      ..ellipsis = ellipsis
       ..style = style
       ..textDirection = textDirection
       ..textScaler = textScaler;
   }
 }
 
-/// The render box behind [PregoStartEllipsisText].
-class RenderStartEllipsisText({
+/// The render box behind [PregoEllipsisText].
+class RenderEllipsisText({
   required String text,
+  required PregoEllipsis ellipsis,
   required TextStyle style,
   required TextDirection textDirection,
   required TextScaler textScaler,
 }) extends RenderBox {
-  static const String _ellipsis = "…";
+  static const String _ellipsisGlyph = "…";
 
   final TextPainter _painter = TextPainter(maxLines: 1);
 
@@ -75,6 +93,14 @@ class RenderStartEllipsisText({
     _text = value;
     markNeedsLayout();
     markNeedsSemanticsUpdate();
+  }
+
+  PregoEllipsis _ellipsis = ellipsis;
+  PregoEllipsis get ellipsis => _ellipsis;
+  set ellipsis(PregoEllipsis value) {
+    if (value == _ellipsis) return;
+    _ellipsis = value;
+    markNeedsLayout();
   }
 
   TextStyle _style = style;
@@ -112,27 +138,37 @@ class RenderStartEllipsisText({
     return _painter.width;
   }
 
-  /// The longest tail of the text that fits [maxWidth] behind the ellipsis,
+  /// The text as last laid out: whole, or shortened to fit.
+  String get shownText => _fit(constraints.maxWidth);
+
+  /// The most characters of the text that fit [maxWidth] around the ellipsis,
   /// or the whole text when it fits as it is.
   String _fit(double maxWidth) {
     if (_measure(_text) <= maxWidth) return _text;
     final characters = _text.characters;
-    String tail(int count) => _ellipsis + characters.takeLast(count).toString().trimLeft();
+    String shorten(int count) => switch (_ellipsis) {
+      PregoEllipsis.start => _ellipsisGlyph + characters.takeLast(count).toString().trimLeft(),
+      // The odd character goes to the head, which is read first.
+      PregoEllipsis.middle =>
+        characters.take(count - count ~/ 2).toString().trimRight() +
+            _ellipsisGlyph +
+            characters.takeLast(count ~/ 2).toString().trimLeft(),
+    };
     var low = 0;
     var high = characters.length;
     while (low < high) {
       final mid = (low + high + 1) ~/ 2;
-      if (_measure(tail(mid)) <= maxWidth) {
+      if (_measure(shorten(mid)) <= maxWidth) {
         low = mid;
       } else {
         high = mid - 1;
       }
     }
-    return tail(low);
+    return shorten(low);
   }
 
   @override
-  double computeMinIntrinsicWidth(double height) => math.min(_measure(_ellipsis), _measure(_text));
+  double computeMinIntrinsicWidth(double height) => math.min(_measure(_ellipsisGlyph), _measure(_text));
 
   @override
   double computeMaxIntrinsicWidth(double height) => _measure(_text);

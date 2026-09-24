@@ -184,13 +184,14 @@ void main() {
     expect(dotColor(tester), PregoDesignSystem.light.colors.fgDisabledSubtle);
   });
 
-  testWidgets("tapping the subtitle row pops over the untruncated repo slug", (tester) async {
+  testWidgets("the repo slug has no chevron, and a long press shows it whole", (tester) async {
     await pumpScaffold(tester, state: loadedState(repoSlug: "sesori-ai/sesori_apps_monorepo"));
+    expect(find.byIcon(TablerRegular.chevron_down), findsNothing);
 
-    await tester.tap(find.text("sesori-ai/sesori_apps_monorepo"));
+    await tester.longPress(find.text("sesori-ai/sesori_apps_monorepo"));
     await tester.pumpAndSettle();
 
-    // The popover shows the same (already-complete) slug — a second occurrence.
+    // The tooltip repeats the slug — a second occurrence.
     expect(find.text("sesori-ai/sesori_apps_monorepo"), findsNWidgets(2));
   });
 
