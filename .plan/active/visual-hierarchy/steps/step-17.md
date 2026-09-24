@@ -10,17 +10,15 @@ phone its own session inventory and an Activity group at the top of Projects.
   `SessionActivityProjection`, with `SessionActivityGroup` and
   `SessionActivityEntry`. Its tests moved with it. The desktop sidebar and
   Activity popout only change names.
-- The projection gains `waitingFirst`: waiting sessions, then running ones,
-  in project order, each with its project. The phone passes no deferred
-  sessions and no sticky id, and finished unseen sessions stay in their
-  lists, as the phone shows today.
-- The home's needs-you, running and recent sections come with step 18,
-  their first consumer, rather than ahead of it.
+- New outputs arrive with their first consumer: the phone's waiting-first
+  order with 17.b, and the home's needs-you, running and recent sections with
+  step 18.
 
 ## 17.a Verification
 
 - `client/module_core`, `client/module_desktop_core` and `client/desktop`:
   `dart analyze --fatal-infos` is clean.
-- `client/module_core` `test/cubits/recent_sessions` passes, including a new
-  `waitingFirst` test: waiting across projects first, then running, and a
-  finished unseen session left out.
+- `client/module_core` `test/cubits/recent_sessions` passes; the moved tests
+  are unchanged apart from names.
+- Architecture implementation review: the first round rejected an output
+  added ahead of its consumer; it moved to 17.b.
