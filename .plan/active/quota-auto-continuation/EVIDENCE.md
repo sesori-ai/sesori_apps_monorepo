@@ -322,3 +322,53 @@ dart test test/pi_session_service_test.dart test/pi_session_catalog_repository_t
 # After the fix: no findings, exit 0.
 dart analyze --fatal-infos --format=machine
 ```
+
+## Bridge scheduler checkpoint — 2026-09-24
+
+Measured commit: `e3fdb4dcd559ec724bfcd65f8b022748337d2294`.
+Measured tree: `18589b6fc9a76a46d42dc63a9332a2d1744cce53`.
+Scope: step 4 relative to foundation commit
+`3d2c62da5f` on `sesori/quota-continuation-foundation`.
+Toolchain: repository-pinned Dart 3.13.4 / Flutter 3.47.5.
+
+Working folder `bridge/app` — **568 tests passed**, exit 0:
+
+```sh
+dart test \
+  test/bridge/services/session_continuation_service_test.dart \
+  test/bridge/listeners/session_continuation_timer_listener_test.dart \
+  test/bridge/services/session_abort_service_test.dart \
+  test/bridge/services/session_prompt_service_test.dart \
+  test/bridge/services/session_lifecycle_service_test.dart \
+  test/bridge/services/session_event_service_test.dart \
+  test/bridge/services/session_family_mutation_test.dart \
+  test/bridge/routing \
+  test/bridge/orchestrator_emit_bridge_event_test.dart \
+  test/bridge/orchestrator_error_recovery_test.dart
+```
+
+Working folder `bridge/app` — no findings, exit 0:
+
+```sh
+dart analyze --fatal-infos --format=machine
+```
+
+The suite covers reset plus buffer, persisted pause backoff, readiness before
+and after history, same-error deduplication, disable/re-enable and future waits,
+selection preservation, submission failure, and consumed/unconfirmed attempts
+without resend. Existing mutation services prove that durable cancellation
+failure blocks manual send/Stop/archive while notification failure does not.
+The composed bridge test exercises the real route, source-event translation,
+durable observation, terminal handoff and later native cancellation. Timer tests
+cover failed-tick recovery, non-overlap and disposal while a tick is active.
+
+Working folder repository root — the exact immutable whitespace check passed,
+exit 0 (re-executed on 2026-09-24):
+
+```sh
+git diff --check 3d2c62da5ffffa551101f1556fbd9a8000de1077 e3fdb4dcd559ec724bfcd65f8b022748337d2294
+```
+
+The seven-document local-link check above also passed. No causal cleanup was needed;
+formatting-only churn outside the scheduler was removed. This checkpoint does
+not prove live provider recovery, rendered controls or the final L4 matrix.

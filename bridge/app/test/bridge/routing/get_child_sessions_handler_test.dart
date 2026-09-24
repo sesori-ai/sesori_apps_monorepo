@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/session_continuation_test_support.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -14,7 +15,10 @@ void main() {
     setUp(() {
       plugin = FakeBridgePlugin();
       sessionRepository = FakeSessionRepository(plugin: plugin);
-      handler = GetChildSessionsHandler(sessionRepository: sessionRepository);
+      handler = GetChildSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
+        sessionRepository: sessionRepository,
+      );
     });
 
     tearDown(() => plugin.close());

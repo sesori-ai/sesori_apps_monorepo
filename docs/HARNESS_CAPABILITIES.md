@@ -22,15 +22,18 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 
 Claude/Pi also implement named-session readiness for idle, retry, queued work
 and pending input, including known persisted sessions without a resident process.
-Other harnesses return unavailable readiness. Durable storage and shared wire
-models are in place; scheduler, toggle route and chat controls remain unimplemented.
+Other harnesses return unavailable readiness. The bridge implements durable,
+session-level opt-in through `PATCH /session/auto-continuation`, scheduled sending,
+and the authoritative setting/outcome in session responses and updates. Chat
+controls remain unimplemented.
 
 Audit date: **2026-09-24**. Internal terminal quota reporting is implemented for
-the Claude Code and Pi cases below. Sesori does **not yet implement** scheduled
-quota continuation for any harness. The
-[active plan](../.plan/active/quota-auto-continuation/PLAN.md) proposes session-level
-opt-in, a chat hint, a persistent three-dot-menu toggle, and a visible resume
-time. The [evidence record](../.plan/active/quota-auto-continuation/EVIDENCE.md)
+the Claude Code and Pi cases below. Scheduled continuation is implemented through
+the headless API for those reporting formats; live post-reset provider recovery
+remains unverified. The
+[active plan](../.plan/active/quota-auto-continuation/PLAN.md) next adds a chat hint,
+a persistent three-dot-menu toggle, and a visible resume time.
+The [evidence record](../.plan/active/quota-auto-continuation/EVIDENCE.md)
 distinguishes observed local errors from upstream contracts and open checks.
 
 Eligibility depends on a terminal quota interruption **and** a usable reset
@@ -81,6 +84,11 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
 Existing error messages remain visible, including errors with unknown resets.
 Other descriptors report quota support as unavailable until their provider and
 terminal-turn binding are verified. There is no shared model-name allowlist.
+Enabling an unavailable harness returns 501; disabling an existing preference
+remains available. Known resets use a two-minute buffer and one ordinary
+`Continue.` attempt. Non-idle readiness pauses checks for five minutes; unknown
+resets never schedule. Manual send, Stop, archive and newer native activity cancel
+the current wait while retaining the preference for later quota interruptions.
 
 ## Individual queued-prompt cancellation
 

@@ -4,12 +4,14 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../services/session_lifecycle_service.dart";
 import "../services/session_unseen_service.dart";
+import "../services/session_view_service.dart";
 import "request_handler.dart";
 
 /// Handles `PATCH /session/update/archive` — updates archive status for a session.
 class UpdateSessionArchiveStatusHandler({
   required final SessionLifecycleService _sessionLifecycleService,
   required final SessionUnseenService _sessionUnseenService,
+  required final SessionViewService _sessionViews,
 }) extends BodyRequestHandler<UpdateSessionArchiveRequest, Session> {
   this
     : super(
@@ -53,7 +55,7 @@ class UpdateSessionArchiveStatusHandler({
           _sessionUnseenService.notifyExternalChange(sessionId: session.id, projectId: update.projectId),
         );
       }
-      return session;
+      return await _sessionViews.enrich(session: session);
     } on SessionArchiveConflictException catch (e) {
       throw buildJsonErrorResponse(request: request, status: 409, body: e.rejection.toJson());
     } on SessionNotFoundException {

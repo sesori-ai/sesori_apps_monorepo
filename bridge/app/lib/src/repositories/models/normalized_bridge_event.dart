@@ -22,6 +22,15 @@ final class const NormalizedStatusEvent({
 /// A finalized message envelope, already carrying its bridge session id.
 final class const NormalizedMessageEvent({required final Message message}) extends NormalizedBridgePayload;
 
+/// A terminal observation. A missing reset is meaningful: the quota was
+/// recognized but supplies no reliable instant on which to schedule a send.
+final class const NormalizedQuotaInterruptionEvent({
+  required final String sessionId,
+  required final String errorMessageId,
+  required final DateTime observedAt,
+  required final DateTime? resetAt,
+}) extends NormalizedBridgePayload;
+
 /// An already id-normalized plugin event whose payload keeps its plugin shape.
 final class const NormalizedOtherEvent({required final BridgeSseEvent event}) extends NormalizedBridgePayload;
 

@@ -54,7 +54,10 @@ class ChatHistoryListener({
       ),
       // A forced-stop handoff carries no finalized message, and a status
       // change stores nothing.
-      NormalizedOtherEvent() || NormalizedStatusEvent() || NormalizedTerminalHandoff() => Future<void>.value(),
+      NormalizedOtherEvent() ||
+      NormalizedStatusEvent() ||
+      NormalizedQuotaInterruptionEvent() ||
+      NormalizedTerminalHandoff() => Future<void>.value(),
     };
   }
 

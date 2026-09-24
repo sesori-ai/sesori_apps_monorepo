@@ -24,6 +24,15 @@ class const SessionEventMapper() {
     BridgeSseMessageUpdated(:final info) => NormalizedMessageEvent(
       message: info.toSharedMessage(sessionId: info.sessionID),
     ),
+    BridgeSseSessionQuotaBlocked(:final sessionID, :final interruption) => NormalizedQuotaInterruptionEvent(
+      sessionId: sessionID,
+      errorMessageId: interruption.errorMessageId,
+      observedAt: interruption.observedAt,
+      resetAt: switch (interruption.reset) {
+        PluginQuotaResetKnown(:final resetAt) => resetAt,
+        PluginQuotaResetUnknown() => null,
+      },
+    ),
     _ => NormalizedOtherEvent(event: event),
   };
 

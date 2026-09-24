@@ -1,15 +1,22 @@
 import "dart:async";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_abort_result.dart";
 import "../repositories/models/session_operation.dart";
+import "../repositories/session_continuation_repository.dart";
 import "../repositories/session_repository.dart";
+import "session_mutation_dispatcher.dart";
 import "session_operation_dispatcher.dart";
+import "session_view_service.dart";
 
 class SessionAbortService({
   required final SessionRepository _sessionRepository,
   required final SessionOperationDispatcher _dispatcher,
+  required final SessionContinuationRepository _continuations,
+  required final SessionViewService _views,
+  required final SessionMutationDispatcher _mutations,
 }) {
   final StreamController<String> _abortStartedSessionsController = StreamController<String>.broadcast(sync: true);
   final StreamController<String> _abortedSessionsController = StreamController<String>.broadcast(sync: true);
@@ -33,6 +40,13 @@ class SessionAbortService({
       sessionId: sessionId,
       operation: SessionOperation.abortSession,
       body: () async {
+        if (await _continuations.cancelCurrentObservationAlreadyReserved(sessionId: sessionId)) {
+          try {
+            _mutations.continuationUpdated(session: await _views.get(sessionId: sessionId));
+          } on Object catch (error, stackTrace) {
+            Log.w("Could not publish quota cancellation before Stop for session $sessionId", error, stackTrace);
+          }
+        }
         final result = await _sessionRepository.abortSession(
           sessionId: sessionId,
           subAgents: subAgents,

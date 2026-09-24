@@ -1,6 +1,9 @@
 # Quota auto continuation
 
-Status: planning; implementation has not started. Research: 2026-09-23.
+Status: implementation in progress; steps 1–3 merged, step 4 scheduler in review
+in [#1654](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1654).
+Shared chat controls and final L4 verification remain outstanding.
+Research: 2026-09-23. Current progress: [TRACKER.md](TRACKER.md).
 
 ## Goal and agreed scope
 
@@ -15,8 +18,8 @@ same bridge-owned setting. Apply this across every harness whose driven seam
 can provide a trustworthy quota interruption and reset time; provider/model
 limitations must remain visible.
 
-This plan PR documents the design and evidence. It does not ship the feature or
-authorize an assertion that any harness already supports Sesori scheduling.
+This document records the agreed design; the tracker and evidence distinguish
+implemented behavior from pending UI and live-provider verification.
 
 ## User experience
 
@@ -373,7 +376,10 @@ sessions; owning-package analysis.
 
 **Deliverable / expected result:** Typed route, enriched session views, scheduler and cancellation
 integration. Opt-in headless API works. Uses step 3 storage; no further schema change.
-Estimate 1,000–1,500 authored lines.
+Measured implementation is about 1,630 authored lines before its final evidence
+record. The small soft-cap overage keeps the timer, ordered cancellation and
+normal dispatch path together with their regression tests; no generated churn
+or additional schema change is included.
 
 **Risk and validation:** Focused service, route, event ordering, cancellation and restart tests;
 headless integration. Verify one consumed attempt and normal prompt selection preservation.

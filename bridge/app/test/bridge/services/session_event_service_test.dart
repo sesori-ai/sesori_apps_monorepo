@@ -14,12 +14,14 @@ import "package:sesori_bridge/src/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/services/session_event_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/sse/bridge_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
 
@@ -54,6 +56,9 @@ void main() {
       failureReporter = CapturingFailureReporter();
       promptDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       promptService = SessionPromptService(
+        continuations: const EmptySessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         sessionRepository: repository,
         acceptedPromptsRepository: AcceptedPromptsRepository(dao: AcceptedPromptsDao(database: database)),
         dispatcher: promptDispatcher,
@@ -61,6 +66,7 @@ void main() {
         sessionOptionsService: FakeSessionOptionsService(),
       );
       service = SessionEventService(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: repository,
         sessionPromptService: promptService,
         pluginRuntime: pluginRuntime,
@@ -297,7 +303,12 @@ void main() {
         ),
       );
 
-      expect(normalized, isEmpty, reason: "the prompt service is the only publisher");
+      expect(normalized.single, isA<BridgeSseSessionPromptDefaultsChanged>());
+      expect(
+        BridgeEventMapper(failureReporter: failureReporter).map(event: normalized.single, pluginId: plugin.id),
+        isNull,
+        reason: "native activity reaches cancellation internally; only the prompt service publishes defaults",
+      );
       expect(published.map((change) => change.sessionId), ["stable-root"]);
       expect(
         published.single.promptDefaults,
@@ -364,7 +375,11 @@ void main() {
         ),
       );
 
-      expect(normalized, isEmpty);
+      expect(normalized.single, isA<BridgeSseSessionPromptDefaultsChanged>());
+      expect(
+        BridgeEventMapper(failureReporter: failureReporter).map(event: normalized.single, pluginId: plugin.id),
+        isNull,
+      );
       expect(published, isEmpty, reason: "a report without the stored fast mode would switch it off on the client");
       expect(failureReporter.recordedIdentifiers, isEmpty);
     });
