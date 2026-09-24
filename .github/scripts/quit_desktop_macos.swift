@@ -242,7 +242,7 @@ guard !statusItems.isEmpty else {
 for (index, statusItem) in statusItems.enumerated() {
     print("STATUS_ITEM \(index) \(description(statusItem))")
     let actions = actionNames(statusItem)
-    // tray_manager opens its context menu from a custom NSView mouse-down callback.
+    // The tray adapter opens its context menu from the status item's click callback.
     // Require the expected AXPress capability, then re-read ownership and the frame
     // immediately before clicking this exact process-owned status item.
     guard actions.contains(kAXPressAction),
@@ -252,7 +252,7 @@ for (index, statusItem) in statusItems.enumerated() {
     }
     print("STATUS_FRAME \(index) x=\(statusFrame.minX) y=\(statusFrame.minY) "
         + "width=\(statusFrame.width) height=\(statusFrame.height)")
-    // tray_manager's transient menu is not exposed as a status-item child. Hit-test
+    // The transient tray menu is not exposed as a status-item child. Hit-test
     // immediately beside the clicked item's frame, accept only an anchored process-owned
     // AXMenu reached at that visible screen location, then search only inside that menu.
     for attempt in 0..<100 {
