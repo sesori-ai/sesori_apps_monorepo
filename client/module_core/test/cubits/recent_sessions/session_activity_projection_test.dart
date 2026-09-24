@@ -144,6 +144,33 @@ void main() {
     );
   });
 
+  test("a seen session waiting on the user stays in Activity while its agent is idle", () {
+    final waiting = _session(id: "waiting", projectId: "one");
+    final projection = SessionActivityProjection.from(
+      projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
+      entries: {
+        "one": RecentSessionsLoaded(
+          sourceSessions: [waiting],
+          visibleSessions: [waiting],
+          activityBySessionId: const {
+            "waiting": SessionActivityInfo(
+              mainAgentRunning: false,
+              awaitingInput: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+      deferredSessions: const {},
+      stickySessionId: null,
+      hiddenSessionIds: const {},
+    );
+
+    expect(projection.waitingFirst.map((item) => item.entry.session.id), ["waiting"]);
+  });
+
   test("Activity sessions stay in their project's rows", () {
     final sessions = [
       _session(id: "priority", projectId: "one", unseen: true),

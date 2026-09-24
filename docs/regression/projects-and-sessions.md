@@ -188,8 +188,8 @@ state.
   user or running: waiting sessions first, then running ones, each in project order. A waiting row carries an
   amber dot and a "Waiting" cue before its project name; a running row carries the activity loader. Rows end with
   the session's updated time whenever one exists. A row opens its session directly, and pulling to refresh also
-  retries each project's session read. Finished unseen sessions stay in their project lists, and the group and its Projects
-  heading are left out when nothing is in motion.
+  retries each project's session read. Finished unseen sessions stay in their project lists, and the group and
+  its Projects heading are left out when nothing is in motion.
 - On the phone, only the top-level Projects and Settings pages show a large 36 bold title. Under the Projects
   title, a status row names the paired machine, holds a skeleton while the name loads, and says what onboarding
   waits for before any bridge is registered. The row is left out when the lookup finds no machine to name.

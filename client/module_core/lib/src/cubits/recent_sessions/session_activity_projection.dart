@@ -24,8 +24,8 @@ final class SessionActivityProjection._({required final List<SessionActivityGrou
     return [...waiting, ...running];
   }
 
-  /// Activity holds what is in motion: running sessions and unseen sessions
-  /// the user has not set aside. [deferredSessions] maps a session the user
+  /// Activity holds what is in motion: running sessions, sessions waiting on
+  /// the user, and unseen sessions the user has not set aside. [deferredSessions] maps a session the user
   /// marked unread here to its `time.updated` at that moment; it stays out of
   /// Activity until the agent moves that stamp. [stickySessionId] keeps the
   /// Activity session the user just opened listed while it stays selected. A
@@ -50,7 +50,9 @@ final class SessionActivityProjection._({required final List<SessionActivityGrou
         final isUnseen = entry.isUnseen(session: session);
         final deferredAt = deferredSessions[session.id];
         final isSetAside = isUnseen && deferredAt != null && deferredAt == session.time?.updated;
-        final inMotion = isRunning || (isUnseen && !isSetAside);
+        final isAwaitingInput = entry.isAwaitingInput(session: session);
+        // A pending question need not keep the agent running, and still needs the user.
+        final inMotion = isRunning || isAwaitingInput || (isUnseen && !isSetAside);
         // Setting a session aside is explicit, so it beats the sticky selection too.
         final isSticky = session.id == stickySessionId && !isSetAside;
         if (!inMotion && !isSticky) continue;
@@ -59,7 +61,7 @@ final class SessionActivityProjection._({required final List<SessionActivityGrou
             session: session,
             isRunning: isRunning,
             isUnseen: isUnseen,
-            isAwaitingInput: entry.isAwaitingInput(session: session),
+            isAwaitingInput: isAwaitingInput,
           ),
         );
       }
