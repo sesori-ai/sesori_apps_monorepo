@@ -146,7 +146,7 @@ void main() {
     expect(projection.running.map((item) => item.entry.session.id), ["running"]);
   });
 
-  test("recent holds the five newest settled sessions across projects, leaving hidden ones out", () {
+  test("recent holds settled sessions across projects newest first, leaving hidden ones out", () {
     final one = [for (var index = 1; index <= 4; index++) _session(id: "one-$index", projectId: "one", updated: index)];
     final two = [
       _session(id: "two-running", projectId: "two", updated: 99),
@@ -187,9 +187,61 @@ void main() {
 
     expect(
       projection.recent.map((item) => (item.project.id, item.entry.session.id)),
-      [("two", "two-unseen"), ("one", "one-4"), ("one", "one-3"), ("one", "one-2"), ("one", "one-1")],
+      [("two", "two-unseen"), ("one", "one-4"), ("one", "one-3"), ("one", "one-2"), ("one", "one-1"), ("two", "two-old")],
     );
     expect(projection.recent.first.entry.isUnseen, isTrue);
+  });
+
+  test("a session waiting on the user stays in Activity while its agent is idle, until set aside", () {
+    final waiting = _session(id: "waiting", projectId: "one");
+    final projection = SessionActivityProjection.from(
+      projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
+      entries: {
+        "one": RecentSessionsLoaded(
+          sourceSessions: [waiting],
+          visibleSessions: [waiting],
+          activityBySessionId: const {
+            "waiting": SessionActivityInfo(
+              mainAgentRunning: false,
+              awaitingInput: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+      deferredSessions: const {},
+      stickySessionId: null,
+      hiddenSessionIds: const {},
+    );
+
+    expect(projection.waitingFirst.map((item) => item.entry.session.id), ["waiting"]);
+
+    // Marking it unread sets it aside like any other session.
+    final markedUnread = _session(id: "waiting", projectId: "one", unseen: true, updated: 5);
+    final setAside = SessionActivityProjection.from(
+      projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
+      entries: {
+        "one": RecentSessionsLoaded(
+          sourceSessions: [markedUnread],
+          visibleSessions: [markedUnread],
+          activityBySessionId: const {
+            "waiting": SessionActivityInfo(
+              mainAgentRunning: false,
+              awaitingInput: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+      deferredSessions: const {"waiting": 5},
+      stickySessionId: null,
+      hiddenSessionIds: const {},
+    );
+    expect(setAside.activityGroups, isEmpty);
   });
 
   test("Activity sessions stay in their project's rows", () {

@@ -1102,7 +1102,8 @@ void main() {
       },
     );
     await tester.pumpWidget(app(state: running));
-    expect(find.descendant(of: rail, matching: find.byIcon(TablerRegular.message_circle)), findsOneWidget);
+    // A waiting session is listed under Activity as well as under its project.
+    expect(find.descendant(of: rail, matching: find.byIcon(TablerRegular.message_circle)), findsNWidgets(2));
     await tester.tap(toggle);
     await tester.pump();
     for (var frame = 0; frame < 12; frame++) {

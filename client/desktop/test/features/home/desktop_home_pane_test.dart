@@ -216,6 +216,7 @@ void main() {
       required WidgetTester tester,
       required Map<String, RecentSessionsEntry> entries,
       Stream<NewSessionState> states = const Stream<NewSessionState>.empty(),
+      List<ProjectSummary> projects = const [one, two],
     }) async {
       tester.view.physicalSize = const Size(1200, 1400);
       tester.view.devicePixelRatio = 1;
@@ -234,7 +235,7 @@ void main() {
               BlocProvider<ChatInputModeCubit>.value(value: inputMode),
             ],
             child: DesktopHomeStart(
-              projects: const [one, two],
+              projects: projects,
               createNewSessionCubit: ({required projectId}) {
                 createdFor.add(projectId);
                 return newSessionCubit(states: states);
@@ -295,6 +296,14 @@ void main() {
 
       expect(createdFor, ["one", "two"]);
       expect(tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId, "two");
+    });
+
+    testWidgets("a reordered project list keeps the project already shown", (tester) async {
+      await pumpStart(tester: tester, entries: const {});
+      await pumpStart(tester: tester, entries: const {}, projects: const [two, one]);
+
+      expect(createdFor, ["one"]);
+      expect(tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId, "one");
     });
 
     testWidgets("a session started from home opens in the picked project", (tester) async {

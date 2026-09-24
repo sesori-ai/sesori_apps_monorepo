@@ -215,7 +215,10 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
   @override
   Widget build(BuildContext context) {
     final projects = widget.projects;
+    // Held once shown: the list reorders as projects start running, and that
+    // must not move the draft to another project.
     final picked = projects.where((project) => project.id == _pickedProjectId).firstOrNull ?? projects.first;
+    _pickedProjectId = picked.id;
     final displayName = projectDisplayName(loc: context.loc, project: picked);
     // Keyed by project: a new pick gets its own cubit and draft, as the new
     // session page does when its route changes project.
@@ -262,7 +265,7 @@ class const _DesktopHomeSections({
     final sections = [
       (title: loc.desktopHomeNeedsYou, items: projection.needsYou),
       (title: loc.sessionListRunning, items: projection.running),
-      (title: loc.desktopHomeRecent, items: projection.recent),
+      (title: loc.desktopHomeRecent, items: projection.recent.take(_recentLimit).toList()),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -301,3 +304,6 @@ class const _DesktopHomeSections({
     );
   }
 }
+
+/// Recent stays a glance; the sidebar lists the rest.
+const int _recentLimit = 5;

@@ -12,11 +12,10 @@ typedef SessionActivityItem = ({ProjectSummary project, SessionActivityEntry ent
 final class SessionActivityProjection._({
   required final List<SessionActivityGroup> activityGroups,
 
-  /// The home's Recent: the latest sessions across projects that are neither
-  /// running nor waiting, newest first.
+  /// Sessions across projects that are neither running nor waiting, newest
+  /// first.
   required final List<SessionActivityItem> recent,
 }) {
-  static const int _recentLimit = 5;
 
   /// Sessions waiting on the user, in project order.
   List<SessionActivityItem> get needsYou => [
@@ -36,8 +35,8 @@ final class SessionActivityProjection._({
   /// ones. Finished unseen sessions stay in their lists.
   List<SessionActivityItem> get waitingFirst => [...needsYou, ...running];
 
-  /// Activity holds what is in motion: running sessions and unseen sessions
-  /// the user has not set aside. [deferredSessions] maps a session the user
+  /// Activity holds what is in motion: running sessions, sessions waiting on
+  /// the user, and unseen sessions the user has not set aside. [deferredSessions] maps a session the user
   /// marked unread here to its `time.updated` at that moment; it stays out of
   /// Activity until the agent moves that stamp. [stickySessionId] keeps the
   /// Activity session the user just opened listed while it stays selected. A
@@ -77,7 +76,9 @@ final class SessionActivityProjection._({
         }
         final deferredAt = deferredSessions[session.id];
         final isSetAside = isUnseen && deferredAt != null && deferredAt == session.time?.updated;
-        final inMotion = isRunning || (isUnseen && !isSetAside);
+        // A pending question need not keep the agent running, and still needs the
+        // user until they set it aside.
+        final inMotion = isRunning || ((isAwaitingInput || isUnseen) && !isSetAside);
         // Setting a session aside is explicit, so it beats the sticky selection too.
         final isSticky = session.id == stickySessionId && !isSetAside;
         if (!inMotion && !isSticky) continue;
@@ -103,7 +104,7 @@ final class SessionActivityProjection._({
     settled.sort((a, b) => updated(b).compareTo(updated(a)));
     return SessionActivityProjection._(
       activityGroups: List.unmodifiable(groups),
-      recent: List.unmodifiable(settled.take(_recentLimit)),
+      recent: List.unmodifiable(settled),
     );
   }
 }
