@@ -26,6 +26,7 @@ void main() {
   late MockProjectRepository mockProjectRepository;
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late StubConnectionOverlayCubit overlayCubit;
+  late MockRecentSessionInventoryService inventory;
 
   setUpAll(registerAllFallbackValues);
 
@@ -67,7 +68,7 @@ void main() {
     required void Function(String sessionId) onSessionRoute,
   }) async {
     getIt.registerFactory<RecentSessionInventoryService>(
-      () => stubRecentSessionInventory(
+      () => inventory = stubRecentSessionInventory(
         entries: {
           project.id: RecentSessionsLoaded(
             sourceSessions: sessions,
@@ -159,5 +160,20 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(openedSessionId, "waiting");
+  });
+
+  testWidgets("pulling to refresh also re-reads each project's sessions", (tester) async {
+    await pumpScreen(
+      tester,
+      sessions: [testSession(id: "idle", title: "Idle")],
+      activity: const {},
+      onSessionRoute: (_) {},
+    );
+
+    await tester.fling(find.byType(CustomScrollView), const Offset(0, 300), 1000);
+    await tester.pumpAndSettle();
+
+    verify(inventory.refresh).called(1);
+    await tester.pump(const Duration(seconds: 10));
   });
 }

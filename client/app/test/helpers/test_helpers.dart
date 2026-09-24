@@ -159,6 +159,7 @@ class MockRecentSessionInventoryService() extends Mock implements RecentSessionI
 MockRecentSessionInventoryService stubRecentSessionInventory({required Map<String, RecentSessionsEntry> entries}) {
   final inventory = MockRecentSessionInventoryService();
   when(() => inventory.state).thenAnswer((_) => BehaviorSubject.seeded(entries).stream);
+  when(inventory.refresh).thenAnswer((_) async => true);
   when(inventory.dispose).thenAnswer((_) async {});
   return inventory;
 }
