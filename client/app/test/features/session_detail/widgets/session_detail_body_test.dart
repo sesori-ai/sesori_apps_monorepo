@@ -1167,7 +1167,7 @@ void main() {
     final amber = tester.widget<DecoratedBox>(
       find.descendant(of: cards.first, matching: find.byType(DecoratedBox)).first,
     );
-    expect((amber.decoration as BoxDecoration).color, PregoDesignSystem.light.colors.bgWarningSolid);
+    expect((amber.decoration as BoxDecoration).color, PregoDesignSystem.light.colors.bgWarningPrimary);
 
     await tester.tap(find.text("Answer"));
     await tester.pumpAndSettle();

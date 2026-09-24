@@ -174,11 +174,13 @@ reaches the backend so the turn continues.
   that session, sends replies through the owning session cubit, and dismisses it
   when the pending request settles; shell routing must not duplicate or bypass
   that ownership.
-- While a session waits on the user, a solid amber needs-you card docks above
+- While a session waits on the user, a pale amber needs-you card docks above
   its composer, as wide as the composer. There is one card per request type:
   questions, then permissions. Each names the pending count, shows the first
   request's opening line, and its Answer or Review button opens the existing
-  modal. Its text is dark on the amber in both themes. Read-only, archived and
+  modal. Light uses a cream warning fill and dark a faint amber tint, each with a
+  soft amber border, an amber icon and label over primary text, and a white
+  button pill. Read-only, archived and
   blocked sessions show no card.
 - When management blocks the session's harness, needs-you cards and new response
   dialogs are hidden. A dialog already open on either surface closes without

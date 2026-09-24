@@ -8,7 +8,7 @@ import "package:theme_prego/theme/primitives/prego_color_primitives.g.dart";
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/remote_failure_view.dart";
 
-/// A solid amber card docked above the composer while the session waits on
+/// A pale amber card docked above the composer while the session waits on
 /// the user for a question or permission: amber means it needs you. It names
 /// what is pending, shows the first request's opening line, and its button
 /// opens the existing modal.
@@ -23,34 +23,38 @@ class const SessionDetailNeedsYouCard({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    // Dark on amber in both themes: white fails contrast on the warning fill.
-    const foreground = PregoColorPrimitives.gray950;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, PregoSpacing.md),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: prego.colors.bgWarningSolid,
+          // The light token reads cream; its dark twin is a heavy brown.
+          color: isDark ? prego.colors.fgWarningPrimary.withValues(alpha: 0.1) : prego.colors.bgWarningPrimary,
           borderRadius: BorderRadius.circular(PregoRadius.x2l),
+          border: Border.all(color: prego.colors.fgWarningPrimary.withValues(alpha: 0.3)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(PregoSpacing.lg),
           child: Row(
             spacing: PregoSpacing.lg,
             children: [
-              Icon(icon, size: PregoIconSize.md, color: foreground),
+              Icon(icon, size: PregoIconSize.md, color: prego.colors.fgWarningPrimary),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       label,
-                      style: prego.textTheme.textXs.medium.copyWith(color: foreground),
+                      // The light token is 3.3:1 on cream; one step darker clears 4.5:1.
+                      style: prego.textTheme.textXs.medium.copyWith(
+                        color: isDark ? prego.colors.textWarningPrimary : PregoColorPrimitives.warning700,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       request,
-                      style: prego.textTheme.textSm.medium.copyWith(color: foreground),
+                      style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -59,7 +63,8 @@ class const SessionDetailNeedsYouCard({
               ),
               PregoButtonsSolid(
                 label: action,
-                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                // A white pill in both themes; dark's grey secondary is lost on the tint.
+                hierarchy: isDark ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary,
                 size: PregoButtonsSolidSize.sm,
                 onPressed: onPressed,
               ),
