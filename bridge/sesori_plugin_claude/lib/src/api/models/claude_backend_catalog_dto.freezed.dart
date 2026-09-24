@@ -16,7 +16,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ClaudeBackendCatalogDto {
 
-@JsonKey(fromJson: _commandsOrEmpty) List<ClaudeCommandDto> get commands;@JsonKey(fromJson: _modelsOrEmpty) List<ClaudeModelDto> get models;
+@JsonKey(fromJson: _commandsOrEmpty) List<ClaudeCommandDto> get commands;@JsonKey(fromJson: _modelsOrEmpty) List<ClaudeModelDto> get models;/// Why the account cannot use fast mode right now; absent when nothing
+/// blocks it (verified against CLI 2.1.281).
+@JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) String? get fastModeDisabledReason;
 /// Create a copy of ClaudeBackendCatalogDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,14 +30,14 @@ $ClaudeBackendCatalogDtoCopyWith<ClaudeBackendCatalogDto> get copyWith => _$Clau
 @override
 bool operator ==(Object other) {
   final _this = this as ClaudeBackendCatalogDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeBackendCatalogDto&&const DeepCollectionEquality().equals(other.commands, _this.commands)&&const DeepCollectionEquality().equals(other.models, _this.models));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeBackendCatalogDto&&const DeepCollectionEquality().equals(other.commands, _this.commands)&&const DeepCollectionEquality().equals(other.models, _this.models)&&(identical(other.fastModeDisabledReason, _this.fastModeDisabledReason) || other.fastModeDisabledReason == _this.fastModeDisabledReason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as ClaudeBackendCatalogDto;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.commands),const DeepCollectionEquality().hash(_this.models));
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.commands),const DeepCollectionEquality().hash(_this.models),_this.fastModeDisabledReason);
 }
 
 
@@ -47,7 +49,7 @@ abstract mixin class $ClaudeBackendCatalogDtoCopyWith<$Res>  {
   factory $ClaudeBackendCatalogDtoCopyWith(ClaudeBackendCatalogDto value, $Res Function(ClaudeBackendCatalogDto) _then) = _$ClaudeBackendCatalogDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(fromJson: _commandsOrEmpty) List<ClaudeCommandDto> commands,@JsonKey(fromJson: _modelsOrEmpty) List<ClaudeModelDto> models
+@JsonKey(fromJson: _commandsOrEmpty) List<ClaudeCommandDto> commands,@JsonKey(fromJson: _modelsOrEmpty) List<ClaudeModelDto> models,@JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) String? fastModeDisabledReason
 });
 
 
@@ -64,11 +66,12 @@ class _$ClaudeBackendCatalogDtoCopyWithImpl<$Res>
 
 /// Create a copy of ClaudeBackendCatalogDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? commands = null,Object? models = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? commands = null,Object? models = null,Object? fastModeDisabledReason = freezed,}) {
   return _then(ClaudeBackendCatalogDto(
 commands: null == commands ? _self.commands : commands // ignore: cast_nullable_to_non_nullable
 as List<ClaudeCommandDto>,models: null == models ? _self.models : models // ignore: cast_nullable_to_non_nullable
-as List<ClaudeModelDto>,
+as List<ClaudeModelDto>,fastModeDisabledReason: freezed == fastModeDisabledReason ? _self.fastModeDisabledReason : fastModeDisabledReason // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -80,7 +83,7 @@ as List<ClaudeModelDto>,
 @JsonSerializable(createToJson: false)
 
 class _ClaudeBackendCatalogDto implements ClaudeBackendCatalogDto {
-  const _ClaudeBackendCatalogDto({@JsonKey(fromJson: _commandsOrEmpty) required  List<ClaudeCommandDto> commands, @JsonKey(fromJson: _modelsOrEmpty) required  List<ClaudeModelDto> models}): _commands = commands,_models = models;
+  const _ClaudeBackendCatalogDto({@JsonKey(fromJson: _commandsOrEmpty) required  List<ClaudeCommandDto> commands, @JsonKey(fromJson: _modelsOrEmpty) required  List<ClaudeModelDto> models, @JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) required this.fastModeDisabledReason}): _commands = commands,_models = models;
   factory _ClaudeBackendCatalogDto.fromJson(Map<String, dynamic> json) => _$ClaudeBackendCatalogDtoFromJson(json);
 
  final  List<ClaudeCommandDto> _commands;
@@ -97,6 +100,9 @@ class _ClaudeBackendCatalogDto implements ClaudeBackendCatalogDto {
   return EqualUnmodifiableListView(_models);
 }
 
+/// Why the account cannot use fast mode right now; absent when nothing
+/// blocks it (verified against CLI 2.1.281).
+@override@JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) final  String? fastModeDisabledReason;
 
 /// Create a copy of ClaudeBackendCatalogDto
 /// with the given fields replaced by the non-null parameter values.
@@ -108,13 +114,13 @@ _$ClaudeBackendCatalogDtoCopyWith<_ClaudeBackendCatalogDto> get copyWith => __$C
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeBackendCatalogDto&&const DeepCollectionEquality().equals(other.commands, _commands)&&const DeepCollectionEquality().equals(other.models, _models));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeBackendCatalogDto&&const DeepCollectionEquality().equals(other.commands, _commands)&&const DeepCollectionEquality().equals(other.models, _models)&&(identical(other.fastModeDisabledReason, fastModeDisabledReason) || other.fastModeDisabledReason == fastModeDisabledReason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_commands),const DeepCollectionEquality().hash(_models));
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_commands),const DeepCollectionEquality().hash(_models),fastModeDisabledReason);
 }
 
 
@@ -126,7 +132,7 @@ abstract mixin class _$ClaudeBackendCatalogDtoCopyWith<$Res> implements $ClaudeB
   factory _$ClaudeBackendCatalogDtoCopyWith(_ClaudeBackendCatalogDto value, $Res Function(_ClaudeBackendCatalogDto) _then) = __$ClaudeBackendCatalogDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(fromJson: _commandsOrEmpty) List<ClaudeCommandDto> commands,@JsonKey(fromJson: _modelsOrEmpty) List<ClaudeModelDto> models
+@JsonKey(fromJson: _commandsOrEmpty) List<ClaudeCommandDto> commands,@JsonKey(fromJson: _modelsOrEmpty) List<ClaudeModelDto> models,@JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) String? fastModeDisabledReason
 });
 
 
@@ -143,11 +149,12 @@ class __$ClaudeBackendCatalogDtoCopyWithImpl<$Res>
 
 /// Create a copy of ClaudeBackendCatalogDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? commands = null,Object? models = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? commands = null,Object? models = null,Object? fastModeDisabledReason = freezed,}) {
   return _then(_ClaudeBackendCatalogDto(
 commands: null == commands ? _self._commands : commands // ignore: cast_nullable_to_non_nullable
 as List<ClaudeCommandDto>,models: null == models ? _self._models : models // ignore: cast_nullable_to_non_nullable
-as List<ClaudeModelDto>,
+as List<ClaudeModelDto>,fastModeDisabledReason: freezed == fastModeDisabledReason ? _self.fastModeDisabledReason : fastModeDisabledReason // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

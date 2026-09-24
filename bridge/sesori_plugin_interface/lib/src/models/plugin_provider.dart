@@ -29,9 +29,29 @@ sealed class PluginModel with _$PluginModel {
     @Default(true) bool isAvailable,
     DateTime? releaseDate,
 
-    /// Whether the plugin can run this model in the backend's fast mode.
-    required bool supportsFastMode,
+    /// The model's fast mode, or null when the model has none.
+    required PluginFastModeSupport? fastMode,
   }) = _PluginModel;
+}
+
+/// Whether a model's fast mode can run for the current account.
+@freezed
+sealed class PluginFastModeSupport with _$PluginFastModeSupport {
+  /// Fast mode can run. [promptCacheTtlSeconds] is how long the backend keeps
+  /// the prompt cache that a fast-mode switch drops.
+  const factory available({required int promptCacheTtlSeconds}) = PluginFastModeAvailable;
+
+  /// The model has fast mode, but the account cannot use it right now.
+  const factory unavailable({required PluginFastModeUnavailableReason reason}) = PluginFastModeUnavailable;
+}
+
+/// Why an account cannot use a model's fast mode.
+enum PluginFastModeUnavailableReason() {
+  extraUsageDisabled,
+  outOfCredits,
+  disabledByOrganization,
+  spendLimitReached,
+  unknown,
 }
 
 /// An AI provider available from a plugin.

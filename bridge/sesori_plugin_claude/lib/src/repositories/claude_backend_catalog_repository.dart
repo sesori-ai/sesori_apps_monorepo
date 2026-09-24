@@ -50,10 +50,14 @@ final class const ClaudeBackendCatalogRepository() {
   /// selection owns that setting, and the process state it tracks would drift.
   static const String fastModeCommand = "fast";
 
+  /// Claude keeps a prompt cache for about 60 minutes (maintainer-provided).
+  static const int _promptCacheTtlSeconds = 60 * 60;
+
   ClaudeBackendCatalog map({required Map<String, Object?> handshake}) {
     final dto = ClaudeBackendCatalogDto.fromJson(handshake);
+    final fastMode = _fastMode(disabledReason: dto.fastModeDisabledReason);
     final models = CatalogStrengthOrder.models(
-      [for (final model in dto.models) ?_model(model)],
+      [for (final model in dto.models) ?_model(model, fastMode: fastMode)],
       idOf: (model) => model.id,
     );
     final defaultModel =
@@ -97,10 +101,40 @@ final class const ClaudeBackendCatalogRepository() {
     );
   }
 
+  /// The account-level fast mode every fast-capable model shares.
+  PluginFastModeSupport _fastMode({required String? disabledReason}) {
+    final reason = switch (disabledReason) {
+      // The bridge opts in through apply_flag_settings, so the SDK opt-in
+      // requirement never blocks a session.
+      null || "sdk_opt_in_required" => null,
+      "extra_usage_disabled" || "overage_not_provisioned" => PluginFastModeUnavailableReason.extraUsageDisabled,
+      "out_of_credits" => PluginFastModeUnavailableReason.outOfCredits,
+      "preference" ||
+      "model_not_allowed" ||
+      "org_level_disabled" ||
+      "org_service_level_disabled" ||
+      "member_level_disabled" ||
+      "seat_tier_level_disabled" => PluginFastModeUnavailableReason.disabledByOrganization,
+      "org_spend_cap_reached" ||
+      "org_level_disabled_until" ||
+      "seat_tier_zero_credit_limit" ||
+      "member_zero_credit_limit" => PluginFastModeUnavailableReason.spendLimitReached,
+      final unmapped => _unmappedFastModeReason(raw: unmapped),
+    };
+    return reason == null
+        ? const PluginFastModeSupport.available(promptCacheTtlSeconds: _promptCacheTtlSeconds)
+        : PluginFastModeSupport.unavailable(reason: reason);
+  }
+
+  PluginFastModeUnavailableReason _unmappedFastModeReason({required String raw}) {
+    Log.w("[claude] fast mode unavailable for an unmapped reason: $raw");
+    return PluginFastModeUnavailableReason.unknown;
+  }
+
   Map<String, String> _modelIdsByApiModel(List<ClaudeModelDto> models) {
     final mappedModels = [
       for (final dto in models)
-        if (_model(dto) case final model?) (dto: dto, model: model),
+        if (_model(dto, fastMode: null) case final model?) (dto: dto, model: model),
     ];
     final ids = <String, String>{};
     for (final entry in mappedModels) {
@@ -133,7 +167,7 @@ final class const ClaudeBackendCatalogRepository() {
     return "$family${modelId.substring(bare.length)}";
   }
 
-  PluginModel? _model(ClaudeModelDto dto) {
+  PluginModel? _model(ClaudeModelDto dto, {required PluginFastModeSupport? fastMode}) {
     final id = dto.value?.trim();
     if (id == null || id.isEmpty || id == _cliDefaultModelId) return null;
     final displayName = dto.displayName?.trim();
@@ -144,7 +178,7 @@ final class const ClaudeBackendCatalogRepository() {
           })
         : <String>[];
     return PluginModel(
-      supportsFastMode: dto.supportsFastMode ?? false,
+      fastMode: dto.supportsFastMode ?? false ? fastMode : null,
       id: id,
       name: displayName?.isNotEmpty ?? false
           ? displayName!

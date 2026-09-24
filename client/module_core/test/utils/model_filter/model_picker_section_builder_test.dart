@@ -10,6 +10,7 @@ ProviderModel _model({
   bool isAvailable = true,
 }) {
   return ProviderModel(
+    fastMode: null,
     id: id,
     providerID: "test-provider",
     name: name ?? id,

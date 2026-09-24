@@ -153,7 +153,7 @@ void main() {
         defaultModelID: "gpt-default",
         models: const [
           PluginModel(
-            supportsFastMode: false,
+            fastMode: null,
             id: "gpt-default",
             name: "Default model",
             variants: [],
@@ -162,7 +162,7 @@ void main() {
             releaseDate: null,
           ),
           PluginModel(
-            supportsFastMode: false,
+            fastMode: null,
             id: "gpt-project",
             name: "Project model",
             variants: ["medium", "high"],

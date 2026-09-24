@@ -80,6 +80,7 @@ ProviderListResponse _providerDataWithVariants(List<String> variants) => Provide
       defaultModelID: "claude-opus",
       models: {
         "claude-opus": ProviderModel(
+          fastMode: null,
           id: "claude-opus",
           providerID: "anthropic",
           name: "Opus",
@@ -336,6 +337,7 @@ void main() {
                 defaultModelID: "opus",
                 models: {
                   "opus": ProviderModel(
+                    fastMode: null,
                     id: "opus",
                     providerID: "anthropic",
                     name: "Opus",
@@ -345,6 +347,7 @@ void main() {
                     releaseDate: null,
                   ),
                   "haiku": ProviderModel(
+                    fastMode: null,
                     id: "haiku",
                     providerID: "anthropic",
                     name: "Haiku",
@@ -384,6 +387,7 @@ void main() {
               defaultModelID: "opus",
               models: {
                 "opus": ProviderModel(
+                  fastMode: null,
                   id: "opus",
                   providerID: "anthropic",
                   name: "Opus",

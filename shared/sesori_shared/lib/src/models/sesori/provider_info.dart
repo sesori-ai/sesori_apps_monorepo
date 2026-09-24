@@ -37,13 +37,40 @@ sealed class ProviderModel with _$ProviderModel {
     required String? family,
     @Default(true) bool isAvailable,
 
-    /// Whether the session can run this model in the backend's fast mode.
-    // COMPATIBILITY 2026-09-23 (v1.9.0): Bridges before fast mode omit supportsFastMode, which honestly means no fast mode is offered. Remove @Default and require the field once the minimum supported bridge always sends it.
-    @Default(false) bool supportsFastMode,
+    /// The model's fast mode, or null when the model has none.
+    // COMPATIBILITY 2026-09-24 (v1.9.0): Bridges before fast mode omit fastMode, which reads as null and honestly means no fast mode is offered. Retire this note once the minimum supported bridge always sends the field.
+    required FastModeSupport? fastMode,
     @dateConverter required DateTime? releaseDate,
   }) = _ProviderModel;
 
   factory fromJson(Map<String, dynamic> json) => _$ProviderModelFromJson(json);
+}
+
+/// Whether a model's fast mode can run for the current account.
+@Freezed(unionKey: "type", fallbackUnion: "unknown", fromJson: true, toJson: true)
+sealed class FastModeSupport with _$FastModeSupport {
+  /// Fast mode can run. [promptCacheTtlSeconds] is how long the backend keeps
+  /// the prompt cache that a fast-mode switch drops.
+  const factory available({required int promptCacheTtlSeconds}) = FastModeAvailable;
+
+  /// The model has fast mode, but the account cannot use it right now.
+  const factory unavailable({
+    @JsonKey(unknownEnumValue: FastModeUnavailableReason.unknown) required FastModeUnavailableReason reason,
+  }) = FastModeUnavailable;
+
+  /// A variant this build does not know.
+  const factory unknown() = FastModeSupportUnknown;
+
+  factory fromJson(Map<String, dynamic> json) => _$FastModeSupportFromJson(json);
+}
+
+/// Why an account cannot use a model's fast mode.
+enum FastModeUnavailableReason() {
+  extraUsageDisabled,
+  outOfCredits,
+  disabledByOrganization,
+  spendLimitReached,
+  unknown,
 }
 
 /// Response from `GET /provider`.

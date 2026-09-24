@@ -224,17 +224,19 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
-  Future<void> updatePromptDefaults({
+  /// Returns the updated row, or null when [sessionId] has none.
+  Future<SessionDto?> updatePromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
   }) async {
-    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+    final rows = await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).writeReturning(
       SessionTableCompanion(
         lastAgent: Value(agent),
         lastAgentModel: Value(agentModel),
       ),
     );
+    return rows.firstOrNull;
   }
 
   Future<void> updateRequestedPromptDefaults({

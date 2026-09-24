@@ -578,11 +578,11 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async {}
 
   @override
-  Future<void> updatePromptDefaults({
+  Future<SessionPromptDefaults?> updatePromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
-  }) async {}
+  }) async => null;
 
   @override
   Future<void> updateRequestedPromptDefaults({
@@ -1092,11 +1092,11 @@ class FakeSessionRepository({
   }) async {}
 
   @override
-  Future<void> updatePromptDefaults({
+  Future<SessionPromptDefaults?> updatePromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
-  }) async {}
+  }) async => SessionPromptDefaults(agent: agent, model: agentModel);
 
   @override
   Future<void> updateRequestedPromptDefaults({

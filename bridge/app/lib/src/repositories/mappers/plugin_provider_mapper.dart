@@ -20,9 +20,28 @@ extension PluginProviderMapper on PluginProvider {
             family: m.family,
             isAvailable: m.isAvailable,
             releaseDate: m.releaseDate,
-            supportsFastMode: m.supportsFastMode,
+            fastMode: m.fastMode?.toShared(),
           ),
       },
     );
   }
+}
+
+extension on PluginFastModeSupport {
+  FastModeSupport toShared() => switch (this) {
+    PluginFastModeAvailable(:final promptCacheTtlSeconds) => FastModeSupport.available(
+      promptCacheTtlSeconds: promptCacheTtlSeconds,
+    ),
+    PluginFastModeUnavailable(:final reason) => FastModeSupport.unavailable(reason: reason.toShared()),
+  };
+}
+
+extension on PluginFastModeUnavailableReason {
+  FastModeUnavailableReason toShared() => switch (this) {
+    PluginFastModeUnavailableReason.extraUsageDisabled => FastModeUnavailableReason.extraUsageDisabled,
+    PluginFastModeUnavailableReason.outOfCredits => FastModeUnavailableReason.outOfCredits,
+    PluginFastModeUnavailableReason.disabledByOrganization => FastModeUnavailableReason.disabledByOrganization,
+    PluginFastModeUnavailableReason.spendLimitReached => FastModeUnavailableReason.spendLimitReached,
+    PluginFastModeUnavailableReason.unknown => FastModeUnavailableReason.unknown,
+  };
 }

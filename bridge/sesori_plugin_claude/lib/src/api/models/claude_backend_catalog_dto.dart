@@ -12,6 +12,10 @@ sealed class ClaudeBackendCatalogDto with _$ClaudeBackendCatalogDto {
   const factory({
     @JsonKey(fromJson: _commandsOrEmpty) required List<ClaudeCommandDto> commands,
     @JsonKey(fromJson: _modelsOrEmpty) required List<ClaudeModelDto> models,
+
+    /// Why the account cannot use fast mode right now; absent when nothing
+    /// blocks it (verified against CLI 2.1.281).
+    @JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) required String? fastModeDisabledReason,
   }) = _ClaudeBackendCatalogDto;
 
   factory fromJson(Map<String, dynamic> json) => _$ClaudeBackendCatalogDtoFromJson(json);

@@ -218,7 +218,9 @@ models only from new/resume responses and has no deletion capability.
 
 Codex advertises fast mode per model as a `model/list` service tier: a model
 offering a `serviceTiers` entry with id `"priority"` (Codex's "Fast" tier, e.g.
-"2x speed, increased usage") sets `PluginModel.supportsFastMode`. A selected
+"2x speed, increased usage") reports `PluginModel.fastMode` as available with
+a 30-minute prompt-cache lifetime; Codex has no account-level availability
+signal. A selected
 session's `fastMode` is sent as `serviceTier` on every `turn/start` —
 `"priority"` when on, `"default"` when off, which explicitly returns the
 thread to standard speed rather than leaving it on whatever tier a prior turn
@@ -230,14 +232,20 @@ first turn already runs fast.
 
 Claude Code reports fast-mode support per model as `supportsFastMode: true` in
 the stream-json `initialize` response (omitted for models without it; in CLI
-2.1.281 only some Opus models carry it), which sets
-`PluginModel.supportsFastMode`. Fast mode is not a launch flag: a fresh process
+2.1.281 only some Opus models carry it), which sets `PluginModel.fastMode` with a
+60-minute prompt-cache lifetime. Fast mode is not a launch flag: a fresh process
 starts with it off, and the plugin sends the `apply_flag_settings`
 control request (`{"subtype":"apply_flag_settings","settings":{"fastMode":…}}`, the shape the Agent SDK's `applyFlagSettings` sends) before a turn whenever the session's choice
 differs from what the resident process last applied. The CLI acknowledges the
 setting even when the model or account cannot use fast mode (for example, extra
-usage turned off) and then serves at standard speed; it reports why only
-through `fast_mode_disabled_reason`, which the plugin does not surface.
+usage turned off) and then serves at standard speed. The plugin reads the
+handshake's account-level `fast_mode_disabled_reason` and reports those models
+as unavailable with a closed reason (extra usage disabled, out of credits,
+disabled by the organization, spend limit reached, or unknown for an unmapped
+value, which is logged). `sdk_opt_in_required` counts as available because the
+plugin opts in. In CLI 2.1.281 that opt-in reason precedes the account checks,
+so a headless handshake mostly reports organization policy and model
+allow-list blocks; per-turn reasons from result messages are not tracked.
 
 ## Agent selection and harness modes
 

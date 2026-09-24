@@ -25,7 +25,7 @@ class CodexModelRepository({required final CodexAppServerApi _appServerApi}) {
       final defaultEffort = _usefulText(value: model.defaultReasoningEffort);
       models.add(
         PluginModel(
-          supportsFastMode: _supportsFastMode(model: model),
+          fastMode: _fastMode(model: model),
           id: id,
           name: _usefulText(value: model.displayName) ?? id,
           variants: variants,
@@ -39,8 +39,15 @@ class CodexModelRepository({required final CodexAppServerApi _appServerApi}) {
     return (defaultModelID: defaultModelID, models: CatalogStrengthOrder.models(models, idOf: (model) => model.id));
   }
 
-  bool _supportsFastMode({required CodexModelDto model}) =>
-      (model.serviceTiers ?? const <CodexModelServiceTierDto>[]).any((tier) => tier.id == CodexServiceTier.fast);
+  /// Codex keeps a prompt cache for about 30 minutes (maintainer-provided).
+  static const int _promptCacheTtlSeconds = 30 * 60;
+
+  /// Codex reports no account-level signal, so a model with the fast tier is
+  /// always available.
+  PluginFastModeSupport? _fastMode({required CodexModelDto model}) =>
+      (model.serviceTiers ?? const <CodexModelServiceTierDto>[]).any((tier) => tier.id == CodexServiceTier.fast)
+      ? const PluginFastModeSupport.available(promptCacheTtlSeconds: _promptCacheTtlSeconds)
+      : null;
 
   List<String> _reasoningEffortVariants({required CodexModelDto model}) {
     final efforts = <String>[];

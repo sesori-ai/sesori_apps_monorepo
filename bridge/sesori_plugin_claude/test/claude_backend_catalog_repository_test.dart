@@ -54,8 +54,12 @@ void main() {
       expect(provider.models.first.defaultVariant, "high");
       expect(provider.models.last.variants, isEmpty);
       expect(provider.models.last.defaultVariant, isNull);
-      expect(provider.models.first.supportsFastMode, isTrue);
-      expect(provider.models.last.supportsFastMode, isFalse, reason: "the CLI omits the field when unsupported");
+      expect(
+        provider.models.first.fastMode,
+        const PluginFastModeSupport.available(promptCacheTtlSeconds: 3600),
+        reason: "a handshake without fast_mode_disabled_reason leaves fast mode available",
+      );
+      expect(provider.models.last.fastMode, isNull, reason: "the CLI omits supportsFastMode when unsupported");
       expect(
         catalog.commands,
         const [
@@ -68,6 +72,52 @@ void main() {
           ),
         ],
       );
+    });
+
+    group("fast mode availability", () {
+      PluginFastModeSupport? fastModeFor({required Object? disabledReason}) => repository
+          .map(
+            handshake: {
+              "models": [
+                {"value": "opus", "supportsFastMode": true},
+              ],
+              "fast_mode_disabled_reason": disabledReason,
+            },
+          )
+          .providers
+          .providers
+          .single
+          .models
+          .single
+          .fastMode;
+
+      test("treats the SDK opt-in requirement as available, since the bridge opts in", () {
+        expect(
+          fastModeFor(disabledReason: "sdk_opt_in_required"),
+          const PluginFastModeSupport.available(promptCacheTtlSeconds: 3600),
+        );
+      });
+
+      test("maps account reasons to the closed reason set", () {
+        const expected = {
+          "extra_usage_disabled": PluginFastModeUnavailableReason.extraUsageDisabled,
+          "out_of_credits": PluginFastModeUnavailableReason.outOfCredits,
+          "preference": PluginFastModeUnavailableReason.disabledByOrganization,
+          "model_not_allowed": PluginFastModeUnavailableReason.disabledByOrganization,
+          "org_level_disabled": PluginFastModeUnavailableReason.disabledByOrganization,
+          "org_spend_cap_reached": PluginFastModeUnavailableReason.spendLimitReached,
+          "member_zero_credit_limit": PluginFastModeUnavailableReason.spendLimitReached,
+          "not_first_party": PluginFastModeUnavailableReason.unknown,
+          "a_future_reason": PluginFastModeUnavailableReason.unknown,
+        };
+        for (final MapEntry(key: raw, value: reason) in expected.entries) {
+          expect(
+            fastModeFor(disabledReason: raw),
+            PluginFastModeSupport.unavailable(reason: reason),
+            reason: raw,
+          );
+        }
+      });
     });
 
     test("declares no default effort when effort support is off, even with levels listed", () {
