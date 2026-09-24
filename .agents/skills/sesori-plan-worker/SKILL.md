@@ -122,6 +122,8 @@ sections with these headings:
 - `## Expected result` — expected user-visible behavior, database/persisted-data
   effects, and internal/refactor-only effects.
 
+Add before and after visuals for user-visible changes as `AGENTS.md` describes.
+
 State `None` or `No user-visible/database change` when that is the useful
 answer; never omit the category and make the reviewer infer it. Keep existing
 verification details as an additional section. Create/update bodies with real

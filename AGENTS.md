@@ -115,6 +115,13 @@ eagerly "just in case."
   `## Risk and test focus`, and `## Expected result` sections. State explicitly
   when there is no user-visible or database impact; keep verification as an
   additional section.
+- When a PR changes what users see, show it in the body: before and after
+  screenshots side by side for layout or styling, and a short recording or GIF
+  for motion or multi-step flows. The repository is public, so capture only
+  fixture or dev-account data; an image must never show real paths, source
+  code, prompts, transcripts, account names, or tokens. Host images on the
+  orphan `pr-media` branch under `<pr-branch>/`, link their raw URLs, and keep
+  them small. Changes nobody can see need no visuals.
 - Assume the user will not inspect local-only changes unless they explicitly say
   they will. Once a task is complete and ready for code review or implementation
   testing, commit, push, and open a PR by default. Leave changes local only when
