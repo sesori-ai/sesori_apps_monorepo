@@ -2,8 +2,8 @@
 
 ## What changed
 
-- `SessionDetailPendingBanner`, a brand or green glass tile pinned under the
-  top bar, becomes `SessionDetailNeedsYouCard`: a solid amber card (D6) docked
+- `SessionDetailPendingBanner`, a brand or green glass tile floating over the
+  transcript and wider than the column, becomes `SessionDetailNeedsYouCard`: a solid amber card (D6) docked
   above the composer, inside the same column as the composer and 16 points in
   from its edges, so the two line up.
 - One card per request type, questions first. Each shows the existing count
@@ -11,6 +11,8 @@
   Answer or Review button that opens the existing modal.
 - The cards join the floating bottom controls, so the transcript's bottom
   inset includes them and the newest message rests above the card.
+- Card text and icon are dark (`gray950`) in both themes: white on the warning
+  fill fails contrast (2.35:1 dark, 3.49:1 light).
 - Read-only, archived and blocked sessions show no card, as before.
 
 ## Verification

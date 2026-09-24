@@ -178,7 +178,8 @@ reaches the backend so the turn continues.
   its composer, as wide as the composer. There is one card per request type:
   questions, then permissions. Each names the pending count, shows the first
   request's opening line, and its Answer or Review button opens the existing
-  modal. Read-only, archived and blocked sessions show no card.
+  modal. Its text is dark on the amber in both themes. Read-only, archived and
+  blocked sessions show no card.
 - When management blocks the session's harness, needs-you cards and new response
   dialogs are hidden. A dialog already open on either surface closes without
   answering or rejecting; its pending model remains until an authoritative

@@ -3,6 +3,7 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
+import "package:theme_prego/theme/primitives/prego_color_primitives.g.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/remote_failure_view.dart";
@@ -22,7 +23,8 @@ class const SessionDetailNeedsYouCard({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final white = prego.colors.textWhite;
+    // Dark on amber in both themes: white fails contrast on the warning fill.
+    const foreground = PregoColorPrimitives.gray950;
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, PregoSpacing.md),
       child: DecoratedBox(
@@ -35,20 +37,20 @@ class const SessionDetailNeedsYouCard({
           child: Row(
             spacing: PregoSpacing.lg,
             children: [
-              Icon(icon, size: PregoIconSize.md, color: white),
+              Icon(icon, size: PregoIconSize.md, color: foreground),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       label,
-                      style: prego.textTheme.textXs.medium.copyWith(color: white),
+                      style: prego.textTheme.textXs.medium.copyWith(color: foreground),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       request,
-                      style: prego.textTheme.textSm.medium.copyWith(color: white),
+                      style: prego.textTheme.textSm.medium.copyWith(color: foreground),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
