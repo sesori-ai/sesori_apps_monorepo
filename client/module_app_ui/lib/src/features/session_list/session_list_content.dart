@@ -148,7 +148,6 @@ class const SessionListContent({
                     child: SessionTile(
                       session: session,
                       isArchived: isArchived,
-                      isActive: activityInfo != null,
                       isRunning: loaded.isSessionRunning(session: session),
                       unseen: loaded.isSessionUnseen(session: session),
                       selected: selectedSessionId == session.id,

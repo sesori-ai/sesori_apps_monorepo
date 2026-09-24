@@ -171,9 +171,8 @@ The main pane hosts one full-width routed page.
   toggles Archived, leaves New session to the sidebar, and keeps Refresh and Scan for sessions in its
   overflow menu; nothing floats over the list and there is no back arrow. The shared list sits in a centred
   column about 760 pt wide while the whole pane scrolls. It has no Running section: running sessions lead
-  Today and read "Running" where the time would be. Rows are about 44 pt, keep the state sparkle in a fixed
-  leading column, show the time at the trailing edge when the session has one, and highlight under the
-  pointer. The phone list is the same one timeline and keeps its own row anatomy.
+  Today. Rows are about 46 pt, use the shared row anatomy in a denser size, and highlight under the pointer.
+  The phone list is the same one timeline.
 - Above the active list, chips read All, Running and Unread with exact counts from the loaded list and
   narrow it locally without a request; a filter that leaves nothing says so. The chips hide while Archived
   is on, which shows every archived session, and while the project has no sessions. Hovering a row, or
@@ -320,8 +319,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - The new session page: toolbar above a centred, width-capped column with room left below it, and the
   project selector reporting the chosen project (`desktop_new_session_screen_test`).
 - The all-sessions page: toolbar title with no New session button, Archived toggle state, no floating button, the
-  timeline grouping with running sessions first under Today, and pointer-mode row height, leading sparkle
-  and trailing "Running".
+  timeline grouping with running sessions first under Today, and pointer-mode row height.
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
   new-session replacement, diff/direct-entry Back, home states, package-font resolution.
 - Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,

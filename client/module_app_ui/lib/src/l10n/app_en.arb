@@ -915,15 +915,6 @@
   "@sessionListNewActivity": {
     "description": "Screen-reader label for a session with unopened agent activity; the visual signal is the resting sparkle"
   },
-  "sessionListHarness": "{harness} session",
-  "@sessionListHarness": {
-    "description": "Screen-reader label for the harness driving a session; the visual signal is the brand logo leading the row. The harness name is a brand and is not translated.",
-    "placeholders": {
-      "harness": {
-        "type": "String"
-      }
-    }
-  },
   "sessionListRunningRetrying": "Running (retrying)",
   "@sessionListRunningRetrying": {
     "description": "Label shown next to the red dot for sessions that are active but in a retry/error state"
@@ -931,6 +922,10 @@
   "sessionListAwaitingInput": "Awaiting input",
   "@sessionListAwaitingInput": {
     "description": "Label shown next to the amber dot for sessions that are waiting for user input (question or permission)"
+  },
+  "sessionListWaiting": "Waiting",
+  "@sessionListWaiting": {
+    "description": "Amber word leading a session row's meta line while the session waits for the user's answer or permission"
   },
   "sessionListBackgroundTasks": "{count, plural, =1{1 background task} other{{count} background tasks}}",
   "@sessionListBackgroundTasks": {

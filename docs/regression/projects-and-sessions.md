@@ -237,12 +237,18 @@ state.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
-- Regular and archived session rows omit the subtitle line and its spacing
-  when no branch, pull request, or status label is shown. Title-only rows are
-  48px at standard text size; a populated subtitle retains the 70px row height.
-  Running and unread sparkles alone do not reserve a subtitle. Both layouts
-  grow with accessibility text rather than clipping. Regular rows form one
-  timeline with no Running section: running rows lead Today whatever their
+- A session row leads with a 16-point status slot: a turning sparkle while
+  running, an amber dot while waiting for the user (which wins over running),
+  a resting sparkle when unread, or nothing, so titles line up. The time sits
+  at the right in secondary and shows whenever the session has an updated
+  time. Under the title, one tertiary meta line holds any state that needs
+  words ("Waiting" in amber, retrying, background tasks), then the harness
+  name, the branch shortened in the middle and the pull request. Screen
+  readers hear the waiting state once, from the status slot. Every row names
+  its harness, so rows are 70px at standard text size, and they grow with
+  accessibility text rather than clipping or overflowing. In a narrow pane
+  the pull request's indicators clip instead of overflowing. Regular rows form
+  one timeline with no Running section: running rows lead Today whatever their
   stored time, then idle rows follow in updated-time date buckets;
   archived rows retain archive-time date buckets. Awaiting-input-only rows stay
   in their updated-time bucket, and missing timestamps use an Unknown date
@@ -410,10 +416,9 @@ disposable sessions and projects and restore hidden-state changes afterwards.
 For activity order, vary REST versus live delivery, null versus populated
 markers, ties, awaiting-only versus running state, and assistant/tool updates
 after a marker has been established.
-For session-row sizing and grouping, compare regular and archived title-only
-rows against branch-only, PR-only, and status-only subtitles. Toggle subtitle
-content and check compact spacing, preserved swipe/menu actions, and enlarged
-text. Verify running rows leading Today, awaiting-only date grouping,
+For session rows, check idle, running, unread and waiting rows and a long
+branch on both apps, with preserved swipe/menu actions and enlarged text.
+Verify running rows leading Today, awaiting-only date grouping,
 updated-time versus archive-time buckets, and missing-timestamp headings.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
@@ -495,8 +500,8 @@ started one. Restore harness eligibility afterwards.
   navigation loses project/session/read-only identity, the New session or root
   file-changes action cannot reach its typed route, or desktop renders dead
   voice/attachment controls instead of honoring declared capabilities.
-- A title-only session row reserves an empty subtitle line, or a populated
-  subtitle is clipped or loses its spacing in regular or archived lists.
+- A session row hides its time, loses the harness name, misaligns titles
+  between quiet and busy rows, or clips its meta line under enlarged text.
 - Running rows leave the top of Today or open a Running section, awaiting-only
   rows are promoted with them, rows use archive time instead of updated time,
   or render an epoch date when a timestamp is missing.

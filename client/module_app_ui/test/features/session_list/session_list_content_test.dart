@@ -112,7 +112,7 @@ void main() {
     expect(topOf(tester: tester, text: "Today task"), lessThan(topOf(tester: tester, text: "Today task again")));
     expect(topOf(tester: tester, text: "Today task again"), lessThan(topOf(tester: tester, text: "Yesterday")));
     expect(topOf(tester: tester, text: "Yesterday"), lessThan(topOf(tester: tester, text: "Awaiting task")));
-    expect(find.text("Awaiting input"), findsOneWidget);
+    expect(find.text("Waiting"), findsOneWidget);
   });
 
   testWidgets("a session running since yesterday still leads Today", (tester) async {

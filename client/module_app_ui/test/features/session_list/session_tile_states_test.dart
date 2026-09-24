@@ -7,29 +7,21 @@ import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-Finder findBrandLogo(String pluginId) => find.byWidgetPredicate(
-  (widget) => widget is PregoBrandLogo && widget.pluginId == pluginId,
-  description: "brand artwork for $pluginId",
-);
-
-/// A session row is a title line led by its harness logo and ended by either
-/// the state sparkle or when the session last changed, over an indented
-/// footer: branch, pull request and any state that needs words.
+/// A session row is a status slot, the title and when it last changed, over a
+/// tertiary meta line: any state that needs words, then harness, branch and
+/// pull request.
 ///
 /// A working row twinkles on an infinite repeating animation, so these tests
 /// pump fixed durations and never `pumpAndSettle` — it would pump to its
 /// timeout and throw.
 void main() {
-  /// A 24px title inside 12px vertical padding. A populated footer adds its
-  /// 20px minimum line height and 2px inter-line spacing.
-  const titleOnlyHeight = 48.0;
-  const subtitleHeight = 70.0;
+  /// A 24px title and 20px meta line, 2px apart, inside 12px vertical padding.
+  const rowHeight = 70.0;
 
   SessionTile tile({
     required Session session,
     bool isArchived = false,
-    bool isActive = false,
-    bool? isRunning,
+    bool isRunning = false,
     bool unseen = false,
     bool selected = false,
     bool awaitingInput = false,
@@ -42,8 +34,7 @@ void main() {
     return SessionTile(
       session: session,
       isArchived: isArchived,
-      isActive: isActive,
-      isRunning: isRunning ?? isActive,
+      isRunning: isRunning,
       unseen: unseen,
       selected: selected,
       awaitingInput: awaitingInput,
@@ -70,6 +61,12 @@ void main() {
     await tester.pump();
   }
 
+  Future<void> pumpPointerTile(WidgetTester tester, SessionTile row) => pumpTile(
+    tester,
+    row,
+    wrap: (child) => PregoInteractionScope(mode: PregoInteractionMode.pointer, child: child),
+  );
+
   FontWeight? titleWeight(WidgetTester tester, String title) => tester.widget<Text>(find.text(title)).style!.fontWeight;
 
   /// Whether the row's sparkle is twinkling. `tester.hasRunningAnimations` is
@@ -78,313 +75,263 @@ void main() {
   /// stop the loop is PregoAiLoader's own test.
   bool sparkleTwinkles(WidgetTester tester) => tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate;
 
-  group("a session an agent is working in", () {
-    testWidgets("marks itself with a twinkling sparkle and no label", (tester) async {
-      await pumpTile(tester, tile(session: testSession(title: "My Session"), isActive: true));
+  final colors = PregoDesignSystem.light.colors;
+  final now = DateTime.now().millisecondsSinceEpoch;
 
-      expect(find.byType(PregoAiLoader), findsOneWidget);
-      expect(sparkleTwinkles(tester), isTrue);
-      // A plain live turn carries no words — the twinkle is the signal.
-      expect(find.text("Running"), findsNothing);
-      expect(titleWeight(tester, "My Session"), FontWeight.w400);
-      expect(tester.getSize(find.byType(SessionTile)).height, titleOnlyHeight);
+  // Every state on both apps: the slot leads the title, and the time stays.
+  for (final pointer in [false, true]) {
+    group(pointer ? "pointer rows" : "touch rows", () {
+      Future<void> pump(WidgetTester tester, SessionTile row) =>
+          pointer ? pumpPointerTile(tester, row) : pumpTile(tester, row);
+
+      testWidgets("a running session leads with a twinkling sparkle and keeps its time", (tester) async {
+        await pump(
+          tester,
+          tile(
+            session: testSession(title: "My Session", updatedAt: now),
+            isRunning: true,
+          ),
+        );
+
+        expect(sparkleTwinkles(tester), isTrue);
+        expect(tester.getSize(find.byType(PregoAiLoader)), const Size.square(16));
+        expect(
+          tester.getCenter(find.byType(PregoAiLoader)).dx,
+          lessThan(tester.getTopLeft(find.text("My Session")).dx),
+        );
+        // A plain live turn carries no words — the twinkle is the signal.
+        expect(find.text("Running"), findsNothing);
+        expect(find.text("now"), findsOneWidget);
+      });
+
+      testWidgets("an unread session rests on the sparkle and weights its title", (tester) async {
+        await pump(
+          tester,
+          tile(
+            session: testSession(title: "My Session", updatedAt: now),
+            unseen: true,
+          ),
+        );
+
+        expect(sparkleTwinkles(tester), isFalse);
+        expect(titleWeight(tester, "My Session"), FontWeight.w500);
+        expect(find.text("now"), findsOneWidget);
+      });
+
+      testWidgets("a waiting session shows an amber dot and says Waiting in amber", (tester) async {
+        await pump(
+          tester,
+          tile(
+            session: testSession(title: "My Session", updatedAt: now),
+            awaitingInput: true,
+          ),
+        );
+
+        expect(find.byType(PregoAiLoader), findsNothing);
+        final dot = tester.widget<Container>(
+          find.descendant(
+            of: find.byType(SessionTile),
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Container &&
+                  widget.decoration is BoxDecoration &&
+                  (widget.decoration! as BoxDecoration).shape == BoxShape.circle,
+            ),
+          ),
+        );
+        expect((dot.decoration! as BoxDecoration).color, colors.fgWarningPrimary);
+        expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.textWarningPrimary);
+        expect(find.text("now"), findsOneWidget);
+      });
+
+      testWidgets("waiting wins over a turn still counted as running", (tester) async {
+        await pump(
+          tester,
+          tile(session: testSession(title: "My Session"), isRunning: true, awaitingInput: true, isRetrying: true),
+        );
+
+        expect(find.byType(PregoAiLoader), findsNothing);
+        expect(find.text("Waiting"), findsOneWidget);
+      });
+
+      testWidgets("an idle, read session leaves the slot empty and titles still line up", (tester) async {
+        await pump(
+          tester,
+          tile(
+            session: testSession(id: "a", title: "Idle", updatedAt: now),
+          ),
+        );
+        final idleTitle = tester.getTopLeft(find.text("Idle")).dx;
+        await pump(
+          tester,
+          tile(
+            session: testSession(id: "b", title: "Busy", updatedAt: now),
+            isRunning: true,
+          ),
+        );
+
+        expect(tester.getTopLeft(find.text("Busy")).dx, idleTitle);
+        expect(titleWeight(tester, "Busy"), FontWeight.w400);
+      });
+
+      testWidgets("a long branch shortens in the middle in the tertiary meta line", (tester) async {
+        const branch = "sesori/a-very-long-worktree-branch-name-that-cannot-possibly-fit-on-one-row-end";
+        await pump(
+          tester,
+          tile(
+            session: testSession(title: "My Session", branchName: branch, pluginId: "claude", updatedAt: now),
+          ),
+        );
+
+        expect(tester.widget<Text>(find.text("Claude Code")).style?.color, colors.textTertiary);
+        final shown = tester.renderObject<RenderEllipsisText>(find.byType(PregoEllipsisText)).shownText;
+        expect(shown, startsWith("sesori/"));
+        expect(shown, endsWith("end"));
+        expect(shown, contains("…"));
+        expect(tester.takeException(), isNull);
+      });
     });
+  }
 
-    testWidgets("still tells assistive technology it is running", (tester) async {
-      final semantics = tester.ensureSemantics();
+  testWidgets("the time is secondary, outranking the tertiary meta line", (tester) async {
+    await pumpTile(
+      tester,
+      tile(
+        session: testSession(title: "My Session", updatedAt: now),
+      ),
+    );
 
-      await pumpTile(tester, tile(session: testSession(title: "My Session"), isActive: true));
-      // The twinkle is visual-only, so the row's merged semantics must carry
-      // the words the old "Running" label used to speak.
-      expect(find.bySemanticsLabel(RegExp("Running")), findsOneWidget);
-
-      await pumpTile(tester, tile(session: testSession(title: "My Session")));
-      expect(find.bySemanticsLabel(RegExp("Running")), findsNothing);
-
-      semantics.dispose();
-    });
-
-    testWidgets("keeps its words when input is wanted", (tester) async {
-      await pumpTile(
-        tester,
-        tile(session: testSession(title: "My Session"), isActive: true, awaitingInput: true),
-      );
-
-      final label = tester.widget<Text>(find.text("Awaiting input"));
-      expect(label.style?.color, tester.element(find.byType(SessionTile)).prego.colors.textWarningPrimary);
-      expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
-    });
-
-    testWidgets("keeps its words when retrying", (tester) async {
-      await pumpTile(
-        tester,
-        tile(session: testSession(title: "My Session"), isActive: true, isRetrying: true),
-      );
-
-      final label = tester.widget<Text>(find.text("Running (retrying)"));
-      expect(label.style?.color, PregoDesignSystem.light.colors.fgErrorPrimary);
-      expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
-    });
-
-    testWidgets("counts the tasks running behind the turn", (tester) async {
-      await pumpTile(
-        tester,
-        tile(session: testSession(title: "My Session"), isActive: true, backgroundTaskCount: 2),
-      );
-
-      expect(find.text("2 background tasks"), findsOneWidget);
-      expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
-    });
+    expect(tester.widget<Text>(find.text("now")).style?.color, colors.textSecondary);
+    expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
   });
 
-  group("a session with activity the user hasn't opened", () {
-    testWidgets("rests on the solid sparkle and weights its title", (tester) async {
-      await pumpTile(tester, tile(session: testSession(title: "My Session"), unseen: true));
+  testWidgets("every row names its harness, including one this app doesn't know", (tester) async {
+    await pumpTile(
+      tester,
+      tile(
+        session: testSession(title: "My Session", pluginId: "opencode"),
+      ),
+    );
+    expect(find.text("OpenCode"), findsOneWidget);
 
-      expect(find.byType(PregoAiLoader), findsOneWidget);
-      // Unopened activity is a state, not an event: the sparkle marks it but
-      // must not animate, or a list nobody is working in would twinkle forever.
-      expect(sparkleTwinkles(tester), isFalse);
-      expect(titleWeight(tester, "My Session"), FontWeight.w500);
-      expect(tester.getSize(find.byType(SessionTile)).height, titleOnlyHeight);
-    });
-
-    testWidgets("still tells assistive technology about the unopened activity", (tester) async {
-      final semantics = tester.ensureSemantics();
-
-      await pumpTile(tester, tile(session: testSession(title: "My Session"), unseen: true));
-      // The resting sparkle is visual-only, so the row's merged semantics must
-      // carry the unread meaning title weight alone does not announce.
-      expect(find.bySemanticsLabel(RegExp("New activity")), findsOneWidget);
-
-      await pumpTile(tester, tile(session: testSession(title: "My Session")));
-      expect(find.bySemanticsLabel(RegExp("New activity")), findsNothing);
-
-      semantics.dispose();
-    });
-
-    testWidgets("cedes the sparkle to a live turn but keeps the weight", (tester) async {
-      await pumpTile(tester, tile(session: testSession(title: "My Session"), isActive: true, unseen: true));
-
-      expect(sparkleTwinkles(tester), isTrue);
-      expect(titleWeight(tester, "My Session"), FontWeight.w500);
-    });
+    await pumpTile(
+      tester,
+      tile(
+        session: testSession(title: "My Session", pluginId: "harness-from-the-future"),
+      ),
+    );
+    expect(find.text("harness-from-the-future"), findsOneWidget);
   });
 
-  testWidgets("a read, idle session shows no sparkle and tells the time instead", (tester) async {
-    final session = testSession(
-      title: "My Session",
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
+  testWidgets("retrying and background tasks lead the meta line in their colours", (tester) async {
+    await pumpTile(tester, tile(session: testSession(title: "My Session"), isRunning: true, isRetrying: true));
+    expect(tester.widget<Text>(find.text("Running (retrying)")).style?.color, colors.fgErrorPrimary);
+
+    await pumpTile(tester, tile(session: testSession(title: "My Session"), isRunning: true, backgroundTaskCount: 2));
+    expect(find.text("2 background tasks"), findsOneWidget);
+  });
+
+  testWidgets("assistive technology hears the state before the title, then the time", (tester) async {
+    final semantics = tester.ensureSemantics();
+
+    await pumpTile(
+      tester,
+      tile(
+        session: testSession(title: "My Session", updatedAt: now),
+        isRunning: true,
+      ),
+    );
+    expect(find.bySemanticsLabel(RegExp("^Running\nMy Session\njust now")), findsOneWidget);
+
+    await pumpTile(
+      tester,
+      tile(
+        session: testSession(title: "My Session", updatedAt: now),
+        unseen: true,
+      ),
+    );
+    expect(find.bySemanticsLabel(RegExp("^New activity\nMy Session")), findsOneWidget);
+
+    await pumpTile(
+      tester,
+      tile(
+        session: testSession(title: "My Session", updatedAt: now),
+        awaitingInput: true,
+      ),
+    );
+    expect(find.bySemanticsLabel(RegExp("^Awaiting input\nMy Session")), findsOneWidget);
+    // The slot speaks the state, so the meta line's "Waiting" stays silent.
+    expect(find.bySemanticsLabel(RegExp("Waiting")), findsNothing);
+
+    semantics.dispose();
+  });
+
+  testWidgets("the pull request shares the meta line with the branch", (tester) async {
+    final session = testSession(title: "My Session", branchName: "sesori/add-search").copyWith(
+      pullRequest: const PullRequestInfo(
+        number: 42,
+        url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/42",
+        title: "Add project search",
+        state: PrState.open,
+        mergeableStatus: PrMergeableStatus.mergeable,
+        reviewDecision: PrReviewDecision.unknown,
+        checkStatus: PrCheckStatus.none,
+      ),
     );
 
     await pumpTile(tester, tile(session: session));
 
-    expect(find.byType(PregoAiLoader), findsNothing);
-    expect(titleWeight(tester, "My Session"), FontWeight.w400);
-    // The trailing slot is a few characters wide, so the time drops its
-    // phrasing rather than wrapping.
-    expect(find.text("now"), findsOneWidget);
+    expect(find.text("sesori/add-search"), findsOneWidget);
+    expect(find.text("PR #42"), findsOneWidget);
+    expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
   });
 
-  group("the harness leading the title", () {
-    testWidgets("marks the row with the backend driving the session", (tester) async {
-      await pumpTile(
-        tester,
-        tile(
-          session: testSession(title: "My Session", pluginId: "opencode"),
-        ),
-      );
-      expect(findBrandLogo("opencode"), findsOneWidget);
+  testWidgets("a full meta line fits the narrow landscape split pane", (tester) async {
+    tester.view.physicalSize = const Size(258, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
 
-      await pumpTile(
-        tester,
-        tile(
-          session: testSession(title: "My Session", pluginId: "codex"),
-        ),
-      );
-      expect(findBrandLogo("codex"), findsOneWidget);
+    final session = testSession(title: "My Session", branchName: "sesori/a-very-long-worktree-branch", updatedAt: now)
+        .copyWith(
+          pullRequest: const PullRequestInfo(
+            number: 483,
+            url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/483",
+            title: "Redesign the session list item",
+            state: PrState.open,
+            mergeableStatus: PrMergeableStatus.conflicting,
+            reviewDecision: PrReviewDecision.changesRequested,
+            checkStatus: PrCheckStatus.failure,
+          ),
+        );
 
-      await pumpTile(
-        tester,
-        tile(
-          session: testSession(title: "My Session", pluginId: "claude"),
-        ),
-      );
-      expect(findBrandLogo("claude"), findsOneWidget);
-    });
+    await pumpTile(tester, tile(session: session, awaitingInput: true));
 
-    testWidgets("falls back to a plug for a harness this app doesn't know", (tester) async {
-      // A newer bridge can advertise harnesses this build has never heard of;
-      // the slot still has to hold something.
-      await pumpTile(
-        tester,
-        tile(
-          session: testSession(title: "My Session", pluginId: "harness-from-the-future"),
-        ),
-      );
-
-      expect(find.byIcon(TablerRegular.plug), findsOneWidget);
-    });
-
-    testWidgets("names the harness for assistive technology", (tester) async {
-      final semantics = tester.ensureSemantics();
-
-      // The logo is the row's only backend cue, so two otherwise-identical
-      // sessions have to be told apart by ear as well as by eye.
-      await pumpTile(
-        tester,
-        tile(
-          session: testSession(title: "My Session", pluginId: "opencode"),
-        ),
-      );
-      expect(find.bySemanticsLabel(RegExp("OpenCode session")), findsOneWidget);
-
-      await pumpTile(
-        tester,
-        tile(
-          session: testSession(title: "My Session", pluginId: "harness-from-the-future"),
-        ),
-      );
-      expect(find.bySemanticsLabel(RegExp("harness-from-the-future session")), findsOneWidget);
-
-      semantics.dispose();
-    });
+    expect(tester.takeException(), isNull);
   });
 
-  group("the trailing slot", () {
-    testWidgets("gives the time up to the sparkle while the session has one", (tester) async {
-      final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
+  testWidgets("the meta line survives scaled-up accessibility text without overflowing", (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 3.0;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
 
-      await pumpTile(tester, tile(session: session, isActive: true));
-      expect(find.text("now"), findsNothing);
+    final session = testSession(title: "My Session", branchName: "sesori/a-very-long-worktree-branch", updatedAt: now)
+        .copyWith(
+          pullRequest: const PullRequestInfo(
+            number: 483,
+            url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/483",
+            title: "Redesign the session list item",
+            state: PrState.open,
+            mergeableStatus: PrMergeableStatus.conflicting,
+            reviewDecision: PrReviewDecision.changesRequested,
+            checkStatus: PrCheckStatus.failure,
+          ),
+        );
 
-      await pumpTile(tester, tile(session: session, unseen: true));
-      expect(find.text("now"), findsNothing);
-    });
+    await pumpTile(tester, tile(session: session, awaitingInput: true));
 
-    testWidgets("keeps a session older than the relative window to one narrow line", (tester) async {
-      // Past 30 days the slot shows a date, and some locales write those with
-      // spaces; it holds one line so a stale session can't reshape the row.
-      await pumpTile(tester, tile(session: testSession(title: "My Session", updatedAt: 1700000000000)));
-
-      final stamp = tester.widget<Text>(find.textContaining("2023"));
-      expect(stamp.maxLines, 1);
-      expect(stamp.softWrap, isFalse);
-    });
-
-    testWidgets("spells the year of a session from an earlier one", (tester) async {
-      final lastYear = DateTime(DateTime.now().year - 1, 6, 15);
-
-      await pumpTile(
-        tester,
-        tile(
-          session: testSession(title: "My Session", updatedAt: lastYear.millisecondsSinceEpoch),
-        ),
-      );
-
-      expect(find.textContaining("${lastYear.year}"), findsOneWidget);
-    });
-
-    testWidgets("leaves the year off a session from this one", (tester) async {
-      // The year only earns the slot's width when leaving it out would be
-      // ambiguous. (In the first weeks of January this date is still inside
-      // the relative window, which spells no year either.)
-      final thisYear = DateTime(DateTime.now().year);
-
-      await pumpTile(
-        tester,
-        tile(
-          session: testSession(title: "My Session", updatedAt: thisYear.millisecondsSinceEpoch),
-        ),
-      );
-
-      expect(find.textContaining("${thisYear.year}"), findsNothing);
-    });
-
-    testWidgets("still speaks the time the sparkle took the space from, after the state", (tester) async {
-      final semantics = tester.ensureSemantics();
-      final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
-
-      await pumpTile(tester, tile(session: session, isActive: true));
-      // Nothing on screen says when this session last changed, so the row's
-      // spoken label has to — in full, not as the "now" glance mark, and after
-      // the state that took the slot from it.
-      expect(find.bySemanticsLabel(RegExp("Running\njust now")), findsOneWidget);
-
-      semantics.dispose();
-    });
-  });
-
-  group("the footer's details", () {
-    testWidgets("show the workspace branch when the bridge knows one", (tester) async {
-      final session = testSession(title: "My Session", branchName: "sesori/add-search");
-
-      await pumpTile(tester, tile(session: session));
-
-      expect(find.byIcon(TablerRegular.git_branch), findsOneWidget);
-      expect(find.text("sesori/add-search"), findsOneWidget);
-    });
-
-    testWidgets("hold no branch slot for a session without one", (tester) async {
-      await pumpTile(tester, tile(session: testSession(title: "My Session")));
-
-      expect(find.byIcon(TablerRegular.git_branch), findsNothing);
-    });
-
-    testWidgets("surface the pull request beside the branch", (tester) async {
-      final session = testSession(title: "My Session", branchName: "sesori/add-search").copyWith(
-        pullRequest: const PullRequestInfo(
-          number: 42,
-          url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/42",
-          title: "Add project search",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.unknown,
-          checkStatus: PrCheckStatus.none,
-        ),
-      );
-
-      await pumpTile(tester, tile(session: session));
-
-      expect(find.text("PR #42"), findsOneWidget);
-      expect(find.text("Open"), findsOneWidget);
-      expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
-
-      await pumpTile(tester, tile(session: session.copyWith(branchName: null)));
-      expect(find.text("PR #42"), findsOneWidget);
-      expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
-    });
-
-    testWidgets("share the line without overflowing under scaled-up accessibility text", (tester) async {
-      tester.platformDispatcher.textScaleFactorTestValue = 3.0;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      tester.view.physicalSize = const Size(390, 800);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-
-      final session =
-          testSession(
-            title: "My Session",
-            branchName: "sesori/a-very-long-worktree-branch",
-            updatedAt: DateTime.now().millisecondsSinceEpoch,
-          ).copyWith(
-            pullRequest: const PullRequestInfo(
-              number: 483,
-              url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/483",
-              title: "Redesign the session list item",
-              state: PrState.open,
-              mergeableStatus: PrMergeableStatus.conflicting,
-              reviewDecision: PrReviewDecision.changesRequested,
-              checkStatus: PrCheckStatus.failure,
-            ),
-          );
-
-      // Three details on one line at 3x is the worst case the footer has to
-      // survive; each of them yields rather than the row overflowing.
-      await pumpTile(tester, tile(session: session, isActive: true, awaitingInput: true));
-
-      expect(tester.takeException(), isNull);
-    });
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("a title too long for its line fades out instead of ellipsizing", (tester) async {
@@ -422,29 +369,6 @@ void main() {
       expect(ink.decoration, isNull);
     });
 
-    for (final isArchived in [false, true]) {
-      testWidgets("${isArchived ? 'archived' : 'regular'} rows shrink when the footer disappears", (tester) async {
-        final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
-
-        await pumpTile(tester, tile(session: session, isArchived: isArchived));
-        expect(tester.getSize(find.byType(SessionTile)).height, titleOnlyHeight);
-
-        await pumpTile(
-          tester,
-          tile(
-            session: session.copyWith(branchName: "main"),
-            isArchived: isArchived,
-          ),
-        );
-        expect(find.text("main"), findsOneWidget);
-        expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
-
-        await pumpTile(tester, tile(session: session, isArchived: isArchived));
-        expect(find.text("main"), findsNothing);
-        expect(tester.getSize(find.byType(SessionTile)).height, titleOnlyHeight);
-      });
-    }
-
     testWidgets("does not announce a dead button when the shell has no detail route", (tester) async {
       final semantics = tester.ensureSemantics();
 
@@ -462,7 +386,7 @@ void main() {
       expect(
         tester.getSemantics(find.descendant(of: find.byType(SessionTile), matching: find.byType(MergeSemantics))),
         matchesSemantics(
-          label: "plugin-1 session\nMy Session\njust now",
+          label: "My Session\njust now\nplugin-1",
           isButton: false,
           hasTapAction: false,
           hasLongPressAction: true,
@@ -487,7 +411,7 @@ void main() {
       expect(
         tester.getSemantics(find.descendant(of: find.byType(SessionTile), matching: find.byType(MergeSemantics))),
         matchesSemantics(
-          label: "plugin-1 session\nMy Session\njust now\nsesori/add-search",
+          label: "My Session\njust now\nplugin-1\nsesori/add-search",
           isButton: true,
           isFocusable: true,
           hasTapAction: true,
@@ -501,46 +425,16 @@ void main() {
   });
 
   group("in pointer mode", () {
-    Future<void> pumpPointerTile(WidgetTester tester, SessionTile row) => pumpTile(
-      tester,
-      row,
-      wrap: (child) => PregoInteractionScope(mode: PregoInteractionMode.pointer, child: child),
-    );
-
-    testWidgets("an idle row is about 44 pt tall with its time at the trailing edge", (tester) async {
-      final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
-      await pumpPointerTile(tester, tile(session: session));
-
-      expect(tester.getSize(find.byType(SessionTile)).height, inInclusiveRange(40, 48));
-      expect(find.byType(PregoAiLoader), findsNothing);
-    });
-
-    testWidgets("a running row leads with the sparkle and says Running where the time would be", (tester) async {
-      final semantics = tester.ensureSemantics();
-      final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
-      await pumpPointerTile(tester, tile(session: session, isActive: true));
-
-      // Spoken once as the state, and the time the slot gave up is still told.
-      expect(
-        find.bySemanticsLabel(RegExp("^(?!.*Running.*Running).*Running.*just now", dotAll: true)),
-        findsOneWidget,
+    testWidgets("an idle row stays near 44 pt with its meta line", (tester) async {
+      await pumpPointerTile(
+        tester,
+        tile(
+          session: testSession(title: "My Session", updatedAt: now),
+        ),
       );
-      semantics.dispose();
-      expect(find.text("Running"), findsOneWidget);
-      expect(
-        tester.getCenter(find.byType(PregoAiLoader)).dx,
-        lessThan(tester.getTopLeft(find.text("My Session")).dx),
-      );
-      expect(tester.getTopLeft(find.text("Running")).dx, greaterThan(tester.getTopRight(find.text("My Session")).dx));
-    });
-    testWidgets("a row that only waits for input does not claim to be running", (tester) async {
-      final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
-      await pumpPointerTile(tester, tile(session: session, isActive: true, isRunning: false, awaitingInput: true));
 
-      expect(find.text("Running"), findsNothing);
-      expect(find.bySemanticsLabel(RegExp("Running")), findsNothing);
-      expect(find.byType(PregoAiLoader), findsNothing);
-      expect(find.text("Awaiting input"), findsOneWidget);
+      expect(tester.getSize(find.byType(SessionTile)).height, inInclusiveRange(44, 48));
+      expect(find.text("now"), findsOneWidget);
     });
 
     testWidgets("hovering swaps the time for the read toggle and Archive, which call the row's handlers", (
@@ -548,7 +442,7 @@ void main() {
     ) async {
       var archived = 0;
       var toggled = 0;
-      final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
+      final session = testSession(title: "My Session", updatedAt: now);
       await pumpPointerTile(
         tester,
         tile(session: session, onArchive: () => archived++, onToggleUnread: () => toggled++),
