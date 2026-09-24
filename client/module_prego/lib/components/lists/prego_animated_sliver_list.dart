@@ -1,3 +1,4 @@
+import "package:flutter/rendering.dart";
 import "package:material_ui/material_ui.dart";
 
 import "../../motion/prego_reduced_motion.dart";
@@ -52,6 +53,7 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
     }
 
     final duration = prefersReducedMotion(context) ? Duration.zero : _itemTransitionDuration;
+    final landsOnScreen = _landsOnScreen();
     final nextKeys = nextEntries.map((entry) => entry.key).toSet();
 
     // Remove from the end so each index still addresses the old list while it
@@ -71,7 +73,7 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
           outgoing: true,
           child: oldWidget.itemBuilder(context, index, entry.item),
         ),
-        duration: duration,
+        duration: landsOnScreen(index) ? duration : Duration.zero,
       );
     }
 
@@ -88,8 +90,35 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       if (retainedKeys.contains(entry.key)) continue;
 
       _entries.insert(index, entry);
-      listState.insertItem(index, duration: duration);
+      listState.insertItem(index, duration: landsOnScreen(index) ? duration : Duration.zero);
     }
+  }
+
+  /// Whether a row at an index lands in the list's visible extent, so its
+  /// entry or exit is worth animating.
+  ///
+  /// An animated row enters at zero height, so all of them fit in the first
+  /// frame after a filter change and the list would build every one at once.
+  /// Rows outside the visible extent enter at full size instead and build
+  /// lazily as they scroll in, and leave at once instead of each ticking a
+  /// transition nobody sees. Rows are tap targets, so none is shorter than
+  /// [kMinInteractiveDimension], which bounds how many the extent can show.
+  bool Function(int index) _landsOnScreen() {
+    final sliver = _listKey.currentContext?.findRenderObject();
+    // A list that is not laid out, such as one kept offstage, has no extent.
+    if (sliver is! RenderSliverMultiBoxAdaptor || sliver.geometry == null) return (_) => true;
+
+    final constraints = sliver.constraints;
+    // The last built row starting at or above the top edge is the first one
+    // visible.
+    var firstVisible = 0;
+    for (var child = sliver.firstChild; child != null; child = sliver.childAfter(child)) {
+      if ((sliver.childScrollOffset(child) ?? 0) > constraints.scrollOffset) break;
+      firstVisible = sliver.indexOf(child);
+    }
+    // Unbounded inside a shrink-wrapped list, so every row there animates.
+    final visibleRows = constraints.remainingPaintExtent / kMinInteractiveDimension;
+    return (index) => index >= firstVisible && index < firstVisible + visibleRows;
   }
 
   @override

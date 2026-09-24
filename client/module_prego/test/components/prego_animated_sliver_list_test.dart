@@ -56,7 +56,10 @@ void main() {
           PregoAnimatedSliverList<String>(
             items: items,
             itemKey: ValueKey<String>.new,
-            itemBuilder: (context, index, item) => SizedBox(height: _rowHeight, child: _Instance(label: item)),
+            itemBuilder: (context, index, item) => SizedBox(
+              height: _rowHeight,
+              child: _Instance(label: item),
+            ),
           ),
         ],
       ),
@@ -132,6 +135,22 @@ void main() {
     await tester.pumpWidget(list([]));
     expect(find.text("A"), findsOneWidget);
     expect(focus.hasFocus, isFalse);
+  });
+
+  testWidgets("a filter change animates only the rows that land on screen", (tester) async {
+    final items = [for (var i = 0; i < 100; i++) "$i"];
+    Finder rowTransition(String item) => find.ancestor(of: find.text(item), matching: find.byType(SizeTransition));
+
+    await tester.pumpWidget(_harness(["0"]));
+    await tester.pumpWidget(_harness(items));
+
+    // Animated rows start at zero height; animating all 100 built all 100.
+    expect(find.byType(SizeTransition).evaluate().length, lessThan(30));
+
+    await tester.pump(const Duration(milliseconds: 130));
+    expect(tester.getSize(rowTransition("1")).height, inExclusiveRange(0, _rowHeight));
+    expect(tester.getSize(rowTransition("7")).height, inExclusiveRange(0, _rowHeight));
+    expect(tester.getSize(rowTransition("13")).height, _rowHeight);
   });
 
   testWidgets("reduced motion removes a row without a transition delay", (tester) async {
