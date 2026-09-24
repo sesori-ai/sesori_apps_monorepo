@@ -335,8 +335,8 @@ class const SessionTile({
     );
   }
 
-  /// The status slot's mark: a rotating sparkle while an agent works, an amber
-  /// dot while the session waits for the user, a resting sparkle for activity
+  /// The status slot's mark: an amber dot while the session waits for the
+  /// user, a rotating sparkle while an agent works, a resting sparkle for activity
   /// the user hasn't opened, and nothing for a quiet session. Unseen still
   /// shows through the title's weight when another state wins.
   ///
@@ -344,9 +344,8 @@ class const SessionTile({
   /// what it means — the caller has both or neither.
   ({String label, Widget mark})? _state({required BuildContext context}) {
     final loc = context.loc;
-    if (isRunning) {
-      return (label: loc.sessionListRunning, mark: const PregoAiLoader(size: _statusSlotSize));
-    }
+    // Waiting wins: a turn blocked on the user can still count as running
+    // while it retries or has background tasks.
     if (awaitingInput) {
       return (
         label: loc.sessionListAwaitingInput,
@@ -356,6 +355,9 @@ class const SessionTile({
           decoration: BoxDecoration(shape: BoxShape.circle, color: context.prego.colors.fgWarningPrimary),
         ),
       );
+    }
+    if (isRunning) {
+      return (label: loc.sessionListRunning, mark: const PregoAiLoader(size: _statusSlotSize));
     }
     if (unseen) {
       // Same contract as the project list: the resting sparkle carries the

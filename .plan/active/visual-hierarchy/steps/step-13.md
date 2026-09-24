@@ -38,8 +38,9 @@ subtitle's popover. 13.b rebuilds the session row.
   the harness name, the branch shortened in the middle and the pull request.
   A waiting row says "Waiting" in amber (D24). The harness logo and its spoken
   "{harness} session" label go; the name is now text.
-- `isActive` leaves `SessionTile`; the service-owned `isRunning` drives the
-  sparkle on both apps, so a session only waiting for input shows the dot.
+- The `isActive` parameter is removed from `SessionTile`. The service-owned
+  `isRunning` drives the sparkle on both apps, and waiting takes precedence,
+  so a session waiting for input shows the dot.
 
 ### Verification
 

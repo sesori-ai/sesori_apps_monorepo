@@ -144,6 +144,16 @@ void main() {
         expect(find.text("now"), findsOneWidget);
       });
 
+      testWidgets("waiting wins over a turn still counted as running", (tester) async {
+        await pump(
+          tester,
+          tile(session: testSession(title: "My Session"), isRunning: true, awaitingInput: true, isRetrying: true),
+        );
+
+        expect(find.byType(PregoAiLoader), findsNothing);
+        expect(find.text("Waiting"), findsOneWidget);
+      });
+
       testWidgets("an idle, read session leaves the slot empty and titles still line up", (tester) async {
         await pump(
           tester,

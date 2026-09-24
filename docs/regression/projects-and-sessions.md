@@ -238,9 +238,9 @@ state.
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
 - A session row leads with a 16-point status slot: a turning sparkle while
-  running, an amber dot while waiting for the user, a resting sparkle when
-  unread, or nothing, so titles line up. The time sits at the right in
-  secondary and always shows. Under the title, one tertiary meta line holds any
+  running, an amber dot while waiting for the user (which wins over running),
+  a resting sparkle when unread, or nothing, so titles line up. The time sits
+  at the right in secondary and shows whenever the session has an updated time. Under the title, one tertiary meta line holds any
   state that needs words ("Waiting" in amber, retrying, background tasks), then
   the harness name, the branch shortened in the middle and the pull request.
   Every row names its harness, so rows are 70px at standard text size, and
@@ -414,7 +414,8 @@ For activity order, vary REST versus live delivery, null versus populated
 markers, ties, awaiting-only versus running state, and assistant/tool updates
 after a marker has been established.
 For session rows, check idle, running, unread and waiting rows and a long
-branch on both apps, with preserved swipe/menu actions and enlarged text. Verify running rows leading Today, awaiting-only date grouping,
+branch on both apps, with preserved swipe/menu actions and enlarged text.
+Verify running rows leading Today, awaiting-only date grouping,
 updated-time versus archive-time buckets, and missing-timestamp headings.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
