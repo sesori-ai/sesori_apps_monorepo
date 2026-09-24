@@ -24,7 +24,8 @@ void main() {
     expect(manifest.bundledVersion.raw, AntigravityRelease.registryPackageVersion);
     expect(manifest.minPathVersion, manifest.bundledVersion);
     expect(manifest.parseInstalledVersion(value: "1.0.0")?.raw, "1.0.0");
-    expect(manifest.parseInstalledVersion(value: AntigravityRelease.agentVersion), isNull);
+    expect(manifest.parseInstalledVersion(value: "agy_acp_server_1.1.1"), isNull);
+    expect(manifest.parseInstalledVersion(value: AntigravityRelease.agentVersion)?.raw, "1.2.1");
     expect(
       manifest.managedServerPath(stateDirectory: "/state", target: macArm),
       p.join(

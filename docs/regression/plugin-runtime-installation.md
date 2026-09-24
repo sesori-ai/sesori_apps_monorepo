@@ -44,7 +44,7 @@ from the app or management API, or at bridge start when Sesori manages an older 
   GitHub Copilot installs the official bare `copilot`/`copilot.exe` from exactly
   six arm64/x64 macOS, Linux, and Windows archives for the pinned release.
   Antigravity installs Google's proprietary official server and local-harness pair as one package directory on macOS
-  arm64, Linux x64/arm64, and Windows x64/arm64; Google publishes no macOS x64 archive. The user must review
+  arm64, Linux x64/arm64, and Windows x64/arm64. Google's additional macOS x64 archive is not yet supported by Sesori. The user must review
   [Google's terms](https://antigravity.google/terms) and
   [Antigravity documentation](https://antigravity.google/docs/) before explicitly choosing Install. A configured
   `--antigravity-bin` remains authoritative and removes the managed action. In the client, the overview download icon
@@ -195,16 +195,17 @@ download, verification, or placement. Use a disposable data directory.
   login, and it never supersedes a configured binary path. Copilot authentication remains
   an out-of-band `copilot login`, supported token environment, or BYOK configuration.
 - Pinned digests are release-engineering state, checked upstream externally.
-- OMP's Windows ARM64 mapping is implemented for `18.1.19`, with an independently
-  downloaded hash matching the official release digest and checksum list. Native
-  Windows ARM64 install, `omp/18.1.19`, ACP initialize and teardown have not been
+- OMP's Windows ARM64 mapping has an independently downloaded hash matching the
+  pinned release's official digest and checksum list. Native Windows ARM64
+  installation, version, ACP initialize and teardown have not been
   exercised; they remain required coverage rather than inferred from metadata,
   simulated platform tests or macOS/x64 runs.
-- Antigravity's managed manifest uses the registry package version `1.1.1` for its version directory and separately
-  validates the exact ACP runtime identity `agy_acp_server_1.1.1`. The initialize-only validator uses
+- Antigravity's managed manifest uses registry package version `1.2.1` for its version directory and separately
+  validates the exact ACP runtime identity `1.2.1`. The initialize-only validator uses
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
-  authenticates nor creates a session. Native managed-pipeline correctness has been executed on macOS arm64. Linux x64,
-  Linux arm64, Windows x64 and Windows arm64 native correctness remains unverified.
+  authenticates nor creates a session. This target has macOS arm64 native initialize/teardown coverage, but its complete
+  managed-pipeline run remains unverified. Linux x64, Linux arm64, Windows x64 and Windows arm64 native correctness
+  remains unverified.
 - Startup upgrade replaces only an existing Sesori-managed runtime; otherwise Install remains explicit. A PATH runtime
   preserves managed directories and suppresses automatic managed downloads.
 - There is no hot swap: a generation started on the older supported runtime keeps it until

@@ -49,16 +49,21 @@ concrete problem can justify a documented temporary hold with a resolution path.
   exact ACP identity/pair, not a free-standing semantic floor. Identify effects
   on previously accepted explicit/PATH pairs in the plan. Do not manufacture
   an independent minimum or silently change this exact-pin policy.
-- **Assets:** five ZIPs: macOS arm64, Linux arm64/x64, Windows arm64/x64.
-  No macOS x64. Independently hash official downloads; do not portray locally
-  computed checksums as Google's signed provenance. Preserve sibling
+- **Assets:** Sesori selects five ZIPs: macOS arm64, Linux arm64/x64, Windows
+  arm64/x64. The [official registry](https://github.com/agentclientprotocol/registry/blob/7384f5e98d28cbbeba10035d520bdb680b19b3d8/antigravity-acp/agent.json)
+  also publishes macOS x64 as of 2026-09-24; adopting that platform is separate
+  feature work. Independently hash selected official downloads; do not portray
+  locally computed checksums as Google's signed provenance. Preserve sibling
   `agy_acp_server.par` + `localharness_external` (Windows `.exe` counterparts),
   launch environment, Linux `--uid=`, permissions and archive limits.
-- **Probe:** no supported standalone CLI version command. Use the owning
-  `AntigravityRuntimeVersionValidator` / runtime service's initialize-only ACP
-  contract with candidate release facts and isolated state. Confirm exact
-  identity, protocol, capabilities, auth-method set and process teardown before
-  placement; create no session and initiate no OAuth. Linux extraction requires
+- **Probe:** `--version` prints a `Build label:` among unrelated build diagnostics;
+  setup consumes only the sanitized label. The 2026-09-24 native probe established
+  plain semantic labels and ACP identity for package 1.2.1, replacing the earlier
+  `agy_acp_server_` prefix. Do not derive an identity from the archive filename.
+  Use the owning `AntigravityRuntimeVersionValidator` / runtime service's
+  initialize-only ACP contract with candidate release facts and isolated state.
+  Confirm exact identity, protocol, capabilities, auth-method set and process
+  teardown before placement; create no session and initiate no OAuth. Linux extraction requires
   Info-ZIP `unzip` with ZipInfo support. Never substitute normal Google profiles.
 - **Opportunities:** inspect account/model discovery, auth, history, deletion and
   subagent gaps against the current matrix. The 2026-09-12 matrix assessment found
