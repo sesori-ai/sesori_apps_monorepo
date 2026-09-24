@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_view_service.dart";
 import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -127,6 +128,37 @@ void main() {
 
     test("does not handle GET /session/create", () {
       expect(handler.canHandle(makeRequest("GET", "/session/create")), isFalse);
+    });
+
+    test("keeps the created session response when continuation projection fails", () async {
+      final localHandler = CreateSessionHandler(
+        sessionViews: const _FailingSessionViews(),
+        sessionCreationService: sessionCreationService,
+      );
+      final response = await localHandler.routeForTest(
+        makeRequest(
+          "POST",
+          "/session/create",
+          body: jsonEncode(
+            const CreateSessionRequest(
+              projectId: "/repo",
+              pluginId: legacyMissingPluginId,
+              dedicatedWorktree: false,
+              parts: [PromptPart.text(text: "Start")],
+              variant: null,
+              agent: null,
+              model: null,
+              command: null,
+            ).toJson(),
+          ),
+        ),
+      );
+
+      expect(response.status, 200);
+      final created = Session.fromJson(jsonDecodeMap(response.body!));
+      expect(await db.sessionDao.getSession(sessionId: created.id), isNotNull);
+      expect(created.autoContinuation, isNull);
+      expect(plugin.lastCreateSessionParts, [const PluginPromptPart.text(text: "Start")]);
     });
 
     test("accepts a request body without pluginId", () async {
@@ -1357,4 +1389,12 @@ class _FakeBridgePlugin() extends _OpenCodeFakeBridgePlugin {
     required String projectId,
     required String worktreePath,
   }) async {}
+}
+
+final class const _FailingSessionViews() implements SessionViewService {
+  @override
+  Future<Session> enrich({required Session session}) async => throw StateError("continuation projection failed");
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

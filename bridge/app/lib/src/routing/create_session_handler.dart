@@ -1,3 +1,4 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../services/session_creation_service.dart";
@@ -21,6 +22,14 @@ class CreateSessionHandler({
     RelayRequest request, {
     required CreateSessionRequest body,
   }) async {
-    return await _sessionViews.enrich(session: await _sessionCreationService.createSession(request: body));
+    final session = await _sessionCreationService.createSession(request: body);
+    try {
+      return await _sessionViews.enrich(session: session);
+    } on Object catch (error, stackTrace) {
+      // Creation may already have started the initial prompt. Return its ID
+      // even if optional continuation metadata could not be projected.
+      Log.w("Created session ${session.id}, but continuation projection failed", error, stackTrace);
+      return session;
+    }
   }
 }

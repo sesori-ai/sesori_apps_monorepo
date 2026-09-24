@@ -7,7 +7,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 | 1 — Plan and support audit | Merged | [#1601][plan-pr]; audit and reviewed plan. |
 | 2 — Quota normalization | Merged | [#1641][normalization-pr]; typed terminal events and Claude/Pi reporting. |
 | 3 — Durable contracts and readiness | Merged | [#1649][foundation-pr]; durable state and readiness. |
-| 4 — Bridge scheduler | In review | Route, views, cancellation and dispatch in this PR. |
+| 4 — Bridge scheduler | In review | [#1654][scheduler-pr]; route, views, cancellation and dispatch. |
 | 5 — Shared chat controls | Not started | Inline hint, indicator and three-dot toggle on phone and desktop. |
 | 6 — Regression reconciliation | Not started | Complete affected feature docs and capability matrix. |
 | 7 — L4 verification and retirement | Not started | All recorded boundary/platform/provider coverage must pass. |
@@ -15,6 +15,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 [plan-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1601
 [normalization-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1641
 [foundation-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1649
+[scheduler-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1654
 
 ## Confirmed user decisions
 
@@ -72,5 +73,5 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
   routing, cancellation, event and composed handoff checks pass; app analysis is
   clean. Architecture implementation review approved the complete step 4 diff;
   controls and live provider recovery are not implemented/verified yet.
-- Live scheduled continuation: not run; scheduler is local work and controls are not implemented.
+- Live scheduled continuation: not run; scheduler is in review and controls are not implemented.
 - Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.
