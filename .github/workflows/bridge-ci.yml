@@ -66,16 +66,11 @@ jobs:
         run: dart pub get
         working-directory: shared/no_slop_linter
 
-      - name: Analyze bridge packages
+      # One workspace-wide pass is several times faster than per-package runs.
+      - name: Analyze bridge workspace
         if: matrix.task == 'analyze'
-        shell: bash
+        run: dart analyze --fatal-infos
         working-directory: bridge
-        run: |
-          for module in $(sed -n 's/^MODULES := //p' Makefile); do
-            echo "::group::analyze $module"
-            (cd "$module" && dart analyze --fatal-infos)
-            echo "::endgroup::"
-          done
 
       - name: Run bridge tests
         if: startsWith(matrix.task, 'test-')
@@ -89,7 +84,9 @@ jobs:
             if [ "$TASK" = test-packages ] && [ "$module" = app ]; then continue; fi
             if [ -d "$module/test" ]; then
               echo "::group::test $module"
-              (cd "$module" && dart test)
+              # The default of half the cores leaves a 4-core runner mostly idle
+              # while tests wait on timers and subprocesses.
+              (cd "$module" && dart test -j 4)
               echo "::endgroup::"
             fi
           done

@@ -92,15 +92,12 @@ jobs:
         run: dart pub get
         working-directory: client
 
-      - name: Analyze mobile packages
-        shell: bash
+      # One workspace-wide pass shares resolved libraries across packages and
+      # is several times faster than analyzing each package separately. It
+      # also covers the desktop packages, which is harmless extra coverage.
+      - name: Analyze client workspace
+        run: dart analyze --fatal-infos
         working-directory: client
-        run: |
-          for module in app module_core module_auth module_prego module_app_ui; do
-            echo "::group::analyze $module"
-            (cd "$module" && dart analyze --fatal-infos)
-            echo "::endgroup::"
-          done
 
   # One job per package so the slowest suite, not the sum, sets the wall time.
   # no_slop_linter tests run in Bridge CI, which triggers on every shared/** change.
@@ -135,5 +132,7 @@ jobs:
         working-directory: client
 
       - name: Run tests for ${{ matrix.package }}
-        run: ${{ matrix.runner }} test
+        # The default of half the cores leaves a 4-core runner mostly idle
+        # while tests wait on timers and subprocesses.
+        run: ${{ matrix.runner }} test -j 4
         working-directory: client/${{ matrix.package }}
