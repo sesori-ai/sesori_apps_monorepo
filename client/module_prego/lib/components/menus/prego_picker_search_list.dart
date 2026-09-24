@@ -262,7 +262,14 @@ class const _OptionRow({
           borderRadius: radius,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: isHighlighted ? prego.colors.bgSecondaryHover : null,
+              // The secondary hover grey is lost on the popover surface. Light
+              // takes the stronger gray hover; dark, the sidebar's selected tint.
+              // A hovering pointer moves this highlight; the ink hover stays clear.
+              color: !isHighlighted
+                  ? null
+                  : Theme.of(context).brightness == Brightness.dark
+                  ? prego.colors.textBrandPrimary.withValues(alpha: 0.14)
+                  : prego.colors.bgGrayHover,
               borderRadius: radius,
             ),
             child: ConstrainedBox(

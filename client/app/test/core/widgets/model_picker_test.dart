@@ -109,7 +109,7 @@ Finder _highlighted({required String label}) => find.ancestor(
     (widget) =>
         widget is DecoratedBox &&
         widget.decoration is BoxDecoration &&
-        (widget.decoration as BoxDecoration).color == PregoDesignSystem.light.colors.bgSecondaryHover,
+        (widget.decoration as BoxDecoration).color == PregoDesignSystem.light.colors.bgGrayHover,
   ),
 );
 
