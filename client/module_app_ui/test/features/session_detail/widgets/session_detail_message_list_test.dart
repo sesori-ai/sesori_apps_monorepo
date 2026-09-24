@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 
 import "package:flutter/gestures.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -29,6 +30,8 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late List<QueuedSessionSubmission> _queuedMessages;
   late List<QueuedSessionPrompt> _bridgeQueuedPrompts;
   QueuedSessionSubmission? _sendingSubmission;
+  List<QueuedSessionSubmission> _awaitingBridgeSubmissions = const [];
+  Map<String, List<ComposerAttachment>> _bridgePromptAttachments = const {};
   final List<String> cancelledBridgePromptIds = [];
   late String? _retryErrorMessage;
   bool _isLoadingOlderMessages = false;
@@ -95,6 +98,29 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     });
   }
 
+  void acceptSendingSubmission() {
+    setState(() {
+      _awaitingBridgeSubmissions = [..._awaitingBridgeSubmissions, _sendingSubmission!];
+      _sendingSubmission = null;
+    });
+  }
+
+  void updateBridgeQueue({
+    required List<QueuedSessionPrompt> prompts,
+    required Map<String, List<ComposerAttachment>> attachments,
+  }) {
+    setState(() {
+      _bridgeQueuedPrompts = prompts;
+      _bridgePromptAttachments = attachments;
+      final bridgeIds = prompts.map((prompt) => prompt.id).toSet();
+      _queuedMessages = _queuedMessages.where((submission) => !bridgeIds.contains(submission.promptId)).toList();
+      _awaitingBridgeSubmissions = _awaitingBridgeSubmissions
+          .where((submission) => !bridgeIds.contains(submission.promptId))
+          .toList();
+      if (bridgeIds.contains(_sendingSubmission?.promptId)) _sendingSubmission = null;
+    });
+  }
+
   void replaceFirstQueuedSubmission(QueuedSessionSubmission submission) {
     setState(() => _queuedMessages = [submission, ..._queuedMessages.skip(1)]);
   }
@@ -126,6 +152,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       home: Scaffold(
         body: SessionDetailMessageList(
           bridgeQueuedPrompts: _bridgeQueuedPrompts,
+          bridgePromptAttachments: _bridgePromptAttachments,
           onCancelBridgeQueuedPrompt: (promptId) {
             cancelledBridgePromptIds.add(promptId);
             setState(
@@ -136,6 +163,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           onLoadOlderMessages: widget.onLoadOlderMessages,
           messages: _messages,
           sendingSubmission: _sendingSubmission,
+          awaitingBridgeSubmissions: _awaitingBridgeSubmissions,
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
           streamingText: _streamingText,
@@ -321,6 +349,173 @@ void main() {
     expect(harnessKey.currentState?.cancelledBridgePromptIds, ["prm_1"]);
     expect(find.text("steer it"), findsNothing);
     expect(find.text("/review src"), findsOneWidget);
+  });
+
+  for (final text in ["Review these images", ""]) {
+    testWidgets("keeps local thumbnails through bridge sending with ${text.isEmpty ? 'no text' : 'text'}", (
+      tester,
+    ) async {
+      final attachments = [
+        for (var i = 0; i < 2; i++)
+          ComposerAttachment(
+            mime: "image/png",
+            bytes: base64Decode(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+            ),
+            filename: "Fixture $i.png",
+          ),
+      ];
+      final submission = QueuedSessionSubmission.text(
+        promptId: "image-prompt",
+        text: text,
+        inputMode: ComposerInputMode.typed,
+        attachments: attachments,
+        agent: null,
+        agentModel: null,
+        fastMode: false,
+      );
+      final prompt = QueuedSessionPrompt(
+        id: submission.promptId,
+        text: submission.displayText,
+        command: null,
+        attachmentCount: attachments.length,
+        createdAt: 100,
+      );
+      final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: harnessKey,
+          initialMessages: const [],
+          initialStreamingText: const {},
+          initialQueuedMessages: [submission],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      void expectThumbnails() {
+        final previews = tester.widgetList<Image>(find.byType(Image)).toList();
+        expect(previews, hasLength(attachments.length));
+        for (var i = 0; i < previews.length; i++) {
+          final provider = previews[i].image as ResizeImage;
+          expect((provider.imageProvider as MemoryImage).bytes, same(attachments[i].bytes));
+        }
+        expect(tester.takeException(), isNull);
+      }
+
+      expectThumbnails();
+      harnessKey.currentState!.beginSending();
+      await tester.pump();
+      expect(find.text("Sending"), findsOneWidget);
+      expectThumbnails();
+
+      harnessKey.currentState!.acceptSendingSubmission();
+      await tester.pumpAndSettle();
+      expectThumbnails();
+
+      harnessKey.currentState!.updateBridgeQueue(prompts: [prompt], attachments: {submission.promptId: attachments});
+      await tester.pumpAndSettle();
+      expectThumbnails();
+
+      harnessKey.currentState!.updateBridgeQueue(
+        prompts: [prompt.copyWith(dispatchState: QueuedPromptDispatchState.dispatched)],
+        attachments: {submission.promptId: attachments},
+      );
+      await tester.pump();
+      expectThumbnails();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("Sending"), findsOneWidget);
+      expectThumbnails();
+      expect(find.byType(QueuedMessageBubble), findsOneWidget);
+
+      harnessKey.currentState!.deliverBridgePrompt(
+        promptId: submission.promptId,
+        message: _message(
+          messageId: "delivered-image-prompt",
+          role: "user",
+          text: "Delivered prompt",
+          promptId: submission.promptId,
+        ),
+        insertionIndex: 0,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(QueuedMessageBubble), findsNothing);
+      expect(find.byType(Image), findsNothing);
+      expect(find.text("Delivered prompt"), findsOneWidget);
+    });
+  }
+
+  testWidgets("coalesced handoff and scrolling keep previews while absent preview data falls back to counts", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final attachment = ComposerAttachment(
+      mime: "image/png",
+      bytes: base64Decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+      ),
+      filename: "Fixture.png",
+    );
+    final submission = QueuedSessionSubmission.text(
+      promptId: "image-prompt",
+      text: "Review this image",
+      inputMode: ComposerInputMode.typed,
+      attachments: [attachment],
+      agent: null,
+      agentModel: null,
+      fastMode: false,
+    );
+    const prompt = QueuedSessionPrompt(
+      id: "image-prompt",
+      text: "Review this image",
+      command: null,
+      attachmentCount: 1,
+      createdAt: 100,
+      dispatchState: QueuedPromptDispatchState.dispatched,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 30),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    harnessKey.currentState!.sendDirectly(submission);
+    // No pump: a fast bridge handoff can coalesce both local states away.
+    harnessKey.currentState!.updateBridgeQueue(
+      prompts: [prompt],
+      attachments: {
+        submission.promptId: [attachment],
+      },
+    );
+    await _pumpListUpdate(tester);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(Image), findsOneWidget);
+
+    await _sendPointerScroll(tester: tester, target: find.byKey(_listViewKey), delta: const Offset(0, -1600));
+    await _pumpListUpdate(tester);
+    expect(_position(tester).pixels, greaterThan(1000));
+    expect(find.byType(QueuedMessageBubble), findsNothing);
+    await tester.tap(find.byKey(_jumpToLatestKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
+    expect(find.byType(Image), findsOneWidget);
+    expect(
+      tester.widget<QueuedMessageBubble>(find.byType(QueuedMessageBubble)).localAttachments.single,
+      same(attachment),
+    );
+
+    // The bounded owner may evict an older preview while its row is pending.
+    harnessKey.currentState!.updateBridgeQueue(prompts: [prompt], attachments: const {});
+    await _pumpListUpdate(tester);
+    expect(find.text("Sending"), findsOneWidget);
+    expect(find.text("1 image"), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets("renders an unavailable local command as removable instead of queued", (tester) async {

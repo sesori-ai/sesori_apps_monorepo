@@ -2,6 +2,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
+import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/session_interaction_state.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/session_selection_calculator.dart";
@@ -59,6 +60,8 @@ sealed class SessionDetailState with _$SessionDetailState {
     // from [queuedMessages], which only stages sends the bridge has not
     // accepted yet.
     @Default([]) List<QueuedSessionPrompt> bridgeQueuedPrompts,
+    // Memory-only, bounded previews retained from this surface's submissions.
+    required Map<String, List<ComposerAttachment>> bridgePromptAttachments,
     // Accepted sends whose bridge-side representation has not arrived yet.
     // Rendered as read-only queue rows so a prompt never blanks between
     // its acceptance response and the bridge's queue event listing it.

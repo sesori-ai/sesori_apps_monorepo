@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
@@ -150,6 +151,7 @@ void main() {
       List<CommandInfo> commands = const [],
       SessionPromptDefaults? promptDefaults,
       bool areOptionsStale = false,
+      bool supportsPromptAttachments = false,
     }) async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
@@ -163,7 +165,7 @@ void main() {
             areOptionsStale: areOptionsStale,
             projectId: "project-1",
             pluginId: "claude",
-            supportsPromptAttachments: false,
+            supportsPromptAttachments: supportsPromptAttachments,
             messages: const <MessageWithParts>[],
             olderMessagesCursor: null,
             awaitingHarnessSync: false,
@@ -193,7 +195,7 @@ void main() {
             areOptionsStale: false,
             projectId: "project-1",
             pluginId: "claude",
-            supportsPromptAttachments: false,
+            supportsPromptAttachments: supportsPromptAttachments,
             messages: reloadSnapshotMessages,
             olderMessagesCursor: null,
             awaitingHarnessSync: false,
@@ -1167,6 +1169,84 @@ void main() {
       }
       await subscription.cancel();
     });
+
+    for (final acceptedFirst in [false, true]) {
+      test(
+        "queue handoff retains images ${acceptedFirst ? 'after' : 'before'} acceptance without a UI frame",
+        () async {
+          final send = Completer<ApiResponse<void>>();
+          when(
+            () => mockSessionRepository.sendMessage(
+              sessionId: _sessionId,
+              promptId: any(named: "promptId"),
+              text: any(named: "text"),
+              attachments: any(named: "attachments"),
+              agent: any(named: "agent"),
+              model: any(named: "model"),
+              variant: any(named: "variant"),
+              fastMode: any(named: "fastMode"),
+              command: any(named: "command"),
+            ),
+          ).thenAnswer((_) => send.future);
+          final cubit = await createLoadedCubit(supportsPromptAttachments: true);
+          final attachment = ComposerAttachment(
+            mime: "image/png",
+            bytes: base64Decode(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+            ),
+            filename: "Fixture.png",
+          );
+          final sending = cubit.sendMessage(
+            text: "Review image",
+            command: null,
+            inputMode: ComposerInputMode.typed,
+            attachments: [attachment],
+          );
+          final promptId = (cubit.state as SessionDetailLoaded).sendingSubmission!.promptId;
+          if (acceptedFirst) {
+            send.complete(ApiResponse.success(null));
+            await sending;
+          }
+          final handedOff = cubit.stream.firstWhere(
+            (state) => state is SessionDetailLoaded && state.bridgeQueuedPrompts.isNotEmpty,
+          );
+          sessionEvents.add(
+            SesoriSseEvent.sessionQueuedPrompts(
+              sessionID: _sessionId,
+              prompts: [
+                QueuedSessionPrompt(
+                  id: promptId,
+                  text: "Review image",
+                  command: null,
+                  attachmentCount: 1,
+                  createdAt: 1,
+                  dispatchState: QueuedPromptDispatchState.dispatched,
+                ),
+              ],
+            ) as SesoriSessionEvent,
+          );
+          await handedOff;
+          if (!acceptedFirst) {
+            send.complete(ApiResponse.success(null));
+            await sending;
+          }
+          final state = cubit.state as SessionDetailLoaded;
+          expect(state.sendingSubmission, isNull);
+          expect(state.queuedMessages, isEmpty);
+          expect(state.awaitingBridgeSubmissions, isEmpty);
+          expect(state.bridgePromptAttachments[promptId]!.single, same(attachment));
+
+          final settled = cubit.stream.firstWhere(
+            (state) => state is SessionDetailLoaded && state.bridgeQueuedPrompts.isEmpty,
+          );
+          sessionEvents.add(
+            SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: promptId) as SesoriSessionEvent,
+          );
+          await settled;
+          expect((cubit.state as SessionDetailLoaded).bridgePromptAttachments, isEmpty);
+        },
+      );
+    }
 
     test("an accepted send stays visible until the bridge queue lists it", () async {
       final send = Completer<ApiResponse<void>>();

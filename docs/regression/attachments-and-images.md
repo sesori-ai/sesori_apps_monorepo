@@ -55,10 +55,16 @@ content the transcript renders live and after reload.
   settlement. A failed current-route launch restores those attachments together
   with text/voice/command intent before the composer remounts; failure after route
   exit never restores them. Reconnect and options refresh cannot erase a pending
-  one-shot restoration. While that local submission is sending or awaiting the
-  bridge queue, its transcript row previews its staged images; a bridge-owned
-  queued row exposes only its attachment count so image bytes are not rebroadcast
-  to other surfaces.
+  one-shot restoration. The submitting surface keeps its staged-image previews
+  through local sending, acceptance, bridge queuing, and dispatched “Sending”,
+  including fast handoffs that skip intermediate UI frames and scrolling away
+  and back. The prompt queue owns these memory-only references with a 50 MB
+  aggregate budget per session, evicting the oldest previews for newer ones.
+  Evicted previews use the attachment count; sending is unaffected. Retained
+  previews are released when the prompt leaves the bridge queue or the session
+  closes; delivered messages use their transcript attachments. Other surfaces
+  and reopened sessions show the bounded attachment count, without
+  rebroadcasting or persisting staged bytes.
 - Maximum-size staged input is encoded with bounded event-loop yields through
   attachment base64, request JSON, and relay-envelope JSON/UTF-8. Encoding
   preserves exact bytes without copying attachment buffers through an isolate.
@@ -145,7 +151,7 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes; transcript previews stay compact and unobscured in both themes, wrap without reordering, and retain accessible retry and full-screen viewing at enlarged text sizes. |
+| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes; local transcript thumbnails survive queue acceptance and dispatch with and without prompt text, coalesced UI frames, and row recycling; queue reconciliation and removal release references, aggregate retained bytes remain bounded, and evicted previews use count-only fallback; transcript previews stay compact and unobscured in both themes, wrap without reordering, and retain accessible retry and full-screen viewing at enlarged text sizes. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. The desktop picker filters to supported raster extensions and preflights oversized files, and desktop adapter coverage verifies file-pick and file-save success and cancellation, pasteboard writes, and system-share file lifecycle. |
 | L3 Release | Client end to end on mobile and desktop for new-session and existing-session composer input, and on every release-target session-detail surface for transcript output, every supporting production plugin: staged composer images are sent and echoed per attachment-capable plugin; a failed current-route mobile creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
 | L4 Extended | Client end to end on mobile and desktop: change availability from another surface while an existing-session picker is open or an attachment is staged; no blocked send lands, transcript images remain usable, and recovery presents a fresh composer. Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. Automated, no plugin: sensitive-response redaction, persistent thumbnail cache corruption recovery, bounded pruning, auth cleanup, viewer decode and load retry, and original eviction and release on close. |
@@ -168,6 +174,10 @@ account-level rejection without changing the descriptor's capability claim.
 - A blocked existing chat offers picker or paste submission; a late picker result
   reaches the bridge; staged bytes survive solely because availability
   recovered; or read-only mode prevents viewing existing transcript images.
+- A locally submitted image within the retained-preview budget becomes only an
+  attachment count during bridge queuing or “Sending”, disappears after
+  scrolling back to the pending row, or remains retained after the row leaves
+  the bridge queue; retained preview bytes exceed the session's aggregate budget.
 - An image renders live but is missing, duplicated, reordered, or re-identified
   after reload.
 - A host path, unsafe or unnormalized source URI, or raw attachment payload

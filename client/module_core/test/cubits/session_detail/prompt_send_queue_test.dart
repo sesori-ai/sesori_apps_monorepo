@@ -1,5 +1,8 @@
+import "dart:typed_data";
+
 import "package:sesori_dart_core/src/cubits/session_detail/prompt_send_queue.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:test/test.dart";
 
@@ -111,6 +114,20 @@ const _command = QueuedSessionSubmission.command(
   fastMode: false,
 );
 
+QueuedSessionSubmission _imageSubmission({required String promptId, required List<int> byteLengths}) =>
+    QueuedSessionSubmission.text(
+      promptId: promptId,
+      text: "Review images",
+      inputMode: ComposerInputMode.typed,
+      attachments: [
+        for (final byteLength in byteLengths)
+          ComposerAttachment(mime: "image/png", bytes: Uint8List(byteLength), filename: null),
+      ],
+      agent: null,
+      agentModel: null,
+      fastMode: false,
+    );
+
 void main() {
   group("PromptSendQueue", () {
     late PromptSendQueue queue;
@@ -121,6 +138,81 @@ void main() {
       expect(queue.isEmpty, isTrue);
       expect(queue.isNotEmpty, isFalse);
       expect(queue.items, isEmpty);
+    });
+
+    for (final accepted in [false, true]) {
+      test(
+        "bridge reconciliation retains ${accepted ? 'accepted' : 'in-flight'} images before removing local state",
+        () {
+          final submission = _imageSubmission(promptId: "image-prompt", byteLengths: [10, 20]);
+          queue.enqueue(submission);
+          queue.beginSend();
+          if (accepted) queue.parkAccepted(epoch: 1);
+
+          queue.reconcileBridgeQueue(promptIds: {submission.promptId});
+
+          final retained = queue.bridgePromptAttachments;
+          expect(retained[submission.promptId], orderedEquals(submission.attachments));
+          expect(retained[submission.promptId]!.first.bytes, same(submission.attachments.first.bytes));
+          expect(queue.items, isEmpty);
+          expect(queue.awaitingBridge, isEmpty);
+          if (!accepted) {
+            expect(queue.isActiveSettledElsewhere, isTrue);
+            expect(queue.failSend(), isFalse);
+          }
+          expect(retained.clear, throwsUnsupportedError);
+          expect(() => retained[submission.promptId]!.clear(), throwsUnsupportedError);
+          queue.removeByPromptId(submission.promptId);
+          expect(queue.bridgePromptAttachments, isEmpty);
+          expect(retained, hasLength(1), reason: "previous state snapshots must stay immutable");
+        },
+      );
+    }
+
+    test("snapshot ownership retains staged images and prunes missing bridge rows", () {
+      final submission = _imageSubmission(promptId: "image-prompt", byteLengths: [10]);
+      queue.enqueue(submission);
+      queue.reconcileBridgeQueue(promptIds: {submission.promptId, "another-surface"});
+      expect(queue.items, isEmpty);
+      expect(queue.bridgePromptAttachments.keys, [submission.promptId]);
+      queue.reconcileBridgeQueue(promptIds: {submission.promptId});
+      expect(queue.bridgePromptAttachments.keys, [submission.promptId]);
+      queue.reconcileBridgeQueue(promptIds: {});
+      expect(queue.bridgePromptAttachments, isEmpty);
+    });
+
+    test("bridge previews evict oldest entries at the aggregate byte budget", () {
+      final promptIds = <String>{};
+      const halfBudget = PromptSendQueue.maxBridgePreviewBytes ~/ 2;
+      for (var i = 0; i < 3; i++) {
+        final submission = _imageSubmission(promptId: "image-$i", byteLengths: [halfBudget - 1, 1]);
+        queue.enqueue(submission);
+        queue.beginSend();
+        queue.parkAccepted(epoch: i);
+        promptIds.add(submission.promptId);
+        queue.reconcileBridgeQueue(promptIds: promptIds);
+        final retainedBytes = queue.bridgePromptAttachments.values
+            .expand((attachments) => attachments)
+            .fold(0, (total, attachment) => total + attachment.bytes.length);
+        expect(retainedBytes, lessThanOrEqualTo(PromptSendQueue.maxBridgePreviewBytes));
+        expect(queue.bridgePromptAttachments[submission.promptId], orderedEquals(submission.attachments));
+      }
+      expect(queue.bridgePromptAttachments.keys, ["image-1", "image-2"]);
+      queue.reconcileBridgeQueue(promptIds: promptIds);
+      expect(queue.bridgePromptAttachments.keys, ["image-1", "image-2"]);
+      queue.clear();
+      expect(queue.bridgePromptAttachments, isEmpty);
+    });
+
+    test("a preview exceeding the whole budget degrades without affecting bridge ownership", () {
+      final submission = _imageSubmission(
+        promptId: "oversized-preview",
+        byteLengths: [PromptSendQueue.maxBridgePreviewBytes, 1],
+      );
+      queue.enqueue(submission);
+      queue.reconcileBridgeQueue(promptIds: {submission.promptId});
+      expect(queue.items, isEmpty);
+      expect(queue.bridgePromptAttachments, isEmpty);
     });
 
     test("enqueue adds to the end", () {

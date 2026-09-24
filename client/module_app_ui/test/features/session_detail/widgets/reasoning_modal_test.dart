@@ -20,7 +20,11 @@ import "package:theme_prego/module_prego.dart";
 
 class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
-enum _ReasoningActivation() { tap, keyboard, accessibility }
+enum _ReasoningActivation() {
+  tap,
+  keyboard,
+  accessibility,
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -48,6 +52,7 @@ SessionDetailState _loadedState({
     isRootSession: true,
     isArchived: false,
     queuedMessages: const [],
+    bridgePromptAttachments: const {},
     sendingSubmission: null,
     availableAgents: const [],
     availableProviders: const [],

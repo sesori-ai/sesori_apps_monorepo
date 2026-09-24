@@ -36,6 +36,7 @@ class const SessionDetailMessageList({
   /// response and the bridge's queue event.
   final List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],
   required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
+  required final Map<String, List<ComposerAttachment>> bridgePromptAttachments,
   final void Function(String promptId)? onCancelBridgeQueuedPrompt,
   required final Map<String, String> streamingText,
   required final List<Session> children,
@@ -488,7 +489,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
               attachmentCount: prompt.attachmentCount,
-              localAttachments: const [],
+              localAttachments: widget.bridgePromptAttachments[prompt.id] ?? const [],
               presentation: switch (prompt.dispatchState) {
                 QueuedPromptDispatchState.dispatched => const QueuedMessageBubblePresentation.sending(),
                 QueuedPromptDispatchState.queued || QueuedPromptDispatchState.unknown =>
