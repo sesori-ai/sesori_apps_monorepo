@@ -243,6 +243,11 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
     final rowLabel = state.status == ToolStatus.completed ? loc.sessionDetailCommandRan : statusLabel;
     final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
     final rowStyle = state.status == ToolStatus.error ? style.copyWith(color: prego.colors.textErrorPrimary) : style;
+    final transcript = [
+      "\$ ${widget.command}",
+      ?output,
+      ?error,
+    ].join("\n\n");
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,80 +295,93 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
           SizeTransition(
             sizeFactor: _panelSize,
             alignment: AlignmentDirectional.topStart,
-            child: Container(
-              key: _panelKey,
-              width: double.infinity,
-              padding: EdgeInsets.all(prego.spacing.md),
-              decoration: BoxDecoration(
-                color: prego.colors.bgSurface2,
-                borderRadius: BorderRadius.circular(prego.radius.xl),
-                border: Border.all(color: prego.colors.borderPrimary),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: Text(loc.sessionDetailShell, style: style)),
-                      PregoCopyIconButton(
-                        onCopy: () => copyTextToClipboard(text: widget.command, operation: "shell command"),
-                        tooltip: loc.sessionDetailCopyCommand,
-                      ),
-                    ],
-                  ),
-                  SizedBox(
-                    key: const ValueKey("shellTool.viewport"),
-                    height: 144,
-                    child: ScrollConfiguration(
-                      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                      // System safe-area insets belong to the screen, not this
-                      // embedded terminal's scrollbar tracks.
-                      child: MediaQuery.removePadding(
-                        context: context,
-                        removeTop: true,
-                        removeBottom: true,
-                        removeLeft: true,
-                        removeRight: true,
-                        child: RawScrollbar(
-                          controller: _horizontalController,
-                          scrollbarOrientation: ScrollbarOrientation.bottom,
-                          thumbVisibility: true,
-                          interactive: true,
-                          thumbColor: prego.colors.borderPrimary,
-                          thickness: 5,
-                          radius: Radius.circular(prego.radius.full),
-                          notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
+            // The whole panel scrolls the transcript sideways, not only the text,
+            // so a swipe anywhere on it never reaches the transcript's own swipe.
+            child: GestureDetector(
+              supportedDevices: ScrollConfiguration.of(context).dragDevices,
+              onHorizontalDragUpdate: (details) {
+                if (!_horizontalController.hasClients) return;
+                final position = _horizontalController.position;
+                position.jumpTo(
+                  (position.pixels - details.delta.dx).clamp(position.minScrollExtent, position.maxScrollExtent),
+                );
+              },
+              child: Container(
+                key: _panelKey,
+                width: double.infinity,
+                padding: EdgeInsets.all(prego.spacing.md),
+                decoration: BoxDecoration(
+                  color: prego.colors.bgSurface2,
+                  borderRadius: BorderRadius.circular(prego.radius.xl),
+                  border: Border.all(color: prego.colors.borderPrimary),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: Text(loc.sessionDetailShell, style: style)),
+                        PregoCopyIconButton(
+                          onCopy: () => copyTextToClipboard(text: transcript, operation: "shell transcript"),
+                          tooltip: loc.sessionDetailCopy,
+                        ),
+                      ],
+                    ),
+                    // Fits a short transcript; a long one scrolls within this cap.
+                    ConstrainedBox(
+                      key: const ValueKey("shellTool.viewport"),
+                      constraints: const BoxConstraints(maxHeight: 144),
+                      child: ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                        // System safe-area insets belong to the screen, not this
+                        // embedded terminal's scrollbar tracks.
+                        child: MediaQuery.removePadding(
+                          context: context,
+                          removeTop: true,
+                          removeBottom: true,
+                          removeLeft: true,
+                          removeRight: true,
                           child: RawScrollbar(
-                            controller: _verticalController,
-                            scrollbarOrientation: ScrollbarOrientation.right,
+                            controller: _horizontalController,
+                            scrollbarOrientation: ScrollbarOrientation.bottom,
                             thumbVisibility: true,
                             interactive: true,
                             thumbColor: prego.colors.borderPrimary,
                             thickness: 5,
                             radius: Radius.circular(prego.radius.full),
-                            notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
-                            child: SingleChildScrollView(
+                            notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
+                            child: RawScrollbar(
                               controller: _verticalController,
-                              primary: false,
+                              scrollbarOrientation: ScrollbarOrientation.right,
+                              thumbVisibility: true,
+                              interactive: true,
+                              thumbColor: prego.colors.borderPrimary,
+                              thickness: 5,
+                              radius: Radius.circular(prego.radius.full),
+                              notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
                               child: SingleChildScrollView(
-                                controller: _horizontalController,
-                                scrollDirection: Axis.horizontal,
+                                controller: _verticalController,
                                 primary: false,
-                                padding: EdgeInsetsDirectional.only(end: prego.spacing.lg, bottom: prego.spacing.lg),
-                                child: Text.rich(
-                                  TextSpan(
-                                    text: "\$ ${widget.command}",
-                                    children: [
-                                      if (output != null) TextSpan(text: "\n\n$output"),
-                                      if (error != null)
-                                        TextSpan(
-                                          text: "\n\n$error",
-                                          style: TextStyle(color: prego.colors.textErrorPrimary),
-                                        ),
-                                    ],
+                                child: SingleChildScrollView(
+                                  controller: _horizontalController,
+                                  scrollDirection: Axis.horizontal,
+                                  primary: false,
+                                  padding: EdgeInsetsDirectional.only(end: prego.spacing.lg, bottom: prego.spacing.lg),
+                                  child: Text.rich(
+                                    TextSpan(
+                                      text: "\$ ${widget.command}",
+                                      children: [
+                                        if (output != null) TextSpan(text: "\n\n$output"),
+                                        if (error != null)
+                                          TextSpan(
+                                            text: "\n\n$error",
+                                            style: TextStyle(color: prego.colors.textErrorPrimary),
+                                          ),
+                                      ],
+                                    ),
+                                    style: prego.textTheme.code.copyWith(color: style.color),
+                                    softWrap: false,
                                   ),
-                                  style: prego.textTheme.code.copyWith(color: style.color),
-                                  softWrap: false,
                                 ),
                               ),
                             ),
@@ -371,40 +389,22 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
                         ),
                       ),
                     ),
-                  ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: Wrap(
-                      alignment: output == null ? WrapAlignment.end : WrapAlignment.spaceBetween,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: prego.spacing.md,
-                      children: [
-                        if (output != null)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Flexible(child: Text(loc.sessionDetailShellOutput, style: style)),
-                              PregoCopyIconButton(
-                                onCopy: () => copyTextToClipboard(text: output, operation: "tool output"),
-                                tooltip: loc.sessionDetailCopyOutput,
-                              ),
-                            ],
-                          ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (state.status == ToolStatus.completed)
-                              Icon(TablerRegular.check, size: PregoIconSize.sm, color: prego.colors.textSecondary)
-                            else
-                              ToolPartWidget._statusIcon(status: state.status, prego: prego),
-                            SizedBox(width: prego.spacing.xs),
-                            Flexible(child: Text(statusLabel, style: style)),
-                          ],
-                        ),
-                      ],
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (state.status == ToolStatus.completed)
+                            Icon(TablerRegular.check, size: PregoIconSize.sm, color: prego.colors.textSecondary)
+                          else
+                            ToolPartWidget._statusIcon(status: state.status, prego: prego),
+                          SizedBox(width: prego.spacing.xs),
+                          Flexible(child: Text(statusLabel, style: style)),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
