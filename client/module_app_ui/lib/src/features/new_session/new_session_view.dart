@@ -390,16 +390,33 @@ class _NewSessionViewState() extends State<NewSessionView> {
     );
     final options = _buildOptions(cubit: cubit, data: composerData);
     // Typing never waits on options; only sending waits on what it needs.
+    final notice = _buildBlockedNotice(cubit: cubit);
+    // A notice hides the composer rather than replacing it, so staged images,
+    // which live only in the composer, survive until the notice clears.
     final composer = cubit.hasNoHarnesses
         ? null
-        : _buildBlockedNotice(cubit: cubit) ??
-              _buildComposer(
-                canSend: cubit.canCreateSession && !isSending,
-                restoringSubmission: restoringSubmission,
-                restoredAttachments: restoredAttachments,
-                composerData: composerData,
-                state: state,
-              );
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ?notice,
+              Visibility(
+                key: const ValueKey("new_session_prompt"),
+                visible: notice == null,
+                maintainState: true,
+                child: ExcludeFocus(
+                  excluding: notice != null,
+                  child: _buildComposer(
+                    canSend: cubit.canCreateSession && !isSending,
+                    restoringSubmission: restoringSubmission,
+                    restoredAttachments: restoredAttachments,
+                    composerData: composerData,
+                    state: state,
+                  ),
+                ),
+              ),
+            ],
+          );
     final header = NewSessionHeader(
       projectId: widget.projectId,
       projectName: widget.projectName,

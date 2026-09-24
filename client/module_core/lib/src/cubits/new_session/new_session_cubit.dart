@@ -326,10 +326,13 @@ class NewSessionCubit({
     // way forward is to install one on that machine, so the same action goes
     // back to discovery instead — that is where a newly installed harness (or
     // one a failed discovery never got to see) shows up.
-    // A missing or unroutable harness has no options to load; discovery may
-    // have recovered since it last looked.
+    // A missing or unroutable harness, or a bridge not yet verified, has no
+    // options to load; discovery may have recovered since it last looked.
     final plugin = state.agentModelData?.plugin;
-    if (needsHarnessDiscovery || plugin == null || !plugin.isRoutable) {
+    if (needsHarnessDiscovery ||
+        plugin == null ||
+        !plugin.isRoutable ||
+        !(state.agentModelData?.backendScope.isVerified ?? false)) {
       await _discoverPlugins();
       return;
     }
@@ -352,6 +355,18 @@ class NewSessionCubit({
     }
 
     final previousOptions = data.optionsState.data;
+    // A recheck of a harness known to need a login keeps that state on screen —
+    // the login card, and creation blocked — until the bridge answers.
+    void showLoading() {
+      if (data.optionsState.authenticationRequired) return;
+      _emitStateUpdate(
+        options: _loadingState(previousOptions: previousOptions, source: source),
+        backendScope: null,
+        isPluginDiscoveryInFlight: false,
+        projectWorktreeCapability: null,
+      );
+    }
+
     // A background refresh that can still deliver is already asking the bridge
     // for exactly this list. Surface it instead of starting a second discovery
     // that would race it. One that can no longer apply — a superseded selection,
@@ -359,23 +374,13 @@ class NewSessionCubit({
     // forever, so start a fresh one instead.
     final pending = _silentRefresh;
     if (pending != null && pending.generation == _loadGeneration && identical(pending.startedFrom, previousOptions)) {
-      _emitStateUpdate(
-        options: _loadingState(previousOptions: previousOptions, source: source),
-        backendScope: null,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: null,
-      );
+      showLoading();
       await pending.refresh;
       return;
     }
 
     final generation = ++_loadGeneration;
-    _emitStateUpdate(
-      options: _loadingState(previousOptions: previousOptions, source: source),
-      backendScope: null,
-      isPluginDiscoveryInFlight: false,
-      projectWorktreeCapability: null,
-    );
+    showLoading();
     await _loadOptions(
       pluginId: plugin.id,
       generation: generation,
@@ -549,11 +554,13 @@ class NewSessionCubit({
   }
 
   /// Whether the option pills accept a selection. Only options already on
-  /// screen can be picked from; a load in flight does not hold them back.
+  /// screen can be picked from, and not while a load would replace them with
+  /// answers resolved before the choice. A silent refresh shows no loading
+  /// state and drops its own answer when the user has chosen since.
   bool get _canEditComposer {
     if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
     final data = state.agentModelData;
-    return data != null && data.optionsState.data != null && (data.plugin?.isRoutable ?? false);
+    return data != null && !data.isLoading && data.optionsState.data != null && (data.plugin?.isRoutable ?? false);
   }
 
   /// Whether the screen has no harness to work with — the bridge answered with
@@ -639,7 +646,11 @@ class NewSessionCubit({
     final after = current.agentModelData;
     final plugin = after?.plugin;
     if (before == null || after == null || plugin == null || before.plugin?.id != plugin.id) return null;
-    if (before.optionsState.authenticationRequired || before.optionsState.data == null) return null;
+    // Only a settled page counts: a load the user started (a recheck, a
+    // reconnect) that ends in a login requirement is answered by the card.
+    if (before.isLoading || before.optionsState.authenticationRequired || before.optionsState.data == null) {
+      return null;
+    }
     return switch (after.optionsState) {
       NewSessionOptionsAuthenticationRequiredUnavailableState(:final actionHint) ||
       NewSessionOptionsAuthenticationRequiredRetainedState(:final actionHint) => NewSessionComposerLoginRequired(

@@ -2579,6 +2579,63 @@ void main() {
         expect(NewSessionCubit.newlyRequiredLogin(previous: previous, current: current), isNull);
       });
 
+      test("is null when the previous options were still loading", () async {
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        final response = Completer<SessionOptionsRepositoryResult>();
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer((_) => response.future);
+        final refresh = cubit.refreshOptions();
+        await Future<void>.delayed(Duration.zero);
+        final previous = cubit.state;
+        expect(previous.agentModelData?.optionsState.isLoading, isTrue);
+
+        response.complete(const SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally."));
+        await refresh;
+
+        expect(NewSessionCubit.newlyRequiredLogin(previous: previous, current: cubit.state), isNull);
+      });
+
+      test("a recheck keeps the login card and blocks creation until the bridge answers", () async {
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer(
+          (_) async => const SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally."),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        final response = Completer<SessionOptionsRepositoryResult>();
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer((_) => response.future);
+        final refresh = cubit.refreshOptions();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+        expect(cubit.canCreateSession, isFalse);
+
+        response.complete(const SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally."));
+        await refresh;
+        expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+      });
+
       test("is null when the selected plugin changed", () async {
         const otherPlugin = PluginMetadata(
           id: "plugin-2",

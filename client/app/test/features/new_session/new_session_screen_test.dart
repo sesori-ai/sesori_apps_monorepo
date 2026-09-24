@@ -718,23 +718,18 @@ void main() {
     ).thenAnswer((_) async {
       loadCalls++;
       return loadCalls == 1
-          ? SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false)
+          ? SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: true)
           : const SessionOptionsRepositoryAuthenticationRequired(
               actionHint: "Run the harness locally and use /login.",
             );
     });
 
+    // The stale cache shows at once; its background refresh finds the harness
+    // logged out since it was last checked.
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
-    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
-
-    // The composer is Ready, so there is no on-screen refresh affordance; a
-    // background rediscovery is what would actually notice the harness
-    // logged out. Drive that path directly through the cubit.
-    final cubit = tester.element(find.byType(NewSessionView)).read<NewSessionCubit>();
-    await cubit.refreshOptions();
-    await tester.pumpAndSettle();
+    expect(loadCalls, 2);
 
     expect(find.byKey(const Key("new_session_login_required")), findsOneWidget);
     expect(
