@@ -24,8 +24,12 @@ typedef ProjectOpenedCallback = void Function({
 /// parse — the platform-local basename would return a Windows path unchanged.
 String projectDirectoryBasename(ProjectSummary project) => hostPathBasename(path: project.path);
 
-/// The last segment of a bridge host [path], whichever separator it uses.
-String hostPathBasename({required String path}) => p.posix.basename(_toPosix(path));
+/// The last segment of a bridge host [path], whichever separator it uses. A
+/// Windows drive root such as `C:\` keeps its full path, not a bare `C:`.
+String hostPathBasename({required String path}) {
+  final basename = p.posix.basename(_toPosix(path));
+  return basename.endsWith(":") ? path : basename;
+}
 
 /// The name shown for [project]: its stored name, else its directory.
 String projectDisplayName({required AppLocalizations loc, required ProjectSummary project}) {
