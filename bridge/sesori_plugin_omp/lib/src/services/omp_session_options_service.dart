@@ -235,7 +235,7 @@ class OmpSessionOptionsService({
             [
               for (final model in entry.value)
                 PluginModel(
-                  supportsFastMode: false,
+                  fastMode: null,
                   id: model.value,
                   name: model.name,
                   // Strongest first; OMP's first-listed level stays the default.

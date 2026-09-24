@@ -133,7 +133,7 @@ sealed class BridgePluginApi() {
   /// [fastMode] asks this and later turns of the session (including those
   /// started by [createSession] and [sendCommand]) to run in the backend's
   /// fast mode. The bridge sends it on every call; a plugin whose models never
-  /// advertise [PluginModel.supportsFastMode] ignores it.
+  /// advertise [PluginModel.fastMode] ignores it.
   Future<void> sendPrompt({
     required String sessionId,
     required String promptId,

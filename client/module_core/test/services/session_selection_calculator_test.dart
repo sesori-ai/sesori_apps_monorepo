@@ -18,6 +18,7 @@ ProviderModel _model({
   String? defaultVariant,
   bool isAvailable = true,
 }) => ProviderModel(
+  fastMode: null,
   id: id,
   providerID: providerID,
   name: id,

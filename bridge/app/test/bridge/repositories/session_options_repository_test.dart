@@ -349,7 +349,7 @@ PluginSessionOptions _pluginOptions({required String marker}) {
           authType: PluginProviderAuthType.unknown,
           models: [
             PluginModel(
-              supportsFastMode: false,
+              fastMode: null,
               id: "model-1",
               name: "Model $marker",
               variants: const ["high"],
@@ -394,6 +394,7 @@ SessionOptionsResponse _response({required String marker}) {
           name: "Provider $marker",
           models: {
             "model-1": ProviderModel(
+              fastMode: null,
               id: "model-1",
               providerID: "provider-1",
               name: "Model $marker",

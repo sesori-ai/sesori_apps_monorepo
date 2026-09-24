@@ -26,7 +26,7 @@ PluginProvidersResult mapProviderResponse({
     final newestFirst = providerInfo.models.values.map((m) {
       final enabled = _enabledVariants(variants: m.variants);
       return PluginModel(
-        supportsFastMode: false,
+        fastMode: null,
         id: m.id,
         name: m.name,
         variants: CatalogStrengthOrder.variants(enabled),

@@ -618,6 +618,7 @@ ProviderModel _model({
   List<String> variants = const [],
   bool isAvailable = true,
 }) => ProviderModel(
+  fastMode: null,
   id: id,
   providerID: providerId,
   name: id,

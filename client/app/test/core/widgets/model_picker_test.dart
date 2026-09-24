@@ -13,6 +13,7 @@ ProviderModel _model({
   required DateTime releaseDate,
 }) {
   return ProviderModel(
+    fastMode: null,
     id: id,
     providerID: "test-provider",
     name: name,

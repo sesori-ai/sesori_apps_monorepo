@@ -1170,6 +1170,7 @@ void main() {
                   defaultModelID: "gpt-4",
                   models: {
                     "gpt-4": ProviderModel(
+                      fastMode: null,
                       id: "gpt-4",
                       providerID: "openai",
                       name: "GPT-4",

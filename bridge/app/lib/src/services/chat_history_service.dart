@@ -747,15 +747,18 @@ class ChatHistoryService({
         final promptDefaults = shouldReconcilePromptDefaults ? snapshot.promptDefaults : null;
         if (promptDefaults == null) return null;
         try {
-          await _sessionRepository.updatePromptDefaults(
+          // The stored value carries the session's fast mode, which history
+          // does not record.
+          return await _sessionRepository.updatePromptDefaults(
             sessionId: sessionId,
             agent: promptDefaults.agent,
             agentModel: promptDefaults.model,
           );
         } on Object catch (error, stackTrace) {
+          // Replaying without the stored fast mode would reset the client's.
           Log.w("Failed to persist replayed prompt defaults for session $sessionId", error, stackTrace);
+          return null;
         }
-        return promptDefaults;
       },
     );
   }

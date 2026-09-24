@@ -1235,6 +1235,7 @@ void main() {
                   defaultModelID: "current",
                   models: {
                     "current": ProviderModel(
+                      fastMode: null,
                       id: "current",
                       providerID: "active",
                       name: "Current",
@@ -1244,6 +1245,7 @@ void main() {
                       releaseDate: null,
                     ),
                     "offline": ProviderModel(
+                      fastMode: null,
                       id: "offline",
                       providerID: "active",
                       name: "Offline",
@@ -1450,6 +1452,7 @@ void main() {
                   defaultModelID: "gpt-4",
                   models: {
                     "gpt-4": ProviderModel(
+                      fastMode: null,
                       id: "gpt-4",
                       providerID: "openai",
                       name: "GPT-4",
@@ -1459,6 +1462,7 @@ void main() {
                       releaseDate: null,
                     ),
                     "gpt-5": ProviderModel(
+                      fastMode: null,
                       id: "gpt-5",
                       providerID: "openai",
                       name: "GPT-5",
@@ -1538,6 +1542,7 @@ void main() {
                   defaultModelID: "gpt-4",
                   models: {
                     "gpt-4": ProviderModel(
+                      fastMode: null,
                       id: "gpt-4",
                       providerID: "openai",
                       name: "GPT-4",
@@ -1782,6 +1787,7 @@ void main() {
                   defaultModelID: "gpt-4",
                   models: {
                     "gpt-4": ProviderModel(
+                      fastMode: null,
                       id: "gpt-4",
                       providerID: "openai",
                       name: "GPT-4",
@@ -1798,6 +1804,7 @@ void main() {
                   defaultModelID: "claude-3",
                   models: {
                     "claude-3": ProviderModel(
+                      fastMode: null,
                       id: "claude-3",
                       providerID: "anthropic",
                       name: "Claude 3",
@@ -1855,6 +1862,7 @@ void main() {
                   defaultModelID: "gpt-4",
                   models: {
                     "gpt-4": ProviderModel(
+                      fastMode: null,
                       id: "gpt-4",
                       providerID: "openai",
                       name: "GPT-4",
@@ -1871,6 +1879,7 @@ void main() {
                   defaultModelID: "claude-3",
                   models: {
                     "claude-3": ProviderModel(
+                      fastMode: null,
                       id: "claude-3",
                       providerID: "anthropic",
                       name: "Claude 3",
@@ -2251,6 +2260,7 @@ const _modelSelectionProviders = ProviderListResponse(
       defaultModelID: "gpt-4",
       models: {
         "gpt-4": ProviderModel(
+          fastMode: null,
           id: "gpt-4",
           providerID: "openai",
           name: "GPT-4",
@@ -2267,6 +2277,7 @@ const _modelSelectionProviders = ProviderListResponse(
       defaultModelID: "claude-3",
       models: {
         "claude-3": ProviderModel(
+          fastMode: null,
           id: "claude-3",
           providerID: "anthropic",
           name: "Claude 3",
@@ -2290,6 +2301,7 @@ ProviderListResponse _providerResponseWithVariants(List<String> variants) {
         defaultModelID: "gpt-4",
         models: {
           "gpt-4": ProviderModel(
+            fastMode: null,
             id: "gpt-4",
             providerID: "openai",
             name: "GPT-4",

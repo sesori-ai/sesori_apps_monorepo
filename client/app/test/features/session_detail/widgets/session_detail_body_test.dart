@@ -725,6 +725,7 @@ void main() {
           name: "DeepSeek Official",
           models: {
             modelID: ProviderModel(
+              fastMode: null,
               id: modelID,
               providerID: "deepseek-official",
               name: "DeepSeek V4 Pro",
