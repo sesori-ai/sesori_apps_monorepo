@@ -1286,15 +1286,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailCommandRan => 'Ran';
 
   @override
-  String get sessionDetailCopyCommand => 'Copy command';
-
-  @override
-  String get sessionDetailShellOutput => 'Output';
-
-  @override
-  String get sessionDetailCopyOutput => 'Copy output';
-
-  @override
   String get sessionDetailFollowOutput => 'Follow';
 
   @override

@@ -2389,24 +2389,6 @@ abstract class AppLocalizations {
   /// **'Ran'**
   String get sessionDetailCommandRan;
 
-  /// No description provided for @sessionDetailCopyCommand.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy command'**
-  String get sessionDetailCopyCommand;
-
-  /// No description provided for @sessionDetailShellOutput.
-  ///
-  /// In en, this message translates to:
-  /// **'Output'**
-  String get sessionDetailShellOutput;
-
-  /// No description provided for @sessionDetailCopyOutput.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy output'**
-  String get sessionDetailCopyOutput;
-
   /// No description provided for @sessionDetailFollowOutput.
   ///
   /// In en, this message translates to:

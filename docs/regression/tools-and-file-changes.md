@@ -30,8 +30,9 @@ sub-agent parts, plus the signal that a tool changed files.
   pending/running/failed/cancelled/unknown status. Tool-name strings never decide
   whether a shell panel is available.
 - Tapping or keyboard-activating a command opens a themed Shell panel with the
-  full available command, output and error in a 144 px-high two-axis scroll
-  viewport. Copy command and Copy output preserve their respective exact text.
+  full available command, output and error in a two-axis scroll viewport that
+  fits a short transcript and caps at 144 px. One Copy takes the transcript
+  exactly as shown. A sideways swipe anywhere on the panel scrolls the transcript.
   Status stays visible outside the viewport; streamed updates do not close an
   open panel. The panel eases open and shut over 200 ms, growing down from the
   row, and its details stay visible while it closes. In the reversed
@@ -209,8 +210,10 @@ guarantee.
   pattern, or skill, or only the path without the tool name.
 - A tool stays running after the backend finished, or an error renders as a
   completion.
-- Shell details grow without bound, lose long command/output text, copy a
-  truncated preview, close during updates, or hide tool attachments when collapsed.
+- Shell details grow without bound, pad a short transcript to full height, lose
+  long command/output text, copy a truncated preview, hand a sideways swipe on
+  the panel to the transcript, close during updates, or hide tool attachments
+  when collapsed.
 - Tool details jump open or shut instead of easing, vanish before a blank area
   collapses, or animate under reduced motion; the tapped header moves while
   there is room below the row, the panel opens behind the composer, or the
