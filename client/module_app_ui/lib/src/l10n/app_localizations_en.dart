@@ -2538,4 +2538,81 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get archivedSessionsLastMonth => 'One month ago';
+
+  @override
+  String get sessionAutoContinuationMenu => 'Auto continuation';
+
+  @override
+  String get sessionAutoContinuationAfterQuotaResets => 'After quota resets';
+
+  @override
+  String get sessionAutoContinuationEnable => 'Enable auto continuation';
+
+  @override
+  String get sessionAutoContinuationDisable => 'Disable';
+
+  @override
+  String get sessionAutoContinuationOn => 'Auto continuation on';
+
+  @override
+  String get sessionAutoContinuationQuotaReached => 'Quota reached';
+
+  @override
+  String get sessionAutoContinuationOlderBridge => 'Update your bridge to use auto continuation.';
+
+  @override
+  String get sessionAutoContinuationUnavailable => 'Auto continuation is unavailable for this harness or provider.';
+
+  @override
+  String sessionAutoContinuationOffer(String time) {
+    return 'Continue at $time and two minutes after each later quota reset. Keep your bridge running.';
+  }
+
+  @override
+  String sessionAutoContinuationScheduled(String time) {
+    return 'Continues at $time. Keep your bridge running.';
+  }
+
+  @override
+  String get sessionAutoContinuationResetUnknown => 'Reset time unavailable. Auto continuation cannot be scheduled.';
+
+  @override
+  String get sessionAutoContinuationPausedWork =>
+      'Paused while this session has active or queued work. Checks resume automatically.';
+
+  @override
+  String get sessionAutoContinuationPausedInput =>
+      'Paused until you answer the pending question or permission request.';
+
+  @override
+  String get sessionAutoContinuationPausedUnavailable =>
+      'Paused while the harness is unavailable. Checks resume automatically.';
+
+  @override
+  String get sessionAutoContinuationPausedUnknown =>
+      'Paused because the session could not be checked. Checks resume automatically.';
+
+  @override
+  String get sessionAutoContinuationUnconfirmed =>
+      'The last attempt could not be confirmed. It will not be sent again automatically.';
+
+  @override
+  String sessionAutoContinuationSubmitted(String time) {
+    return 'Continuation sent at $time. Enabled for future quota resets.';
+  }
+
+  @override
+  String get sessionAutoContinuationFailed =>
+      'The continuation could not be sent. This attempt will not be retried automatically.';
+
+  @override
+  String get sessionAutoContinuationStatusUnknown => 'Status unavailable. A scheduled time cannot be confirmed.';
+
+  @override
+  String get sessionAutoContinuationUpdateFailed =>
+      'Could not confirm the change. Reconnect and check auto continuation before trying again.';
+
+  @override
+  String get sessionAutoContinuationAlreadySubmitted =>
+      'Auto continuation disabled. The previous continuation was already sent; future automatic sends are disabled.';
 }

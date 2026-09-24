@@ -1624,5 +1624,47 @@
   "archivedSessionsThisMonth": "This month",
   "@archivedSessionsThisMonth": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsLastMonth": "One month ago",
-  "@archivedSessionsLastMonth": {"description": "Date heading shared by regular and archived session lists."}
+  "@archivedSessionsLastMonth": {"description": "Date heading shared by regular and archived session lists."},
+  "sessionAutoContinuationMenu": "Auto continuation",
+  "sessionAutoContinuationAfterQuotaResets": "After quota resets",
+  "sessionAutoContinuationEnable": "Enable auto continuation",
+  "sessionAutoContinuationDisable": "Disable",
+  "sessionAutoContinuationOn": "Auto continuation on",
+  "sessionAutoContinuationQuotaReached": "Quota reached",
+  "sessionAutoContinuationOlderBridge": "Update your bridge to use auto continuation.",
+  "sessionAutoContinuationUnavailable": "Auto continuation is unavailable for this harness or provider.",
+  "sessionAutoContinuationOffer": "Continue at {time} and two minutes after each later quota reset. Keep your bridge running.",
+  "sessionAutoContinuationScheduled": "Continues at {time}. Keep your bridge running.",
+  "sessionAutoContinuationResetUnknown": "Reset time unavailable. Auto continuation cannot be scheduled.",
+  "sessionAutoContinuationPausedWork": "Paused while this session has active or queued work. Checks resume automatically.",
+  "sessionAutoContinuationPausedInput": "Paused until you answer the pending question or permission request.",
+  "sessionAutoContinuationPausedUnavailable": "Paused while the harness is unavailable. Checks resume automatically.",
+  "sessionAutoContinuationPausedUnknown": "Paused because the session could not be checked. Checks resume automatically.",
+  "sessionAutoContinuationUnconfirmed": "The last attempt could not be confirmed. It will not be sent again automatically.",
+  "sessionAutoContinuationSubmitted": "Continuation sent at {time}. Enabled for future quota resets.",
+  "sessionAutoContinuationFailed": "The continuation could not be sent. This attempt will not be retried automatically.",
+  "sessionAutoContinuationStatusUnknown": "Status unavailable. A scheduled time cannot be confirmed.",
+  "sessionAutoContinuationUpdateFailed": "Could not confirm the change. Reconnect and check auto continuation before trying again.",
+  "sessionAutoContinuationAlreadySubmitted": "Auto continuation disabled. The previous continuation was already sent; future automatic sends are disabled.",
+  "@sessionAutoContinuationOffer": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@sessionAutoContinuationScheduled": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@sessionAutoContinuationSubmitted": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  }
 }

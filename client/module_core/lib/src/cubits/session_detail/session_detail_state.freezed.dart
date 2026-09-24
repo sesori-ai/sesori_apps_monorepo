@@ -79,7 +79,7 @@ String toString() {
 
 
 class SessionDetailLoaded implements SessionDetailState {
-  const SessionDetailLoaded({required this.interaction, required  List<MessageWithParts> messages, required this.olderMessagesCursor, this.isLoadingOlderMessages = false, required  Map<String, String> streamingText, required this.sessionStatus, required  List<SesoriQuestionAsked> pendingQuestions, required  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.session, required this.pluginId, required this.supportsPromptAttachments, required this.assistantAgentModel, required  List<Session> children, required  Map<String, SessionStatus> childStatuses, required this.isRootSession, required this.isArchived, required  List<QueuedSessionSubmission> queuedMessages, required this.sendingSubmission,  List<QueuedSessionPrompt> bridgeQueuedPrompts = const [],  List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [], required  List<AgentInfo> availableAgents, required  List<ProviderInfo> availableProviders, required  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.fastMode, required this.stagedCommand, required this.isRefreshing,  List<SessionVariant> availableVariants = const []}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_bridgeQueuedPrompts = bridgeQueuedPrompts,_awaitingBridgeSubmissions = awaitingBridgeSubmissions,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const SessionDetailLoaded({required this.interaction, required  List<MessageWithParts> messages, required this.olderMessagesCursor, this.isLoadingOlderMessages = false, required  Map<String, String> streamingText, required this.sessionStatus, required  List<SesoriQuestionAsked> pendingQuestions, required  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.session, this.isUpdatingAutoContinuation = false, required this.pluginId, required this.supportsPromptAttachments, required this.assistantAgentModel, required  List<Session> children, required  Map<String, SessionStatus> childStatuses, required this.isRootSession, required this.isArchived, required  List<QueuedSessionSubmission> queuedMessages, required this.sendingSubmission,  List<QueuedSessionPrompt> bridgeQueuedPrompts = const [],  List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [], required  List<AgentInfo> availableAgents, required  List<ProviderInfo> availableProviders, required  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.fastMode, required this.stagedCommand, required this.isRefreshing,  List<SessionVariant> availableVariants = const []}): _messages = messages,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_bridgeQueuedPrompts = bridgeQueuedPrompts,_awaitingBridgeSubmissions = awaitingBridgeSubmissions,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  SessionInteractionState interaction;
@@ -122,6 +122,7 @@ class SessionDetailLoaded implements SessionDetailState {
 
  final  String? sessionTitle;
  final  Session session;
+@JsonKey() final  bool isUpdatingAutoContinuation;
  final  String? pluginId;
  final  bool? supportsPromptAttachments;
  final  AgentModel? assistantAgentModel;
@@ -210,18 +211,18 @@ $SessionDetailLoadedCopyWith<SessionDetailLoaded> get copyWith => _$SessionDetai
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailLoaded&&(identical(other.interaction, interaction) || other.interaction == interaction)&&const DeepCollectionEquality().equals(other.messages, _messages)&&(identical(other.olderMessagesCursor, olderMessagesCursor) || other.olderMessagesCursor == olderMessagesCursor)&&(identical(other.isLoadingOlderMessages, isLoadingOlderMessages) || other.isLoadingOlderMessages == isLoadingOlderMessages)&&const DeepCollectionEquality().equals(other.streamingText, _streamingText)&&(identical(other.sessionStatus, sessionStatus) || other.sessionStatus == sessionStatus)&&const DeepCollectionEquality().equals(other.pendingQuestions, _pendingQuestions)&&const DeepCollectionEquality().equals(other.pendingPermissions, _pendingPermissions)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.session, session) || other.session == session)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments)&&(identical(other.assistantAgentModel, assistantAgentModel) || other.assistantAgentModel == assistantAgentModel)&&const DeepCollectionEquality().equals(other.children, _children)&&const DeepCollectionEquality().equals(other.childStatuses, _childStatuses)&&(identical(other.isRootSession, isRootSession) || other.isRootSession == isRootSession)&&(identical(other.isArchived, isArchived) || other.isArchived == isArchived)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages)&&(identical(other.sendingSubmission, sendingSubmission) || other.sendingSubmission == sendingSubmission)&&const DeepCollectionEquality().equals(other.bridgeQueuedPrompts, _bridgeQueuedPrompts)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other.availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other.availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.fastMode, fastMode) || other.fastMode == fastMode)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&const DeepCollectionEquality().equals(other.availableVariants, _availableVariants));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailLoaded&&(identical(other.interaction, interaction) || other.interaction == interaction)&&const DeepCollectionEquality().equals(other.messages, _messages)&&(identical(other.olderMessagesCursor, olderMessagesCursor) || other.olderMessagesCursor == olderMessagesCursor)&&(identical(other.isLoadingOlderMessages, isLoadingOlderMessages) || other.isLoadingOlderMessages == isLoadingOlderMessages)&&const DeepCollectionEquality().equals(other.streamingText, _streamingText)&&(identical(other.sessionStatus, sessionStatus) || other.sessionStatus == sessionStatus)&&const DeepCollectionEquality().equals(other.pendingQuestions, _pendingQuestions)&&const DeepCollectionEquality().equals(other.pendingPermissions, _pendingPermissions)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.session, session) || other.session == session)&&(identical(other.isUpdatingAutoContinuation, isUpdatingAutoContinuation) || other.isUpdatingAutoContinuation == isUpdatingAutoContinuation)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments)&&(identical(other.assistantAgentModel, assistantAgentModel) || other.assistantAgentModel == assistantAgentModel)&&const DeepCollectionEquality().equals(other.children, _children)&&const DeepCollectionEquality().equals(other.childStatuses, _childStatuses)&&(identical(other.isRootSession, isRootSession) || other.isRootSession == isRootSession)&&(identical(other.isArchived, isArchived) || other.isArchived == isArchived)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages)&&(identical(other.sendingSubmission, sendingSubmission) || other.sendingSubmission == sendingSubmission)&&const DeepCollectionEquality().equals(other.bridgeQueuedPrompts, _bridgeQueuedPrompts)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other.availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other.availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.fastMode, fastMode) || other.fastMode == fastMode)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&const DeepCollectionEquality().equals(other.availableVariants, _availableVariants));
 }
 
 
 @override
 int get hashCode {
-    return Object.hashAll([runtimeType,interaction,const DeepCollectionEquality().hash(_messages),olderMessagesCursor,isLoadingOlderMessages,const DeepCollectionEquality().hash(_streamingText),sessionStatus,const DeepCollectionEquality().hash(_pendingQuestions),const DeepCollectionEquality().hash(_pendingPermissions),sessionTitle,session,pluginId,supportsPromptAttachments,assistantAgentModel,const DeepCollectionEquality().hash(_children),const DeepCollectionEquality().hash(_childStatuses),isRootSession,isArchived,const DeepCollectionEquality().hash(_queuedMessages),sendingSubmission,const DeepCollectionEquality().hash(_bridgeQueuedPrompts),const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedAgentModel,fastMode,stagedCommand,isRefreshing,const DeepCollectionEquality().hash(_availableVariants)]);
+    return Object.hashAll([runtimeType,interaction,const DeepCollectionEquality().hash(_messages),olderMessagesCursor,isLoadingOlderMessages,const DeepCollectionEquality().hash(_streamingText),sessionStatus,const DeepCollectionEquality().hash(_pendingQuestions),const DeepCollectionEquality().hash(_pendingPermissions),sessionTitle,session,isUpdatingAutoContinuation,pluginId,supportsPromptAttachments,assistantAgentModel,const DeepCollectionEquality().hash(_children),const DeepCollectionEquality().hash(_childStatuses),isRootSession,isArchived,const DeepCollectionEquality().hash(_queuedMessages),sendingSubmission,const DeepCollectionEquality().hash(_bridgeQueuedPrompts),const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedAgentModel,fastMode,stagedCommand,isRefreshing,const DeepCollectionEquality().hash(_availableVariants)]);
 }
 
 @override
 String toString() {
-    return 'SessionDetailState.loaded(interaction: $interaction, messages: $messages, olderMessagesCursor: $olderMessagesCursor, isLoadingOlderMessages: $isLoadingOlderMessages, streamingText: $streamingText, sessionStatus: $sessionStatus, pendingQuestions: $pendingQuestions, pendingPermissions: $pendingPermissions, sessionTitle: $sessionTitle, session: $session, pluginId: $pluginId, supportsPromptAttachments: $supportsPromptAttachments, assistantAgentModel: $assistantAgentModel, children: $children, childStatuses: $childStatuses, isRootSession: $isRootSession, isArchived: $isArchived, queuedMessages: $queuedMessages, sendingSubmission: $sendingSubmission, bridgeQueuedPrompts: $bridgeQueuedPrompts, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, fastMode: $fastMode, stagedCommand: $stagedCommand, isRefreshing: $isRefreshing, availableVariants: $availableVariants)';
+    return 'SessionDetailState.loaded(interaction: $interaction, messages: $messages, olderMessagesCursor: $olderMessagesCursor, isLoadingOlderMessages: $isLoadingOlderMessages, streamingText: $streamingText, sessionStatus: $sessionStatus, pendingQuestions: $pendingQuestions, pendingPermissions: $pendingPermissions, sessionTitle: $sessionTitle, session: $session, isUpdatingAutoContinuation: $isUpdatingAutoContinuation, pluginId: $pluginId, supportsPromptAttachments: $supportsPromptAttachments, assistantAgentModel: $assistantAgentModel, children: $children, childStatuses: $childStatuses, isRootSession: $isRootSession, isArchived: $isArchived, queuedMessages: $queuedMessages, sendingSubmission: $sendingSubmission, bridgeQueuedPrompts: $bridgeQueuedPrompts, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, fastMode: $fastMode, stagedCommand: $stagedCommand, isRefreshing: $isRefreshing, availableVariants: $availableVariants)';
 }
 
 
@@ -232,7 +233,7 @@ abstract mixin class $SessionDetailLoadedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailLoadedCopyWith(SessionDetailLoaded value, $Res Function(SessionDetailLoaded) _then) = _$SessionDetailLoadedCopyWithImpl;
 @useResult
 $Res call({
- SessionInteractionState interaction, List<MessageWithParts> messages, int? olderMessagesCursor, bool isLoadingOlderMessages, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, Session session, String? pluginId, bool? supportsPromptAttachments, AgentModel? assistantAgentModel, List<Session> children, Map<String, SessionStatus> childStatuses, bool? isRootSession, bool isArchived, List<QueuedSessionSubmission> queuedMessages, QueuedSessionSubmission? sendingSubmission, List<QueuedSessionPrompt> bridgeQueuedPrompts, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String selectedAgent, AgentModel? selectedAgentModel, bool fastMode, CommandInfo? stagedCommand, bool isRefreshing, List<SessionVariant> availableVariants
+ SessionInteractionState interaction, List<MessageWithParts> messages, int? olderMessagesCursor, bool isLoadingOlderMessages, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, Session session, bool isUpdatingAutoContinuation, String? pluginId, bool? supportsPromptAttachments, AgentModel? assistantAgentModel, List<Session> children, Map<String, SessionStatus> childStatuses, bool? isRootSession, bool isArchived, List<QueuedSessionSubmission> queuedMessages, QueuedSessionSubmission? sendingSubmission, List<QueuedSessionPrompt> bridgeQueuedPrompts, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String selectedAgent, AgentModel? selectedAgentModel, bool fastMode, CommandInfo? stagedCommand, bool isRefreshing, List<SessionVariant> availableVariants
 });
 
 
@@ -249,7 +250,7 @@ class _$SessionDetailLoadedCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? interaction = null,Object? messages = null,Object? olderMessagesCursor = freezed,Object? isLoadingOlderMessages = null,Object? streamingText = null,Object? sessionStatus = null,Object? pendingQuestions = null,Object? pendingPermissions = null,Object? sessionTitle = freezed,Object? session = null,Object? pluginId = freezed,Object? supportsPromptAttachments = freezed,Object? assistantAgentModel = freezed,Object? children = null,Object? childStatuses = null,Object? isRootSession = freezed,Object? isArchived = null,Object? queuedMessages = null,Object? sendingSubmission = freezed,Object? bridgeQueuedPrompts = null,Object? awaitingBridgeSubmissions = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = null,Object? selectedAgentModel = freezed,Object? fastMode = null,Object? stagedCommand = freezed,Object? isRefreshing = null,Object? availableVariants = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? interaction = null,Object? messages = null,Object? olderMessagesCursor = freezed,Object? isLoadingOlderMessages = null,Object? streamingText = null,Object? sessionStatus = null,Object? pendingQuestions = null,Object? pendingPermissions = null,Object? sessionTitle = freezed,Object? session = null,Object? isUpdatingAutoContinuation = null,Object? pluginId = freezed,Object? supportsPromptAttachments = freezed,Object? assistantAgentModel = freezed,Object? children = null,Object? childStatuses = null,Object? isRootSession = freezed,Object? isArchived = null,Object? queuedMessages = null,Object? sendingSubmission = freezed,Object? bridgeQueuedPrompts = null,Object? awaitingBridgeSubmissions = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = null,Object? selectedAgentModel = freezed,Object? fastMode = null,Object? stagedCommand = freezed,Object? isRefreshing = null,Object? availableVariants = null,}) {
   return _then(SessionDetailLoaded(
 interaction: null == interaction ? _self.interaction : interaction // ignore: cast_nullable_to_non_nullable
 as SessionInteractionState,messages: null == messages ? _self._messages : messages // ignore: cast_nullable_to_non_nullable
@@ -261,7 +262,8 @@ as SessionStatus,pendingQuestions: null == pendingQuestions ? _self._pendingQues
 as List<SesoriQuestionAsked>,pendingPermissions: null == pendingPermissions ? _self._pendingPermissions : pendingPermissions // ignore: cast_nullable_to_non_nullable
 as List<SesoriPermissionAsked>,sessionTitle: freezed == sessionTitle ? _self.sessionTitle : sessionTitle // ignore: cast_nullable_to_non_nullable
 as String?,session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
-as Session,pluginId: freezed == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as Session,isUpdatingAutoContinuation: null == isUpdatingAutoContinuation ? _self.isUpdatingAutoContinuation : isUpdatingAutoContinuation // ignore: cast_nullable_to_non_nullable
+as bool,pluginId: freezed == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String?,supportsPromptAttachments: freezed == supportsPromptAttachments ? _self.supportsPromptAttachments : supportsPromptAttachments // ignore: cast_nullable_to_non_nullable
 as bool?,assistantAgentModel: freezed == assistantAgentModel ? _self.assistantAgentModel : assistantAgentModel // ignore: cast_nullable_to_non_nullable
 as AgentModel?,children: null == children ? _self._children : children // ignore: cast_nullable_to_non_nullable
@@ -346,11 +348,12 @@ $CommandInfoCopyWith<$Res>? get stagedCommand {
 
 
 class SessionDetailHarnessUnavailable implements SessionDetailState {
-  const SessionDetailHarnessUnavailable({required this.session, required this.interaction});
+  const SessionDetailHarnessUnavailable({required this.session, required this.interaction, this.isUpdatingAutoContinuation = false});
   
 
  final  Session session;
  final  SessionInteractionState interaction;
+@JsonKey() final  bool isUpdatingAutoContinuation;
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
@@ -362,18 +365,18 @@ $SessionDetailHarnessUnavailableCopyWith<SessionDetailHarnessUnavailable> get co
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailHarnessUnavailable&&(identical(other.session, session) || other.session == session)&&(identical(other.interaction, interaction) || other.interaction == interaction));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailHarnessUnavailable&&(identical(other.session, session) || other.session == session)&&(identical(other.interaction, interaction) || other.interaction == interaction)&&(identical(other.isUpdatingAutoContinuation, isUpdatingAutoContinuation) || other.isUpdatingAutoContinuation == isUpdatingAutoContinuation));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,session,interaction);
+    return Object.hash(runtimeType,session,interaction,isUpdatingAutoContinuation);
 }
 
 @override
 String toString() {
-    return 'SessionDetailState.harnessUnavailable(session: $session, interaction: $interaction)';
+    return 'SessionDetailState.harnessUnavailable(session: $session, interaction: $interaction, isUpdatingAutoContinuation: $isUpdatingAutoContinuation)';
 }
 
 
@@ -384,7 +387,7 @@ abstract mixin class $SessionDetailHarnessUnavailableCopyWith<$Res> implements $
   factory $SessionDetailHarnessUnavailableCopyWith(SessionDetailHarnessUnavailable value, $Res Function(SessionDetailHarnessUnavailable) _then) = _$SessionDetailHarnessUnavailableCopyWithImpl;
 @useResult
 $Res call({
- Session session, SessionInteractionState interaction
+ Session session, SessionInteractionState interaction, bool isUpdatingAutoContinuation
 });
 
 
@@ -401,11 +404,12 @@ class _$SessionDetailHarnessUnavailableCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? session = null,Object? interaction = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? session = null,Object? interaction = null,Object? isUpdatingAutoContinuation = null,}) {
   return _then(SessionDetailHarnessUnavailable(
 session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
 as Session,interaction: null == interaction ? _self.interaction : interaction // ignore: cast_nullable_to_non_nullable
-as SessionInteractionState,
+as SessionInteractionState,isUpdatingAutoContinuation: null == isUpdatingAutoContinuation ? _self.isUpdatingAutoContinuation : isUpdatingAutoContinuation // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

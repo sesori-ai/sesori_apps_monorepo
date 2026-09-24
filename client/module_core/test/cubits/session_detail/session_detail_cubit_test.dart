@@ -11,6 +11,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
@@ -30,6 +31,7 @@ import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
+import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
@@ -153,6 +155,7 @@ void main() {
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
       sessionAbortService: SessionAbortService(repository: promptDispatcher),
+      autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: sessionViewingService ?? stubbedSessionViewingService(),
@@ -171,6 +174,204 @@ void main() {
       await sessionEvents.close();
       await globalEvents.close();
       await connectionStatus.close();
+    });
+
+    group("auto continuation", () {
+      const disabled = SessionAutoContinuationView(
+        enabled: false,
+        availability: AutoContinuationAvailability.conditional,
+        status: SessionAutoContinuationStatus.resetKnown(resetAt: 100000, continueAt: 220000),
+      );
+      const enabled = SessionAutoContinuationView(
+        enabled: true,
+        availability: AutoContinuationAvailability.conditional,
+        status: SessionAutoContinuationStatus.resetKnown(resetAt: 100000, continueAt: 220000),
+      );
+
+      Future<SessionDetailCubit> loadedCubit() async {
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(id: sessionId).copyWith(autoContinuation: disabled),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded, description: "loaded");
+        return cubit;
+      }
+
+      test("waits for acknowledgement and ignores duplicate taps while saving", () async {
+        final response = Completer<ApiResponse<Session>>();
+        when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: true))
+            .thenAnswer((_) => response.future);
+        final cubit = await loadedCubit();
+        final saving = cubit.setAutoContinuation(enabled: true);
+        expect(cubit.state.autoContinuationUpdatePending, isTrue);
+        expect(cubit.state.hydratedSession!.autoContinuation, disabled);
+        await cubit.setAutoContinuation(enabled: true);
+        verify(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: true)).called(1);
+
+        response.complete(ApiResponse.success(testSession(id: sessionId).copyWith(autoContinuation: enabled)));
+        await saving;
+        expect(cubit.state.hydratedSession!.autoContinuation, enabled);
+        expect(cubit.state.autoContinuationUpdatePending, isFalse);
+      });
+
+      test("keeps the last acknowledged setting and reports a failed update", () async {
+        when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: true))
+            .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        final cubit = await loadedCubit();
+        final notice = cubit.noticeStream.first;
+        await cubit.setAutoContinuation(enabled: true);
+        expect(await notice, isA<SessionDetailAutoContinuationUpdateFailed>());
+        expect(cubit.state.hydratedSession!.autoContinuation, disabled);
+        expect(cubit.state.autoContinuationUpdatePending, isFalse);
+      });
+
+      for (final metadataFails in [false, true]) {
+        test("preserves an acknowledgement during reload (metadata fails: $metadataFails)", () async {
+          final response = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: true))
+              .thenAnswer((_) => response.future);
+          final cubit = await loadedCubit();
+          final saving = cubit.setAutoContinuation(enabled: true);
+          final metadata = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+          final reloading = cubit.reload();
+          expect(cubit.state, isA<SessionDetailLoading>());
+          response.complete(ApiResponse.success(testSession(id: sessionId).copyWith(autoContinuation: enabled)));
+          await saving;
+          metadata.complete(
+            metadataFails
+                ? ApiResponse.error(ApiError.generic())
+                : ApiResponse.success(testSession(id: sessionId).copyWith(autoContinuation: disabled)),
+          );
+          await reloading;
+          expect(cubit.state.hydratedSession!.autoContinuation, enabled);
+          expect(cubit.state.autoContinuationUpdatePending, isFalse);
+        });
+      }
+
+      for (final historyFails in [false, true]) {
+        test("keeps a disable acknowledgement in the unavailable shell (history fails: $historyFails)", () async {
+          final session = testSession(id: sessionId).copyWith(autoContinuation: enabled);
+          stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId, session: session);
+          final management = MockPluginManagementService();
+          final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+            managementFixture(
+              pluginId: "plugin-1",
+              setup: PluginSetupState.authenticationRequired,
+              runtime: PluginRuntimeState.blocked,
+            ),
+          );
+          addTearDown(snapshots.close);
+          when(() => management.snapshots).thenAnswer((_) => snapshots);
+          when(management.refresh).thenAnswer((_) async {});
+          when(
+            () => mockSessionService.getMessages(
+              sessionId: any(named: "sessionId"),
+              limit: any(named: "limit"),
+              before: any(named: "before"),
+              storedOnly: any(named: "storedOnly"),
+            ),
+          ).thenAnswer(
+            (_) async => historyFails
+                ? ApiResponse.error(ApiError.generic())
+                : ApiResponse.success(
+                    const MessageWithPartsResponse(
+                      messages: [],
+                      nextCursor: null,
+                      replayedPromptDefaults: null,
+                      awaitingHarnessSync: true,
+                    ),
+                  ),
+          );
+          final cubit = buildCubit(pluginManagementService: management);
+          addTearDown(cubit.close);
+          await awaitState(
+            cubit: cubit,
+            predicate: (state) => state is SessionDetailHarnessUnavailable,
+            description: "unavailable shell",
+          );
+          final response = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: false))
+              .thenAnswer((_) => response.future);
+          final saving = cubit.setAutoContinuation(enabled: false);
+          final metadata = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+          final reloading = cubit.reload();
+          response.complete(ApiResponse.success(session.copyWith(autoContinuation: disabled)));
+          await saving;
+          metadata.complete(ApiResponse.success(session));
+          await reloading;
+          expect(cubit.state, isA<SessionDetailHarnessUnavailable>());
+          expect(cubit.state.hydratedSession!.autoContinuation, disabled);
+          expect(cubit.state.autoContinuationUpdatePending, isFalse);
+        });
+      }
+
+      test("applies changes from another client through the normal session event", () async {
+        final cubit = await loadedCubit();
+        sessionEvents.add(
+          SesoriSessionUpdated(
+            info: testSession(id: sessionId).copyWith(autoContinuation: enabled),
+          ),
+        );
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state.hydratedSession?.autoContinuation == enabled,
+          description: "remote continuation update",
+        );
+        expect(cubit.state.autoContinuationUpdatePending, isFalse);
+      });
+
+      test("can disable an unavailable preference and reports an already accepted send", () async {
+        const submitted = SessionAutoContinuationStatus.submitted(acceptedAt: 230000);
+        final cubit = await loadedCubit();
+        sessionEvents.add(
+          SesoriSessionUpdated(
+            info: testSession(id: sessionId).copyWith(
+              autoContinuation: const SessionAutoContinuationView(
+                enabled: true,
+                availability: AutoContinuationAvailability.unavailable,
+                status: submitted,
+              ),
+            ),
+          ),
+        );
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state.hydratedSession?.autoContinuation?.enabled ?? false,
+          description: "enabled unavailable preference",
+        );
+        when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: false)).thenAnswer(
+          (_) async => ApiResponse.success(
+            testSession(id: sessionId).copyWith(
+              autoContinuation: const SessionAutoContinuationView(
+                enabled: false,
+                availability: AutoContinuationAvailability.unavailable,
+                status: submitted,
+              ),
+            ),
+          ),
+        );
+        final notice = cubit.noticeStream.first;
+        await cubit.setAutoContinuation(enabled: false);
+        expect(cubit.state.hydratedSession!.autoContinuation!.enabled, isFalse);
+        expect(await notice, isA<SessionDetailAutoContinuationAlreadySubmitted>());
+      });
+
+      test("settles an in-flight update safely after the screen closes", () async {
+        final response = Completer<ApiResponse<Session>>();
+        when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: true))
+            .thenAnswer((_) => response.future);
+        final cubit = await loadedCubit();
+        final saving = cubit.setAutoContinuation(enabled: true);
+        await cubit.close();
+        response.complete(ApiResponse.success(testSession(id: sessionId).copyWith(autoContinuation: enabled)));
+        await saving;
+        expect(cubit.isClosed, isTrue);
+      });
     });
 
     group("fast mode", () {
@@ -1603,6 +1804,7 @@ void main() {
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: loadService,
         sessionAbortService: SessionAbortService(repository: promptDispatcher),
+        autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),

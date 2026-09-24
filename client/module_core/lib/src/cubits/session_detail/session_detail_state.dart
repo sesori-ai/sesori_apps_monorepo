@@ -35,6 +35,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     // The hydrated session, for surfaces that act on it (rename, archive,
     // delete).
     required Session session,
+    @Default(false) bool isUpdatingAutoContinuation,
     // The harness running this session, or null when it could not be resolved.
     required String? pluginId,
     // Null when the plugin metadata lookup could not resolve the capability.
@@ -87,12 +88,19 @@ sealed class SessionDetailState with _$SessionDetailState {
   const factory harnessUnavailable({
     required Session session,
     required SessionInteractionState interaction,
+    @Default(false) bool isUpdatingAutoContinuation,
   }) = SessionDetailHarnessUnavailable;
 
   const factory failed({required RemoteFailureReason reason}) = SessionDetailFailed;
 }
 
 extension SessionDetailStateX on SessionDetailState {
+  bool get autoContinuationUpdatePending => switch (this) {
+    SessionDetailLoaded(:final isUpdatingAutoContinuation) ||
+    SessionDetailHarnessUnavailable(:final isUpdatingAutoContinuation) => isUpdatingAutoContinuation,
+    SessionDetailLoading() || SessionDetailFailed() => false,
+  };
+
   /// The hydrated session, for the variants that have one.
   Session? get hydratedSession => switch (this) {
     SessionDetailLoaded(:final session) || SessionDetailHarnessUnavailable(:final session) => session,

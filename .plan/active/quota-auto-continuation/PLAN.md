@@ -1,8 +1,8 @@
 # Quota auto continuation
 
-Status: implementation in progress; steps 1–3 merged, step 4 scheduler in review
+Status: implementation in progress; steps 1–4 merged, including the scheduler
 in [#1654](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1654).
-Shared chat controls and final L4 verification remain outstanding.
+Step 5 shared chat controls are ready for review. Final L4 verification remains outstanding.
 Research: 2026-09-23. Current progress: [TRACKER.md](TRACKER.md).
 
 ## Goal and agreed scope
@@ -25,8 +25,8 @@ implemented behavior from pending UI and live-provider verification.
 
 1. Default off for every session. A detected current quota interruption with a
    known reset shows **Enable auto continuation** beside a short explanation.
-2. The chat overflow menu includes **Auto-continue after quota resets**, with its
-   current checked state. It can enable the preference before the next quota
+2. The chat overflow menu includes **Auto continuation**, with an **After quota resets**
+   subtitle and its current checked state. It can enable the preference before the next quota
    interruption and can always disable an already-enabled preference.
 3. Enabling while blocked schedules one continuation at **reset + two minutes**.
    This fixed buffer is a proposed v1 default. Display an absolute date/time in
@@ -479,4 +479,5 @@ explicit paused/readiness contracts, exact prompt-default mapping, no-dispatch
 cancellation, peer trigger lifecycles, Layer 3 session-view composition,
 service-owned cutoff calculation, and repository-owned generation fencing.
 The corrected version was not re-reviewed, following the plan-review rule.
-No production work has started.
+That review covered the plan before production work began. Current implementation
+progress is recorded in the status above and in [TRACKER.md](TRACKER.md).

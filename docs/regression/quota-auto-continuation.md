@@ -6,7 +6,9 @@ Plugins report a terminal quota interruption with the visible error's identity,
 original observation time, and either an absolute UTC reset or an explicit
 unknown reset. The headless bridge persists session opt-in, exposes
 `PATCH /session/auto-continuation`, and sends one ordinary `Continue.` after
-a known reset plus two minutes. Chat opt-in controls are a subsequent step of the
+a known reset plus two minutes. Phone and desktop chat share an inline opt-in
+hint, an enabled/scheduled/paused notice, and a top-right menu toggle. Live
+provider and platform verification remains in the
 [active plan](../../.plan/active/quota-auto-continuation/PLAN.md).
 
 ## Required Behavior
@@ -65,6 +67,20 @@ a known reset plus two minutes. Chat opt-in controls are a subsequent step of th
 - Quota observations and newer native user activity/default changes are awaited
   in the existing source-event order before a subsequent terminal handoff.
   Native prompt-default events remain internal; only committed defaults publish.
+- Both chat controls use the same acknowledged setting request. While saving,
+  controls are disabled and the last confirmed preference stays visible. A
+  failure explains that the change could not be confirmed; it never invents a
+  local schedule. Session updates from another client refresh the same view.
+  An acknowledgement received during reload survives failed metadata/history
+  reads and the unavailable-history shell; saving controls become usable again.
+- A known reset offers opt-in; the scheduled notice shows the bridge's buffered
+  date/time in the viewer's local zone and says the bridge must remain running.
+  Enabled idle sessions retain a compact indicator and Disable action.
+- Unknown reset, paused, submitted, unconfirmed and failed attempts have distinct
+  explanations. Unavailable harnesses cannot enable, but can disable an existing
+  preference. An already-submitted prompt cannot be retracted by disabling.
+- An older bridge without the view exposes an unavailable menu entry with an
+  update explanation. Read-only and archived chats do not expose mutation controls.
 
 ## Coverage Worth Running
 
@@ -84,6 +100,10 @@ a known reset plus two minutes. Chat opt-in controls are a subsequent step of th
   event/handoff test. Cover opt-in persistence, reset buffer, recheck backoff,
   disable/re-enable, future interruptions, normal prompt selection, durable
   cancellation failures, and consumed/unconfirmed attempts without resend.
+- **L1:** Client service/cubit and shared notice tests: acknowledgement, failed
+  mutations, legacy route errors, incoming session updates, unavailable disable,
+  all outcome explanations, local dates, and enlarged text at narrow widths.
+  Phone and desktop screen tests exercise their actual top-right menu wiring.
 - **L3:** Real provider account exhaustion on each supported production harness,
   then the eventual opt-in → reset → one scheduled `Continue.` journey. This
   remains required in later plan steps; synthetic protocol tests do not establish

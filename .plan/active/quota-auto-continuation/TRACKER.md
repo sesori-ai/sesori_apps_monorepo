@@ -7,8 +7,8 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 | 1 — Plan and support audit | Merged | [#1601][plan-pr]; audit and reviewed plan. |
 | 2 — Quota normalization | Merged | [#1641][normalization-pr]; typed terminal events and Claude/Pi reporting. |
 | 3 — Durable contracts and readiness | Merged | [#1649][foundation-pr]; durable state and readiness. |
-| 4 — Bridge scheduler | In review | [#1654][scheduler-pr]; route, views, cancellation and dispatch. |
-| 5 — Shared chat controls | Not started | Inline hint, indicator and three-dot toggle on phone and desktop. |
+| 4 — Bridge scheduler | Merged | [#1654][scheduler-pr]; route, views, cancellation and dispatch. |
+| 5 — Shared chat controls | In review | [#1656][controls-pr]; shared hint, indicator and three-dot toggle. |
 | 6 — Regression reconciliation | Not started | Complete affected feature docs and capability matrix. |
 | 7 — L4 verification and retirement | Not started | All recorded boundary/platform/provider coverage must pass. |
 
@@ -16,6 +16,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 [normalization-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1641
 [foundation-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1649
 [scheduler-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1654
+[controls-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1656
 
 ## Confirmed user decisions
 
@@ -73,5 +74,14 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
   routing, cancellation, event and composed handoff checks pass; app analysis is
   clean. Architecture implementation review approved the complete step 4 diff;
   controls and live provider recovery are not implemented/verified yet.
-- Live scheduled continuation: not run; scheduler is in review and controls are not implemented.
+- Step 4 merged after 20/20 checks passed and the final bot review approved.
+  A regression fix preserves the created session response if continuation projection fails.
+- Step 5 controls: 384 focused tests pass; all four owning client modules analyze
+  cleanly. Architecture review approved. Fixture-only before/after and flow media
+  were inspected and published; affected screen tests pass after integration with main.
+- Live scheduled continuation: not run. Widget fixtures do not prove provider recovery.
+- Step 5 review fixes preserve acknowledgements during reload, keep unavailable
+  controls honest and reachable, and classify route/session errors separately.
+  Main integration passed 237 core, 135 mobile and 9 desktop tests; the unchanged
+  shared UI suite passed 13 tests before integration. All four analyzers pass.
 - Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.

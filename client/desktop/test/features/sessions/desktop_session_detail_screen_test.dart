@@ -425,6 +425,24 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    testWidgets("the toolbar can disable auto continuation for an unavailable harness", (tester) async {
+      await pumpPage(
+        tester,
+        session: _session.copyWith(
+          autoContinuation: const SessionAutoContinuationView(
+            enabled: true,
+            availability: AutoContinuationAvailability.unavailable,
+            status: SessionAutoContinuationStatus.idle(),
+          ),
+        ),
+      );
+      when(() => cubit.setAutoContinuation(enabled: false)).thenAnswer((_) async {});
+      await tester.tap(find.byKey(const Key("desktop-session-page-more")));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key("session-auto-continuation-toggle")));
+      verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
+    });
+
     testWidgets("sits above a centred transcript column", (tester) async {
       await pumpPage(tester, session: _session);
 

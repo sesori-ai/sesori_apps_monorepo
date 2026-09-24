@@ -7,9 +7,11 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../session_auto_continuation_menu.dart";
 import "../session_detail_presentation_scope.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
+import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
 import "session_harness_unavailable_notice.dart";
@@ -79,8 +81,8 @@ class const SessionDetailBody({
   /// Null keeps the floating glass bar and a full-width transcript.
   required final SessionDetailPageChrome? pageChrome,
 
-  /// The glass bar's session menu, for a root session; null shows none. A page frame brings its
-  /// own header and menu instead.
+  /// Additional glass-bar actions for a root session. Continuation controls are
+  /// shared here; a page frame composes its own header and menu instead.
   required final SessionDetailMenuEntriesBuilder? menuEntriesBuilder,
 }) extends StatefulWidget {
   @override
@@ -143,6 +145,24 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         PregoPopupAlertsNotificationsVariant.error,
         const Duration(seconds: 3),
       ),
+      SessionDetailAutoContinuationUnavailable() => (
+        context.loc.sessionAutoContinuationUnavailable,
+        null,
+        PregoPopupAlertsNotificationsVariant.warning,
+        const Duration(seconds: 5),
+      ),
+      SessionDetailAutoContinuationUpdateFailed() => (
+        context.loc.sessionAutoContinuationUpdateFailed,
+        null,
+        PregoPopupAlertsNotificationsVariant.error,
+        const Duration(seconds: 5),
+      ),
+      SessionDetailAutoContinuationAlreadySubmitted() => (
+        context.loc.sessionAutoContinuationAlreadySubmitted,
+        null,
+        PregoPopupAlertsNotificationsVariant.warning,
+        const Duration(seconds: 5),
+      ),
     };
     PregoPopupAlertPresenter.of(context).show(
       title: title,
@@ -184,6 +204,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     final onShowDiffs = widget.onShowDiffs;
     final menuEntriesBuilder = widget.menuEntriesBuilder;
     final session = state.hydratedSession;
+    final canConfigureContinuation =
+        !widget.readOnly && session?.time?.archived == null && !(state is SessionDetailLoaded && state.isArchived);
 
     final actions = <Widget>[
       if (widget.onClose != null)
@@ -200,12 +222,16 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         ),
       // Root sessions only: the actions run on the project's session list,
       // which holds no sub-agent sessions and must not gain one.
-      if (menuEntriesBuilder != null && session != null && session.parentID == null)
+      if (session != null && ((menuEntriesBuilder != null && session.parentID == null) || canConfigureContinuation))
         PregoAnchorMenu(
           flat: true,
           menuWidth: 240,
           acquireOpenLease: null,
-          entriesBuilder: () => menuEntriesBuilder(context: context, session: session),
+          entriesBuilder: () => [
+            if (canConfigureContinuation) sessionAutoContinuationMenuEntry(context: context, session: session),
+            if (menuEntriesBuilder != null && session.parentID == null)
+              ...menuEntriesBuilder(context: context, session: session),
+          ],
           triggerBuilder: (context, openMenu) => PregoButtonsIconGlass(
             key: const Key("session-detail-more"),
             icon: TablerRegular.dots,
@@ -310,7 +336,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         // bottom and rides above the keyboard). The chat owns its own
         // reversed scroll controller, so the large title can't collapse with
         // it; the inline title is used instead, as on the new-session screen.
-        SliverFillRemaining(hasScrollBody: state is SessionDetailLoaded, child: content),
+        SliverFillRemaining(
+          hasScrollBody: state is SessionDetailLoaded || state is SessionDetailHarnessUnavailable,
+          child: content,
+        ),
       ],
     );
   }
@@ -359,8 +388,27 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                       ),
                 maxContentWidth: maxContentWidth,
               ),
-      SessionDetailHarnessUnavailable(:final interaction) => Center(
-        child: _buildHarnessNotice(interaction: interaction, historyUnavailable: true),
+      SessionDetailHarnessUnavailable(:final interaction, :final session) => Center(
+        child: PregoTopBarInsetBuilder(
+          builder: (context, topInset, child) => Padding(
+            padding: EdgeInsetsDirectional.only(top: topInset),
+            child: SingleChildScrollView(child: child),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!widget.readOnly && session.time?.archived == null)
+                SessionAutoContinuationNotice(
+                  view: session.autoContinuation,
+                  updating: state.autoContinuationUpdatePending,
+                  canInteract: interaction.canInteract,
+                  onEnabledChanged: (enabled) =>
+                      unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
+                ),
+              _buildHarnessNotice(interaction: interaction, historyUnavailable: true),
+            ],
+          ),
+        ),
       ),
       SessionDetailFailed(:final reason) => SessionDetailErrorView(
         reason: reason,
