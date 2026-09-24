@@ -76,7 +76,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
               childStatuses: state.childStatuses,
             ),
             canSend: true,
-onSend: ({required draft, required command, required attachments}) =>
+            onSend: ({required draft, required command, required attachments}) =>
                 context.read<SessionDetailCubit>().sendMessage(
                   text: draft.text,
                   command: command,

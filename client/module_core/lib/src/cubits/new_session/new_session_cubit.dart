@@ -326,9 +326,10 @@ class NewSessionCubit({
     // way forward is to install one on that machine, so the same action goes
     // back to discovery instead — that is where a newly installed harness (or
     // one a failed discovery never got to see) shows up.
-    // An unroutable harness has no options to load; its state may have
-    // recovered since discovery last looked.
-    if (needsHarnessDiscovery || !(state.agentModelData?.plugin?.isRoutable ?? true)) {
+    // A missing or unroutable harness has no options to load; discovery may
+    // have recovered since it last looked.
+    final plugin = state.agentModelData?.plugin;
+    if (needsHarnessDiscovery || plugin == null || !plugin.isRoutable) {
       await _discoverPlugins();
       return;
     }
@@ -340,16 +341,13 @@ class NewSessionCubit({
 
     final current = state;
     final data = current.agentModelData;
-    final plugin = data?.plugin;
     final source = data?.optionsState.source;
     if (current.phase is NewSessionPhaseSending ||
         current is NewSessionCreated ||
         !(data?.backendScope.isVerified ?? false) ||
         data == null ||
         data.isLoading ||
-        source == null ||
-        plugin == null ||
-        !plugin.isRoutable) {
+        source == null) {
       return;
     }
 

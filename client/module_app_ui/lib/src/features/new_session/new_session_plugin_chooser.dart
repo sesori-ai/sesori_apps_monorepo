@@ -42,7 +42,9 @@ class const NewSessionPluginChooser({
     // Aligned out here rather than inside the trigger: the menu anchors to the
     // trigger's painted bounds, and a trigger stretched across the row would
     // hang the popup off the middle of the screen instead of under the name.
-    return UnconstrainedBox(
+    // Shrink-wrapped, but still bounded by the row so a long name ellipsizes.
+    return Align(
+      widthFactor: 1,
       child: PregoAnchorMenu(
         // The trigger is flat, so the popup is too — a glass bubble hung off a
         // chrome-less row would read as belonging to something else.
