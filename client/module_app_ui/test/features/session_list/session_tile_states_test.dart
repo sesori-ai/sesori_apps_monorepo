@@ -286,6 +286,32 @@ void main() {
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
   });
 
+  testWidgets("a long branch leaves the pull request its full width", (tester) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final session = testSession(title: "My Session", branchName: "visual-hierarchy/a-very-long-phone-activity")
+        .copyWith(
+          pullRequest: const PullRequestInfo(
+            number: 1631,
+            url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/1631",
+            title: "Show Activity",
+            state: PrState.open,
+            mergeableStatus: PrMergeableStatus.mergeable,
+            reviewDecision: PrReviewDecision.reviewRequired,
+            checkStatus: PrCheckStatus.pending,
+          ),
+        );
+
+    await pumpTile(tester, tile(session: session));
+
+    // The status row clips only when squeezed below its own width.
+    final row = find.byType(PrStatusRow);
+    final content = find.descendant(of: row, matching: find.byType(Row)).first;
+    expect(tester.getSize(row).width, greaterThanOrEqualTo(tester.getSize(content).width));
+  });
+
   testWidgets("a full meta line fits the narrow landscape split pane", (tester) async {
     tester.view.physicalSize = const Size(258, 800);
     tester.view.devicePixelRatio = 1.0;

@@ -390,8 +390,11 @@ class const SessionTile({
       // Branch names are the one unbounded detail; both ends tell them apart.
       if (session.branchName case final branch?)
         (flex: 2, child: PregoEllipsisText(text: branch, style: style, ellipsis: PregoEllipsis.middle)),
-      if (session.pullRequest case final pr?) (flex: 2, child: PrStatusRow(pr: pr)),
     ];
+
+    Widget separator() => ExcludeSemantics(
+      child: Text(_separator, style: style, maxLines: 1, softWrap: false, overflow: TextOverflow.clip),
+    );
 
     // A minimum rather than a fixed height: scaled-up accessibility text grows
     // the line instead of being cropped to the 1x line box.
@@ -399,34 +402,40 @@ class const SessionTile({
       constraints: BoxConstraints(minHeight: pointer ? 0 : _metaLineHeight),
       child: Padding(
         padding: const EdgeInsetsDirectional.only(start: _statusSlotSize + PregoSpacing.xs),
-        child: Row(
-          children: [
-            for (final (index, detail) in details.indexed)
-              // Each separator yields with the detail it leads, so scaled-up
-              // text shrinks details rather than overflowing the line.
-              Flexible(
-                flex: detail.flex,
-                child: index == 0
-                    ? detail.child
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: ExcludeSemantics(
-                              child: Text(
-                                _separator,
-                                style: style,
-                                maxLines: 1,
-                                softWrap: false,
-                                overflow: TextOverflow.clip,
-                              ),
-                            ),
-                          ),
-                          Flexible(flex: 3, child: detail.child),
-                        ],
-                      ),
-              ),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) => Row(
+            children: [
+              for (final (index, detail) in details.indexed)
+                // Each separator yields with the detail it leads, so scaled-up
+                // text shrinks details rather than overflowing the line.
+                Flexible(
+                  flex: detail.flex,
+                  child: index == 0
+                      ? detail.child
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(child: separator()),
+                            Flexible(flex: 3, child: detail.child),
+                          ],
+                        ),
+                ),
+              // The pull request is short and bounded, so it keeps its full width
+              // and the other details share what is left. The cap keeps a narrow
+              // pane from handing it the whole line.
+              if (session.pullRequest case final pr?)
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: constraints.maxWidth * _pullRequestMaxShare),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      separator(),
+                      Flexible(child: PrStatusRow(pr: pr)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -492,6 +501,9 @@ const double _metaLineHeight = 20;
 
 const double _statusSlotSize = 16;
 const double _waitingDotSize = 8;
+
+/// The most of the meta line the pull request may take before it clips.
+const double _pullRequestMaxShare = 0.8;
 
 /// Between the meta line's details; a glyph, not words, so it is not translated.
 const String _separator = " · ";
