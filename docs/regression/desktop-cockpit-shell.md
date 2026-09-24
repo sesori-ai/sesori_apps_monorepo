@@ -213,7 +213,8 @@ The main pane hosts one full-width routed page.
   Choosing another project builds a fresh cubit for it.
 - The session page uses the same toolbar anatomy above the transcript, never over it: the project
   breadcrumb, then the sidebar's status slot (the running sparkle, the amber awaiting glyph) leading the
-  16 pt bold title, with the harness and model under it ("Claude Code · Haiku"); Changes on a root unarchived session; and a menu with
+  16 pt bold title, with the harness and model under it ("Claude Code · Haiku", either alone when the other
+  is unknown, none when both are); Changes on a root unarchived session; and a menu with
   Mark as unread labelled with its shortcut, Rename, Archive, Archive keeping the worktree when the
   session has one, and Delete, the last four run by the same dispatcher as a row's menu. Session actions
   stay disabled until the page has the hydrated session, and work for child sessions and sessions opened

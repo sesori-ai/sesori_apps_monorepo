@@ -37,7 +37,7 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 19 | `visual-hierarchy/phone-search` | [19/41](#pr-titles) | ≤ 600 | done |
 | [x] | 20 | `visual-hierarchy/command-palette` | [20/41](#pr-titles) | ≤ 900 | done |
 | [x] | 21 | `visual-hierarchy/project-rows` | [21/41](#pr-titles) | ≤ 500 | done |
-| [ ] | 22 | `visual-hierarchy/{session-subtitle,code-blocks,composer-fold}` | [22/41](#pr-titles) | ≤ 600 | in progress |
+| [ ] | 22 | `visual-hierarchy/{session-subtitle,…}` | [22/41](#pr-titles) | ≤ 600 | in-progress |
 | [ ] | 23 | `visual-hierarchy/new-session` | [23/41](#pr-titles) | ≤ 600 | pending |
 | [ ] | 24 | `visual-hierarchy/folder-browser` | [24/41](#pr-titles) | ≤ 500 | pending |
 | [ ] | 25 | `visual-hierarchy/windows-drives` | [25/41](#pr-titles) | ≤ 500 | pending |
