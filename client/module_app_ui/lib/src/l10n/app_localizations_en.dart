@@ -106,6 +106,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSidebarResize => 'Resize sidebar; double-click to reset';
 
   @override
+  String get desktopSearch => 'Search';
+
+  @override
+  String get desktopCommandPaletteHint => 'Search sessions, projects and commands';
+
+  @override
+  String get desktopCommandPaletteCommands => 'Commands';
+
+  @override
+  String get desktopToggleSidebar => 'Toggle sidebar';
+
+  @override
+  String get desktopGoBack => 'Go back';
+
+  @override
   String get desktopProjectPageArchived => 'Archived';
 
   @override
