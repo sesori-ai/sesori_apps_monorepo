@@ -65,6 +65,11 @@ _Session _$SessionFromJson(Map json) => _Session(
   hasWorktree: json['hasWorktree'] as bool? ?? false,
   unseen: json['unseen'] as bool? ?? false,
   lastUserActivityAt: (json['lastUserActivityAt'] as num?)?.toInt(),
+  autoContinuation: json['autoContinuation'] == null
+      ? null
+      : SessionAutoContinuationView.fromJson(
+          Map<String, dynamic>.from(json['autoContinuation'] as Map),
+        ),
 );
 
 Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
@@ -84,6 +89,7 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'hasWorktree': instance.hasWorktree,
   'unseen': instance.unseen,
   'lastUserActivityAt': ?instance.lastUserActivityAt,
+  'autoContinuation': ?instance.autoContinuation?.toJson(),
 };
 
 _SessionPromptDefaults _$SessionPromptDefaultsFromJson(Map json) =>

@@ -547,6 +547,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
       generation: 1,
       event: BridgeSseSessionUpdated(
         info: Session(
+          autoContinuation: null,
           branchName: null,
           id: fixture.sessions.first.id,
           pluginId: _pluginId,

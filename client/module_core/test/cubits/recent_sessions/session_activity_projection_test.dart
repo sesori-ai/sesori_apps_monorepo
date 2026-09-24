@@ -272,6 +272,7 @@ void main() {
 }
 
 Session _session({required String id, required String projectId, bool unseen = false, int updated = 1}) => Session(
+  autoContinuation: null,
   id: id,
   title: id,
   projectID: projectId,

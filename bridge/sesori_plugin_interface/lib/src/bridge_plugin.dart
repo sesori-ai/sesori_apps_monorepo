@@ -10,6 +10,7 @@ import "models/plugin_project_activity_summary.dart";
 import "models/plugin_prompt_part.dart";
 import "models/plugin_provider.dart";
 import "models/plugin_queued_prompt.dart";
+import "models/plugin_quota_interruption.dart";
 import "models/plugin_session.dart";
 import "models/plugin_session_options.dart";
 import "models/plugin_session_status.dart";
@@ -99,6 +100,11 @@ sealed class BridgePluginApi() {
   Future<List<PluginSession>> getChildSessions(String sessionId);
 
   Future<Map<String, PluginSessionStatus>> getSessionStatuses();
+
+  /// Unsupported harnesses cannot opt in to scheduled continuation. Supporting
+  /// plugins override this with their native session owner's readiness evidence.
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
 
   /// Get all messages for a session.
   ///

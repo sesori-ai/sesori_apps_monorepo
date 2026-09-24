@@ -27,6 +27,7 @@ class const SessionCatalogMapper() {
       hasWorktree: row.worktreePath != null,
       unseen: unseen,
       lastUserActivityAt: row.lastUserMessageAt,
+      autoContinuation: null,
     );
   }
 

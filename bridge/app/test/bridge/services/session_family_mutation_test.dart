@@ -504,6 +504,7 @@ class _SessionRecord({
   );
 
   Session get session => Session(
+    autoContinuation: null,
     id: id,
     pluginId: pluginId,
     projectID: "project-$rootId",

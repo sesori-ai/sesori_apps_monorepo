@@ -315,6 +315,14 @@ final class ClaudePlugin({
       _sessions.queuedPrompts(sessionId: sessionId);
 
   @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      _sessions.getQuotaContinuationReadiness(
+        sessionId: sessionId,
+        sessionExists:
+            _createdSessions.containsKey(sessionId) || _transcripts.findTranscriptPath(sessionId: sessionId) != null,
+      );
+
+  @override
   Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async =>
       _sessions.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
 

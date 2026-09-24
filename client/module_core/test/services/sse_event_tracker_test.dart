@@ -428,6 +428,7 @@ void main() {
       final event = SseEvent(
         data: const SesoriSessionCreated(
           info: Session(
+            autoContinuation: null,
             branchName: null,
             id: "s1",
             pluginId: legacyMissingPluginId,

@@ -560,6 +560,7 @@ void main() {
           projectionUpdatedAt: 5,
           event: BridgeSseSessionCreated(
             info: Session(
+              autoContinuation: null,
               id: "backend-child",
               pluginId: plugin.id,
               projectID: "backend-project",
@@ -1261,6 +1262,7 @@ void main() {
           projectionUpdatedAt: 100,
           event: BridgeSseSessionUpdated(
             info: Session(
+              autoContinuation: null,
               id: "backend-root",
               pluginId: plugin.id,
               projectID: "backend-project",
@@ -1447,6 +1449,7 @@ void main() {
         await service.canPublish(
           event: BridgeSseSessionCreated(
             info: Session(
+              autoContinuation: null,
               id: "stable-root",
               pluginId: plugin.id,
               projectID: "project-stable-root",
@@ -1474,6 +1477,7 @@ void main() {
       );
       final event = BridgeSseSessionUpdated(
         info: Session(
+          autoContinuation: null,
           id: "stable-root",
           pluginId: plugin.id,
           projectID: "project-stable-root",
@@ -1596,6 +1600,7 @@ Map<String, dynamic> _sessionInfo({
   required String directory,
 }) {
   return Session(
+    autoContinuation: null,
     id: sessionId,
     pluginId: "backend",
     projectID: projectId,

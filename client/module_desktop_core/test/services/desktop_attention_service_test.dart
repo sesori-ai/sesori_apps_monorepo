@@ -22,6 +22,7 @@ const _otherUser = AuthUser(
 );
 
 const _session = Session(
+  autoContinuation: null,
   id: "session-root",
   pluginId: "pi",
   projectID: "project-1",

@@ -242,6 +242,22 @@ final class PiSessionService({
   Map<String, PluginSessionStatus> get sessionStatuses =>
       Map.unmodifiable({for (final entry in _sessions.entries) entry.key: entry.value.status});
 
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async {
+    if (_disposed) return PluginQuotaContinuationReadiness.unavailable;
+    final sessionExists =
+        _sessions.containsKey(sessionId) ||
+        _pendingNewDirectories.containsKey(sessionId) ||
+        await _catalog.findSessionById(sessionId: sessionId) != null;
+    if (_extensionUi.getPendingQuestions(sessionId: sessionId).isNotEmpty) {
+      return PluginQuotaContinuationReadiness.awaitingInput;
+    }
+    final state = _sessions[sessionId];
+    if (state?.status is PluginSessionStatusRetry) return PluginQuotaContinuationReadiness.retrying;
+    if (state?.queue.isNotEmpty ?? false) return PluginQuotaContinuationReadiness.queued;
+    if ((state?.hasWork ?? false) || state?.idleReap != null) return PluginQuotaContinuationReadiness.busy;
+    return sessionExists ? PluginQuotaContinuationReadiness.idle : PluginQuotaContinuationReadiness.unknown;
+  }
+
   Future<void> deleteSession({required PluginSession root}) async {
     final sessions = await _catalog.listAllSessions(knownDirectories: {root.directory});
     final descendants = _descendantIds(rootId: root.id, sessions: sessions);

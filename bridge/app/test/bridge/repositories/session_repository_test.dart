@@ -406,6 +406,7 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            autoContinuation: null,
             branchName: null,
             id: "s1",
             pluginId: "fake",
@@ -447,6 +448,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       const staleSession = Session(
+        autoContinuation: null,
         branchName: "feature/private",
         id: "stale-session",
         pluginId: "fake",
@@ -561,6 +563,7 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            autoContinuation: null,
             branchName: null,
             id: "s1",
             pluginId: "fake",
@@ -574,6 +577,7 @@ void main() {
             lastUserActivityAt: null,
           ),
           Session(
+            autoContinuation: null,
             branchName: null,
             id: "s2",
             pluginId: "fake",
@@ -650,6 +654,7 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            autoContinuation: null,
             branchName: null,
             id: "native-session",
             pluginId: "fake",
@@ -663,6 +668,7 @@ void main() {
             lastUserActivityAt: null,
           ),
           Session(
+            autoContinuation: null,
             branchName: null,
             id: "derived-session",
             pluginId: "codex",
@@ -1376,6 +1382,67 @@ void main() {
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 503)),
       );
       expect(plugin.sendPromptCalls, isZero);
+    });
+
+    test("history defaults preserve stored fast mode and fall back when history has no selection", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await insertTestSession(
+        db: db,
+        sessionId: "stable-s1",
+        backendSessionId: "backend-s1",
+        pluginId: plugin.id,
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      const storedModel = AgentModel(providerID: "provider", modelID: "stored-model", variant: "high");
+      await repository.updateRequestedPromptDefaults(
+        sessionId: "stable-s1",
+        agent: "stored-agent",
+        agentModel: storedModel,
+        fastMode: true,
+      );
+      expect(
+        (await repository.getSessionMessages(sessionId: "stable-s1")).promptDefaults,
+        const SessionPromptDefaults(agent: "stored-agent", model: storedModel, fastMode: true),
+      );
+      plugin.messagesResult = const [
+        PluginMessageWithParts(
+          info: PluginMessageAssistant(
+            id: "message-1",
+            sessionID: "backend-s1",
+            agent: "native-agent",
+            modelID: "native-model",
+            providerID: "provider",
+            variant: "low",
+            sender: PluginMessageSender.agent,
+            time: null,
+          ),
+          parts: [],
+        ),
+      ];
+      expect(
+        (await repository.getSessionMessages(sessionId: "stable-s1")).promptDefaults,
+        const SessionPromptDefaults(
+          agent: "native-agent",
+          model: AgentModel(providerID: "provider", modelID: "native-model", variant: "low"),
+          fastMode: true,
+        ),
+      );
     });
 
     test("messages and statuses map backend identities back to stable session ids", () async {

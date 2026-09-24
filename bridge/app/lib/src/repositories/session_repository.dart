@@ -14,12 +14,15 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginActiveSession,
         PluginOperationException,
         PluginProjectActivitySummary,
+        PluginQuotaContinuationReadiness,
+        PluginQuotaReportingSupport,
         PluginSession,
         PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart"
     show
         ActiveSession,
         AgentModel,
+        AutoContinuationAvailability,
         CommandListResponse,
         MessagePartSubtask,
         MessageWithParts,
@@ -55,6 +58,7 @@ import "mappers/session_catalog_mapper.dart";
 import "mappers/stored_session_mapper.dart";
 import "models/project_not_found_exception.dart";
 import "models/session_abort_result.dart";
+import "models/session_continuation_record.dart";
 import "models/session_operation.dart";
 import "models/stored_session.dart";
 import "models/verified_github_login.dart";
@@ -409,14 +413,46 @@ class SessionRepository({
     operation: SessionOperation.getSessionMessages,
     body: (plugin, binding) async {
       final pluginMessages = await plugin.getSessionMessages(binding.backendSessionId);
+      // History supplies model/agent changes made natively; fast mode is a
+      // bridge-owned preference and is not recorded in backend transcripts.
+      final historyDefaults = pluginMessages.latestPromptDefaults();
       return (
         messages: await _resolveChildSessionIds(
           pluginId: binding.pluginId,
           messages: pluginMessages.toSharedMessageWithParts(sessionId: binding.sessionId),
         ),
-        promptDefaults: pluginMessages.latestPromptDefaults(),
+        promptDefaults:
+            historyDefaults?.copyWith(fastMode: binding.fastMode) ??
+            (binding.lastAgent == null && binding.lastAgentModel == null && !binding.fastMode
+                ? null
+                : SessionPromptDefaults(
+                    agent: binding.lastAgent,
+                    model: binding.lastAgentModel,
+                    fastMode: binding.fastMode,
+                  )),
       );
     },
+  );
+
+  AutoContinuationAvailability quotaReportingAvailability({required String pluginId}) =>
+      switch (_runtime.quotaReportingSupport(pluginId: pluginId)) {
+        PluginQuotaReportingSupport.conditional => AutoContinuationAvailability.conditional,
+        PluginQuotaReportingSupport.unavailable => AutoContinuationAvailability.unavailable,
+      };
+
+  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) => _useSessionPlugin(
+    sessionId: sessionId,
+    operation: SessionOperation.getQuotaContinuationReadiness,
+    body: (plugin, binding) async =>
+        switch (await plugin.getQuotaContinuationReadiness(sessionId: binding.backendSessionId)) {
+          PluginQuotaContinuationReadiness.idle => SessionContinuationReadiness.idle,
+          PluginQuotaContinuationReadiness.busy => SessionContinuationReadiness.busy,
+          PluginQuotaContinuationReadiness.retrying => SessionContinuationReadiness.retrying,
+          PluginQuotaContinuationReadiness.queued => SessionContinuationReadiness.queued,
+          PluginQuotaContinuationReadiness.awaitingInput => SessionContinuationReadiness.awaitingInput,
+          PluginQuotaContinuationReadiness.unavailable => SessionContinuationReadiness.unavailable,
+          PluginQuotaContinuationReadiness.unknown => SessionContinuationReadiness.unknown,
+        },
   );
 
   /// Translates the backend child references a plugin puts on subtask parts

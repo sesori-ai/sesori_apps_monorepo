@@ -97,8 +97,10 @@ recheckAt). Paused retains the observation and a persisted recheck deadline.
 
 **Constructor dependencies and responsibility:** Takes SessionContinuationDao and PluginRuntime. Sole
 storage write/encoding API: read/readMany, readEnabledReadyToCheck(resetCutoff, pausedRecheckCutoff), readReadyToCheck,
-setEnabledAlreadyReserved, recordObservationForCurrentGenerationAlreadyReserved, consumeAlreadyReserved,
-pauseAlreadyReserved, recordFailureAlreadyReserved, cancelCurrentObservationAlreadyReserved. Source-driven
+setEnabledAlreadyReserved, recordObservationForCurrentGenerationAlreadyReserved,
+writeOutcomeAlreadyReserved, cancelForCurrentGenerationAlreadyReserved, cancelCurrentObservationAlreadyReserved.
+The single outcome writer encodes the transition chosen by the service; the repository does not select
+consumption, pause, submission or failure transitions. Source-driven
 writes use the existing generation fence. No timer, scheduling arithmetic, stream, peer-repository
 dependency or cache.
 

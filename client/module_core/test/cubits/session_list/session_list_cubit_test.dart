@@ -799,6 +799,7 @@ void main() {
       "SSE session.created for same project adds to list",
       build: () {
         const existing = Session(
+          autoContinuation: null,
           branchName: null,
           id: "s1",
           pluginId: legacyMissingPluginId,
@@ -827,6 +828,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionCreated(
               info: Session(
+                autoContinuation: null,
                 branchName: null,
                 id: "s2",
                 pluginId: legacyMissingPluginId,
@@ -1059,6 +1061,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionCreated(
               info: Session(
+                autoContinuation: null,
                 branchName: null,
                 id: "child-1",
                 pluginId: legacyMissingPluginId,
@@ -1341,6 +1344,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionCreated(
               info: Session(
+                autoContinuation: null,
                 branchName: null,
                 id: "foreign-session",
                 pluginId: legacyMissingPluginId,
@@ -1382,6 +1386,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionUpdated(
               info: Session(
+                autoContinuation: null,
                 branchName: null,
                 id: "foreign-session",
                 pluginId: legacyMissingPluginId,
@@ -1421,6 +1426,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionDeleted(
               info: Session(
+                autoContinuation: null,
                 branchName: null,
                 id: "foreign-session",
                 pluginId: legacyMissingPluginId,
@@ -1451,6 +1457,7 @@ void main() {
       build: () {
         const sessions = [
           Session(
+            autoContinuation: null,
             branchName: null,
             id: "s1",
             pluginId: legacyMissingPluginId,
@@ -1464,6 +1471,7 @@ void main() {
             lastUserActivityAt: null,
           ),
           Session(
+            autoContinuation: null,
             branchName: null,
             id: "s2",
             pluginId: legacyMissingPluginId,

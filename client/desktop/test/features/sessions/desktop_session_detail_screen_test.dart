@@ -49,6 +49,7 @@ const _question = SesoriQuestionAsked(
 );
 
 const _child = Session(
+  autoContinuation: null,
   branchName: null,
   id: "child-1",
   pluginId: "opencode",
@@ -64,6 +65,7 @@ const _child = Session(
 
 /// A child session: the sidebar inventory never holds one, the page does.
 const _session = Session(
+  autoContinuation: null,
   branchName: null,
   id: "session-1",
   pluginId: "opencode",
