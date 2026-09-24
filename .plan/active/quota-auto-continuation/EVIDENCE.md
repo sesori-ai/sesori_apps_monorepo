@@ -204,3 +204,11 @@ scheduled send or a chat control journey.
   affected client packages (`app`, `desktop`, `module_core`, `module_app_ui`,
   `module_desktop_core`).
 - Documentation local links and `git diff --check` passed.
+
+CI follow-up: the full matrix exposed four shared `Session` constructor calls
+in ACP/Codex and two explicit interface implementers in Codex/OpenCode outside
+the first local analysis scope, plus shared barrel export ordering. Updated
+those consumers with a null bridge-owned view and unavailable readiness.
+ACP event-mapper tests passed **63**, Codex event-mapper/plugin tests **65**,
+and OpenCode plugin tests **51**; these three packages analyze cleanly, and
+shared analysis passes with `--fatal-infos`.
