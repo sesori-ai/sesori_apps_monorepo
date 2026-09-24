@@ -80,94 +80,101 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
 
     final prego = context.prego;
     final loc = context.loc;
+    final label = widget.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought;
+    final heading = Text(
+      label,
+      style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _showFullText(context: context),
-        child: Container(
-          decoration: BoxDecoration(
-            color: prego.colors.bgSecondary,
-            borderRadius: BorderRadius.circular(PregoRadius.md),
-            border: Border.all(color: prego.colors.borderSecondary),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                child: Row(
+      child: MergeSemantics(
+        child: Semantics(
+          button: true,
+          label: label,
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              onTap: () => _showFullText(context: context),
+              borderRadius: BorderRadius.circular(PregoRadius.xs),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      TablerRegular.brain,
-                      size: PregoIconSize.md,
-                      color: prego.colors.textSecondary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
-                        style: prego.textTheme.textXs.regular.copyWith(
-                          color: prego.colors.textSecondary,
-                          fontStyle: FontStyle.italic,
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          PregoAiLoader(
+                            animate: widget.isStreaming,
+                            fillMode: .outline,
+                            color: prego.colors.textSecondary,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: widget.isStreaming
+                                ? PregoShimmer(
+                                    appearDelay: Duration.zero,
+                                    child: heading,
+                                  )
+                                : ExcludeSemantics(child: heading),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            TablerRegular.chevron_right,
+                            size: PregoIconSize.sm,
+                            color: prego.colors.textSecondary,
+                          ),
+                        ],
                       ),
                     ),
-                    Icon(
-                      TablerRegular.selector,
-                      size: PregoIconSize.sm,
-                      color: prego.colors.textSecondary,
-                    ),
-                  ],
-                ),
-              ),
-              if (widget.isStreaming && widget.text.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 10),
-                  child: ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.white],
-                      stops: [0.0, 0.35],
-                    ).createShader(bounds),
-                    blendMode: BlendMode.dstIn,
-                    child: Container(
-                      height: 56,
-                      width: double.infinity,
-                      clipBehavior: Clip.hardEdge,
-                      decoration: const BoxDecoration(),
-                      child: OverflowBox(
-                        alignment: Alignment.bottomLeft,
-                        maxHeight: double.infinity,
+                    if (widget.isStreaming && widget.text.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 0, 8),
+                        child: ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.transparent, Colors.white],
+                            stops: [0.0, 0.35],
+                          ).createShader(bounds),
+                          blendMode: BlendMode.dstIn,
+                          child: Container(
+                            height: 56,
+                            width: double.infinity,
+                            clipBehavior: Clip.hardEdge,
+                            decoration: const BoxDecoration(),
+                            child: OverflowBox(
+                              alignment: Alignment.bottomLeft,
+                              maxHeight: double.infinity,
+                              child: Text(
+                                ReasoningPartCard.streamingTail(text: widget.text),
+                                style: prego.textTheme.textSm.regular.copyWith(
+                                  color: prego.colors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (!widget.isStreaming && widget.text.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 0, 8),
                         child: Text(
-                          ReasoningPartCard.streamingTail(text: widget.text),
-                          style: prego.textTheme.textXs.regular.copyWith(
+                          _previewText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: prego.textTheme.textSm.regular.copyWith(
                             color: prego.colors.textSecondary,
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                )
-              else if (!widget.isStreaming && widget.text.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 10),
-                  child: Text(
-                    _previewText,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textXs.regular.copyWith(
-                      color: prego.colors.textSecondary,
-                    ),
-                  ),
+                  ],
                 ),
-            ],
+              ),
+            ),
           ),
         ),
       ),

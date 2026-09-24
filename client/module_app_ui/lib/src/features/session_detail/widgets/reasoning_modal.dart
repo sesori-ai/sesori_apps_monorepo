@@ -170,7 +170,7 @@ class _ReasoningModalState() extends State<ReasoningModal> {
                   onTapLink: buildMarkdownLinkTapHandler(openExternalLink: widget.openExternalLink),
                   styleSheet: buildSessionMarkdownStyleSheet(
                     prego: prego,
-                    paragraphStyle: prego.textTheme.textXs.regular.copyWith(
+                    paragraphStyle: prego.textTheme.textSm.regular.copyWith(
                       color: prego.colors.textSecondary,
                     ),
                   ),

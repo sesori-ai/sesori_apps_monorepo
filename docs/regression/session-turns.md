@@ -92,6 +92,15 @@ defaults and queued client sends coherent.
   remain present through live updates and durable-history reloads, using the
   backend's authoritative source for each path. Internal backend command records
   are not rendered as conversation messages or used as assistant model attribution.
+- Reasoning uses an unboxed activity row with 14px body text, a bounded live-tail
+  preview, and a one-line Markdown-stripped completed preview. Tap or keyboard
+  activation opens the same full, selectable reasoning modal; its streaming
+  follow/detach behavior is unchanged. Only active reasoning and provider retry
+  statuses shimmer; reduced motion leaves their labels visible without animation.
+  Retry history is neutral rather than success-coloured. Active retries keep the
+  complete backend error below a “Retrying” status; terminal errors remain red,
+  leading-aligned and untruncated. Both themes and narrow panes with enlarged text
+  must retain readable content and an accessible reasoning disclosure.
 - Claude user prompts appear in the live transcript from the CLI's replayed
   stdin echo under their transcript uuid, so a follow-up prompt stays visible
   and a later transcript backfill converges on the same message instead of
