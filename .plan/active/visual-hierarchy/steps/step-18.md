@@ -45,3 +45,4 @@ Split in two: 18.a turns the home into a composer with the activity sections;
   project-page tests: the composer replaces the empty timeline (not under
   Archived), and a created session opens.
 - `dart analyze --fatal-infos` clean in `client/desktop`.
+- Architecture implementation review: approved in the first round.
