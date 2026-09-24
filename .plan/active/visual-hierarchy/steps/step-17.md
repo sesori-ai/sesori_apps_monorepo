@@ -22,3 +22,24 @@ phone its own session inventory and an Activity group at the top of Projects.
   are unchanged apart from names.
 - Architecture implementation review: the first round rejected an output
   added ahead of its consumer; it moved to 17.b.
+
+## 17.b What changed
+
+- `SessionActivityProjection.waitingFirst` orders the phone's Activity:
+  waiting sessions, then running ones, in project order.
+- The phone Projects screen owns a `RecentSessionInventoryService` and a
+  `RecentSessionsCubit`, as the desktop shell does, and `ProjectListView`
+  renders an Activity group of `ActivityTile` rows above a Projects heading.
+  A row opens its session. Nothing shows while no session is in motion.
+- `projectListActivity` string added.
+
+## 17.b Verification
+
+- `client/app` `test/features/project_list` and `test/core/routing` pass,
+  including the new `project_list_activity_test.dart` (empty, order, open).
+- `client/module_core` `test/cubits/recent_sessions` passes with the
+  waiting-first test.
+- `dart analyze --fatal-infos` clean in `client/app`, `client/module_app_ui`
+  and `client/module_core`.
+- Light and dark phone renders checked.
+- Architecture implementation review: approved in the first round.

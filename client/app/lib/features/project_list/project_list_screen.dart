@@ -27,13 +27,26 @@ part "widgets/bridge_offline_view.dart";
 class const ProjectListScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider<ProjectInventoryService>(
-      create: (_) => getIt<ProjectInventoryService>(),
-      dispose: (inventory) => unawaited(inventory.dispose()),
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<ProjectInventoryService>(
+          create: (_) => getIt<ProjectInventoryService>(),
+          dispose: (inventory) => unawaited(inventory.dispose()),
+        ),
+        // Every project's recent sessions, for the Activity group.
+        RepositoryProvider<RecentSessionInventoryService>(
+          lazy: false,
+          create: (_) => getIt<RecentSessionInventoryService>(),
+          dispose: (inventory) => unawaited(inventory.dispose()),
+        ),
+      ],
       child: MultiBlocProvider(
         providers: [
           BlocProvider(
             create: (context) => ProjectListCubit(inventoryService: context.read<ProjectInventoryService>()),
+          ),
+          BlocProvider(
+            create: (context) => RecentSessionsCubit(inventoryService: context.read<RecentSessionInventoryService>()),
           ),
           BlocProvider(
             create: (_) => BridgeIdentityCubit(
@@ -45,6 +58,17 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
         child: ProjectListView(
           onAddProject: _showAddProject,
           onOpenSettings: ({required context}) => context.pushRoute(const AppRoute.settings()),
+          onOpenSession: ({required context, required project, required displayName, required session}) {
+            context.pushRoute(
+              AppRoute.sessionDetail(
+                projectId: project.id,
+                projectName: displayName,
+                sessionId: session.id,
+                sessionTitle: session.title,
+                readOnly: false,
+              ),
+            );
+          },
           onOpenProject: ({required context, required project, required displayName}) {
             context.pushRoute(
               AppRoute.sessions(

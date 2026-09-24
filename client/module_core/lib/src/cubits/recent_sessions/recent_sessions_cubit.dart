@@ -16,6 +16,9 @@ class RecentSessionsCubit({required final RecentSessionInventoryService inventor
 
   Future<void> retry({required String projectId}) => inventoryService.retry(projectId: projectId);
 
+  /// Re-reads every admitted project, including ones whose read failed.
+  Future<bool> refresh() => inventoryService.refresh();
+
   @override
   Future<void> close() async {
     await _subscription.cancel();

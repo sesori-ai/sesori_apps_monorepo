@@ -146,6 +146,22 @@ void _registerListServices({
       catalogRescanService: getIt<CatalogRescanService>(),
     ),
   );
+  // Projects reads every project's recent sessions for its Activity group.
+  // Screens under test see none unless a test registers its own inventory.
+  if (!getIt.isRegistered<RecentSessionInventoryService>()) {
+    getIt.registerFactory<RecentSessionInventoryService>(() => stubRecentSessionInventory(entries: const {}));
+  }
+}
+
+class MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
+
+/// A recent-session inventory that holds [entries] and never reads.
+MockRecentSessionInventoryService stubRecentSessionInventory({required Map<String, RecentSessionsEntry> entries}) {
+  final inventory = MockRecentSessionInventoryService();
+  when(() => inventory.state).thenAnswer((_) => BehaviorSubject.seeded(entries).stream);
+  when(inventory.refresh).thenAnswer((_) async => true);
+  when(inventory.dispose).thenAnswer((_) async {});
+  return inventory;
 }
 
 class MockFirebaseCrashlytics() extends Mock implements FirebaseCrashlytics;

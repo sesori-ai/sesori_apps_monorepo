@@ -100,6 +100,102 @@ void main() {
     expect(activity(sessions: [opened, deferred], stickySessionId: "deferred"), isEmpty);
   });
 
+  test("waitingFirst lists waiting sessions, then running ones, leaving finished unseen out", () {
+    SessionActivityInfo activity({required bool awaitingInput}) => SessionActivityInfo(
+      mainAgentRunning: true,
+      awaitingInput: awaitingInput,
+      lastUserActivityAt: null,
+      updatedAt: null,
+    );
+    final running = _session(id: "running", projectId: "one");
+    final waitingOne = _session(id: "waiting-one", projectId: "one");
+    final unseen = _session(id: "unseen", projectId: "one", unseen: true);
+    final waitingTwo = _session(id: "waiting-two", projectId: "two");
+    final projection = SessionActivityProjection.from(
+      projects: const [
+        ProjectSummary(id: "one", name: "One", path: "/one", time: null),
+        ProjectSummary(id: "two", name: "Two", path: "/two", time: null),
+      ],
+      entries: {
+        "one": RecentSessionsLoaded(
+          sourceSessions: [running, waitingOne, unseen],
+          visibleSessions: [running, waitingOne, unseen],
+          activityBySessionId: {
+            "running": activity(awaitingInput: false),
+            "waiting-one": activity(awaitingInput: true),
+          },
+          listStateBySessionId: const {},
+        ),
+        "two": RecentSessionsLoaded(
+          sourceSessions: [waitingTwo],
+          visibleSessions: [waitingTwo],
+          activityBySessionId: {"waiting-two": activity(awaitingInput: true)},
+          listStateBySessionId: const {},
+        ),
+      },
+      deferredSessions: const {},
+      stickySessionId: null,
+      hiddenSessionIds: const {},
+    );
+
+    expect(
+      projection.waitingFirst.map((item) => (item.project.id, item.entry.session.id)),
+      [("one", "waiting-one"), ("two", "waiting-two"), ("one", "running")],
+    );
+  });
+
+  test("a session waiting on the user stays in Activity while its agent is idle, until set aside", () {
+    final waiting = _session(id: "waiting", projectId: "one");
+    final projection = SessionActivityProjection.from(
+      projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
+      entries: {
+        "one": RecentSessionsLoaded(
+          sourceSessions: [waiting],
+          visibleSessions: [waiting],
+          activityBySessionId: const {
+            "waiting": SessionActivityInfo(
+              mainAgentRunning: false,
+              awaitingInput: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+      deferredSessions: const {},
+      stickySessionId: null,
+      hiddenSessionIds: const {},
+    );
+
+    expect(projection.waitingFirst.map((item) => item.entry.session.id), ["waiting"]);
+
+    // Marking it unread sets it aside like any other session.
+    final markedUnread = _session(id: "waiting", projectId: "one", unseen: true, updated: 5);
+    final setAside = SessionActivityProjection.from(
+      projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
+      entries: {
+        "one": RecentSessionsLoaded(
+          sourceSessions: [markedUnread],
+          visibleSessions: [markedUnread],
+          activityBySessionId: const {
+            "waiting": SessionActivityInfo(
+              mainAgentRunning: false,
+              awaitingInput: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+      deferredSessions: const {"waiting": 5},
+      stickySessionId: null,
+      hiddenSessionIds: const {},
+    );
+    expect(setAside.activityGroups, isEmpty);
+  });
+
   test("Activity sessions stay in their project's rows", () {
     final sessions = [
       _session(id: "priority", projectId: "one", unseen: true),

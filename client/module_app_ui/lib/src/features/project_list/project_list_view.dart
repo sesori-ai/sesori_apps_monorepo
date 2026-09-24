@@ -9,6 +9,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "../../widgets/catalog_scan_row.dart";
 import "../../widgets/remote_failure_view.dart";
+import "widgets/activity_tile.dart";
 import "widgets/project_tile.dart";
 
 /// Enough placeholder rows to fill a phone screen while the first page loads.
@@ -31,6 +32,13 @@ typedef ProjectListConnectedEmptyViewBuilder = Widget Function({required BuildCo
 
 typedef ProjectListConnectionBannerBuilder = Widget? Function({required BuildContext context});
 
+typedef ProjectListSessionOpened = void Function({
+  required BuildContext context,
+  required ProjectSummary project,
+  required String displayName,
+  required Session session,
+});
+
 typedef ProjectListDisconnectedRefresh = Future<void> Function({
   required BuildContext context,
   required ProjectListBridgeDisconnected state,
@@ -38,7 +46,8 @@ typedef ProjectListDisconnectedRefresh = Future<void> Function({
 
 /// Surface-neutral project inventory presentation.
 ///
-/// Product shells construct the cubits above this view and inject route,
+/// Product shells construct the cubits above this view, including the
+/// [RecentSessionsCubit] its Activity group reads, and inject route,
 /// recovery, connection-banner, and empty-state presentation. This keeps CLI
 /// install guidance in mobile and supervised bridge startup in desktop.
 class const ProjectListView({
@@ -46,6 +55,9 @@ class const ProjectListView({
   required final ProjectListContextAction onAddProject,
   required final ProjectListContextAction onOpenSettings,
   required final ProjectOpenedCallback onOpenProject,
+
+  /// Opens a session from the Activity group.
+  required final ProjectListSessionOpened onOpenSession,
   required final ProjectListDisconnectedViewBuilder disconnectedViewBuilder,
   required final ProjectListDisconnectedActionBuilder disconnectedActionBuilder,
   required final ProjectListConnectedEmptyViewBuilder connectedEmptyViewBuilder,
@@ -296,6 +308,7 @@ class _ProjectListViewState() extends State<ProjectListView> {
             onDismiss: () => context.read<ProjectListCubit>().dismissCatalogScan(),
           ),
         ),
+        ..._activitySlivers(context: context, projects: projects),
         // Keep the list mounted at zero items so its final row can finish the
         // closing transition before the connected-empty view takes over.
         PregoAnimatedSliverList<ProjectSummary>(
@@ -338,10 +351,60 @@ class _ProjectListViewState() extends State<ProjectListView> {
     };
   }
 
+  /// The Activity group over the project rows: sessions waiting for the user,
+  /// then running ones, across projects, each opening its session. Nothing
+  /// while no session is in motion, so the projects keep the top of the page.
+  List<Widget> _activitySlivers({required BuildContext context, required List<ProjectSummary> projects}) {
+    final activity = SessionActivityProjection.from(
+      projects: projects,
+      entries: context.watch<RecentSessionsCubit>().state,
+      // The phone has no mark-unread-to-set-aside and no sticky selection.
+      deferredSessions: const {},
+      stickySessionId: null,
+      hiddenSessionIds: const {},
+    ).waitingFirst;
+    if (activity.isEmpty) return const [];
+    final loc = context.loc;
+    Widget heading(String text) => SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 12),
+        child: Semantics(
+          header: true,
+          child: Text(
+            text,
+            style: context.prego.textTheme.textSm.medium.copyWith(color: context.prego.colors.textTertiary),
+          ),
+        ),
+      ),
+    );
+    return [
+      heading(loc.projectListActivity),
+      SliverList.list(
+        children: [
+          for (final (:project, :entry) in activity)
+            ActivityTile(
+              key: ValueKey("project-list-activity-${entry.session.id}"),
+              entry: entry,
+              projectName: projectDisplayName(loc: loc, project: project),
+              onOpen: () => widget.onOpenSession(
+                context: context,
+                project: project,
+                displayName: projectDisplayName(loc: loc, project: project),
+                session: entry.session,
+              ),
+            ),
+        ],
+      ),
+      heading(loc.projectListTitle),
+    ];
+  }
+
   Future<void> _refreshProjects(BuildContext context) async {
     final loc = context.loc;
     final cubit = context.read<ProjectListCubit>();
-    final success = await cubit.refreshProjects();
+    // Activity reads each project's sessions on its own; a pull retries those too.
+    final results = await Future.wait([cubit.refreshProjects(), context.read<RecentSessionsCubit>().refresh()]);
+    final success = results.every((succeeded) => succeeded);
     if (!context.mounted) return;
     PregoPopupAlertPresenter.of(context).show(
       title: success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed,
