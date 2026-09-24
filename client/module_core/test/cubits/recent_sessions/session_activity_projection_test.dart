@@ -192,6 +192,58 @@ void main() {
     expect(projection.recent.first.entry.isUnseen, isTrue);
   });
 
+  test("a session waiting on the user stays in Activity while its agent is idle, until set aside", () {
+    final waiting = _session(id: "waiting", projectId: "one");
+    final projection = SessionActivityProjection.from(
+      projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
+      entries: {
+        "one": RecentSessionsLoaded(
+          sourceSessions: [waiting],
+          visibleSessions: [waiting],
+          activityBySessionId: const {
+            "waiting": SessionActivityInfo(
+              mainAgentRunning: false,
+              awaitingInput: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+      deferredSessions: const {},
+      stickySessionId: null,
+      hiddenSessionIds: const {},
+    );
+
+    expect(projection.waitingFirst.map((item) => item.entry.session.id), ["waiting"]);
+
+    // Marking it unread sets it aside like any other session.
+    final markedUnread = _session(id: "waiting", projectId: "one", unseen: true, updated: 5);
+    final setAside = SessionActivityProjection.from(
+      projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
+      entries: {
+        "one": RecentSessionsLoaded(
+          sourceSessions: [markedUnread],
+          visibleSessions: [markedUnread],
+          activityBySessionId: const {
+            "waiting": SessionActivityInfo(
+              mainAgentRunning: false,
+              awaitingInput: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+      deferredSessions: const {"waiting": 5},
+      stickySessionId: null,
+      hiddenSessionIds: const {},
+    );
+    expect(setAside.activityGroups, isEmpty);
+  });
+
   test("Activity sessions stay in their project's rows", () {
     final sessions = [
       _session(id: "priority", projectId: "one", unseen: true),

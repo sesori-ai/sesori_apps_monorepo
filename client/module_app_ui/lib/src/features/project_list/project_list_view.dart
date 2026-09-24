@@ -402,7 +402,9 @@ class _ProjectListViewState() extends State<ProjectListView> {
   Future<void> _refreshProjects(BuildContext context) async {
     final loc = context.loc;
     final cubit = context.read<ProjectListCubit>();
-    final success = await cubit.refreshProjects();
+    // Activity reads each project's sessions on its own; a pull retries those too.
+    final results = await Future.wait([cubit.refreshProjects(), context.read<RecentSessionsCubit>().refresh()]);
+    final success = results.every((succeeded) => succeeded);
     if (!context.mounted) return;
     PregoPopupAlertPresenter.of(context).show(
       title: success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed,
