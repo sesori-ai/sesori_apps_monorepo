@@ -1006,9 +1006,15 @@
   "voiceErrorNotAuthenticated": "Sign in to use voice input",
   "voiceRecordingLimitReached": "Recording limit reached (15 minutes)",
   "addProject": "Add project",
-  "addAsNewProject": "Add as new project",
-  "@addAsNewProject": {
-    "description": "Primary action of the add-project sheet: registers the folder the browser is currently showing as a Sesori project."
+  "addFolderAsProject": "Add {folder}",
+  "@addFolderAsProject": {
+    "description": "Primary action of the add-project sheet: registers the folder the browser is currently showing as a Sesori project.",
+    "placeholders": {
+      "folder": {
+        "type": "String",
+        "example": "my-app"
+      }
+    }
   },
   "createNewFolder": "Create new folder",
   "@createNewFolder": {
@@ -1020,18 +1026,17 @@
   "newFolderExists": "A file or folder with that name already exists here",
   "newFolderFailed": "Could not create the folder",
   "newFolderUnsupported": "Update Sesori Bridge on your computer to create folders from here.",
-  "emptyDirectory": "This directory is empty",
-  "parentDirectory": "Parent directory",
-  "@parentDirectory": {
-    "description": "Accessibility label for the arrow button that navigates to the parent folder in the add-project browser."
+  "folderBrowserNoFolders": "No folders here",
+  "@folderBrowserNoFolders": {
+    "description": "Add-project browser: the folder being browsed has no subfolders to list."
   },
-  "folderPickerHome": "~ Home",
+  "folderBrowserNoFoldersDetail": "Only folders are listed, so any files in it stay hidden.",
+  "@folderBrowserNoFoldersDetail": {
+    "description": "Second line under folderBrowserNoFolders. The browser lists folders only, so the folder may still hold files."
+  },
+  "folderPickerHome": "Home",
   "@folderPickerHome": {
-    "description": "Shortcut button that jumps to the host user's home directory in the add-project browser."
-  },
-  "folderPickerRoot": "/ Root",
-  "@folderPickerRoot": {
-    "description": "Shortcut button that jumps to the host filesystem root in the add-project browser."
+    "description": "Breadcrumb segment in the add-project browser that stands for the host user's home folder."
   },
   "fetchDirectoryFailed": "Could not load directory contents",
   "fetchDirectoryRetry": "Retry",

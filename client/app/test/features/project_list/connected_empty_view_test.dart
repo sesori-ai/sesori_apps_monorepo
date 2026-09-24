@@ -155,7 +155,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AddProjectDialog), findsOneWidget);
-    expect(find.text("This directory is empty"), findsOneWidget);
-    expect(find.text("Add project"), findsNothing);
+    expect(find.text("No folders here"), findsOneWidget);
   });
 }

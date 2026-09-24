@@ -3178,8 +3178,8 @@ abstract class AppLocalizations {
   /// Primary action of the add-project sheet: registers the folder the browser is currently showing as a Sesori project.
   ///
   /// In en, this message translates to:
-  /// **'Add as new project'**
-  String get addAsNewProject;
+  /// **'Add {folder}'**
+  String addFolderAsProject(String folder);
 
   /// Secondary action of the add-project sheet: makes a new folder inside the one being browsed.
   ///
@@ -3223,29 +3223,23 @@ abstract class AppLocalizations {
   /// **'Update Sesori Bridge on your computer to create folders from here.'**
   String get newFolderUnsupported;
 
-  /// No description provided for @emptyDirectory.
+  /// Add-project browser: the folder being browsed has no subfolders to list.
   ///
   /// In en, this message translates to:
-  /// **'This directory is empty'**
-  String get emptyDirectory;
+  /// **'No folders here'**
+  String get folderBrowserNoFolders;
 
-  /// Accessibility label for the arrow button that navigates to the parent folder in the add-project browser.
+  /// Second line under folderBrowserNoFolders. The browser lists folders only, so the folder may still hold files.
   ///
   /// In en, this message translates to:
-  /// **'Parent directory'**
-  String get parentDirectory;
+  /// **'Only folders are listed, so any files in it stay hidden.'**
+  String get folderBrowserNoFoldersDetail;
 
-  /// Shortcut button that jumps to the host user's home directory in the add-project browser.
+  /// Breadcrumb segment in the add-project browser that stands for the host user's home folder.
   ///
   /// In en, this message translates to:
-  /// **'~ Home'**
+  /// **'Home'**
   String get folderPickerHome;
-
-  /// Shortcut button that jumps to the host filesystem root in the add-project browser.
-  ///
-  /// In en, this message translates to:
-  /// **'/ Root'**
-  String get folderPickerRoot;
 
   /// No description provided for @fetchDirectoryFailed.
   ///

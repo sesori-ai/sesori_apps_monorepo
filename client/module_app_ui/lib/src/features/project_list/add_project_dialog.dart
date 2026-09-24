@@ -40,7 +40,7 @@ Future<void> showAddProjectDialog({
 /// Browses the bridge host's folders and turns one of them into a project.
 ///
 /// The sheet is a single view with two actions over the listing:
-/// - **Add as new project** — registers the folder currently being browsed;
+/// - **Add `<folder>`** — registers the folder currently being browsed;
 /// - **Create new folder** — makes an empty folder here and steps into it, so
 ///   the user can then add *it*.
 @visibleForTesting
@@ -60,11 +60,8 @@ class const AddProjectDialog({
 
 class _AddProjectDialogState() extends State<AddProjectDialog> {
   /// The folder the bridge started us in. The bridge's default is the host
-  /// user's home directory, so this is also the Home shortcut target.
+  /// user's home directory, so this is also the breadcrumb's Home segment.
   String? _startingPath;
-
-  /// The host filesystem root resolved from [_startingPath].
-  String? _rootPath;
 
   /// The folder being listed. Empty until the first fetch resolves the start.
   String _currentPath = "";
@@ -78,8 +75,6 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   /// same folder, so one at a time — and the button that is working is the one
   /// that shows it.
   _AddProjectAction? _inFlight;
-
-  String? get _parentPath => _currentPath.isEmpty ? null : widget.cubit.parentHostPath(path: _currentPath);
 
   @override
   void initState() {
@@ -114,11 +109,10 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
         case FilesystemSuggestionsSuccess(:final suggestions):
           final resolvedPath = suggestions.path;
           // The first fetch has no prefix, so the bridge names the host user's
-          // home folder. Keep both shortcut targets for this browsing session.
+          // home folder. Keep it as the Home segment for this browsing session.
           if (_currentPath.isEmpty && resolvedPath != null && resolvedPath.isNotEmpty) {
             _currentPath = resolvedPath;
             _startingPath = resolvedPath;
-            _rootPath = _resolveRootPath(path: resolvedPath);
           }
           _entries = suggestions.data;
           _hasError = false;
@@ -140,19 +134,25 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
     _fetchEntries();
   }
 
-  void _navigateUp() {
-    final parent = _parentPath;
-    if (parent == null) return;
-    _navigateInto(path: parent);
-  }
-
-  String _resolveRootPath({required String path}) {
-    var root = path;
-    while (true) {
-      final parent = widget.cubit.parentHostPath(path: root);
-      if (parent == null) return root;
-      root = parent;
+  /// Every folder from the host root down to the one being browsed. The root
+  /// keeps its own path as its label, so it stays reachable; the folders
+  /// between it and the starting folder collapse into one Home segment.
+  List<_Crumb> _breadcrumb({required AppLocalizations loc}) {
+    final chain = <String>[];
+    for (String? path = _currentPath; path != null; path = widget.cubit.parentHostPath(path: path)) {
+      chain.insert(0, path);
     }
+    final startingPath = _startingPath;
+    final homeIndex = startingPath == null ? -1 : chain.indexOf(startingPath);
+    return [
+      for (final (index, path) in chain.indexed)
+        if (index == 0)
+          (label: path, path: path)
+        else if (index == homeIndex)
+          (label: loc.folderPickerHome, path: path)
+        else if (index > homeIndex)
+          (label: hostPathBasename(path: path), path: path),
+    ];
   }
 
   // ---------------------------------------------------------------------------
@@ -221,7 +221,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
 
   /// Creates a folder here and steps into it. Only the directory is made —
   /// whether it becomes a project is the user's next decision, taken with the
-  /// "Add as new project" button now pointing at it.
+  /// "Add `<folder>`" button now pointing at it.
   Future<void> _onCreateFolder() async {
     final name = await showNewFolderDialog(context: context);
     if (!mounted || name == null) return;
@@ -317,8 +317,6 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final startingPath = _startingPath;
-    final rootPath = _rootPath;
     // The listing scrolls inside the body, so the body needs a bounded height.
     // Take the whole sheet: the browser keeps one height while folders of
     // different lengths come and go, instead of the sheet resizing under the
@@ -326,9 +324,8 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
     final bodyHeight = MediaQuery.heightOf(context) - widget.topInset - PregoBottomSheet.contentTopInset;
 
     return PregoModalSurface(
-      // Navigation lives in the browser body; the header only owns the close
-      // affordance (and the sheet's drag handle).
-      title: "",
+      // Navigation lives in the browser body's breadcrumb.
+      title: loc.addProject,
       subtitle: null,
       onBack: null,
       topInset: widget.topInset,
@@ -349,15 +346,9 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
               children: [
                 _FilesystemAccessBanner(connectionService: widget.connectionService),
                 if (_currentPath.isNotEmpty)
-                  _DirectoryNavigation(
-                    currentPath: _currentPath,
-                    onNavigateUp: _parentPath == null ? null : _navigateUp,
-                    onNavigateHome: startingPath == null || _currentPath == startingPath
-                        ? null
-                        : () => _navigateInto(path: startingPath),
-                    onNavigateRoot: rootPath == null || _currentPath == rootPath
-                        ? null
-                        : () => _navigateInto(path: rootPath),
+                  _Breadcrumb(
+                    crumbs: _breadcrumb(loc: loc),
+                    onNavigate: (path) => _navigateInto(path: path),
                   ),
                 Expanded(
                   // The listing runs to the bottom edge and the actions float
@@ -376,6 +367,9 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
                         end: 0,
                         bottom: 0,
                         child: _ActionMenu(
+                          addLabel: _currentPath.isEmpty
+                              ? loc.addProject
+                              : loc.addFolderAsProject(hostPathBasename(path: _currentPath)),
                           onAdd: _inFlight != null || _currentPath.isEmpty ? null : _onAdd,
                           onCreateFolder: _inFlight != null || _currentPath.isEmpty ? null : _onCreateFolder,
                           inFlight: _inFlight,
@@ -412,14 +406,25 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
       );
     }
     if (_entries.isEmpty) {
+      final prego = context.prego;
       return Padding(
-        padding: EdgeInsetsDirectional.only(bottom: bottomInset),
+        padding: EdgeInsetsDirectional.fromSTEB(PregoSpacing.x4l, 0, PregoSpacing.x4l, bottomInset),
         child: Center(
-          child: Text(
-            loc.emptyDirectory,
-            style: context.prego.textTheme.textSm.regular.copyWith(
-              color: context.prego.colors.textSecondary,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            spacing: PregoSpacing.xs,
+            children: [
+              Text(
+                loc.folderBrowserNoFolders,
+                textAlign: TextAlign.center,
+                style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textPrimary),
+              ),
+              Text(
+                loc.folderBrowserNoFoldersDetail,
+                textAlign: TextAlign.center,
+                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+              ),
+            ],
           ),
         ),
       );
@@ -442,68 +447,66 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
 // Folder navigation and rows
 // ---------------------------------------------------------------------------
 
-class const _DirectoryNavigation({
-  required final String currentPath,
-  required final VoidCallback? onNavigateUp,
-  required final VoidCallback? onNavigateHome,
-  required final VoidCallback? onNavigateRoot,
+/// One place on the breadcrumb: what it reads and the folder it opens.
+typedef _Crumb = ({String label, String path});
+
+/// Where the browser is, as a tappable path. The last segment is the folder
+/// being browsed, in bold; every one before it opens that folder. A deep path
+/// scrolls sideways and starts scrolled to its end, so the current folder
+/// always shows.
+class const _Breadcrumb({
+  required final List<_Crumb> crumbs,
+  required final ValueChanged<String> onNavigate,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final loc = context.loc;
     final prego = context.prego;
+    final segmentStyle = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
 
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(
-        PregoSpacing.xl,
-        0,
-        PregoSpacing.xl,
-        PregoSpacing.lg,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            spacing: PregoSpacing.md,
-            children: [
-              PregoButtonsSolid(
-                label: loc.folderPickerHome,
-                hierarchy: PregoButtonsSolidHierarchy.secondary,
-                size: PregoButtonsSolidSize.sm,
-                onPressed: onNavigateHome,
-              ),
-              PregoButtonsSolid(
-                label: loc.folderPickerRoot,
-                hierarchy: PregoButtonsSolidHierarchy.secondary,
-                size: PregoButtonsSolidSize.sm,
-                onPressed: onNavigateRoot,
-              ),
-            ],
-          ),
-          const SizedBox(height: PregoSpacing.xl),
-          Row(
-            children: [
-              Semantics(
-                label: loc.parentDirectory,
-                child: PregoButtonsSolid.iconOnly(
-                  leadingIcon: TablerRegular.arrow_up,
-                  hierarchy: PregoButtonsSolidHierarchy.secondary,
-                  size: PregoButtonsSolidSize.lg,
-                  onPressed: onNavigateUp,
+    // Start-aligned while it fits; once it overflows, the scroll view fills
+    // the width and the reverse scroll keeps the current folder in view.
+    return Container(
+      alignment: AlignmentDirectional.centerStart,
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        reverse: true,
+        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg),
+        child: Row(
+          children: [
+            for (final (index, crumb) in crumbs.indexed) ...[
+              if (index > 0)
+                ExcludeSemantics(
+                  child: Icon(
+                    TablerLight.chevron_right,
+                    size: _breadcrumbChevronSize,
+                    color: prego.colors.textTertiary,
+                  ),
                 ),
-              ),
-              const SizedBox(width: PregoSpacing.lg),
-              Expanded(
-                child: Text(
-                  "..$currentPath",
-                  style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              if (index == crumbs.length - 1)
+                Padding(
+                  padding: const EdgeInsets.all(PregoSpacing.xs),
+                  child: Text(
+                    crumb.label,
+                    style: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textPrimary),
+                  ),
+                )
+              else
+                Semantics(
+                  button: true,
+                  child: InkWell(
+                    mouseCursor: WidgetStateMouseCursor.clickable,
+                    borderRadius: BorderRadius.circular(PregoRadius.sm),
+                    onTap: () => onNavigate(crumb.path),
+                    child: Padding(
+                      padding: const EdgeInsets.all(PregoSpacing.xs),
+                      child: Text(crumb.label, style: segmentStyle),
+                    ),
+                  ),
                 ),
-              ),
             ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -683,6 +686,9 @@ class const _BrowseError({required final bool permissionDenied, required final V
 /// uses (`PromptInput`), and the mirror of the scroll-edge fade the sheet header
 /// paints at the top.
 class const _ActionMenu({
+  /// The add button's label, naming the folder it adds.
+  required final String addLabel,
+
   /// Null while an action is in flight or before the browser knows its folder.
   required final VoidCallback? onAdd,
 
@@ -751,7 +757,7 @@ class const _ActionMenu({
             ),
             Expanded(
               child: PregoButtonsSolid(
-                label: loc.addAsNewProject,
+                label: addLabel,
                 leadingIcon: TablerRegular.plus,
                 hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
                 size: PregoButtonsSolidSize.xl,
@@ -815,6 +821,7 @@ enum _AddProjectAction() {
 
 const double _folderIconSize = 16;
 const double _chevronSize = 16;
+const double _breadcrumbChevronSize = 13;
 const double _errorIconSize = 48;
 
 /// The line box a folder name renders into (16/24 text), so the skeleton holds

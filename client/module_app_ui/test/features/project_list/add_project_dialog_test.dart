@@ -6,6 +6,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:path/path.dart" as p;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -167,15 +168,13 @@ void _stubSuggestionsPerPrefix(
   });
 }
 
-/// The action menu's labelled action.
-final Finder _addButton = find.widgetWithText(PregoButtonsSolid, "Add as new project");
+/// The action menu's labelled action. Its label names the folder, so it is
+/// found by its glyph.
+final Finder _addButton = find.widgetWithIcon(PregoButtonsSolid, TablerRegular.plus);
 
 /// The action menu's other action, which is icon-only — so it is found by the
 /// glyph that carries it.
 final Finder _createFolderButton = find.widgetWithIcon(PregoButtonsSolid, TablerRegular.folder_plus);
-
-/// The hierarchy control that navigates to the parent directory.
-final Finder _navigateUpButton = find.widgetWithIcon(PregoButtonsSolid, TablerRegular.arrow_up);
 
 /// The action-menu button [finder] resolves to, for asserting on its enabled
 /// state.
@@ -201,6 +200,12 @@ void main() {
     _openedProjects.clear();
     mockCubit = MockProjectListCubit();
     mockConnectionService = MockConnectionService();
+    // A POSIX host by default; tests that need another hierarchy stub over it.
+    when(() => mockCubit.parentHostPath(path: any(named: "path"))).thenAnswer((invocation) {
+      final path = invocation.namedArguments[const Symbol("path")] as String;
+      final parent = p.posix.dirname(path);
+      return parent == path ? null : parent;
+    });
     _testConnectionService = mockConnectionService;
     connectionStatusController = BehaviorSubject<ConnectionStatus>.seeded(
       const ConnectionStatus.connected(
@@ -237,10 +242,12 @@ void main() {
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
 
-      // Single view — the bridge-returned host path heads the listing.
-      expect(find.text("..$_homePath"), findsOneWidget);
+      // Single view — titled, with the bridge-returned host path as a
+      // breadcrumb over the listing.
+      expect(find.descendant(of: find.byType(AddProjectDialog), matching: find.text("Add project")), findsOneWidget);
+      expect(find.text("Home"), findsOneWidget);
       expect(find.text("projects"), findsOneWidget);
-      expect(find.text("Add as new project"), findsOneWidget);
+      expect(find.widgetWithText(PregoButtonsSolid, "Add user"), findsOneWidget);
     });
   });
 
@@ -373,7 +380,7 @@ void main() {
       expect(_createFolderButton, findsOneWidget);
     });
 
-    testWidgets("starting folder shows hierarchy shortcuts and remains navigable and writable", (tester) async {
+    testWidgets("starting folder reads Home in the breadcrumb and remains navigable and writable", (tester) async {
       _stubSuggestionsPerPrefix(
         mockCubit,
         byPrefix: {
@@ -400,24 +407,23 @@ void main() {
       await tester.pumpAndSettle();
 
       // The path comes from the bridge response, so it is bound to the host
-      // serving the filesystem request.
-      expect(find.text("..$_homePath"), findsOneWidget);
+      // serving the filesystem request. The folders above Home collapse into
+      // it, and the root stays reachable ahead of it.
+      expect(find.text("/"), findsOneWidget);
+      expect(find.text("Home"), findsOneWidget);
+      expect(find.text("home"), findsNothing);
       expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
-      expect(_navigateUpButton, findsOneWidget);
-      expect(find.widgetWithText(PregoButtonsSolid, "~ Home"), findsOneWidget);
-      expect(find.widgetWithText(PregoButtonsSolid, "/ Root"), findsOneWidget);
 
       expect(_button(tester, _addButton).onPressed, isNotNull);
       expect(_button(tester, _createFolderButton).onPressed, isNotNull);
 
-      await tester.tap(_navigateUpButton);
+      await tester.tap(find.text("/"));
       await tester.pumpAndSettle();
 
-      verify(() => mockCubit.fetchFilesystemSuggestions(prefix: "/home")).called(1);
+      verify(() => mockCubit.fetchFilesystemSuggestions(prefix: "/")).called(1);
     });
 
     testWidgets("tapping a directory entry navigates into it", (tester) async {
-      final semantics = tester.ensureSemantics();
       _stubSuggestionsPerPrefix(
         mockCubit,
         byPrefix: {
@@ -450,18 +456,18 @@ void main() {
       expect(find.text("app-one"), findsOneWidget);
       expect(find.text("lib-two"), findsOneWidget);
       expect(find.text("work"), findsNothing);
-      expect(find.text("../home/user/projects"), findsOneWidget);
+      // The breadcrumb follows, with the folder being browsed last.
+      expect(find.text("Home"), findsOneWidget);
+      expect(find.text("projects"), findsOneWidget);
+      expect(find.widgetWithText(PregoButtonsSolid, "Add projects"), findsOneWidget);
       expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
-      expect(_navigateUpButton, findsOneWidget);
-      expect(tester.getSemantics(find.byIcon(TablerRegular.arrow_up)).label, contains("Parent directory"));
       expect(
-        tester.getTopLeft(_navigateUpButton).dy,
+        tester.getTopLeft(find.text("projects")).dy,
         lessThan(tester.getTopLeft(find.text("app-one")).dy),
       );
-      semantics.dispose();
     });
 
-    testWidgets("up arrow navigates up one directory level", (tester) async {
+    testWidgets("tapping a breadcrumb segment opens that folder", (tester) async {
       _stubSuggestionsPerPrefix(
         mockCubit,
         byPrefix: {
@@ -496,18 +502,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text("app-one"), findsOneWidget);
 
-      await tester.tap(_navigateUpButton);
+      await tester.tap(find.text("Home"));
       await tester.pumpAndSettle();
 
       expect(find.text("projects"), findsOneWidget);
       expect(find.text("work"), findsOneWidget);
       // The starting folder is only the initial location; its parent remains
-      // reachable through the hierarchy control.
-      expect(_navigateUpButton, findsOneWidget);
+      // reachable through the breadcrumb's root.
+      expect(find.text("/"), findsOneWidget);
       expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
     });
 
-    testWidgets("Home and Root pills jump to their host directories", (tester) async {
+    testWidgets("the breadcrumb reaches the root and names folders outside Home", (tester) async {
       const rootEntries = [
         FilesystemSuggestion(path: "/home", name: "home", isGitRepo: false),
       ];
@@ -541,23 +547,23 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pumpAndSettle();
 
-      final homeButton = find.widgetWithText(PregoButtonsSolid, "~ Home");
-      final rootButton = find.widgetWithText(PregoButtonsSolid, "/ Root");
-      expect(tester.getTopLeft(homeButton).dy, lessThan(tester.getTopLeft(_navigateUpButton).dy));
-
       await tester.tap(find.text("projects"));
       await tester.pumpAndSettle();
-      expect(_button(tester, homeButton).onPressed, isNotNull);
 
-      await tester.tap(homeButton);
+      await tester.tap(find.text("/"));
       await tester.pumpAndSettle();
-      expect(find.text("..$_homePath"), findsOneWidget);
+      // At the root the breadcrumb is the root alone, and the listing names
+      // the folders under it.
+      expect(find.text("Home"), findsNothing);
+      expect(find.text("/"), findsOneWidget);
+      expect(find.text("home"), findsOneWidget);
 
-      await tester.tap(rootButton);
+      // Outside Home, every folder reads by its own name.
+      await tester.tap(find.text("home"));
       await tester.pumpAndSettle();
       expect(find.text("home"), findsOneWidget);
-      expect(find.text("../"), findsOneWidget);
-      expect(_button(tester, rootButton).onPressed, isNull);
+      expect(find.text("Home"), findsNothing);
+      expect(find.widgetWithText(PregoButtonsSolid, "Add home"), findsOneWidget);
     });
 
     testWidgets("a listing that lands after stepping back out is ignored", (tester) async {
@@ -594,7 +600,7 @@ void main() {
 
       await tester.tap(find.text("projects"));
       await tester.pump();
-      await tester.tap(_navigateUpButton);
+      await tester.tap(find.text("Home"));
       await tester.pumpAndSettle();
 
       projectsListing.complete(
@@ -606,10 +612,10 @@ void main() {
 
       expect(find.text("app-one"), findsNothing);
       expect(find.text("work"), findsOneWidget);
-      expect(find.text("..$_homePath"), findsOneWidget);
+      expect(find.widgetWithText(PregoButtonsSolid, "Add user"), findsOneWidget);
     });
 
-    testWidgets("Add as new project calls discoverProject with browsed path", (tester) async {
+    testWidgets("the add button names the browsed folder and adds it", (tester) async {
       _stubSuggestionsPerPrefix(
         mockCubit,
         byPrefix: {
@@ -645,7 +651,7 @@ void main() {
       await tester.tap(find.text("my-repo"));
       await tester.pumpAndSettle();
 
-      // Tap "Open as Project"
+      expect(find.widgetWithText(PregoButtonsSolid, "Add my-repo"), findsOneWidget);
       await tester.tap(_addButton);
       await tester.pumpAndSettle();
 
@@ -888,8 +894,9 @@ void main() {
           gitAction: any(named: "gitAction"),
         ),
       );
-      expect(find.text("..$newFolderPath"), findsOneWidget);
-      expect(find.text("This directory is empty"), findsOneWidget);
+      expect(find.text("new-app"), findsOneWidget);
+      expect(find.widgetWithText(PregoButtonsSolid, "Add new-app"), findsOneWidget);
+      expect(find.text("No folders here"), findsOneWidget);
     });
 
     testWidgets("a bridge without the create-folder endpoint says so", (tester) async {
@@ -937,7 +944,7 @@ void main() {
       expect(find.text("app-one"), findsOneWidget);
     });
 
-    testWidgets("empty directory shows empty state message", (tester) async {
+    testWidgets("a folder without subfolders says so, and that files are not listed", (tester) async {
       _stubSuggestionsWithEntries(mockCubit, entries: const []);
 
       await tester.pumpWidget(
@@ -957,7 +964,8 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pumpAndSettle();
 
-      expect(find.text("This directory is empty"), findsOneWidget);
+      expect(find.text("No folders here"), findsOneWidget);
+      expect(find.text("Only folders are listed, so any files in it stay hidden."), findsOneWidget);
     });
 
     testWidgets("loading state holds the row shape with skeleton bars", (tester) async {

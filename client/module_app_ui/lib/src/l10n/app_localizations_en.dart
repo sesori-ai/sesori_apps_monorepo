@@ -1717,7 +1717,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addProject => 'Add project';
 
   @override
-  String get addAsNewProject => 'Add as new project';
+  String addFolderAsProject(String folder) {
+    return 'Add $folder';
+  }
 
   @override
   String get createNewFolder => 'Create new folder';
@@ -1741,16 +1743,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newFolderUnsupported => 'Update Sesori Bridge on your computer to create folders from here.';
 
   @override
-  String get emptyDirectory => 'This directory is empty';
+  String get folderBrowserNoFolders => 'No folders here';
 
   @override
-  String get parentDirectory => 'Parent directory';
+  String get folderBrowserNoFoldersDetail => 'Only folders are listed, so any files in it stay hidden.';
 
   @override
-  String get folderPickerHome => '~ Home';
-
-  @override
-  String get folderPickerRoot => '/ Root';
+  String get folderPickerHome => 'Home';
 
   @override
   String get fetchDirectoryFailed => 'Could not load directory contents';

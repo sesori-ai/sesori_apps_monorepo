@@ -22,7 +22,14 @@ typedef ProjectOpenedCallback = void Function({
 /// fallback when the project has no stored name. The directory comes from the
 /// bridge's host platform, not the phone's, so both separator styles must
 /// parse — the platform-local basename would return a Windows path unchanged.
-String projectDirectoryBasename(ProjectSummary project) => p.posix.basename(_toPosix(project.path));
+String projectDirectoryBasename(ProjectSummary project) => hostPathBasename(path: project.path);
+
+/// The last segment of a bridge host [path], whichever separator it uses. A
+/// Windows drive root such as `C:\` keeps its full path, not a bare `C:`.
+String hostPathBasename({required String path}) {
+  final basename = p.posix.basename(_toPosix(path));
+  return basename.endsWith(":") ? path : basename;
+}
 
 /// The name shown for [project]: its stored name, else its directory.
 String projectDisplayName({required AppLocalizations loc, required ProjectSummary project}) {
