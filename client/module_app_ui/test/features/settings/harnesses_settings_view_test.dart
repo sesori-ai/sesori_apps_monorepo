@@ -143,7 +143,8 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
-  for (final presentation in HarnessSettingsPresentation.values) {
+  // The window presentation draws no bar; the desktop settings window owns its chrome.
+  for (final presentation in [HarnessSettingsPresentation.modal, HarnessSettingsPresentation.pushed]) {
     for (final detail in [false, true]) {
       testWidgets("$presentation ${detail ? 'detail' : 'overview'} header offers only its navigation actions", (
         tester,

@@ -16,12 +16,38 @@ class const HarnessesSettingsView({
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final isModal = switch (presentation) {
-      HarnessSettingsPresentation.modal => true,
-      HarnessSettingsPresentation.pushed => false,
-    };
     final cubit = context.read<PluginManagementCubit>();
     final state = context.watch<PluginManagementCubit>().state;
+    final slivers = [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: PregoSpacing.xl,
+            vertical: _contentTopPadding,
+          ),
+          child: switch (state) {
+            PluginManagementLoading() => const _LoadingView(),
+            PluginManagementUnsupported() => const _UnsupportedView(),
+            PluginManagementFailure() => const _FailureView(),
+            PluginManagementReady() => _ReadyView(state: state, onOpenHarness: onOpenHarness),
+          },
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
+      ),
+    ];
+
+    final bool isModal;
+    switch (presentation) {
+      case HarnessSettingsPresentation.modal:
+        isModal = true;
+      case HarnessSettingsPresentation.pushed:
+        isModal = false;
+      case HarnessSettingsPresentation.window:
+        // The settings window names the page and owns the close button.
+        return SettingsWindowPage(slivers: slivers);
+    }
 
     return PregoGlassScaffold(
       title: loc.settingsHarnessesTitle,
@@ -41,25 +67,7 @@ class const HarnessesSettingsView({
           ),
       ],
       onRefresh: cubit.refresh,
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: PregoSpacing.xl,
-              vertical: _contentTopPadding,
-            ),
-            child: switch (state) {
-              PluginManagementLoading() => const _LoadingView(),
-              PluginManagementUnsupported() => const _UnsupportedView(),
-              PluginManagementFailure() => const _FailureView(),
-              PluginManagementReady() => _ReadyView(state: state, onOpenHarness: onOpenHarness),
-            },
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
-        ),
-      ],
+      slivers: slivers,
     );
   }
 }

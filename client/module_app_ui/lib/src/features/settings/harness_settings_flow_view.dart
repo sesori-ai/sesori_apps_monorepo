@@ -13,6 +13,7 @@ import "../../extensions/build_context_x.dart";
 import "../../utils/copy_text_to_clipboard.dart";
 import "../../widgets/catalog_scan_row.dart";
 import "widgets/settings_section.dart";
+import "widgets/settings_window_page.dart";
 
 part "harness_settings_sheets.dart";
 part "harness_settings_presentation.dart";

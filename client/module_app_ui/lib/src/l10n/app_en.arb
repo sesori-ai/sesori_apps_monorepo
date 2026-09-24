@@ -485,6 +485,7 @@
   "harnessesWorkBusy": "Busy",
   "settingsProfileTitle": "Profile",
   "settingsSectionAppearance": "Appearance",
+  "desktopSettingsTheme": "Theme",
   "settingsSectionAnalytics": "Analytics",
   "settingsBasicUsageAnalyticsTitle": "Basic usage analytics",
   "settingsBasicUsageAnalyticsDescription": "Share basic feature usage — never your code or messages.",

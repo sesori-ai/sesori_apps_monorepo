@@ -871,6 +871,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionAppearance => 'Appearance';
 
   @override
+  String get desktopSettingsTheme => 'Theme';
+
+  @override
   String get settingsSectionAnalytics => 'Analytics';
 
   @override
