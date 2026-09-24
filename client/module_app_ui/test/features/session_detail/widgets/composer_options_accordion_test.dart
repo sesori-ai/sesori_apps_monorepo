@@ -118,6 +118,36 @@ void main() {
     expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
   });
 
+  testWidgets("typing folds the actions away and the chevron still reopens them", (tester) async {
+    Future<void> pump({required bool alwaysOpen, required bool isTyping}) => _pumpAccordion(
+      tester: tester,
+      brightness: Brightness.light,
+      alwaysOpen: alwaysOpen,
+      isTyping: isTyping,
+      actionsEnabled: true,
+      showAttachImage: true,
+      onAttachImageTap: () {},
+      onSlashCommandsTap: () {},
+    );
+
+    await pump(alwaysOpen: true, isTyping: false);
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+    await pump(alwaysOpen: true, isTyping: true);
+    expect(find.byTooltip("Attach image"), findsNothing);
+    expect(find.byTooltip("More actions"), findsOneWidget);
+
+    await tester.tap(find.byTooltip("More actions"));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+
+    // A pill opened by hand, here while typing, folds when typing starts again.
+    await pump(alwaysOpen: false, isTyping: false);
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+    await pump(alwaysOpen: false, isTyping: true);
+    expect(find.byTooltip("Attach image"), findsNothing);
+    expect(find.byTooltip("More actions"), findsOneWidget);
+  });
+
   testWidgets("disabled actions remain inert while the opener still works", (tester) async {
     await _pumpAccordion(
       tester: tester,
@@ -143,6 +173,7 @@ Future<void> _pumpAccordion({
   required WidgetTester tester,
   required Brightness brightness,
   required bool alwaysOpen,
+  bool isTyping = false,
   required bool actionsEnabled,
   required bool showAttachImage,
   required VoidCallback onAttachImageTap,
@@ -162,6 +193,7 @@ Future<void> _pumpAccordion({
             actionsEnabled: actionsEnabled,
             showAttachImage: showAttachImage,
             alwaysOpen: alwaysOpen,
+            isTyping: isTyping,
             onAttachImageTap: onAttachImageTap,
             onSlashCommandsTap: onSlashCommandsTap,
           ),

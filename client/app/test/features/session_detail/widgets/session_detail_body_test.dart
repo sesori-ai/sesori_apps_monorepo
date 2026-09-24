@@ -141,7 +141,7 @@ SessionDetailLoaded _loadedState({
 }) {
   final provider = testProviderListResponse().items.first;
   return SessionDetailLoaded(
-    interaction: const SessionInteractionState.available(refreshError: null),
+    interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
     messages: messages,
     olderMessagesCursor: null,
     streamingText: const {},
@@ -152,7 +152,6 @@ SessionDetailLoaded _loadedState({
     session: testConstSession,
     pluginId: pluginId,
     supportsPromptAttachments: supportsPromptAttachments,
-    agent: null,
     assistantAgentModel: null,
     children: children,
     childStatuses: childStatuses,
@@ -754,7 +753,6 @@ void main() {
   testWidgets("header resolves an opaque assistant model ID through the provider catalog", (tester) async {
     const modelID = "v1WyJkZWVwc2Vlay1vZmZpY2lhbCIsImRlZXBzZWVrLXY0LXBybyJd";
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
-      agent: "deepseek",
       assistantAgentModel: const AgentModel(
         providerID: "deepseek-official",
         modelID: modelID,
@@ -793,17 +791,20 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    expect(find.text("deepseek · DeepSeek V4 Pro"), findsOneWidget);
+    expect(find.text("Claude Code · DeepSeek V4 Pro"), findsOneWidget);
     expect(find.textContaining(modelID), findsNothing);
+  });
+
+  testWidgets("header names only the harness before the session has a model", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Claude Code"), findsOneWidget);
   });
 
   testWidgets("opens the variant picker and forwards the selection to the cubit", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
-
-    // Regression guard: the loaded state here has a null agent and model, so
-    // the bar subtitle must collapse to empty — never a literal "null".
-    expect(find.text("null"), findsNothing);
 
     await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
@@ -819,7 +820,7 @@ void main() {
   testWidgets("selecting a different variant updates the displayed variant", (tester) async {
     final initialState = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     final updatedState = SessionDetailState.loaded(
-      interaction: const SessionInteractionState.available(refreshError: null),
+      interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       messages: const [],
       olderMessagesCursor: null,
       streamingText: const {},
@@ -830,7 +831,6 @@ void main() {
       session: testConstSession,
       pluginId: "opencode",
       supportsPromptAttachments: false,
-      agent: null,
       assistantAgentModel: null,
       children: const [],
       childStatuses: const {},
@@ -1078,6 +1078,8 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit, onOpenHarnessSettings: () => settingsOpened++));
     await tester.pumpAndSettle();
     expect(find.byType(PromptInput), findsNothing);
+    // The subtitle still names the harness the session belongs to.
+    expect(find.text("Claude Code"), findsOneWidget);
     expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
     expect(
       find.text("Chat history for this session still needs the harness. Enable it to load the transcript."),
@@ -1235,7 +1237,7 @@ void main() {
 
   for (final (name, interaction) in [
     ("legacy", const SessionInteractionState.legacyUnverified()),
-    ("refresh-error", SessionInteractionState.available(refreshError: ApiError.generic())),
+    ("refresh-error", SessionInteractionState.available(displayName: "Claude Code", refreshError: ApiError.generic())),
   ]) {
     testWidgets("archiving hides the $name harness warning", (tester) async {
       final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(

@@ -31,7 +31,7 @@ SessionDetailState _loadedState({
   List<MessageWithParts> messages = const [],
 }) {
   return SessionDetailState.loaded(
-    interaction: const SessionInteractionState.available(refreshError: null),
+    interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
     messages: messages,
     olderMessagesCursor: null,
     streamingText: streamingText,
@@ -42,7 +42,6 @@ SessionDetailState _loadedState({
     session: testConstSession,
     pluginId: "opencode",
     supportsPromptAttachments: false,
-    agent: null,
     assistantAgentModel: null,
     children: const [],
     childStatuses: const {},

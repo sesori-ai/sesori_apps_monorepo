@@ -882,7 +882,7 @@ class SessionDetailCubit(
           );
           // Assistant metadata describes the transcript actually installed,
           // not the raw fetched page a live assistant may have outrun.
-          final assistant = _assistantMetadata(messages: messages, agents: availableAgents);
+          final assistantAgentModel = _assistantAgentModel(messages: messages, agents: availableAgents);
           _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
 
           final refreshedSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
@@ -907,8 +907,7 @@ class SessionDetailCubit(
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
               bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
-              agent: assistant.latestAssistant?.agent,
-              assistantAgentModel: assistant.assistantAgentModel,
+              assistantAgentModel: assistantAgentModel,
               children: refreshedChildSessions,
               childStatuses: derived.childStatuses,
               isArchived: snapshot.isArchived,
@@ -1489,8 +1488,8 @@ class SessionDetailCubit(
     if (isClosed) return;
 
     if (message
-        case MessageAssistant(sender: MessageSender.agent, :final providerID, :final modelID, :final agent) ||
-            MessageError(:final providerID, :final modelID, :final agent)) {
+        case MessageAssistant(sender: MessageSender.agent, :final providerID, :final modelID) ||
+            MessageError(:final providerID, :final modelID)) {
       final assistantAgentModel = providerID != null && modelID != null
           ? _resolveAgentModel(
               agents: current.availableAgents,
@@ -1501,7 +1500,6 @@ class SessionDetailCubit(
       emit(
         current.copyWith(
           messages: messages,
-          agent: agent ?? current.agent,
           assistantAgentModel: assistantAgentModel,
         ),
       );
@@ -2819,11 +2817,10 @@ class SessionDetailCubit(
     );
   }
 
-  /// The latest agent-authored assistant/error message of [messages] and the
-  /// model it ran on, resolved against the [agents] catalog in effect.
-  _AssistantMetadata _assistantMetadata({required List<MessageWithParts> messages, required List<AgentInfo> agents}) {
-    final latestAssistant = _latestAssistantOrErrorMessage(messages);
-    final assistantAgentModel = switch (latestAssistant) {
+  /// The model the latest agent-authored assistant/error message of [messages]
+  /// ran on, resolved against the [agents] catalog in effect.
+  AgentModel? _assistantAgentModel({required List<MessageWithParts> messages, required List<AgentInfo> agents}) {
+    return switch (_latestAssistantOrErrorMessage(messages)) {
       MessageAssistant(sender: MessageSender.agent, :final modelID, :final providerID) ||
       MessageError(
         :final modelID,
@@ -2831,7 +2828,6 @@ class SessionDetailCubit(
       ) => _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
       MessageAssistant() || MessageUser() || null => null,
     };
-    return (latestAssistant: latestAssistant, assistantAgentModel: assistantAgentModel);
   }
 
   SessionDetailLoaded _buildLoadedState({
@@ -2846,9 +2842,7 @@ class SessionDetailCubit(
     final agents = derived.agents;
     final providers = derived.providers;
 
-    final assistant = _assistantMetadata(messages: snapshot.messages, agents: agents);
-    final latestAssistant = assistant.latestAssistant;
-    final assistantAgentModel = assistant.assistantAgentModel;
+    final assistantAgentModel = _assistantAgentModel(messages: snapshot.messages, agents: agents);
     // The transcript's own model is retained rather than validated: a session
     // imported from a terminal must not silently resume on a different provider
     // because a retained provider cache does not list what it ran on.
@@ -2878,7 +2872,6 @@ class SessionDetailCubit(
       session: session,
       pluginId: snapshot.pluginId,
       supportsPromptAttachments: snapshot.supportsPromptAttachments,
-      agent: latestAssistant?.agent,
       assistantAgentModel: assistantAgentModel,
       children: childSessions,
       childStatuses: derived.childStatuses,
@@ -2964,7 +2957,6 @@ typedef _QueueView = ({
   QueuedSessionSubmission? sendingSubmission,
 });
 
-typedef _AssistantMetadata = ({Message? latestAssistant, AgentModel? assistantAgentModel});
 
 typedef _SnapshotDerivation = ({
   List<Session> children,
