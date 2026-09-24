@@ -277,6 +277,7 @@ class const _FastModeButton({
         button: true,
         toggled: control == FastModeControl.on,
         label: label,
+        onTap: () => unawaited(_onTap(context)),
         excludeSemantics: true,
         child: SizedBox.square(
           dimension: 36,

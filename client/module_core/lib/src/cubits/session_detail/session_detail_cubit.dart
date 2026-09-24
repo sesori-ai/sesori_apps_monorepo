@@ -2657,24 +2657,9 @@ class SessionDetailCubit(
       support: current.fastModeSupport,
       fastMode: current.runsFastMode,
       hasHistory: current.messages.isNotEmpty,
-      lastModelActivity: _lastModelActivity(current),
+      lastModelActivity: _fastModeToggle.lastModelActivity(messages: current.messages, session: current.session),
       now: _clock(),
     );
-  }
-
-  /// When the backend last used this session's prompt cache: the latest
-  /// assistant message's completion (or start, while it still streams), else
-  /// the session's own last update.
-  DateTime? _lastModelActivity(SessionDetailLoaded current) {
-    final latestAssistantTime = current.messages
-        .map((message) => message.info)
-        .whereType<MessageAssistant>()
-        .lastWhereOrNull((message) => message.time != null)
-        ?.time;
-    final millis = latestAssistantTime == null
-        ? current.session.time?.updated
-        : latestAssistantTime.completed ?? latestAssistantTime.created;
-    return millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis);
   }
 
   void setFastMode(bool fastMode) {

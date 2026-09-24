@@ -1,3 +1,4 @@
+import "package:collection/collection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 /// How the composer presents the fast-mode control for the selected model.
@@ -34,6 +35,21 @@ class const FastModeToggleCalculator() {
     FastModeUnavailable() => FastModeControl.unavailable,
     FastModeAvailable() => fastMode ? FastModeControl.on : FastModeControl.off,
   };
+
+  /// When the backend last used the session's prompt cache: the latest
+  /// assistant message's completion (or start, while it still streams), else
+  /// the session's own last update.
+  DateTime? lastModelActivity({required List<MessageWithParts> messages, required Session session}) {
+    final latestAssistantTime = messages
+        .map((message) => message.info)
+        .whereType<MessageAssistant>()
+        .lastWhereOrNull((message) => message.time != null)
+        ?.time;
+    final millis = latestAssistantTime == null
+        ? session.time?.updated
+        : latestAssistantTime.completed ?? latestAssistantTime.created;
+    return millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis);
+  }
 
   /// Switching fast mode drops the backend's prompt cache. That costs a full
   /// re-read only while the cache is still warm: the session has history and
