@@ -434,7 +434,7 @@ void main() {
               imageClipboard: GetIt.instance.get<ImageClipboard>,
               child: PromptInput(
                 isBusy: false,
-                restingHint: "Ask anything...",
+                hasMessages: false,
                 onSend: ({required draft, required command, required attachments}) {
                   submittedDraft = draft;
                   submitted = attachments;
