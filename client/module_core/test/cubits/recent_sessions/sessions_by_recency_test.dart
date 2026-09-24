@@ -37,5 +37,6 @@ Session _session({required String id, required int updated}) => Session(
   time: SessionTime(created: 1, updated: updated, archived: null),
   promptDefaults: null,
   lastUserActivityAt: null,
+  autoContinuation: null,
   unseen: false,
 );
