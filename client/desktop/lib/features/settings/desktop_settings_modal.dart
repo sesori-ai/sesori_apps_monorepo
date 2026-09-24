@@ -177,7 +177,8 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
                                     child: PregoButtonsSolid.iconOnly(
                                       key: const Key("desktop-settings-close"),
                                       leadingIcon: TablerRegular.x,
-                                      hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                                      // Filled, so it stays legible over content scrolling beneath it.
+                                      hierarchy: PregoButtonsSolidHierarchy.secondary,
                                       size: PregoButtonsSolidSize.sm,
                                       onPressed: widget.onClose,
                                     ),
@@ -357,34 +358,65 @@ class _DesktopHarnessSettingsPageState() extends State<_DesktopHarnessSettingsPa
 
   @override
   Widget build(BuildContext context) => DesktopHarnessesSettingsScreen(
-    child: Navigator(
-      onDidRemovePage: (page) {
-        if (page.key case ValueKey<String>(:final value) when value == _pluginId) {
-          setState(() => _pluginId = null);
-        }
-      },
-      pages: [
-        MaterialPage<void>(
-          child: HarnessesSettingsView(
-            chrome: HarnessSettingsChrome.window,
-            connectionBanner: null,
-            onClose: widget.onClose,
-            onBack: null,
-            onOpenHarness: ({required pluginId}) => setState(() => _pluginId = pluginId),
-          ),
+    // The pages have no background of their own, so a slide or cross-fade
+    // would show both at once; the old page fades out before the new one fades in.
+    child: Theme(
+      data: Theme.of(context).copyWith(
+        pageTransitionsTheme: PageTransitionsTheme(
+          builders: {
+            for (final platform in TargetPlatform.values)
+              platform: _FadeThrough(
+                transitionDuration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 200),
+              ),
+          },
         ),
-        if (_pluginId case final pluginId?)
+      ),
+      child: Navigator(
+        onDidRemovePage: (page) {
+          if (page.key case ValueKey<String>(:final value) when value == _pluginId) {
+            setState(() => _pluginId = null);
+          }
+        },
+        pages: [
           MaterialPage<void>(
-            key: ValueKey(pluginId),
-            child: HarnessSettingsDetailView(
-              pluginId: pluginId,
+            child: HarnessesSettingsView(
               chrome: HarnessSettingsChrome.window,
-              onBack: () => setState(() => _pluginId = null),
-              onClose: widget.onClose,
               connectionBanner: null,
+              onClose: widget.onClose,
+              onBack: null,
+              onOpenHarness: ({required pluginId}) => setState(() => _pluginId = pluginId),
             ),
           ),
-      ],
+          if (_pluginId case final pluginId?)
+            MaterialPage<void>(
+              key: ValueKey(pluginId),
+              child: HarnessSettingsDetailView(
+                pluginId: pluginId,
+                chrome: HarnessSettingsChrome.window,
+                onBack: () => setState(() => _pluginId = null),
+                onClose: widget.onClose,
+                connectionBanner: null,
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+class const _FadeThrough({@override required final Duration transitionDuration}) extends PageTransitionsBuilder {
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => FadeTransition(
+    opacity: CurvedAnimation(parent: animation, curve: const Interval(0.5, 1)),
+    child: FadeTransition(
+      opacity: ReverseAnimation(CurvedAnimation(parent: secondaryAnimation, curve: const Interval(0, 0.5))),
+      child: child,
     ),
   );
 }
