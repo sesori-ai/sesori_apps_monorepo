@@ -560,7 +560,10 @@ class NewSessionCubit({
   bool get _canEditComposer {
     if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
     final data = state.agentModelData;
-    return data != null && !data.isLoading && data.optionsState.data != null && (data.plugin?.isRoutable ?? false);
+    return data != null &&
+        !data.optionsState.isLoading &&
+        data.optionsState.data != null &&
+        (data.plugin?.isRoutable ?? false);
   }
 
   /// Whether the screen has no harness to work with — the bridge answered with
@@ -648,7 +651,9 @@ class NewSessionCubit({
     if (before == null || after == null || plugin == null || before.plugin?.id != plugin.id) return null;
     // Only a settled page counts: a load the user started (a recheck, a
     // reconnect) that ends in a login requirement is answered by the card.
-    if (before.isLoading || before.optionsState.authenticationRequired || before.optionsState.data == null) {
+    if (before.optionsState.isLoading ||
+        before.optionsState.authenticationRequired ||
+        before.optionsState.data == null) {
       return null;
     }
     return switch (after.optionsState) {
