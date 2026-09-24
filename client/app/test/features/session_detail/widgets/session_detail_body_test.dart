@@ -973,6 +973,8 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit, onOpenHarnessSettings: () => settingsOpened++));
     await tester.pumpAndSettle();
     expect(find.byType(PromptInput), findsNothing);
+    // The subtitle still names the harness the session belongs to.
+    expect(find.text("Claude Code"), findsOneWidget);
     expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
     expect(
       find.text("Chat history for this session still needs the harness. Enable it to load the transcript."),

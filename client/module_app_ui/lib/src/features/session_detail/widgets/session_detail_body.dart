@@ -174,7 +174,11 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         harnessName: _harnessName(interaction: interaction),
         modelName: _resolveModelName(model: assistantAgentModel, providers: availableProviders),
       ),
-      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => null,
+      SessionDetailHarnessUnavailable(:final interaction) => _subtitle(
+        harnessName: _harnessName(interaction: interaction),
+        modelName: null,
+      ),
+      SessionDetailLoading() || SessionDetailFailed() => null,
     };
     final canShowDiffs = state is SessionDetailLoaded && (state.isRootSession ?? false) && !state.isArchived;
     final onShowDiffs = widget.onShowDiffs;
