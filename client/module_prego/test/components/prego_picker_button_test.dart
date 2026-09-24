@@ -96,9 +96,9 @@ void main() {
 
     // No overflow error: the label keeps its end on one line inside the pill.
     expect(tester.takeException(), isNull);
-    expect(find.byType(PregoStartEllipsisText), findsOneWidget);
+    expect(find.byType(PregoEllipsisText), findsOneWidget);
     expect(
-      tester.getRect(find.byType(PregoStartEllipsisText)).right,
+      tester.getRect(find.byType(PregoEllipsisText)).right,
       lessThanOrEqualTo(tester.getRect(find.byType(PregoPickerButton)).right),
     );
   });

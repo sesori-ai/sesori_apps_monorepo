@@ -27,8 +27,8 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 9 | `visual-hierarchy/icon-mono-tokens` | [9/41](#pr-titles) | ≤ 900 | done |
 | [x] | 10 | `visual-hierarchy/diff-colours` | [10/41](#pr-titles) | ≤ 600 | done |
 | [x] | 11 | `visual-hierarchy/{icons-and-case,sentence-case}` | [11/41](#pr-titles) | ≤ 900 | done |
-| [ ] | 12 | `visual-hierarchy/{sidebar,sidebar-new-session}` | [12/41](#pr-titles) | ≤ 700 | in-progress |
-| [ ] | 13 | `visual-hierarchy/session-rows` | [13/41](#pr-titles) | ≤ 700 | pending |
+| [x] | 12 | `visual-hierarchy/{sidebar,sidebar-new-session}` | [12/41](#pr-titles) | ≤ 700 | done |
+| [ ] | 13 | `visual-hierarchy/{subtitle-ellipsis,session-rows}` | [13/41](#pr-titles) | ≤ 700 | in-progress |
 | [ ] | 14 | `visual-hierarchy/needs-you-card` | [14/41](#pr-titles) | ≤ 600 | pending |
 | [ ] | 15 | `visual-hierarchy/settings-window` | [15/41](#pr-titles) | ≤ 600 | pending |
 | [ ] | 16 | `visual-hierarchy/changes-file-list` | [16/41](#pr-titles) | ≤ 800 | pending |
@@ -96,7 +96,9 @@ Answered 2026-09-23; every answer took the recommended option.
 12. Split in two:
    - `⚙️ [visual-hierarchy] Rebuild the desktop sidebar hierarchy [step 12.a/41]`
    - `🌿 [visual-hierarchy] Replace the sidebar's New session button and slim its footer [step 12.b/41]`
-13. `⚙️ [visual-hierarchy] Lead session rows with status and keep the time visible [step 13/41]`
+13. Split in two:
+   - `🌿 [visual-hierarchy] Shorten long slugs in the middle and drop the subtitle popover [step 13.a/41]`
+   - `⚙️ [visual-hierarchy] Lead session rows with status and keep the time visible [step 13.b/41]`
 14. `⚙️ [visual-hierarchy] Dock one amber needs-you card above the composer [step 14/41]`
 15. `⚙️ [visual-hierarchy] Simplify the desktop settings window [step 15/41]`
 16. `⚙️ [visual-hierarchy] Add a file list to Changes [step 16/41]`
