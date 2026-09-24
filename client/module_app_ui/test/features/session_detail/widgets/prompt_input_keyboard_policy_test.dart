@@ -117,6 +117,7 @@ Future<void> _pumpComposer({
           body: PromptInput(
             isBusy: false,
             hasMessages: true,
+            canSend: true,
             onSend: onSend,
             onVoiceTranscriptionCompleted: null,
             onDraftChanged: (_) {},

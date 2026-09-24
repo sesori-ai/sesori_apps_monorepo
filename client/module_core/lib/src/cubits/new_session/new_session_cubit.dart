@@ -25,6 +25,7 @@ import "../../services/new_session_plugin_service.dart";
 import "../../services/new_session_selection_tracker.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/session_selection_calculator.dart";
+import "new_session_composer_presentation.dart";
 import "new_session_state.dart";
 import "new_session_submission_snapshot.dart";
 
@@ -325,7 +326,9 @@ class NewSessionCubit({
     // way forward is to install one on that machine, so the same action goes
     // back to discovery instead — that is where a newly installed harness (or
     // one a failed discovery never got to see) shows up.
-    if (needsHarnessDiscovery) {
+    // An unroutable harness has no options to load; its state may have
+    // recovered since discovery last looked.
+    if (needsHarnessDiscovery || !(state.agentModelData?.plugin?.isRoutable ?? true)) {
       await _discoverPlugins();
       return;
     }
@@ -547,10 +550,12 @@ class NewSessionCubit({
     return pluginId == null || state.agentModelData?.plugin?.id == pluginId;
   }
 
+  /// Whether the option pills accept a selection. Only options already on
+  /// screen can be picked from; a load in flight does not hold them back.
   bool get _canEditComposer {
     if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
     final data = state.agentModelData;
-    return data != null && !data.isLoading && (data.plugin?.isRoutable ?? false);
+    return data != null && data.optionsState.data != null && (data.plugin?.isRoutable ?? false);
   }
 
   /// Whether the screen has no harness to work with — the bridge answered with
@@ -569,17 +574,90 @@ class NewSessionCubit({
   /// honest explanation, and retrying is still the way forward.
   bool get hasNoHarnesses => needsHarnessDiscovery && (state.agentModelData?.backendScope.isVerified ?? false);
 
-  bool get canRefreshOptions =>
-      needsHarnessDiscovery ||
-      state.agentModelData?.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable ||
-      ((state.agentModelData?.backendScope.isVerified ?? false) && _canEditComposer);
-
-  bool get canCreateSession {
+  bool get canRefreshOptions {
     final data = state.agentModelData;
-    return (data?.backendScope.isVerified ?? false) &&
-        data?.projectWorktreeCapability != NewSessionProjectWorktreeCapability.unavailable &&
-        !(data?.optionsState.authenticationRequired ?? false) &&
-        _canEditComposer;
+    if (state.phase is NewSessionPhaseSending || state is NewSessionCreated || data == null) return false;
+    return needsHarnessDiscovery ||
+        !(data.plugin?.isRoutable ?? true) ||
+        data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable ||
+        (data.backendScope.isVerified && !data.optionsState.isLoading && data.optionsState.source != null);
+  }
+
+  /// Whether a session can start now. Options are not waited for: a session
+  /// sent before they arrive runs on the harness' defaults. The project check
+  /// is, since it decides whether the requested worktree can be honoured.
+  bool get canCreateSession {
+    if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
+    final data = state.agentModelData;
+    return data != null &&
+        data.backendScope.isVerified &&
+        (data.plugin?.isRoutable ?? false) &&
+        data.projectWorktreeCapability != NewSessionProjectWorktreeCapability.loading &&
+        data.projectWorktreeCapability != NewSessionProjectWorktreeCapability.unavailable &&
+        !data.optionsState.authenticationRequired;
+  }
+
+  NewSessionComposerPresentation get composerPresentation {
+    final data = state.agentModelData;
+    if (data == null) return const NewSessionComposerPending();
+    if (hasNoHarnesses) return const NewSessionComposerNoHarnesses();
+    if (needsHarnessDiscovery) return const NewSessionComposerRetry();
+    final plugin = data.plugin;
+    if (plugin == null) {
+      return data.isPluginDiscoveryInFlight ? const NewSessionComposerPending() : const NewSessionComposerRetry();
+    }
+    if (data.optionsState
+        case NewSessionOptionsAuthenticationRequiredUnavailableState(:final actionHint) ||
+            NewSessionOptionsAuthenticationRequiredRetainedState(:final actionHint)) {
+      return NewSessionComposerLoginRequired(harnessName: plugin.displayName, actionHint: actionHint);
+    }
+    if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable) {
+      return const NewSessionComposerProjectUnavailable();
+    }
+    return switch (data.optionsState) {
+      NewSessionOptionsLoadingState() => const NewSessionComposerPending(),
+      NewSessionOptionsRefreshingState() ||
+      NewSessionOptionsAvailableState() ||
+      NewSessionOptionsFailureRetainedState() ||
+      NewSessionOptionsAuthenticationRequiredRetainedState() => const NewSessionComposerReady(),
+      NewSessionOptionsUnsupportedState() => const NewSessionComposerLoadOnDemand(),
+      NewSessionOptionsUnavailableState() ||
+      NewSessionOptionsLoadFailureUnavailableState() ||
+      NewSessionOptionsFailureState() ||
+      NewSessionOptionsRefreshFailureUnavailableState() ||
+      NewSessionOptionsAuthenticationRequiredUnavailableState() => const NewSessionComposerRetry(),
+    };
+  }
+
+  /// The login requirement [current] reports when [previous] still had usable
+  /// options for the same harness — the harness logged out since it was last
+  /// checked, so the page says so once. A requirement already known when the
+  /// options first arrive is shown in the composer's place instead.
+  static NewSessionComposerLoginRequired? newlyRequiredLogin({
+    required NewSessionState previous,
+    required NewSessionState current,
+  }) {
+    final before = previous.agentModelData;
+    final after = current.agentModelData;
+    final plugin = after?.plugin;
+    if (before == null || after == null || plugin == null || before.plugin?.id != plugin.id) return null;
+    if (before.optionsState.authenticationRequired || before.optionsState.data == null) return null;
+    return switch (after.optionsState) {
+      NewSessionOptionsAuthenticationRequiredUnavailableState(:final actionHint) ||
+      NewSessionOptionsAuthenticationRequiredRetainedState(:final actionHint) => NewSessionComposerLoginRequired(
+        harnessName: plugin.displayName,
+        actionHint: actionHint,
+      ),
+      NewSessionOptionsLoadingState() ||
+      NewSessionOptionsRefreshingState() ||
+      NewSessionOptionsAvailableState() ||
+      NewSessionOptionsUnsupportedState() ||
+      NewSessionOptionsUnavailableState() ||
+      NewSessionOptionsLoadFailureUnavailableState() ||
+      NewSessionOptionsFailureState() ||
+      NewSessionOptionsFailureRetainedState() ||
+      NewSessionOptionsRefreshFailureUnavailableState() => null,
+    };
   }
 
   void _emitStateUpdate({
@@ -660,11 +738,7 @@ class NewSessionCubit({
     );
   }
 
-  String? get _selectedPluginId {
-    final data = state.agentModelData;
-    final pluginId = data?.plugin?.id;
-    return data == null || pluginId == null || data.isLoading ? null : pluginId;
-  }
+  String? get _selectedPluginId => state.agentModelData?.plugin?.id;
 
   void selectAgent(String agent) {
     if (!_canEditComposer) return;
@@ -779,18 +853,10 @@ class NewSessionCubit({
     required String? command,
     required List<ComposerAttachment> attachments,
   }) async {
-    final current = state;
-    if (current.phase is NewSessionPhaseSending || current is NewSessionCreated) return;
-    final config = current.agentModelData;
+    if (!canCreateSession) return;
+    final config = state.agentModelData;
     final selectedPlugin = config?.plugin;
-    if (config == null ||
-        !config.backendScope.isVerified ||
-        config.isLoading ||
-        config.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable ||
-        selectedPlugin == null ||
-        !selectedPlugin.isRoutable) {
-      return;
-    }
+    if (config == null || selectedPlugin == null) return;
 
     final normalizedCommand = command?.trim();
     final hasCommand = normalizedCommand != null && normalizedCommand.isNotEmpty;

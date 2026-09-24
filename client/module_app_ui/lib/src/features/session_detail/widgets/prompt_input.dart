@@ -129,6 +129,10 @@ class const PromptInput({
   /// resting hint copy ("Ask anything..." vs "Follow up...") and, in
   /// text-first mode, which prompt the compact pill invites.
   required final bool hasMessages,
+
+  /// Whether a send may go out now. Typing stays open either way; while this
+  /// is false the draft simply waits in the field.
+  required final bool canSend,
   required final PromptSubmitCallback onSend,
   required final VoidCallback? onVoiceTranscriptionCompleted,
   required final ValueChanged<ComposerDraft> onDraftChanged,
@@ -389,7 +393,7 @@ class _PromptInputState() extends State<PromptInput> {
 
   bool get _hasSendableContent {
     final hasContent = _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
-    return hasContent && (_attachments.isEmpty || (widget.attachmentsSupported ?? false));
+    return widget.canSend && hasContent && (_attachments.isEmpty || (widget.attachmentsSupported ?? false));
   }
 
   /// Switches to the typing layout and raises the keyboard. Focus is
@@ -424,7 +428,7 @@ class _PromptInputState() extends State<PromptInput> {
   void _handleSend() => unawaited(_submitComposer());
 
   Future<void> _submitComposer() async {
-    if (_isSubmitting) return;
+    if (_isSubmitting || !widget.canSend) return;
 
     final wasFocused = _focusNode.hasFocus;
     final stagedCommand = widget.stagedCommand;

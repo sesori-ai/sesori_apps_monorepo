@@ -3472,7 +3472,7 @@ abstract class AppLocalizations {
   /// No description provided for @newSessionDedicatedWorkspace.
   ///
   /// In en, this message translates to:
-  /// **'Dedicated workspace'**
+  /// **'New worktree'**
   String get newSessionDedicatedWorkspace;
 
   /// No description provided for @newSessionPluginChooserLabel.
@@ -3523,11 +3523,17 @@ abstract class AppLocalizations {
   /// **'Loading session options'**
   String get newSessionOptionsLoadingSemantics;
 
-  /// No description provided for @newSessionOptionsRefresh.
+  /// No description provided for @newSessionOptionsRetry.
   ///
   /// In en, this message translates to:
-  /// **'Refresh options'**
-  String get newSessionOptionsRefresh;
+  /// **'Retry loading models'**
+  String get newSessionOptionsRetry;
+
+  /// No description provided for @newSessionOptionsLoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Load models'**
+  String get newSessionOptionsLoad;
 
   /// Warning title shown when the selected coding harness has no authenticated provider/model available for this project.
   ///
@@ -3538,44 +3544,8 @@ abstract class AppLocalizations {
   /// No description provided for @newSessionProjectUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.'**
+  /// **'Couldn’t verify whether this project supports worktrees. Try again before creating the session.'**
   String get newSessionProjectUnavailable;
-
-  /// No description provided for @newSessionOptionsCached.
-  ///
-  /// In en, this message translates to:
-  /// **'Using cached coding tool options.'**
-  String get newSessionOptionsCached;
-
-  /// No description provided for @newSessionOptionsUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'No cached options are available. You can create with defaults or refresh now.'**
-  String get newSessionOptionsUnavailable;
-
-  /// No description provided for @newSessionOptionsLoadFailedUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn’t load options. You can create with defaults or try again.'**
-  String get newSessionOptionsLoadFailedUnavailable;
-
-  /// No description provided for @newSessionOptionsLegacyBridge.
-  ///
-  /// In en, this message translates to:
-  /// **'This bridge can load options only by starting the selected coding tool. You can create with defaults or refresh now.'**
-  String get newSessionOptionsLegacyBridge;
-
-  /// No description provided for @newSessionOptionsUpdateFailedRetained.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn’t update options. Previously cached options are still available.'**
-  String get newSessionOptionsUpdateFailedRetained;
-
-  /// No description provided for @newSessionOptionsRefreshFailedUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Refresh failed and no valid cached options remain. You can create with defaults.'**
-  String get newSessionOptionsRefreshFailedUnavailable;
 
   /// No description provided for @sessionListDeleteWorktreeCheckbox.
   ///

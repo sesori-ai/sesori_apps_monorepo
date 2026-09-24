@@ -46,6 +46,7 @@ void main() {
     when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
     when(() => newSessionCubit.canCreateSession).thenReturn(true);
+    when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.voiceFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
@@ -76,7 +77,7 @@ void main() {
     await tester.pump();
 
     expect(find.text("New session"), findsOneWidget);
-    expect(find.text("Dedicated workspace"), findsOneWidget);
+    expect(find.text("New worktree"), findsOneWidget);
     expect(find.text("Ask anything..."), findsOneWidget);
     expect(find.bySemanticsLabel("Start recording"), findsNothing);
     expect(
@@ -102,6 +103,7 @@ void main() {
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
     when(() => newSessionCubit.canCreateSession).thenReturn(true);
     when(() => newSessionCubit.canRefreshOptions).thenReturn(true);
+    when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
@@ -139,15 +141,15 @@ void main() {
     final toolbar = tester.getRect(find.byType(DesktopPageToolbar));
     final heading = tester.getRect(find.text("What should we work on?"));
     final input = tester.getRect(find.byType(PromptInput));
-    final workspace = tester.getRect(find.text("Dedicated workspace"));
+    final workspace = tester.getRect(find.text("New worktree"));
     expect(toolbar.top, 0);
     expect(heading.top, greaterThan(toolbar.bottom));
     expect(input.width, DesktopNewSessionView.maxContentWidth);
     expect(input.center.dx, 700);
-    expect(input.top, greaterThan(heading.bottom));
-    expect(workspace.top, greaterThan(input.bottom));
+    expect(workspace.top, greaterThan(heading.bottom));
+    expect(input.top, greaterThan(workspace.bottom));
     // Centred, not anchored: the pane keeps room below the column.
-    expect(workspace.bottom, lessThan(800));
+    expect(input.bottom, lessThan(800));
 
     expect(
       find.descendant(of: find.byKey(const Key("new_session_project")), matching: find.text("Sesori")),
@@ -189,6 +191,7 @@ void main() {
       when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
       when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
       when(() => newSessionCubit.canCreateSession).thenReturn(true);
+      when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       var draft = ComposerDraft.typed(text: "");
       when(() => newSessionCubit.composerDraft).thenAnswer((_) => draft);
       when(() => newSessionCubit.saveComposerDraft(draft: any(named: "draft"))).thenAnswer((invocation) {

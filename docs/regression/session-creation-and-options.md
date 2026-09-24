@@ -182,19 +182,18 @@ variant, and worktree mode, and creating the session with its first input.
 - A choice made while a background refresh runs outranks it. The refresh was
   resolved against the agent, model, variant, and staged command as they stood
   when it started, so it is dropped rather than reverting the user.
-- The refresh action stays on screen for as long as the press it started is
-  still running, and the line explaining where the options came from keeps
-  describing the options still on screen. It spins only while the answers on
-  screen are unsettled: the harness chooser stays live during a refresh, so a
-  press abandoned for another harness must not leave a spinner over that
-  harness's settled options. When the viewport has room, the action rests above
-  the composer; when the keyboard or a multiline draft cramps that viewport,
-  it follows the option rows in their scroll content and never covers the
-  dedicated-workspace control.
-- It is one action under one name in every state. Whether a press repeats
-  harness discovery, the project check, or the options themselves is decided
-  behind it; the surface never names that split, because the user cannot act on
-  it and the line above the composer already says what is missing.
+- New Session never waits on options. The composer stays typeable throughout, and a
+  session can be created before options arrive: agent, model, and variant are then
+  omitted and the harness uses its defaults. Creation still waits for a verified
+  bridge, a routable harness, and the project's worktree check.
+- The page never describes where options came from. While they load, the agent and
+  model pills shimmer at their final height, the harness pill shimmers until
+  discovery answers, and the "New worktree" row keeps its height while the project
+  is checked, so nothing shifts as answers arrive. When options cannot be loaded,
+  one "Retry loading models" button stands in the pills' place; a bridge that can
+  load options only by starting the harness offers "Load models" there instead.
+  Whether a press repeats harness discovery, the project check, or the options
+  themselves is decided behind it.
 - Concurrent requests coalesce; an incomplete observation never replaces a
   complete cached one, and a moved project invalidates its entries. Completeness
   decides replacement only at capture time; the stored row holds just the
@@ -312,9 +311,11 @@ variant, and worktree mode, and creating the session with its first input.
   provider diagnostics and local paths never enter that guidance.
 - Authentication-required discovery preserves any last-good durable options without
   reporting them as a successful refresh. `/session/options` carries the condition as a
-  typed response. New Session keeps retained options visible but disables creation, keeps
-  refresh available, and shows inline and warning-popup guidance titled from the selected
-  plugin's display name. A session-detail stale-option recovery also shows the bounded
+  typed response. New Session replaces the composer with a login card
+  titled from the selected plugin's display name, carrying the plugin's guidance, "Open
+  harness settings", and "Recheck", and creation is blocked. A warning popup adds the same
+  guidance only when the login requirement is newly discovered, after the page already had
+  usable options for that harness; a requirement known on arrival shows only the card. A session-detail stale-option recovery also shows the bounded
   guidance and parks the prompt instead of retrying with unavailable options.
 
 ### Fast mode
@@ -360,7 +361,7 @@ variant, and worktree mode, and creating the session with its first input.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
 | L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window or captured before the bridge process started is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `sesori/color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. |
-| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; refreshing on the New Session screen updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render. Scoped authentication-required discovery keeps Refresh available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
+| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; loading keeps the layout with shimmering pills and a failure shows one retry; refreshing on the New Session screen updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render. Scoped authentication-required discovery replaces the composer with the login card, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -398,7 +399,7 @@ highlight, Enter and Esc.
 
 - Options are empty or reported successfully where authentication-required
   discovery should be explicit, a partial observation overwrites a complete
-  cache, Create remains enabled, Refresh becomes unavailable, the plugin runtime
+  cache, Create remains enabled, Recheck becomes unavailable, the plugin runtime
   becomes globally blocked, or Pi reports no models without local `/login` guidance.
 - Options are stale where a discovery failure should be an explicit error.
 - Hermes model discovery falls back solely because an empty, unpersisted scratch
@@ -420,9 +421,11 @@ highlight, Enter and Esc.
   creation replaces it, one plugin's selection leaks into another, or a removed
   saved value prevents current catalog defaults from loading.
 - A cache-only read starts a backend, or automatic refresh wakes a stopped one.
-- The refresh action disappears while its own load runs, gives no sign it was
-  pressed, renames itself after which load it happens to be repeating, or
-  covers an option row in a cramped viewport.
+- The composer or its typing is blocked while options load, sending waits for
+  options, the page changes height as options arrive, a status line describes
+  the options' origin, or a load failure leaves no retry.
+- A known login requirement leaves the composer usable instead of the login
+  card, or the popup appears for a requirement already known on arrival.
 - A background refresh of a stale cache blocks the composer, shows a loading
   state, runs twice, reverts a choice made while it ran, or leaves an explicit
   refresh waiting on work that can no longer apply.
