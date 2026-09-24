@@ -59,8 +59,10 @@ Future<void> showDesktopCommandPalette({
     context: context,
     animationStyle: prefersReducedMotion(context) ? AnimationStyle.noAnimation : null,
     builder: (dialogContext) {
+      // The dialog's own route, which the router's typed pop does not own.
+      void close() => ModalRoute.of(dialogContext)?.navigator?.pop();
       void pick(VoidCallback action) {
-        Navigator.pop(dialogContext);
+        close();
         action();
       }
 
@@ -71,7 +73,7 @@ Future<void> showDesktopCommandPalette({
           for (final project in projects)
             (project: project, name: desktopProjectDisplayName(context: context, project: project)),
         ],
-        onClose: () => Navigator.pop(dialogContext),
+        onClose: close,
         onPickCommand: (command) => pick(command.run),
         onPickSession: (item) => pick(
           () => onOpenSession(
