@@ -9,7 +9,7 @@ import "package:test/test.dart";
 void main() {
   test("SessionDetailLoaded.isRefreshing defaults to false", () {
     const state = SessionDetailState.loaded(
-      interaction: SessionInteractionState.available(refreshError: null),
+      interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       messages: [],
       olderMessagesCursor: null,
       streamingText: {},
@@ -20,7 +20,6 @@ void main() {
       session: testConstSession,
       pluginId: "opencode",
       supportsPromptAttachments: false,
-      agent: null,
       assistantAgentModel: null,
       children: [],
       childStatuses: {},

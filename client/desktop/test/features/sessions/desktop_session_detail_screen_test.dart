@@ -112,7 +112,7 @@ const _message = MessageWithParts(
 
 SessionDetailLoaded _loadedState({required Session session}) {
   return SessionDetailLoaded(
-    interaction: const SessionInteractionState.available(refreshError: null),
+    interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
     messages: const [_message],
     olderMessagesCursor: null,
     streamingText: const {},
@@ -123,7 +123,6 @@ SessionDetailLoaded _loadedState({required Session session}) {
     session: session,
     pluginId: "opencode",
     supportsPromptAttachments: true,
-    agent: null,
     assistantAgentModel: null,
     children: const [_child],
     childStatuses: const {"child-1": SessionStatus.idle()},
