@@ -9,6 +9,7 @@ on:
       - 'install.sh'
       - 'install.ps1'
       - '.tool-versions'
+      - '.github/workflows/bridge-ci.yml'
   pull_request:
     paths:
       - 'bridge/**'
@@ -16,6 +17,7 @@ on:
       - 'install.sh'
       - 'install.ps1'
       - '.tool-versions'
+      - '.github/workflows/bridge-ci.yml'
 
 concurrency:
   group: bridge-ci-${{ github.event.pull_request.number || github.ref }}

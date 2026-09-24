@@ -21,6 +21,7 @@ on:
       - '.github/workflows/publish-firebase-analytics-release-cutoff.yml'
       - '.github/workflows/submit-release.yml'
       - '.tool-versions'
+      - '.github/workflows/mobile-ci.yml'
   pull_request:
     paths:
       - 'client/app/**'
@@ -38,6 +39,7 @@ on:
       - '.github/workflows/publish-firebase-analytics-release-cutoff.yml'
       - '.github/workflows/submit-release.yml'
       - '.tool-versions'
+      - '.github/workflows/mobile-ci.yml'
 
 concurrency:
   group: mobile-ci-${{ github.event.pull_request.number || github.ref }}
