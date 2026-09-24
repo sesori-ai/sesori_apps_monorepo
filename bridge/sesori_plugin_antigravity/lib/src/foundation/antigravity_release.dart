@@ -32,9 +32,18 @@ abstract final class AntigravityRelease() {
   static const String harnessPathEnvironmentKey = "ANTIGRAVITY_HARNESS_PATH";
   static const String linuxUidArgument = "--uid=";
 
-  /// Immutable facts independently verified from all five official archives.
+  /// Immutable facts independently verified from all six official archives.
   static const Map<PlatformOs, Map<PlatformArch, AntigravityReleaseArtifact>> artifacts = {
     PlatformOs.macos: {
+      PlatformArch.x64: AntigravityReleaseArtifact(
+        archiveUrl:
+            "https://dl.google.com/agy-extensions/releases/macos/"
+            "agy-acp-server-1.2.1-darwin-x86_64.zip",
+        archiveSha256: "d09bf99bdea7b82021e1afcff829da35e4aa583d8f0984ef364dc3a7c064e07e",
+        archiveBytes: 117493869,
+        serverBytes: 281143216,
+        harnessBytes: 126174208,
+      ),
       PlatformArch.arm64: AntigravityReleaseArtifact(
         archiveUrl:
             "https://dl.google.com/agy-extensions/releases/macos/"
@@ -91,29 +100,16 @@ abstract final class AntigravityRelease() {
   static const String macosArm64ServerSha256 = "c93c86c0f505fcdf8b13c695bed26d306141ef5446189d591397074d324db34e";
   static const String macosArm64HarnessSha256 = "1b8a2b712ca312c9769e425b800bfbcceec4770f19736404474d1e8e50d65456";
 
-  static AntigravityReleaseArtifact? artifactFor({required PlatformTarget target}) =>
-      artifacts[target.os]?[target.arch];
+  static AntigravityReleaseArtifact artifactFor({required PlatformTarget target}) =>
+      artifacts[target.os]?[target.arch] ??
+      (throw StateError("Missing Antigravity release artifact for ${target.key}"));
 
-  static bool supportsTarget({required PlatformTarget target}) => artifactFor(target: target) != null;
+  static String serverFileName({required PlatformTarget target}) =>
+      target.os == PlatformOs.windows ? windowsServerFileName : posixServerFileName;
 
-  static String serverFileName({required PlatformTarget target}) {
-    _requireSupported(target: target);
-    return target.os == PlatformOs.windows ? windowsServerFileName : posixServerFileName;
-  }
+  static String harnessFileName({required PlatformTarget target}) =>
+      target.os == PlatformOs.windows ? windowsHarnessFileName : posixHarnessFileName;
 
-  static String harnessFileName({required PlatformTarget target}) {
-    _requireSupported(target: target);
-    return target.os == PlatformOs.windows ? windowsHarnessFileName : posixHarnessFileName;
-  }
-
-  static List<String> launchArguments({required PlatformTarget target}) {
-    _requireSupported(target: target);
-    return target.os == PlatformOs.linux ? const [linuxUidArgument] : const [];
-  }
-
-  static void _requireSupported({required PlatformTarget target}) {
-    if (!supportsTarget(target: target)) {
-      throw UnsupportedError("Sesori does not support Antigravity ACP for ${target.key}");
-    }
-  }
+  static List<String> launchArguments({required PlatformTarget target}) =>
+      target.os == PlatformOs.linux ? const [linuxUidArgument] : const [];
 }

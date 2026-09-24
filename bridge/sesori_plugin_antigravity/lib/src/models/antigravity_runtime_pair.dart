@@ -33,9 +33,6 @@ final class const AntigravityRuntimePairInvalid({
   required final AntigravityRuntimePairInvalidReason reason,
 }) extends AntigravityRuntimePairReadResult;
 
-final class const AntigravityRuntimeTargetUnsupported({required final PlatformTarget target})
-    extends AntigravityRuntimePairReadResult;
-
 final class const AntigravityRuntimeStorageFailure({
   // ignore: no_slop_linter/prefer_specific_type, caught storage failures remain opaque
   required final Object cause,

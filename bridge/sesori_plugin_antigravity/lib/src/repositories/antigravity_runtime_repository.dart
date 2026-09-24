@@ -108,7 +108,6 @@ class AntigravityRuntimeRepository({
         AntigravityRuntimePairInvalidReason.notDistinct => AntigravityRuntimePairIssue.notDistinct,
       },
     ),
-    AntigravityRuntimeTargetUnsupported(:final target) => AntigravityRuntimeCandidateUnsupported(target: target),
     AntigravityRuntimeStorageFailure(:final cause, :final stackTrace) => AntigravityRuntimeCandidateStorageFailed(
       source: source,
       cause: cause,

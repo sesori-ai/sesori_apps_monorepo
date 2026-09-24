@@ -210,8 +210,6 @@ class AntigravityRuntimeService({
         return AntigravityRuntimePairRejected(source: source, component: component, issue: issue);
       case AntigravityRuntimeCandidateStorageFailed(:final source, :final cause, :final stackTrace):
         return AntigravityRuntimeStorageFailed(source: source, cause: cause, stackTrace: stackTrace);
-      case AntigravityRuntimeCandidateUnsupported(:final target):
-        return AntigravityRuntimeUnsupported(target: target);
     }
   }
 
@@ -253,8 +251,7 @@ class AntigravityRuntimeService({
         Log.w("[antigravity] PATH runtime inspection failed", cause, stackTrace);
       case AntigravityRuntimeCandidateFound() ||
           AntigravityRuntimeCandidateMissing() ||
-          AntigravityRuntimeCandidateRejected() ||
-          AntigravityRuntimeCandidateUnsupported():
+          AntigravityRuntimeCandidateRejected():
         return;
     }
   }
@@ -268,8 +265,7 @@ class AntigravityRuntimeService({
       case AntigravityRuntimeSelected() ||
           AntigravityRuntimeMissing() ||
           AntigravityRuntimePairRejected() ||
-          AntigravityRuntimeContractRejected() ||
-          AntigravityRuntimeUnsupported():
+          AntigravityRuntimeContractRejected():
         return;
     }
   }

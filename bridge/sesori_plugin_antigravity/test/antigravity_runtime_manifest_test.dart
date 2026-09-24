@@ -12,6 +12,7 @@ void main() {
   const macX64 = PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64);
   const supportedTargets = [
     macArm,
+    macX64,
     PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
     PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.arm64),
     PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64),
@@ -41,10 +42,10 @@ void main() {
     );
   });
 
-  test("maps all five official archives as sibling-preserving packages", () {
+  test("maps all six official archives as sibling-preserving packages", () {
     for (final target in supportedTargets) {
-      final release = AntigravityRelease.artifactFor(target: target)!;
-      final asset = manifest.assetFor(target: target)! as ArchiveRuntimeAsset;
+      final release = AntigravityRelease.artifactFor(target: target);
+      final asset = manifest.assetFor(target: target);
       expect(asset.assetName, Uri.parse(release.archiveUrl).pathSegments.last);
       expect(asset.sha256, release.archiveSha256);
       expect(asset.format, ArchiveFormat.zip);
@@ -56,9 +57,7 @@ void main() {
     }
   });
 
-  test("does not advertise macOS x64 or accept an unknown archive", () {
-    expect(manifest.assetFor(target: macX64), isNull);
-    expect(manifest.supportsManagedInstallOn(target: macX64), isFalse);
+  test("does not accept an unknown archive", () {
     expect(
       () => manifest.downloadUrlFor(
         asset: const ArchiveRuntimeAsset(

@@ -70,10 +70,6 @@ class AntigravitySetupService({
             actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
           ),
         };
-      case AntigravityRuntimeCandidateUnsupported():
-        return const PluginSetupUnavailable(
-          actionHint: "Sesori does not support the Antigravity ACP runtime on this platform.",
-        );
     }
   }
 

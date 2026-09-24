@@ -27,7 +27,7 @@ void main() {
         "1.2.1",
       ),
     );
-    final macArtifact = AntigravityRelease.artifactFor(target: macArm)!;
+    final macArtifact = AntigravityRelease.artifactFor(target: macArm);
     expect(
       (macArtifact.archiveBytes, macArtifact.serverBytes, macArtifact.harnessBytes),
       (111725488, 276920768, 120663872),
@@ -52,8 +52,15 @@ void main() {
     );
   });
 
-  test("maps every independently verified archive and rejects macOS x64", () {
+  test("maps an independently verified archive for every host target", () {
     final expected = <PlatformTarget, (String, String, int, int, int)>{
+      macX64: (
+        "darwin-x86_64.zip",
+        "d09bf99bdea7b82021e1afcff829da35e4aa583d8f0984ef364dc3a7c064e07e",
+        117493869,
+        281143216,
+        126174208,
+      ),
       macArm: (
         "darwin-arm64.zip",
         "0fab9938812e6b32b3b543e65e4f3a0025ceef755413db13542d9a9b81ea803c",
@@ -90,24 +97,51 @@ void main() {
         137181336,
       ),
     };
+    expect(
+      expected.keys,
+      unorderedEquals([
+        for (final os in PlatformOs.values)
+          for (final arch in PlatformArch.values) PlatformTarget(os: os, arch: arch),
+      ]),
+    );
     for (final entry in expected.entries) {
       final target = entry.key;
       final facts = entry.value;
-      final artifact = AntigravityRelease.artifactFor(target: target)!;
+      final artifact = AntigravityRelease.artifactFor(target: target);
       expect(artifact.archiveUrl, endsWith(facts.$1));
       expect(
         (artifact.archiveSha256, artifact.archiveBytes, artifact.serverBytes, artifact.harnessBytes),
         (facts.$2, facts.$3, facts.$4, facts.$5),
       );
-      expect(AntigravityRelease.supportsTarget(target: target), isTrue);
     }
-    expect(AntigravityRelease.artifactFor(target: macX64), isNull);
-    expect(AntigravityRelease.supportsTarget(target: macX64), isFalse);
-    expect(() => AntigravityRelease.serverFileName(target: macX64), throwsUnsupportedError);
+    expect(AntigravityRelease.serverFileName(target: macX64), "agy_acp_server.par");
+    expect(AntigravityRelease.harnessFileName(target: macX64), "localharness_external");
     expect(AntigravityRelease.serverFileName(target: winArm), "agy_acp_server.exe");
     expect(AntigravityRelease.harnessFileName(target: winArm), "localharness_external.exe");
     expect(AntigravityRelease.serverFileName(target: linuxArm), "agy_acp_server.par");
     expect(AntigravityRelease.harnessFileName(target: linuxArm), "localharness_external");
+  });
+
+  test("builds exact macOS launch specs for both architectures", () {
+    for (final target in [macArm, macX64]) {
+      final pair = AntigravityRuntimePair(
+        serverPath: "/runtime/agy_acp_server.par",
+        harnessPath: "/runtime/localharness_external",
+        target: target,
+      );
+      final launch = const AntigravityLaunchSpecBuilder().build(
+        pair: pair,
+        cwd: "/workspace",
+        environment: const {"GEMINI_HOME": "/profile"},
+      );
+      expect((launch.command, launch.cwd), (pair.serverPath, "/workspace"));
+      expect(launch.args, isEmpty);
+      expect(launch.includeParentEnvironment, isFalse);
+      expect(launch.environment, {
+        "GEMINI_HOME": "/profile",
+        "ANTIGRAVITY_HARNESS_PATH": pair.harnessPath,
+      });
+    }
   });
 
   test("builds exact Linux and Windows launch specs", () {

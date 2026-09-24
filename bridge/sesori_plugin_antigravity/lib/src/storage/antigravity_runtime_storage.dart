@@ -12,10 +12,6 @@ class const AntigravityRuntimeStorage() {
     required String serverPath,
     required PlatformTarget target,
   }) {
-    if (!AntigravityRelease.supportsTarget(target: target)) {
-      return AntigravityRuntimeTargetUnsupported(target: target);
-    }
-
     final context = _pathContext(target: target);
     if (!context.equals(context.basename(serverPath), AntigravityRelease.serverFileName(target: target))) {
       return const AntigravityRuntimePairInvalid(
@@ -96,9 +92,6 @@ class const AntigravityRuntimeStorage() {
     required Map<String, String> environment,
     required PlatformTarget target,
   }) {
-    if (!AntigravityRelease.supportsTarget(target: target)) {
-      return AntigravityRuntimeTargetUnsupported(target: target);
-    }
     final rawPath = _environmentPath(environment: environment, target: target);
     if (rawPath == null) {
       return const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server);
@@ -142,8 +135,7 @@ class const AntigravityRuntimeStorage() {
     required Map<String, String> environment,
     required PlatformTarget target,
   }) {
-    if (!AntigravityRelease.supportsTarget(target: target) ||
-        _environmentPath(environment: environment, target: target) == null) {
+    if (_environmentPath(environment: environment, target: target) == null) {
       return HostExecutablePresence.unknown;
     }
     return IoHostExecutableLocator(platformIsWindows: target.os == PlatformOs.windows).locate(

@@ -1,5 +1,3 @@
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
-
 import "antigravity_runtime_pair.dart";
 
 enum AntigravityRuntimeSource() {
@@ -80,9 +78,6 @@ final class const AntigravityRuntimeCandidateStorageFailed({
   required final StackTrace stackTrace,
 }) extends AntigravityRuntimeCandidateResult;
 
-final class const AntigravityRuntimeCandidateUnsupported({required final PlatformTarget target})
-    extends AntigravityRuntimeCandidateResult;
-
 sealed class const AntigravityRuntimeProbeResult();
 
 final class const AntigravityRuntimeProbeCompleted({
@@ -142,6 +137,3 @@ final class const AntigravityRuntimeStorageFailed({
   required final Object cause,
   required final StackTrace stackTrace,
 }) extends AntigravityRuntimeResolution;
-
-final class const AntigravityRuntimeUnsupported({required final PlatformTarget target})
-    extends AntigravityRuntimeResolution;

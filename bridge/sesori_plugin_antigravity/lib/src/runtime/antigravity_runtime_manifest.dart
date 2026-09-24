@@ -49,9 +49,8 @@ class const AntigravityRuntimeManifest() extends RuntimeManifest {
   RuntimeVersion? parseVersion({required String value}) => SemanticRuntimeVersion.tryParse(value: value);
 
   @override
-  RuntimeAsset? assetFor({required PlatformTarget target}) {
+  ArchiveRuntimeAsset assetFor({required PlatformTarget target}) {
     final artifact = AntigravityRelease.artifactFor(target: target);
-    if (artifact == null) return null;
     return ArchiveRuntimeAsset(
       assetName: Uri.parse(artifact.archiveUrl).pathSegments.last,
       format: ArchiveFormat.zip,

@@ -49,8 +49,6 @@ class AntigravityRuntimeVersionValidator({
         Log.w("[antigravity] managed candidate is missing its ${component.name}");
       case AntigravityRuntimePairRejected(:final component, :final issue):
         Log.w("[antigravity] managed candidate ${component.name} was rejected: ${issue.name}");
-      case AntigravityRuntimeUnsupported(:final target):
-        Log.w("[antigravity] managed candidate validation is unsupported on ${target.key}");
     }
     return false;
   }

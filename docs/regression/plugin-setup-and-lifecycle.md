@@ -141,7 +141,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   inspection runs bounded `--version` without initializing ACP, reports personal-auth readiness from token-file presence
   without reading it, and advertises current-client browser login only when required. It never imports ambient
   credentials, opens a browser or downloads a runtime. Managed Install is explicit,
-  limited to macOS arm64, Linux x64/arm64 and Windows x64/arm64 (not macOS x64), absent with an override, and preceded
+  available on macOS x64/arm64, Linux x64/arm64 and Windows x64/arm64, absent with an override, and preceded
   by Google terms/documentation guidance visible on the detail screen before installation. The overview download icon
   opens that screen rather than starting a download. Preparation, exact identity/version probing, login and live start use the same isolated profile/environment
   with parent inheritance disabled.
@@ -513,7 +513,7 @@ owned-process exit; and restart.
   being logged, failed, or restarted as an unexpected crash.
 - Antigravity inspection creates profile state, reads token contents, inherits ambient credentials, initializes ACP,
   opens a browser, falls through from explicit or non-absence PATH evidence, or downloads automatically. Offering
-  managed install with an override/on macOS x64, changing the OpenCode default, or adding a shared `Harness` enum case
+  managed install with an override, changing the OpenCode default, or adding a shared `Harness` enum case
   is also a regression.
 - A DeepSeek setup probe creates a session or mutates runtime state, accepts an
   old/malformed adapter version, selects managed runtime ahead of a supported
