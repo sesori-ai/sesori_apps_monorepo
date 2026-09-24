@@ -302,6 +302,7 @@ void main() {
     late _FakeBridgePlugin plugin;
     late SessionOperationDispatcher operationDispatcher;
     late SessionLifecycleService service;
+    late RecordingSessionContinuations continuations;
 
     setUp(() async {
       db = createTestDatabase();
@@ -316,7 +317,7 @@ void main() {
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       service = SessionLifecycleService(
-        continuations: const EmptySessionContinuations(),
+        continuations: continuations = RecordingSessionContinuations(),
         mutations: const UnusedContinuationMutations(),
         views: const PassThroughSessionViews(),
         worktreeService: DeletionWorktreeServiceFake(),
@@ -354,6 +355,26 @@ void main() {
     tearDown(() async {
       await operationDispatcher.dispose();
       await db.close();
+    });
+
+    test("failed durable cancellation blocks archive; a projection failure does not", () async {
+      Future<ArchiveStatusUpdate> archive() => service.updateArchiveStatus(
+        sessionId: "root-session",
+        archived: true,
+        deleteWorktree: false,
+        force: false,
+      );
+      continuations.cancellationError = StateError("fixture persistence failure");
+      await expectLater(archive(), throwsStateError);
+      expect(plugin.lastArchivedSessionId, isNull);
+      expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNull);
+      continuations
+        ..cancellationError = null
+        ..changed = true;
+      await archive();
+      expect(continuations.cancellations, ["root-session"]);
+      expect(plugin.lastArchivedSessionId, "backend-session");
+      expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNotNull);
     });
 
     test("archive routes plugin I/O through the stored backend id", () async {

@@ -16,12 +16,13 @@ void main() {
     late _FakeSessionRepository sessionRepository;
     late SessionAbortService service;
     late SessionOperationDispatcher dispatcher;
+    late RecordingSessionContinuations continuations;
 
     setUp(() {
       sessionRepository = _FakeSessionRepository();
       dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = SessionAbortService(
-        continuations: const EmptySessionContinuations(),
+        continuations: continuations = RecordingSessionContinuations(),
         mutations: const UnusedContinuationMutations(),
         views: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
@@ -32,6 +33,29 @@ void main() {
     tearDown(() async {
       await dispatcher.dispose();
       await service.dispose();
+    });
+
+    test("failed durable cancellation blocks Stop; a projection failure does not", () async {
+      var stopped = false;
+      sessionRepository.onAbort = ({required String sessionId}) async {
+        expect(continuations.cancellations, [sessionId]);
+        stopped = true;
+      };
+      continuations.cancellationError = StateError("fixture persistence failure");
+      await expectLater(
+        service.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop, useAtomicStop: false),
+        throwsStateError,
+      );
+      expect(stopped, isFalse);
+      continuations
+        ..cancellationError = null
+        ..changed = true;
+      await service.abortSession(
+        sessionId: "session-1",
+        subAgents: SessionAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+      );
+      expect(stopped, isTrue);
     });
 
     test("emits aborted session only after repository abort succeeds", () async {

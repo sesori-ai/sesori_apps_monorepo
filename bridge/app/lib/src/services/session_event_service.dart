@@ -535,7 +535,7 @@ class SessionEventService({
 
   Future<Session?> _catalogSessionById({required String sessionId}) async {
     final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
-    return session == null ? null : _sessionViews.enrich(session: session);
+    return session == null ? null : await _sessionViews.enrich(session: session);
   }
 
   Future<BridgeSseEvent?> _createdEvent({required String sessionId}) async {

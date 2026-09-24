@@ -33,6 +33,7 @@ void main() {
     late SessionOperationDispatcher dispatcher;
     late FakeSessionOptionsService optionsService;
     late SessionPromptService service;
+    late RecordingSessionContinuations continuations;
 
     setUp(() async {
       db = createTestDatabase();
@@ -47,7 +48,7 @@ void main() {
       dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       optionsService = FakeSessionOptionsService();
       service = SessionPromptService(
-        continuations: const EmptySessionContinuations(),
+        continuations: continuations = RecordingSessionContinuations(),
         mutations: const UnusedContinuationMutations(),
         views: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
@@ -100,6 +101,28 @@ void main() {
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("extra args"));
       expect(plugin.lastSendCommandUserVisibleArguments, equals("extra args"));
+    });
+
+    test("failed durable cancellation blocks a manual prompt; a projection failure does not", () async {
+      Future<void> send() => service.sendPrompt(
+        sessionId: "s1",
+        promptId: "manual",
+        parts: const [PromptPart.text(text: "resume")],
+        variant: null,
+        fastMode: false,
+        agent: null,
+        model: null,
+        command: null,
+      );
+      continuations.cancellationError = StateError("fixture persistence failure");
+      await expectLater(send(), throwsStateError);
+      expect(plugin.lastSendPromptSessionId, isNull);
+      continuations
+        ..cancellationError = null
+        ..changed = true;
+      await send();
+      expect(continuations.cancellations, ["s1"]);
+      expect(plugin.lastSendPromptSessionId, "backend-s1");
     });
 
     test("refuses a prompt to an archived session without reaching the plugin", () async {

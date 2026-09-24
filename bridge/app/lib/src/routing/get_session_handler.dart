@@ -49,7 +49,7 @@ class GetSessionHandler({
         return null;
       },
     );
-    return _sessionViews.enrich(
+    return await _sessionViews.enrich(
       session: (await _sessionRepository.enrichSessions(
         sessions: [catalogSession],
         verifiedGithubLogin: verifiedGithubLogin,

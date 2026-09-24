@@ -17,7 +17,7 @@ class RenameSessionHandler({
     required RenameSessionRequest body,
   }) async {
     requireNonEmpty(request: request, value: body.sessionId, label: "session id");
-    return _sessionViews.enrich(
+    return await _sessionViews.enrich(
       session: await _sessionMutationDispatcher.renameSession(sessionId: body.sessionId, title: body.title),
     );
   }

@@ -373,7 +373,10 @@ sessions; owning-package analysis.
 
 **Deliverable / expected result:** Typed route, enriched session views, scheduler and cancellation
 integration. Opt-in headless API works. Uses step 3 storage; no further schema change.
-Estimate 1,000–1,500 authored lines.
+Measured implementation is about 1,630 authored lines before its final evidence
+record. The small soft-cap overage keeps the timer, ordered cancellation and
+normal dispatch path together with their regression tests; no generated churn
+or additional schema change is included.
 
 **Risk and validation:** Focused service, route, event ordering, cancellation and restart tests;
 headless integration. Verify one consumed attempt and normal prompt selection preservation.

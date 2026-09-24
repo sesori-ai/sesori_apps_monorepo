@@ -375,6 +375,91 @@ void main() {
     await runFuture.timeout(const Duration(seconds: 5));
   });
 
+  test("quota projection commits before handoff and native activity cancels it in source order", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    await relayServer.nextClient();
+    await harness.activatePlugins();
+    await _insertEventSession(database: harness.database, pluginId: "one");
+    final pluginRuntime = runtimeForLifecycleService(service: harness.lifecycleService) as TestPluginRuntime;
+    final updates = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriSessionUpdated)
+        .cast<SesoriSessionUpdated>();
+    final reported = updates.firstWhere(
+      (event) => event.info.autoContinuation?.status is SessionAutoContinuationResetKnown,
+    );
+    final observed = DateTime.now().toUtc();
+    final reset = observed.add(const Duration(hours: 1));
+
+    Future<void> handoff() {
+      final consumed = Completer<void>();
+      pluginRuntime.emitRuntimeEvent(
+        pluginId: "one",
+        event: const BridgeSseTerminalHandoff(event: BridgeSseVcsBranchUpdated()),
+        allowDuringStop: true,
+        terminalHandoffConsumed: consumed,
+      );
+      return consumed.future.timeout(const Duration(seconds: 2));
+    }
+
+    pluginRuntime.emitRuntimeEvent(
+      pluginId: "one",
+      allowDuringStop: false,
+      terminalHandoffConsumed: null,
+      event: BridgeSseSessionQuotaBlocked(
+        sessionID: "backend-session",
+        interruption: PluginQuotaInterruption(
+          errorMessageId: "quota-error",
+          observedAt: observed,
+          reset: PluginQuotaResetKnown(resetAt: reset),
+        ),
+      ),
+    );
+    await handoff();
+
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "PATCH",
+        "/session/auto-continuation",
+        body: jsonEncode(
+          const SetSessionAutoContinuationRequest(sessionId: "stable-session", enabled: false).toJson(),
+        ),
+      ),
+    );
+    expect(response.status, 200);
+    expect(
+      Session.fromJson(jsonDecodeMap(response.body!)).autoContinuation!.status,
+      isA<SessionAutoContinuationResetKnown>(),
+    );
+    final projected = await reported.timeout(const Duration(seconds: 2));
+    expect(projected.info.id, "stable-session");
+    expect(
+      Session.fromJson(jsonDecodeMap(response.body!)).autoContinuation!.status,
+      projected.info.autoContinuation!.status,
+    );
+
+    final cancelled = updates.firstWhere((event) => event.info.autoContinuation?.status is SessionAutoContinuationIdle);
+    pluginRuntime.emitRuntimeEvent(
+      pluginId: "one",
+      allowDuringStop: false,
+      terminalHandoffConsumed: null,
+      event: const BridgeSseSessionPromptDefaultsChanged(sessionID: "backend-session", agent: "Default", model: null),
+    );
+    await handoff();
+    expect((await cancelled.timeout(const Duration(seconds: 2))).info.autoContinuation!.enabled, isFalse);
+    await harness.composition.session.cancel();
+    await running.stopped.timeout(const Duration(seconds: 5));
+  });
+
   test("post-normalization work is concurrent across plugins and ordered within each plugin", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(

@@ -9,7 +9,6 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_attachm
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
-
 import "../helpers/test_helpers.dart";
 
 void main() {
@@ -514,12 +513,8 @@ void main() {
         ),
       );
 
-      await api.getMessages(
-        sessionId: "session-1",
-        limit: 50,
-        before: 100,
-        storedOnly: false,
-      );
+      await api.getMessages(sessionId: "session-1", limit: 50, before: 100,
+storedOnly: false,);
 
       final verification = verify(
         () => client.post<MessageWithPartsResponse>(

@@ -16,7 +16,7 @@ class const SessionViewService({
     if (session == null) {
       throw PluginOperationException.notFound("getSession", message: "session $sessionId was not found");
     }
-    return enrich(session: session);
+    return await enrich(session: session);
   }
 
   Future<Session> enrich({required Session session}) async => (await enrichMany(sessions: [session])).single;

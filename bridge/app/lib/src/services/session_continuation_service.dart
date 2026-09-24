@@ -31,10 +31,10 @@ class const SessionContinuationService({
     operation: SessionOperation.setAutoContinuation,
     body: () async {
       final before = await _views.get(sessionId: sessionId);
+      if (before.autoContinuation?.enabled == enabled) return before;
       if (enabled && before.autoContinuation?.availability != AutoContinuationAvailability.conditional) {
         throw const SessionAutoContinuationUnavailableException();
       }
-      if (before.autoContinuation?.enabled == enabled) return before;
       await _continuations.setEnabledAlreadyReserved(sessionId: sessionId, enabled: enabled);
       final updated = await _views.get(sessionId: sessionId);
       _notify(session: updated);

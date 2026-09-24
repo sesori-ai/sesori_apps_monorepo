@@ -13,7 +13,26 @@ final class const EmptySessionContinuations() implements SessionContinuationRepo
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+final class RecordingSessionContinuations() implements SessionContinuationRepository {
+  final List<String> cancellations = [];
+  Object? cancellationError;
+  bool changed = false;
+
+  @override
+  Future<bool> cancelCurrentObservationAlreadyReserved({required String sessionId}) async {
+    if (cancellationError case final error?) throw error;
+    cancellations.add(sessionId);
+    return changed;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 final class const PassThroughSessionViews() implements SessionViewService {
+  @override
+  Future<Session> get({required String sessionId}) => Future.error(StateError("fixture projection unavailable"));
+
   @override
   Future<Session> enrich({required Session session}) async => session;
 

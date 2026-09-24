@@ -4,11 +4,10 @@
 
 Plugins report a terminal quota interruption with the visible error's identity,
 original observation time, and either an absolute UTC reset or an explicit
-unknown reset. Reporting is internal to the bridge. Scheduled sending and chat
-opt-in controls are subsequent steps of the
+unknown reset. The headless bridge persists session opt-in, exposes
+`PATCH /session/auto-continuation`, and sends one ordinary `Continue.` after
+a known reset plus two minutes. Chat opt-in controls are a subsequent step of the
 [active plan](../../.plan/active/quota-auto-continuation/PLAN.md).
-The bridge has durable session-owned continuation storage and shared wire
-models; runtime event handling, the toggle route and the timer follow separately.
 
 ## Required Behavior
 
@@ -43,10 +42,29 @@ models; runtime event handling, the toggle route and the timer follow separately
   Due-record selection uses the caller's reset and pause cutoffs consistently
   for batch and named-session reads; repositories do not choose a retry policy.
 - An omitted `Session.autoContinuation` remains unavailable to clients. Unknown
-  future status/enum values decode conservatively. This step does not populate
-  the view in routes or SSE and does not enable scheduling.
+  future status/enum values decode conservatively. New bridge session responses
+  and updates carry the durable preference and outcome. Enabling an unavailable
+  harness returns 501; disabling remains possible. Repeating the same setting
+  succeeds without another mutation.
 - History-derived model/agent/variant defaults preserve the stored fast-mode
   preference; missing history selection falls back to stored defaults.
+- A single bridge timer checks due records every 30 seconds and on startup.
+  Reset plus buffer, rather than time since observation, determines eligibility.
+  A failed tick remains observable and rearms; disposal drains an in-flight tick.
+- Readiness is checked before history and again before consuming the attempt.
+  Busy, retrying, queued, pending-input, unknown and unavailable sessions pause
+  for five minutes before rechecking; history failure also pauses. The latest
+  history entry must still be the observed error.
+- The attempt is persisted as consumed before ordinary prompt submission, with
+  the existing selection preserved. Rejection does not retry. Failure to record
+  acceptance leaves an unconfirmed attempt and cannot cause a duplicate send.
+- Disable suppresses sending while preserving the observation. Manual send,
+  Stop and archive durably cancel it before their primary operation; failure to
+  save that cancellation blocks the action. A failed notification is logged and
+  does not fail a successfully saved cancellation or its primary action.
+- Quota observations and newer native user activity/default changes are awaited
+  in the existing source-event order before a subsequent terminal handoff.
+  Native prompt-default events remain internal; only committed defaults publish.
 
 ## Coverage Worth Running
 
@@ -62,13 +80,17 @@ models; runtime event handling, the toggle route and the timer follow separately
   terminal quota text, transient recovery and retry exhaustion must each end in
   exactly one final settlement. See the dated
   [evidence record](../../.plan/active/quota-auto-continuation/EVIDENCE.md).
+- **L1/L2:** Scheduler, timer, mutation and route suites plus the composed bridge
+  event/handoff test. Cover opt-in persistence, reset buffer, recheck backoff,
+  disable/re-enable, future interruptions, normal prompt selection, durable
+  cancellation failures, and consumed/unconfirmed attempts without resend.
 - **L3:** Real provider account exhaustion on each supported production harness,
   then the eventual opt-in → reset → one scheduled `Continue.` journey. This
   remains required in later plan steps; synthetic protocol tests do not establish
   that end-to-end behavior.
-- **L4:** Exercise the eventual scheduler through bridge restart, host sleep,
+- **L4:** Exercise the scheduler through bridge restart, host sleep,
   recovery, concurrent manual actions, multiple clients and alternate platforms.
-  These extended scenarios also remain pending the scheduler and client steps.
+  The full live and client matrix remains pending final verification.
 
 ## Material Failure Signals
 
@@ -76,9 +98,11 @@ models; runtime event handling, the toggle route and the timer follow separately
 - The observation references a different error ID than live/history projection.
 - Redelivery moves a relative reset forward, or an ambiguous time becomes known.
 - A cancelled turn leaves a candidate that a later result can publish.
-- An internal reporting event leaks into client transport or schedules a prompt.
+- An internal reporting event leaks into client transport or sends without opt-in.
 - A restart loses an opt-in or pause deadline, or replays a consumed observation.
 - Non-idle/unknown readiness is treated as permission to send.
+- A prompt is sent before the reset buffer, twice for one observation, or after
+  disable/manual cancellation; failed acceptance recording causes a retry.
 - History replay silently clears a session's fast-mode preference.
 
 ## Harness Scope

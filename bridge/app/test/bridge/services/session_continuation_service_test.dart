@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/repositories/models/session_continuation_recor
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/routing/set_session_auto_continuation_handler.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/services/session_continuation_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
@@ -19,6 +20,7 @@ import "package:test/test.dart";
 
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
+import "../routing/routing_test_helpers.dart" show RequestHandlerTestMatching, makeRequest;
 
 void main() {
   late AppDatabase db;
@@ -106,11 +108,61 @@ void main() {
     );
     await service.setEnabled(sessionId: "session", enabled: true);
     sessions.availability = AutoContinuationAvailability.unavailable;
+    final publications = mutations.sessions.length;
+    expect((await service.setEnabled(sessionId: "session", enabled: true)).autoContinuation!.enabled, isTrue);
+    expect(mutations.sessions.length, publications);
+    expect((await service.setEnabled(sessionId: "session", enabled: false)).autoContinuation!.enabled, isFalse);
     await expectLater(
       service.setEnabled(sessionId: "session", enabled: true),
       throwsA(isA<SessionAutoContinuationUnavailableException>()),
     );
-    expect((await service.setEnabled(sessionId: "session", enabled: false)).autoContinuation!.enabled, isFalse);
+  });
+
+  test("toggle route returns durable state and explicitly rejects unavailable enabling", () async {
+    final handler = SetSessionAutoContinuationHandler(service: service);
+    final request = makeRequest("PATCH", "/session/auto-continuation");
+    expect(handler.canHandle(request), isTrue);
+    final enabled = await handler.handle(
+      request,
+      body: const SetSessionAutoContinuationRequest(sessionId: "session", enabled: true),
+    );
+    expect(enabled.autoContinuation!.enabled, isTrue);
+    expect((await records.read(sessionId: "session")).enabled, isTrue);
+    sessions.availability = AutoContinuationAvailability.unavailable;
+    final disabled = await handler.handle(
+      request,
+      body: const SetSessionAutoContinuationRequest(sessionId: "session", enabled: false),
+    );
+    expect(disabled.autoContinuation!.enabled, isFalse);
+    expect((await records.read(sessionId: "session")).enabled, isFalse);
+    await expectLater(
+      handler.handle(request, body: const SetSessionAutoContinuationRequest(sessionId: "session", enabled: true)),
+      throwsA(isA<RelayResponse>().having((response) => response.status, "status", 501)),
+    );
+  });
+
+  test("disable prevents the due send; re-enable and future interruptions retain the preference", () async {
+    await arm();
+    await service.setEnabled(sessionId: "session", enabled: false);
+    now = reset.add(const Duration(minutes: 2));
+    await service.runDue();
+    expect(prompts.sent, isEmpty);
+    await service.setEnabled(sessionId: "session", enabled: true);
+    await service.runDue();
+    expect(prompts.sent, hasLength(1));
+    sessions.errorId = "next-quota-error";
+    await service.observeQuota(
+      sessionId: "session",
+      pluginId: "plugin",
+      generation: 1,
+      errorMessageId: sessions.errorId,
+      observedAt: now,
+      resetAt: now.add(const Duration(hours: 1)),
+    );
+    now = now.add(const Duration(hours: 1, minutes: 2));
+    await service.runDue();
+    expect(prompts.sent, hasLength(2));
+    expect((await records.read(sessionId: "session")).enabled, isTrue);
   });
 
   test("uses reset plus buffer, preserves prompt selection, and consumes before one ordinary send", () async {
@@ -292,9 +344,7 @@ void main() {
   });
 }
 
-class _OutcomeRepository({required SessionContinuationDao dao, required PluginRuntime runtime})
-    extends SessionContinuationRepository {
-  this : super(dao: dao, runtime: runtime);
+class _OutcomeRepository({required super.dao, required super.runtime}) extends SessionContinuationRepository {
   bool failSubmitted = false;
   @override
   Future<void> writeOutcomeAlreadyReserved({

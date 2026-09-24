@@ -21,6 +21,6 @@ class CreateSessionHandler({
     RelayRequest request, {
     required CreateSessionRequest body,
   }) async {
-    return _sessionViews.enrich(session: await _sessionCreationService.createSession(request: body));
+    return await _sessionViews.enrich(session: await _sessionCreationService.createSession(request: body));
   }
 }

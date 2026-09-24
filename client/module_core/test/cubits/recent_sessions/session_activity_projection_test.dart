@@ -187,14 +187,7 @@ void main() {
 
     expect(
       projection.recent.map((item) => (item.project.id, item.entry.session.id)),
-      [
-        ("two", "two-unseen"),
-        ("one", "one-4"),
-        ("one", "one-3"),
-        ("one", "one-2"),
-        ("one", "one-1"),
-        ("two", "two-old"),
-      ],
+      [("two", "two-unseen"), ("one", "one-4"), ("one", "one-3"), ("one", "one-2"), ("one", "one-1"), ("two", "two-old")],
     );
     expect(projection.recent.first.entry.isUnseen, isTrue);
   });
