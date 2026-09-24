@@ -181,5 +181,6 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Session creation and options](session-creation-and-options.md)
 - [Session history and recovery](session-history-and-recovery.md)
 - [Session turns](session-turns.md)
+- [Quota auto continuation](quota-auto-continuation.md)
 - [Tools and file changes](tools-and-file-changes.md)
 - [Voice input](voice-input.md)

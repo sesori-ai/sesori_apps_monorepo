@@ -127,6 +127,8 @@ Required supported-source work:
   tested fallback. Anchor a time-only reset to the error's date and named zone;
   handle day rollover/DST or report unknown instead of guessing. Keep this
   parsing inside Claude. Retain at most one candidate in existing turn state.
+  Step 2 ships the tagged-error path; process-wide rejected-window binding is
+  still unverified, so it adds no unused structured-rate-limit parsing.
 - **Pi:** on the final failed/settled turn, parse recognized `openai-codex` quota
   errors with an explicit duration. Convert duration relative to the original
   error timestamp, once. Prefer structured provider diagnostics if the pinned
@@ -340,6 +342,7 @@ change.
 
 **Deliverable / expected result:** Internal typed event/capability and verified plugin implementations;
 current errors still render. No scheduled sends or database change. Estimate 600–1,000 authored lines.
+Named-session readiness lands with its scheduler consumer in step 3; step 2 establishes reporting only.
 
 **Risk and validation:** Parser/dispatcher tests for each supporting seam,
 unknown/no-reset/false-positive/native-retry cases; analyze touched packages; matrix updated with actual

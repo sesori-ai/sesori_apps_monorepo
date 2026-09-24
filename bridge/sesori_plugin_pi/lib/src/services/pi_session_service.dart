@@ -9,6 +9,7 @@ import "../api/models/pi_event.dart";
 import "../api/models/pi_extension_ui_request.dart";
 import "../api/models/pi_rpc_frame.dart";
 import "../api/pi_rpc_client.dart";
+import "../repositories/mappers/pi_quota_interruption_mapper.dart";
 import "../repositories/pi_session_catalog_repository.dart";
 import "../repositories/pi_session_process_repository.dart";
 import "pi_event_dispatcher.dart";
@@ -47,6 +48,7 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   /// The current resident whose frames may outlive a bridge-admitted prompt.
   int? residentGeneration;
   bool agentRunning = false;
+  PluginQuotaInterruption? quotaCandidate;
   int generation = 0;
   int idleGeneration = 0;
 
@@ -147,6 +149,7 @@ final class PiSessionService({
   required final PiSessionProcessRepository processRepository,
   required final PiSessionCatalogRepository catalogRepository,
   required final PiEventDispatcher eventDispatcher,
+  required final PiQuotaInterruptionMapper quotaMapper,
   required final PiExtensionUiService extensionUiService,
   required final ServerClock clock,
   required final Duration? Function() resolveIdleTimeout,
@@ -161,6 +164,7 @@ final class PiSessionService({
   final PiSessionProcessRepository _processes = processRepository;
   final PiSessionCatalogRepository _catalog = catalogRepository;
   final PiEventDispatcher _dispatcher = eventDispatcher;
+  final PiQuotaInterruptionMapper _quotaMapper = quotaMapper;
   final PiExtensionUiService _extensionUi = extensionUiService;
   final ServerClock _clock = clock;
   final Duration? Function() _resolveIdleTimeout = resolveIdleTimeout;
@@ -714,6 +718,11 @@ final class PiSessionService({
     }
     switch (processFrame.frame) {
       case PiEventFrame(:final event):
+        if (event is PiAgentStartEvent ||
+            event is PiAutoRetryStartEvent ||
+            event is PiAutoRetryEndEvent && event.success) {
+          state.quotaCandidate = null;
+        }
         final wasAgentRunning = state.agentRunning;
         if (event is PiAgentStartEvent) {
           state.agentRunning = true;
@@ -757,6 +766,13 @@ final class PiSessionService({
             state.status != mappedStatus;
         if (statusChanged) state.status = mappedStatus;
         final mappedEvents = _dispatcher.map(sessionId: processFrame.sessionId, event: event, now: now);
+        if (event is PiMessageEndEvent) {
+          state.quotaCandidate = _quotaMapper.map(
+            event: event,
+            mappedMessage: mappedEvents.whereType<BridgeSseMessageUpdated>().firstOrNull?.info,
+            observedAt: now,
+          );
+        }
         for (final mapped in mappedEvents) {
           final serviceOwnsLifecycle =
               (event is PiAgentStartEvent || event is PiAgentSettledEvent) &&
@@ -776,6 +792,11 @@ final class PiSessionService({
         }
         if (statusChanged) _emit(const BridgeSseProjectUpdated());
         if (event is PiAgentSettledEvent) {
+          final candidate = state.quotaCandidate;
+          state.quotaCandidate = null;
+          if (candidate != null) {
+            _emit(BridgeSseSessionQuotaBlocked(sessionID: processFrame.sessionId, interruption: candidate));
+          }
           var finishedPromptTurn = false;
           for (final turn in List<_PiTurn>.of(generationTurns)) {
             if (turn.promptDispatched && turn.responseSucceeded) {
@@ -873,6 +894,7 @@ final class PiSessionService({
     final agentInitiatedTurnFailed = affected.isEmpty && state.agentRunning;
     if (affected.isEmpty && !agentInitiatedTurnFailed) return;
     final failure = PiRpcProcessExitException(exitCode: exit.exitCode);
+    state.quotaCandidate = null;
     _clearCompaction(sessionId: exit.sessionId);
     state.agentRunning = false;
     if (agentInitiatedTurnFailed) {
@@ -1079,6 +1101,7 @@ final class PiSessionService({
     }
     state.generation++;
     state.idleGeneration++;
+    state.quotaCandidate = null;
     final cancelled = state.turns.toList(growable: false);
     final hadQueuedPresentations = cancelled.any(
       (turn) => turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.visible,

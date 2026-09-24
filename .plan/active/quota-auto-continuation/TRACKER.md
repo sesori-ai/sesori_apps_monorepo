@@ -4,8 +4,8 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **6 PRs
 
 | Step | State | PR / evidence |
 |---|---|---|
-| 1 — Plan and support audit | PR open | [#1601][plan-pr]; audit and reviewed plan. |
-| 2 — Quota normalization | Not started | Verify payloads across registered harnesses. |
+| 1 — Plan and support audit | Merged | [#1601][plan-pr]; audit and reviewed plan. |
+| 2 — Quota normalization | Implemented; entering PR | Typed terminal events; Claude/Pi reporting verified. |
 | 3 — Bridge state and scheduler | Not started | Includes typed route, persistence and normal prompt dispatch. |
 | 4 — Shared chat controls | Not started | Inline hint, indicator and three-dot toggle on phone and desktop. |
 | 5 — Regression reconciliation | Not started | Complete affected feature docs and capability matrix. |
@@ -44,5 +44,10 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **6 PRs
 - Further review: corrected Codex evidence status, single-owner plugin decisions,
   and awaited quota handling in the existing event/handoff order.
 - Plan links / diff checks: passed on the final documentation revision.
-- Product tests / live scheduled continuation: not run; no implementation exists.
+- Step 2: focused Claude/Pi lifecycle and parser tests and core routing tests
+  passed; owning packages analyze cleanly. Published Pi 0.85.1 and 0.84.1
+  synthetic-provider RPC probes verified terminal settlement and retry ordering.
+- Step 2 architecture implementation review: approved; plugin normalization and
+  existing session services retain their ownership boundaries.
+- Live scheduled continuation: not run; scheduler and controls are not implemented.
 - Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.

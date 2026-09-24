@@ -27,6 +27,7 @@ class BridgeEventMapper({
         BridgeSseSessionCreated(:final info) => _tryParseSseEvent({"type": "session.created", "info": info}),
         BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
         BridgeSseSessionOptionsChanged() => null,
+        BridgeSseSessionQuotaBlocked() => null,
         BridgeSseSessionPromptDefaultsChanged(
           :final sessionID,
           :final agent,

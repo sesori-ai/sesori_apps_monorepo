@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:claude_plugin/claude_plugin.dart";
 import "package:claude_plugin/claude_testing.dart";
+import "package:claude_plugin/src/repositories/mappers/claude_quota_interruption_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -986,6 +987,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
     sessionService = ClaudeSessionService(
       processes: processRepository,
       approvals: approvals,
+      quotaMapper: ClaudeQuotaInterruptionMapper(contentMapper: const ClaudeContentMapper()),
       clock: const _NeverIdleClock(),
       resolveIdleTimeout: () => const Duration(minutes: 5),
       idleTimeoutChanges: const Stream<Duration?>.empty(),

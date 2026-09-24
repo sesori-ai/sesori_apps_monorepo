@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:claude_plugin/claude_plugin.dart";
 import "package:claude_plugin/claude_testing.dart";
+import "package:claude_plugin/src/repositories/mappers/claude_quota_interruption_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -18,6 +19,67 @@ void main() {
     tearDown(() async {
       await harness.dispose();
     });
+
+    for (final scenario in ["terminal", "recovered", "subagent", "aborted", "warning", "child progress"]) {
+      test("quota observation waits for terminal root failure: $scenario", () async {
+        unawaited(harness.enqueue("prompt", model: "haiku"));
+        final process = await harness.firstProcess;
+        await _waitForUserFrames(process, 1);
+        process.emit(_replayOf(_userFrames(process).single, uuid: "user-replay"));
+        final error = <String, Object?>{
+          "type": "assistant",
+          "session_id": testSessionId,
+          "error": "rate_limit",
+          "timestamp": "2026-09-23T14:12:51Z",
+          "message": {
+            "id": "quota-error",
+            "content": [
+              {"type": "text", "text": "You've hit your session limit · resets 6:30pm (Europe/Sofia)"},
+            ],
+          },
+        };
+        if (scenario == "warning") {
+          process.emit({
+            "type": "rate_limit_event",
+            "rate_limit_info": {"status": "rejected", "resetsAt": 1790000000},
+          });
+        } else {
+          process.emit({...error, if (scenario == "subagent") "parent_tool_use_id": "child-tool"});
+        }
+        await pump();
+        expect(harness.events.whereType<BridgeSseSessionQuotaBlocked>(), isEmpty);
+        if (scenario == "recovered" || scenario == "child progress") {
+          process.emit({
+            "type": "assistant",
+            "session_id": testSessionId,
+            if (scenario == "child progress") "parent_tool_use_id": "child-tool",
+            "message": {
+              "id": "success",
+              "content": [
+                {"type": "text", "text": "Done"},
+              ],
+            },
+          });
+        }
+        process.emit({
+          ..._result(),
+          "is_error": scenario != "recovered",
+          if (scenario == "aborted") "terminal_reason": "aborted_streaming",
+        });
+        await harness.waitForIdle();
+        await pump();
+        final reports = harness.events.whereType<BridgeSseSessionQuotaBlocked>().toList();
+        if (scenario == "terminal" || scenario == "child progress") {
+          expect(reports.single.sessionID, testSessionId);
+          expect(reports.single.interruption.errorMessageId, "quota-error");
+        } else {
+          expect(reports, isEmpty);
+        }
+        process.emit({..._result(), "is_error": true});
+        await pump();
+        expect(harness.events.whereType<BridgeSseSessionQuotaBlocked>().length, reports.length);
+      });
+    }
 
     test("dispatches same-effort prompts as steering input", () async {
       unawaited(harness.enqueue("first", model: "haiku"));
@@ -913,6 +975,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
     service = ClaudeSessionService(
       processes: repository,
       approvals: approvals,
+      quotaMapper: ClaudeQuotaInterruptionMapper(contentMapper: const ClaudeContentMapper()),
       clock: clock,
       resolveIdleTimeout: () => idleTimeout,
       idleTimeoutChanges: idleTimeoutChanges.stream,

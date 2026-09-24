@@ -23,6 +23,22 @@ void main() {
       return mapper.map(event: event, pluginId: "test-plugin");
     }
 
+    test("internal quota reports never become client SSE payloads", () {
+      expect(
+        mapEvent(
+          BridgeSseSessionQuotaBlocked(
+            sessionID: "session",
+            interruption: PluginQuotaInterruption(
+              errorMessageId: "error",
+              observedAt: DateTime.utc(2026, 9, 23),
+              reset: const PluginQuotaResetUnknown(),
+            ),
+          ),
+        ),
+        isNull,
+      );
+    });
+
     test("finalized part events require the store-before-delivery mapping seam", () {
       expect(
         mapper.map(

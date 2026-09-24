@@ -91,6 +91,43 @@ supported runtime's live RPC/retry path; that capability remains unverified.
 These moving upstream sources were read on 2026-09-23. During implementation,
 verify the pinned driven runtime and commit/release before advertising support.
 
+## Step 2 implementation evidence — 2026-09-24
+
+- Pi's pinned [0.85.1 formatter][pi-pinned-error] constructs the observed
+  ChatGPT usage-limit text and approximate minutes from provider `resets_at`.
+  Raw generic 429 text does not qualify in Sesori.
+- Live RPC probes ran the published Pi **0.85.1** and **0.84.1** packages with an
+  isolated synthetic provider, no tools, no discovered extensions, no persisted
+  session and no model API requests. On both versions:
+  - The observed quota text arrived as an assistant `message_end` with
+    `provider: openai-codex`, `stopReason: error`, and numeric timestamp, followed
+    by `agent_end(willRetry: false)` and `agent_settled`.
+  - A retryable failure followed by success emitted `auto_retry_end(success:
+    true)` before final `agent_settled`.
+  - A retryable failure exhausting the one-retry test budget emitted
+    `auto_retry_end(success: false)` before final `agent_settled`.
+  These are runtime/protocol probes, not evidence of live account exhaustion.
+  They agree with the pinned [target][pi-pinned-session] and
+  [PATH-floor][pi-floor-session] retry/settlement implementations.
+- Focused plugin tests bind each observation to the visible error ID, wait for
+  terminal settlement, and exclude successful recovery, cancellation, generic
+  failures and forwarded Claude child errors. Core tests preserve that ID when
+  translating the session ID and prevent internal quota events reaching client
+  SSE directly. Unknown resets stay typed as unknown.
+- Claude uses the locally observed tagged session-limit text. The SDK's
+  process-wide `rate_limit_event` has no verified failed-message binding and
+  remains unused. Date-less times are accepted only on the original local date;
+  unsupported dates, ambiguous DST times and stale times remain unknown.
+- Codex and the other harnesses retain their unverified reporting status. This
+  step adds no account-bucket guesses, scheduler, database state or chat controls.
+
+[pi-pinned-error]:
+  https://github.com/earendil-works/pi/blob/v0.85.1/packages/ai/src/api/openai-codex-responses.ts
+[pi-pinned-session]:
+  https://github.com/earendil-works/pi/blob/v0.85.1/packages/coding-agent/src/core/agent-session.ts
+[pi-floor-session]:
+  https://github.com/earendil-works/pi/blob/v0.84.1/packages/coding-agent/src/core/agent-session.ts
+
 [claude-types]:
   https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/types.py
 [claude-parser]:

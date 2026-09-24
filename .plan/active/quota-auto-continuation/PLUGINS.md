@@ -7,16 +7,19 @@ its pinned runtime passes the parser, terminal-reporting and readiness checks.
 
 ## Claude Code — `bridge/sesori_plugin_claude`
 
-- **API:** `api/models/claude_stream_message.dart` / `ClaudeRateLimitMessage`
-  gains typed reset/status fields, replacing raw rate-limit payload access.
-  `api/claude_stream_client.dart` remains the transport owner. API parsing has
-  no repository, service or bridge-core dependency.
+- **API:** existing `ClaudeAssistantMessage` supplies the typed error tag,
+  root/child attribution, stable message ID and original timestamp.
+  `api/claude_stream_client.dart` remains the transport owner. Step 2 leaves
+  `ClaudeRateLimitMessage` unchanged: no rejected-window/message binding was
+  verified, so those process-wide frames remain unused. Add typed reset/status
+  fields only when that binding has a verified consumer.
 - **Repository mapping:** new
   `repositories/mappers/claude_quota_interruption_mapper.dart` /
-  `ClaudeQuotaInterruptionMapper` maps typed rejected-limit data and the narrowly
-  recognized tagged error fallback into `PluginQuotaInterruption`. It is
+  `ClaudeQuotaInterruptionMapper` maps the narrowly recognized tagged error
+  into `PluginQuotaInterruption`. It is
   stateless: named inputs supply the stable error ID, original observation time,
-  and typed provider data. Time-zone parsing remains inside this plugin.
+  and typed provider data. Time-zone parsing remains inside this plugin;
+  unsupported or ambiguous date/time formats produce an unknown reset.
 - **Turn lifecycle:** `services/claude_session_service.dart` /
   `ClaudeSessionService` alone invokes the mapper from its existing process-event
   handling, retains at most one candidate in its turn state, and releases it
