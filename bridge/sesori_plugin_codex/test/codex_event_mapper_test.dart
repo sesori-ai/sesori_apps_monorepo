@@ -365,6 +365,24 @@ void main() {
       );
     });
 
+    for (final status in [
+      {"type": "notLoaded"},
+      {
+        "status": {"type": "notLoaded"},
+      },
+    ]) {
+      test("thread/status/changed maps unloaded status $status to idle", () {
+        final events = mapper.map(
+          CodexServerNotification(
+            method: "thread/status/changed",
+            params: {"threadId": "t-1", "status": status},
+          ),
+        );
+
+        expect((events.single as BridgeSseSessionStatus).status, isA<PluginSessionStatusIdle>());
+      });
+    }
+
     test("item userMessage → MessageUpdated + MessagePartUpdated", () {
       final events = mapper.map(
         const CodexServerNotification(
