@@ -391,7 +391,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       SessionDetailHarnessUnavailable(:final interaction, :final session) => Center(
         child: PregoTopBarInsetBuilder(
           builder: (context, topInset, child) => Padding(
-            padding: EdgeInsets.only(top: topInset),
+            padding: EdgeInsetsDirectional.only(top: topInset),
             child: SingleChildScrollView(child: child),
           ),
           child: Column(
