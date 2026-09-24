@@ -5,8 +5,9 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 
 /// The composer's advanced-options drawer: a chevron opens a pill containing
-/// the image-attach action and slash-commands picker. Choosing an action
-/// collapses the pill; the open state has no manual collapse control.
+/// the image-attach action and slash-commands picker. Choosing an action or
+/// starting to type collapses the pill; the open state has no manual collapse
+/// control.
 ///
 /// Matches Figma `View options actions left` (4602:14568): a flat bordered
 /// 44pt pill with 32pt icon buttons separated by 8pt.
@@ -21,8 +22,13 @@ class const ComposerOptionsAccordion({
   /// image parts get no attach button rather than one that loses the image.
   required final bool showAttachImage,
 
-  /// Keeps `+` and `/` visible instead of folding them behind the chevron.
+  /// Keeps `+` and `/` visible instead of folding them behind the chevron,
+  /// except while [isTyping].
   required final bool alwaysOpen,
+
+  /// Whether the composer holds text. Typing folds the actions away so the
+  /// field gets the room; the chevron still reopens them.
+  required final bool isTyping,
   required final VoidCallback onSlashCommandsTap,
   required final VoidCallback onAttachImageTap,
 }) extends StatefulWidget {
@@ -33,17 +39,25 @@ class const ComposerOptionsAccordion({
 class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
   bool _isOpen = false;
 
-  /// After an action the pill folds again, unless it never folds.
+  @override
+  void didUpdateWidget(ComposerOptionsAccordion oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isTyping && !oldWidget.isTyping) _isOpen = false;
+  }
+
+  /// After an action the pill folds again, unless it is open by default.
   void _collapse() {
-    if (widget.alwaysOpen) return;
+    if (_isOpenByDefault) return;
     setState(() => _isOpen = false);
   }
+
+  bool get _isOpenByDefault => widget.alwaysOpen && !widget.isTyping;
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final isOpen = _isOpen || widget.alwaysOpen;
+    final isOpen = _isOpen || _isOpenByDefault;
 
     return DecoratedBox(
       decoration: BoxDecoration(
