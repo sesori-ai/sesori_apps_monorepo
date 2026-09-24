@@ -82,8 +82,8 @@ The main pane hosts one full-width routed page.
   signed-in cockpit owns one project-list cubit, including the home pane;
   leaving the signed-in shell releases it.
 - Activity appears before projects, under an “Activity · N” header that counts its sessions, and lists only what is
-  in motion: non-archived sessions that are running, waiting on the user, or live-unseen and not set aside. It spans
-  every current project, including collapsed/offscreen projects, preserves project/session source order and
+  in motion: non-archived sessions that are running, or that wait on the user or are live-unseen and not set aside. It
+  spans every current project, including collapsed/offscreen projects, preserves project/session source order and
   identifies each session's project. Sessions never leave their project: an Activity session also keeps its place in
   the project's ordinary rows.
 - Marking a session unread on this desktop (sidebar or sessions-page menu) sets it aside: the desktop layout file

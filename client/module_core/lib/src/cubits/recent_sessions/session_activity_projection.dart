@@ -51,8 +51,9 @@ final class SessionActivityProjection._({required final List<SessionActivityGrou
         final deferredAt = deferredSessions[session.id];
         final isSetAside = isUnseen && deferredAt != null && deferredAt == session.time?.updated;
         final isAwaitingInput = entry.isAwaitingInput(session: session);
-        // A pending question need not keep the agent running, and still needs the user.
-        final inMotion = isRunning || isAwaitingInput || (isUnseen && !isSetAside);
+        // A pending question need not keep the agent running, and still needs the
+        // user until they set it aside.
+        final inMotion = isRunning || ((isAwaitingInput || isUnseen) && !isSetAside);
         // Setting a session aside is explicit, so it beats the sticky selection too.
         final isSticky = session.id == stickySessionId && !isSetAside;
         if (!inMotion && !isSticky) continue;
