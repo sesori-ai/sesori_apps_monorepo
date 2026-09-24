@@ -785,6 +785,7 @@ class SessionDetailCubit(
       current.copyWith(
         isRefreshing: true,
         isLoadingOlderMessages: false,
+        bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
         sendingSubmission: queue.sendingSubmission,
@@ -907,6 +908,7 @@ class SessionDetailCubit(
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
               bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
+              bridgePromptAttachments: queue.bridgePromptAttachments,
               assistantAgentModel: assistantAgentModel,
               children: refreshedChildSessions,
               childStatuses: derived.childStatuses,
@@ -980,6 +982,7 @@ class SessionDetailCubit(
     emit(
       latest.copyWith(
         isRefreshing: false,
+        bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
         sendingSubmission: queue.sendingSubmission,
@@ -1557,6 +1560,7 @@ class SessionDetailCubit(
     emit(
       current.copyWith(
         bridgeQueuedPrompts: bridgePrompts,
+        bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
         sendingSubmission: queue.sendingSubmission,
@@ -1574,13 +1578,12 @@ class SessionDetailCubit(
     if (isClosed) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
-    for (final prompt in prompts) {
-      _promptQueue.removeByPromptId(prompt.id);
-    }
+    _promptQueue.reconcileBridgeQueue(promptIds: {for (final prompt in prompts) prompt.id});
     final queue = _queueView(bridgePrompts: prompts);
     emit(
       current.copyWith(
         bridgeQueuedPrompts: prompts,
+        bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
         sendingSubmission: queue.sendingSubmission,
@@ -1612,6 +1615,7 @@ class SessionDetailCubit(
       emit(
         current.copyWith(
           bridgeQueuedPrompts: bridgePrompts,
+          bridgePromptAttachments: queue.bridgePromptAttachments,
           queuedMessages: queue.queuedMessages,
           awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
           sendingSubmission: queue.sendingSubmission,
@@ -1995,6 +1999,7 @@ class SessionDetailCubit(
     final queue = _queueView(bridgePrompts: current.bridgeQueuedPrompts);
     emit(
       current.copyWith(
+        bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
         sendingSubmission: queue.sendingSubmission,
@@ -2005,11 +2010,8 @@ class SessionDetailCubit(
   /// Drops staged copies a fresh snapshot proves the bridge already owns —
   /// listed in its queue or landed as a user message with the same prompt id.
   void _reconcileStagedWithSnapshot({required SessionDetailSnapshot snapshot, required int parkEpochAtFetch}) {
-    final owned = <String>{};
-    for (final prompt in snapshot.bridgeQueuedPrompts) {
-      owned.add(prompt.id);
-      _promptQueue.removeByPromptId(prompt.id);
-    }
+    final owned = {for (final prompt in snapshot.bridgeQueuedPrompts) prompt.id};
+    _promptQueue.reconcileBridgeQueue(promptIds: owned);
     for (final message in snapshot.messages) {
       if (message.info case MessageUser(promptId: final promptId?)) {
         // The snapshot holding the message at all proves the bridge owns the
@@ -2035,6 +2037,7 @@ class SessionDetailCubit(
     queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
     awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: bridgePrompts),
     sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
+    bridgePromptAttachments: _promptQueue.bridgePromptAttachments,
   );
 
   List<QueuedSessionSubmission> _visibleStagedItems({required List<QueuedSessionPrompt> bridgePrompts}) {
@@ -2798,7 +2801,12 @@ class SessionDetailCubit(
   }
 
   void _clearLocalPromptQueue() {
-    if (_promptQueue.isEmpty && !_promptQueue.isSending && _promptQueue.awaitingBridge.isEmpty) return;
+    if (_promptQueue.isEmpty &&
+        !_promptQueue.isSending &&
+        _promptQueue.awaitingBridge.isEmpty &&
+        _promptQueue.bridgePromptAttachments.isEmpty) {
+      return;
+    }
     _promptQueue.clear();
     _staleOptionsRecoveryAttemptedPromptIds.clear();
     final current = state;
@@ -2868,6 +2876,7 @@ class SessionDetailCubit(
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
       bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
+      bridgePromptAttachments: queue.bridgePromptAttachments,
       sessionTitle: snapshot.canonicalSessionTitle,
       session: session,
       pluginId: snapshot.pluginId,
@@ -2952,11 +2961,11 @@ class SessionDetailCubit(
 }
 
 typedef _QueueView = ({
+  Map<String, List<ComposerAttachment>> bridgePromptAttachments,
   List<QueuedSessionSubmission> queuedMessages,
   List<QueuedSessionSubmission> awaitingBridgeSubmissions,
   QueuedSessionSubmission? sendingSubmission,
 });
-
 
 typedef _SnapshotDerivation = ({
   List<Session> children,

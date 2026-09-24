@@ -29,9 +29,9 @@ class const QueuedMessageBubble({
   required final bool isCommand,
   required final int attachmentCount,
 
-  /// This surface retains its local previews through bridge queue dispatch.
-  /// Prompts from another surface expose only their bounded attachment count
-  /// and render an attachment indicator instead.
+  /// This surface retains bounded local previews through bridge queue dispatch.
+  /// Evicted previews and prompts from another surface render an attachment
+  /// count instead.
   required final List<ComposerAttachment> localAttachments,
   required final QueuedMessageBubblePresentation presentation,
 }) extends StatelessWidget {

@@ -36,6 +36,7 @@ class const SessionDetailMessageList({
   /// response and the bridge's queue event.
   final List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],
   required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
+  required final Map<String, List<ComposerAttachment>> bridgePromptAttachments,
   final void Function(String promptId)? onCancelBridgeQueuedPrompt,
   required final Map<String, String> streamingText,
   required final List<Session> children,
@@ -137,11 +138,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   _DetachedSnapshot? _snapshot;
   bool _loadOlderCallbackInFlight = false;
 
-  /// Bridge queue metadata carries only an attachment count. Keep this
-  /// surface's local previews until those rows leave the queue, even when
-  /// scrolling recycles their widgets. No image bytes are copied or persisted.
-  final Map<String, List<ComposerAttachment>> _bridgePromptAttachments = {};
-
   /// Cache for the id → data-source-index map consumed by the row
   /// builder. Keyed on a content signature of `(length, firstId,
   /// lastId)` — NOT list identity. The cubit's `state.messages` getter
@@ -178,7 +174,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   @override
   void didUpdateWidget(SessionDetailMessageList oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _retainBridgePromptAttachments(previous: oldWidget);
     final olderPageRequestCompleted = oldWidget.isLoadingOlderMessages && !widget.isLoadingOlderMessages;
     // While detached the snapshot keeps the list structure from shifting
     // under the reader; `_onFollowChanged` restores live inputs on reattach.
@@ -225,20 +220,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // history old enough to be paged back to has finished streaming and has
     // no running child work.
     //
-  }
-
-  void _retainBridgePromptAttachments({required SessionDetailMessageList previous}) {
-    final bridgePromptIds = {for (final prompt in widget.bridgeQueuedPrompts) prompt.id};
-    _bridgePromptAttachments.removeWhere((promptId, _) => !bridgePromptIds.contains(promptId));
-    for (final submission in [
-      ?previous.sendingSubmission,
-      ...previous.queuedMessages,
-      ...previous.awaitingBridgeSubmissions,
-    ]) {
-      if (submission.attachments.isNotEmpty && bridgePromptIds.contains(submission.promptId)) {
-        _bridgePromptAttachments[submission.promptId] = submission.attachments;
-      }
-    }
   }
 
   /// History prepended above the frozen transcript, in order. Empty when this
@@ -508,10 +489,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
               attachmentCount: prompt.attachmentCount,
-              localAttachments:
-                  transientSubmissions[entryId]?.submission.attachments ??
-                  _bridgePromptAttachments[prompt.id] ??
-                  const [],
+              localAttachments: widget.bridgePromptAttachments[prompt.id] ?? const [],
               presentation: switch (prompt.dispatchState) {
                 QueuedPromptDispatchState.dispatched => const QueuedMessageBubblePresentation.sending(),
                 QueuedPromptDispatchState.queued || QueuedPromptDispatchState.unknown =>

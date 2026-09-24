@@ -26,6 +26,7 @@ void main() {
       isRootSession: true,
       isArchived: false,
       queuedMessages: [],
+      bridgePromptAttachments: {},
       sendingSubmission: null,
       availableAgents: [],
       availableProviders: [],

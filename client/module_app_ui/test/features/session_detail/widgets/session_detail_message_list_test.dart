@@ -31,6 +31,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late List<QueuedSessionPrompt> _bridgeQueuedPrompts;
   QueuedSessionSubmission? _sendingSubmission;
   List<QueuedSessionSubmission> _awaitingBridgeSubmissions = const [];
+  Map<String, List<ComposerAttachment>> _bridgePromptAttachments = const {};
   final List<String> cancelledBridgePromptIds = [];
   late String? _retryErrorMessage;
   bool _isLoadingOlderMessages = false;
@@ -104,9 +105,13 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     });
   }
 
-  void updateBridgeQueue({required List<QueuedSessionPrompt> prompts}) {
+  void updateBridgeQueue({
+    required List<QueuedSessionPrompt> prompts,
+    required Map<String, List<ComposerAttachment>> attachments,
+  }) {
     setState(() {
       _bridgeQueuedPrompts = prompts;
+      _bridgePromptAttachments = attachments;
       final bridgeIds = prompts.map((prompt) => prompt.id).toSet();
       _queuedMessages = _queuedMessages.where((submission) => !bridgeIds.contains(submission.promptId)).toList();
       _awaitingBridgeSubmissions = _awaitingBridgeSubmissions
@@ -147,6 +152,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       home: Scaffold(
         body: SessionDetailMessageList(
           bridgeQueuedPrompts: _bridgeQueuedPrompts,
+          bridgePromptAttachments: _bridgePromptAttachments,
           onCancelBridgeQueuedPrompt: (promptId) {
             cancelledBridgePromptIds.add(promptId);
             setState(
@@ -406,12 +412,13 @@ void main() {
       await tester.pumpAndSettle();
       expectThumbnails();
 
-      harnessKey.currentState!.updateBridgeQueue(prompts: [prompt]);
+      harnessKey.currentState!.updateBridgeQueue(prompts: [prompt], attachments: {submission.promptId: attachments});
       await tester.pumpAndSettle();
       expectThumbnails();
 
       harnessKey.currentState!.updateBridgeQueue(
         prompts: [prompt.copyWith(dispatchState: QueuedPromptDispatchState.dispatched)],
+        attachments: {submission.promptId: attachments},
       );
       await tester.pump();
       expectThumbnails();
@@ -437,7 +444,7 @@ void main() {
     });
   }
 
-  testWidgets("retains dispatched thumbnails across scrolling but releases them when the prompt leaves", (
+  testWidgets("coalesced handoff and scrolling keep previews while absent preview data falls back to counts", (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -476,8 +483,13 @@ void main() {
     );
     await tester.pumpAndSettle();
     harnessKey.currentState!.sendDirectly(submission);
-    await _pumpListUpdate(tester);
-    harnessKey.currentState!.updateBridgeQueue(prompts: [prompt]);
+    // No pump: a fast bridge handoff can coalesce both local states away.
+    harnessKey.currentState!.updateBridgeQueue(
+      prompts: [prompt],
+      attachments: {
+        submission.promptId: [attachment],
+      },
+    );
     await _pumpListUpdate(tester);
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(Image), findsOneWidget);
@@ -496,12 +508,8 @@ void main() {
       same(attachment),
     );
 
-    harnessKey.currentState!.updateBridgeQueue(prompts: []);
-    await tester.pumpAndSettle();
-    expect(find.byType(Image), findsNothing);
-    // A later bridge snapshot has only metadata: the retired row's bytes
-    // must not remain in the list's preview cache.
-    harnessKey.currentState!.updateBridgeQueue(prompts: [prompt]);
+    // The bounded owner may evict an older preview while its row is pending.
+    harnessKey.currentState!.updateBridgeQueue(prompts: [prompt], attachments: const {});
     await _pumpListUpdate(tester);
     expect(find.text("Sending"), findsOneWidget);
     expect(find.text("1 image"), findsOneWidget);

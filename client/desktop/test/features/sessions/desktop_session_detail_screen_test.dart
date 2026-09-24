@@ -129,6 +129,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
     isRootSession: true,
     isArchived: false,
     queuedMessages: const [],
+    bridgePromptAttachments: const {},
     sendingSubmission: null,
     availableAgents: const [],
     availableProviders: const [],
