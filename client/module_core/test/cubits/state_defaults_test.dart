@@ -33,6 +33,7 @@ void main() {
       availableCommands: [],
       selectedAgent: "build",
       selectedAgentModel: null,
+      fastMode: false,
       stagedCommand: null,
       isRefreshing: false,
     );

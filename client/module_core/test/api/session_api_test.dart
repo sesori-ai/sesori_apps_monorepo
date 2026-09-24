@@ -163,6 +163,7 @@ void main() {
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
         variant: null,
+        fastMode: false,
         command: "review",
         dedicatedWorktree: true,
       );
@@ -241,6 +242,7 @@ void main() {
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
         variant: null,
+        fastMode: false,
         command: null,
         dedicatedWorktree: true,
       );
@@ -307,6 +309,7 @@ void main() {
         agent: null,
         model: null,
         variant: null,
+        fastMode: false,
         command: null,
         dedicatedWorktree: false,
       );
@@ -340,6 +343,7 @@ void main() {
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
         variant: null,
+        fastMode: false,
         command: "review",
       );
 
@@ -376,6 +380,7 @@ void main() {
         agent: null,
         model: null,
         variant: null,
+        fastMode: false,
         command: null,
       );
 
@@ -416,6 +421,7 @@ void main() {
         agent: null,
         model: null,
         variant: null,
+        fastMode: false,
         command: null,
       );
 

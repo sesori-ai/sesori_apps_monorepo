@@ -6,21 +6,12 @@ enum SystemTrayAvailability({required final bool isAvailable}) {
 }
 
 /// Commands emitted by the dumb platform tray adapter.
-enum SystemTrayCommand({required final String key}) {
-  openWindow(key: "open_window"),
-  toggleBridge(key: "toggle_bridge"),
-  takeOver(key: "take_over"),
-  toggleLaunchAtLogin(key: "toggle_launch_at_login"),
-  quit(key: "quit");
-
-  static SystemTrayCommand? fromKey({required String? key}) {
-    for (final SystemTrayCommand command in values) {
-      if (command.key == key) {
-        return command;
-      }
-    }
-    return null;
-  }
+enum SystemTrayCommand() {
+  openWindow,
+  toggleBridge,
+  takeOver,
+  toggleLaunchAtLogin,
+  quit,
 }
 
 /// Platform-neutral tray menu built by desktop business logic.

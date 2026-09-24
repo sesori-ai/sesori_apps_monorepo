@@ -21,6 +21,7 @@ void main() {
           agentName: "build",
           model: NewSessionModelIntent(providerId: "openai", modelId: "gpt-4"),
           variant: NewSessionVariantIntent(id: "fast"),
+          fastMode: null,
         ),
       );
       tracker.write(
@@ -30,6 +31,7 @@ void main() {
           agentName: "plan",
           model: NewSessionModelIntent(providerId: "anthropic", modelId: "claude-3"),
           variant: NewSessionVariantIntent(id: "slow"),
+          fastMode: null,
         ),
       );
 
@@ -90,6 +92,7 @@ void main() {
     });
 
     test("record actions preserve the other deliberate dimensions", () {
+      tracker.recordFastMode(projectId: "project-1", pluginId: "plugin-1", fastMode: true);
       tracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "build");
       tracker.recordModel(
         projectId: "project-1",
@@ -121,6 +124,14 @@ void main() {
       expect(saved?.model?.providerId, "anthropic");
       expect(saved?.model?.modelId, "claude-3");
       expect(saved?.variant, isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", "slow"));
+      expect(saved?.fastMode, isTrue);
+
+      tracker.recordFastMode(projectId: "project-1", pluginId: "plugin-1", fastMode: false);
+      final afterFastMode = tracker.read(projectId: "project-1", pluginId: "plugin-1");
+      expect(afterFastMode?.fastMode, isFalse);
+      expect(afterFastMode?.agentName, "plan");
+      expect(afterFastMode?.model?.modelId, "claude-3");
+      expect(afterFastMode?.variant?.id, "slow");
     });
 
     test("write overwrites the previous selection for a project", () {
@@ -131,6 +142,7 @@ void main() {
           agentName: "build",
           model: NewSessionModelIntent(providerId: "openai", modelId: "gpt-4"),
           variant: NewSessionVariantIntent(id: "slow"),
+          fastMode: null,
         ),
       );
       tracker.write(
@@ -140,6 +152,7 @@ void main() {
           agentName: "plan",
           model: NewSessionModelIntent(providerId: "anthropic", modelId: "claude-3"),
           variant: NewSessionVariantIntent(id: "deep"),
+          fastMode: null,
         ),
       );
 

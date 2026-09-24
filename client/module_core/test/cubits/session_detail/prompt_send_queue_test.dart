@@ -10,6 +10,7 @@ const _first = QueuedSessionSubmission.text(
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
+  fastMode: false,
 );
 const _second = QueuedSessionSubmission.text(
   promptId: "prompt-1",
@@ -18,6 +19,7 @@ const _second = QueuedSessionSubmission.text(
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
+  fastMode: false,
 );
 const _same = QueuedSessionSubmission.text(
   promptId: "prompt-1",
@@ -26,6 +28,7 @@ const _same = QueuedSessionSubmission.text(
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
+  fastMode: false,
 );
 const _other = QueuedSessionSubmission.text(
   promptId: "prompt-1",
@@ -34,6 +37,7 @@ const _other = QueuedSessionSubmission.text(
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
+  fastMode: false,
 );
 const _a = QueuedSessionSubmission.text(
   promptId: "prompt-1",
@@ -42,6 +46,7 @@ const _a = QueuedSessionSubmission.text(
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
+  fastMode: false,
 );
 const _b = QueuedSessionSubmission.text(
   promptId: "prompt-1",
@@ -50,6 +55,7 @@ const _b = QueuedSessionSubmission.text(
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
+  fastMode: false,
 );
 const _c = QueuedSessionSubmission.text(
   promptId: "prompt-1",
@@ -58,6 +64,7 @@ const _c = QueuedSessionSubmission.text(
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
+  fastMode: false,
 );
 const _existing = QueuedSessionSubmission.text(
   promptId: "prompt-1",
@@ -66,6 +73,7 @@ const _existing = QueuedSessionSubmission.text(
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
+  fastMode: false,
 );
 const _retried = QueuedSessionSubmission.text(
   promptId: "prompt-1",
@@ -74,6 +82,7 @@ const _retried = QueuedSessionSubmission.text(
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
+  fastMode: false,
 );
 const _msg1 = QueuedSessionSubmission.text(
   promptId: "prompt-1",
@@ -82,6 +91,7 @@ const _msg1 = QueuedSessionSubmission.text(
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
+  fastMode: false,
 );
 const _msg2 = QueuedSessionSubmission.text(
   promptId: "prompt-1",
@@ -90,6 +100,7 @@ const _msg2 = QueuedSessionSubmission.text(
   inputMode: ComposerInputMode.typed,
   agent: "coder",
   agentModel: null,
+  fastMode: false,
 );
 const _command = QueuedSessionSubmission.command(
   promptId: "command-1",
@@ -97,6 +108,7 @@ const _command = QueuedSessionSubmission.command(
   command: "review",
   agent: "coder",
   agentModel: null,
+  fastMode: false,
 );
 
 void main() {
@@ -178,7 +190,8 @@ void main() {
       queue.enqueue(_b);
 
       queue.replacePending(
-        update: (submission) => submission.withSelection(agent: "agent", agentModel: submission.agentModel),
+        update: (submission) =>
+            submission.withSelection(agent: "agent", agentModel: submission.agentModel, fastMode: false),
       );
 
       expect(queue.items.map((item) => item.displayText), ["a", "b"]);

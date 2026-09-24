@@ -3,6 +3,7 @@ import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart" show FastModeControl;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -84,6 +85,9 @@ Widget _buildApp({
               onModelSelected: onModelSelected,
               availableVariants: const [],
               onVariantSelected: (_) {},
+              fastModeControl: FastModeControl.hidden,
+              decideFastModeToggle: () => null,
+              onFastModeChanged: (_) {},
               compact: mode == PregoInteractionMode.pointer,
             ),
           ],

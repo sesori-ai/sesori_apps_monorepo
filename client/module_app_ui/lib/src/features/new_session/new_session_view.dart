@@ -179,6 +179,9 @@ class _NewSessionViewState() extends State<NewSessionView> {
         onModelSelected: cubit.selectModel,
         availableVariants: data.availableVariants,
         onVariantSelected: cubit.selectVariant,
+        fastModeControl: data.fastModeControl,
+        decideFastModeToggle: cubit.fastModeToggleDecision,
+        onFastModeChanged: cubit.setFastMode,
         compact: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
       ),
     );

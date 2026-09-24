@@ -161,7 +161,9 @@ variant, and worktree mode, and creating the session with its first input.
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
 - A normal load reports whether the cache it served has aged past the bridge's
-  freshness window, and the client then refreshes it in the background: the
+  freshness window or was captured before the current bridge process started
+  (so an upgraded bridge fills in catalog fields an older build did not map,
+  such as fast mode), and the client then refreshes it in the background: the
   options stay on screen and usable, with no loading state, and simply change if
   the backend's answer did. The failure fallback never reports staleness, so a
   failed refresh is not retried at once. Both the New Session screen and a live
@@ -315,12 +317,49 @@ variant, and worktree mode, and creating the session with its first input.
   plugin's display name. A session-detail stale-option recovery also shows the bounded
   guidance and parks the prompt instead of retrying with unavailable options.
 
+### Fast mode
+
+- A model advertises fast mode through `ProviderModel.fastMode`. The composer
+  shows the ⚡ pill next to the effort pill, in New Session and in session
+  detail, only when that support is available or unavailable. An absent or
+  unknown value (older bridge, harness without fast mode, a model without it)
+  shows no pill.
+- Available: the pill is highlighted while on and neutral while off. Prompts,
+  slash commands, and session creation carry the choice as `fastMode`; a model
+  without available fast mode always sends `fastMode: false`, whatever was chosen.
+- Unavailable: the pill is dimmed. A tap changes nothing and shows the standard
+  error popup with the closed reason (extra usage turned off, not on the plan,
+  turned off by the organization, or unknown).
+- Switching speed drops the backend's prompt cache. When the session has
+  history and the model was last active less than the model's cache lifetime
+  ago (Codex 30 minutes, Claude 60 minutes), a confirmation explains the full
+  re-read, and in both directions; turning fast mode on also mentions the extra
+  usage. A session without history, or one whose cache has expired, switches
+  at once. Last activity is the newest assistant message's completion time
+  (its start time while it streams), else the session's last update.
+- The choice is part of the session's prompt defaults. Reopening the session,
+  or a `session.prompt_defaults_changed` event from another surface, restores
+  it. New Session remembers the last choice per project and plugin like the
+  variant, and seeds it from the plugin's last-used prompt defaults.
+- Codex sends the choice as the `priority` service tier (`default` when off) on
+  every turn, and on `thread/start` for a session created fast. Claude applies
+  it through the `apply_flag_settings` control request before a turn whose
+  choice differs from the resident process; the catalog probe opts in first so
+  the account's real availability reason is reported. See
+  `docs/HARNESS_CAPABILITIES.md` for the harness details.
+- Coverage: the toggle calculator's visibility, forced-off, and confirmation
+  matrix (including the exact cache-lifetime boundary) and the cubits' send and
+  reconciliation paths run as unit tests. The pill's hidden, dimmed, and on
+  states and its popup and confirmation dispatch run as widget tests. Release
+  coverage (L3) toggles fast mode on a live Codex and Claude session with a
+  warm and a cold cache and reopens the session to confirm the choice persists.
+
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
-| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `sesori/color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. |
+| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window or captured before the bridge process started is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `sesori/color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. |
 | L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; refreshing on the New Session screen updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render. Scoped authentication-required discovery keeps Refresh available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
@@ -432,6 +471,10 @@ highlight, Enter and Esc.
 - Desktop cannot open the typed new-session route, constructs voice capture,
   hides a supported dedicated-workspace option, or bypasses the shared creation
   view and its restoration/launch semantics.
+- The ⚡ pill shows for a model without fast-mode support, hides for an
+  unavailable one, sends `fastMode: true` for a model that cannot run it, or
+  switches without confirmation while the prompt cache is warm; the choice is
+  lost on reopen or not synchronized from another surface.
 
 ## Known Limitations
 
@@ -472,6 +515,8 @@ highlight, Enter and Esc.
 - Client: `client/module_core/lib/src/services/session_selection_calculator.dart`
   (the single owner of selection reconciliation),
   `client/module_core/lib/src/services/new_session_options_service.dart`,
+  `client/module_core/lib/src/services/fast_mode_toggle_calculator.dart`,
+  `client/module_app_ui/lib/src/features/session_detail/widgets/agent_model_buttons.dart`,
   `client/module_core/lib/src/services/session_detail_load_service.dart`,
   `client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart`,
   `client/module_app_ui/lib/src/features/new_session/`,

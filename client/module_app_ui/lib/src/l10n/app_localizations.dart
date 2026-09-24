@@ -253,6 +253,36 @@ abstract class AppLocalizations {
   /// **'Resize sidebar; double-click to reset'**
   String get desktopSidebarResize;
 
+  /// Desktop sidebar row that opens the command palette.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get desktopSearch;
+
+  /// Placeholder of the desktop command palette's search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Search sessions, projects and commands'**
+  String get desktopCommandPaletteHint;
+
+  /// Desktop command palette heading over the app-wide commands.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands'**
+  String get desktopCommandPaletteCommands;
+
+  /// Desktop command palette command that collapses or expands the sidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle sidebar'**
+  String get desktopToggleSidebar;
+
+  /// Desktop command palette command that leaves a pushed page.
+  ///
+  /// In en, this message translates to:
+  /// **'Go back'**
+  String get desktopGoBack;
+
   /// Desktop project page toolbar toggle that switches the list to the project's archived sessions.
   ///
   /// In en, this message translates to:
@@ -276,6 +306,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Changes'**
   String get desktopSessionPageChanges;
+
+  /// Shown under a list's search field when no loaded title matches the query.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get listSearchNoMatches;
+
+  /// Accessibility label of the button that empties a list's search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get listSearchClear;
+
+  /// Placeholder of the search field above the phone's projects list.
+  ///
+  /// In en, this message translates to:
+  /// **'Search projects and sessions'**
+  String get projectListSearchHint;
+
+  /// Placeholder of the search field above the phone's session list.
+  ///
+  /// In en, this message translates to:
+  /// **'Search sessions'**
+  String get sessionListSearchHint;
 
   /// Shown in the session list when the Running or Unread filter leaves no session.
   ///
@@ -2622,6 +2676,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Variant'**
   String get sessionDetailPickerVariant;
+
+  /// No description provided for @sessionDetailFastMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast mode'**
+  String get sessionDetailFastMode;
+
+  /// No description provided for @sessionDetailFastModeConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch speed?'**
+  String get sessionDetailFastModeConfirmTitle;
+
+  /// No description provided for @sessionDetailFastModeConfirmEnableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching speed drops the prompt cache, so the next message re-reads the whole conversation. Fast mode also uses more of your usage.'**
+  String get sessionDetailFastModeConfirmEnableBody;
+
+  /// No description provided for @sessionDetailFastModeConfirmDisableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching speed drops the prompt cache, so the next message re-reads the whole conversation.'**
+  String get sessionDetailFastModeConfirmDisableBody;
+
+  /// No description provided for @sessionDetailFastModeConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get sessionDetailFastModeConfirmAction;
+
+  /// No description provided for @sessionDetailFastModeCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get sessionDetailFastModeCancel;
+
+  /// No description provided for @sessionDetailFastModeUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast mode is unavailable'**
+  String get sessionDetailFastModeUnavailableTitle;
+
+  /// No description provided for @sessionDetailFastModeUnavailableExtraUsageDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on extra usage for your account to use fast mode.'**
+  String get sessionDetailFastModeUnavailableExtraUsageDisabled;
+
+  /// No description provided for @sessionDetailFastModeUnavailableNotOnPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plan doesn\'t include fast mode.'**
+  String get sessionDetailFastModeUnavailableNotOnPlan;
+
+  /// No description provided for @sessionDetailFastModeUnavailableDisabledByOrganization.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organization has turned off fast mode.'**
+  String get sessionDetailFastModeUnavailableDisabledByOrganization;
+
+  /// No description provided for @sessionDetailFastModeUnavailableUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast mode can\'t be used with this account right now.'**
+  String get sessionDetailFastModeUnavailableUnknown;
 
   /// No description provided for @sessionDetailModelSearch.
   ///

@@ -549,6 +549,12 @@ defaults and queued client sends coherent.
   and underlined primary-color links in light and dark themes. Streaming and
   settled responses share the same typography; code remains monospace and
   Markdown emphasis, selection, attachments and queued-state cues stay usable.
+- Markdown looks the same on phone and desktop in both themes. A fenced code
+  block is one quiet box (a secondary surface with a hairline border) holding its
+  language label, copy button and code. Inline code sits on a soft tertiary
+  background. Tables show hairline row lines under a bold, left-aligned header
+  with no outer grid, and a horizontal rule is one hairline. None of these fall
+  back to the SDK's purple-grey Material palette.
 - User and assistant message text containing a raw HTML block renders that
   markup as a literal code block, so a pasted page or error body stays visible
   and copyable instead of being swallowed by the Markdown renderer.

@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:cupertino_ui/cupertino_ui.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
@@ -140,7 +141,14 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
           final windowHost = getIt<WindowHost>();
           final app = _DesktopRootEffects(
             navigatorKey: desktopRootNavigatorKey,
-            child: child ?? const SizedBox.shrink(),
+            // Dependencies still on the SDK's Material and Cupertino libraries
+            // (such as the markdown renderer) read those themes, so they see
+            // Prego rather than the SDK defaults, as on the phone.
+            // ignore: deprecated_member_use
+            child: MaterialUiCompatibilityBridge(
+              // ignore: deprecated_member_use
+              child: CupertinoUiCompatibilityBridge(child: child ?? const SizedBox.shrink()),
+            ),
           );
           return DesktopWindowBrightness(
             windowHost: windowHost,

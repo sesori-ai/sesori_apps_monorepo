@@ -162,6 +162,7 @@ class const SessionListPanel({
           onSessionTap: onSessionTap,
           actionDispatcher: actionDispatcher,
           archivedEmptyState: archivedEmptyState,
+          searchable: true,
         ),
       ],
     );

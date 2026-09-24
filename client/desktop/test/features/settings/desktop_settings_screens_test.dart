@@ -15,6 +15,7 @@ import "package:sesori_desktop/core/desktop_update_configuration.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
+import "package:sesori_desktop/core/widgets/desktop_command_palette.dart";
 import "package:sesori_desktop/core/widgets/desktop_escape_dismissal.dart";
 import "package:sesori_desktop/features/auth_gate/auth_gate.dart";
 import "package:sesori_desktop/features/settings/desktop_settings_modal.dart";
@@ -239,11 +240,11 @@ void main() {
                 // Exercise registered shortcuts without mounting production DI or the cockpit.
                 final shell = buildDesktopRoutes().single as ShellRoute;
                 final gate = shell.builder!(context, state, child) as AuthGate;
-                final shortcuts = (gate.child as Builder).builder(context) as CallbackShortcuts;
-                final provider = shortcuts.child as DesktopCockpitCubitProvider;
+                final provider = (gate.child as Builder).builder(context) as DesktopCockpitCubitProvider;
+                final cockpit = provider.child as DesktopCockpitShell;
                 return CallbackShortcuts(
-                  bindings: shortcuts.bindings,
-                  child: (provider.child as DesktopCockpitShell).child,
+                  bindings: {desktopShortcut(key: LogicalKeyboardKey.comma): cockpit.onOpenSettings},
+                  child: cockpit.child,
                 );
               },
             ),

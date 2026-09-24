@@ -55,6 +55,7 @@ SessionDetailState _loadedState({
       modelID: "claude-3-5-sonnet",
       variant: null,
     ),
+    fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
   );

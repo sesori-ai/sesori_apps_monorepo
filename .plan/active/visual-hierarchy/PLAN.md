@@ -452,9 +452,9 @@ implementation review: new composition.
 
 **Step 19 — search on the phone.** A search field tops Projects and each
 session list. It filters titles the list has loaded and shows "No matches"
-when empty. One pure title matcher in `module_core` returns the matches and
-their match ranges; the phone lists and step 20's palette call it with a
-query held in widget state. Checks: matcher unit tests; filter, clear and
+when empty. One pure title matcher in `module_core` returns the matches;
+the phone lists and step 20's palette call it with a query held in widget
+state, and step 20 adds the match ranges its highlights need. Checks: matcher unit tests; filter, clear and
 no-match widget tests. Architecture implementation review: new shared
 matcher.
 

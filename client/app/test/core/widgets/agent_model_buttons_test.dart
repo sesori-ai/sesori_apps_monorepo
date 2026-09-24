@@ -1,6 +1,13 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart"
+    show
+        FastModeControl,
+        FastModeToggleApply,
+        FastModeToggleConfirmCacheReset,
+        FastModeToggleDecision,
+        FastModeToggleUnavailable;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -41,6 +48,9 @@ Widget _buildApp({required List<AgentInfo> agents, required void Function(String
             onModelSelected: ({required providerID, required modelID}) {},
             availableVariants: const [],
             onVariantSelected: (_) {},
+            fastModeControl: FastModeControl.hidden,
+            decideFastModeToggle: () => null,
+            onFastModeChanged: (_) {},
             compact: false,
           ),
         ],
@@ -78,6 +88,9 @@ Widget _buildVariantApp({required ValueChanged<SessionVariant> onVariantSelected
             onModelSelected: ({required providerID, required modelID}) {},
             availableVariants: _variants,
             onVariantSelected: onVariantSelected,
+            fastModeControl: FastModeControl.hidden,
+            decideFastModeToggle: () => null,
+            onFastModeChanged: (_) {},
             compact: false,
           ),
           // The prompt field sits below the picker row in the chat composer.
@@ -88,7 +101,118 @@ Widget _buildVariantApp({required ValueChanged<SessionVariant> onVariantSelected
   );
 }
 
+Widget _buildFastModeApp({
+  required FastModeControl control,
+  required FastModeToggleDecision decision,
+  required ValueChanged<bool> onFastModeChanged,
+}) {
+  return MaterialApp(
+    theme: ThemeData(extensions: [PregoDesignSystem.light]),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          AgentModelButtons(
+            surfaceStyle: PregoComposerSurfaceStyle.subtle,
+            agents: const [],
+            selectedAgent: null,
+            onAgentSelected: (_) {},
+            providers: const [],
+            selectedAgentModel: const AgentModel(providerID: "anthropic", modelID: "opus", variant: "high"),
+            onModelSelected: ({required providerID, required modelID}) {},
+            availableVariants: const [SessionVariant(id: "high")],
+            onVariantSelected: (_) {},
+            fastModeControl: control,
+            decideFastModeToggle: () => decision,
+            onFastModeChanged: onFastModeChanged,
+            compact: false,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 void main() {
+  group("Fast mode pill", () {
+    Finder pill() => find.bySemanticsLabel("Fast mode");
+
+    testWidgets("is hidden when the model has no fast mode", (tester) async {
+      await tester.pumpWidget(
+        _buildFastModeApp(
+          control: FastModeControl.hidden,
+          decision: const FastModeToggleApply(fastMode: true),
+          onFastModeChanged: (_) {},
+        ),
+      );
+
+      expect(find.byIcon(TablerRegular.bolt), findsNothing);
+      expect(find.byIcon(TablerRegular.bolt_off), findsNothing);
+    });
+
+    testWidgets("is highlighted while on and applies a cold switch directly", (tester) async {
+      final changes = <bool>[];
+      await tester.pumpWidget(
+        _buildFastModeApp(
+          control: FastModeControl.on,
+          decision: const FastModeToggleApply(fastMode: false),
+          onFastModeChanged: changes.add,
+        ),
+      );
+      final context = tester.element(find.byType(AgentModelButtons));
+
+      final icon = tester.widget<Icon>(find.byIcon(TablerRegular.bolt));
+      expect(icon.color, context.prego.colors.fgBrandPrimary);
+      expect(tester.getSemantics(pill()), isSemantics(isButton: true, isToggled: true));
+
+      await tester.tap(pill());
+      await tester.pumpAndSettle();
+      expect(changes, [false]);
+    });
+
+    testWidgets("is dimmed when unavailable and a tap explains why", (tester) async {
+      final changes = <bool>[];
+      await tester.pumpWidget(
+        _buildFastModeApp(
+          control: FastModeControl.unavailable,
+          decision: const FastModeToggleUnavailable(reason: FastModeUnavailableReason.notOnPlan),
+          onFastModeChanged: changes.add,
+        ),
+      );
+      final context = tester.element(find.byType(AgentModelButtons));
+      final loc = AppLocalizations.of(context)!;
+
+      expect(tester.widget<Icon>(find.byIcon(TablerRegular.bolt_off)).color, context.prego.colors.fgDisabled);
+
+      await tester.tap(pill());
+      await tester.pump();
+      expect(find.text(loc.sessionDetailFastModeUnavailableTitle), findsOneWidget);
+      expect(find.text(loc.sessionDetailFastModeUnavailableNotOnPlan), findsOneWidget);
+      expect(changes, isEmpty);
+      await tester.pumpAndSettle(const Duration(seconds: 4));
+    });
+
+    testWidgets("asks before dropping a warm prompt cache", (tester) async {
+      final changes = <bool>[];
+      await tester.pumpWidget(
+        _buildFastModeApp(
+          control: FastModeControl.off,
+          decision: const FastModeToggleConfirmCacheReset(fastMode: true),
+          onFastModeChanged: changes.add,
+        ),
+      );
+      final loc = AppLocalizations.of(tester.element(find.byType(AgentModelButtons)))!;
+
+      await tester.tap(pill());
+      await tester.pumpAndSettle();
+      expect(find.text(loc.sessionDetailFastModeConfirmTitle), findsOneWidget);
+      expect(find.text(loc.sessionDetailFastModeConfirmEnableBody), findsOneWidget);
+      expect(changes, isEmpty);
+    });
+  });
+
   group("Variant picker", () {
     const platforms = TargetPlatformVariant({TargetPlatform.iOS, TargetPlatform.android, TargetPlatform.macOS});
 
@@ -239,6 +363,9 @@ void main() {
             onModelSelected: ({required providerID, required modelID}) {},
             availableVariants: const [SessionVariant(id: "high")],
             onVariantSelected: (_) {},
+            fastModeControl: FastModeControl.hidden,
+            decideFastModeToggle: () => null,
+            onFastModeChanged: (_) {},
             compact: true,
           ),
         ),

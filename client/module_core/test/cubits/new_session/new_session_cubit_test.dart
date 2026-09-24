@@ -15,6 +15,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.d
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
+import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
 import "package:sesori_dart_core/src/services/models/new_session_backend_scope.dart";
 import "package:sesori_dart_core/src/services/models/new_session_options_source.dart";
 import "package:sesori_dart_core/src/services/models/new_session_selection_intent.dart";
@@ -181,6 +182,7 @@ void main() {
               commands: [],
               selectedAgent: null,
               selectedAgentModel: null,
+              fastMode: false,
               stagedCommand: null,
               availableVariants: [],
             ),
@@ -228,6 +230,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -336,6 +339,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -374,6 +378,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -404,6 +409,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
             dedicatedWorktree: false,
           ),
@@ -437,6 +443,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -457,6 +464,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -487,6 +495,7 @@ void main() {
             agent: null,
             model: null,
             variant: null,
+            fastMode: false,
             command: null,
             dedicatedWorktree: false,
           ),
@@ -516,6 +525,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -561,6 +571,7 @@ void main() {
             agent: null,
             model: null,
             variant: null,
+            fastMode: false,
             command: "review",
             dedicatedWorktree: true,
           ),
@@ -578,6 +589,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -618,6 +630,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -694,6 +707,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -750,6 +764,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -806,6 +821,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -853,6 +869,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -933,6 +950,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -988,6 +1006,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: command.name,
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -1001,6 +1020,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: command.name,
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -1031,6 +1051,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -1059,6 +1080,7 @@ void main() {
           agent: null,
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
           dedicatedWorktree: false,
         ),
@@ -1103,6 +1125,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -1147,12 +1170,86 @@ void main() {
             agent: "build",
             model: const PromptModel(providerID: "openai", modelID: "gpt-4"),
             variant: const SessionVariant(id: "xhigh"),
+            fastMode: false,
             command: null,
             dedicatedWorktree: true,
           ),
         ).called(1);
       },
     );
+
+    test("setFastMode is remembered and createSession forwards it", () async {
+      final providers = _providerResponseWithVariants(["high"]);
+      final item = providers.items.single;
+      when(
+        () => mockSessionService.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          ProviderListResponse(
+            connectedOnly: false,
+            items: [
+              item.copyWith(
+                models: {
+                  for (final MapEntry(:key, :value) in item.models.entries)
+                    key: value.copyWith(fastMode: const FastModeSupport.available(promptCacheTtlSeconds: 1800)),
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          attachments: const [],
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-fast")));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      expect(cubit.state.agentModelData?.fastModeControl, FastModeControl.off);
+      expect(
+        cubit.fastModeToggleDecision(),
+        isA<FastModeToggleApply>().having((decision) => decision.fastMode, "fastMode", isTrue),
+      );
+
+      cubit.setFastMode(true);
+      expect(cubit.state.agentModelData?.fastModeControl, FastModeControl.on);
+      expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.fastMode, isTrue);
+
+      await cubit.createSession(
+        attachments: const [],
+        draft: ComposerDraft.typed(text: "hello"),
+        dedicatedWorktree: false,
+        command: null,
+      );
+      verify(
+        () => mockSessionService.createSessionWithMessage(
+          attachments: const [],
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          text: "hello",
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: true,
+          command: null,
+          dedicatedWorktree: false,
+        ),
+      ).called(1);
+    });
 
     blocTest<NewSessionCubit, NewSessionState>(
       "selectAgent preserves the model variant when the agent has no model preference",
@@ -2060,6 +2157,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
           ),
@@ -2099,6 +2197,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -2133,6 +2232,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -2193,6 +2293,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -2248,6 +2349,7 @@ NewSessionSelectionIntent _selectionIntentFromSnapshot({
             modelId: agentModel.modelID,
           ),
     variant: variant == null ? null : NewSessionVariantIntent(id: variant),
+    fastMode: null,
   );
 }
 
