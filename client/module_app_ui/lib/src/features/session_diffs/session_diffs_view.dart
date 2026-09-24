@@ -112,7 +112,10 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
               color: context.prego.colors.bgSurface1,
               child: Column(
                 children: [
-                  headerBuilder(context: context, title: title, summary: summary),
+                  // The page's navigation stays out of copied diffs.
+                  SelectionContainer.disabled(
+                    child: headerBuilder(context: context, title: title, summary: summary),
+                  ),
                   Expanded(
                     child: switch ((placeholder, viewModels)) {
                       (final placeholder?, _) => CustomScrollView(slivers: [placeholder]),
@@ -284,6 +287,8 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
       setState(() {
         _viewModels = viewModels;
         _expandedFileIndices = expanded;
+        // A file no longer changed drops its selection, so it cannot come back selected later.
+        if (!viewModels.any((vm) => vm.fileDiff.file == _selectedFile)) _selectedFile = null;
         _isComputing = false;
       });
     } catch (error) {
@@ -376,7 +381,8 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
   }
 }
 
-/// The selected file's full path and counts above its diff.
+/// The selected file's full path above its diff; its row in the list carries the counts, which
+/// would not fit beside a long path in a narrow pane with large text.
 class const _SelectedFileHeader({required final DiffFileViewModel viewModel}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -400,7 +406,6 @@ class const _SelectedFileHeader({required final DiffFileViewModel viewModel}) ex
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            DiffCounts(additions: viewModel.additions, deletions: viewModel.deletions, style: code),
           ],
         ),
       ),

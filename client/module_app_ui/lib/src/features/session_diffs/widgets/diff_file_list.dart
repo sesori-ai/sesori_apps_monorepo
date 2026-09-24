@@ -20,20 +20,25 @@ class const DiffFileList({
     return PregoGroupedRows(
       children: [
         for (final (index, vm) in viewModels.indexed)
-          Material(
+          Semantics(
             key: ValueKey("diff-file-list-$index"),
-            color: index == selectedIndex ? prego.colors.textBrandPrimary.withValues(alpha: 0.14) : Colors.transparent,
-            child: PregoGroupedRow(
-              minHeight: 48,
-              verticalPadding: PregoSpacing.sm,
-              leading: DiffStatusLetter(status: vm.status),
-              title: Text(vm.fileName, maxLines: 1, overflow: TextOverflow.ellipsis),
-              subtitle: switch (p.posix.dirname(vm.fileDiff.file)) {
-                "." => null,
-                final folder => Text(folder, maxLines: 1, overflow: TextOverflow.ellipsis),
-              },
-              trailing: DiffCounts(additions: vm.additions, deletions: vm.deletions, style: prego.textTheme.code),
-              onTap: () => onSelect(index),
+            selected: selectedIndex == null ? null : index == selectedIndex,
+            child: Material(
+              color: index == selectedIndex
+                  ? prego.colors.textBrandPrimary.withValues(alpha: 0.14)
+                  : Colors.transparent,
+              child: PregoGroupedRow(
+                minHeight: 48,
+                verticalPadding: PregoSpacing.sm,
+                leading: DiffStatusLetter(status: vm.status),
+                title: Text(vm.fileName, maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: switch (p.posix.dirname(vm.fileDiff.file)) {
+                  "." => null,
+                  final folder => Text(folder, maxLines: 1, overflow: TextOverflow.ellipsis),
+                },
+                trailing: DiffCounts(additions: vm.additions, deletions: vm.deletions, style: prego.textTheme.code),
+                onTap: () => onSelect(index),
+              ),
             ),
           ),
       ],
