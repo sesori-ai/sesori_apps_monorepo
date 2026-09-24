@@ -78,6 +78,10 @@ class CodexPlugin._({
   required final void Function()? _onDisconnected,
   required final Duration _keepaliveInterval,
 }) implements CodexManagedApi {
+  @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
+
   static final String pluginId = Harness.codex.name;
   static const Duration _renameRetryDelay = Duration(milliseconds: 100);
   static const Duration _renameRetryTimeout = Duration(seconds: 2);

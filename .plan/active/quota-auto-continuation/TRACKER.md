@@ -1,18 +1,20 @@
 # Quota auto continuation tracker
 
-Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **6 PRs**.
+Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs**.
 
 | Step | State | PR / evidence |
 |---|---|---|
 | 1 — Plan and support audit | Merged | [#1601][plan-pr]; audit and reviewed plan. |
-| 2 — Quota normalization | In PR | [#1641][normalization-pr]; typed terminal events and Claude/Pi reporting. |
-| 3 — Bridge state and scheduler | Not started | Includes typed route, persistence and normal prompt dispatch. |
-| 4 — Shared chat controls | Not started | Inline hint, indicator and three-dot toggle on phone and desktop. |
-| 5 — Regression reconciliation | Not started | Complete affected feature docs and capability matrix. |
-| 6 — L4 verification and retirement | Not started | All recorded boundary/platform/provider coverage must pass. |
+| 2 — Quota normalization | Merged | [#1641][normalization-pr]; typed terminal events and Claude/Pi reporting. |
+| 3 — Durable contracts and readiness | In review | [#1649][foundation-pr]; durable state and readiness. |
+| 4 — Bridge scheduler | In progress locally | Route, views, cancellation and dispatch. |
+| 5 — Shared chat controls | Not started | Inline hint, indicator and three-dot toggle on phone and desktop. |
+| 6 — Regression reconciliation | Not started | Complete affected feature docs and capability matrix. |
+| 7 — L4 verification and retirement | Not started | All recorded boundary/platform/provider coverage must pass. |
 
 [plan-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1601
 [normalization-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1641
+[foundation-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1649
 
 ## Confirmed user decisions
 
@@ -53,5 +55,15 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **6 PRs
 - Step 2 review: preserve quota observations through trailing Claude stream
   frames; cover both trailing frames and a superseding message. Commit portable
   Pi RPC probes and separate release-critical from extended regression coverage.
-- Live scheduled continuation: not run; scheduler and controls are not implemented.
+- Step 3/4 split: measured bridge work exceeded the authored review budget, so storage/wire/readiness
+  are published separately from scheduling. Architecture and product scope remain unchanged.
+- Step 3 architecture implementation review: approved twice, including the focused
+  mandatory-readiness and off-isolate lookup follow-up; no outstanding findings.
+- Step 3 local validation: 400 focused tests pass at the pinned readiness checkpoint;
+  the five-test repository suite also passes after the JSON-boundary follow-up.
+  Bridge/shared/client analysis and documentation links pass. Measured commits,
+  trees, working folders and exact commands are in EVIDENCE.md.
+- Step 3 Pi follow-up: a primed directory no longer proves persisted readiness;
+  the reproduced regression and all 83 Pi service/catalog tests pass after the fix.
+- Live scheduled continuation: not run; scheduler is local work and controls are not implemented.
 - Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.

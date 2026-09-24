@@ -1077,6 +1077,10 @@ abstract interface class _SubscriptionAwarePlugin() {
 
 class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
   @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
+
+  @override
   Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
 
   @override
@@ -1339,6 +1343,10 @@ class _BlockingRoutesPlugin() extends _FakeBridgePlugin {
 
 /// Plugin that tracks subscribe/unsubscribe counts via a wrapping stream.
 class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
+  @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
+
   @override
   Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
 

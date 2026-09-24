@@ -702,6 +702,21 @@ void main() {
       expect(await harness.plugin.getSessionStatuses(), isEmpty);
     });
 
+    test("quota readiness recognizes a nonresident transcript without launching Claude", () async {
+      final transcript = File("${harness.temporary.path}/projects/project/$testSessionId.jsonl");
+      transcript.parent.createSync(recursive: true);
+      transcript.writeAsStringSync("{}\n");
+      expect(
+        await harness.plugin.getQuotaContinuationReadiness(sessionId: testSessionId),
+        PluginQuotaContinuationReadiness.idle,
+      );
+      expect(
+        await harness.plugin.getQuotaContinuationReadiness(sessionId: "missing"),
+        PluginQuotaContinuationReadiness.unknown,
+      );
+      expect(harness.processes, isEmpty);
+    });
+
     test("preserves API retry status for snapshots and activity", () async {
       await harness.createSession();
       final process = harness.processes.single;
@@ -725,6 +740,10 @@ void main() {
       expect(retry.next, DateTime.utc(2026, 8, 11, 12).millisecondsSinceEpoch + 1000);
       expect((events.whereType<BridgeSseSessionStatus>().last.status as PluginSessionStatusRetry).next, retry.next);
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isTrue);
+      expect(
+        await harness.plugin.getQuotaContinuationReadiness(sessionId: testSessionId),
+        PluginQuotaContinuationReadiness.retrying,
+      );
 
       // The retried request streaming again is the recovery signal; the turn
       // is still running, so the session returns to busy rather than idle.
@@ -746,6 +765,10 @@ void main() {
         isA<PluginSessionStatusBusy>(),
       );
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isFalse);
+      expect(
+        await harness.plugin.getQuotaContinuationReadiness(sessionId: testSessionId),
+        PluginQuotaContinuationReadiness.busy,
+      );
       await subscription.cancel();
     });
 

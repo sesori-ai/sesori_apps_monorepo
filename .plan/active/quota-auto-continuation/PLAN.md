@@ -323,13 +323,18 @@ tests alongside it. No unrelated architecture refactor is planned.
 
 ## PR sequence
 
-All steps use slug `quota-auto-continuation`, in this order, total **6**. Estimates
+All steps use slug `quota-auto-continuation`, in this order, total **7**. Estimates
 are authored additions + deletions; measure complete merge-base churn including
 generated files before each push and split cleanly if needed.
 
+The original bridge step was split before publication on 2026-09-24: measured work exceeded
+2,200 authored lines plus 8,200 generated lines before final integration coverage. Separate contracts
+and persistence from runtime scheduling to keep the lifecycle review focused. Published step 1–2
+commit history is retained; the series total is now seven.
+
 ### Step: 1
 
-**Exact proposed title:** 🌱 [quota-auto-continuation] Plan per-session quota recovery [step 1/6]
+**Exact proposed title:** 🌱 [quota-auto-continuation] Plan per-session quota recovery [step 1/7]
 
 **Deliverable / expected result:** This plan, evidence, tracker, capability audit. No product/database
 change.
@@ -338,11 +343,12 @@ change.
 
 ### Step: 2
 
-**Exact proposed title:** ⚙️ [quota-auto-continuation] Normalize terminal quota reset signals [step 2/6]
+**Exact proposed title:** ⚙️ [quota-auto-continuation] Normalize terminal quota reset signals [step 2/7]
 
 **Deliverable / expected result:** Internal typed event/capability and verified plugin implementations;
 current errors still render. No scheduled sends or database change. Estimate 600–1,000 authored lines.
-Named-session readiness lands with its scheduler consumer in step 3; step 2 establishes reporting only.
+Step 2 establishes reporting only. Named-session readiness and durable contracts land in step 3;
+their scheduler consumer follows in step 4.
 
 **Risk and validation:** Parser/dispatcher tests for each supporting seam,
 unknown/no-reset/false-positive/native-retry cases; analyze touched packages; matrix updated with actual
@@ -350,18 +356,31 @@ evidence.
 
 ### Step: 3
 
-**Exact proposed title:** 🚧 [quota-auto-continuation] Persist and dispatch session continuations [step 3/6]
+**Exact proposed title:** ⚙️ [quota-auto-continuation] Add durable continuation contracts and readiness [step 3/7]
 
-**Deliverable / expected result:** Session state, shared view/route, scheduler and cancellation integration.
-Opt-in headless API works; new session-owned storage. Estimate 650–1,000 authored lines.
+**Deliverable / expected result:** Shared optional session view/request, durable session-owned storage and
+repository, and named-session Claude/Pi readiness. No timer, route, scheduled sends, or chat controls yet.
+History defaults retain the stored fast-mode preference. Estimate 800–1,200 authored lines plus generated
+Drift/Freezed output, kept with its source.
 
-**Risk and validation:** Focused DB, service, route, ordering, restart, old-peer serialization tests;
-headless integration. Generated Drift/Freezed churn may exceed cap: report it separately and keep it with
-source.
+**Risk and validation:** Migration, repository restart/deduplication/cancellation/generation tests;
+old-peer and future-value serialization; readiness for retrying, queued, input-blocked and nonresident
+sessions; owning-package analysis.
 
 ### Step: 4
 
-**Exact proposed title:** ⚙️ [quota-auto-continuation] Add chat auto-continuation controls [step 4/6]
+**Exact proposed title:** 🚧 [quota-auto-continuation] Schedule and dispatch session continuations [step 4/7]
+
+**Deliverable / expected result:** Typed route, enriched session views, scheduler and cancellation
+integration. Opt-in headless API works. Uses step 3 storage; no further schema change.
+Estimate 1,000–1,500 authored lines.
+
+**Risk and validation:** Focused service, route, event ordering, cancellation and restart tests;
+headless integration. Verify one consumed attempt and normal prompt selection preservation.
+
+### Step: 5
+
+**Exact proposed title:** ⚙️ [quota-auto-continuation] Add chat auto-continuation controls [step 5/7]
 
 **Deliverable / expected result:** Shared hint, enabled indicator, scheduled time and overflow toggle on
 mobile/desktop. No new database change. Estimate 350–650 authored lines.
@@ -369,19 +388,19 @@ mobile/desktop. No new database change. Estimate 350–650 authored lines.
 **Risk and validation:** Cubit/service and widget behavior; client end-to-end toggle, disable, reconnect and
 scheduled echo.
 
-### Step: 5
+### Step: 6
 
 **Exact proposed title:** 🌿 [quota-auto-continuation] Reconcile quota recovery regression coverage [step
-5/6]
+6/7]
 
 **Deliverable / expected result:** Complete feature docs and final support matrix, including provider
 limitations. No product/database change.
 
 **Risk and validation:** Links and consistency with shipped behavior and actual test coverage.
 
-### Step: 6
+### Step: 7
 
-**Exact proposed title:** 🌿 [quota-auto-continuation] Verify quota recovery and retire the plan [step 6/6]
+**Exact proposed title:** 🌿 [quota-auto-continuation] Verify quota recovery and retire the plan [step 7/7]
 
 **Deliverable / expected result:** Run the matrix below, record results, move plan to completed only when it
 passes. No intended product/database change.
@@ -391,7 +410,7 @@ stays active.
 
 Each production step is independently compilable. Review architecture-bearing
 production diffs using the repository review skills. Update regression docs
-when behavior lands in steps 2–4; step 5 reconciles them, not their first draft.
+when behavior lands in steps 2–5; step 6 reconciles them, not their first draft.
 
 ## Verification and retirement
 

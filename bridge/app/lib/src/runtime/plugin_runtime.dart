@@ -182,6 +182,9 @@ class PluginRuntime({
 
   PluginDiagnostics? describe({required String pluginId}) => _requireSlot(pluginId).plugin?.describe();
 
+  PluginQuotaReportingSupport quotaReportingSupport({required String pluginId}) =>
+      _slots[pluginId]?.registration.descriptor.quotaReportingSupport ?? PluginQuotaReportingSupport.unavailable;
+
   Future<Map<String, PluginSetupStatus>> inspectSetup({
     required Set<String> pluginIds,
     required bool markUnselectedNotInspected,

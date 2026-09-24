@@ -45,6 +45,10 @@ class OpenCodePlugin._({
   void Function()? onConnected,
   void Function()? onDisconnected,
 }) implements OpenCodeManagedApi {
+  @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
+
   static const String _sendPromptOperation = "sendPrompt";
   static const String _sendCommandOperation = "sendCommand";
 

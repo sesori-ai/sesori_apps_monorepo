@@ -10,6 +10,7 @@ import "models/plugin_project_activity_summary.dart";
 import "models/plugin_prompt_part.dart";
 import "models/plugin_provider.dart";
 import "models/plugin_queued_prompt.dart";
+import "models/plugin_quota_interruption.dart";
 import "models/plugin_session.dart";
 import "models/plugin_session_options.dart";
 import "models/plugin_session_status.dart";
@@ -99,6 +100,10 @@ sealed class BridgePluginApi() {
   Future<List<PluginSession>> getChildSessions(String sessionId);
 
   Future<Map<String, PluginSessionStatus>> getSessionStatuses();
+
+  /// Evidence from the named session's native owner for a continuation attempt.
+  /// Unsupported harnesses explicitly return [PluginQuotaContinuationReadiness.unavailable].
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId});
 
   /// Get all messages for a session.
   ///

@@ -84,6 +84,7 @@ Widget _buildApp({
 
 Session _childSession({required String id, String? title}) {
   return Session(
+    autoContinuation: null,
     branchName: null,
     id: id,
     pluginId: "plugin-1",

@@ -132,6 +132,7 @@ void main() {
 
     test("createSessionWithMessage builds a request body with null variant when omitted", () async {
       const session = Session(
+        autoContinuation: null,
         branchName: null,
         id: "session-1",
         pluginId: "plugin-1",
@@ -180,6 +181,7 @@ void main() {
 
     test("attachment create yields before preserving exact generated request JSON", () async {
       const session = Session(
+        autoContinuation: null,
         branchName: null,
         id: "session-1",
         pluginId: "plugin-1",
@@ -256,6 +258,7 @@ void main() {
 
     test("attachment create omits a null filename and matches generated request JSON exactly", () async {
       const session = Session(
+        autoContinuation: null,
         branchName: null,
         id: "session-1",
         pluginId: "plugin-1",

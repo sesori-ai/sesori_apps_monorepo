@@ -19,6 +19,7 @@ import "tables/deleted_sessions_table.dart";
 import "tables/new_session_defaults_table.dart";
 import "tables/projects_table.dart";
 import "tables/pull_requests_table.dart";
+import "tables/session_continuation_table.dart";
 import "tables/session_options_cache_table.dart";
 import "tables/session_table.dart";
 
@@ -37,6 +38,7 @@ part "database.g.dart";
     SessionOptionsCacheTable,
     NewSessionDefaultsTable,
     AcceptedPromptsTable,
+    SessionContinuationTable,
   ],
   daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
 )
@@ -44,7 +46,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -303,6 +305,9 @@ class AppDatabase(super.e) extends _$AppDatabase {
         // Fast mode did not exist before v17, so false is the honest backfill.
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.fastMode);
         await m.addColumn(schema.newSessionDefaultsTable, schema.newSessionDefaultsTable.fastMode);
+      },
+      from17To18: (m, schema) async {
+        await m.createTable(schema.sessionContinuations);
       },
     ),
     beforeOpen: (details) async {

@@ -89,6 +89,10 @@ abstract class AcpPlugin({
   required final AcpSessionOptionsService _sessionOptionsService,
   required final AcpProcessFactory _processFactory,
 }) extends BridgeDerivedProjectsPluginApi {
+  @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
+
   this : _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
     _childSessionChanges = childSessionTracker.changes.listen(_onChildSessionsChanged);
   }

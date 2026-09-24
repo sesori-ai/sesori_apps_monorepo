@@ -293,6 +293,10 @@ final class PiPlugin._({
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => _sessionService.sessionStatuses;
 
   @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) =>
+      _sessionService.getQuotaContinuationReadiness(sessionId: sessionId);
+
+  @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
     final session = await _requiredSession(sessionId: sessionId, operation: "getSessionMessages");
     if (session.time == null) return const [];

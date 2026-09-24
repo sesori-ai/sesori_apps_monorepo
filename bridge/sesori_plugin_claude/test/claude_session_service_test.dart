@@ -334,6 +334,10 @@ void main() {
       });
       await pump();
       expect(harness.approvals.pendingPermissionsForSession(sessionId: testSessionId), hasLength(1));
+      expect(
+        harness.service.getQuotaContinuationReadiness(sessionId: testSessionId, sessionExists: true),
+        PluginQuotaContinuationReadiness.awaitingInput,
+      );
 
       process.exit(1);
       await harness.waitForIdle();
@@ -434,6 +438,10 @@ void main() {
       await pump();
 
       expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+      expect(
+        harness.service.getQuotaContinuationReadiness(sessionId: testSessionId, sessionExists: true),
+        PluginQuotaContinuationReadiness.queued,
+      );
     });
 
     test("reaps a process whose wakeup is one idle timeout stale", () async {

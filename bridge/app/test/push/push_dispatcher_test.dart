@@ -700,6 +700,7 @@ Session _session({
   String? title,
 }) {
   return Session(
+    autoContinuation: null,
     branchName: null,
     id: id,
     pluginId: "fake",

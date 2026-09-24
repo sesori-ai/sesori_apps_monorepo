@@ -40,6 +40,7 @@ void main() {
 
     test("round-trips an empty history", () {
       const session = Session(
+        autoContinuation: null,
         branchName: null,
         id: "session-1",
         projectID: "project-1",
@@ -60,6 +61,7 @@ void main() {
 
     test("round-trips populated history without changing the headline", () {
       const session = Session(
+        autoContinuation: null,
         branchName: null,
         id: "session-1",
         projectID: "project-1",
