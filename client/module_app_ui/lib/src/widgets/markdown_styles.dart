@@ -65,7 +65,7 @@ BoxDecoration _blockquoteDecoration({required PregoDesignSystem prego}) => BoxDe
 );
 
 /// Explicit so no surface falls back to the SDK's Material defaults: row lines
-/// under a left-aligned header, and a hairline rule.
+/// under a start-aligned header, and a hairline rule.
 MarkdownStyleSheet _withTablesAndRules({required PregoDesignSystem prego, required MarkdownStyleSheet sheet}) {
   final line = BorderSide(color: prego.colors.borderSecondary);
   return sheet.copyWith(
