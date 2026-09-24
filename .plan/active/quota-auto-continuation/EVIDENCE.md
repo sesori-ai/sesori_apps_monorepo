@@ -372,3 +372,67 @@ git diff --check 3d2c62da5ffffa551101f1556fbd9a8000de1077 e3fdb4dcd559ec724bfcd6
 The seven-document local-link check above also passed. No causal cleanup was needed;
 formatting-only churn outside the scheduler was removed. This checkpoint does
 not prove live provider recovery, rendered controls or the final L4 matrix.
+
+## Shared chat controls checkpoint — 2026-09-24
+
+Initial verified implementation: `52f53de1e5eaeb7b9930b9a7ee2f74c615e705b1`.
+Architecture review approved the complete UI-only range from
+`22885f2c89c4cc200a08266b7181e2c9aef1d963` to that commit.
+The following menu-copy adjustment changes no ownership or contracts.
+
+Integrated checkpoint: `0003d488b74b1a88ca5a2ce5cdf843bfd863fc92`.
+Tree: `1946af2b09f29abb0fbb84979d14356617061695`.
+This includes scheduler squash `10e43d786d62a181e3f4c12f7ec346093fc5dfd8`
+and the intervening main-branch chat styling changes.
+
+Working folder `client/module_core`, integrated checkpoint — 232 tests, exit 0:
+
+```sh
+dart test test/services/session_auto_continuation_service_test.dart test/cubits/session_detail
+dart analyze --fatal-infos --format=machine
+```
+
+Working folder `client/module_app_ui`, integrated checkpoint — 13 tests, exit 0:
+
+```sh
+flutter test --no-pub test/features/session_detail/widgets/session_auto_continuation_notice_test.dart
+```
+
+Working folder `client/desktop`, integrated checkpoint — 9 tests, exit 0:
+
+```sh
+flutter test --no-pub test/features/sessions/desktop_session_detail_screen_test.dart
+```
+
+Working folder `client/app`, initial checkpoint — 130 tests, exit 0:
+
+```sh
+flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart test/features/session_detail/session_detail_title_hydration_test.dart
+```
+
+After the merge, the 124 chat-body cases were rerun with a temporary fixture
+capture driver that reused those cases. The command below passed 249 executions
+(124 ordinary + 124 duplicated by the driver + one capture); this is not 249
+distinct behavior checks. The driver was removed after capture and remains a
+private temporary artifact, not a maintained test target.
+
+```sh
+flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart test/features/session_detail/widgets/_quota_visual_capture_test.dart
+```
+
+At the integrated checkpoint, `flutter analyze --no-pub` in each of
+`client/module_app_ui`, `client/app` and `client/desktop` passed with no issues.
+The core analyzer above also passed with no findings. Repository root, exit 0:
+
+```sh
+git diff --check 10e43d786d62a181e3f4c12f7ec346093fc5dfd8 0003d488b74b1a88ca5a2ce5cdf843bfd863fc92
+```
+
+Fixture-only phone renders exercise the shared production chat widgets at
+430×640 with loaded product fonts. The opt-in hint, scheduled indicator and
+checked overflow toggle were inspected. Enlarged-text tests caught and fixed
+notice wrapping; rendered inspection caught and fixed the long menu label.
+Before/after and GIF media are on `pr-media`, commit
+`d6f9bfd7dce8d0d4362584233dc97ddee8631459`, under
+`sesori/quota-chat-controls/`. These are widget renders with simulated session
+updates, not real-device, relay, scheduler or live-provider recovery evidence.

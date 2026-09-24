@@ -1,8 +1,8 @@
 # Quota auto continuation
 
-Status: implementation in progress; steps 1–3 merged, step 4 scheduler in review
+Status: implementation in progress; steps 1–4 merged, including the scheduler
 in [#1654](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1654).
-Shared chat controls and final L4 verification remain outstanding.
+Step 5 shared chat controls are ready for review. Final L4 verification remains outstanding.
 Research: 2026-09-23. Current progress: [TRACKER.md](TRACKER.md).
 
 ## Goal and agreed scope
