@@ -142,6 +142,54 @@ void main() {
       projection.waitingFirst.map((item) => (item.project.id, item.entry.session.id)),
       [("one", "waiting-one"), ("two", "waiting-two"), ("one", "running")],
     );
+    expect(projection.needsYou.map((item) => item.entry.session.id), ["waiting-one", "waiting-two"]);
+    expect(projection.running.map((item) => item.entry.session.id), ["running"]);
+  });
+
+  test("recent holds settled sessions across projects newest first, leaving hidden ones out", () {
+    final one = [for (var index = 1; index <= 4; index++) _session(id: "one-$index", projectId: "one", updated: index)];
+    final two = [
+      _session(id: "two-running", projectId: "two", updated: 99),
+      _session(id: "two-hidden", projectId: "two", updated: 98),
+      _session(id: "two-unseen", projectId: "two", unseen: true, updated: 10),
+      _session(id: "two-old", projectId: "two", updated: 0),
+    ];
+    final projection = SessionActivityProjection.from(
+      projects: const [
+        ProjectSummary(id: "one", name: "One", path: "/one", time: null),
+        ProjectSummary(id: "two", name: "Two", path: "/two", time: null),
+      ],
+      entries: {
+        "one": RecentSessionsLoaded(
+          sourceSessions: one,
+          visibleSessions: one,
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+        "two": RecentSessionsLoaded(
+          sourceSessions: two,
+          visibleSessions: two,
+          activityBySessionId: const {
+            "two-running": SessionActivityInfo(
+              mainAgentRunning: true,
+              awaitingInput: false,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+      deferredSessions: const {},
+      stickySessionId: null,
+      hiddenSessionIds: const {"two-hidden"},
+    );
+
+    expect(
+      projection.recent.map((item) => (item.project.id, item.entry.session.id)),
+      [("two", "two-unseen"), ("one", "one-4"), ("one", "one-3"), ("one", "one-2"), ("one", "one-1"), ("two", "two-old")],
+    );
+    expect(projection.recent.first.entry.isUnseen, isTrue);
   });
 
   test("a session waiting on the user stays in Activity while its agent is idle, until set aside", () {

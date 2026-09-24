@@ -53,7 +53,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopFileAccessUnknown => 'Access could not be confirmed';
 
   @override
-  String get desktopHomePickSession => 'Pick a session from the sidebar to get started.';
+  String get desktopHomeNeedsYou => 'Needs you';
+
+  @override
+  String get desktopHomeRecent => 'Recent';
 
   @override
   String get desktopSidebarNewProject => 'New project';

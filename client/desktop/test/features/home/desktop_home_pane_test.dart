@@ -61,7 +61,12 @@ void main() {
             BlocProvider<ProjectListCubit>.value(value: projects),
             BlocProvider<FileAccessCubit>.value(value: fileAccess),
           ],
-          child: const Scaffold(body: DesktopHomePane()),
+          child: Scaffold(
+            body: DesktopHomePane(
+              onOpenSession: ({required context, required project, required displayName, required session}) {},
+              onOpenHarnessSettings: () {},
+            ),
+          ),
         ),
       ),
     );
@@ -139,21 +144,6 @@ void main() {
     verify(bridgeControlCubit.recoverConnection).called(1);
   });
 
-  testWidgets("connected home directs to the sidebar without another project list", (tester) async {
-    await pumpHome(
-      tester: tester,
-      state: const ProjectListState.loaded(
-        projects: [ProjectSummary(id: "p", name: "Project", path: "/project", time: null)],
-        activityById: {},
-      ),
-    );
-    expect(find.text("Pick a session from the sidebar to get started."), findsOneWidget);
-    expect(find.byType(ProjectListView), findsNothing);
-    expect(find.byType(ProjectTile), findsNothing);
-    expect(find.byType(PregoButtonsSolid), findsNothing);
-    verifyNever(bridges.hasRegisteredBridges);
-  });
-
   testWidgets("empty home offers the shared add-project action", (tester) async {
     await pumpHome(
       tester: tester,
@@ -161,7 +151,6 @@ void main() {
     );
     final button = tester.widget<PregoButtonsSolid>(find.byType(PregoButtonsSolid));
     expect(button.onPressed, isNotNull);
-    expect(find.text("Pick a session from the sidebar to get started."), findsNothing);
     verifyNever(bridgeControlCubit.recoverConnection);
   });
 
@@ -188,6 +177,147 @@ void main() {
       semantics.dispose();
     }
   });
+
+  group("with projects", () {
+    const one = ProjectSummary(id: "one", name: "One", path: "/one", time: null);
+    const two = ProjectSummary(id: "two", name: "Two", path: "/two", time: null);
+    late List<String> createdFor;
+    late List<({String projectId, String sessionId})> opened;
+    late _MockRecentSessionsCubit recent;
+    late _MockPendingSessionArchiveCubit archive;
+    late _MockChatInputModeCubit inputMode;
+
+    _MockNewSessionCubit newSessionCubit({required Stream<NewSessionState> states}) {
+      final cubit = _MockNewSessionCubit();
+      whenListen(cubit, states, initialState: _composing);
+      when(() => cubit.needsHarnessDiscovery).thenReturn(false);
+      when(() => cubit.hasNoHarnesses).thenReturn(false);
+      when(() => cubit.canCreateSession).thenReturn(true);
+      when(() => cubit.canRefreshOptions).thenReturn(false);
+      when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+      return cubit;
+    }
+
+    setUp(() {
+      createdFor = [];
+      opened = [];
+      recent = _MockRecentSessionsCubit();
+      archive = _MockPendingSessionArchiveCubit();
+      inputMode = _MockChatInputModeCubit();
+      whenListen(
+        archive,
+        const Stream<PendingSessionArchiveState>.empty(),
+        initialState: const PendingSessionArchiveState(window: PendingArchiveIdle(), archivingIds: {}),
+      );
+      whenListen(inputMode, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
+    });
+
+    Future<void> pumpStart({
+      required WidgetTester tester,
+      required Map<String, RecentSessionsEntry> entries,
+      Stream<NewSessionState> states = const Stream<NewSessionState>.empty(),
+      List<ProjectSummary> projects = const [one, two],
+    }) async {
+      tester.view.physicalSize = const Size(1200, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      whenListen(recent, const Stream<Map<String, RecentSessionsEntry>>.empty(), initialState: entries);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildPregoThemeData(brightness: Brightness.light),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: MultiBlocProvider(
+            providers: [
+              BlocProvider<FileAccessCubit>.value(value: fileAccess),
+              BlocProvider<RecentSessionsCubit>.value(value: recent),
+              BlocProvider<PendingSessionArchiveCubit>.value(value: archive),
+              BlocProvider<ChatInputModeCubit>.value(value: inputMode),
+            ],
+            child: DesktopHomeStart(
+              projects: projects,
+              createNewSessionCubit: ({required projectId}) {
+                createdFor.add(projectId);
+                return newSessionCubit(states: states);
+              },
+              onOpenSession: ({required context, required project, required displayName, required session}) =>
+                  opened.add((projectId: project.id, sessionId: session.id)),
+              onOpenHarnessSettings: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets("shows the composer, then needs-you, running and recent sessions", (tester) async {
+      final waiting = _session(id: "waiting", projectId: "two", updated: 3);
+      final running = _session(id: "running", projectId: "one", updated: 2);
+      final settled = _session(id: "settled", projectId: "two", updated: 1);
+      await pumpStart(
+        tester: tester,
+        entries: {
+          "one": RecentSessionsLoaded(
+            sourceSessions: [running],
+            visibleSessions: [running],
+            activityBySessionId: {"running": _activity(awaitingInput: false)},
+            listStateBySessionId: const {},
+          ),
+          "two": RecentSessionsLoaded(
+            sourceSessions: [waiting, settled],
+            visibleSessions: [waiting, settled],
+            activityBySessionId: {"waiting": _activity(awaitingInput: true)},
+            listStateBySessionId: const {},
+          ),
+        },
+      );
+
+      expect(createdFor, ["one"]);
+      expect(find.byType(PromptInput), findsOneWidget);
+      double top(String text) => tester.getTopLeft(find.text(text)).dy;
+      expect(top("Needs you"), lessThan(top("waiting")));
+      expect(top("waiting"), lessThan(top("Running")));
+      expect(top("Running"), lessThan(top("running")));
+      expect(top("running"), lessThan(top("Recent")));
+      expect(top("Recent"), lessThan(top("settled")));
+
+      await tester.tap(find.text("settled"));
+      expect(opened, [(projectId: "two", sessionId: "settled")]);
+    });
+
+    testWidgets("picking another project gives it its own cubit", (tester) async {
+      await pumpStart(tester: tester, entries: const {});
+      expect(find.text("Needs you"), findsNothing);
+
+      tester
+          .widget<NewSessionView>(find.byType(NewSessionView))
+          .onProjectSelected(projectId: "two", projectName: "Two");
+      await tester.pump();
+
+      expect(createdFor, ["one", "two"]);
+      expect(tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId, "two");
+    });
+
+    testWidgets("a reordered project list keeps the project already shown", (tester) async {
+      await pumpStart(tester: tester, entries: const {});
+      await pumpStart(tester: tester, entries: const {}, projects: const [two, one]);
+
+      expect(createdFor, ["one"]);
+      expect(tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId, "one");
+    });
+
+    testWidgets("a session started from home opens in the picked project", (tester) async {
+      final created = _session(id: "created", projectId: "one", updated: 1);
+      await pumpStart(
+        tester: tester,
+        entries: const {},
+        states: Stream.value(NewSessionState.created(session: created)),
+      );
+      await tester.pump();
+
+      expect(opened, [(projectId: "one", sessionId: "created")]);
+    });
+  });
 }
 
 const BridgeControlState _bridgeControlState = BridgeControlState(
@@ -209,3 +339,47 @@ class _MockProjectListCubit() extends MockCubit<ProjectListState> implements Pro
 class _MockRegisteredBridgesService() extends Mock implements RegisteredBridgesService;
 
 class _MockConnectionService() extends Mock implements ConnectionService;
+
+class _MockNewSessionCubit() extends MockCubit<NewSessionState> implements NewSessionCubit;
+
+class _MockRecentSessionsCubit() extends MockCubit<Map<String, RecentSessionsEntry>> implements RecentSessionsCubit;
+
+class _MockPendingSessionArchiveCubit()
+    extends MockCubit<PendingSessionArchiveState>
+    implements PendingSessionArchiveCubit;
+
+class _MockChatInputModeCubit() extends MockCubit<ChatInputMode> implements ChatInputModeCubit;
+
+const _composing = NewSessionState.composing(
+  config: NewSessionComposeConfig(
+    availablePlugins: [],
+    selectedPlugin: null,
+    options: NewSessionOptionsLoadState.unsupported(),
+    backendScope: NewSessionBackendScope.verified(bridgeId: null),
+    isPluginDiscoveryInFlight: false,
+    projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
+  ),
+  phase: NewSessionPhase.idle(),
+);
+
+SessionActivityInfo _activity({required bool awaitingInput}) => SessionActivityInfo(
+  mainAgentRunning: true,
+  awaitingInput: awaitingInput,
+  lastUserActivityAt: null,
+  updatedAt: null,
+);
+
+Session _session({required String id, required String projectId, required int updated}) => Session(
+  id: id,
+  title: id,
+  projectID: projectId,
+  pluginId: "plugin",
+  directory: "/$projectId",
+  parentID: null,
+  branchName: null,
+  pullRequest: null,
+  time: SessionTime(created: 1, updated: updated, archived: null),
+  promptDefaults: null,
+  lastUserActivityAt: null,
+  unseen: false,
+);

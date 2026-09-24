@@ -82,6 +82,7 @@ class const DesktopNewSessionView({
       banner: null,
       pageChrome: NewSessionPageChrome(
         maxContentWidth: maxContentWidth,
+        footer: null,
         topBar: DesktopPageToolbar(
           breadcrumb: (label: _projectLabel(context: context), onPressed: onOpenProject),
           status: null,

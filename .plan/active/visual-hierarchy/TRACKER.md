@@ -32,8 +32,8 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 14 | `visual-hierarchy/needs-you-card` | [14/41](#pr-titles) | ≤ 600 | done |
 | [x] | 15 | `visual-hierarchy/{settings-window,bridge-popover}` | [15/41](#pr-titles) | ≤ 600 | done |
 | [x] | 16 | `visual-hierarchy/{changes-file-list,changes-split}` | [16/41](#pr-titles) | ≤ 800 | done |
-| [ ] | 17 | `visual-hierarchy/{shared-activity,phone-activity}` | [17/41](#pr-titles) | ≤ 900 | in-progress |
-| [ ] | 18 | `visual-hierarchy/desktop-home` | [18/41](#pr-titles) | ≤ 800 | pending |
+| [x] | 17 | `visual-hierarchy/{shared-activity,phone-activity}` | [17/41](#pr-titles) | ≤ 900 | done |
+| [ ] | 18 | `visual-hierarchy/{desktop-home,empty-project-composer}` | [18/41](#pr-titles) | ≤ 800 | in-progress |
 | [ ] | 19 | `visual-hierarchy/phone-search` | [19/41](#pr-titles) | ≤ 600 | pending |
 | [ ] | 20 | `visual-hierarchy/command-palette` | [20/41](#pr-titles) | ≤ 900 | pending |
 | [ ] | 21 | `visual-hierarchy/project-rows` | [21/41](#pr-titles) | ≤ 500 | pending |
@@ -110,6 +110,8 @@ Answered 2026-09-23; every answer took the recommended option.
    - `🌿 [visual-hierarchy] Share the activity projection [step 17.a/41]`
    - `⚙️ [visual-hierarchy] Show Activity at the top of the phone's Projects [step 17.b/41]`
 18. `⚙️ [visual-hierarchy] Start sessions from the desktop home and empty projects [step 18/41]`
+   - `⚙️ [visual-hierarchy] Start sessions from the desktop home [step 18.a/41]`
+   - `🌿 [visual-hierarchy] Show the composer in an empty project [step 18.b/41]`
 19. `⚙️ [visual-hierarchy] Search project and session titles on the phone [step 19/41]`
 20. `🚧 [visual-hierarchy] Add a Cmd+K command palette to the desktop [step 20/41]`
 21. `🌿 [visual-hierarchy] Tell projects apart and open the one just added [step 21/41]`
