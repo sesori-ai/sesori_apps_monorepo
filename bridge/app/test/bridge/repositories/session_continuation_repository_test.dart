@@ -148,6 +148,15 @@ void main() {
     );
   });
 
+  test("malformed persisted JSON fails explicitly at the object boundary", () async {
+    for (final json in ["[]", "null", "{"]) {
+      await SessionContinuationDao(database: db).upsert(
+        row: SessionContinuationDto(sessionId: "session", enabled: true, outcomeJson: json),
+      );
+      await expectLater(repository.read(sessionId: "session"), throwsFormatException);
+    }
+  });
+
   test("all persisted outcomes round-trip and session deletion cascades storage", () async {
     final outcomes = [
       const SessionContinuationOutcome.none(),

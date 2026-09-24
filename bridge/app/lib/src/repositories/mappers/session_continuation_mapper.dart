@@ -1,5 +1,7 @@
 import "dart:convert";
 
+import "package:sesori_shared/sesori_shared.dart";
+
 import "../../api/database/database.dart";
 import "../models/session_continuation_record.dart";
 
@@ -7,7 +9,7 @@ class const SessionContinuationMapper() {
   SessionContinuationRecord fromDto({required SessionContinuationDto row}) => SessionContinuationRecord(
     sessionId: row.sessionId,
     enabled: row.enabled,
-    outcome: SessionContinuationOutcome.fromJson(jsonDecode(row.outcomeJson) as Map<String, dynamic>),
+    outcome: SessionContinuationOutcome.fromJson(jsonDecodeMap(row.outcomeJson)),
   );
 
   SessionContinuationDto toDto({required SessionContinuationRecord record}) => SessionContinuationDto(
