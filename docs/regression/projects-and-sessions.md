@@ -25,10 +25,13 @@ state.
   rather than mutating the old one. An unknown catalog identifier is never
   interpreted as a path.
 - Opening validates the path and surfaces the git-initialization choice. The
-  add-project folder browser keeps hierarchy controls above the folder rows: an
-  up arrow moves to the parent, while Home and Root shortcuts jump to the host
-  user's home directory and filesystem root. Those controls remain available
-  while a navigated directory loads or reports an access failure. Hiding delists
+  add-project folder browser is titled "Add project" and keeps a tappable
+  breadcrumb above the folder rows: the host root first, the folders inside the
+  host user's home directory under one Home segment, and the browsed folder
+  last in bold. It remains available while a navigated directory loads or
+  reports an access failure. A folder without subfolders reads "No folders
+  here", with a line saying files are not listed, and the add button names the
+  browsed folder ("Add my-app"). Hiding delists
   without destroying sessions or history. Every catalog scan preserves the stored
   visibility of existing projects. Newly discovered ordinary projects appear
   immediately; projects at or below the host's system temporary directory,
