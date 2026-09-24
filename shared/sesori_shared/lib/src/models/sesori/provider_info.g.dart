@@ -103,9 +103,8 @@ Map<String, dynamic> _$FastModeUnavailableToJson(
 
 const _$FastModeUnavailableReasonEnumMap = {
   FastModeUnavailableReason.extraUsageDisabled: 'extraUsageDisabled',
-  FastModeUnavailableReason.outOfCredits: 'outOfCredits',
+  FastModeUnavailableReason.notOnPlan: 'notOnPlan',
   FastModeUnavailableReason.disabledByOrganization: 'disabledByOrganization',
-  FastModeUnavailableReason.spendLimitReached: 'spendLimitReached',
   FastModeUnavailableReason.unknown: 'unknown',
 };
 

@@ -66,10 +66,14 @@ sealed class FastModeSupport with _$FastModeSupport {
 
 /// Why an account cannot use a model's fast mode.
 enum FastModeUnavailableReason() {
+  /// The account has extra usage turned off, which fast mode bills against.
   extraUsageDisabled,
-  outOfCredits,
+
+  /// The account's plan does not include fast mode.
+  notOnPlan,
+
+  /// An organization policy turned fast mode or its model off.
   disabledByOrganization,
-  spendLimitReached,
   unknown,
 }
 

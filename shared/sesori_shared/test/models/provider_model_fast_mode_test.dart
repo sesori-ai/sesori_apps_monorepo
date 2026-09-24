@@ -25,7 +25,7 @@ void main() {
     test("round-trips every known variant", () {
       for (final fastMode in const [
         FastModeSupport.available(promptCacheTtlSeconds: 3600),
-        FastModeSupport.unavailable(reason: FastModeUnavailableReason.spendLimitReached),
+        FastModeSupport.unavailable(reason: FastModeUnavailableReason.notOnPlan),
         null,
       ]) {
         final original = model(fastMode: fastMode);

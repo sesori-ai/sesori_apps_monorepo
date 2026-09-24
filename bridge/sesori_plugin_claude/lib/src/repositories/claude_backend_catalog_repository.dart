@@ -101,29 +101,44 @@ final class const ClaudeBackendCatalogRepository() {
     );
   }
 
+  /// Whether [handshake] masks the account's fast-mode state behind the SDK
+  /// opt-in. Claude CLI 2.1.281 checks the opt-in before the account, so a
+  /// catalog probe must opt in and re-read the handshake to learn the real
+  /// reason (verified live: `extra_usage_disabled` only appears after opting in).
+  bool fastModeNeedsOptIn({required Map<String, Object?> handshake}) {
+    final dto = ClaudeBackendCatalogDto.fromJson(handshake);
+    return dto.fastModeDisabledReason == _sdkOptInRequired &&
+        dto.models.any((model) => model.supportsFastMode ?? false);
+  }
+
+  static const String _sdkOptInRequired = "sdk_opt_in_required";
+
   /// The account-level fast mode every fast-capable model shares.
   PluginFastModeSupport _fastMode({required String? disabledReason}) {
     final reason = switch (disabledReason) {
-      // The bridge opts in through apply_flag_settings, so the SDK opt-in
-      // requirement never blocks a session.
-      null || "sdk_opt_in_required" => null,
-      "extra_usage_disabled" || "overage_not_provisioned" => PluginFastModeUnavailableReason.extraUsageDisabled,
-      "out_of_credits" => PluginFastModeUnavailableReason.outOfCredits,
-      "preference" ||
-      "model_not_allowed" ||
-      "org_level_disabled" ||
-      "org_service_level_disabled" ||
-      "member_level_disabled" ||
-      "seat_tier_level_disabled" => PluginFastModeUnavailableReason.disabledByOrganization,
-      "org_spend_cap_reached" ||
-      "org_level_disabled_until" ||
-      "seat_tier_zero_credit_limit" ||
-      "member_zero_credit_limit" => PluginFastModeUnavailableReason.spendLimitReached,
+      // Still masked only when the probe's opt-in failed. Prompts opt in
+      // through apply_flag_settings, so fast mode stays offered.
+      null || _sdkOptInRequired => null,
+      // Transient states say nothing about the account. Offering fast mode is
+      // less misleading than a disabled control that recovers on its own.
+      final String transient && ("network_error" || "pending") => _transientFastModeReason(raw: transient),
+      "extra_usage_disabled" => PluginFastModeUnavailableReason.extraUsageDisabled,
+      // The CLI's message: "Fast mode requires a paid subscription".
+      "free" => PluginFastModeUnavailableReason.notOnPlan,
+      // An organization policy turned fast mode off, or excludes its model.
+      "preference" || "model_not_allowed" => PluginFastModeUnavailableReason.disabledByOrganization,
+      // A non-Anthropic API provider, an environment override, or a remote kill switch.
+      "not_first_party" || "disabled_by_env" || "unknown" => PluginFastModeUnavailableReason.unknown,
       final unmapped => _unmappedFastModeReason(raw: unmapped),
     };
     return reason == null
         ? const PluginFastModeSupport.available(promptCacheTtlSeconds: _promptCacheTtlSeconds)
         : PluginFastModeSupport.unavailable(reason: reason);
+  }
+
+  PluginFastModeUnavailableReason? _transientFastModeReason({required String raw}) {
+    Log.w("[claude] fast mode offered while its availability is transiently unknown: $raw");
+    return null;
   }
 
   PluginFastModeUnavailableReason _unmappedFastModeReason({required String raw}) {

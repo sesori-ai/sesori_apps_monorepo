@@ -34,10 +34,9 @@ Map<String, dynamic> _$PluginFastModeUnavailableToJson(
 
 const _$PluginFastModeUnavailableReasonEnumMap = {
   PluginFastModeUnavailableReason.extraUsageDisabled: 'extraUsageDisabled',
-  PluginFastModeUnavailableReason.outOfCredits: 'outOfCredits',
+  PluginFastModeUnavailableReason.notOnPlan: 'notOnPlan',
   PluginFastModeUnavailableReason.disabledByOrganization:
       'disabledByOrganization',
-  PluginFastModeUnavailableReason.spendLimitReached: 'spendLimitReached',
   PluginFastModeUnavailableReason.unknown: 'unknown',
 };
 

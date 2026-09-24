@@ -91,23 +91,32 @@ void main() {
           .single
           .fastMode;
 
-      test("treats the SDK opt-in requirement as available, since the bridge opts in", () {
+      test("treats a still-masked SDK opt-in requirement as available", () {
         expect(
           fastModeFor(disabledReason: "sdk_opt_in_required"),
           const PluginFastModeSupport.available(promptCacheTtlSeconds: 3600),
         );
       });
 
+      test("treats transient states as available", () {
+        for (final raw in ["network_error", "pending"]) {
+          expect(
+            fastModeFor(disabledReason: raw),
+            const PluginFastModeSupport.available(promptCacheTtlSeconds: 3600),
+            reason: raw,
+          );
+        }
+      });
+
       test("maps account reasons to the closed reason set", () {
         const expected = {
           "extra_usage_disabled": PluginFastModeUnavailableReason.extraUsageDisabled,
-          "out_of_credits": PluginFastModeUnavailableReason.outOfCredits,
+          "free": PluginFastModeUnavailableReason.notOnPlan,
           "preference": PluginFastModeUnavailableReason.disabledByOrganization,
           "model_not_allowed": PluginFastModeUnavailableReason.disabledByOrganization,
-          "org_level_disabled": PluginFastModeUnavailableReason.disabledByOrganization,
-          "org_spend_cap_reached": PluginFastModeUnavailableReason.spendLimitReached,
-          "member_zero_credit_limit": PluginFastModeUnavailableReason.spendLimitReached,
           "not_first_party": PluginFastModeUnavailableReason.unknown,
+          "disabled_by_env": PluginFastModeUnavailableReason.unknown,
+          "unknown": PluginFastModeUnavailableReason.unknown,
           "a_future_reason": PluginFastModeUnavailableReason.unknown,
         };
         for (final MapEntry(key: raw, value: reason) in expected.entries) {
@@ -117,6 +126,29 @@ void main() {
             reason: raw,
           );
         }
+      });
+
+      test("asks for an opt-in only when the opt-in masks a fast-capable model", () {
+        Map<String, Object?> handshake({required String? reason, required bool fastCapable}) => {
+          "models": [
+            {"value": "opus", "supportsFastMode": fastCapable},
+          ],
+          "fast_mode_disabled_reason": reason,
+        };
+
+        expect(
+          repository.fastModeNeedsOptIn(handshake: handshake(reason: "sdk_opt_in_required", fastCapable: true)),
+          isTrue,
+        );
+        expect(
+          repository.fastModeNeedsOptIn(handshake: handshake(reason: "sdk_opt_in_required", fastCapable: false)),
+          isFalse,
+        );
+        expect(
+          repository.fastModeNeedsOptIn(handshake: handshake(reason: "extra_usage_disabled", fastCapable: true)),
+          isFalse,
+        );
+        expect(repository.fastModeNeedsOptIn(handshake: handshake(reason: null, fastCapable: true)), isFalse);
       });
     });
 

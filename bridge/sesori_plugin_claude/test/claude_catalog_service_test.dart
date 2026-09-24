@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:claude_plugin/claude_plugin.dart";
 import "package:claude_plugin/claude_testing.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
@@ -87,6 +88,64 @@ void main() {
       expect(spawned, hasLength(2));
       expect(_controlSubtypes(spawned.last), contains("list_models"));
       expect(refreshed.providers.providers.single.models.single.id, "new");
+    });
+  });
+
+  group("ClaudeCatalogService fast-mode availability", () {
+    late FakeClaudeProcess process;
+    late ClaudeSessionProcessRepository processes;
+    late ClaudeCatalogService service;
+
+    ClaudeCatalogService serviceAnswering({required bool failOptIn}) {
+      process = FakeClaudeProcess();
+      processes = ClaudeSessionProcessRepository(
+        processFactory: (_) async {
+          unawaited(_answerFastModeProbe(process, failOptIn: failOptIn));
+          return process;
+        },
+        binaryPath: "claude",
+        environment: const {},
+      );
+      return ClaudeCatalogService(
+        catalog: const ClaudeBackendCatalogRepository(),
+        processes: processes,
+        probeSessionId: otherTestSessionId,
+        discoveryDirectory: "/tmp/claude-state",
+      );
+    }
+
+    tearDown(() async {
+      await processes.dispose();
+      await process.close();
+    });
+
+    test("opts the probe in and reports the account reason the SDK opt-in masked", () async {
+      service = serviceAnswering(failOptIn: false);
+
+      final catalog = await service.getCatalog(refresh: false);
+
+      expect(_controlSubtypes(process), ["initialize", "apply_flag_settings", "initialize"]);
+      final optIn = process.written.firstWhere(
+        (frame) => frame["type"] == "control_request" && _request(frame)["subtype"] == "apply_flag_settings",
+      );
+      expect(_request(optIn)["settings"], {"fastMode": true});
+      expect(
+        catalog.providers.providers.single.models.single.fastMode,
+        const PluginFastModeSupport.unavailable(reason: PluginFastModeUnavailableReason.extraUsageDisabled),
+      );
+      expect(process.killed, isTrue);
+    });
+
+    test("keeps fast mode available when the opt-in fails", () async {
+      service = serviceAnswering(failOptIn: true);
+
+      final catalog = await service.getCatalog(refresh: false);
+
+      expect(_controlSubtypes(process), ["initialize", "apply_flag_settings"]);
+      expect(
+        catalog.providers.providers.single.models.single.fastMode,
+        const PluginFastModeSupport.available(promptCacheTtlSeconds: 3600),
+      );
     });
   });
 
@@ -189,6 +248,36 @@ Future<void> _answerCatalogControls(FakeClaudeProcess process, {required String 
           _ => const {},
         },
       );
+    }
+    await pump();
+  }
+}
+
+Future<void> _answerFastModeProbe(FakeClaudeProcess process, {required bool failOptIn}) async {
+  final answered = <String>{};
+  var optedIn = false;
+  while (!process.killed) {
+    for (final frame in process.written) {
+      if (frame["type"] != "control_request") continue;
+      final requestId = frame["request_id"]! as String;
+      if (!answered.add(requestId)) continue;
+      switch (_request(frame)["subtype"]) {
+        case "apply_flag_settings" when failOptIn:
+          process.emitControlError(requestId: requestId, error: "rejected");
+        case "apply_flag_settings":
+          optedIn = true;
+          process.emitControlResponse(requestId: requestId, payload: const {});
+        case _:
+          process.emitControlResponse(
+            requestId: requestId,
+            payload: {
+              "models": [
+                {"value": "opus", "supportsFastMode": true},
+              ],
+              "fast_mode_disabled_reason": optedIn ? "extra_usage_disabled" : "sdk_opt_in_required",
+            },
+          );
+      }
     }
     await pump();
   }

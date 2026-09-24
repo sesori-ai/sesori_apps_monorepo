@@ -47,10 +47,14 @@ sealed class PluginFastModeSupport with _$PluginFastModeSupport {
 
 /// Why an account cannot use a model's fast mode.
 enum PluginFastModeUnavailableReason() {
+  /// The account has extra usage turned off, which fast mode bills against.
   extraUsageDisabled,
-  outOfCredits,
+
+  /// The account's plan does not include fast mode.
+  notOnPlan,
+
+  /// An organization policy turned fast mode or its model off.
   disabledByOrganization,
-  spendLimitReached,
   unknown,
 }
 

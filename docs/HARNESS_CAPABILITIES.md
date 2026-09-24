@@ -240,12 +240,19 @@ differs from what the resident process last applied. The CLI acknowledges the
 setting even when the model or account cannot use fast mode (for example, extra
 usage turned off) and then serves at standard speed. The plugin reads the
 handshake's account-level `fast_mode_disabled_reason` and reports those models
-as unavailable with a closed reason (extra usage disabled, out of credits,
-disabled by the organization, spend limit reached, or unknown for an unmapped
-value, which is logged). `sdk_opt_in_required` counts as available because the
-plugin opts in. In CLI 2.1.281 that opt-in reason precedes the account checks,
-so a headless handshake mostly reports organization policy and model
-allow-list blocks; per-turn reasons from result messages are not tracked.
+as unavailable with a closed reason: extra usage disabled (`extra_usage_disabled`),
+not on the plan (`free`), disabled by the organization (`preference`,
+`model_not_allowed`), or unknown (`not_first_party`, `disabled_by_env`,
+`unknown`, and unmapped values, which are logged). In CLI 2.1.281 the
+`sdk_opt_in_required` reason precedes the account checks and masks them, so the
+global catalog probe opts in with `apply_flag_settings {fastMode: true}` and
+sends a second `initialize`, whose reason is the real account state (verified
+live: `sdk_opt_in_required` became `extra_usage_disabled`). The flag is
+process-scoped (no settings file changes) and the probe is torn down afterwards.
+Only the probe feeds the catalog; user-session handshakes are never used for
+availability. If the opt-in or re-read fails, the failure is logged and fast
+mode stays offered. The transient `network_error` and `pending` reasons also
+keep it offered, with a log. Per-turn reasons from result messages are not tracked.
 
 ## Agent selection and harness modes
 

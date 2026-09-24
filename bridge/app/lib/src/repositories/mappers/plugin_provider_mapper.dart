@@ -39,9 +39,8 @@ extension on PluginFastModeSupport {
 extension on PluginFastModeUnavailableReason {
   FastModeUnavailableReason toShared() => switch (this) {
     PluginFastModeUnavailableReason.extraUsageDisabled => FastModeUnavailableReason.extraUsageDisabled,
-    PluginFastModeUnavailableReason.outOfCredits => FastModeUnavailableReason.outOfCredits,
+    PluginFastModeUnavailableReason.notOnPlan => FastModeUnavailableReason.notOnPlan,
     PluginFastModeUnavailableReason.disabledByOrganization => FastModeUnavailableReason.disabledByOrganization,
-    PluginFastModeUnavailableReason.spendLimitReached => FastModeUnavailableReason.spendLimitReached,
     PluginFastModeUnavailableReason.unknown => FastModeUnavailableReason.unknown,
   };
 }
