@@ -410,7 +410,7 @@ void main() {
       expect(result.single.time, const ProjectTime(created: 10, updated: 20));
     });
 
-    test("getProjects makes no filesystem or Git calls", () async {
+    test("getProjects probes each folder once and makes no Git calls", () async {
       final paths = [
         for (var index = 0; index < 9; index++) "/project-${index.toString().padLeft(2, "0")}",
       ];
@@ -434,9 +434,29 @@ void main() {
       final projects = await catalogRepo.getProjects();
 
       expect(projects.map((project) => project.path), paths);
-      expect(filesystemApi.directoryExistsCallCount, 0);
+      expect(filesystemApi.directoryExistsCallCount, paths.length);
       expect(gitCliApi.isGitInitializedCallCount, 0);
       expect(gitCliApi.hasAtLeastOneCommitCallCount, 0);
+    });
+
+    test("getProjects flags a missing folder and reads an unreadable one as present", () async {
+      for (final path in ["/present", "/gone", "/locked"]) {
+        await db.projectsDao.setActivity(projectId: path, createdAt: 1, updatedAt: 2);
+      }
+      final catalogRepo = singlePluginProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(missingPaths: {"/gone"}, throwingPaths: {"/locked"}),
+      );
+
+      final projects = await catalogRepo.getProjects();
+
+      expect(
+        {for (final project in projects) project.path: project.directoryMissing},
+        {"/present": false, "/gone": true, "/locked": false},
+      );
     });
 
     test("getProjects breaks equal timestamps by project id descending", () async {

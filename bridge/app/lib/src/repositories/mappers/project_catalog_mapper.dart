@@ -7,6 +7,7 @@ class const ProjectCatalogMapper() {
   ProjectSummary mapSummary({
     required ProjectDto row,
     required bool hasUnseenChanges,
+    required bool directoryMissing,
   }) {
     return ProjectSummary(
       id: row.projectId,
@@ -14,6 +15,7 @@ class const ProjectCatalogMapper() {
       path: row.path,
       time: ProjectTime(created: row.createdAt, updated: row.updatedAt),
       hasUnseenChanges: hasUnseenChanges,
+      directoryMissing: directoryMissing,
     );
   }
 

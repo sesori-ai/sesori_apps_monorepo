@@ -190,6 +190,38 @@ void main() {
     expect(titleWeight(tester, "my-app"), FontWeight.w500);
   });
 
+  group("a project whose folder is gone", () {
+    testWidgets("says Folder not found in amber, ahead of a live turn", (tester) async {
+      final project = testProjectSummary(id: "p1", name: "my-app").copyWith(directoryMissing: true);
+
+      await pumpList(tester, projects: [project], activeSessions: {"p1": 1});
+
+      expect(find.text("Running"), findsNothing);
+      expect(
+        tester.widget<Text>(find.text("Folder not found")).style?.color,
+        PregoDesignSystem.light.colors.textWarningPrimary,
+      );
+      expect(tester.getSize(find.byType(ProjectTile)).height, rowHeight);
+    });
+
+    testWidgets("offers Remove as its own button, which hides the project", (tester) async {
+      when(() => mockProjectRepository.hideProject(projectId: any(named: "projectId"))).thenAnswer(
+        (_) async => ApiResponse.success(null),
+      );
+      final handle = tester.ensureSemantics();
+      final project = testProjectSummary(id: "p1", name: "my-app").copyWith(directoryMissing: true);
+
+      await pumpList(tester, projects: [project]);
+
+      expect(find.bySemanticsLabel("Remove"), findsOneWidget);
+      await tester.tap(find.text("Remove"));
+      await tester.pump();
+
+      verify(() => mockProjectRepository.hideProject(projectId: "p1")).called(1);
+      handle.dispose();
+    });
+  });
+
   testWidgets("a read, idle project says only when it last changed", (tester) async {
     final project = testProjectSummary(id: "p1", name: "my-app").copyWith(
       time: ProjectTime(created: 0, updated: DateTime.now().millisecondsSinceEpoch),

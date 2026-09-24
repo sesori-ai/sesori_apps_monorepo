@@ -51,6 +51,7 @@ class ProjectRepository({
           path: data.path.isEmpty ? data.id : data.path,
           time: data.time,
           hasUnseenChanges: data.hasUnseenChanges,
+          directoryMissing: data.directoryMissing,
         ),
         supportsDedicatedWorktrees: data.supportsDedicatedWorktrees,
       )),

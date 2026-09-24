@@ -20,17 +20,20 @@ void main() {
     );
 
     expect(
-      mapper.mapSummary(row: base, hasUnseenChanges: true),
+      mapper.mapSummary(row: base, hasUnseenChanges: true, directoryMissing: true),
       const ProjectSummary(
         id: "project-1",
         name: "repository",
         path: "/projects/repository",
         time: ProjectTime(created: 10, updated: 20),
         hasUnseenChanges: true,
+        directoryMissing: true,
       ),
     );
     expect(
-      mapper.mapSummary(row: base.copyWith(displayName: "Renamed"), hasUnseenChanges: false).name,
+      mapper
+          .mapSummary(row: base.copyWith(displayName: "Renamed"), hasUnseenChanges: false, directoryMissing: false)
+          .name,
       "Renamed",
     );
   });

@@ -112,6 +112,8 @@ The main pane hosts one full-width routed page.
   unread one is primary with the sparkle. A project's add and fold controls appear only on hover or keyboard
   focus. The open session is highlighted once, on its row under its project, never in Activity or on the
   project; the project row is highlighted only on its own page. The highlight fills the row's full width.
+- A project whose folder is missing shows an amber folder icon in its sidebar status slot, ahead of running and
+  unread. Its tooltip and screen-reader label say "Folder not found", and its menu offers Remove instead of Hide.
 - Every session row leads with a fixed status column (awaiting-input and sparkle signals) aligned under the project
   avatar and ends with a compact last-activity time; its tooltip and screen-reader label say that time in full.
   Activity rows add the project name under the title. A running session shows no time, and a row drops the time

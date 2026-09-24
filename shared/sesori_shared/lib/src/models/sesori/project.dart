@@ -25,6 +25,9 @@ sealed class ProjectSummary with _$ProjectSummary {
     required ProjectTime? time,
     // COMPATIBILITY 2026-07-03 (v1.3.0): Old bridges omit unseen-change state. Require the field once those bridges are unsupported.
     @Default(false) bool hasUnseenChanges,
+    // Whether the project's folder no longer exists at [path]; see [Project.directoryMissing].
+    // COMPATIBILITY 2026-09-24 (v1.9.1): Old bridges omit directory-missing state on project lists, so their projects read as present. Require the field once those bridges are unsupported.
+    @Default(false) bool directoryMissing,
   }) = _ProjectSummary;
 
   // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges omit path and use the directory as id. Pass the payload directly once those bridges are unsupported.

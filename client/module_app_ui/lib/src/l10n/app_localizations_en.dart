@@ -260,6 +260,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectListNewActivity => 'New activity';
 
   @override
+  String get projectListFolderNotFound => 'Folder not found';
+
+  @override
+  String get projectListRemove => 'Remove';
+
+  @override
   String get projectsEmptyMessage => 'You don\'t have any projects created or opened yet.';
 
   @override

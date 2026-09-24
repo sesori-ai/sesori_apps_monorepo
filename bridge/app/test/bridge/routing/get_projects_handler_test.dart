@@ -30,7 +30,7 @@ void main() {
           projectsDao: projectsDao,
           sessionDao: db.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),
-          filesystemApi: FakeFilesystemApi(),
+          filesystemApi: FakeFilesystemApi(missingPaths: {"gone"}),
         ),
         projectActivityRepository: singlePluginProjectActivityRepository(
           plugin: plugin,
@@ -97,6 +97,21 @@ void main() {
       expect(project.id, equals("p1"));
       expect(project.name, equals("My Project"));
       expect(plugin.getProjectsCallCount, 0);
+    });
+
+    test("sends directoryMissing for a project whose folder is gone", () async {
+      await projectsDao.setActivity(projectId: "gone", createdAt: 1, updatedAt: 2);
+      await projectsDao.setActivity(projectId: "present", createdAt: 1, updatedAt: 1);
+
+      final response = await handler.handle(makeRequest("GET", "/projects"));
+
+      expect(
+        [
+          for (final project in (response.toJson()["data"]! as List<Object?>).cast<Map<String, Object?>>())
+            (project["path"], project["directoryMissing"]),
+        ],
+        [("gone", true), ("present", false)],
+      );
     });
 
     test("maps stored project activity", () async {

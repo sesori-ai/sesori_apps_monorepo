@@ -896,6 +896,9 @@ class _ExistingFilesystemApi() implements FilesystemApi {
   bool directoryExists(String path) => true;
 
   @override
+  Future<bool> directoryExistsAsync(String path) async => true;
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

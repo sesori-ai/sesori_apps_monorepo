@@ -1604,6 +1604,34 @@ void main() {
     await updates.close();
   }, variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.macOS}));
 
+  testWidgets("a project whose folder is gone shows it in amber ahead of activity and offers Remove", (tester) async {
+    whenListen(
+      projects,
+      const Stream<ProjectListState>.empty(),
+      initialState: const ProjectListState.loaded(
+        projects: [
+          ProjectSummary(id: "project-1", name: "Gone", path: "/work/gone", time: null, directoryMissing: true),
+        ],
+        runningByProjectId: {"project-1": 1},
+      ),
+    );
+    await tester.pumpWidget(app(state: running));
+    await tester.pump();
+
+    final loc = tester.element(rail).loc;
+    expect(find.byTooltip("Gone, ${loc.projectListFolderNotFound}"), findsOneWidget);
+    expect(find.text(loc.projectListRunning(1)), findsNothing);
+    expect(
+      tester.widget<Icon>(find.byIcon(TablerRegular.folder_off)).color,
+      PregoDesignSystem.light.colors.fgWarningPrimary,
+    );
+
+    await tester.tap(find.text("Gone"), buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+    expect(find.text(loc.projectListRemove), findsOneWidget);
+    expect(find.text(loc.hideProject), findsNothing);
+  });
+
   testWidgets("connection transitions overlay unchanged content bounds", (tester) async {
     final root = app(state: running);
     final updates = StreamController<ConnectionOverlayState>();
