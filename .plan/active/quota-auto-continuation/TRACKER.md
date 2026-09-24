@@ -9,14 +9,15 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 | 3 — Durable contracts and readiness | Merged | [#1649][foundation-pr]; durable state and readiness. |
 | 4 — Bridge scheduler | Merged | [#1654][scheduler-pr]; route, views, cancellation and dispatch. |
 | 5 — Shared chat controls | Merged | [#1656][controls-pr]; shared hint, indicator and three-dot toggle. |
-| 6 — Regression reconciliation | In review | This PR reconciles feature docs, provider scope and proof boundaries. |
-| 7 — L4 verification and retirement | Not started | All recorded boundary/platform/provider coverage must pass. |
+| 6 — Regression reconciliation | Merged | [#1659][regression-pr]; feature docs, provider scope and proof boundaries. |
+| 7 — Verification and Pi prompt fix | In progress | [Verification matrix](VERIFICATION.md); required native/provider coverage remains. |
 
 [plan-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1601
 [normalization-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1641
 [foundation-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1649
 [scheduler-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1654
 [controls-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1656
+[regression-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1659
 
 ## Confirmed user decisions
 
@@ -24,6 +25,8 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
   same session, until disabled.
 - The chat session's top-right three-dot menu must expose enable/disable.
 - Start with per-session opt-in; global configuration is outside this version.
+- On 2026-09-24, leave the running desktop app untouched and record macOS QA
+  as blocked. The plan remains active.
 
 ## Proposed implementation defaults
 
@@ -90,5 +93,20 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
   also passes after its directional-inset lint correction.
 - Step 6: documentation reconciles current support, cumulative L1–L4
   boundaries and natural-quota-only live verification. Local links and whitespace checks pass.
-- Live scheduled continuation: not run. Widget fixtures do not prove provider recovery.
-- Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.
+- Step 6 merged after both documentation findings were addressed; terminal CI
+  confirmed 9/9 checks and the final Cubic review approved the head.
+- Step 7 composed bridge checks pass: two encrypted relay clients observe the
+  same setting; a headless timed send uses the real prompt service; a disk-backed
+  restart sends overdue work once and a second restart does not replay it.
+- Step 7 native replay found Pi rejecting its persisted `off` thinking level
+  for a non-reasoning model. The focused regression failed before the fix;
+  all 21 plugin tests and Pi analysis pass after accepting that native default.
+  Pinned Pi 0.85.1 and 0.84.1 each pass four synthetic settlement probes.
+- iOS native controls, buffered local time, persistence across bridge restart,
+  ordinary automatic `Continue.`/fixture response and unknown-reset state pass
+  through a real dev-account bridge and relay. This is synthetic-provider
+  replay, not live-provider quota recovery.
+- Android notice/menu/message-echo smoke passes after an emulator restart
+  recovered DNS/WebSocket failures. Android enable reaches iOS, and iOS
+  disable reaches Android; bridge reads confirm both authoritative outcomes.
+- Final L4 matrix: partial. See VERIFICATION.md; the plan cannot be retired yet.

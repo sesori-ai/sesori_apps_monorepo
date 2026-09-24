@@ -120,6 +120,38 @@ void main() {
       expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
     });
 
+    for (final (reasoning, accepted, rejected) in [(false, "off", "high"), (true, "high", "off")]) {
+      test("restored thinking level respects reasoning=$reasoning model capabilities", () async {
+        harness.catalogModelReasoning = reasoning;
+        harness.writeSession(id: "session", parentPath: null);
+        await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
+
+        await harness.plugin.sendPrompt(
+          sessionId: "session",
+          promptId: "continuation",
+          parts: const [PluginPromptPart.text(text: "Continue.")],
+          variant: PluginSessionVariant(id: accepted),
+          fastMode: false,
+          agent: "pi",
+          model: (providerID: "provider", modelID: "model"),
+        );
+        final process = await harness.nextSessionProcess();
+        expect((await waitForCommand(process: process, type: "prompt"))["message"], "Continue.");
+        await expectLater(
+          harness.plugin.sendPrompt(
+            sessionId: "session",
+            promptId: "invalid-variant",
+            parts: const [PluginPromptPart.text(text: "Continue.")],
+            variant: PluginSessionVariant(id: rejected),
+            fastMode: false,
+            agent: "pi",
+            model: (providerID: "provider", modelID: "model"),
+          ),
+          throwsA(isA<PluginStaleOptionsException>()),
+        );
+      });
+    }
+
     test("missing catalog models return scoped privacy-safe authentication guidance", () async {
       final missingModels = _Harness(
         failCommandDiscovery: false,
@@ -688,6 +720,7 @@ final class _Harness({
             process: process,
             spec: spec,
             catalogModelsAvailable: catalogModelsAvailable,
+            catalogModelReasoning: catalogModelReasoning,
             catalogCommand: catalogCommand,
             failCommandDiscovery: failCommandDiscovery,
           ),
@@ -713,6 +746,7 @@ final class _Harness({
   late final PiPlugin plugin;
   final List<({PiLaunchSpec spec, FakePiProcess process})> processes = [];
   final _CommandExecutor commands = _CommandExecutor();
+  bool catalogModelReasoning = true;
 
   Future<FakePiProcess> nextSessionProcess() async {
     for (var attempt = 0; attempt < 100; attempt++) {
@@ -751,6 +785,7 @@ Future<void> _answerProcess({
   required FakePiProcess process,
   required PiLaunchSpec spec,
   required bool catalogModelsAvailable,
+  required bool catalogModelReasoning,
   required String catalogCommand,
   required bool failCommandDiscovery,
 }) async {
@@ -777,7 +812,7 @@ Future<void> _answerProcess({
                 "provider": selectedModel?.providerID ?? "provider",
                 "id": selectedModel?.modelID ?? "model",
                 "name": "Model",
-                "reasoning": true,
+                "reasoning": catalogModelReasoning,
               },
               "thinkingLevel": spec.thinkingLevel ?? "high",
               "isStreaming": false,
@@ -795,13 +830,14 @@ Future<void> _answerProcess({
             command: type,
             data: {
               "models": catalogModelsAvailable
-                  ? const [
-                      {"provider": "provider", "id": "model", "name": "Model", "reasoning": true},
+                  ? [
+                      {"provider": "provider", "id": "model", "name": "Model", "reasoning": catalogModelReasoning},
                     ]
                   : const <Object?>[],
             },
           );
         case "set_model":
+        case "set_thinking_level":
           process.emitResponse(id: id, command: type);
         case "get_available_thinking_levels":
           process.emitResponse(

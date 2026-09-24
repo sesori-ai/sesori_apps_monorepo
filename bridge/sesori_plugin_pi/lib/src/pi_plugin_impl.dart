@@ -558,7 +558,10 @@ final class PiPlugin._({
     }
     if (variant != null) {
       final selected = provider.models.firstWhere((candidate) => candidate.id == model.modelID);
-      if (!selected.variants.contains(variant.id)) {
+      // Pi persists off even for models without a thinking selector. History
+      // restoration must accept that native default on the next prompt.
+      final implicitOff = selected.variants.isEmpty && variant.id == PiThinkingLevel.off.wireValue;
+      if (!implicitOff && !selected.variants.contains(variant.id)) {
         throw _unsupportedSelection(
           operation: operation,
           message: "Unsupported Pi thinking level.",
