@@ -3,12 +3,11 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
-import "package:theme_prego/theme/primitives/prego_color_primitives.g.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/remote_failure_view.dart";
 
-/// A solid amber card docked above the composer while the session waits on
+/// A pale amber card docked above the composer while the session waits on
 /// the user for a question or permission: amber means it needs you. It names
 /// what is pending, shows the first request's opening line, and its button
 /// opens the existing modal.
@@ -23,34 +22,33 @@ class const SessionDetailNeedsYouCard({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    // Dark on amber in both themes: white fails contrast on the warning fill.
-    const foreground = PregoColorPrimitives.gray950;
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, PregoSpacing.md),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: prego.colors.bgWarningSolid,
+          color: prego.colors.fgWarningPrimary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(PregoRadius.x2l),
+          border: Border.all(color: prego.colors.fgWarningPrimary.withValues(alpha: 0.3)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(PregoSpacing.lg),
           child: Row(
             spacing: PregoSpacing.lg,
             children: [
-              Icon(icon, size: PregoIconSize.md, color: foreground),
+              Icon(icon, size: PregoIconSize.md, color: prego.colors.fgWarningPrimary),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       label,
-                      style: prego.textTheme.textXs.medium.copyWith(color: foreground),
+                      style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textWarningPrimary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       request,
-                      style: prego.textTheme.textSm.medium.copyWith(color: foreground),
+                      style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
