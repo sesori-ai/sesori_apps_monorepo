@@ -614,6 +614,8 @@ class NewSessionCubit({
     if (plugin == null) {
       return data.isPluginDiscoveryInFlight ? const NewSessionComposerPending() : const NewSessionComposerRetry();
     }
+    // A failed rediscovery keeps the options on screen but cannot send.
+    if (!data.backendScope.isVerified && !data.isPluginDiscoveryInFlight) return const NewSessionComposerRetry();
     // The project check comes first because Recheck retries it first.
     if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable) {
       return const NewSessionComposerProjectUnavailable();

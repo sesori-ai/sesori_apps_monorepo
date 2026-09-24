@@ -919,6 +919,33 @@ void main() {
       expect(cubit.state, composingWith<NewSessionPhaseCreationError>());
     });
 
+    test("a failed rediscovery after reconnect offers retry instead of a ready composer", () async {
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+      expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+
+      var failedDiscoveries = 0;
+      when(mockPluginRepository.listPlugins).thenAnswer((_) async {
+        failedDiscoveries++;
+        return ApiResponse.error(ApiError.generic());
+      });
+      connectionStatus
+        ..add(const ConnectionStatus.disconnected())
+        ..add(
+          const ConnectionStatus.connected(
+            config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+            health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
+          ),
+        );
+      while (failedDiscoveries == 0 || (cubit.state.agentModelData?.isPluginDiscoveryInFlight ?? true)) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(cubit.composerPresentation, isA<NewSessionComposerRetry>());
+      expect(cubit.canCreateSession, isFalse);
+    });
+
     test("voice completion reports a content-free outcome", () async {
       final cubit = buildCubit();
       addTearDown(cubit.close);
