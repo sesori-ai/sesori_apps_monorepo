@@ -189,6 +189,8 @@ The main pane hosts one full-width routed page.
   list on the left and the selected file's full path and diff on the right; the first file opens
   selected, choosing another shows it from its top, and a refresh stays on the selected file while it
   is still changed.
+- A project page with no active sessions shows the new-session composer for that project in place of the
+  timeline, under the same toolbar; Archived still shows archived sessions. A session started there opens.
 - A session being archived is hidden from the sidebar, the Activity popout, the project page and its chip
   counts for as long as its Undo window or its archive request is open, and returns if the archive is
   undone, refused or fails. Archiving the open session leaves its page. See
@@ -330,7 +332,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - The new session page: toolbar above a centred, width-capped column with room left below it, and the
   project selector reporting the chosen project (`desktop_new_session_screen_test`).
 - The all-sessions page: toolbar title with no New session button, Archived toggle state, no floating button, the
-  timeline grouping with running sessions first under Today, and pointer-mode row height.
+  timeline grouping with running sessions first under Today, and pointer-mode row height. With no active sessions
+  it shows the composer and the catalog scan row instead, keeps the composer until a started session opens even
+  when the list shows it first, and shows no composer under Archived (`desktop_session_list_screen_test`).
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
   new-session replacement, Changes breadcrumb and file selection, home states, package-font resolution.
 - Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
@@ -424,6 +428,7 @@ reorder or surviving a new pick, a running or waiting session under Recent, and 
 - `client/module_prego/lib/components/navigation/prego_nav_title.dart`
 - `client/module_prego/test/components/prego_nav_title_test.dart`
 - `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`
+- `client/desktop/test/features/sessions/desktop_session_list_screen_test.dart`
 - `client/module_core/lib/src/cubits/recent_sessions/`
 - `client/module_core/lib/src/cubits/session_list/session_list_mode.dart`
 - `client/module_desktop_core/lib/src/cubits/desktop_sidebar/desktop_sidebar_cubit.dart`

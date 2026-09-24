@@ -9,6 +9,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
+import "../../core/widgets/desktop_composer_presentation_scope.dart";
 import "../../core/widgets/desktop_page_toolbar.dart";
 
 /// Owns the full inventory only while the all-sessions page is mounted.
@@ -31,23 +32,53 @@ class const DesktopSessionListCubitProvider({
 }
 
 /// The desktop project page: a toolbar over one timeline of the project's
-/// sessions, in a column narrow enough to read from title to time.
+/// sessions, in a column narrow enough to read from title to time. A project
+/// with no sessions shows the new-session composer in the timeline's place.
 class const DesktopSessionListScreen({
+  super.key,
+  required final String? projectName,
+
+  /// Also opens a session the empty project's composer started.
+  required final SessionOpenedCallback onSessionTap,
+  required final SessionListActionDispatcher actionDispatcher,
+  required final VoidCallback onOpenHarnessSettings,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return DesktopSessionListView(
+      projectName: projectName,
+      onSessionTap: onSessionTap,
+      actionDispatcher: actionDispatcher,
+      createNewSessionCubit: ({required projectId}) => createNewSessionCubit(locator: getIt, projectId: projectId),
+      onOpenHarnessSettings: onOpenHarnessSettings,
+    );
+  }
+}
+
+@visibleForTesting
+class const DesktopSessionListView({
   super.key,
   required final String? projectName,
   required final SessionOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
+  required final NewSessionCubit Function({required String projectId}) createNewSessionCubit,
+  required final VoidCallback onOpenHarnessSettings,
 }) extends StatefulWidget {
   static const double maxContentWidth = 760;
 
   @override
-  State<DesktopSessionListScreen> createState() => _DesktopSessionListScreenState();
+  State<DesktopSessionListView> createState() => _DesktopSessionListViewState();
 }
 
-class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
+class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
   /// The toolbar's Refresh is in flight: the cubit refreshes silently, so the
   /// page shows the progress the pull gesture's own spinner used to.
   bool _refreshing = false;
+
+  /// The empty project's composer is creating a session. It stays mounted
+  /// until then, even if the bridge lists the new session first, so the
+  /// session it starts still opens.
+  bool _creating = false;
 
   Future<void> _refresh() async {
     setState(() => _refreshing = true);
@@ -60,12 +91,14 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final DesktopSessionListScreen(:projectName, :onSessionTap, :actionDispatcher) = widget;
+    final DesktopSessionListView(:projectName, :onSessionTap, :actionDispatcher) = widget;
     final loc = context.loc;
     final cubit = context.read<SessionListCubit>();
     final state = context.watch<SessionListCubit>().state;
     final loaded = state is SessionListLoaded ? state : null;
     final showArchived = loaded != null && loaded.filter != SessionListFilter.active;
+    final refreshing = _refreshing || (loaded != null && loaded.isRefreshing);
+    final showComposer = loaded != null && !showArchived && (loaded.sessions.isEmpty || _creating);
     return Scaffold(
       body: Column(
         children: [
@@ -84,7 +117,9 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
                   // Blue means on.
                   hierarchy: showArchived ? PregoButtonsSolidHierarchy.primary : PregoButtonsSolidHierarchy.secondary,
                   size: PregoButtonsSolidSize.sm,
-                  onPressed: loaded == null ? null : cubit.toggleArchived,
+                  // Held while the empty project's composer is creating a session,
+                  // so the composer stays mounted until that session opens.
+                  onPressed: loaded == null || _creating ? null : cubit.toggleArchived,
                 ),
               ),
               // A mouse has no pull gesture, so the pull's two refreshes live here.
@@ -121,39 +156,77 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
             ],
           ),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) => CustomScrollView(
-                slivers: [
-                  SliverPadding(
-                    // The column is centred by padding, so the wheel and the
-                    // scrollbar still belong to the whole pane.
-                    padding: EdgeInsets.symmetric(
-                      horizontal: math.max(0, (constraints.maxWidth - DesktopSessionListScreen.maxContentWidth) / 2),
-                    ),
-                    sliver: SliverMainAxisGroup(
-                      slivers: [
-                        if (_refreshing || (loaded != null && loaded.isRefreshing))
-                          const SliverToBoxAdapter(child: LinearProgressIndicator()),
-                        SliverToBoxAdapter(
-                          child: CatalogScanRow(
-                            scan: loaded?.catalogScan ?? const CatalogRescanState.idle(),
-                            onCancel: cubit.cancelCatalogScan,
-                            onDismiss: cubit.dismissCatalogScan,
+            child: showComposer
+                ? BlocProvider(
+                    create: (_) => widget.createNewSessionCubit(projectId: cubit.projectId),
+                    child: BlocListener<NewSessionCubit, NewSessionState>(
+                      listener: (context, state) => setState(() => _creating = state.phase is NewSessionPhaseSending),
+                      child: NewSessionView(
+                        projectId: cubit.projectId,
+                        projectName: projectName,
+                        // The page names its project; the header shows it without a picker.
+                        projects: const [],
+                        onProjectSelected: ({required projectId, required projectName}) {},
+                        onBack: () {},
+                        onOpenHarnessSettings: widget.onOpenHarnessSettings,
+                        onSessionCreated: onSessionTap,
+                        composerScopeBuilder: ({required child}) => DesktopComposerPresentationScope(child: child),
+                        // The desktop root owns its single connection banner.
+                        banner: null,
+                        pageChrome: NewSessionPageChrome(
+                          // The toolbar's Refresh and scan still report here.
+                          topBar: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (refreshing) const LinearProgressIndicator(),
+                              CatalogScanRow(
+                                scan: loaded.catalogScan,
+                                onCancel: cubit.cancelCatalogScan,
+                                onDismiss: cubit.dismissCatalogScan,
+                              ),
+                            ],
                           ),
+                          maxContentWidth: DesktopSessionListView.maxContentWidth,
+                          footer: null,
                         ),
-                        SessionListFilteredContent(
-                          projectName: projectName,
-                          selectedSessionId: null,
-                          onSessionTap: onSessionTap,
-                          actionDispatcher: actionDispatcher,
-                          archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+                      ),
+                    ),
+                  )
+                : LayoutBuilder(
+                    builder: (context, constraints) => CustomScrollView(
+                      slivers: [
+                        SliverPadding(
+                          // The column is centred by padding, so the wheel and the
+                          // scrollbar still belong to the whole pane.
+                          padding: EdgeInsets.symmetric(
+                            horizontal: math.max(
+                              0,
+                              (constraints.maxWidth - DesktopSessionListView.maxContentWidth) / 2,
+                            ),
+                          ),
+                          sliver: SliverMainAxisGroup(
+                            slivers: [
+                              if (refreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
+                              SliverToBoxAdapter(
+                                child: CatalogScanRow(
+                                  scan: loaded?.catalogScan ?? const CatalogRescanState.idle(),
+                                  onCancel: cubit.cancelCatalogScan,
+                                  onDismiss: cubit.dismissCatalogScan,
+                                ),
+                              ),
+                              SessionListFilteredContent(
+                                projectName: projectName,
+                                selectedSessionId: null,
+                                onSessionTap: onSessionTap,
+                                actionDispatcher: actionDispatcher,
+                                archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
           ),
         ],
       ),

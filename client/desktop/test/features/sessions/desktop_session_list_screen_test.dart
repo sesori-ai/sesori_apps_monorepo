@@ -10,6 +10,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
 import "package:sesori_desktop/features/sessions/desktop_session_list_screen.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -17,10 +18,29 @@ class _MockSessionListCubit() extends MockCubit<SessionListState> implements Ses
 
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;
 
+class _MockNewSessionCubit() extends MockCubit<NewSessionState> implements NewSessionCubit;
+
+class _MockChatInputModeCubit() extends MockCubit<ChatInputMode> implements ChatInputModeCubit;
+
+const _config = NewSessionComposeConfig(
+  availablePlugins: [],
+  selectedPlugin: null,
+  options: NewSessionOptionsLoadState.unsupported(),
+  backendScope: NewSessionBackendScope.verified(bridgeId: null),
+  isPluginDiscoveryInFlight: false,
+  projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
+);
+
+const _composing = NewSessionState.composing(config: _config, phase: NewSessionPhase.idle());
+
 void main() {
   late _MockSessionListCubit cubit;
   late _MockConnectionOverlayCubit overlay;
   late PendingSessionArchiveCubit archives;
+  late _MockChatInputModeCubit inputMode;
+  late List<String> composersFor;
+  late List<String> opened;
+  late Stream<NewSessionState> newSessionStates;
 
   setUp(() {
     cubit = _MockSessionListCubit();
@@ -29,15 +49,43 @@ void main() {
     when(() => cubit.refreshSessions()).thenAnswer((_) async => true);
     overlay = _MockConnectionOverlayCubit();
     when(() => overlay.state).thenReturn(const ConnectionOverlayState.hidden(connected: true));
+    inputMode = _MockChatInputModeCubit();
+    whenListen(inputMode, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
+    composersFor = [];
+    opened = [];
+    newSessionStates = const Stream<NewSessionState>.empty();
   });
 
-  Future<void> pumpPage({required WidgetTester tester, required SessionListFilter filter}) async {
+  NewSessionCubit newSessionCubit({required String projectId}) {
+    composersFor.add(projectId);
+    final composer = _MockNewSessionCubit();
+    whenListen(composer, newSessionStates, initialState: _composing);
+    when(() => composer.needsHarnessDiscovery).thenReturn(false);
+    when(() => composer.hasNoHarnesses).thenReturn(false);
+    when(() => composer.canCreateSession).thenReturn(true);
+    when(() => composer.canRefreshOptions).thenReturn(false);
+    when(() => composer.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    return composer;
+  }
+
+  Future<void> pumpPage({
+    required WidgetTester tester,
+    required SessionListFilter filter,
+    List<Session>? sessions,
+  }) async {
     when(() => cubit.state).thenReturn(
       SessionListState.loaded(
-        sessions: [
-          testSession(id: "s1", title: "Fix the build", updatedAt: DateTime.now().millisecondsSinceEpoch),
-          testSession(id: "s2", title: "Unread one", updatedAt: DateTime.now().millisecondsSinceEpoch, unseen: true),
-        ],
+        sessions:
+            sessions ??
+            [
+              testSession(id: "s1", title: "Fix the build", updatedAt: DateTime.now().millisecondsSinceEpoch),
+              testSession(
+                id: "s2",
+                title: "Unread one",
+                updatedAt: DateTime.now().millisecondsSinceEpoch,
+                unseen: true,
+              ),
+            ],
         filter: filter,
         activeSessionIds: const {},
         baseBranch: null,
@@ -56,10 +104,13 @@ void main() {
               BlocProvider<SessionListCubit>.value(value: cubit),
               BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
               BlocProvider(create: (_) => archives = PendingSessionArchiveCubit(repository: MockSessionRepository())),
+              BlocProvider<ChatInputModeCubit>.value(value: inputMode),
             ],
-            child: DesktopSessionListScreen(
+            child: DesktopSessionListView(
               projectName: "sesori",
-              onSessionTap: ({required session}) {},
+              onSessionTap: ({required session}) => opened.add(session.id),
+              createNewSessionCubit: newSessionCubit,
+              onOpenHarnessSettings: () {},
               actionDispatcher: const SessionListActionDispatcher(
                 deleteConfirmation: SessionDeleteConfirmation.sheet,
                 onSessionArchived: null,
@@ -153,5 +204,65 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Fix the build"), findsOneWidget);
     expect(find.text("All · 2"), findsOneWidget);
+  });
+
+  testWidgets("a project with no sessions shows the composer in the timeline's place", (tester) async {
+    await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: const []);
+
+    expect(composersFor, ["project-1"]);
+    expect(find.byType(PromptInput), findsOneWidget);
+    expect(find.text("Start your first session"), findsNothing);
+    expect(find.byKey(const Key("desktop-project-page-archived")), findsOneWidget);
+
+    await pumpPage(tester: tester, filter: SessionListFilter.archived, sessions: const []);
+    expect(find.byType(PromptInput), findsNothing);
+  });
+
+  testWidgets("a session started from an empty project opens", (tester) async {
+    newSessionStates = Stream.value(NewSessionState.created(session: testSession(id: "created")));
+    await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: const []);
+    await tester.pump();
+
+    expect(opened, ["created"]);
+  });
+
+  testWidgets("the composer stays until its session opens, even when the list shows the session first", (
+    tester,
+  ) async {
+    final states = StreamController<NewSessionState>();
+    addTearDown(states.close);
+    newSessionStates = states.stream;
+    await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: const []);
+    states.add(
+      NewSessionState.composing(
+        config: _config,
+        phase: NewSessionPhase.sending(
+          submission: NewSessionSubmissionSnapshot.text(
+            draft: ComposerDraft.typed(text: "Go"),
+            attachments: const [],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final created = testSession(id: "created", title: "Created");
+    await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: [created]);
+    expect(find.byType(NewSessionView), findsOneWidget);
+    expect(composersFor, ["project-1"]);
+    // Archived would unmount the composer mid-creation.
+    expect(tester.widget<PregoButtonsSolid>(find.byKey(const Key("desktop-project-page-archived"))).onPressed, isNull);
+
+    states.add(NewSessionState.created(session: created));
+    await tester.pump();
+    await tester.pump();
+    expect(opened, ["created"]);
+  });
+
+  testWidgets("an empty project keeps the catalog scan row above the composer", (tester) async {
+    await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: const []);
+
+    expect(find.byType(CatalogScanRow), findsOneWidget);
+    expect(find.byType(PromptInput), findsOneWidget);
   });
 }
