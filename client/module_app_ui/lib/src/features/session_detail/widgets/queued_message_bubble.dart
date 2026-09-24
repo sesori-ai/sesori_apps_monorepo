@@ -29,9 +29,9 @@ class const QueuedMessageBubble({
   required final bool isCommand,
   required final int attachmentCount,
 
-  /// Image bytes remain local while a submission is sending or awaiting the
-  /// bridge queue. Once another surface owns the queue, only its bounded count
-  /// is available and the bubble renders an attachment indicator instead.
+  /// This surface retains its local previews through bridge queue dispatch.
+  /// Prompts from another surface expose only their bounded attachment count
+  /// and render an attachment indicator instead.
   required final List<ComposerAttachment> localAttachments,
   required final QueuedMessageBubblePresentation presentation,
 }) extends StatelessWidget {
