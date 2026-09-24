@@ -158,6 +158,33 @@ Native captures remain attributed to the earlier source checkpoints above.
 The follow-up changes the partial-catalog branch; the native fixture had a
 complete catalog. No additional native replay is claimed at this revision.
 
+## Per-model catalog follow-up
+
+Commit `ca695569a43677a1cf75a06857f4eb3ccd23fe31`,
+tree `34dd605b7d70269e0bfb3804ab7aa20e62480fca`, was committed before running
+the checks below. All **41** affected Pi plugin, catalog service and catalog
+repository tests passed; Pi package analysis passed with `--fatal-infos`.
+
+The new command-discovery regression first reproduced HTTP 409 for a known
+non-reasoning model's restored `off`. Native reasoning capability now travels
+with options in the existing cached snapshot, independent of aggregate catalog
+completeness. The same ordinary prompt succeeds despite command discovery
+failure. Existing failed-thinking-discovery rejection still passes, and a new
+refresh/reuse case proves the cached capability is replaced with its options.
+There is no additional mutable cache, persisted state or wire field.
+Architecture plan and scoped implementation review both approved this design.
+
+```sh
+# From bridge/sesori_plugin_pi
+dart test test/pi_plugin_impl_test.dart test/pi_catalog_service_test.dart \
+  test/pi_backend_catalog_repository_test.dart --reporter expanded
+dart analyze --fatal-infos
+```
+
+This supersedes the earlier complete-catalog guard. Native replay, provider
+recovery and bridge composition were not rerun for this plugin-local change;
+their existing source checkpoints and limitations above remain authoritative.
+
 ## Required matrix
 
 | Boundary | Current result | Remaining proof |

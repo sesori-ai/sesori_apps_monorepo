@@ -114,4 +114,9 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
   when thinking discovery failed. Its regression failed before the guard; all
   22 Pi tests passed afterward. Both composed tests pass with exact
   injected acceptance timestamps; both owning packages analyze cleanly.
+- Step 7 catalog follow-up: native per-model capability replaces the aggregate
+  guard. A reproduced command-discovery failure no longer rejects non-reasoning
+  `off`; thinking-discovery rejection and paired cache refresh/reuse pass. All
+  41 affected Pi tests and package analysis pass at the recorded checkpoint.
+  The clarified plugin-local architecture plan and implementation were approved.
 - Final L4 matrix: partial. See VERIFICATION.md; the plan cannot be retired yet.
