@@ -30,6 +30,11 @@ _FilesystemSuggestions _$FilesystemSuggestionsFromJson(Map json) =>
           )
           .toList(),
       path: json['path'] as String?,
+      driveRoots:
+          (json['driveRoots'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const <String>[],
     );
 
 Map<String, dynamic> _$FilesystemSuggestionsToJson(
@@ -37,6 +42,7 @@ Map<String, dynamic> _$FilesystemSuggestionsToJson(
 ) => <String, dynamic>{
   'data': instance.data.map((e) => e.toJson()).toList(),
   'path': ?instance.path,
+  'driveRoots': instance.driveRoots,
 };
 
 _FilesystemSuggestion _$FilesystemSuggestionFromJson(Map json) =>

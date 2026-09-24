@@ -43,8 +43,19 @@ class const FilesystemApi() {
     return type == FileSystemEntityType.directory || type == FileSystemEntityType.file;
   }
 
-  /// Raw process-environment lookup for repository-level fallback policy.
-  String? environmentValue(String name) => Platform.environment[name];
+  /// Asynchronous [directoryExists], for probes that may stall on a
+  /// disconnected drive and must not block the isolate meanwhile.
+  Future<bool> directoryExistsAsync(String path) {
+    // The async call is the point: a stalled probe runs off the isolate.
+    // ignore: avoid_slow_async_io
+    return Directory(path).exists();
+  }
+
+  /// Whether the bridge runs on Windows.
+  bool get isWindows => Platform.isWindows;
+
+  /// Raw process environment for repository-level fallback policy.
+  Map<String, String> get environment => Platform.environment;
 
   /// Raw process working directory for repository-level fallback policy.
   String currentDirectoryPath() => Directory.current.path;

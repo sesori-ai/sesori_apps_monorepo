@@ -84,6 +84,45 @@ void main() {
       }
     });
 
+    test("adds a Windows host's drives only to a request without a prefix", () async {
+      final windowsHandler = FilesystemSuggestionsHandler(
+        filesystemRepository: FilesystemRepository(
+          filesystemApi: _WindowsFilesystemApi(home: tempDir.path),
+          permissionValidator: const FilesystemPermissionValidator(),
+        ),
+      );
+
+      final opening = await windowsHandler.handle(
+        makeRequest("POST", "/filesystem/suggestions"),
+        body: const FilesystemSuggestionsRequest(maxResults: 20, prefix: null),
+      );
+      final browsing = await windowsHandler.handle(
+        makeRequest("POST", "/filesystem/suggestions"),
+        body: FilesystemSuggestionsRequest(maxResults: 20, prefix: tempDir.path),
+      );
+
+      expect(opening.path, tempDir.path);
+      expect(opening.driveRoots, [r"C:\", r"D:\"]);
+      expect(browsing.driveRoots, isEmpty);
+    });
+
+    test("delegates the request's prefix and limit to the repository", () async {
+      final repository = _RecordingFilesystemRepository();
+      final delegatingHandler = FilesystemSuggestionsHandler(filesystemRepository: repository);
+
+      final opening = await delegatingHandler.handle(
+        makeRequest("POST", "/filesystem/suggestions"),
+        body: const FilesystemSuggestionsRequest(maxResults: 7, prefix: null),
+      );
+      await delegatingHandler.handle(
+        makeRequest("POST", "/filesystem/suggestions"),
+        body: FilesystemSuggestionsRequest(maxResults: 9, prefix: tempDir.path),
+      );
+
+      expect(opening, same(repository.result));
+      expect(repository.calls, [(prefix: null, maxResults: 7), (prefix: tempDir.path, maxResults: 9)]);
+    });
+
     test("throws 400 for path traversal attempt with ../", () async {
       await expectLater(
         () => handler.handle(
@@ -164,4 +203,32 @@ void main() {
       expect(result.data.first.name, equals("visible"));
     });
   });
+}
+
+/// The real filesystem, reporting a Windows host with drives C and D and
+/// [home] as the user's home folder.
+class _WindowsFilesystemApi({required final String home}) extends FilesystemApi {
+  @override
+  bool get isWindows => true;
+
+  @override
+  Map<String, String> get environment => {"HOME": home, "USERPROFILE": home};
+
+  @override
+  Future<bool> directoryExistsAsync(String path) async => path == r"C:\" || path == r"D:\";
+}
+
+/// Records each browser listing request and answers with [result].
+class _RecordingFilesystemRepository() implements FilesystemRepository {
+  final calls = <({String? prefix, int maxResults})>[];
+  final result = const FilesystemSuggestions(data: [], path: "/home/dev", driveRoots: [r"C:\"]);
+
+  @override
+  Future<FilesystemSuggestions> listBrowserSuggestions({required String? prefix, required int maxResults}) async {
+    calls.add((prefix: prefix, maxResults: maxResults));
+    return result;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

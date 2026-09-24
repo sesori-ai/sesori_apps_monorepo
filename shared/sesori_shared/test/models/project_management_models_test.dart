@@ -246,7 +246,22 @@ void main() {
       final json = original.toJson();
 
       expect(FilesystemSuggestions.fromJson(json), original);
-      expect(json, {"data": <Object>[], "path": "/Users/dev"});
+      expect(json, {"data": <Object>[], "path": "/Users/dev", "driveRoots": <Object>[]});
+    });
+
+    test("JSON roundtrip carries the drive roots", () {
+      const original = FilesystemSuggestions(data: [], path: r"C:\Users\dev", driveRoots: [r"C:\", r"D:\"]);
+
+      expect(FilesystemSuggestions.fromJson(original.toJson()), original);
+    });
+
+    test("missing driveRoots from an older bridge decodes to no drives", () {
+      final suggestions = FilesystemSuggestions.fromJson({
+        "data": <Object>[],
+        "path": "/Users/dev",
+      });
+
+      expect(suggestions.driveRoots, isEmpty);
     });
 
     test("missing path from an older bridge decodes to null", () {
