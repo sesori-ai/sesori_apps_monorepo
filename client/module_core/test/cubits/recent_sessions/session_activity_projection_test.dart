@@ -1,5 +1,4 @@
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -8,7 +7,7 @@ void main() {
     final projectTwoUnseen = _session(id: "two-unseen", projectId: "two", unseen: true);
     final projectTwoCleared = _session(id: "two-cleared", projectId: "two", unseen: true);
     final projectOneRunning = _session(id: "one-running", projectId: "one");
-    final projection = DesktopSidebarSessionProjection.from(
+    final projection = SessionActivityProjection.from(
       projects: const [
         ProjectSummary(id: "two", name: "Two", path: "/two", time: null),
         ProjectSummary(id: "one", name: "One", path: "/one", time: null),
@@ -53,7 +52,7 @@ void main() {
     final deferred = _session(id: "deferred", projectId: "one", unseen: true, updated: 5);
     final news = _session(id: "news", projectId: "one", unseen: true, updated: 9);
     List<String> activity({required List<Session> sessions, required String? stickySessionId}) =>
-        DesktopSidebarSessionProjection.from(
+        SessionActivityProjection.from(
           projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
           entries: {
             "one": RecentSessionsLoaded(
@@ -84,7 +83,7 @@ void main() {
       listStateBySessionId: const {},
     );
     expect(
-      DesktopSidebarSessionProjection.from(
+      SessionActivityProjection.from(
         projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
         entries: {"one": running},
         deferredSessions: const {"deferred": 5},
@@ -112,7 +111,7 @@ void main() {
       activityBySessionId: const {},
       listStateBySessionId: const {},
     );
-    final projection = DesktopSidebarSessionProjection.from(
+    final projection = SessionActivityProjection.from(
       projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
       entries: {"one": loaded},
       deferredSessions: const {},
