@@ -600,6 +600,11 @@ defaults and queued client sends coherent.
   then settles closed on release. System-back edges remain reserved on iOS and
   Android gesture navigation, mouse drags remain available for text selection,
   and a horizontal drag inside a fenced code block scrolls only that block.
+- A fenced code block sits on the same raised inset as tool output, visible
+  against the page in both themes, with its language label and Copy. A block
+  longer than 12 lines shows its first 12 under a fade and an “Open all N lines”
+  action that opens the whole block in a modal (a dialog on desktop, a sheet on
+  the phone); Copy always takes the whole block.
 - Mobile and desktop compose the same transcript and composer presentation for
   messages, queued prompts, tool and subtask output, errors, pending
   interactions, links, image viewing, child-session navigation, text input,

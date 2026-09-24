@@ -26,7 +26,7 @@ void main() {
     expect(styleSheet.code?.color, prego.colors.textPrimary);
 
     final decoration = styleSheet.codeblockDecoration as BoxDecoration?;
-    expect(decoration?.color, prego.colors.bgQuaternary);
+    expect(decoration?.color, prego.colors.bgSurface4);
     expect(decoration?.borderRadius, BorderRadius.circular(PregoRadius.xs));
     expect(decoration?.border, isNull);
   });

@@ -37,7 +37,7 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 19 | `visual-hierarchy/phone-search` | [19/41](#pr-titles) | ≤ 600 | done |
 | [x] | 20 | `visual-hierarchy/command-palette` | [20/41](#pr-titles) | ≤ 900 | done |
 | [x] | 21 | `visual-hierarchy/project-rows` | [21/41](#pr-titles) | ≤ 500 | done |
-| [ ] | 22 | `visual-hierarchy/{session-subtitle,…}` | [22/41](#pr-titles) | ≤ 600 | in-progress |
+| [x] | 22 | `visual-hierarchy/{session-subtitle,composer-fold,code-blocks}` | [22/41](#pr-titles) | ≤ 600 | done |
 | [ ] | 23 | `visual-hierarchy/new-session` | [23/41](#pr-titles) | ≤ 600 | pending |
 | [ ] | 24 | `visual-hierarchy/folder-browser` | [24/41](#pr-titles) | ≤ 500 | pending |
 | [ ] | 25 | `visual-hierarchy/windows-drives` | [25/41](#pr-titles) | ≤ 500 | pending |
@@ -117,7 +117,7 @@ Answered 2026-09-23; every answer took the recommended option.
 21. `🌿 [visual-hierarchy] Tell projects apart and open the one just added [step 21/41]`
 22. `⚙️ [visual-hierarchy] Say who is working and tidy code blocks and composer tools [step 22/41]`
    - `🌿 [visual-hierarchy] Name the harness and model under the session title [step 22.a/41]`
-   - `🌿 [visual-hierarchy] Give code blocks the tool output inset [step 22.b/41]`
+   - `🌿 [visual-hierarchy] Give code blocks the tool output inset and cap long ones [step 22.b/41]`
    - `🌿 [visual-hierarchy] Fold the composer tools away while typing [step 22.c/41]`
 23. `⚙️ [visual-hierarchy] Simplify the new session page [step 23/41]`
 24. `🌿 [visual-hierarchy] Give the folder browser a title, breadcrumb and clear states [step 24/41]`
