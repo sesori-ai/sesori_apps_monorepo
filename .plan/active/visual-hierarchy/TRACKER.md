@@ -30,7 +30,7 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 12 | `visual-hierarchy/{sidebar,sidebar-new-session}` | [12/41](#pr-titles) | ≤ 700 | done |
 | [x] | 13 | `visual-hierarchy/{subtitle-ellipsis,session-rows}` | [13/41](#pr-titles) | ≤ 700 | done |
 | [x] | 14 | `visual-hierarchy/needs-you-card` | [14/41](#pr-titles) | ≤ 600 | done |
-| [ ] | 15 | `visual-hierarchy/{settings-window,bridge-popover}` | [15/41](#pr-titles) | ≤ 600 | in-progress |
+| [x] | 15 | `visual-hierarchy/{settings-window,bridge-popover}` | [15/41](#pr-titles) | ≤ 600 | done |
 | [ ] | 16 | `visual-hierarchy/{changes-file-list,changes-split}` | [16/41](#pr-titles) | ≤ 800 | in-progress |
 | [ ] | 17 | `visual-hierarchy/shared-activity` | [17/41](#pr-titles) | ≤ 900 | pending |
 | [ ] | 18 | `visual-hierarchy/desktop-home` | [18/41](#pr-titles) | ≤ 800 | pending |

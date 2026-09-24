@@ -48,7 +48,9 @@ class const DiffFileWidget({
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          DiffCounts(additions: vm.additions, deletions: vm.deletions, style: code),
+          // A skipped file has no counts, and an empty slot would still take a gap.
+          if (vm.additions > 0 || vm.deletions > 0)
+            DiffCounts(additions: vm.additions, deletions: vm.deletions, style: code),
           DiffStatusLetter(status: vm.status),
           Icon(
             isExpanded ? TablerRegular.chevron_up : TablerRegular.chevron_down,
