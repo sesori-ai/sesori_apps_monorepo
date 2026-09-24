@@ -862,7 +862,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                             : DesktopSidebarExpansionBuilder(
                                 expansion: widget.expansion,
                                 builder: (expansion, controls) => ColoredBox(
-                                  color: projectSelected ? _selectedFill(context.prego.colors) : Colors.transparent,
+                                  color: projectSelected ? desktopSidebarSelectedFill(context.prego.colors) : Colors.transparent,
                                   child: SizedBox(width: 48 * expansion, height: 36, child: controls),
                                 ),
                                 child: ClipRect(
@@ -1049,7 +1049,7 @@ class const _SidebarActivitySessionRow({
                     // The rail centres the signals; the open sidebar lines them up with the project rows.
                     builder: (expansion, content) => Ink(
                       padding: EdgeInsets.symmetric(horizontal: 14 + 2 * expansion, vertical: 6),
-                      color: selected ? _selectedFill(prego.colors) : null,
+                      color: selected ? desktopSidebarSelectedFill(prego.colors) : null,
                       child: content,
                     ),
                     // The parts are built once: the row's width changes every
@@ -1160,7 +1160,7 @@ class const _SidebarSessionRow({
                     horizontal: PregoSpacing.md + PregoSpacing.sm * expansion,
                     vertical: 6,
                   ),
-                  color: selected ? _selectedFill(prego.colors) : null,
+                  color: selected ? desktopSidebarSelectedFill(prego.colors) : null,
                   child: content,
                 ),
                 // A collapsing rail can leave less room than a row needs, so the
@@ -1246,7 +1246,7 @@ class const _SidebarButton({
               focusColor: prego.colors.textBrandPrimary.withValues(alpha: 0.18),
               // The selected row fills the sidebar's width.
               child: Ink(
-                color: selected ? _selectedFill(prego.colors) : null,
+                color: selected ? desktopSidebarSelectedFill(prego.colors) : null,
                 padding: const EdgeInsets.symmetric(
                   horizontal: PregoSpacing.md + PregoSpacing.sm,
                   vertical: PregoSpacing.xs,
@@ -1417,7 +1417,7 @@ List<String> _sessionStatusLabels({
 ];
 
 /// The selected row's fill. It spans the sidebar's width.
-Color _selectedFill(PregoColors colors) => colors.textBrandPrimary.withValues(alpha: 0.14);
+Color desktopSidebarSelectedFill(PregoColors colors) => colors.textBrandPrimary.withValues(alpha: 0.14);
 
 /// The sidebar's name for [project]: its stored name, else its directory.
 String desktopProjectDisplayName({required BuildContext context, required ProjectSummary project}) {
