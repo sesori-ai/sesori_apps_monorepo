@@ -272,6 +272,37 @@ void main() {
     expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
   });
 
+  testWidgets("Main session pops to the parent under it and otherwise opens the parent", (tester) async {
+    final router = _callbackRouter(initialRoute: _detail(readOnly: false));
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.tap(find.text("open child"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("main session"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _detail(readOnly: false).buildPath());
+    expect(router.canPop(), isFalse);
+
+    // A child stacked over the session list (a notification's stack) opens its parent instead.
+    router.go(_sessions.buildPath());
+    await tester.pumpAndSettle();
+    unawaited(
+      router.push<void>(
+        const AppRoute.sessionDetail(
+          projectId: "p",
+          projectName: "UI / Core",
+          sessionId: "child",
+          sessionTitle: "Child",
+          readOnly: true,
+        ).buildPath(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("main session"));
+    await tester.pumpAndSettle();
+    expect(router.state.pathParameters[sessionIdPathParam], "s");
+  });
+
   for (final route in [const AppRoute.newSession(projectId: "p", projectName: "UI / Core"), _detail(readOnly: false)]) {
     testWidgets("the ${route.def.name} breadcrumb opens its project's sessions", (tester) async {
       final router = _callbackRouter(initialRoute: route);
@@ -421,6 +452,10 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                           ),
                         ),
                         button(label: "diffs", action: screen.onShowDiffs),
+                        button(
+                          label: "main session",
+                          action: () => screen.onOpenParentSession(parentSessionId: "s"),
+                        ),
                         button(
                           label: "delete open session",
                           action: () {

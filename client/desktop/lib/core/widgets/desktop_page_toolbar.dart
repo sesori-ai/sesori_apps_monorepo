@@ -82,9 +82,11 @@ class const DesktopPageToolbar({
                         ),
                       ),
                       // One size and baseline with the title, so a text slash lines up where an icon would not.
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
-                        child: Text("/", style: prego.textTheme.textMd.regular.copyWith(color: tertiary)),
+                      ExcludeSemantics(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
+                          child: Text("/", style: prego.textTheme.textMd.regular.copyWith(color: tertiary)),
+                        ),
                       ),
                     ],
                     if (status != null)

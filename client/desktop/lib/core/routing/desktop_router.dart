@@ -201,17 +201,22 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               context: context,
               route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
             ),
-            // A subtask is pushed over its parent, so back returns there with the transcript kept.
-            onOpenParentSession: ({required parentSessionId}) => _popRouteOrGo(
-              context: context,
-              fallback: AppRoute.sessionDetail(
+            // A subtask pushed over its parent pops back there with the transcript kept; one reached
+            // any other way (the sidebar, a notification) opens its parent.
+            onOpenParentSession: ({required parentSessionId}) {
+              final parent = AppRoute.sessionDetail(
                 projectId: route.projectId,
                 projectName: route.projectName,
                 sessionId: parentSessionId,
                 sessionTitle: null,
                 readOnly: false,
-              ),
-            ),
+              );
+              if (_pageBelowIs(context: context, route: parent)) {
+                context.pop();
+              } else {
+                _goRoute(context: context, route: parent);
+              }
+            },
             onShowDiffs: () => _pushRoute(
               context: context,
               route: AppRoute.sessionDiffs(
@@ -386,6 +391,15 @@ void _popRouteOrGo({required BuildContext context, required AppRoute fallback}) 
     return;
   }
   _goRoute(context: context, route: fallback);
+}
+
+/// Whether the page under the current one is [route], so popping lands on it.
+bool _pageBelowIs({required BuildContext context, required AppRoute route}) {
+  Iterable<RouteMatchBase> pages(List<RouteMatchBase> matches) =>
+      matches.expand((match) => match is ShellRouteMatch ? pages(match.matches) : [match]);
+  // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
+  final stack = pages(GoRouter.of(context).routerDelegate.currentConfiguration.matches).toList();
+  return stack.length >= 2 && stack[stack.length - 2].matchedLocation == Uri.parse(route.buildPath()).path;
 }
 
 void _popPushedRoute({required BuildContext context}) {
