@@ -201,6 +201,17 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               context: context,
               route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
             ),
+            // A subtask is pushed over its parent, so back returns there with the transcript kept.
+            onOpenParentSession: ({required parentSessionId}) => _popRouteOrGo(
+              context: context,
+              fallback: AppRoute.sessionDetail(
+                projectId: route.projectId,
+                projectName: route.projectName,
+                sessionId: parentSessionId,
+                sessionTitle: null,
+                readOnly: false,
+              ),
+            ),
             onShowDiffs: () => _pushRoute(
               context: context,
               route: AppRoute.sessionDiffs(

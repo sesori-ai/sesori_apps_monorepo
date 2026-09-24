@@ -211,10 +211,13 @@ The main pane hosts one full-width routed page.
   session-creation-and-options.md), the harness chooser, the input, then Dedicated workspace and
   Refresh options. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
   Choosing another project builds a fresh cubit for it.
-- The session page uses the same toolbar anatomy above the transcript, never over it: the project
-  breadcrumb, then the sidebar's status slot (the running sparkle, the amber awaiting glyph) leading the
-  16 pt bold title, with the harness and model under it ("Claude Code · Haiku", either alone when the other
-  is unknown, none when both are); Changes on a root unarchived session; and a menu with
+- The session page uses the same toolbar anatomy above the transcript, never over it: the breadcrumb
+  and the title share one 16 pt line and baseline, the breadcrumb medium and secondary, a slash between
+  them, the title bold. The amber awaiting glyph leads the title when a question or permission waits; a
+  running session instead sweeps a shimmer across its title. A root session's breadcrumb is its project; a
+  subtask's is "Main session", which returns to the session that started it (back to the kept parent
+  page when it was opened from there). No harness or model line sits under the title. Changes shows on a
+  root unarchived session; and a menu with
   Mark as unread labelled with its shortcut, Rename, Archive, Archive keeping the worktree when the
   session has one, and Delete, the last four run by the same dispatcher as a row's menu. Session actions
   stay disabled until the page has the hydrated session, and work for child sessions and sessions opened

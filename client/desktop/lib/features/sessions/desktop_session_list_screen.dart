@@ -109,6 +109,7 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
             builder: (context, toolbar) => DesktopPageToolbar(
               breadcrumb: null,
               status: null,
+              isRunning: false,
               title: projectName ?? loc.sessionListTitle,
               subtitle: buildProjectNavSubtitle(context),
               actions: [

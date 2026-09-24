@@ -750,58 +750,6 @@ void main() {
     expect(find.text("Follow up..."), findsNothing);
   });
 
-  testWidgets("header resolves an opaque assistant model ID through the provider catalog", (tester) async {
-    const modelID = "v1WyJkZWVwc2Vlay1vZmZpY2lhbCIsImRlZXBzZWVrLXY0LXBybyJd";
-    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
-      assistantAgentModel: const AgentModel(
-        providerID: "deepseek-official",
-        modelID: modelID,
-        variant: "high",
-      ),
-      availableProviders: const [
-        ProviderInfo(
-          id: "deepseek-official",
-          name: "DeepSeek Official",
-          models: {
-            modelID: ProviderModel(
-              fastMode: null,
-              id: modelID,
-              providerID: "deepseek-official",
-              name: "DeepSeek V4 Pro",
-              variants: ["high"],
-              defaultVariant: null,
-              family: null,
-              releaseDate: null,
-            ),
-          },
-          defaultModelID: modelID,
-        ),
-      ],
-      selectedAgent: "deepseek",
-      selectedAgentModel: const AgentModel(
-        providerID: "deepseek-official",
-        modelID: modelID,
-        variant: "high",
-      ),
-      availableVariants: const [SessionVariant(id: "high")],
-    );
-    when(() => cubit.state).thenReturn(state);
-    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
-
-    await tester.pumpWidget(_buildApp(cubit: cubit));
-    await tester.pumpAndSettle();
-
-    expect(find.text("Claude Code · DeepSeek V4 Pro"), findsOneWidget);
-    expect(find.textContaining(modelID), findsNothing);
-  });
-
-  testWidgets("header names only the harness before the session has a model", (tester) async {
-    await tester.pumpWidget(_buildApp(cubit: cubit));
-    await tester.pumpAndSettle();
-
-    expect(find.text("Claude Code"), findsOneWidget);
-  });
-
   testWidgets("opens the variant picker and forwards the selection to the cubit", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1078,8 +1026,6 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit, onOpenHarnessSettings: () => settingsOpened++));
     await tester.pumpAndSettle();
     expect(find.byType(PromptInput), findsNothing);
-    // The subtitle still names the harness the session belongs to.
-    expect(find.text("Claude Code"), findsOneWidget);
     expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
     expect(
       find.text("Chat history for this session still needs the harness. Enable it to load the transcript."),

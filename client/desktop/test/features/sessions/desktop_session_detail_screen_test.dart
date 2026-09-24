@@ -202,6 +202,7 @@ void main() {
               readOnly: false,
               projectName: "UI / Core",
               onOpenProject: () {},
+              onOpenParentSession: ({required parentSessionId}) {},
               onShowDiffs: () => diffCalls++,
               onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
               messageImageRepository: () {
@@ -309,6 +310,7 @@ void main() {
               readOnly: false,
               projectName: "UI / Core",
               onOpenProject: () {},
+              onOpenParentSession: ({required parentSessionId}) {},
               onShowDiffs: () {},
               onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
                   openedSession = (
@@ -347,6 +349,7 @@ void main() {
     late List<Session> markedUnread;
     late int leftPage;
     late int openedProject;
+    late List<String> openedParents;
 
     Future<void> pumpPage(WidgetTester tester, {required Session session}) async {
       cubit = _MockSessionDetailCubit();
@@ -371,6 +374,7 @@ void main() {
       markedUnread = [];
       leftPage = 0;
       openedProject = 0;
+      openedParents = [];
       await tester.binding.setSurfaceSize(const Size(1400, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -404,6 +408,7 @@ void main() {
                   readOnly: false,
                   projectName: "UI / Core",
                   onOpenProject: () => openedProject++,
+                  onOpenParentSession: ({required parentSessionId}) => openedParents.add(parentSessionId),
                   onShowDiffs: () {},
                   onOpenSession: ({
                     required projectId,
@@ -475,13 +480,17 @@ void main() {
       );
     });
 
-    testWidgets("the project breadcrumb leads the status slot and the bold session title", (tester) async {
+    testWidgets("a subtask's breadcrumb leads the status slot and the bold title, and returns to its parent", (
+      tester,
+    ) async {
       await pumpPage(tester, session: _session);
 
       final breadcrumb = find.byKey(const Key("desktop-page-breadcrumb"));
-      final crumbText = tester.widget<Text>(find.descendant(of: breadcrumb, matching: find.text("UI / Core")));
-      expect(crumbText.style?.fontSize, 14);
-      expect(crumbText.style?.color, PregoDesignSystem.light.colors.textTertiary);
+      // One size with the title, quieter in weight and colour.
+      final crumbText = tester.widget<Text>(find.descendant(of: breadcrumb, matching: find.text("Main session")));
+      expect(crumbText.style?.fontSize, 16);
+      expect(crumbText.style?.fontWeight, FontWeight.w500);
+      expect(crumbText.style?.color, PregoDesignSystem.light.colors.textSecondary);
       final title = find.descendant(of: find.byType(DesktopPageToolbar), matching: find.text("Desktop session"));
       expect(tester.widget<Text>(title).style?.fontSize, 16);
       expect(tester.widget<Text>(title).style?.fontWeight, FontWeight.bold);
@@ -492,7 +501,8 @@ void main() {
       expect(tester.getTopLeft(signals).dx, lessThan(tester.getTopLeft(title).dx));
 
       await tester.tap(breadcrumb);
-      expect(openedProject, 1);
+      expect(openedParents, ["parent-1"]);
+      expect(openedProject, 0);
     });
 
     testWidgets("Mark unread from the menu shows its shortcut, sends read: false and leaves the page", (

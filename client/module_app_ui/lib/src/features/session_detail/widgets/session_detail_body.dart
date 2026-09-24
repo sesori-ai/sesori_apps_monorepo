@@ -16,34 +16,9 @@ import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
 import "session_harness_unavailable_notice.dart";
 
-String? _resolveModelName({required AgentModel? model, required List<ProviderInfo> providers}) {
-  if (model == null) return null;
-  for (final provider in providers) {
-    if (provider.id == model.providerID) {
-      return provider.models[model.modelID]?.name ?? model.modelID;
-    }
-  }
-  return model.modelID;
-}
-
-/// The harness name the bridge reported, e.g. "Claude Code"; null until the
-/// harness status loads or when an older bridge does not report it.
-String? _harnessName({required SessionInteractionState interaction}) => switch (interaction) {
-  SessionInteractionAvailable(:final displayName) => displayName,
-  SessionInteractionBlocked(:final displayName) => displayName,
-  SessionInteractionChecking() || SessionInteractionLegacyUnverified() => null,
-};
-
-/// "Claude Code · Haiku", or whichever part is known.
-String? _subtitle({required String? harnessName, required String? modelName}) {
-  final parts = [?harnessName, ?modelName];
-  return parts.isEmpty ? null : parts.join(" · ");
-}
-
 typedef SessionDetailHeaderBuilder = Widget Function({
   required BuildContext context,
   required String title,
-  required String? subtitle,
   required bool isBusy,
 
   /// Null while the session has no diff to show.
@@ -189,17 +164,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       SessionDetailHarnessUnavailable(:final session) => session.title ?? fallbackTitle,
       SessionDetailLoading() || SessionDetailFailed() => fallbackTitle,
     };
-    final subtitle = switch (state) {
-      SessionDetailLoaded(:final interaction, :final assistantAgentModel, :final availableProviders) => _subtitle(
-        harnessName: _harnessName(interaction: interaction),
-        modelName: _resolveModelName(model: assistantAgentModel, providers: availableProviders),
-      ),
-      SessionDetailHarnessUnavailable(:final interaction) => _subtitle(
-        harnessName: _harnessName(interaction: interaction),
-        modelName: null,
-      ),
-      SessionDetailLoading() || SessionDetailFailed() => null,
-    };
     final canShowDiffs = state is SessionDetailLoaded && (state.isRootSession ?? false) && !state.isArchived;
     final onShowDiffs = widget.onShowDiffs;
     final menuEntriesBuilder = widget.menuEntriesBuilder;
@@ -283,7 +247,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
             pageChrome.headerBuilder(
               context: context,
               title: title,
-              subtitle: subtitle,
               isBusy: isBusy,
               onShowDiffs: canShowDiffs ? onShowDiffs : null,
               session: state.hydratedSession,
@@ -304,7 +267,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     }
     return PregoGlassScaffold(
       title: title,
-      subtitleText: subtitle,
+      subtitleText: null,
       banner: banner,
       // A chat owns its own (reversed) scroll, so there is no top-anchored
       // scroll for a large title to collapse against. Use the fixed, centred

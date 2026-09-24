@@ -25,6 +25,9 @@ class const DesktopSessionDetailScreen({
 
   /// Opens the project's session list from the toolbar breadcrumb.
   required final VoidCallback onOpenProject,
+
+  /// Returns a subtask to the session that started it, from the toolbar breadcrumb.
+  required final void Function({required String parentSessionId}) onOpenParentSession,
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
   required final VoidCallback onOpenHarnessSettings,
@@ -69,6 +72,7 @@ class const DesktopSessionDetailScreen({
             readOnly: readOnly,
             projectName: projectName,
             onOpenProject: onOpenProject,
+            onOpenParentSession: onOpenParentSession,
             onShowDiffs: onShowDiffs,
             onOpenSession: onOpenSession,
             onOpenHarnessSettings: onOpenHarnessSettings,
@@ -96,6 +100,9 @@ class const DesktopSessionDetailView({
 
   /// Opens the project's session list from the toolbar breadcrumb.
   required final VoidCallback onOpenProject,
+
+  /// Returns a subtask to the session that started it, from the toolbar breadcrumb.
+  required final void Function({required String parentSessionId}) onOpenParentSession,
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
   required final VoidCallback onOpenHarnessSettings,
@@ -166,7 +173,6 @@ class const DesktopSessionDetailView({
   Widget _buildToolbar({
     required BuildContext context,
     required String title,
-    required String? subtitle,
     required bool isBusy,
     required VoidCallback? onShowDiffs,
     required Session? session,
@@ -179,12 +185,20 @@ class const DesktopSessionDetailView({
       SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => false,
     };
     return DesktopPageToolbar(
-      breadcrumb: (label: projectName ?? loc.sessionListTitle, onPressed: onOpenProject),
-      status: isBusy || isAwaitingInput
-          ? DesktopSessionSignals(isAwaitingInput: isAwaitingInput, isRunning: isBusy, isUnseen: false)
+      breadcrumb: switch (session?.parentID) {
+        final parentSessionId? => (
+          label: loc.desktopSessionParentBreadcrumb,
+          onPressed: () => onOpenParentSession(parentSessionId: parentSessionId),
+        ),
+        null => (label: projectName ?? loc.sessionListTitle, onPressed: onOpenProject),
+      },
+      // Running shows as the title's shimmer; only a waiting question takes the status slot.
+      status: isAwaitingInput
+          ? const DesktopSessionSignals(isAwaitingInput: true, isRunning: false, isUnseen: false)
           : null,
       title: title,
-      subtitle: subtitle == null ? null : PregoNavSubtitle(text: subtitle),
+      isRunning: isBusy,
+      subtitle: null,
       actions: [
         if (onShowDiffs != null)
           PregoButtonsSolid(
