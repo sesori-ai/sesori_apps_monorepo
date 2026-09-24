@@ -264,7 +264,13 @@ class SessionDetailCubit(
         if (next.canInteract) {
           unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.queuedEvent));
         } else {
-          emit(SessionDetailState.harnessUnavailable(isUpdatingAutoContinuation: _autoContinuationUpdateInFlight, session: session, interaction: next));
+          emit(
+            SessionDetailState.harnessUnavailable(
+              isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
+              session: session,
+              interaction: next,
+            ),
+          );
         }
       case SessionDetailLoading() || SessionDetailFailed():
         break;
@@ -388,7 +394,13 @@ class SessionDetailCubit(
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
-              emit(SessionDetailState.harnessUnavailable(isUpdatingAutoContinuation: _autoContinuationUpdateInFlight, session: session, interaction: _interaction));
+              emit(
+                SessionDetailState.harnessUnavailable(
+                  isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
+                  session: session,
+                  interaction: _interaction,
+                ),
+              );
               return _SessionRefreshResult.applied;
             }
             _deferredPartEvents.discardForMessagesThrough(
@@ -470,7 +482,13 @@ class SessionDetailCubit(
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
-              emit(SessionDetailState.harnessUnavailable(isUpdatingAutoContinuation: _autoContinuationUpdateInFlight, session: session, interaction: _interaction));
+              emit(
+                SessionDetailState.harnessUnavailable(
+                  isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
+                  session: session,
+                  interaction: _interaction,
+                ),
+              );
               return _SessionRefreshResult.applied;
             }
             _clearBufferedEvents();

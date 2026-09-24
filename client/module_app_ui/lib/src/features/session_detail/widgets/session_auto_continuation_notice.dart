@@ -19,7 +19,9 @@ class const SessionAutoContinuationNotice({
     final current = view;
     if (current == null) return const SizedBox.shrink();
     final status = current.status;
-    if (!current.enabled && status is! SessionAutoContinuationResetKnown && status is! SessionAutoContinuationResetUnknown) {
+    if (!current.enabled &&
+        status is! SessionAutoContinuationResetKnown &&
+        status is! SessionAutoContinuationResetUnknown) {
       return const SizedBox.shrink();
     }
     final loc = context.loc;
@@ -46,15 +48,15 @@ class const SessionAutoContinuationNotice({
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
                   spacing: PregoSpacing.md,
+                  runSpacing: PregoSpacing.md,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Icon(TablerRegular.clock, size: PregoIconSize.sm, color: prego.colors.textSecondary),
-                    Expanded(
-                      child: Text(
-                        current.enabled ? loc.sessionAutoContinuationOn : loc.sessionAutoContinuationQuotaReached,
-                        style: prego.textTheme.textSm.medium,
-                      ),
+                    Text(
+                      current.enabled ? loc.sessionAutoContinuationOn : loc.sessionAutoContinuationQuotaReached,
+                      style: prego.textTheme.textSm.medium,
                     ),
                     if (current.enabled)
                       PregoButtonsSolid(
@@ -94,21 +96,24 @@ class const SessionAutoContinuationNotice({
     required bool enabled,
   }) => switch (status) {
     SessionAutoContinuationIdle() => null,
-    SessionAutoContinuationResetKnown(:final continueAt) => enabled
-        ? loc.sessionAutoContinuationScheduled(_localTime(loc: loc, milliseconds: continueAt))
-        : loc.sessionAutoContinuationOffer(_localTime(loc: loc, milliseconds: continueAt)),
+    SessionAutoContinuationResetKnown(:final continueAt) =>
+      enabled
+          ? loc.sessionAutoContinuationScheduled(_localTime(loc: loc, milliseconds: continueAt))
+          : loc.sessionAutoContinuationOffer(_localTime(loc: loc, milliseconds: continueAt)),
     SessionAutoContinuationResetUnknown() => loc.sessionAutoContinuationResetUnknown,
     SessionAutoContinuationPaused(:final reason) => switch (reason) {
-      AutoContinuationPauseReason.busy || AutoContinuationPauseReason.retrying || AutoContinuationPauseReason.queued =>
-        loc.sessionAutoContinuationPausedWork,
+      AutoContinuationPauseReason.busy ||
+      AutoContinuationPauseReason.retrying ||
+      AutoContinuationPauseReason.queued => loc.sessionAutoContinuationPausedWork,
       AutoContinuationPauseReason.awaitingInput => loc.sessionAutoContinuationPausedInput,
       AutoContinuationPauseReason.unavailable => loc.sessionAutoContinuationPausedUnavailable,
-      AutoContinuationPauseReason.historyUnavailable || AutoContinuationPauseReason.unknown =>
-        loc.sessionAutoContinuationPausedUnknown,
+      AutoContinuationPauseReason.historyUnavailable ||
+      AutoContinuationPauseReason.unknown => loc.sessionAutoContinuationPausedUnknown,
     },
     SessionAutoContinuationAttemptUnconfirmed() => loc.sessionAutoContinuationUnconfirmed,
-    SessionAutoContinuationSubmitted(:final acceptedAt) =>
-      loc.sessionAutoContinuationSubmitted(_localTime(loc: loc, milliseconds: acceptedAt)),
+    SessionAutoContinuationSubmitted(:final acceptedAt) => loc.sessionAutoContinuationSubmitted(
+      _localTime(loc: loc, milliseconds: acceptedAt),
+    ),
     SessionAutoContinuationSubmissionFailed() => loc.sessionAutoContinuationFailed,
     SessionAutoContinuationUnknown() => loc.sessionAutoContinuationStatusUnknown,
   };

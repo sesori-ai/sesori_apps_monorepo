@@ -67,8 +67,8 @@ class const SessionDetailBody({
   /// Null keeps the floating glass bar and a full-width transcript.
   required final SessionDetailPageChrome? pageChrome,
 
-  /// The glass bar's session menu, for a root session; null shows none. A page frame brings its
-  /// own header and menu instead.
+  /// Additional glass-bar actions for a root session. Continuation controls are
+  /// shared here; a page frame composes its own header and menu instead.
   required final SessionDetailMenuEntriesBuilder? menuEntriesBuilder,
 }) extends StatefulWidget {
   @override

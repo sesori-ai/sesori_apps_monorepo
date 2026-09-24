@@ -305,6 +305,26 @@ void main() {
     });
   }
 
+  testWidgets("the chat menu enables auto continuation through the shared cubit", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      session: testConstSession.copyWith(
+        autoContinuation: const SessionAutoContinuationView(
+          enabled: false,
+          availability: AutoContinuationAvailability.conditional,
+          status: SessionAutoContinuationStatus.idle(),
+        ),
+      ),
+    );
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    when(() => cubit.setAutoContinuation(enabled: true)).thenAnswer((_) async {});
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("session-detail-more")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("session-auto-continuation-toggle")));
+    verify(() => cubit.setAutoContinuation(enabled: true)).called(1);
+  });
+
   testWidgets("the glass bar menu marks the open session unread whatever its local state says", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     when(() => cubit.state).thenReturn(state);

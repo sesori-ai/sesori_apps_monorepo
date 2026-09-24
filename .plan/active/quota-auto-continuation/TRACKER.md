@@ -8,7 +8,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 | 2 — Quota normalization | Merged | [#1641][normalization-pr]; typed terminal events and Claude/Pi reporting. |
 | 3 — Durable contracts and readiness | Merged | [#1649][foundation-pr]; durable state and readiness. |
 | 4 — Bridge scheduler | In review | [#1654][scheduler-pr]; route, views, cancellation and dispatch. |
-| 5 — Shared chat controls | Not started | Inline hint, indicator and three-dot toggle on phone and desktop. |
+| 5 — Shared chat controls | In progress locally | Shared hint, acknowledged indicator and three-dot toggle on phone and desktop. |
 | 6 — Regression reconciliation | Not started | Complete affected feature docs and capability matrix. |
 | 7 — L4 verification and retirement | Not started | All recorded boundary/platform/provider coverage must pass. |
 
@@ -73,5 +73,6 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
   routing, cancellation, event and composed handoff checks pass; app analysis is
   clean. Architecture implementation review approved the complete step 4 diff;
   controls and live provider recovery are not implemented/verified yet.
-- Live scheduled continuation: not run; scheduler is in review and controls are not implemented.
+- Step 5 local controls are implemented; focused validation and rendered review are in progress.
+- Live scheduled continuation: not run; scheduler is in review and controls remain local.
 - Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.

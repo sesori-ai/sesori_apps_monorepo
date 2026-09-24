@@ -24,15 +24,15 @@ Claude/Pi also implement named-session readiness for idle, retry, queued work
 and pending input, including known persisted sessions without a resident process.
 Other harnesses return unavailable readiness. The bridge implements durable,
 session-level opt-in through `PATCH /session/auto-continuation`, scheduled sending,
-and the authoritative setting/outcome in session responses and updates. Chat
-controls remain unimplemented.
+and the authoritative setting/outcome in session responses and updates. Phone
+and desktop chat share opt-in, a persistent menu toggle and outcome notices.
 
 Audit date: **2026-09-24**. Internal terminal quota reporting is implemented for
 the Claude Code and Pi cases below. Scheduled continuation is implemented through
 the headless API for those reporting formats; live post-reset provider recovery
 remains unverified. The
-[active plan](../.plan/active/quota-auto-continuation/PLAN.md) next adds a chat hint,
-a persistent three-dot-menu toggle, and a visible resume time.
+[active plan](../.plan/active/quota-auto-continuation/PLAN.md) tracks remaining
+live-provider and platform verification.
 The [evidence record](../.plan/active/quota-auto-continuation/EVIDENCE.md)
 distinguishes observed local errors from upstream contracts and open checks.
 
