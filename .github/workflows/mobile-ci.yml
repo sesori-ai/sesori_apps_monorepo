@@ -22,6 +22,7 @@ on:
       - '.github/workflows/submit-release.yml'
       - '.tool-versions'
       - '.github/workflows/mobile-ci.yml'
+      - '.github/scripts/run_test_shard.sh'
   pull_request:
     paths:
       - 'client/app/**'
@@ -40,6 +41,7 @@ on:
       - '.github/workflows/submit-release.yml'
       - '.tool-versions'
       - '.github/workflows/mobile-ci.yml'
+      - '.github/scripts/run_test_shard.sh'
 
 concurrency:
   group: mobile-ci-${{ github.event.pull_request.number || github.ref }}
@@ -99,7 +101,8 @@ jobs:
         run: dart analyze --fatal-infos
         working-directory: client
 
-  # One job per package so the slowest suite, not the sum, sets the wall time.
+  # One job per package, and two for the largest, so the slowest shard, not
+  # the sum, sets the wall time.
   # no_slop_linter tests run in Bridge CI, which triggers on every shared/** change.
   test:
     needs: toolchain
@@ -109,14 +112,22 @@ jobs:
         include:
           - package: app
             runner: flutter
+            shard: 1/2
+          - package: app
+            runner: flutter
+            shard: 2/2
           - package: module_core
             runner: dart
+            shard: 1/1
           - package: module_auth
             runner: dart
+            shard: 1/1
           - package: module_prego
             runner: flutter
+            shard: 1/1
           - package: module_app_ui
             runner: flutter
+            shard: 1/1
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -131,8 +142,8 @@ jobs:
         run: dart pub get
         working-directory: client
 
-      - name: Run tests for ${{ matrix.package }}
+      - name: Run tests for ${{ matrix.package }} (shard ${{ matrix.shard }})
         # The default of half the cores leaves a 4-core runner mostly idle
         # while tests wait on timers and subprocesses.
-        run: ${{ matrix.runner }} test -j 4
+        run: ../../.github/scripts/run_test_shard.sh ${{ matrix.runner }} ${{ matrix.shard }} -j 4
         working-directory: client/${{ matrix.package }}
