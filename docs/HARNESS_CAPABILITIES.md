@@ -211,8 +211,8 @@ read-only snapshot. The reader consumes the pinned v1.18.19 project,
 project-directory, and session schema and safely falls back to live import when
 that contract is absent or invalid. Other harnesses retain their existing
 plugin-backed import; no pre-start capability claim is made for them.
-All harnesses cold-started only by import fallback use the shared five-minute
-import-only idle residency cap.
+All harnesses cold-started only by import fallback or by session options
+discovery use the shared five-minute transient idle residency cap.
 
 ## Option pickers
 

@@ -88,6 +88,7 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
   Future<({T value, int generation})> useWithGeneration<T>({
     required String pluginId,
     required Enum operation,
+    required PluginGenerationResidency residency,
     required Future<T> Function(BridgePluginApi api) body,
   }) async {
     final plugin = _plugins[pluginId];

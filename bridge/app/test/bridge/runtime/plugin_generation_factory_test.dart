@@ -371,9 +371,9 @@ void main() {
       await subscription.cancel();
     });
 
-    test("import-only residency caps positive idle time and promotion restores configured time", () async {
+    test("transient residency caps positive idle time and promotion restores configured time", () async {
       idleTimeoutMins = 45;
-      final residency = PluginGenerationResidencyController(initial: PluginGenerationResidency.importOnly);
+      final residency = PluginGenerationResidencyController(initial: PluginGenerationResidency.transient);
       addTearDown(residency.dispose);
       final observation = await _observeGenerationStart(
         createFactory().start(
