@@ -109,9 +109,9 @@ installations on bridge start. Linux requires Info-ZIP `unzip` with ZipInfo;
 installation checks it before downloading. See [INSTALL.md](INSTALL.md).
 
 For manual setup, place `agy_acp_server.par` and `localharness_external`
-together on macOS arm64 or Linux x64/arm64; on Windows x64/arm64 use
+together on macOS x64/arm64 or Linux x64/arm64; on Windows x64/arm64 use
 `agy_acp_server.exe` and `localharness_external.exe`. Both POSIX files must be
-executable. macOS x64 is unsupported, including an explicit binary path.
+executable.
 Either make the server discoverable on PATH or pass
 `--antigravity-bin <path-to-server>`. The sibling harness is mandatory; an
 explicit server path is authoritative and disables managed Install/upgrade.

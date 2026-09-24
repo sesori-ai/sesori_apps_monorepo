@@ -163,14 +163,16 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 
 Antigravity can explicitly download Google's proprietary official runtime pair directly from `dl.google.com`. Before
 choosing Install, review [Google's terms](https://antigravity.google/terms) and
-[Antigravity documentation](https://antigravity.google/docs/). Sesori independently pins and verifies five
-selected archives: macOS arm64, Linux x64/arm64, and Windows x64/arm64. The official ACP registry now publishes
-macOS x64 too (verified 2026-09-24, package `1.2.1`); that platform is **not implemented** in Sesori, so managed
-installation remains unavailable there. Every archive keeps the server and local harness as siblings, uses a
-conservative two-minute bound for each archive listing/extraction command, and must pass the isolated initialize-only
+[Antigravity documentation](https://antigravity.google/docs/). Sesori independently pins and verifies six
+archives: macOS x64/arm64, Linux x64/arm64, and Windows x64/arm64. macOS x64 support is **implemented** for
+package `1.2.1`, including managed installation and explicit/PATH pair selection. Every archive keeps the server
+and local harness as siblings, uses a conservative two-minute bound for each archive listing/extraction command,
+and must pass the isolated initialize-only
 identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install. Native
 managed-pipeline correctness previously ran on macOS arm64 for `1.1.1`; `1.2.1` has native initialize/teardown
-coverage but no completed managed-pipeline run. Linux and Windows native correctness remains unverified.
+coverage but no completed managed-pipeline run. macOS x64 has verified archive integrity, hardened extraction,
+executable modes and binary architecture; native execution and installation on Intel Macs remain unverified.
+Linux and Windows native correctness remains unverified.
 Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
 The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
 retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.

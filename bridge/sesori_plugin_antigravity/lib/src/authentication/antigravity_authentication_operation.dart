@@ -74,7 +74,6 @@ class AntigravityAuthenticationOperation({
           AntigravityRuntimeContractRejected(:final source, :final pair, :final violations) =>
             "${source.name}: ${pair.serverPath} with ${pair.harnessPath}; "
                 "contract violations: ${violations.map((violation) => violation.name).join(', ')}",
-          AntigravityRuntimeUnsupported(:final target) => "unsupported target ${target.os.name}/${target.arch.name}",
           AntigravityRuntimeStorageFailed(:final source) => "${source.name}: runtime inspection failed",
           AntigravityRuntimeProbeFailed(:final source, :final pair) =>
             "${source.name}: probe failed for ${pair.serverPath}",

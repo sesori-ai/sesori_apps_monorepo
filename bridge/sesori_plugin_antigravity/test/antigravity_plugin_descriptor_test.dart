@@ -349,13 +349,23 @@ void main() {
     expect(store.scopes, isEmpty);
   });
 
-  test("macOS x64 reports unsupported setup without preparing or launching a runtime", () async {
+  test("macOS x64 inspects missing, PATH, explicit and managed pairs without preparing a profile", () async {
     final candidate = AntigravityPluginDescriptor(
       target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64),
       callbackHttpClientFactory: unexpectedHttpClient,
       runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
       versionProbeTimeout: const Duration(seconds: 10),
     );
+    expect(
+      await candidate.inspectSetup(
+        config: config(server: null),
+        processes: processes,
+        environment: const {"PATH": "/definitely/missing"},
+        stateDirectory: state.path,
+      ),
+      isA<PluginSetupRuntimeMissing>(),
+    );
+    expect(processes.launches, isEmpty);
     for (final server in [null, pair.server]) {
       final status = await candidate.inspectSetup(
         config: config(server: server),
@@ -363,16 +373,30 @@ void main() {
         environment: {"PATH": runtime.path},
         stateDirectory: state.path,
       );
-      expect(
-        status,
-        const PluginSetupUnavailable(
-          actionHint: "Sesori does not support the Antigravity ACP runtime on this platform.",
-        ),
-      );
+      expect(status, isA<PluginSetupAuthenticationRequired>());
+      expect((status as PluginSetupAuthenticationRequired).runtimeVersion, AntigravityRelease.agentVersion);
     }
-    expect(processes.launches, isEmpty);
-    expect(store.scopes, isEmpty);
     expect(state.listSync(), isEmpty);
+
+    final managedDirectory = Directory(
+      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
+    )..createSync(recursive: true);
+    final managedPair = _writePair(directory: managedDirectory);
+    expect(
+      await candidate.inspectSetup(
+        config: config(server: null),
+        processes: processes,
+        environment: const {"PATH": "/definitely/missing"},
+        stateDirectory: state.path,
+      ),
+      isA<PluginSetupAuthenticationRequired>(),
+    );
+    expect(processes.launches.map((launch) => launch.executable), [pair.server, pair.server, managedPair.server]);
+    expect(processes.launches.map((launch) => launch.arguments), everyElement(const ["--version"]));
+    expect(processes.launches.every((launch) => !launch.includeParentEnvironment), isTrue);
+    expect(processes.agents, isEmpty);
+    expect(store.scopes, isEmpty);
+    expect(Directory(p.join(state.path, "profile")).existsSync(), isFalse);
   });
 
   test("PATH precedes managed pair and keeps an empty POSIX entry as current directory", () async {
@@ -639,14 +663,18 @@ void main() {
     );
     superseded.deleteSync(recursive: true);
 
-    final unsupported = AntigravityPluginDescriptor(
+    final macX64 = AntigravityPluginDescriptor(
       target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64),
       callbackHttpClientFactory: unexpectedHttpClient,
       runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
       versionProbeTimeout: const Duration(seconds: 10),
     );
     expect(
-      unsupported.managementCapabilities(config: config(server: null)),
+      macX64.managementCapabilities(config: config(server: null)),
+      contains(PluginControlCapability.install),
+    );
+    expect(
+      macX64.managementCapabilities(config: config(server: pair.server)),
       isNot(contains(PluginControlCapability.install)),
     );
   });

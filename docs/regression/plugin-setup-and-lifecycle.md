@@ -9,7 +9,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 ## Runtime Target Coverage
 
 Targets audited on **2026-09-24**, covering all eleven registered harnesses.
-Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 5,
+Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 6,
 Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
 checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher
 attestations. Direct-CLI targets are recommendation metadata, not forced upgrades.
@@ -19,7 +19,7 @@ Antigravity retains its exact-pair policy rather than an independent floor.
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
 | OpenCode | `1.18.32` | `1.14.0` | Managed-pipeline probe blocked by the test controller's nested sandbox. Native serve/health/SSE, history and provider behavior remain unverified for this target. |
-| Antigravity | package/server `1.2.1` | Exact package/server/ACP 1 | Five archive layouts/hashes and macOS ARM64 hardened extraction, `--version`, ACP initialize and teardown passed. Managed-pipeline probe blocked by the test controller's nested sandbox; OAuth/session/model/delegation behavior unverified. |
+| Antigravity | package/server `1.2.1` | Exact package/server/ACP 1 | Six archive layouts/hashes and hardened extraction of both macOS archives verified. Native macOS ARM64 `--version`, ACP initialize and teardown passed; native Intel execution remains unverified. ARM64 managed-pipeline probe blocked by the test controller's nested sandbox; OAuth/session/model/delegation behavior unverified. |
 | Codex | `0.156.1` | `0.139.0` | Current-target native package/install, stdio and WebSocket app-server checks remain unverified. |
 | GitHub Copilot | `1.0.88` | `1.0.78` | Current-target native install/version, ACP initialize and configured lifecycle remain unverified. |
 | Cursor | `2026.09.23-86fc751` | date `2026.07.16` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. |
@@ -141,7 +141,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   inspection runs bounded `--version` without initializing ACP, reports personal-auth readiness from token-file presence
   without reading it, and advertises current-client browser login only when required. It never imports ambient
   credentials, opens a browser or downloads a runtime. Managed Install is explicit,
-  limited to macOS arm64, Linux x64/arm64 and Windows x64/arm64 (not macOS x64), absent with an override, and preceded
+  available on macOS x64/arm64, Linux x64/arm64 and Windows x64/arm64, absent with an override, and preceded
   by Google terms/documentation guidance visible on the detail screen before installation. The overview download icon
   opens that screen rather than starting a download. Preparation, exact identity/version probing, login and live start use the same isolated profile/environment
   with parent inheritance disabled.
@@ -513,7 +513,7 @@ owned-process exit; and restart.
   being logged, failed, or restarted as an unexpected crash.
 - Antigravity inspection creates profile state, reads token contents, inherits ambient credentials, initializes ACP,
   opens a browser, falls through from explicit or non-absence PATH evidence, or downloads automatically. Offering
-  managed install with an override/on macOS x64, changing the OpenCode default, or adding a shared `Harness` enum case
+  managed install with an override, changing the OpenCode default, or adding a shared `Harness` enum case
   is also a regression.
 - A DeepSeek setup probe creates a session or mutates runtime state, accepts an
   old/malformed adapter version, selects managed runtime ahead of a supported

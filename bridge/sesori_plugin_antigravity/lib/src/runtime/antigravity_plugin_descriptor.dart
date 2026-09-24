@@ -12,7 +12,6 @@ import "../builders/antigravity_environment_builder.dart";
 import "../builders/antigravity_launch_spec_builder.dart";
 import "../foundation/antigravity_authentication_budget.dart";
 import "../foundation/antigravity_identity.dart";
-import "../foundation/antigravity_release.dart";
 import "../models/antigravity_profile.dart";
 import "../models/antigravity_runtime_resolution.dart";
 import "../repositories/antigravity_profile_inspection_repository.dart";
@@ -114,8 +113,7 @@ class const AntigravityPluginDescriptor({
 
   PlatformTarget _target() => target ?? PlatformTarget.current();
   String _geminiHome({required String stateDirectory}) => p.join(stateDirectory, "profile");
-  String? _managedServerPath({required String stateDirectory, required PlatformTarget target}) {
-    if (!AntigravityRelease.supportsTarget(target: target)) return null;
+  String _managedServerPath({required String stateDirectory, required PlatformTarget target}) {
     return const AntigravityRuntimeManifest().managedServerPath(
       stateDirectory: stateDirectory,
       target: target,
@@ -378,8 +376,7 @@ class const AntigravityPluginDescriptor({
       case AntigravityRuntimeSelected() ||
           AntigravityRuntimeMissing() ||
           AntigravityRuntimePairRejected() ||
-          AntigravityRuntimeContractRejected() ||
-          AntigravityRuntimeUnsupported():
+          AntigravityRuntimeContractRejected():
         throw error;
     }
   }
