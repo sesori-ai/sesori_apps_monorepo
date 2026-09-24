@@ -76,13 +76,15 @@ class const NewSessionProjectRow({
               mainAxisSize: MainAxisSize.min,
               spacing: PregoSpacing.xs,
               children: [
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: _valueMaxWidth),
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: _valueMaxWidth),
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+                    ),
                   ),
                 ),
                 if (canSwitch) const Icon(TablerRegular.chevron_right),

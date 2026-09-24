@@ -198,7 +198,7 @@ variant, and worktree mode, and creating the session with its first input.
 - It is one action under one name in every state. Whether a press repeats
   harness discovery, the project check, or the options themselves is decided
   behind it; the surface never names that split, because the user cannot act on
-  it and the line above the composer already says what is missing.
+  it.
 - Concurrent requests coalesce; an incomplete observation never replaces a
   complete cached one, and a moved project invalidates its entries. Completeness
   decides replacement only at capture time; the stored row holds just the

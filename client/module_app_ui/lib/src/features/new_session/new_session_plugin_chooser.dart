@@ -145,6 +145,7 @@ class const _HarnessRow({
       button: true,
       label: loc.newSessionPluginChooserLabel,
       value: isLoading ? loc.newSessionOptionsLoadingSemantics : name,
+      onTap: onPressed,
       excludeSemantics: true,
       child: PregoGroupedRow(
         key: const Key("new_session_plugin_trigger"),
@@ -153,7 +154,10 @@ class const _HarnessRow({
           mainAxisSize: MainAxisSize.min,
           spacing: PregoSpacing.xs,
           children: [
-            if (value != null) isLoading ? PregoShimmer(appearDelay: Duration.zero, child: value) : value,
+            if (value != null)
+              Flexible(
+                child: isLoading ? PregoShimmer(appearDelay: Duration.zero, child: value) : value,
+              ),
             const Icon(TablerRegular.chevron_right),
           ],
         ),
