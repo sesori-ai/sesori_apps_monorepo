@@ -261,8 +261,13 @@ class const _OptionRow({
           borderRadius: radius,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              // The sidebar's selected tint: a hover grey is lost on the popover surface.
-              color: isHighlighted ? prego.colors.textBrandPrimary.withValues(alpha: 0.14) : null,
+              // A hover grey is lost on the popover surface. Dark takes the
+              // sidebar's selected tint, which reads as murky slate in light.
+              color: !isHighlighted
+                  ? null
+                  : Theme.of(context).brightness == Brightness.dark
+                  ? prego.colors.textBrandPrimary.withValues(alpha: 0.14)
+                  : prego.colors.bgBrandPrimary,
               borderRadius: radius,
             ),
             child: ConstrainedBox(
