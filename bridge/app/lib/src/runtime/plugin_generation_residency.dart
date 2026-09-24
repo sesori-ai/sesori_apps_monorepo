@@ -1,7 +1,10 @@
 import "dart:async";
 
 enum PluginGenerationResidency() {
-  importOnly,
+  /// Started for a bounded job such as a catalog import or an options
+  /// discovery: a positive configured idle timeout is capped at five minutes
+  /// until normal use promotes it.
+  transient,
   normal,
 }
 

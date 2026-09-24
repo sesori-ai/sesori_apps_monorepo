@@ -216,7 +216,8 @@ variant, and worktree mode, and creating the session with its first input.
   and is given a longer read timeout for the same reason.
 - Failure with a valid cache still serves it; failure without one is an explicit
   error, never an empty option set. Automatic refresh never starts a stopped
-  backend and no-ops for a superseded generation.
+  backend and no-ops for a superseded generation. A backend started only to
+  discover options idles out within five minutes unless a session uses it.
 - Creation resolves and validates the project handle before checking plugin
   routability, so an unknown project causes no plugin, metadata, git, or session
   persistence effect. Plugin startup, git/worktree preparation, backend creation,

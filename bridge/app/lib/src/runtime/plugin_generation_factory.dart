@@ -71,7 +71,7 @@ class PluginGenerationFactory({
     required PluginGenerationResidency residency,
   }) {
     final configured = _resolveIdleTimeoutMins(pluginId: pluginId);
-    final minutes = configured > 0 && residency == PluginGenerationResidency.importOnly
+    final minutes = configured > 0 && residency == PluginGenerationResidency.transient
         ? configured.clamp(1, 5)
         : configured;
     return minutes > 0 ? Duration(minutes: minutes) : null;

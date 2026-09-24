@@ -452,18 +452,27 @@ class PluginRuntime({
     required String pluginId,
     required Enum operation,
     required Future<T> Function(BridgePluginApi api) body,
-  }) async => (await useWithGeneration(pluginId: pluginId, operation: operation, body: body)).value;
+  }) async => (await useWithGeneration(
+    pluginId: pluginId,
+    operation: operation,
+    residency: PluginGenerationResidency.normal,
+    body: body,
+  )).value;
 
+  /// Runs [body] on the plugin, starting it if needed. A generation this call
+  /// starts with [PluginGenerationResidency.transient] idles out sooner; a
+  /// normal call promotes it, and a transient call never demotes one.
   Future<({T value, int generation})> useWithGeneration<T>({
     required String pluginId,
     required Enum operation,
+    required PluginGenerationResidency residency,
     required Future<T> Function(BridgePluginApi api) body,
   }) async {
     final lease = await _acquire(
       pluginId: pluginId,
       operation: operation,
       startIfNeeded: true,
-      acquisitionResidency: PluginGenerationResidency.normal,
+      acquisitionResidency: residency,
     );
     try {
       final result = await body(lease.api);
@@ -565,7 +574,7 @@ class PluginRuntime({
       yield* _useStream(
         pluginId: pluginId,
         operation: operation,
-        acquisitionResidency: PluginGenerationResidency.importOnly,
+        acquisitionResidency: PluginGenerationResidency.transient,
         body: (api, generation) => body(
           PluginCatalogImportLiveSource(
             authority: _LiveCatalogImportAuthority(slot: slot, generation: generation, api: api),
@@ -634,7 +643,7 @@ class PluginRuntime({
     yield* _useStream(
       pluginId: pluginId,
       operation: operation,
-      acquisitionResidency: PluginGenerationResidency.importOnly,
+      acquisitionResidency: PluginGenerationResidency.transient,
       body: (api, generation) => body(
         PluginCatalogImportLiveSource(
           authority: _LiveCatalogImportAuthority(slot: slot, generation: generation, api: api),
@@ -859,7 +868,7 @@ class PluginRuntime({
       pluginId: pluginId,
       operation: operation,
       startIfNeeded: false,
-      acquisitionResidency: PluginGenerationResidency.importOnly,
+      acquisitionResidency: PluginGenerationResidency.transient,
     );
     try {
       final result = await body(lease.api, lease.generation);
