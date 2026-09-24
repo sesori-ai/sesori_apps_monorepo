@@ -148,46 +148,49 @@ class _MarkdownMessageImageState() extends State<MarkdownMessageImage> {
     return Semantics(
       button: _isDecoded,
       label: context.loc.sessionDetailImageOpen,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: !_isDecoded
-            ? null
-            : () => unawaited(
-                showImageAttachmentViewer(
-                  context: context,
-                  image: ViewOnlyMessageImage(
-                    provider: provider,
-                    originalUri: _originalUri,
+      child: MouseRegion(
+        cursor: _isDecoded ? SystemMouseCursors.click : MouseCursor.defer,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: !_isDecoded
+              ? null
+              : () => unawaited(
+                  showImageAttachmentViewer(
+                    context: context,
+                    image: ViewOnlyMessageImage(
+                      provider: provider,
+                      originalUri: _originalUri,
+                    ),
+                    heroPresentation: ImageAttachmentHeroPresentation.cropped,
+                    filename: _displayFilename,
+                    heroTag: _heroTag,
                   ),
-                  heroPresentation: ImageAttachmentHeroPresentation.cropped,
-                  filename: _displayFilename,
-                  heroTag: _heroTag,
                 ),
-              ),
-        child: Align(
-          alignment: AlignmentDirectional.centerStart,
-          widthFactor: 1,
-          heightFactor: 1,
-          child: SizedBox(
-            width: FilePartWidget.previewSize,
-            child: Hero(
-              tag: _heroTag,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(context.prego.radius.xs),
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Image(
-                    image: provider,
-                    fit: BoxFit.cover,
-                    semanticLabel: widget.semanticLabel,
-                    frameBuilder: (_, child, frame, _) {
-                      if (frame != null) _markDecoded();
-                      return child;
-                    },
-                    errorBuilder: (_, _, _) => Icon(
-                      TablerRegular.photo_off,
-                      size: context.prego.spacing.x6l,
-                      color: context.prego.colors.textTertiary,
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            widthFactor: 1,
+            heightFactor: 1,
+            child: SizedBox(
+              width: FilePartWidget.previewSize,
+              child: Hero(
+                tag: _heroTag,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(context.prego.radius.xs),
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: Image(
+                      image: provider,
+                      fit: BoxFit.cover,
+                      semanticLabel: widget.semanticLabel,
+                      frameBuilder: (_, child, frame, _) {
+                        if (frame != null) _markDecoded();
+                        return child;
+                      },
+                      errorBuilder: (_, _, _) => Icon(
+                        TablerRegular.photo_off,
+                        size: context.prego.spacing.x6l,
+                        color: context.prego.colors.textTertiary,
+                      ),
                     ),
                   ),
                 ),

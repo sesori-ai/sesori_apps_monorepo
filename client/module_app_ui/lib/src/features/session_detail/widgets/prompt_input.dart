@@ -1440,18 +1440,21 @@ class _PromptInputState() extends State<PromptInput> {
           Expanded(
             child: _buildVoiceAwareSlot(
               height: _actionButtonSize,
-              idle: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _enterTypingMode,
-                child: Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Padding(
-                    padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                    child: Text(
-                      _hintText(context),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+              idle: MouseRegion(
+                cursor: SystemMouseCursors.text,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _enterTypingMode,
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+                      child: Text(
+                        _hintText(context),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+                      ),
                     ),
                   ),
                 ),

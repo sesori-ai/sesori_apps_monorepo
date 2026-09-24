@@ -532,15 +532,18 @@ class _ToolOutputBlockState() extends State<_ToolOutputBlock> {
                 ],
               ),
               if (isExpandable)
-                GestureDetector(
-                  onTap: () => setState(() => _expanded = !_expanded),
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: const EdgeInsetsDirectional.only(top: 4),
-                    child: Text(
-                      _expanded ? loc.sessionDetailShowLess : loc.sessionDetailShowMore,
-                      // Primary, not secondary: secondary falls under 4.5:1 on the dark recessed block.
-                      style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textPrimary),
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => setState(() => _expanded = !_expanded),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(top: 4),
+                      child: Text(
+                        _expanded ? loc.sessionDetailShowLess : loc.sessionDetailShowMore,
+                        // Primary, not secondary: secondary falls under 4.5:1 on the dark recessed block.
+                        style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textPrimary),
+                      ),
                     ),
                   ),
                 ),

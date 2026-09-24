@@ -77,6 +77,7 @@ class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
               borderRadius: borderRadius,
               clipBehavior: Clip.antiAlias,
               child: InkWell(
+                mouseCursor: WidgetStateMouseCursor.clickable,
                 key: const ValueKey("sub_agents_pill"),
                 onTap: _overlayController.toggle,
                 child: SizedBox(

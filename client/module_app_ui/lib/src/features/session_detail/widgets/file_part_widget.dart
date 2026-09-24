@@ -211,39 +211,46 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
     return Semantics(
       button: onTap != null,
       label: label,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(prego.radius.xs),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ColoredBox(
-                  color: prego.colors.bgSurface2,
-                  child: Center(
-                    child: loading
-                        ? const PregoActivityIndicator(color: null)
-                        : Icon(icon, size: prego.spacing.x6l, color: prego.colors.textSecondary),
+      child: MouseRegion(
+        cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(prego.radius.xs),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ColoredBox(
+                    color: prego.colors.bgSurface2,
+                    child: Center(
+                      child: loading
+                          ? const PregoActivityIndicator(color: null)
+                          : Icon(icon, size: prego.spacing.x6l, color: prego.colors.textSecondary),
+                    ),
                   ),
-                ),
-                ExcludeSemantics(
-                  child: _AttachmentMetadataOverlay(
-                    filename: filename,
-                    mime: mime,
-                    byteLength: byteLength,
+                  ExcludeSemantics(
+                    child: _AttachmentMetadataOverlay(
+                      filename: filename,
+                      mime: mime,
+                      byteLength: byteLength,
+                    ),
                   ),
-                ),
-                if (retryable) Center(child: _retryButton(context: context)),
-                if (uri != null)
-                  PositionedDirectional(
-                    top: prego.spacing.md,
-                    end: prego.spacing.md,
-                    child: Icon(TablerRegular.external_link, size: prego.spacing.x2l, color: prego.colors.textPrimary),
-                  ),
-              ],
+                  if (retryable) Center(child: _retryButton(context: context)),
+                  if (uri != null)
+                    PositionedDirectional(
+                      top: prego.spacing.md,
+                      end: prego.spacing.md,
+                      child: Icon(
+                        TablerRegular.external_link,
+                        size: prego.spacing.x2l,
+                        color: prego.colors.textPrimary,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -390,36 +397,39 @@ class _LoadedImageAttachmentState() extends State<_LoadedImageAttachment> {
     return Semantics(
       button: _isDecoded,
       label: context.loc.sessionDetailImageOpen,
-      child: GestureDetector(
-        key: FilePartWidget.previewTapTargetKey,
-        behavior: HitTestBehavior.opaque,
-        onTap: !_isDecoded
-            ? null
-            : () => unawaited(
-                showImageAttachmentViewer(
-                  context: context,
-                  image: viewerImage,
-                  heroPresentation: ImageAttachmentHeroPresentation.cropped,
-                  filename: widget.filename,
-                  heroTag: _heroTag,
+      child: MouseRegion(
+        cursor: _isDecoded ? SystemMouseCursors.click : MouseCursor.defer,
+        child: GestureDetector(
+          key: FilePartWidget.previewTapTargetKey,
+          behavior: HitTestBehavior.opaque,
+          onTap: !_isDecoded
+              ? null
+              : () => unawaited(
+                  showImageAttachmentViewer(
+                    context: context,
+                    image: viewerImage,
+                    heroPresentation: ImageAttachmentHeroPresentation.cropped,
+                    filename: widget.filename,
+                    heroTag: _heroTag,
+                  ),
                 ),
-              ),
-        child: Hero(
-          tag: _heroTag,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(prego.radius.xs),
-            child: AspectRatio(
-              aspectRatio: 1,
-              child: Image(
-                key: FilePartWidget.previewImageKey,
-                image: _image.provider,
-                fit: BoxFit.cover,
-                semanticLabel: widget.filename ?? context.loc.sessionDetailAttachedImage,
-                frameBuilder: (_, child, frame, _) {
-                  if (frame != null) _markImageDecoded();
-                  return child;
-                },
-                errorBuilder: (_, _, _) => const _ImageDecodeFailure(),
+          child: Hero(
+            tag: _heroTag,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(prego.radius.xs),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Image(
+                  key: FilePartWidget.previewImageKey,
+                  image: _image.provider,
+                  fit: BoxFit.cover,
+                  semanticLabel: widget.filename ?? context.loc.sessionDetailAttachedImage,
+                  frameBuilder: (_, child, frame, _) {
+                    if (frame != null) _markImageDecoded();
+                    return child;
+                  },
+                  errorBuilder: (_, _, _) => const _ImageDecodeFailure(),
+                ),
               ),
             ),
           ),

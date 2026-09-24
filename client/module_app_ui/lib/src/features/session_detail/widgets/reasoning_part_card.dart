@@ -95,6 +95,7 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
           child: Material(
             type: MaterialType.transparency,
             child: InkWell(
+              mouseCursor: WidgetStateMouseCursor.clickable,
               onTap: () => _showFullText(context: context),
               borderRadius: BorderRadius.circular(PregoRadius.xs),
               child: ConstrainedBox(

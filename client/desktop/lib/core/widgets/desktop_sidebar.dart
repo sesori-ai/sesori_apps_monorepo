@@ -1055,6 +1055,7 @@ class const _SidebarActivitySessionRow({
                 enabled: phase != DesktopSidebarPhase.open,
                 message: description,
                 child: InkWell(
+                  mouseCursor: WidgetStateMouseCursor.clickable,
                   onTap: onPressed,
                   onLongPress: openMenu,
                   child: DesktopSidebarExpansionBuilder(
@@ -1164,6 +1165,7 @@ class const _SidebarSessionRow({
           child: Tooltip(
             message: description,
             child: InkWell(
+              mouseCursor: WidgetStateMouseCursor.clickable,
               onTap: onPressed,
               onLongPress: openMenu,
               child: DesktopSidebarExpansionBuilder(
@@ -1254,6 +1256,7 @@ class const _SidebarButton({
             onTap: onPressed,
             excludeSemantics: true,
             child: InkWell(
+              mouseCursor: WidgetStateMouseCursor.clickable,
               onTap: onPressed,
               // The opaque hover would hide the selected fill, which the row's
               // trailing controls keep showing.

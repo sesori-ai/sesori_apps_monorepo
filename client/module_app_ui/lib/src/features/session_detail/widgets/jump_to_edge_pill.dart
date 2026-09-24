@@ -35,6 +35,7 @@ class const JumpToEdgePill({
           borderRadius: BorderRadius.circular(PregoRadius.x3l),
           color: prego.colors.bgSurface3,
           child: InkWell(
+            mouseCursor: WidgetStateMouseCursor.clickable,
             key: tapTargetKey,
             borderRadius: BorderRadius.circular(PregoRadius.x3l),
             onTap: onTap,

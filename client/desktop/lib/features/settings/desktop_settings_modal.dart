@@ -254,6 +254,7 @@ class const _SettingsTabRow({
       button: true,
       selected: selected,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: onPressed,
         hoverColor: prego.colors.bgSecondaryHover,
         child: Ink(

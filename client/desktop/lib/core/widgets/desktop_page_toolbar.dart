@@ -61,6 +61,7 @@ class const DesktopPageToolbar({
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 200),
                         child: InkWell(
+                          mouseCursor: WidgetStateMouseCursor.clickable,
                           key: const Key("desktop-page-breadcrumb"),
                           onTap: breadcrumb.onPressed,
                           borderRadius: BorderRadius.circular(PregoRadius.sm),

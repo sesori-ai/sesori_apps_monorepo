@@ -17,9 +17,12 @@ class const DiffFileWidget({
   @override
   Widget build(BuildContext context) {
     return SelectionContainer.disabled(
-      child: GestureDetector(
-        onTap: onToggle,
-        child: _buildHeader(context),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onToggle,
+          child: _buildHeader(context),
+        ),
       ),
     );
   }

@@ -158,6 +158,7 @@ class const ProjectTile({
           child: Semantics(
             button: true,
             child: InkWell(
+              mouseCursor: WidgetStateMouseCursor.clickable,
               onTap: () => _open(context: context, displayName: displayName),
               onLongPress: openMenu,
               child: Padding(

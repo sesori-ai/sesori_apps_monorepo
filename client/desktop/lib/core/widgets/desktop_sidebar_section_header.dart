@@ -44,6 +44,7 @@ class const DesktopSidebarSectionHeader({
                                 button: true,
                                 expanded: !collapsed,
                                 child: InkWell(
+                                  mouseCursor: WidgetStateMouseCursor.clickable,
                                   onTap: onToggle,
                                   borderRadius: BorderRadius.circular(PregoRadius.md),
                                   child: Padding(

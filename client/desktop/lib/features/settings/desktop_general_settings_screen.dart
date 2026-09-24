@@ -162,6 +162,7 @@ class const _ThemeSegment({
       selected: selected,
       inMutuallyExclusiveGroup: true,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: onPressed,
         borderRadius: radius,
         child: Ink(

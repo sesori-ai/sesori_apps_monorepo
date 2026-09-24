@@ -143,7 +143,7 @@ class const PregoGroupedRow({
       child: row,
     );
     if (onTap != null) {
-      tile = InkWell(onTap: onTap, child: tile);
+      tile = InkWell(mouseCursor: WidgetStateMouseCursor.clickable, onTap: onTap, child: tile);
     }
 
     if (_GroupedRowPosition.isLastOf(context)) return tile;

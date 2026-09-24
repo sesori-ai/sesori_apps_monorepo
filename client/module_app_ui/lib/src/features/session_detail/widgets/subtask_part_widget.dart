@@ -38,6 +38,7 @@ class const SubtaskPartWidget({
         color: prego.colors.bgSecondary,
         borderRadius: BorderRadius.circular(PregoRadius.md),
         child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           borderRadius: BorderRadius.circular(PregoRadius.md),
           onTap: targetSessionId != null && targetProjectId != null
               ? () => SessionDetailPresentationScope.read(context).openSession(

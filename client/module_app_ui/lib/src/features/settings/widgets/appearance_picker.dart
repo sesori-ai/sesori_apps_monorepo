@@ -75,44 +75,47 @@ class const _AppearanceOption({
         // the selection as mutually exclusive.
         inMutuallyExclusiveGroup: true,
         checked: isSelected,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                // A Container (rather than a DecoratedBox) so the ring insets
-                // the preview instead of being painted underneath it. The ring
-                // stays transparent when unselected, so selecting one tile
-                // never resizes the row.
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(_selectionRadius),
-                  border: Border.all(
-                    color: isSelected ? prego.colors.borderBrand : Colors.transparent,
-                    width: _selectionRingWidth,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  // A Container (rather than a DecoratedBox) so the ring insets
+                  // the preview instead of being painted underneath it. The ring
+                  // stays transparent when unselected, so selecting one tile
+                  // never resizes the row.
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(_selectionRadius),
+                    border: Border.all(
+                      color: isSelected ? prego.colors.borderBrand : Colors.transparent,
+                      width: _selectionRingWidth,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(_previewRadius),
+                    child: AspectRatio(
+                      aspectRatio: _previewAspectRatio,
+                      child: switch (mode) {
+                        AppearanceMode.light => const _ThemePreview(palette: PregoColors.light),
+                        AppearanceMode.dark => const _ThemePreview(palette: PregoColors.dark),
+                        AppearanceMode.system => const _SystemThemePreview(),
+                      },
+                    ),
                   ),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(_previewRadius),
-                  child: AspectRatio(
-                    aspectRatio: _previewAspectRatio,
-                    child: switch (mode) {
-                      AppearanceMode.light => const _ThemePreview(palette: PregoColors.light),
-                      AppearanceMode.dark => const _ThemePreview(palette: PregoColors.dark),
-                      AppearanceMode.system => const _SystemThemePreview(),
-                    },
+                const SizedBox(height: _labelGap),
+                Text(
+                  label,
+                  style: prego.textTheme.textSm.regular.copyWith(
+                    color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
                   ),
                 ),
-              ),
-              const SizedBox(height: _labelGap),
-              Text(
-                label,
-                style: prego.textTheme.textSm.regular.copyWith(
-                  color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
