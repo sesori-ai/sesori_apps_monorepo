@@ -70,7 +70,8 @@ The main pane hosts one full-width routed page.
   show its static filled state. On macOS, preserve Prego's native platform-view
   path so spinning does not schedule recurring Flutter frames. Verify its
   scrolling, clipping, and collapse/expand hierarchy natively. Compact avatars
-  retain the indicator. Tooltips
+  retain the indicator. The open sidebar also writes the count beside it ("Running", "2 running"). Only
+  sessions an agent is working in count; a session only waiting for input does not. Tooltips
   and accessibility descriptions include running counts and unread status;
   live state updates also clear stale unread marks.
 - Recent-session rows remain non-archived even when pinning the selected session.
@@ -85,14 +86,14 @@ The main pane hosts one full-width routed page.
   session's project. Sessions never leave their project: an Activity session also keeps its place in the project's
   ordinary rows.
 - Marking a session unread on this desktop (sidebar or sessions-page menu) sets it aside: the desktop layout file
-  records its `time.updated`, and it stays out of Activity, bold under its project, until the agent moves that
+  records its `time.updated`, and it stays out of Activity, in primary text under its project, until the agent moves that
   stamp or it runs again. Marking read records nothing. The record is per desktop and holds the newest 200.
-- The Activity session the user opens stays listed and selected after opening marks it seen, until the selection
+- The Activity session the user opens stays listed after opening marks it seen, until the selection
   changes or the user sets it aside by marking it unread. The keyed header remains structurally stable at zero
   height when Activity is empty, and keyed Prego reconciliation honors reduced motion as rows enter, leave or
   reorder.
 - Expanded projects show the first three active visible sessions in the shared list's order, plus the open session
-  when present outside that head. While the project has more, Show more reveals ten more in place; folding the
+  when present outside that head. While the project has more, "Show N more" (12 pt tertiary) reveals up to ten more in place; folding the
   project starts over at three. The project name is the one door to the sessions page. Compact/project collapse
   hides ordinary rows without clearing cached data or hiding that project's Activity rows; per-project collapse
   preferences survive layout restore.
@@ -106,6 +107,10 @@ The main pane hosts one full-width routed page.
   popout beside the rail, never over the project chips. The popout follows live state while open, keeps
   the rows' menus, and closes when a row opens its session or when its last row leaves. Below it the rail
   shows one chip per project with its sparkle badge; no session stands in as its project's initials.
+- Hierarchy: project names are 14 pt medium primary; session titles are 14 pt regular secondary, and an
+  unread one is primary with the sparkle. A project's add and fold controls appear only on hover or keyboard
+  focus. The open session is highlighted once, on its row under its project, never in Activity or on the
+  project; the project row is highlighted only on its own page. The highlight fills the row's full width.
 - Every session row leads with a fixed status column (awaiting-input and sparkle signals) aligned under the project
   avatar and ends with a compact last-activity time; its tooltip and screen-reader label say that time in full.
   Activity rows add the project name under the title. A running session shows no time, and a row drops the time

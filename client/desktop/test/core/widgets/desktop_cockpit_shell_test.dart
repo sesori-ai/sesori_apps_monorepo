@@ -557,7 +557,8 @@ void main() {
           )
           .properties
           .selected,
-      isTrue,
+      // The open session is highlighted once, in the project tree.
+      isFalse,
     );
     await tester.tap(priorityRow);
     expect(openedSession, "priority");
@@ -782,12 +783,15 @@ void main() {
     final rows = find.textContaining("session-");
     final showMore = find.byKey(const ValueKey("sidebar-show-more-project-1"));
     expect(rows, findsNWidgets(3));
-    final showMoreLabel = tester.widget<Text>(find.text("Show more"));
+    final showMoreLabel = tester.widget<Text>(find.text("Show 10 more"));
     expect(showMoreLabel.maxLines, 1);
     expect(showMoreLabel.style?.fontFamily, startsWith("packages/theme_prego/"));
+    expect(showMoreLabel.style?.fontSize, 12);
+    expect(showMoreLabel.style?.color, tester.element(showMore).prego.colors.textTertiary);
     await tester.tap(showMore);
     await tester.pumpAndSettle();
     expect(rows, findsNWidgets(13));
+    expect(find.text("Show 2 more"), findsOneWidget);
     await tester.ensureVisible(showMore);
     await tester.pump();
     await tester.tap(showMore);
@@ -802,6 +806,83 @@ void main() {
     await sidebar.toggleProject(projectId: "project-1");
     await tester.pumpAndSettle();
     expect(rows, findsNWidgets(3));
+  });
+
+  testWidgets("projects lead, sessions stay quiet, and the open session alone is highlighted", (tester) async {
+    final quiet = _session(id: "quiet");
+    final fresh = _session(id: "fresh").copyWith(unseen: true);
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: [quiet, fresh],
+          visibleSessions: [quiet, fresh],
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(
+      app(
+        state: running,
+        child: const DesktopCockpitShell(
+          selectedProjectId: "project-1",
+          selectedSessionId: "quiet",
+          onOpenSession: _openSession,
+          onNewSession: _openProject,
+          sessionActions: _sessionActions,
+          onOpenProject: _openProject,
+          onOpenBridgeSettings: _noOp,
+          onOpenProjects: _noOp,
+          onOpenSettings: _noOp,
+          child: SizedBox.shrink(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final colors = tester.element(rail).prego.colors;
+    TextStyle? styleOf(Finder text) => tester.widget<Text>(text).style;
+    Semantics semanticsOf(String label) => tester.widget<Semantics>(
+      find.byWidgetPredicate(
+        (widget) => widget is Semantics && (widget.properties.label?.startsWith(label) ?? false),
+      ),
+    );
+
+    final projectName = find.descendant(
+      of: find.byKey(const ValueKey("project-1")),
+      matching: find.text("Sesori Desktop"),
+    );
+    expect(styleOf(projectName)?.fontSize, 14);
+    expect(styleOf(projectName)?.color, colors.textPrimary);
+    final quietRow = find.byKey(const ValueKey("sidebar-session-project-1-quiet"));
+    final quietTitle = find.descendant(of: quietRow, matching: find.text("quiet"));
+    expect(styleOf(quietTitle)?.fontSize, 14);
+    expect(styleOf(quietTitle)?.color, colors.textSecondary);
+    final freshTitle = find.descendant(
+      of: find.byKey(const ValueKey("sidebar-session-project-1-fresh")),
+      matching: find.text("fresh"),
+    );
+    expect(styleOf(freshTitle)?.color, colors.textPrimary);
+
+    // One highlight: the session row, not its project, and it spans the list.
+    expect(semanticsOf("Sesori Desktop").properties.selected, isFalse);
+    expect(semanticsOf("quiet").properties.selected, isTrue);
+    final quietInk = find.descendant(of: quietRow, matching: find.byType(InkWell));
+    final list = find.byKey(const Key("desktop-sidebar-project-list"));
+    expect(tester.getTopLeft(quietInk).dx, tester.getTopLeft(list).dx);
+
+    // The project's controls wait for the pointer.
+    final chevron = find.byKey(const ValueKey("sidebar-project-toggle-project-1"));
+    double chevronOpacity() =>
+        tester.widget<Opacity>(find.ancestor(of: chevron, matching: find.byType(Opacity)).first).opacity;
+    expect(chevronOpacity(), 0);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await mouse.moveTo(tester.getCenter(projectName));
+    await tester.pump();
+    expect(chevronOpacity(), 1);
   });
 
   testWidgets("section headers fold their rows and persist, and the rail has no folded sections", (tester) async {
@@ -1420,13 +1501,19 @@ void main() {
     whenListen(
       projects,
       updates.stream,
-      initialState: const ProjectListState.loaded(projects: [project], activityById: {"project-1": 2}),
+      // A third session only waits for input, so it is active but not running.
+      initialState: const ProjectListState.loaded(
+        projects: [project],
+        activityById: {"project-1": 3},
+        runningByProjectId: {"project-1": 2},
+      ),
     );
     await tester.pumpWidget(app(state: running));
     final loc = tester.element(rail).loc;
     final native = defaultTargetPlatform == TargetPlatform.macOS;
     final runningHint = "Sesori Desktop, ${loc.projectListRunning(2)}, ${loc.projectListNewActivity}";
     expect(find.byTooltip(runningHint), findsOneWidget);
+    expect(find.text(loc.projectListRunning(2)), findsOneWidget);
     expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isTrue);
     expect(find.byType(AppKitView), native ? findsOneWidget : findsNothing);
     expect(
