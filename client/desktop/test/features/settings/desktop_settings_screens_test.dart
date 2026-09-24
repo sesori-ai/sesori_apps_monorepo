@@ -458,7 +458,13 @@ void main() {
     expect(find.text("alex"), findsOneWidget);
     expect(find.bySemanticsLabel("Back"), findsNothing);
     expect(find.text("Profile"), findsNothing);
+    // The sign-in method is said once, beside its provider icon.
+    expect(find.textContaining("Signed in with"), findsOneWidget);
     await tester.tap(find.text("Log out"));
+    await tester.pumpAndSettle();
+    // Logging out asks first.
+    verifyNever(authGateCubit.signOut);
+    await tester.tap(find.byKey(const Key("logout_confirm_action")));
     await tester.pumpAndSettle();
     verify(authGateCubit.signOut).called(1);
     expect(logoutCompletions, 1);
@@ -472,6 +478,9 @@ void main() {
       final router = await open(tester: tester, tab: DesktopSettingsTab.account);
       await tester.tap(find.text("Log out"));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key("logout_confirm_action")));
+      await tester.pumpAndSettle();
+      verify(authGateCubit.signOut).called(1);
       expect(logoutCompletions, 0);
       expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
       expect(router.state.uri.path, "/session");
@@ -496,7 +505,9 @@ void main() {
     when(authGateCubit.signOut).thenAnswer((_) => logout.future);
     final router = await open(tester: tester, tab: DesktopSettingsTab.account);
     await tester.tap(find.text("Log out"));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("logout_confirm_action")));
+    await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     logout.complete(DesktopLogoutOutcome.completed);
     await tester.pumpAndSettle();

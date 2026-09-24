@@ -86,7 +86,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // The dedicated "turn on your bridge" view owns the messaging …
-    expect(find.text("Disconnected"), findsOneWidget);
+    expect(find.text("Bridge offline"), findsOneWidget);
     // … and the nav banner stays out of it.
     expect(find.byType(ConnectionBanner), findsNothing);
   });

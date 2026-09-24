@@ -24,12 +24,18 @@ participates.
   already absent or the saved authentication session has expired. Non-sandboxed
   macOS desktop builds store through flutter_secure_storage's classic Keychain
   mode, which needs no provisioned Data Protection Keychain access group.
+- Log out asks first on both apps; only its confirmation starts logout, and
+  Cancel or dismissal leaves the session untouched.
 - Auth-server URLs behave identically with or without trailing slashes, and
   deadline expiry actively aborts registration and token-refresh transport,
   including response-body consumption.
 - With no bridge, mobile Projects shows install/start commands, the explainer and support links; copy/share
   hand off the command unchanged. Desktop home instead offers supervised local bridge recovery.
   Connected with no projects shows the add-project call to action on either surface.
+- With a registered bridge offline, mobile Projects names the computer once, in
+  the bar's bridge line when the name is known, under a "Bridge offline" heading
+  with when it was last seen when that is known, and keeps the start command above
+  quiet explainer, install and help links.
 - Desktop first-run startup preferences and optional macOS file-access guidance follow the
   [cockpit contract](desktop-cockpit-shell.md) and [supervision contract](desktop-bridge-supervision.md).
   Dismissing guidance does not grant permission or block ordinary project navigation.
@@ -77,6 +83,7 @@ the prompt and a reused one when testing suppression.
   already has the app, or driving repeated status requests.
 - Relay availability or key exchange waiting on push registration or the check.
 - The bridge-offline banner alarming an account with no registered bridge.
+- One tap on Log out signing the user out without the confirmation.
 
 ## Known Limitations
 

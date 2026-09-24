@@ -35,10 +35,8 @@ class const _MobileProfileView() extends StatelessWidget {
     return ProfileView(
       account: context.watch<SettingsCubit>().state.account,
       chrome: SettingsPageOwnBar(
-        title: context.loc.settingsProfileTitle,
-        automaticallyImplyLeading: true,
+        title: context.loc.settingsSectionAccount,
         connectionBanner: ConnectionBanner.maybeFor(context),
-        onClose: () => context.goRoute(const AppRoute.projects()),
       ),
       logout: () async {
         await settingsCubit.logout();

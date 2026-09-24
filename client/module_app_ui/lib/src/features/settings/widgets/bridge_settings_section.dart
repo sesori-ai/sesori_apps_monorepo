@@ -10,6 +10,9 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "settings_section.dart";
 
+/// How far the rows dim while no bridge is connected.
+const double _offlineRowsOpacity = 0.4;
+
 class const BridgeSettingsSection({
   super.key,
   required final String title,
@@ -48,11 +51,15 @@ class const BridgeSettingsSection({
         ),
       ],
     );
-    final description = this.description;
+    // Offline, one line above the group says why every row is dimmed, in
+    // place of the rows each saying it.
+    final offline = state is BridgeSettingsDisconnected;
+    final description = offline ? context.loc.settingsBridgeOffline : this.description;
+    final group = offline ? Opacity(opacity: _offlineRowsOpacity, child: rows) : rows;
     return SettingsSection(
       title: title,
       child: description == null
-          ? rows
+          ? group
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: PregoSpacing.md,
@@ -61,7 +68,7 @@ class const BridgeSettingsSection({
                   description,
                   style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textTertiary),
                 ),
-                rows,
+                group,
               ],
             ),
     );
@@ -109,10 +116,7 @@ class const _YoloSettingsRow() extends StatelessWidget {
             context.loc.settingsPullRequestRefreshUnavailable,
             style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
           ),
-          BridgeSettingsDisconnected() => Text(
-            context.loc.settingsPullRequestRefreshOffline,
-            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
-          ),
+          BridgeSettingsDisconnected() => null,
           BridgeSettingsFailure() || BridgeSettingsReadyFull(yoloMutation: YoloMutationUncertain()) => IconButton(
             key: const Key("yolo_retry"),
             tooltip: context.loc.settingsYoloRetry,
@@ -181,12 +185,7 @@ class const _PluginWarmupSettingsRow() extends StatelessWidget {
               value: enabled,
               onChanged: interactive ? (enabled) => toggle(enabled: enabled) : null,
             ),
-          BridgeSettingsDisconnected() => Text(
-            context.loc.settingsPullRequestRefreshOffline,
-            style: context.prego.textTheme.textSm.regular.copyWith(
-              color: context.prego.colors.textSecondary,
-            ),
-          ),
+          BridgeSettingsDisconnected() => null,
           BridgeSettingsFailure() ||
           BridgeSettingsReadyFull(pluginWarmupMutation: PluginWarmupMutationUncertain()) => IconButton(
             key: const Key("plugin_warmup_retry"),
@@ -204,7 +203,6 @@ class const _PluginWarmupSettingsRow() extends StatelessWidget {
 String _pluginWarmupDescription({required BuildContext context, required BridgeSettingsState state}) {
   return switch (state) {
     BridgeSettingsLoading() => context.loc.settingsPluginWarmupLoading,
-    BridgeSettingsDisconnected() => context.loc.settingsPluginWarmupDisconnected,
     BridgeSettingsUnsupported() ||
     BridgeSettingsReadyLegacyPartial() ||
     BridgeSettingsReadyFull(
@@ -215,28 +213,26 @@ String _pluginWarmupDescription({required BuildContext context, required BridgeS
       context.loc.settingsPluginWarmupUncertain,
     BridgeSettingsReadyFull(pluginWarmupMutation: PluginWarmupMutationFailed()) =>
       context.loc.settingsPluginWarmupUpdateFailed,
-    BridgeSettingsReadyFull() => context.loc.settingsPluginWarmupDescription,
+    BridgeSettingsReadyFull() || BridgeSettingsDisconnected() => context.loc.settingsPluginWarmupDescription,
   };
 }
 
 String _yoloDescription({required BuildContext context, required BridgeSettingsState state}) {
   return switch (state) {
     BridgeSettingsLoading() => context.loc.settingsYoloLoading,
-    BridgeSettingsDisconnected() => context.loc.settingsYoloDisconnected,
     BridgeSettingsUnsupported() ||
     BridgeSettingsReadyLegacyPartial() ||
     BridgeSettingsReadyFull(yoloMutation: YoloMutationUnsupported()) => context.loc.settingsYoloUnsupported,
     BridgeSettingsFailure() => context.loc.settingsYoloLoadFailed,
     BridgeSettingsReadyFull(yoloMutation: YoloMutationUncertain()) => context.loc.settingsYoloUncertain,
     BridgeSettingsReadyFull(yoloMutation: YoloMutationFailed()) => context.loc.settingsYoloUpdateFailed,
-    BridgeSettingsReadyFull() => context.loc.settingsYoloWarning,
+    BridgeSettingsReadyFull() || BridgeSettingsDisconnected() => context.loc.settingsYoloWarning,
   };
 }
 
 String _description({required BuildContext context, required BridgeSettingsState state}) {
   return switch (state) {
     BridgeSettingsLoading() => context.loc.settingsPullRequestRefreshLoading,
-    BridgeSettingsDisconnected() => context.loc.settingsPullRequestRefreshDisconnected,
     BridgeSettingsUnsupported() => context.loc.settingsPullRequestRefreshUnsupported,
     BridgeSettingsFailure() => context.loc.settingsPullRequestRefreshLoadFailed,
     BridgeSettingsReady(
@@ -259,11 +255,11 @@ String _description({required BuildContext context, required BridgeSettingsState
         PullRequestRefreshInvalidInput() => context.loc.settingsPullRequestRefreshInvalid,
         PullRequestRefreshRequestFailed() => context.loc.settingsPullRequestRefreshUpdateFailed,
       },
-    BridgeSettingsReady() => context.loc.settingsPullRequestRefreshDescription,
+    BridgeSettingsReady() || BridgeSettingsDisconnected() => context.loc.settingsPullRequestRefreshDescription,
   };
 }
 
-Widget _trailing({required BuildContext context, required BridgeSettingsState state}) {
+Widget? _trailing({required BuildContext context, required BridgeSettingsState state}) {
   return switch (state) {
     BridgeSettingsLoading() ||
     BridgeSettingsReady(
@@ -295,10 +291,7 @@ Widget _trailing({required BuildContext context, required BridgeSettingsState st
       context.loc.settingsPullRequestRefreshUnavailable,
       style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
     ),
-    BridgeSettingsDisconnected() => Text(
-      context.loc.settingsPullRequestRefreshOffline,
-      style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
-    ),
+    BridgeSettingsDisconnected() => null,
     BridgeSettingsFailure() => IconButton(
       key: const Key("pull_request_refresh_retry"),
       tooltip: context.loc.settingsPullRequestRefreshRetry,

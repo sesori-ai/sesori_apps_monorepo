@@ -74,6 +74,8 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
               state.hasRegisteredBridges ? _BridgeOfflineView(bridge: bridge) : const _ConnectBridgeChecklist(),
           disconnectedActionBuilder: ({required context, required state}) => _NeedHelpMenu(
             surface: state.hasRegisteredBridges ? OnboardingSurface.bridgeOffline : OnboardingSurface.connectSetup,
+            // The offline fix is the command above, so help stays a quiet link.
+            quiet: state.hasRegisteredBridges,
           ),
           connectedEmptyViewBuilder: ({required context}) => _ConnectedEmptyView(
             onAddProject: () => _showAddProject(context: context),

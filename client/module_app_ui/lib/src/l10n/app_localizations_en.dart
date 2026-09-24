@@ -332,8 +332,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsBridgeOfflineDisconnected => 'Disconnected';
 
   @override
-  String projectsBridgeOfflineDisconnectedSince(String lastSeen) {
-    return 'Disconnected · $lastSeen';
+  String get projectsBridgeOfflineTitle => 'Bridge offline';
+
+  @override
+  String projectsBridgeOfflineLastSeen(String lastSeen) {
+    return 'Last seen $lastSeen';
   }
 
   @override
@@ -341,9 +344,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectsBridgeOfflineStartBridge => 'Make sure the Bridge is running';
-
-  @override
-  String get projectsBridgeOfflineStartBridgeInfo => 'Leave it running while you use Sesori from your phone.';
 
   @override
   String get projectsDesktopStartBridge => 'Start the bridge';
@@ -375,6 +375,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLogout => 'Log out';
 
   @override
+  String get settingsLogoutConfirmTitle => 'Log out?';
+
+  @override
+  String get settingsLogoutConfirmMessage => 'You\'ll need to sign in again to reach your bridges from this device.';
+
+  @override
+  String get settingsLogoutConfirmCancel => 'Cancel';
+
+  @override
+  String get settingsBridgeOffline => 'Connect to a bridge to change these settings.';
+
+  @override
   String get settingsSectionAccount => 'Account';
 
   @override
@@ -394,9 +406,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsYoloLoading => 'Loading the bridge setting…';
-
-  @override
-  String get settingsYoloDisconnected => 'Connect to a bridge to configure this setting.';
 
   @override
   String get settingsYoloUnsupported => 'Update the connected bridge to configure this setting.';
@@ -422,9 +431,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPluginWarmupLoading => 'Loading the bridge setting…';
-
-  @override
-  String get settingsPluginWarmupDisconnected => 'Connect to a bridge to configure this setting.';
 
   @override
   String get settingsPluginWarmupUnsupported => 'Update the connected bridge to configure this setting.';
@@ -453,9 +459,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPullRequestRefreshLoading => 'Loading the bridge setting…';
 
   @override
-  String get settingsPullRequestRefreshDisconnected => 'Connect to a bridge to configure this setting.';
-
-  @override
   String get settingsPullRequestRefreshUnsupported => 'Update the connected bridge to configure this setting.';
 
   @override
@@ -474,9 +477,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPullRequestRefreshUnavailable => 'Unavailable';
-
-  @override
-  String get settingsPullRequestRefreshOffline => 'Offline';
 
   @override
   String get settingsPullRequestRefreshRetry => 'Retry pull request refresh setting';
@@ -896,9 +896,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get harnessesWorkBusy => 'Busy';
-
-  @override
-  String get settingsProfileTitle => 'Profile';
 
   @override
   String get settingsSectionAppearance => 'Appearance';

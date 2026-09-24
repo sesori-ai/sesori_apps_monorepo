@@ -1,17 +1,14 @@
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../extensions/build_context_x.dart";
-
-/// Who draws a settings page's title and close button.
+/// Who draws a settings page's title and its way out.
 sealed class SettingsPageChrome();
 
-/// The page draws its own glass bar with a title and a close button.
+/// The page draws its own glass bar with a title and a back button, its one
+/// way back.
 final class SettingsPageOwnBar({
   required final String title,
-  required final bool automaticallyImplyLeading,
   required final Widget? connectionBanner,
-  required final VoidCallback onClose,
 }) implements SettingsPageChrome;
 
 /// The desktop settings window hosts the page: its sidebar names the page and
@@ -27,17 +24,12 @@ class const SettingsChromePage({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => switch (chrome) {
-    SettingsPageOwnBar(:final title, :final automaticallyImplyLeading, :final connectionBanner, :final onClose) =>
-      PregoGlassScaffold(
-        title: title,
-        titleMode: PregoTopNavigationTitleMode.inline,
-        automaticallyImplyLeading: automaticallyImplyLeading,
-        banner: connectionBanner,
-        actions: [
-          PregoButtonsIconGlass(icon: TablerRegular.x, semanticLabel: context.loc.settingsClose, onPressed: onClose),
-        ],
-        slivers: slivers,
-      ),
+    SettingsPageOwnBar(:final title, :final connectionBanner) => PregoGlassScaffold(
+      title: title,
+      titleMode: PregoTopNavigationTitleMode.inline,
+      banner: connectionBanner,
+      slivers: slivers,
+    ),
     SettingsPageInWindow() => SettingsWindowPage(onRefresh: null, slivers: slivers),
   };
 }

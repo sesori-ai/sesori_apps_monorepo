@@ -222,13 +222,13 @@ void main() {
     await productAnalyticsStates.close();
   });
 
-  testWidgets("profile row stays reachable without a cached account", (tester) async {
+  testWidgets("account row stays reachable without a cached account", (tester) async {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
     // Logout lives on the profile screen, so the row navigating there must
     // not depend on cached account metadata.
-    await tester.tap(find.text("Profile"));
+    await tester.tap(find.text("Account").last);
     await tester.pumpAndSettle();
 
     expect(find.text("Basic usage analytics"), findsOneWidget);
@@ -243,7 +243,9 @@ void main() {
       tester.getTopLeft(find.text("Harnesses")).dy,
       lessThan(tester.getTopLeft(find.text("Notifications")).dy),
     );
-    expect(find.text("Account"), findsOneWidget);
+    // The section header and the account row, which falls back to the page's
+    // name without a cached account.
+    expect(find.text("Account"), findsNWidgets(2));
     expect(find.text("Appearance"), findsOneWidget);
     expect(find.text("Support"), findsOneWidget);
     expect(find.text("Legal"), findsOneWidget);
@@ -450,8 +452,15 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.text("Connect to a bridge to configure this setting."), findsNWidgets(3));
-    expect(find.text("Offline"), findsNWidgets(3));
+    // One line above the group says it once; the rows keep their own
+    // descriptions and dim.
+    expect(find.text("Connect to a bridge to change these settings."), findsOneWidget);
+    expect(find.text("Offline"), findsNothing);
+    expect(find.text("Automatically approves all permission requests. Use with caution."), findsOneWidget);
+    expect(
+      tester.widget<Opacity>(find.ancestor(of: find.text("YOLO mode"), matching: find.byType(Opacity)).first).opacity,
+      lessThan(1),
+    );
     verifyNever(bridgeSettingsRepository.load);
   });
 
@@ -738,14 +747,14 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("basic usage analytics lives on Profile with concise copy", (tester) async {
+  testWidgets("basic usage analytics lives on Account with concise copy", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
     expect(find.text("Basic usage analytics"), findsNothing);
 
-    await tester.tap(find.text("Profile"));
+    await tester.tap(find.text("Account").last);
     await tester.pumpAndSettle();
 
     expect(find.text("Basic usage analytics"), findsOneWidget);
@@ -778,7 +787,7 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Profile"));
+    await tester.tap(find.text("Account").last);
     await tester.pumpAndSettle();
 
     expect(find.text("Analytics preference failed to load."), findsOneWidget);
@@ -808,7 +817,7 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Profile"));
+    await tester.tap(find.text("Account").last);
     await tester.pumpAndSettle();
 
     expect(find.text("Couldn't sync preference."), findsOneWidget);
@@ -835,10 +844,12 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Profile"));
+    await tester.tap(find.text("Account").last);
     await tester.pumpAndSettle();
     await tester.tap(find.text("Log out"));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("logout_confirm_action")));
+    await tester.pumpAndSettle();
 
     expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNull);
     await tester.tap(find.text("Basic usage analytics"));
@@ -849,6 +860,30 @@ void main() {
 
     logoutPreparation.complete();
     await tester.pumpAndSettle();
+  });
+
+  testWidgets("Log out asks first, and Cancel keeps the account signed in", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Account").last);
+    await tester.pumpAndSettle();
+    // The back button is the page's one way out.
+    expect(find.bySemanticsLabel("Close settings"), findsNothing);
+
+    await tester.tap(find.text("Log out"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Log out?"), findsOneWidget);
+    verifyNever(authSession.logoutCurrentDevice);
+
+    await tester.tap(find.byKey(const Key("logout_confirm_cancel")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Log out?"), findsNothing);
+    verifyNever(authSession.logoutCurrentDevice);
+    verifyNever(productAnalyticsService.prepareForLogout);
   });
 
   testWidgets("runtime unavailability does not add alarming session copy", (tester) async {
@@ -868,7 +903,7 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Profile"));
+    await tester.tap(find.text("Account").last);
     await tester.pumpAndSettle();
 
     expect(find.text("Basic usage analytics"), findsOneWidget);
