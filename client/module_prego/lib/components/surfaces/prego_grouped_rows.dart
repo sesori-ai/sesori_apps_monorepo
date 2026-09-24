@@ -125,12 +125,9 @@ class const PregoGroupedRow({
         ),
         if (trailing != null) ...[
           const SizedBox(width: PregoSpacing.md),
-          // Flexible so a wide value (a long name) shrinks instead of squeezing the title.
-          Flexible(
-            child: IconTheme(
-              data: IconThemeData(color: prego.colors.textTertiary, size: _leadingIconSize),
-              child: trailing,
-            ),
+          IconTheme(
+            data: IconThemeData(color: prego.colors.textTertiary, size: _leadingIconSize),
+            child: trailing,
           ),
         ],
       ],

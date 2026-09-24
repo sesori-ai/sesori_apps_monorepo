@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -20,6 +22,10 @@ String newSessionProjectLabel({
   return current == null ? projectName ?? loc.projectListDefaultName : projectDisplayName(loc: loc, project: current);
 }
 
+/// Widest a new session row's value may grow before it ellipsizes: 200 px, or
+/// less on a narrow phone, so a long name never crowds out the row's label.
+double newSessionRowValueMaxWidth(BuildContext context) => math.min(200, MediaQuery.sizeOf(context).width * 0.4);
+
 /// The new session card's first row: which project the session starts in. The
 /// row opens a project menu only when there is another project to choose.
 class const NewSessionProjectRow({
@@ -29,10 +35,6 @@ class const NewSessionProjectRow({
   required final List<ProjectSummary> projects,
   required final NewSessionProjectSelected onProjectSelected,
 }) extends StatelessWidget {
-  /// Widest the project name may grow before it ellipsizes, so a long name
-  /// never crowds out the row's label.
-  static const double _valueMaxWidth = 200;
-
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -76,15 +78,13 @@ class const NewSessionProjectRow({
               mainAxisSize: MainAxisSize.min,
               spacing: PregoSpacing.xs,
               children: [
-                Flexible(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: _valueMaxWidth),
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
-                    ),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: newSessionRowValueMaxWidth(context)),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
                   ),
                 ),
                 if (canSwitch) const Icon(TablerRegular.chevron_right),

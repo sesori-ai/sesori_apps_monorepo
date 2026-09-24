@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "new_session_project_row.dart";
 
 /// The new session card's harness row: the harness the session will run on,
 /// over an anchored menu listing every harness this bridge reports.
@@ -33,9 +34,6 @@ class const NewSessionPluginChooser({
 
   /// Width of the open menu, shared with the composer's pickers.
   static const double _menuWidth = 240;
-
-  /// Widest the harness name may grow before it ellipsizes.
-  static const double _valueMaxWidth = 200;
 
   /// Size of the placeholder bar standing in for the harness name.
   static const double _placeholderWidth = 96;
@@ -129,7 +127,7 @@ class const _HarnessRow({
       ),
       (null, false) => null,
       (final String name, _) => ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: NewSessionPluginChooser._valueMaxWidth),
+        constraints: BoxConstraints(maxWidth: newSessionRowValueMaxWidth(context)),
         child: Text(
           name,
           maxLines: 1,
@@ -154,10 +152,7 @@ class const _HarnessRow({
           mainAxisSize: MainAxisSize.min,
           spacing: PregoSpacing.xs,
           children: [
-            if (value != null)
-              Flexible(
-                child: isLoading ? PregoShimmer(appearDelay: Duration.zero, child: value) : value,
-              ),
+            if (value != null) isLoading ? PregoShimmer(appearDelay: Duration.zero, child: value) : value,
             const Icon(TablerRegular.chevron_right),
           ],
         ),
