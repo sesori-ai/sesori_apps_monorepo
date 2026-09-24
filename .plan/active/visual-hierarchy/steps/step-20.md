@@ -16,6 +16,11 @@
   binds each command's shortcut plus Cmd/Ctrl+K, replacing the inline closures.
   The router's own Cmd/Ctrl+, and Cmd/Ctrl+[ bindings moved into that list;
   the router passes `onGoBack`.
+- Review fixes: the join, archive filter and recency sort moved to
+  `module_core`'s pure `sessionsByRecency`; untitled sessions match their
+  shown title; the palette closes on sign-out like the settings modal; New
+  session mirrors the sidebar row (absent until projects load, Add project
+  while there are none).
 - The sidebar gains a Search row under New session, labelled with ⌘K/Ctrl+K.
 - Mark as unread stays a page-only shortcut on the session page.
 

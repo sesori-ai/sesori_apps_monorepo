@@ -31,6 +31,7 @@ void main() {
   late DesktopSidebarCubit sidebar;
   late _MockRefreshService refreshService;
   late _MockWindowHost windowHost;
+  late _MockAuthGateCubit authGate;
 
   setUpAll(() => registerFallbackValue(const DesktopSidebarLayout()));
   tearDown(GetIt.instance.reset);
@@ -41,6 +42,8 @@ void main() {
     when(windowHost.toggleZoom).thenAnswer((_) async {});
     GetIt.instance.registerSingleton<WindowHost>(windowHost);
     bridgeControlCubit = _MockBridgeControlCubit();
+    authGate = _MockAuthGateCubit();
+    whenListen(authGate, const Stream<AuthGateState>.empty(), initialState: const AuthGateState.signedIn(user: null));
     overlay = _MockConnectionOverlayCubit();
     contentTaps = 0;
     whenListen(
@@ -77,6 +80,7 @@ void main() {
       providers: [
         BlocProvider<BridgeControlCubit>.value(value: bridgeControlCubit),
         BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
+        BlocProvider<AuthGateCubit>.value(value: authGate),
       ],
       child: MaterialApp(
         theme: buildPregoThemeData(brightness: Brightness.light),
@@ -1783,13 +1787,17 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final build = testSession(id: "s1", title: "Fix the build", updatedAt: 2);
     final docs = testSession(id: "s2", title: "Write docs", updatedAt: 1);
+    final untitled = testSession(id: "s3", title: null, updatedAt: 0);
+    final auth = StreamController<AuthGateState>();
+    addTearDown(auth.close);
+    whenListen(authGate, auth.stream, initialState: const AuthGateState.signedIn(user: null));
     whenListen(
       recent,
       const Stream<Map<String, RecentSessionsEntry>>.empty(),
       initialState: {
         "project-1": RecentSessionsLoaded(
-          sourceSessions: [build, docs],
-          visibleSessions: [build, docs],
+          sourceSessions: [build, docs, untitled],
+          visibleSessions: [build, docs, untitled],
           activityBySessionId: const {},
           listStateBySessionId: const {},
         ),
@@ -1890,6 +1898,19 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
     expect(opened.last, "project-1");
+
+    // An untitled session matches the title it shows.
+    await press(LogicalKeyboardKey.keyK);
+    await type("untitled");
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(opened.last, "s3");
+
+    // Signing out takes the palette with the cockpit.
+    await press(LogicalKeyboardKey.keyK);
+    auth.add(const AuthGateState.signedOut());
+    await tester.pumpAndSettle();
+    expect(palette, findsNothing);
   }, variant: TargetPlatformVariant.desktop());
 }
 
@@ -1941,6 +1962,8 @@ void _openSession({
   required String displayName,
   required Session session,
 }) {}
+class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
+
 void _noOp() {}
 void _openProject({required BuildContext context, required ProjectSummary project, required String displayName}) {}
 

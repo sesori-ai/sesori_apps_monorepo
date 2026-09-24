@@ -4,6 +4,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -44,17 +45,15 @@ Future<void> showDesktopCommandPalette({
 }) {
   final projectState = context.read<ProjectListCubit>().state;
   final projects = projectState is ProjectListLoaded ? projectState.projects : const <ProjectSummary>[];
-  final projectById = {for (final project in projects) project.id: project};
   final sessions = <_PaletteSession>[
-    for (final MapEntry(key: projectId, value: entry) in context.read<RecentSessionsCubit>().state.entries)
-      if ((projectById[projectId], entry) case (final project?, RecentSessionsLoaded(:final visibleSessions)))
-        for (final session in visibleSessions)
-          (
-            project: project,
-            projectName: desktopProjectDisplayName(context: context, project: project),
-            session: session,
-          ),
-  ]..sort((a, b) => (b.session.time?.updated ?? 0).compareTo(a.session.time?.updated ?? 0));
+    for (final (:project, :session) in sessionsByRecency(
+      projects: projects,
+      entries: context.read<RecentSessionsCubit>().state,
+      hiddenSessionIds: context.read<PendingSessionArchiveCubit>().state.hiddenIds,
+    ))
+      (project: project, projectName: desktopProjectDisplayName(context: context, project: project), session: session),
+  ];
+  final authGate = context.read<AuthGateCubit>();
   return showDialog<void>(
     context: context,
     animationStyle: prefersReducedMotion(context) ? AnimationStyle.noAnimation : null,
@@ -66,25 +65,31 @@ Future<void> showDesktopCommandPalette({
         action();
       }
 
-      return _CommandPalette(
-        commands: commands,
-        sessions: sessions,
-        projects: [
-          for (final project in projects)
-            (project: project, name: desktopProjectDisplayName(context: context, project: project)),
-        ],
-        onClose: close,
-        onPickCommand: (command) => pick(command.run),
-        onPickSession: (item) => pick(
-          () => onOpenSession(
-            context: context,
-            project: item.project,
-            displayName: item.projectName,
-            session: item.session,
+      // Signing out disposes the cockpit under this root dialog; it leaves too.
+      return BlocListener<AuthGateCubit, AuthGateState>(
+        bloc: authGate,
+        listenWhen: (_, state) => state is AuthGateSignedOut,
+        listener: (_, _) => close(),
+        child: _CommandPalette(
+          commands: commands,
+          sessions: sessions,
+          projects: [
+            for (final project in projects)
+              (project: project, name: desktopProjectDisplayName(context: context, project: project)),
+          ],
+          onClose: close,
+          onPickCommand: (command) => pick(command.run),
+          onPickSession: (item) => pick(
+            () => onOpenSession(
+              context: context,
+              project: item.project,
+              displayName: item.projectName,
+              session: item.session,
+            ),
           ),
-        ),
-        onPickProject: (project) => pick(
-          () => onOpenProject(context: context, project: project.project, displayName: project.name),
+          onPickProject: (project) => pick(
+            () => onOpenProject(context: context, project: project.project, displayName: project.name),
+          ),
         ),
       );
     },
@@ -112,7 +117,11 @@ class _CommandPaletteState() extends State<_CommandPalette> {
     final loc = context.loc;
     final prego = context.prego;
     final commands = matchTitles(items: widget.commands, titleOf: (command) => command.label, query: _query);
-    final sessions = matchTitles(items: widget.sessions, titleOf: (item) => item.session.title, query: _query);
+    final sessions = matchTitles(
+      items: widget.sessions,
+      titleOf: (item) => item.session.title ?? loc.sessionListUntitled,
+      query: _query,
+    );
     final projects = matchTitles(items: widget.projects, titleOf: (project) => project.name, query: _query);
     final rows = <PregoPickerSearchRow>[
       if (commands.isNotEmpty) PregoPickerSearchHeading(text: loc.desktopCommandPaletteCommands),

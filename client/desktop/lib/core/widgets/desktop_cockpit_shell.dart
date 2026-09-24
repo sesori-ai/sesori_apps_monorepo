@@ -137,14 +137,22 @@ class const DesktopCockpitShell({
       builder: (context, constraints) {
         final autoCollapsed = constraints.maxWidth < autoCollapseBreakpoint;
         final loc = context.loc;
+        // As the sidebar's row: absent until projects load, Add project while there are none.
+        final hasProjects = context.select(
+          (ProjectListCubit cubit) => switch (cubit.state) {
+            ProjectListLoaded(:final projects) => projects.isNotEmpty,
+            ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => null,
+          },
+        );
         // Page-only commands, such as Mark as unread, stay with their page.
         final commands = [
-          DesktopCommand(
-            label: loc.sessionListNewSession,
-            icon: TablerRegular.plus,
-            shortcut: desktopShortcut(key: LogicalKeyboardKey.keyN),
-            run: startNewSession,
-          ),
+          if (hasProjects != null)
+            DesktopCommand(
+              label: hasProjects ? loc.sessionListNewSession : loc.addProject,
+              icon: TablerRegular.plus,
+              shortcut: desktopShortcut(key: LogicalKeyboardKey.keyN),
+              run: startNewSession,
+            ),
           // An auto-collapsed sidebar cannot open, so it has no toggle.
           if (!autoCollapsed)
             DesktopCommand(

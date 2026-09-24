@@ -124,9 +124,11 @@ The main pane hosts one full-width routed page.
   focus remains usable and root popups own their focus. Hints use the platform modifier; the sidebar's New session row
   shows the shortcut. Windows and Linux retain native window chrome.
 - Cmd/Ctrl+K and the sidebar's Search row (under New session, labelled with the shortcut) open the command
-  palette: a search field over Commands (New session, Toggle sidebar while the window is wide enough to
-  expand it, Settings, Go back, each with its shortcut), the recent Sessions newest first with their
-  project, and Projects. Typing narrows all three by title words, bolding the matched letters; nothing
+  palette: a search field over Commands (New session once projects load, reading Add project while there
+  are none; Toggle sidebar while the window is wide enough to expand it; Settings; Go back; each with its
+  shortcut), the recent Sessions newest first with their project and without archived ones, and Projects.
+  Typing narrows all three by title words (an untitled session by "Untitled session"), bolding the matched
+  letters; signing out closes the palette with the cockpit; nothing
   matching reads "No matches". Up/Down move the highlight past headings, Enter or a click closes the palette
   and runs the pick, and Esc closes it. The palette shows the lists as they stood when it opened. One
   command list in the shell drives both the palette and the shortcuts; page-only commands such as Mark as
