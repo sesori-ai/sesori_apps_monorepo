@@ -22,6 +22,10 @@ sealed class NewSessionOptionsData with _$NewSessionOptionsData {
     required List<CommandInfo> commands,
     required String? selectedAgent,
     required AgentModel? selectedAgentModel,
+
+    /// The user's fast-mode choice. It only runs while the selected model's
+    /// fast mode is available.
+    required bool fastMode,
     required CommandInfo? stagedCommand,
     required List<SessionVariant> availableVariants,
   }) = _NewSessionOptionsData;
@@ -285,6 +289,7 @@ class NewSessionOptionsService({
       commands: commands,
       selectedAgent: reconciled.agentName,
       selectedAgentModel: selectedAgentModel,
+      fastMode: effectiveSelection?.fastMode ?? false,
       stagedCommand: _selection.resolveStagedCommand(
         commands: commands,
         staged: previousOptions?.stagedCommand,
@@ -310,12 +315,14 @@ class NewSessionOptionsService({
                     modelId: rememberedModel.modelID,
                   ),
             variant: rememberedVariant == null ? null : NewSessionVariantIntent(id: rememberedVariant),
+            fastMode: lastUsedPromptDefaults.fastMode,
           );
     if (restoredSelection == null) return remembered;
     return NewSessionSelectionIntent(
       agentName: restoredSelection.agentName ?? remembered?.agentName,
       model: restoredSelection.model ?? remembered?.model,
       variant: restoredSelection.variant ?? remembered?.variant,
+      fastMode: restoredSelection.fastMode ?? remembered?.fastMode,
     );
   }
 
@@ -364,6 +371,7 @@ class NewSessionOptionsService({
       commands: options.commands,
       selectedAgent: agent,
       selectedAgentModel: selectedAgentModel,
+      fastMode: options.fastMode,
       stagedCommand: options.stagedCommand,
       availableVariants: _selection.availableVariants(providers: options.providers, model: selectedAgentModel),
     );
@@ -403,6 +411,7 @@ class NewSessionOptionsService({
       commands: options.commands,
       selectedAgent: options.selectedAgent,
       selectedAgentModel: selectedAgentModel,
+      fastMode: options.fastMode,
       stagedCommand: options.stagedCommand,
       availableVariants: variants,
     );
@@ -421,9 +430,17 @@ class NewSessionOptionsService({
       commands: options.commands,
       selectedAgent: options.selectedAgent,
       selectedAgentModel: model.copyWith(variant: variant.id),
+      fastMode: options.fastMode,
       stagedCommand: options.stagedCommand,
       availableVariants: options.availableVariants,
     );
+  }
+
+  NewSessionOptionsData selectFastMode({
+    required NewSessionOptionsData options,
+    required bool fastMode,
+  }) {
+    return options.copyWith(fastMode: fastMode);
   }
 
   NewSessionOptionsData? stageCommand({
@@ -438,6 +455,7 @@ class NewSessionOptionsService({
       commands: options.commands,
       selectedAgent: options.selectedAgent,
       selectedAgentModel: options.selectedAgentModel,
+      fastMode: options.fastMode,
       stagedCommand: available,
       availableVariants: options.availableVariants,
     );
@@ -450,6 +468,7 @@ class NewSessionOptionsService({
       commands: options.commands,
       selectedAgent: options.selectedAgent,
       selectedAgentModel: options.selectedAgentModel,
+      fastMode: options.fastMode,
       stagedCommand: null,
       availableVariants: options.availableVariants,
     );

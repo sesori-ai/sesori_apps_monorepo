@@ -246,6 +246,8 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                                 onSessionTap: onSessionTap,
                                 actionDispatcher: actionDispatcher,
                                 archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+                                // The desktop searches from its command palette.
+                                searchable: false,
                               ),
                             ],
                           ),

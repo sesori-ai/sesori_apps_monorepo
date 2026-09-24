@@ -136,6 +136,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
     availableCommands: const [],
     selectedAgent: "coder",
     selectedAgentModel: null,
+    fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
   );

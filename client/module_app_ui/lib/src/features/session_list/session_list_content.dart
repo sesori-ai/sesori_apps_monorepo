@@ -65,6 +65,9 @@ class const SessionListContent({
   final String? selectedSessionId,
   required final SessionListQuickFilter quickFilter,
 
+  /// Narrows the list to titles holding every word; blank shows all.
+  required final String query,
+
   /// Sessions being archived elsewhere, hidden while they still read as
   /// unarchived. Empty where archive is confirmed in a sheet.
   required final Set<String> hiddenSessionIds,
@@ -84,7 +87,7 @@ class const SessionListContent({
     final now = DateTime.now();
     final sessions = state is! SessionListLoaded
         ? const <Session>[]
-        : state.sessions
+        : matchTitles(items: state.sessions, titleOf: (session) => session.title, query: query)
               .where((session) => session.time?.archived != null || !hiddenSessionIds.contains(session.id))
               .where(
                 (session) => switch (quickFilter) {

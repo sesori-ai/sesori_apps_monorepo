@@ -26,8 +26,23 @@ void main() {
     expect(styleSheet.code?.color, prego.colors.textPrimary);
 
     final decoration = styleSheet.codeblockDecoration as BoxDecoration?;
-    expect(decoration?.color, prego.colors.bgQuaternary);
+    expect(decoration?.color, prego.colors.bgSecondary);
     expect(decoration?.borderRadius, BorderRadius.circular(8));
+    expect((decoration?.border as Border?)?.top.color, prego.colors.borderSecondary);
+  });
+
+  test("tables and rules use explicit Prego lines, never the SDK's Material defaults", () {
+    for (final theme in [PregoDesignSystem.light, PregoDesignSystem.dark]) {
+      for (final sheet in [
+        buildChatMessageMarkdownStyleSheet(prego: theme),
+        buildLegalMarkdownStyleSheet(prego: theme),
+      ]) {
+        final line = BorderSide(color: theme.colors.borderSecondary);
+        expect(sheet.tableBorder, TableBorder(horizontalInside: line));
+        expect(sheet.tableHeadAlign, TextAlign.start);
+        expect((sheet.horizontalRuleDecoration as BoxDecoration?)?.border, Border(top: line));
+      }
+    }
   });
 
   test("a quote is a neutral bar with no fill in both themes", () {

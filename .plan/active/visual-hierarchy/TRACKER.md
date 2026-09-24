@@ -34,8 +34,8 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 16 | `visual-hierarchy/{changes-file-list,changes-split}` | [16/41](#pr-titles) | ≤ 800 | done |
 | [x] | 17 | `visual-hierarchy/{shared-activity,phone-activity}` | [17/41](#pr-titles) | ≤ 900 | done |
 | [x] | 18 | `visual-hierarchy/{desktop-home,empty-project-composer}` | [18/41](#pr-titles) | ≤ 800 | done |
-| [ ] | 19 | `visual-hierarchy/phone-search` | [19/41](#pr-titles) | ≤ 600 | pending |
-| [ ] | 20 | `visual-hierarchy/command-palette` | [20/41](#pr-titles) | ≤ 900 | pending |
+| [x] | 19 | `visual-hierarchy/phone-search` | [19/41](#pr-titles) | ≤ 600 | done |
+| [x] | 20 | `visual-hierarchy/command-palette` | [20/41](#pr-titles) | ≤ 900 | done |
 | [ ] | 21 | `visual-hierarchy/project-rows` | [21/41](#pr-titles) | ≤ 500 | pending |
 | [ ] | 22 | `visual-hierarchy/session-page` | [22/41](#pr-titles) | ≤ 600 | pending |
 | [ ] | 23 | `visual-hierarchy/new-session` | [23/41](#pr-titles) | ≤ 600 | pending |

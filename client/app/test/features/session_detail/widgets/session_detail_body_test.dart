@@ -169,6 +169,7 @@ SessionDetailLoaded _loadedState({
       modelID: provider.defaultModelID!,
       variant: "xhigh",
     ),
+    fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
     availableVariants: const [
@@ -572,6 +573,7 @@ void main() {
         attachments: [],
         agent: "coder",
         agentModel: null,
+        fastMode: false,
       ),
     );
     when(() => cubit.state).thenReturn(state);
@@ -806,6 +808,7 @@ void main() {
         modelID: "claude-3-5-sonnet",
         variant: "low",
       ),
+      fastMode: false,
       stagedCommand: null,
       isRefreshing: false,
       availableVariants: const [
@@ -931,6 +934,7 @@ void main() {
               attachments: [],
               agent: null,
               agentModel: null,
+              fastMode: false,
             ),
           ],
         );
@@ -1101,6 +1105,7 @@ void main() {
               attachments: [],
               agent: "coder",
               agentModel: null,
+              fastMode: false,
             ),
           ],
         );
@@ -3629,6 +3634,7 @@ void main() {
       attachments: [],
       agent: null,
       agentModel: null,
+      fastMode: false,
     );
     var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       awaitingBridgeSubmissions: const [submission],
@@ -3684,6 +3690,7 @@ void main() {
           command: "review",
           agent: null,
           agentModel: null,
+          fastMode: false,
         ),
       ],
     );
@@ -3710,6 +3717,7 @@ void main() {
           ],
           agent: "coder",
           agentModel: null,
+          fastMode: false,
         ),
       ],
     );
@@ -3733,6 +3741,7 @@ void main() {
       ],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       queuedMessages: [submission],
@@ -3781,6 +3790,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     const followingSubmission = QueuedSessionSubmission.text(
       promptId: "prompt-2",
@@ -3789,6 +3799,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       queuedMessages: const [submission, followingSubmission],
@@ -3851,6 +3862,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       queuedMessages: const [submission],
@@ -3882,6 +3894,7 @@ void main() {
         attachments: [],
         agent: "coder",
         agentModel: null,
+        fastMode: false,
       ),
     );
     when(() => cubit.state).thenReturn(state);

@@ -8,6 +8,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../widgets/catalog_scan_row.dart";
+import "../../widgets/list_search_field.dart";
 import "../../widgets/remote_failure_view.dart";
 import "widgets/activity_tile.dart";
 import "widgets/project_tile.dart";
@@ -70,6 +71,10 @@ class const ProjectListView({
 
 class _ProjectListViewState() extends State<ProjectListView> {
   late final Timer _ticker;
+
+  /// The search field's text: it narrows project names and Activity's session
+  /// titles to what the page already loaded.
+  String _query = "";
 
   @override
   void initState() {
@@ -299,44 +304,7 @@ class _ProjectListViewState() extends State<ProjectListView> {
           ),
         ),
       ],
-      ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId, :final catalogScan) => [
-        if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
-        SliverToBoxAdapter(
-          child: CatalogScanRow(
-            scan: catalogScan,
-            onCancel: () => context.read<ProjectListCubit>().cancelCatalogScan(),
-            onDismiss: () => context.read<ProjectListCubit>().dismissCatalogScan(),
-          ),
-        ),
-        ..._activitySlivers(context: context, projects: projects),
-        // Keep the list mounted at zero items so its final row can finish the
-        // closing transition before the connected-empty view takes over.
-        PregoAnimatedSliverList<ProjectSummary>(
-          key: const ValueKey("project-list"),
-          items: projects,
-          itemKey: (project) => ValueKey(project.id),
-          itemBuilder: (context, _, project) => ProjectTile(
-            project: project,
-            activeSessions: activityById[project.id] ?? 0,
-            unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
-            onOpen: widget.onOpenProject,
-          ),
-        ),
-        if (projects.isEmpty)
-          // Same shape as the disconnected bodies above: the empty state joins
-          // the page scroll rather than nesting one of its own.
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: SafeArea(
-              top: false,
-              child: widget.connectedEmptyViewBuilder(context: context),
-            ),
-          )
-        else ...[
-          // Clear the floating folder FAB and the home indicator.
-          SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 96)),
-        ],
-      ],
+      final ProjectListLoaded loaded => _loadedSlivers(context: context, state: loaded, isRefreshing: isRefreshing),
       ProjectListFailed(:final reason) => [
         SliverFillRemaining(
           hasScrollBody: false,
@@ -351,18 +319,95 @@ class _ProjectListViewState() extends State<ProjectListView> {
     };
   }
 
+  List<Widget> _loadedSlivers({
+    required BuildContext context,
+    required ProjectListLoaded state,
+    required bool isRefreshing,
+  }) {
+    final ProjectListLoaded(:projects, :activityById, :unseenByProjectId, :catalogScan) = state;
+    final loc = context.loc;
+    final matchedProjects = matchTitles(
+      items: projects,
+      titleOf: (project) => projectDisplayName(loc: loc, project: project),
+      query: _query,
+    );
+    final activity = _activitySlivers(context: context, projects: projects);
+    return [
+      if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
+      SliverToBoxAdapter(
+        child: CatalogScanRow(
+          scan: catalogScan,
+          onCancel: () => context.read<ProjectListCubit>().cancelCatalogScan(),
+          onDismiss: () => context.read<ProjectListCubit>().dismissCatalogScan(),
+        ),
+      ),
+      if (projects.isNotEmpty)
+        SliverToBoxAdapter(
+          child: ListSearchField(
+            query: _query,
+            hintText: context.loc.projectListSearchHint,
+            onChanged: (query) => setState(() => _query = query),
+          ),
+        ),
+      ...activity,
+      // Keep the list mounted at zero items so its final row can finish the
+      // closing transition before the connected-empty view takes over.
+      PregoAnimatedSliverList<ProjectSummary>(
+        key: const ValueKey("project-list"),
+        items: matchedProjects,
+        itemKey: (project) => ValueKey(project.id),
+        itemBuilder: (context, _, project) => ProjectTile(
+          project: project,
+          activeSessions: activityById[project.id] ?? 0,
+          unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
+          onOpen: widget.onOpenProject,
+        ),
+      ),
+      if (projects.isNotEmpty && activity.isEmpty && matchedProjects.isEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(PregoSpacing.x3l),
+            child: Text(
+              context.loc.listSearchNoMatches,
+              textAlign: TextAlign.center,
+              style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textTertiary),
+            ),
+          ),
+        ),
+      if (projects.isEmpty)
+        // Same shape as the disconnected bodies above: the empty state joins
+        // the page scroll rather than nesting one of its own.
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: SafeArea(
+            top: false,
+            child: widget.connectedEmptyViewBuilder(context: context),
+          ),
+        )
+      else ...[
+        // Clear the floating folder FAB and the home indicator.
+        SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 96)),
+      ],
+    ];
+  }
+
   /// The Activity group over the project rows: sessions waiting for the user,
   /// then running ones, across projects, each opening its session. Nothing
   /// while no session is in motion, so the projects keep the top of the page.
   List<Widget> _activitySlivers({required BuildContext context, required List<ProjectSummary> projects}) {
-    final activity = SessionActivityProjection.from(
+    final projection = SessionActivityProjection.from(
       projects: projects,
       entries: context.watch<RecentSessionsCubit>().state,
       // The phone has no mark-unread-to-set-aside and no sticky selection.
       deferredSessions: const {},
       stickySessionId: null,
       hiddenSessionIds: const {},
-    ).waitingFirst;
+    );
+    final activity = matchTitles(
+      items: projection.waitingFirst,
+      titleOf: (item) => item.entry.session.title,
+      query: _query,
+    );
     if (activity.isEmpty) return const [];
     final loc = context.loc;
     Widget heading(String text) => SliverToBoxAdapter(

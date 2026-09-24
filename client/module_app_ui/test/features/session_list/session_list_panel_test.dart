@@ -134,6 +134,68 @@ void main() {
     expect(find.text("No sessions match this filter"), findsOneWidget);
   });
 
+  testWidgets("search narrows the list and its counts, says No matches, and clears", (tester) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    when(() => cubit.state).thenReturn(
+      SessionListState.loaded(
+        sessions: [
+          testSession(id: "s1", title: "Fix the build", updatedAt: now),
+          testSession(id: "s2", title: "Unread one", updatedAt: now, unseen: true),
+        ],
+        baseBranch: null,
+        repoSlug: null,
+      ),
+    );
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+
+    await tester.enterText(find.byType(TextField), "BUILD");
+    await tester.pumpAndSettle();
+    expect(find.text("Fix the build"), findsOneWidget);
+    expect(find.text("Unread one"), findsNothing);
+    expect(find.text("All · 1"), findsOneWidget);
+    expect(find.text("Unread · 0"), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), "nothing like it");
+    await tester.pumpAndSettle();
+    expect(find.text("No matches"), findsOneWidget);
+
+    await tester.tap(find.byTooltip("Clear search"));
+    await tester.pumpAndSettle();
+    expect(find.text("Fix the build"), findsOneWidget);
+    expect(find.text("Unread one"), findsOneWidget);
+    expect(find.text("No matches"), findsNothing);
+  });
+
+  testWidgets("a search field that remounts still shows the query in force", (tester) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final loaded = SessionListState.loaded(
+      sessions: [
+        testSession(id: "s1", title: "Fix the build", updatedAt: now),
+        testSession(id: "s2", title: "Unread one", updatedAt: now),
+      ],
+      baseBranch: null,
+      repoSlug: null,
+    );
+    when(() => cubit.state).thenReturn(loaded);
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+    await tester.enterText(find.byType(TextField), "build");
+    await tester.pumpAndSettle();
+
+    // The last session leaves, taking the field with it, then sessions return.
+    when(() => cubit.state).thenReturn(const SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null));
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+    expect(find.byType(TextField), findsNothing);
+    when(() => cubit.state).thenReturn(loaded);
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, "build");
+    expect(find.text("Unread one"), findsNothing);
+    await tester.tap(find.byTooltip("Clear search"));
+    await tester.pumpAndSettle();
+    expect(find.text("Unread one"), findsOneWidget);
+  });
+
   testWidgets("wide Android pane uses the Cupertino refresh control", (tester) async {
     await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
 

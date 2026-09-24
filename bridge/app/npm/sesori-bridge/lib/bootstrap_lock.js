@@ -14,6 +14,7 @@ var OWNER_FILE_NAME = "owner.json";
 // directory is removed, so it can't re-create files mid-teardown (ENOTEMPTY).
 var HEARTBEAT_STOP_TIMEOUT_MS = 2000;
 var HEARTBEAT_STOP_POLL_MS = 25;
+var PS_PROBE_TIMEOUT_MS = 200;
 
 function sleep(milliseconds) {
   var buffer = new SharedArrayBuffer(4);
@@ -106,9 +107,25 @@ function stopHeartbeat(heartbeatProcess) {
   // heartbeat write can re-create the directory between rmSync retries and
   // surface as ENOTEMPTY. Bounded so a wedged heartbeat can't hang the bootstrap.
   var deadline = Date.now() + HEARTBEAT_STOP_TIMEOUT_MS;
-  while (Date.now() < deadline && processIsAlive(pid)) {
+  while (Date.now() < deadline && processIsAlive(pid) && !isZombie(pid)) {
     sleep(HEARTBEAT_STOP_POLL_MS);
   }
+}
+
+// The heartbeat is our child, and this synchronous wait never lets the event
+// loop reap it, so after exiting it lingers as a zombie that still passes
+// `kill(pid, 0)`. Without this check every stop waited the full timeout.
+// Windows has no zombies. If `ps` is unavailable, fails, or hangs past its own
+// short timeout, this reports false and the stop deadline still bounds us.
+function isZombie(pid) {
+  if (process.platform === "win32") {
+    return false;
+  }
+  var result = child_process.spawnSync("ps", ["-o", "stat=", "-p", String(pid)], {
+    encoding: "utf8",
+    timeout: PS_PROBE_TIMEOUT_MS,
+  });
+  return result.status === 0 && result.stdout.trim().charAt(0) === "Z";
 }
 
 // A lock whose owner process is still running is treated as fresh however far
