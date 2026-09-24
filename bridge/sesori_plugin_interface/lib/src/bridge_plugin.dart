@@ -101,10 +101,9 @@ sealed class BridgePluginApi() {
 
   Future<Map<String, PluginSessionStatus>> getSessionStatuses();
 
-  /// Unsupported harnesses cannot opt in to scheduled continuation. Supporting
-  /// plugins override this with their native session owner's readiness evidence.
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
-      PluginQuotaContinuationReadiness.unavailable;
+  /// Evidence from the named session's native owner for a continuation attempt.
+  /// Unsupported harnesses explicitly return [PluginQuotaContinuationReadiness.unavailable].
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId});
 
   /// Get all messages for a session.
   ///

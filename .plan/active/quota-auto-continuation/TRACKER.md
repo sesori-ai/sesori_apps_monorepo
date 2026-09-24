@@ -6,14 +6,15 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 |---|---|---|
 | 1 — Plan and support audit | Merged | [#1601][plan-pr]; audit and reviewed plan. |
 | 2 — Quota normalization | Merged | [#1641][normalization-pr]; typed terminal events and Claude/Pi reporting. |
-| 3 — Durable contracts and readiness | Ready to publish | Storage, shared wire model and Claude/Pi named-session readiness. |
-| 4 — Bridge scheduler | In progress locally | Typed route, enriched views, ordered cancellation and normal prompt dispatch. |
+| 3 — Durable contracts and readiness | In review | [#1649][foundation-pr]; durable state and readiness. |
+| 4 — Bridge scheduler | In progress locally | Route, views, cancellation and dispatch. |
 | 5 — Shared chat controls | Not started | Inline hint, indicator and three-dot toggle on phone and desktop. |
 | 6 — Regression reconciliation | Not started | Complete affected feature docs and capability matrix. |
 | 7 — L4 verification and retirement | Not started | All recorded boundary/platform/provider coverage must pass. |
 
 [plan-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1601
 [normalization-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1641
+[foundation-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1649
 
 ## Confirmed user decisions
 
