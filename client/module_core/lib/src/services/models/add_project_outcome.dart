@@ -10,13 +10,23 @@ enum AddProjectOutcome() {
   otherError,
 }
 
-enum OpenProjectOutcome() {
-  success,
-  gitChoiceRequired,
-  gitSetupIncomplete,
-  permissionDenied,
-  otherError,
-}
+/// Outcome of adding an existing folder as a project.
+sealed class const OpenProjectOutcome();
+
+/// The folder is now a project; [project] is it, so the caller can open it.
+class const OpenProjectAdded({required final ProjectSummary project}) extends OpenProjectOutcome;
+
+/// The folder is not a git repository and the user must choose what to do.
+class const OpenProjectGitChoiceRequired() extends OpenProjectOutcome;
+
+/// The project was added, but initializing git did not finish.
+class const OpenProjectGitSetupIncomplete() extends OpenProjectOutcome;
+
+/// The bridge denied access to the folder (macOS permission / Full Disk Access).
+class const OpenProjectPermissionDenied() extends OpenProjectOutcome;
+
+/// Any other failure.
+class const OpenProjectFailed() extends OpenProjectOutcome;
 
 /// Outcome of fetching filesystem suggestions for the directory browser.
 sealed class const FilesystemSuggestionsOutcome();

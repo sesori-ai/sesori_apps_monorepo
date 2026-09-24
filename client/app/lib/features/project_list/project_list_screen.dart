@@ -69,14 +69,7 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
               ),
             );
           },
-          onOpenProject: ({required context, required project, required displayName}) {
-            context.pushRoute(
-              AppRoute.sessions(
-                projectId: project.id,
-                projectName: displayName,
-              ),
-            );
-          },
+          onOpenProject: _openProject,
           disconnectedViewBuilder: ({required context, required state, required bridge}) =>
               state.hasRegisteredBridges ? _BridgeOfflineView(bridge: bridge) : const _ConnectBridgeChecklist(),
           disconnectedActionBuilder: ({required context, required state}) => _NeedHelpMenu(
@@ -99,7 +92,16 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
         context: context,
         cubit: context.read<ProjectListCubit>(),
         connectionService: getIt<ConnectionService>(),
+        onProjectAdded: _openProject,
       ),
     );
+  }
+
+  static void _openProject({
+    required BuildContext context,
+    required ProjectSummary project,
+    required String displayName,
+  }) {
+    context.pushRoute(AppRoute.sessions(projectId: project.id, projectName: displayName));
   }
 }

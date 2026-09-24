@@ -110,6 +110,7 @@ class const DesktopCockpitShell({
         context: context,
         cubit: context.read<ProjectListCubit>(),
         connectionService: getIt<ConnectionService>(),
+        onProjectAdded: onOpenProject,
       ),
     );
     // The open project, else the most recently active one (the inventory's

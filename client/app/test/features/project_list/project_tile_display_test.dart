@@ -116,8 +116,8 @@ void main() {
     );
 
     // Displays the live directory, not the id…
-    expect(find.text("moved/my-app"), findsOneWidget);
-    expect(find.text("projects/my-app"), findsNothing);
+    expect(find.text("/moved/my-app"), findsOneWidget);
+    expect(find.text("/projects/my-app"), findsNothing);
     // …and derives the name from the live directory's basename.
     expect(find.text("my-app"), findsOneWidget);
 

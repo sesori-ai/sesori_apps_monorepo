@@ -1242,7 +1242,7 @@ void main() {
           path: "/dev/B",
           gitAction: OpenProjectGitAction.promptIfNeeded,
         );
-        expect(result, OpenProjectOutcome.success);
+        expect(result, isA<OpenProjectAdded>().having((outcome) => outcome.project.id, "project id", "B"));
       },
       skip: 1,
       expect: () => [
@@ -1292,7 +1292,7 @@ void main() {
           path: "/dev/plain",
           gitAction: OpenProjectGitAction.promptIfNeeded,
         );
-        expect(result, OpenProjectOutcome.gitChoiceRequired);
+        expect(result, isA<OpenProjectGitChoiceRequired>());
       },
       skip: 1,
       expect: () => <ProjectListState>[],
@@ -1322,7 +1322,7 @@ void main() {
           path: "/dev/plain",
           gitAction: OpenProjectGitAction.initializeGit,
         );
-        expect(result, OpenProjectOutcome.gitSetupIncomplete);
+        expect(result, isA<OpenProjectGitSetupIncomplete>());
       },
       skip: 1,
       expect: () => <ProjectListState>[],
@@ -1352,7 +1352,7 @@ void main() {
           path: "/dev/protected",
           gitAction: OpenProjectGitAction.openWithoutGit,
         );
-        expect(result, OpenProjectOutcome.permissionDenied);
+        expect(result, isA<OpenProjectPermissionDenied>());
       },
       skip: 1,
       expect: () => <ProjectListState>[],

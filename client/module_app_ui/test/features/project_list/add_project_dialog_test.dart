@@ -22,11 +22,17 @@ class MockProjectListCubit() extends MockCubit<ProjectListState> implements Proj
 
 late ConnectionService _testConnectionService;
 
+/// The projects the dialog opened after adding them, by display name.
+final _openedProjects = <String>[];
+
 Future<void> _showAddProjectDialog(BuildContext context, ProjectListCubit cubit) => showAddProjectDialog(
   context: context,
   cubit: cubit,
   connectionService: _testConnectionService,
+  onProjectAdded: ({required context, required project, required displayName}) => _openedProjects.add(displayName),
 );
+
+const _addedProject = ProjectSummary(id: "my-repo", name: null, path: "/home/user/my-repo", time: null);
 
 // ---------------------------------------------------------------------------
 // Test data
@@ -192,6 +198,7 @@ void main() {
   }
 
   setUp(() {
+    _openedProjects.clear();
     mockCubit = MockProjectListCubit();
     mockConnectionService = MockConnectionService();
     _testConnectionService = mockConnectionService;
@@ -615,7 +622,7 @@ void main() {
           path: any(named: "path"),
           gitAction: OpenProjectGitAction.promptIfNeeded,
         ),
-      ).thenAnswer((_) async => OpenProjectOutcome.success);
+      ).thenAnswer((_) async => const OpenProjectAdded(project: _addedProject));
 
       await tester.pumpWidget(
         _buildApp(
@@ -653,6 +660,7 @@ void main() {
       // screen's messenger rather than the one the sheet hosts for itself.
       expect(_addButton, findsNothing);
       expect(find.text("Project discovered"), findsOneWidget);
+      expect(_openedProjects, ["my-repo"]);
     });
 
     testWidgets("non-Git folder prompt can enable Git before opening", (tester) async {
@@ -668,13 +676,13 @@ void main() {
           path: "/home/user/work",
           gitAction: OpenProjectGitAction.promptIfNeeded,
         ),
-      ).thenAnswer((_) async => OpenProjectOutcome.gitChoiceRequired);
+      ).thenAnswer((_) async => const OpenProjectGitChoiceRequired());
       when(
         () => mockCubit.discoverProject(
           path: "/home/user/work",
           gitAction: OpenProjectGitAction.initializeGit,
         ),
-      ).thenAnswer((_) async => OpenProjectOutcome.success);
+      ).thenAnswer((_) async => const OpenProjectAdded(project: _addedProject));
 
       await tester.pumpWidget(
         _buildApp(
@@ -724,13 +732,13 @@ void main() {
           path: "/home/user/work",
           gitAction: OpenProjectGitAction.promptIfNeeded,
         ),
-      ).thenAnswer((_) async => OpenProjectOutcome.gitChoiceRequired);
+      ).thenAnswer((_) async => const OpenProjectGitChoiceRequired());
       when(
         () => mockCubit.discoverProject(
           path: "/home/user/work",
           gitAction: OpenProjectGitAction.openWithoutGit,
         ),
-      ).thenAnswer((_) async => OpenProjectOutcome.success);
+      ).thenAnswer((_) async => const OpenProjectAdded(project: _addedProject));
 
       await tester.pumpWidget(
         _buildApp(
@@ -775,13 +783,13 @@ void main() {
           path: "/home/user/work",
           gitAction: OpenProjectGitAction.promptIfNeeded,
         ),
-      ).thenAnswer((_) async => OpenProjectOutcome.gitChoiceRequired);
+      ).thenAnswer((_) async => const OpenProjectGitChoiceRequired());
       when(
         () => mockCubit.discoverProject(
           path: "/home/user/work",
           gitAction: OpenProjectGitAction.initializeGit,
         ),
-      ).thenAnswer((_) async => OpenProjectOutcome.gitSetupIncomplete);
+      ).thenAnswer((_) async => const OpenProjectGitSetupIncomplete());
 
       await tester.pumpWidget(
         _buildApp(

@@ -56,7 +56,8 @@ extension BuildContextLocalization on BuildContext {
     if (diff.inHours < 1) return loc.timestampMinutesAgo(diff.inMinutes);
     if (diff.inDays < 1) return loc.timestampHoursAgo(diff.inHours);
     if (diff.inDays < 30) return loc.timestampDaysAgo(diff.inDays);
-    return _dateFormat("yMd").format(date);
+    // "15 Aug" reads faster than "15/08/2026"; the year only when it differs.
+    return (date.year == now.year ? _dateFormat("MMMd") : _dateFormat("yMMMd")).format(date);
   }
 
   /// The same instant as [formatTimestamp], shortened to what a list row's

@@ -324,8 +324,12 @@ class _ProjectListViewState() extends State<ProjectListView> {
     required ProjectListLoaded state,
     required bool isRefreshing,
   }) {
-    final ProjectListLoaded(:projects, :activityById, :unseenByProjectId, :catalogScan) = state;
+    final ProjectListLoaded(:projects, :runningByProjectId, :unseenByProjectId, :catalogScan) = state;
     final loc = context.loc;
+    final pathLabels = projectPathLabels(
+      projects: projects,
+      nameOf: (project) => projectDisplayName(loc: loc, project: project),
+    );
     final matchedProjects = matchTitles(
       items: projects,
       titleOf: (project) => projectDisplayName(loc: loc, project: project),
@@ -358,7 +362,8 @@ class _ProjectListViewState() extends State<ProjectListView> {
         itemKey: (project) => ValueKey(project.id),
         itemBuilder: (context, _, project) => ProjectTile(
           project: project,
-          activeSessions: activityById[project.id] ?? 0,
+          pathLabel: pathLabels[project.id] ?? project.path,
+          activeSessions: runningByProjectId[project.id] ?? 0,
           unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
           onOpen: widget.onOpenProject,
         ),

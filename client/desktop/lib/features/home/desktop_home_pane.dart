@@ -20,6 +20,9 @@ class const DesktopHomePane({
 
   /// Opens a session from the home's sections, and one the home just started.
   required final SidebarSessionOpenedCallback onOpenSession,
+
+  /// Opens the project the empty home just added.
+  required final ProjectOpenedCallback onOpenProject,
   required final VoidCallback onOpenHarnessSettings,
 }) extends StatelessWidget {
   @override
@@ -69,7 +72,9 @@ class const DesktopHomePane({
                     ),
                   ),
                 ),
-                ProjectListLoaded() => _DesktopHomeEmptyView(onAddProject: () => _showAddProject(context: context)),
+                ProjectListLoaded() => _DesktopHomeEmptyView(
+                  onAddProject: () => _showAddProject(context: context, onOpenProject: onOpenProject),
+                ),
               },
             ),
           ),
@@ -78,12 +83,13 @@ class const DesktopHomePane({
     );
   }
 
-  static void _showAddProject({required BuildContext context}) {
+  static void _showAddProject({required BuildContext context, required ProjectOpenedCallback onOpenProject}) {
     unawaited(
       showAddProjectDialog(
         context: context,
         cubit: context.read<ProjectListCubit>(),
         connectionService: getIt<ConnectionService>(),
+        onProjectAdded: onOpenProject,
       ),
     );
   }

@@ -774,22 +774,31 @@ class ProjectInventoryService({
       path: path,
       gitAction: gitAction,
     );
-    if (_state.isClosed) return OpenProjectOutcome.otherError;
+    if (_state.isClosed) return const OpenProjectFailed();
     switch (response) {
       case SuccessResponse(:final data):
         await refreshProjects();
         if (gitAction == OpenProjectGitAction.initializeGit && !data.supportsDedicatedWorktrees) {
-          return OpenProjectOutcome.gitSetupIncomplete;
+          return const OpenProjectGitSetupIncomplete();
         }
-        return OpenProjectOutcome.success;
+        return OpenProjectAdded(
+          project: ProjectSummary(
+            id: data.id,
+            name: data.name,
+            // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges omit path and use the directory as id. Use data.path directly once those bridges are unsupported.
+            path: data.path.isEmpty ? data.id : data.path,
+            time: data.time,
+            hasUnseenChanges: data.hasUnseenChanges,
+          ),
+        );
       case ErrorResponse(:final error):
         if (error is NonSuccessCodeError && error.errorCode == 428) {
-          return OpenProjectOutcome.gitChoiceRequired;
+          return const OpenProjectGitChoiceRequired();
         }
         if (_isPermissionDenied(error: error)) {
-          return OpenProjectOutcome.permissionDenied;
+          return const OpenProjectPermissionDenied();
         }
-        return OpenProjectOutcome.otherError;
+        return const OpenProjectFailed();
     }
   }
 
