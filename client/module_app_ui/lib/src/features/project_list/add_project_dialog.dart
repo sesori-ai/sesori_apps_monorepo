@@ -63,6 +63,10 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   /// user's home directory, so this is also the breadcrumb's Home segment.
   String? _startingPath;
 
+  /// A Windows host's drive roots, listed beside Home. Empty on other hosts
+  /// and from a bridge that predates drive listing.
+  List<String> _driveRoots = const [];
+
   /// The folder being listed. Empty until the first fetch resolves the start.
   String _currentPath = "";
 
@@ -113,6 +117,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
           if (_currentPath.isEmpty && resolvedPath != null && resolvedPath.isNotEmpty) {
             _currentPath = resolvedPath;
             _startingPath = resolvedPath;
+            _driveRoots = suggestions.driveRoots;
           }
           _entries = suggestions.data;
           _hasError = false;
@@ -322,6 +327,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
     // different lengths come and go, instead of the sheet resizing under the
     // user's thumb as they navigate.
     final bodyHeight = MediaQuery.heightOf(context) - widget.topInset - PregoBottomSheet.contentTopInset;
+    final startingPath = _startingPath;
 
     return PregoModalSurface(
       // Navigation lives in the browser body's breadcrumb.
@@ -345,6 +351,14 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
             child: Column(
               children: [
                 _FilesystemAccessBanner(connectionService: widget.connectionService),
+                if (startingPath != null && _driveRoots.isNotEmpty)
+                  _Places(
+                    places: [
+                      (label: loc.folderPickerHome, path: startingPath, icon: TablerRegular.home),
+                      for (final root in _driveRoots) (label: root, path: root, icon: TablerRegular.server),
+                    ],
+                    onNavigate: (path) => _navigateInto(path: path),
+                  ),
                 if (_currentPath.isNotEmpty)
                   _Breadcrumb(
                     crumbs: _breadcrumb(loc: loc),
@@ -505,6 +519,64 @@ class const _Breadcrumb({
                   ),
                 ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A place the browser can jump to, with the glyph that marks its kind.
+typedef _Place = ({String label, String path, IconData icon});
+
+/// Home and a Windows host's drives, as a row of chips above the breadcrumb:
+/// the breadcrumb only reaches the drive being browsed, so another drive is
+/// opened from here.
+class const _Places({
+  required final List<_Place> places,
+  required final ValueChanged<String> onNavigate,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return Container(
+      alignment: AlignmentDirectional.centerStart,
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.sm),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
+        child: Row(
+          spacing: PregoSpacing.sm,
+          children: [
+            for (final place in places)
+              Semantics(
+                button: true,
+                child: InkWell(
+                  mouseCursor: WidgetStateMouseCursor.clickable,
+                  borderRadius: BorderRadius.circular(PregoRadius.sm),
+                  onTap: () => onNavigate(place.path),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: prego.colors.borderPrimary),
+                      borderRadius: BorderRadius.circular(PregoRadius.sm),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.xs),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: PregoSpacing.xs,
+                      children: [
+                        ExcludeSemantics(
+                          child: Icon(place.icon, size: PregoIconSize.sm, color: prego.colors.textSecondary),
+                        ),
+                        Text(
+                          place.label,
+                          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

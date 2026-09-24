@@ -7,7 +7,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/filesystem_repository.dart";
 import "request_handler.dart";
 
-/// Handles `POST /filesystem/suggestions` — lists child directories of a given prefix path.
+/// Handles `POST /filesystem/suggestions` — lists child directories of a given
+/// prefix path, plus a Windows host's drive roots when there is no prefix.
 class FilesystemSuggestionsHandler({required final FilesystemRepository _filesystemRepository})
     extends BodyRequestHandler<FilesystemSuggestionsRequest, FilesystemSuggestions> {
   this
@@ -32,7 +33,11 @@ class FilesystemSuggestionsHandler({required final FilesystemRepository _filesys
     }
 
     try {
-      return _filesystemRepository.listSuggestions(prefix: prefix, maxResults: body.maxResults);
+      final suggestions = _filesystemRepository.listSuggestions(prefix: prefix, maxResults: body.maxResults);
+      // Only the browser's opening request, which has no prefix, carries the
+      // drives: they do not change while it browses.
+      if (body.prefix != null) return suggestions;
+      return suggestions.copyWith(driveRoots: await _filesystemRepository.listDriveRoots());
     } on FilesystemPermissionDeniedException {
       throw buildErrorResponse(request, 403, "permission denied: $prefix");
     } on FilesystemDirectoryNotFoundException {

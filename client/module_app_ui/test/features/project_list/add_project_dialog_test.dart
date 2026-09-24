@@ -413,6 +413,8 @@ void main() {
       expect(find.text("Home"), findsOneWidget);
       expect(find.text("home"), findsNothing);
       expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
+      // Without drives from the bridge there is no row of places to jump to.
+      expect(find.byIcon(TablerRegular.server), findsNothing);
 
       expect(_button(tester, _addButton).onPressed, isNotNull);
       expect(_button(tester, _createFolderButton).onPressed, isNotNull);
@@ -564,6 +566,60 @@ void main() {
       expect(find.text("home"), findsOneWidget);
       expect(find.text("Home"), findsNothing);
       expect(find.widgetWithText(PregoButtonsSolid, "Add home"), findsOneWidget);
+    });
+
+    testWidgets("a Windows bridge's drives sit beside Home and open that drive", (tester) async {
+      const windowsHome = r"C:\Users\dev";
+      const driveEntries = [
+        FilesystemSuggestion(path: r"D:\games", name: "games", isGitRepo: false),
+      ];
+      when(() => mockCubit.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer((invocation) async {
+        final prefix = invocation.namedArguments[const Symbol("prefix")] as String?;
+        return FilesystemSuggestionsSuccess(
+          suggestions: prefix == null
+              ? const FilesystemSuggestions(data: [], path: windowsHome, driveRoots: [r"C:\", r"D:\"])
+              : FilesystemSuggestions(data: prefix == r"D:\" ? driveEntries : const [], path: prefix),
+        );
+      });
+      when(() => mockCubit.parentHostPath(path: windowsHome)).thenReturn(r"C:\Users");
+      when(() => mockCubit.parentHostPath(path: r"C:\Users")).thenReturn(r"C:\");
+      when(() => mockCubit.parentHostPath(path: r"C:\")).thenReturn(null);
+      when(() => mockCubit.parentHostPath(path: r"D:\")).thenReturn(null);
+
+      await tester.pumpWidget(
+        _buildApp(
+          cubit: mockCubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      // Home and each drive are chips; C:\ and Home also lead the breadcrumb.
+      expect(find.byIcon(TablerRegular.home), findsOneWidget);
+      expect(find.byIcon(TablerRegular.server), findsNWidgets(2));
+      expect(find.text("Home"), findsNWidgets(2));
+      expect(find.text(r"C:\"), findsNWidgets(2));
+      expect(find.text(r"D:\"), findsOneWidget);
+
+      await tester.tap(find.text(r"D:\"));
+      await tester.pumpAndSettle();
+
+      verify(() => mockCubit.fetchFilesystemSuggestions(prefix: r"D:\")).called(1);
+      expect(find.text("games"), findsOneWidget);
+      expect(find.widgetWithText(PregoButtonsSolid, r"Add D:\"), findsOneWidget);
+
+      // The drives stay listed while browsing, so Home is one tap away.
+      await tester.tap(find.byIcon(TablerRegular.home));
+      await tester.pumpAndSettle();
+      verify(() => mockCubit.fetchFilesystemSuggestions(prefix: windowsHome)).called(1);
     });
 
     testWidgets("a listing that lands after stepping back out is ignored", (tester) async {

@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 import "package:sesori_shared/sesori_shared.dart" show FilesystemSuggestion, FilesystemSuggestions;
 
 import "../api/filesystem_api.dart";
@@ -48,6 +49,8 @@ class FilesystemRepository({
     required final FilesystemApi _filesystemApi,
     required final FilesystemPermissionValidator _permissionValidator,
   }) {
+  static const _driveProbeTimeout = Duration(seconds: 2);
+
   static const _binaryExtensions = <String>{
     "png",
     "jpg",
@@ -103,11 +106,28 @@ class FilesystemRepository({
 
   /// The host directory shown when the client has not selected a prefix yet.
   String get defaultBrowsePath {
-    final home = _filesystemApi.environmentValue("HOME");
-    if (home != null && home.isNotEmpty) return home;
-    final userProfile = _filesystemApi.environmentValue("USERPROFILE");
-    if (userProfile != null && userProfile.isNotEmpty) return userProfile;
-    return _filesystemApi.currentDirectoryPath();
+    return resolveUserHomeDirectory(environment: _filesystemApi.environment) ?? _filesystemApi.currentDirectoryPath();
+  }
+
+  /// The mounted drive roots of a Windows host, such as `C:\`, in letter
+  /// order; empty on any other host.
+  ///
+  /// Every letter is probed at once, and a probe that has not answered within
+  /// [_driveProbeTimeout] counts as unmounted, so a disconnected network drive
+  /// cannot hold up the listing it rides on.
+  Future<List<String>> listDriveRoots() async {
+    if (!_filesystemApi.isWindows) return const [];
+    final candidates = [
+      for (var letter = "A".codeUnitAt(0); letter <= "Z".codeUnitAt(0); letter++) "${String.fromCharCode(letter)}:\\",
+    ];
+    final mounted = await Future.wait([
+      for (final root in candidates)
+        _filesystemApi.directoryExistsAsync(root).timeout(_driveProbeTimeout, onTimeout: () => false),
+    ]);
+    return [
+      for (final (index, root) in candidates.indexed)
+        if (mounted[index]) root,
+    ];
   }
 
   bool isKnownBinaryFile({required String relativePath}) {
