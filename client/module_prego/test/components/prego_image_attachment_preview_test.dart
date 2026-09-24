@@ -12,6 +12,7 @@ void main() {
       final semantics = tester.ensureSemantics();
       final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
       var removed = false;
+      var opened = false;
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData(extensions: [prego]),
@@ -20,6 +21,7 @@ void main() {
               child: PregoImageAttachmentPreview(
                 image: const ColoredBox(color: Colors.red),
                 imageLabel: "Photo.png",
+                onOpen: () => opened = true,
                 removeLabel: "Remove attachment",
                 onRemove: () => removed = true,
               ),
@@ -49,10 +51,10 @@ void main() {
       final icon = tester.widget<Icon>(find.byIcon(TablerRegular.x));
       expect(icon.size, 10);
       expect(icon.color, prego.colors.textPrimary);
-      expect(tester.getSize(find.byType(PregoTappable)), const Size(44, 44));
+      expect(tester.getSize(find.byType(PregoTappable).last), const Size(24, 24));
       expect(
         tester.getSemantics(find.bySemanticsLabel("Photo.png")),
-        matchesSemantics(label: "Photo.png", isImage: true),
+        matchesSemantics(label: "Photo.png", isImage: true, isButton: true, hasTapAction: true),
       );
       expect(
         tester
@@ -61,8 +63,12 @@ void main() {
             .hasAction(SemanticsAction.tap),
         isTrue,
       );
-      // Tap outside the tiny badge but inside its accessible target.
+      // Past the remove target, the tile opens the image instead.
       await tester.tapAt(tile.topRight + const Offset(-30, 30));
+      await tester.pumpAndSettle();
+      expect((opened, removed), (true, false));
+      // Just outside the tiny badge but inside its target.
+      await tester.tapAt(tile.topRight + const Offset(-21, 21));
       await tester.pumpAndSettle();
       expect(removed, isTrue);
       expect(tester.takeException(), isNull);
@@ -86,6 +92,7 @@ void main() {
                       PregoImageAttachmentPreview(
                         image: const ColoredBox(color: Colors.red),
                         imageLabel: "Image $i",
+                        onOpen: () {},
                         removeLabel: "Remove $i",
                         onRemove: () {},
                       ),
@@ -153,6 +160,7 @@ void main() {
                       key: ValueKey(i),
                       image: const ColoredBox(color: Colors.red),
                       imageLabel: "Image $i",
+                      onOpen: () {},
                       removeLabel: "Remove $i",
                       onRemove: () => removed = i,
                     ),
@@ -177,7 +185,7 @@ void main() {
     expect(position.pixels, position.maxScrollExtent);
     final lastRect = tester.getRect(find.byKey(const ValueKey(7)));
     expect(tester.getRect(strip).intersect(lastRect), lastRect);
-    await tester.tap(find.descendant(of: find.byKey(const ValueKey(7)), matching: find.byType(PregoTappable)));
+    await tester.tap(find.descendant(of: find.byKey(const ValueKey(7)), matching: find.byType(PregoTappable)).last);
     await tester.pumpAndSettle();
     expect(removed, 7);
     count = 2;
@@ -185,7 +193,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(position.pixels, 0);
     expect(position.maxScrollExtent, 0);
-    await tester.tap(find.descendant(of: find.byKey(const ValueKey(1)), matching: find.byType(PregoTappable)));
+    await tester.tap(find.descendant(of: find.byKey(const ValueKey(1)), matching: find.byType(PregoTappable)).last);
     expect(removed, 1);
     expect(tester.getSize(strip).height, 52);
     expect(tester.takeException(), isNull);

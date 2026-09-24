@@ -18,6 +18,7 @@ import "../composer_presentation_scope.dart";
 import "command_picker.dart";
 import "composer_options_accordion.dart";
 import "composer_surface_style.dart";
+import "image_attachment_viewer.dart";
 import "prompt_editor_sheet.dart";
 import "voice_cancel_button.dart";
 
@@ -1642,18 +1643,43 @@ class _PromptInputState() extends State<PromptInput> {
           PregoImageAttachmentPreview(
             key: ObjectKey(_attachments[index]),
             imageLabel: _attachments[index].filename ?? loc.sessionDetailAttachedImage,
+            onOpen: () => _openAttachment(attachment: _attachments[index]),
             removeLabel: loc.sessionDetailRemoveAttachment,
             onRemove: () => setState(() => _attachments.removeAt(index)),
-            image: Image.memory(
-              _attachments[index].bytes,
-              // Decode at thumbnail scale rather than retaining full-resolution
-              // rasters for every staged image. Original bytes still get sent.
-              cacheWidth: (PregoImageAttachmentPreview.size * MediaQuery.devicePixelRatioOf(context)).round(),
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
+            image: Hero(
+              tag: ObjectKey(_attachments[index]),
+              child: Image.memory(
+                _attachments[index].bytes,
+                // Decode at thumbnail scale rather than retaining full-resolution
+                // rasters for every staged image. Original bytes still get sent.
+                cacheWidth: (PregoImageAttachmentPreview.size * MediaQuery.devicePixelRatioOf(context)).round(),
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+              ),
             ),
           ),
       ],
+    );
+  }
+
+  void _openAttachment({required ComposerAttachment attachment}) {
+    unawaited(
+      showImageAttachmentViewer(
+        context: context,
+        image: ViewOnlyMessageImage(
+          // The chat thumbnails' viewer cap; staged originals can be camera-sized.
+          provider: ResizeImage(
+            MemoryImage(attachment.bytes),
+            width: 2048,
+            height: 2048,
+            policy: ResizeImagePolicy.fit,
+          ),
+          originalUri: null,
+        ),
+        heroPresentation: ImageAttachmentHeroPresentation.cropped,
+        filename: attachment.filename,
+        heroTag: ObjectKey(attachment),
+      ),
     );
   }
 
