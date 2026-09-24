@@ -1765,6 +1765,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permissionReplyFailed => 'Failed to send permission response. Please try again.';
 
   @override
+  String get needsYouAnswer => 'Answer';
+
+  @override
+  String get needsYouReview => 'Review';
+
+  @override
   String get permissionBannerSingle => '1 permission request pending';
 
   @override

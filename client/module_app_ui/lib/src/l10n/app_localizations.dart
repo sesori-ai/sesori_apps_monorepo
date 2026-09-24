@@ -3271,6 +3271,18 @@ abstract class AppLocalizations {
   /// **'Failed to send permission response. Please try again.'**
   String get permissionReplyFailed;
 
+  /// No description provided for @needsYouAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer'**
+  String get needsYouAnswer;
+
+  /// No description provided for @needsYouReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get needsYouReview;
+
   /// No description provided for @permissionBannerSingle.
   ///
   /// In en, this message translates to:
