@@ -1244,7 +1244,9 @@ class const _SidebarButton({
             excludeSemantics: true,
             child: InkWell(
               onTap: onPressed,
-              hoverColor: prego.colors.bgSecondaryHover,
+              // The opaque hover would hide the selected fill, which the row's
+              // trailing controls keep showing.
+              hoverColor: selected ? Colors.transparent : prego.colors.bgSecondaryHover,
               focusColor: prego.colors.textBrandPrimary.withValues(alpha: 0.18),
               // The selected row fills the sidebar's width.
               child: Ink(

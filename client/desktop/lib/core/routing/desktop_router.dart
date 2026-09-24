@@ -122,7 +122,19 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
       ),
       GoRoute(
         path: AppRouteDef.projects.path,
-        builder: (BuildContext context, GoRouterState state) => const DesktopHomePane(),
+        builder: (BuildContext context, GoRouterState state) => DesktopHomePane(
+          onOpenSession: ({required context, required project, required displayName, required session}) => _goRoute(
+            context: context,
+            route: AppRoute.sessionDetail(
+              projectId: project.id,
+              projectName: displayName,
+              sessionId: session.id,
+              sessionTitle: session.title,
+              readOnly: false,
+            ),
+          ),
+          onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
+        ),
       ),
       GoRoute(
         path: AppRouteDef.sessions.path,

@@ -22,9 +22,11 @@ typedef NewSessionCreatedCallback = void Function({required Session session});
 /// A pointer surface's frame for the page: [topBar] replaces the glass bar, and
 /// the header, the options and the composer form one centred column no wider
 /// than [maxContentWidth], instead of anchoring the composer to the bottom.
+/// [footer] follows the composer in that column.
 class const NewSessionPageChrome({
   required final Widget topBar,
   required final double maxContentWidth,
+  required final Widget? footer,
 });
 
 /// Shared new-session presentation below shell-owned routing, DI, and platform
@@ -413,6 +415,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
                                   isLoading: _refreshPress != null && (data?.isLoading ?? false),
                                 ),
                               ),
+                            ?chrome.footer,
                           ],
                         ),
                       ),
