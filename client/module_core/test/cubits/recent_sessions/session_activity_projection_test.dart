@@ -1,5 +1,4 @@
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -8,7 +7,7 @@ void main() {
     final projectTwoUnseen = _session(id: "two-unseen", projectId: "two", unseen: true);
     final projectTwoCleared = _session(id: "two-cleared", projectId: "two", unseen: true);
     final projectOneRunning = _session(id: "one-running", projectId: "one");
-    final projection = DesktopSidebarSessionProjection.from(
+    final projection = SessionActivityProjection.from(
       projects: const [
         ProjectSummary(id: "two", name: "Two", path: "/two", time: null),
         ProjectSummary(id: "one", name: "One", path: "/one", time: null),
@@ -53,7 +52,7 @@ void main() {
     final deferred = _session(id: "deferred", projectId: "one", unseen: true, updated: 5);
     final news = _session(id: "news", projectId: "one", unseen: true, updated: 9);
     List<String> activity({required List<Session> sessions, required String? stickySessionId}) =>
-        DesktopSidebarSessionProjection.from(
+        SessionActivityProjection.from(
           projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
           entries: {
             "one": RecentSessionsLoaded(
@@ -84,7 +83,7 @@ void main() {
       listStateBySessionId: const {},
     );
     expect(
-      DesktopSidebarSessionProjection.from(
+      SessionActivityProjection.from(
         projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
         entries: {"one": running},
         deferredSessions: const {"deferred": 5},
@@ -101,6 +100,50 @@ void main() {
     expect(activity(sessions: [opened, deferred], stickySessionId: "deferred"), isEmpty);
   });
 
+  test("waitingFirst lists waiting sessions, then running ones, leaving finished unseen out", () {
+    SessionActivityInfo activity({required bool awaitingInput}) => SessionActivityInfo(
+      mainAgentRunning: true,
+      awaitingInput: awaitingInput,
+      lastUserActivityAt: null,
+      updatedAt: null,
+    );
+    final running = _session(id: "running", projectId: "one");
+    final waitingOne = _session(id: "waiting-one", projectId: "one");
+    final unseen = _session(id: "unseen", projectId: "one", unseen: true);
+    final waitingTwo = _session(id: "waiting-two", projectId: "two");
+    final projection = SessionActivityProjection.from(
+      projects: const [
+        ProjectSummary(id: "one", name: "One", path: "/one", time: null),
+        ProjectSummary(id: "two", name: "Two", path: "/two", time: null),
+      ],
+      entries: {
+        "one": RecentSessionsLoaded(
+          sourceSessions: [running, waitingOne, unseen],
+          visibleSessions: [running, waitingOne, unseen],
+          activityBySessionId: {
+            "running": activity(awaitingInput: false),
+            "waiting-one": activity(awaitingInput: true),
+          },
+          listStateBySessionId: const {},
+        ),
+        "two": RecentSessionsLoaded(
+          sourceSessions: [waitingTwo],
+          visibleSessions: [waitingTwo],
+          activityBySessionId: {"waiting-two": activity(awaitingInput: true)},
+          listStateBySessionId: const {},
+        ),
+      },
+      deferredSessions: const {},
+      stickySessionId: null,
+      hiddenSessionIds: const {},
+    );
+
+    expect(
+      projection.waitingFirst.map((item) => (item.project.id, item.entry.session.id)),
+      [("one", "waiting-one"), ("two", "waiting-two"), ("one", "running")],
+    );
+  });
+
   test("Activity sessions stay in their project's rows", () {
     final sessions = [
       _session(id: "priority", projectId: "one", unseen: true),
@@ -112,7 +155,7 @@ void main() {
       activityBySessionId: const {},
       listStateBySessionId: const {},
     );
-    final projection = DesktopSidebarSessionProjection.from(
+    final projection = SessionActivityProjection.from(
       projects: const [ProjectSummary(id: "one", name: "One", path: "/one", time: null)],
       entries: {"one": loaded},
       deferredSessions: const {},

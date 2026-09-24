@@ -395,7 +395,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
   @override
   Widget build(BuildContext context) {
     final entries = context.watch<RecentSessionsCubit>().state;
-    final projection = DesktopSidebarSessionProjection.from(
+    final projection = SessionActivityProjection.from(
       projects: widget.projects,
       entries: entries,
       deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
@@ -497,7 +497,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
             ),
           ),
           gutter(
-            PregoAnimatedSliverList<DesktopSidebarActivityGroup>(
+            PregoAnimatedSliverList<SessionActivityGroup>(
               key: const Key("desktop-sidebar-activity-list"),
               items: railed || activityFolded ? const [] : projection.activityGroups,
               itemKey: (group) => ValueKey(group.project.id),
@@ -605,7 +605,7 @@ class const _SidebarActivityPopoutList({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final projection = DesktopSidebarSessionProjection.from(
+    final projection = SessionActivityProjection.from(
       projects: projects,
       entries: context.watch<RecentSessionsCubit>().state,
       deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
@@ -641,7 +641,7 @@ class const _SidebarActivityPopoutList({
 
 class const _SidebarActivityProjectGroup({
   super.key,
-  required final DesktopSidebarActivityGroup group,
+  required final SessionActivityGroup group,
   required final String projectName,
   required final Animation<double> expansion,
   required final String? selectedSessionId,
@@ -656,7 +656,7 @@ class const _SidebarActivityProjectGroup({
       mode: SessionListMode.actions(sessions: group.sourceSessions),
     ),
     child: Builder(
-      builder: (actionContext) => PregoAnimatedList<DesktopSidebarActivitySession>(
+      builder: (actionContext) => PregoAnimatedList<SessionActivityEntry>(
         items: group.sessions,
         itemKey: (item) => ValueKey(item.session.id),
         itemBuilder: (context, _, item) => _SidebarActivitySessionRow(
@@ -862,7 +862,9 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                             : DesktopSidebarExpansionBuilder(
                                 expansion: widget.expansion,
                                 builder: (expansion, controls) => ColoredBox(
-                                  color: projectSelected ? desktopSidebarSelectedFill(context.prego.colors) : Colors.transparent,
+                                  color: projectSelected
+                                      ? desktopSidebarSelectedFill(context.prego.colors)
+                                      : Colors.transparent,
                                   child: SizedBox(width: 48 * expansion, height: 36, child: controls),
                                 ),
                                 child: ClipRect(
@@ -949,7 +951,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
 
 class const _SidebarActivitySessionRow({
   super.key,
-  required final DesktopSidebarActivitySession item,
+  required final SessionActivityEntry item,
   required final String projectName,
   required final bool selected,
   required final Animation<double> expansion,
