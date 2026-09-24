@@ -269,7 +269,7 @@ state.
   slot, ahead of running and unread, with a Remove button in place of the
   chevron. The row's menu and swipe action say Remove instead of Hide; Remove
   hides the project. A bridge older than this field reports every folder as
-  present, which was the previous behaviour.
+  present, which was the previous behavior.
 - A session row leads with a 16-point status slot: a turning sparkle while
   running, an amber dot while waiting for the user (which wins over running),
   a resting sparkle when unread, or nothing, so titles line up. The time sits
