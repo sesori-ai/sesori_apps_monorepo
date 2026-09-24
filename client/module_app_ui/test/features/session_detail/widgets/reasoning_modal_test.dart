@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:ui" as ui;
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
@@ -18,6 +19,8 @@ import "package:theme_prego/module_prego.dart";
 // ---------------------------------------------------------------------------
 
 class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
+
+enum _ReasoningActivation() { tap, keyboard, accessibility }
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -176,13 +179,19 @@ void main() {
     mockCubit = MockSessionDetailCubit();
   });
 
-  for (final keyboard in [false, true]) {
-    testWidgets("reasoning disclosure opens its full content with ${keyboard ? "keyboard" : "tap"}", (tester) async {
+  for (final activation in _ReasoningActivation.values) {
+    testWidgets("reasoning disclosure opens its full content with ${activation.name}", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+        disableAnimations: true,
+      );
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final streaming = activation == _ReasoningActivation.accessibility;
       const text = "**Reviewing the next step**\n\nThe complete reasoning stays available here.";
       whenListen(
         mockCubit,
         const Stream<SessionDetailState>.empty(),
         initialState: _loadedState(
+          streamingText: streaming ? {"reasoning": text} : const {},
           messages: [_messageWithPart(messageId: "message", partId: "reasoning", text: text)],
         ),
       );
@@ -202,19 +211,26 @@ void main() {
               openExternalLink: ({required url, required mode}) async => true,
               openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
               openHarnessSettings: () {},
-              child: const Scaffold(
-                body: ReasoningPartCard(text: text, isStreaming: false, partId: "reasoning", messageId: "message"),
+              child: Scaffold(
+                body: ReasoningPartCard(text: text, isStreaming: streaming, partId: "reasoning", messageId: "message"),
               ),
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
-      if (keyboard) {
-        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-      } else {
-        await tester.tap(find.byType(ReasoningPartCard));
+      switch (activation) {
+        case _ReasoningActivation.tap:
+          await tester.tap(find.byType(ReasoningPartCard));
+        case _ReasoningActivation.keyboard:
+          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        case _ReasoningActivation.accessibility:
+          final row = find.byType(ReasoningPartCard);
+          final node = tester.getSemantics(find.byType(MergeSemantics));
+          expect(node.getSemanticsData().label, contains("Thinking..."), reason: node.toStringDeep());
+          expect(node.getSemanticsData().hasAction(ui.SemanticsAction.tap), isTrue);
+          tester.renderObject(row).owner!.semanticsOwner!.performAction(node.id, ui.SemanticsAction.tap);
       }
       await tester.pumpAndSettle();
       expect(find.byType(ReasoningModal), findsOneWidget);

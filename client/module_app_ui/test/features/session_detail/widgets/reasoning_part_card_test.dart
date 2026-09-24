@@ -267,13 +267,26 @@ void main() {
     final semantics = tester.ensureSemantics();
     await tester.pumpWidget(buildApp(text: "Current thought", isStreaming: true));
     await tester.pumpAndSettle();
-    expect(find.bySemanticsLabel("Thinking..."), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp(r"^Thinking\.\.\.\nCurrent thought$")), findsOneWidget);
+    expect(
+      tester.getSemantics(find.byType(MergeSemantics)),
+      isSemantics(isButton: true, hasTapAction: true),
+    );
     expect(
       find.descendant(of: find.byType(PregoShimmer), matching: find.byType(ShaderMask)),
       findsNothing,
     );
     expect(tester.binding.hasScheduledFrame, isFalse);
     semantics.dispose();
+  });
+
+  testWidgets("empty streaming reasoning remains a named disclosure", (tester) async {
+    await tester.pumpWidget(buildApp(text: "", isStreaming: true));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSemantics(find.byType(MergeSemantics)),
+      isSemantics(label: "Thinking...", isButton: true, hasTapAction: true),
+    );
   });
 
   testWidgets("narrow panes with large text keep the disclosure and preview inside the row", (tester) async {
