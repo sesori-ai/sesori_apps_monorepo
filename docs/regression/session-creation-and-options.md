@@ -161,7 +161,7 @@ variant, and worktree mode, and creating the session with its first input.
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
 - A normal load reports whether the cache it served has aged past the bridge's
-  freshness window or was captured before the current bridge process started
+  ten-minute freshness window or was captured before the current bridge process started
   (so an upgraded bridge fills in catalog fields an older build did not map,
   such as fast mode), and the client then refreshes it in the background: the
   options stay on screen and usable, with no loading state, and simply change if
@@ -216,7 +216,8 @@ variant, and worktree mode, and creating the session with its first input.
   and is given a longer read timeout for the same reason.
 - Failure with a valid cache still serves it; failure without one is an explicit
   error, never an empty option set. Automatic refresh never starts a stopped
-  backend and no-ops for a superseded generation.
+  backend and no-ops for a superseded generation. A backend started only to
+  discover options idles out within five minutes unless a session uses it.
 - Creation resolves and validates the project handle before checking plugin
   routability, so an unknown project causes no plugin, metadata, git, or session
   persistence effect. Plugin startup, git/worktree preparation, backend creation,

@@ -2846,7 +2846,7 @@ void main() {
     await _waitFor(() => repository.stopCalls == 1);
   });
 
-  test("import-only generation uses five-minute suspension cap until promoted", () async {
+  test("transient generation uses five-minute suspension cap until promoted", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
     final timerScheduler = _ControllablePluginIdleTimerScheduler();
@@ -2874,7 +2874,7 @@ void main() {
     repository.publish(
       workState: PluginWorkState.idle,
       leaseCount: 0,
-      generationResidency: PluginGenerationResidency.importOnly,
+      generationResidency: PluginGenerationResidency.transient,
     );
     await _waitFor(() => timerScheduler.timers.isNotEmpty);
     expect(timerScheduler.timers.last.duration, const Duration(minutes: 5));

@@ -242,7 +242,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   sessions pick it up at their next idle transition; no timeout invalidates the
   existing idle timer and keeps the child resident.
 - A harness generation cold-started solely because catalog snapshot import fell back
-  to the live plugin path uses an import-only idle residency cap of five minutes.
+  to the live plugin path, or solely to discover session options, uses a transient
+  idle residency cap of five minutes.
   A shorter positive configured timeout stays shorter and a non-positive timeout
   stays disabled. Any ordinary plugin acquisition, explicit/eager start, session
   warm-up, or session operation monotonically promotes that same generation to its

@@ -92,6 +92,7 @@ void main() {
       );
 
       expect(runtime.activatingCalls, 1);
+      expect(runtime.lastResidency, PluginGenerationResidency.transient);
       expect(runtime.activeOnlyCalls, 0);
       expect(runtime.lastOperation, SessionOptionsRuntimeOperation.capture);
       expect(plugin.callCount, 1);
@@ -468,6 +469,7 @@ class _RecordingPluginRuntime({required final BridgePluginApi plugin}) implement
   int activeOnlyCalls = 0;
   int commitCalls = 0;
   Enum? lastOperation;
+  PluginGenerationResidency? lastResidency;
 
   @override
   Set<String> get activePluginIds => active ? {plugin.id} : const {};
@@ -481,10 +483,12 @@ class _RecordingPluginRuntime({required final BridgePluginApi plugin}) implement
   Future<({T value, int generation})> useWithGeneration<T>({
     required String pluginId,
     required Enum operation,
+    required PluginGenerationResidency residency,
     required Future<T> Function(BridgePluginApi api) body,
   }) async {
     activatingCalls++;
     lastOperation = operation;
+    lastResidency = residency;
     final value = await body(plugin);
     return (value: value, generation: currentGeneration);
   }

@@ -12,7 +12,7 @@ import "../repositories/session_options_repository.dart";
 /// cache immediately and reports it stale, so a client can refresh in the
 /// background instead of making the user wait on discovery. The entry itself
 /// lives until retention expires it.
-const Duration _staleAfter = Duration(days: 1);
+const Duration _staleAfter = Duration(minutes: 10);
 
 sealed class const SessionOptionsOutcome();
 

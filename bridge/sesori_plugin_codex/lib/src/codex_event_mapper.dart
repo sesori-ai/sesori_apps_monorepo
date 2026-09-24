@@ -953,9 +953,8 @@ class CodexEventMapper({
     );
   }
 
-  /// Maps a codex thread status object (`{type: idle|active, …}`) onto the
-  /// [PluginSessionStatus] union. Anything that is not explicitly `idle` is
-  /// treated as busy.
+  /// Maps a codex thread status object onto the [PluginSessionStatus] union.
+  /// Idle and unloaded threads have no running work; other statuses stay busy.
   PluginSessionStatus _codexStatusToSessionStatus(Object? raw) {
     return isIdleThreadStatus(raw) ? const PluginSessionStatus.idle() : const PluginSessionStatus.busy();
   }
@@ -964,7 +963,7 @@ class CodexEventMapper({
   bool isIdleThreadStatus(Object? raw) {
     final map = _asMap(raw);
     final type = (map?["type"] ?? _asMap(map?["status"])?["type"]) as String?;
-    return type == "idle";
+    return type == "idle" || type == "notLoaded";
   }
 
   /// Concatenates the `text` of every text-bearing entry in a codex `content`
