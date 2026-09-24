@@ -130,9 +130,25 @@ jobs:
             echo "matrix=[$linux]" >> "$GITHUB_OUTPUT"
           fi
 
+  # One job per step so the slowest step, not the sum, sets the wall time.
   analyze-test:
     needs: changes
     if: needs.changes.outputs.desktop == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: module_desktop_core
+            command: dart analyze --fatal-infos
+          - package: desktop
+            command: dart analyze --fatal-infos
+          # module_desktop_core needs `dart test`: two instance-lock tests fail
+          # under `flutter test`.
+          - package: module_desktop_core
+            command: dart test
+          - package: desktop
+            command: flutter test
+    name: ${{ matrix.command }} (${{ matrix.package }})
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -147,21 +163,9 @@ jobs:
         run: dart pub get
         working-directory: client
 
-      - name: Analyze module_desktop_core
-        run: dart analyze --fatal-infos
-        working-directory: client/module_desktop_core
-
-      - name: Analyze client/desktop
-        run: dart analyze --fatal-infos
-        working-directory: client/desktop
-
-      - name: Run tests for module_desktop_core
-        run: dart test
-        working-directory: client/module_desktop_core
-
-      - name: Run tests for client/desktop
-        run: flutter test
-        working-directory: client/desktop
+      - name: ${{ matrix.command }}
+        run: ${{ matrix.command }}
+        working-directory: client/${{ matrix.package }}
 
   supervised_e2e:
     needs: changes
