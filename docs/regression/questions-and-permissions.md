@@ -178,8 +178,9 @@ reaches the backend so the turn continues.
   its composer, as wide as the composer. There is one card per request type:
   questions, then permissions. Each names the pending count, shows the first
   request's opening line, and its Answer or Review button opens the existing
-  modal. A faint amber tint and border carry the colour, with an amber icon and
-  label over primary text in both themes. Read-only, archived and
+  modal. Light uses a cream warning fill and dark a faint amber tint, each with a
+  soft amber border, an amber icon and label over primary text, and a white
+  button pill. Read-only, archived and
   blocked sessions show no card.
 - When management blocks the session's harness, needs-you cards and new response
   dialogs are hidden. A dialog already open on either surface closes without

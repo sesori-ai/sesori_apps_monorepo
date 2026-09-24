@@ -22,11 +22,13 @@ class const SessionDetailNeedsYouCard({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, PregoSpacing.md),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: prego.colors.fgWarningPrimary.withValues(alpha: 0.1),
+          // The light token reads cream; its dark twin is a heavy brown.
+          color: isDark ? prego.colors.fgWarningPrimary.withValues(alpha: 0.1) : prego.colors.bgWarningPrimary,
           borderRadius: BorderRadius.circular(PregoRadius.x2l),
           border: Border.all(color: prego.colors.fgWarningPrimary.withValues(alpha: 0.3)),
         ),
@@ -57,7 +59,8 @@ class const SessionDetailNeedsYouCard({
               ),
               PregoButtonsSolid(
                 label: action,
-                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                // A white pill in both themes; dark's grey secondary is lost on the tint.
+                hierarchy: isDark ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary,
                 size: PregoButtonsSolidSize.sm,
                 onPressed: onPressed,
               ),
