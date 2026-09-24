@@ -37,13 +37,14 @@ class const FastModeToggleCalculator() {
   };
 
   /// When the backend last used the session's prompt cache: the latest
-  /// assistant message's completion (or start, while it still streams), else
+  /// agent-authored assistant message's completion (or start, while it still streams), else
   /// the session's own last update.
   DateTime? lastModelActivity({required List<MessageWithParts> messages, required Session session}) {
     final latestAssistantTime = messages
         .map((message) => message.info)
         .whereType<MessageAssistant>()
-        .lastWhereOrNull((message) => message.time != null)
+        // Session automation envelopes do not touch the model's prompt cache.
+        .lastWhereOrNull((message) => message.sender == MessageSender.agent && message.time != null)
         ?.time;
     final millis = latestAssistantTime == null
         ? session.time?.updated

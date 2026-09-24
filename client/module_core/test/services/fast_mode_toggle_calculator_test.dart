@@ -1,4 +1,5 @@
 import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
+import "package:sesori_dart_core/src/testing/test_helpers.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -99,6 +100,42 @@ void main() {
         _decide(support: _available, fastMode: true, hasHistory: true, lastModelActivity: null),
         isA<FastModeToggleApply>().having((decision) => decision.fastMode, "fastMode", isFalse),
       );
+    });
+  });
+
+  group("FastModeToggleCalculator lastModelActivity", () {
+    MessageWithParts assistant({required MessageSender sender, required int completed}) => MessageWithParts(
+      info: Message.assistant(
+        id: "msg-$completed",
+        sessionID: "session-1",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        sender: sender,
+        time: MessageTime(created: completed - 1000, completed: completed),
+      ),
+      parts: const [],
+    );
+
+    test("ignores session automation envelopes", () {
+      final activity = _calculator.lastModelActivity(
+        messages: [
+          assistant(sender: MessageSender.agent, completed: 1700000100000),
+          assistant(sender: MessageSender.system, completed: 1700000900000),
+        ],
+        session: testSession(updatedAt: 1700000950000),
+      );
+
+      expect(activity, DateTime.fromMillisecondsSinceEpoch(1700000100000));
+    });
+
+    test("falls back to the session update without agent activity", () {
+      final activity = _calculator.lastModelActivity(
+        messages: [assistant(sender: MessageSender.system, completed: 1700000900000)],
+        session: testSession(updatedAt: 1700000950000),
+      );
+
+      expect(activity, DateTime.fromMillisecondsSinceEpoch(1700000950000));
     });
   });
 }
