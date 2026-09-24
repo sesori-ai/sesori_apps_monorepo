@@ -9,7 +9,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 ## Runtime Target Coverage
 
 Targets audited on **2026-09-24**, covering all eleven registered harnesses.
-Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 5,
+Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 6,
 Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
 checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher
 attestations. Direct-CLI targets are recommendation metadata, not forced upgrades.
@@ -19,7 +19,7 @@ Antigravity retains its exact-pair policy rather than an independent floor.
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
 | OpenCode | `1.18.32` | `1.14.0` | Managed-pipeline probe blocked by the test controller's nested sandbox. Native serve/health/SSE, history and provider behavior remain unverified for this target. |
-| Antigravity | package/server `1.2.1` | Exact package/server/ACP 1 | Five archive layouts/hashes and macOS ARM64 hardened extraction, `--version`, ACP initialize and teardown passed. Managed-pipeline probe blocked by the test controller's nested sandbox; OAuth/session/model/delegation behavior unverified. |
+| Antigravity | package/server `1.2.1` | Exact package/server/ACP 1 | Six archive layouts/hashes and hardened extraction of both macOS archives verified. Native macOS ARM64 `--version`, ACP initialize and teardown passed; native Intel execution remains unverified. ARM64 managed-pipeline probe blocked by the test controller's nested sandbox; OAuth/session/model/delegation behavior unverified. |
 | Codex | `0.156.1` | `0.139.0` | Current-target native package/install, stdio and WebSocket app-server checks remain unverified. |
 | GitHub Copilot | `1.0.88` | `1.0.78` | Current-target native install/version, ACP initialize and configured lifecycle remain unverified. |
 | Cursor | `2026.09.23-86fc751` | date `2026.07.16` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. |

@@ -67,7 +67,7 @@ from the app or management API, or at bridge start when Sesori manages an older 
 - Every archive asset declares a required per-command extraction budget. The same value bounds
   member listing and extraction for tar.gz/POSIX zip; Windows zip passes it to `Expand-Archive`,
   whose existing traversal validation remains in use. This is not a total install deadline.
-  Existing archived runtimes and all five Antigravity archives declare a conservative two-minute per-command budget:
+  Existing archived runtimes and all six Antigravity archives declare a conservative two-minute per-command budget:
   extraction keeps its previous bound while listing uses that same explicit budget instead of the former fixed
   30 seconds. The policy is bounded and intentionally not derived from host timings. Bare binaries are unaffected. A
   larger budget never skips traversal or symlink checks; command timeouts remain observable failures with rejected
