@@ -188,6 +188,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     final onShowDiffs = widget.onShowDiffs;
     final menuEntriesBuilder = widget.menuEntriesBuilder;
     final session = state.hydratedSession;
+    final canConfigureContinuation =
+        !widget.readOnly && session?.time?.archived == null && !(state is SessionDetailLoaded && state.isArchived);
 
     final actions = <Widget>[
       if (widget.onClose != null)
@@ -204,16 +206,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         ),
       // Root sessions only: the actions run on the project's session list,
       // which holds no sub-agent sessions and must not gain one.
-      if (session != null &&
-          ((menuEntriesBuilder != null && session.parentID == null) ||
-              (!widget.readOnly && session.time?.archived == null)))
+      if (session != null && ((menuEntriesBuilder != null && session.parentID == null) || canConfigureContinuation))
         PregoAnchorMenu(
           flat: true,
           menuWidth: 240,
           acquireOpenLease: null,
           entriesBuilder: () => [
-            if (!widget.readOnly && session.time?.archived == null)
-              sessionAutoContinuationMenuEntry(context: context, session: session),
+            if (canConfigureContinuation) sessionAutoContinuationMenuEntry(context: context, session: session),
             if (menuEntriesBuilder != null && session.parentID == null)
               ...menuEntriesBuilder(context: context, session: session),
           ],
@@ -321,7 +320,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         // bottom and rides above the keyboard). The chat owns its own
         // reversed scroll controller, so the large title can't collapse with
         // it; the inline title is used instead, as on the new-session screen.
-        SliverFillRemaining(hasScrollBody: state is SessionDetailLoaded, child: content),
+        SliverFillRemaining(
+          hasScrollBody: state is SessionDetailLoaded || state is SessionDetailHarnessUnavailable,
+          child: content,
+        ),
       ],
     );
   }
@@ -371,18 +373,25 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                 maxContentWidth: maxContentWidth,
               ),
       SessionDetailHarnessUnavailable(:final interaction, :final session) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!widget.readOnly && session.time?.archived == null)
-              SessionAutoContinuationNotice(
-                view: session.autoContinuation,
-                updating: state.autoContinuationUpdatePending,
-                onEnabledChanged: (enabled) =>
-                    unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
-              ),
-            _buildHarnessNotice(interaction: interaction, historyUnavailable: true),
-          ],
+        child: PregoTopBarInsetBuilder(
+          builder: (context, topInset, child) => Padding(
+            padding: EdgeInsets.only(top: topInset),
+            child: SingleChildScrollView(child: child),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!widget.readOnly && session.time?.archived == null)
+                SessionAutoContinuationNotice(
+                  view: session.autoContinuation,
+                  updating: state.autoContinuationUpdatePending,
+                  canInteract: interaction.canInteract,
+                  onEnabledChanged: (enabled) =>
+                      unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
+                ),
+              _buildHarnessNotice(interaction: interaction, historyUnavailable: true),
+            ],
+          ),
         ),
       ),
       SessionDetailFailed(:final reason) => SessionDetailErrorView(

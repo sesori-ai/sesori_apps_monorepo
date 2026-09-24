@@ -362,7 +362,12 @@ class SessionDetailCubit(
         _waitingForConnection = false;
         loge("Session metadata load failed", error, stackTrace);
         if (previous is SessionDetailLoaded) {
-          emit(previous.copyWith(interaction: _interaction));
+          emit(
+            previous.copyWith(
+              interaction: _interaction,
+              isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
+            ),
+          );
           _drainPendingEvents();
           _drainDeferredPartsForLoadedMessages();
         } else {
@@ -390,7 +395,6 @@ class SessionDetailCubit(
             // Eligibility that arrived meanwhile makes it retryable instead,
             // and the recovery refresh below does exactly that.
             if (snapshot.awaitingHarnessSync && snapshot.messages.isEmpty && !_interaction.canInteract) {
-              _clearBufferedEvents();
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
@@ -401,6 +405,7 @@ class SessionDetailCubit(
                   interaction: _interaction,
                 ),
               );
+              _drainPendingEvents();
               return _SessionRefreshResult.applied;
             }
             _deferredPartEvents.discardForMessagesThrough(
@@ -473,12 +478,16 @@ class SessionDetailCubit(
               // transcript; only a session with nothing to keep falls back to
               // the unavailable-history state.
               if (previous is SessionDetailLoaded) {
-                emit(previous.copyWith(interaction: _interaction));
+                emit(
+                  previous.copyWith(
+                    interaction: _interaction,
+                    isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
+                  ),
+                );
                 _drainPendingEvents();
                 _drainDeferredPartsForLoadedMessages();
                 return _SessionRefreshResult.applied;
               }
-              _clearBufferedEvents();
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
@@ -489,6 +498,7 @@ class SessionDetailCubit(
                   interaction: _interaction,
                 ),
               );
+              _drainPendingEvents();
               return _SessionRefreshResult.applied;
             }
             _clearBufferedEvents();
@@ -1309,6 +1319,14 @@ class SessionDetailCubit(
   /// Replays any SSE events that were buffered while the cubit was not in
   /// [SessionDetailLoaded] state. Called after a successful load/refresh.
   void _drainPendingEvents() {
+    if (state is SessionDetailHarnessUnavailable) {
+      // History is still unavailable, but session metadata and acknowledged
+      // setting changes received during the load remain authoritative.
+      final updated = _pendingSessionEvents.whereType<SesoriSessionUpdated>().lastOrNull;
+      _clearBufferedEvents();
+      if (updated != null) _onSessionUpdated(updated.info);
+      return;
+    }
     if (state is! SessionDetailLoaded) return;
     final sessionEvents = List<SesoriSessionEvent>.of(_pendingSessionEvents);
     _pendingSessionEvents.clear();
@@ -1344,11 +1362,12 @@ class SessionDetailCubit(
   Future<void> setAutoContinuation({required bool enabled}) async {
     final session = state.hydratedSession;
     if (isClosed || _autoContinuationUpdateInFlight || session == null || session.time?.archived != null) return;
+    if (state case SessionDetailLoaded(isArchived: true)) return;
     _setAutoContinuationProgress(pending: true);
     try {
       final updated = await _autoContinuationService.setEnabled(sessionId: _sessionId, enabled: enabled);
       if (isClosed) return;
-      _onSessionUpdated(updated);
+      _handleEvent(SesoriSessionUpdated(info: updated));
       if (!enabled && updated.autoContinuation?.status is SessionAutoContinuationSubmitted) {
         _noticeStream.add(const SessionDetailAutoContinuationAlreadySubmitted());
       }

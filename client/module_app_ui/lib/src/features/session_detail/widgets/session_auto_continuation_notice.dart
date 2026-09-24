@@ -12,6 +12,7 @@ class const SessionAutoContinuationNotice({
   super.key,
   required final SessionAutoContinuationView? view,
   required final bool updating,
+  required final bool canInteract,
   required final ValueChanged<bool> onEnabledChanged,
 }) extends StatelessWidget {
   @override
@@ -26,7 +27,7 @@ class const SessionAutoContinuationNotice({
     }
     final loc = context.loc;
     final prego = context.prego;
-    final available = current.availability == AutoContinuationAvailability.conditional;
+    final available = current.availability == AutoContinuationAvailability.conditional && canInteract;
     final message = available
         ? _statusText(loc: loc, status: status, enabled: current.enabled)
         : loc.sessionAutoContinuationUnavailable;

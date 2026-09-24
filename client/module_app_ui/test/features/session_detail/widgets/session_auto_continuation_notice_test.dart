@@ -40,7 +40,12 @@ void main() {
           maxScaleFactor: textScale,
           child: Align(
             alignment: Alignment.bottomCenter,
-            child: SessionAutoContinuationNotice(view: view, updating: updating, onEnabledChanged: onChanged),
+            child: SessionAutoContinuationNotice(
+              view: view,
+              updating: updating,
+              canInteract: true,
+              onEnabledChanged: onChanged,
+            ),
           ),
         ),
       ),
@@ -144,7 +149,7 @@ void main() {
     });
   }
 
-  testWidgets("menu can opt in before a quota and disable after support becomes unavailable", (tester) async {
+  testWidgets("menu waits for a loaded session and can disable after support becomes unavailable", (tester) async {
     final cubit = _Cubit();
     when(() => cubit.state).thenReturn(const SessionDetailState.loading());
     when(() => cubit.setAutoContinuation(enabled: any(named: "enabled"))).thenAnswer((_) async {});
@@ -169,14 +174,13 @@ void main() {
       ),
     );
     await pumpMenu(view(enabled: false, status: const SessionAutoContinuationStatus.idle()));
-    expect(entry.isEnabled, isTrue);
+    expect(entry.isEnabled, isFalse);
     expect(entry.isSelected, isFalse);
-    entry.onTap();
-    verify(() => cubit.setAutoContinuation(enabled: true)).called(1);
 
     await pumpMenu(view(enabled: true, status: known, availability: AutoContinuationAvailability.unavailable));
     expect(entry.isEnabled, isTrue);
     expect(entry.isSelected, isTrue);
+    expect(entry.subtitle, contains("unavailable for this harness"));
     entry.onTap();
     verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
 

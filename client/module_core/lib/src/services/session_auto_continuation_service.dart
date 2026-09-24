@@ -16,8 +16,10 @@ class SessionAutoContinuationService({required final SessionRepository _reposito
       ErrorResponse(:final NonSuccessCodeError error) when error.errorCode == 501 =>
         throw SessionAutoContinuationUnavailableException(innerError: error),
       // COMPATIBILITY 2026-09-24 (v1.9.0): Published bridges without the route
-      // return 404/405. Remove when those bridges are unsupported.
-      ErrorResponse(:final NonSuccessCodeError error) when error.errorCode == 404 || error.errorCode == 405 =>
+      // return route-not-found 404/405. Remove when those bridges are unsupported.
+      ErrorResponse(:final NonSuccessCodeError error)
+          when error.errorCode == 405 ||
+              (error.errorCode == 404 && (error.rawErrorString?.startsWith("no handler found for ") ?? false)) =>
         throw SessionAutoContinuationUnavailableException(innerError: error),
       ErrorResponse(:final error) => throw error,
     };

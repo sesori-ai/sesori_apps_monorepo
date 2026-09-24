@@ -4594,7 +4594,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionAutoContinuationOffer.
   ///
   /// In en, this message translates to:
-  /// **'Continue at {time}, two minutes after the quota resets, and after later quota resets. Keep your bridge running.'**
+  /// **'Continue at {time} and two minutes after each later quota reset. Keep your bridge running.'**
   String sessionAutoContinuationOffer(String time);
 
   /// No description provided for @sessionAutoContinuationScheduled.

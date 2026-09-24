@@ -376,6 +376,7 @@ not prove live provider recovery, rendered controls or the final L4 matrix.
 ## Shared chat controls checkpoint — 2026-09-24
 
 Initial verified implementation: `52f53de1e5eaeb7b9930b9a7ee2f74c615e705b1`.
+Tree: `c10960207612d6db8cc7ce3c8665dee6e2fa07a4`.
 Architecture review approved the complete UI-only range from
 `22885f2c89c4cc200a08266b7181e2c9aef1d963` to that commit.
 The following menu-copy adjustment changes no ownership or contracts.
@@ -407,7 +408,9 @@ flutter test --no-pub test/features/sessions/desktop_session_detail_screen_test.
 Working folder `client/app`, initial checkpoint — 130 tests, exit 0:
 
 ```sh
-flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart test/features/session_detail/session_detail_title_hydration_test.dart
+flutter test --no-pub \
+  test/features/session_detail/widgets/session_detail_body_test.dart \
+  test/features/session_detail/session_detail_title_hydration_test.dart
 ```
 
 After the merge, the 124 chat-body cases were rerun with a temporary fixture
@@ -417,7 +420,9 @@ distinct behavior checks. The driver was removed after capture and remains a
 private temporary artifact, not a maintained test target.
 
 ```sh
-flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart test/features/session_detail/widgets/_quota_visual_capture_test.dart
+flutter test --no-pub \
+  test/features/session_detail/widgets/session_detail_body_test.dart \
+  test/features/session_detail/widgets/_quota_visual_capture_test.dart
 ```
 
 At the integrated checkpoint, `flutter analyze --no-pub` in each of

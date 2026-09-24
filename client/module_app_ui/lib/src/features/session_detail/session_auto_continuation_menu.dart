@@ -12,12 +12,18 @@ import "../../extensions/build_context_x.dart";
 PregoMenuItem sessionAutoContinuationMenuEntry({required BuildContext context, required Session session}) {
   final view = session.autoContinuation;
   final enabled = view?.enabled ?? false;
-  final available = view?.availability == AutoContinuationAvailability.conditional;
-  final updating = context.read<SessionDetailCubit>().state.autoContinuationUpdatePending;
+  final state = context.read<SessionDetailCubit>().state;
+  final canInteract = switch (state) {
+    SessionDetailLoaded(:final interaction) ||
+    SessionDetailHarnessUnavailable(:final interaction) => interaction.canInteract,
+    SessionDetailLoading() || SessionDetailFailed() => false,
+  };
+  final available = view?.availability == AutoContinuationAvailability.conditional && canInteract;
+  final updating = state.autoContinuationUpdatePending;
   return PregoMenuItem(
     key: const Key("session-auto-continuation-toggle"),
     title: context.loc.sessionAutoContinuationMenu,
-    subtitle: enabled || available
+    subtitle: available
         ? context.loc.sessionAutoContinuationAfterQuotaResets
         : view == null
         ? context.loc.sessionAutoContinuationOlderBridge

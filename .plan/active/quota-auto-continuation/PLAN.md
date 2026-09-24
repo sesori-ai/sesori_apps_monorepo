@@ -479,4 +479,5 @@ explicit paused/readiness contracts, exact prompt-default mapping, no-dispatch
 cancellation, peer trigger lifecycles, Layer 3 session-view composition,
 service-owned cutoff calculation, and repository-owned generation fencing.
 The corrected version was not re-reviewed, following the plan-review rule.
-No production work has started.
+That review covered the plan before production work began. Current implementation
+progress is recorded in the status above and in [TRACKER.md](TRACKER.md).
