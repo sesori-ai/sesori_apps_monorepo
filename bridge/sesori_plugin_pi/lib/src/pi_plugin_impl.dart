@@ -560,7 +560,11 @@ final class PiPlugin._({
       final selected = provider.models.firstWhere((candidate) => candidate.id == model.modelID);
       // Pi persists off even for models without a thinking selector. History
       // restoration must accept that native default on the next prompt.
-      final implicitOff = selected.variants.isEmpty && variant.id == PiThinkingLevel.off.wireValue;
+      // A partial catalog cannot establish why a model's variants are absent.
+      final implicitOff =
+          options.completeness == PluginSessionOptionsCompleteness.complete &&
+          selected.variants.isEmpty &&
+          variant.id == PiThinkingLevel.off.wireValue;
       if (!implicitOff && !selected.variants.contains(variant.id)) {
         throw _unsupportedSelection(
           operation: operation,

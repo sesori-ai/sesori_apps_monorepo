@@ -152,6 +152,26 @@ void main() {
       });
     }
 
+    test("partial thinking discovery cannot establish an implicit off level", () async {
+      harness.failThinkingDiscovery = true;
+      harness.writeSession(id: "session", parentPath: null);
+      await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
+
+      await expectLater(
+        harness.plugin.sendPrompt(
+          sessionId: "session",
+          promptId: "continuation",
+          parts: const [PluginPromptPart.text(text: "Continue.")],
+          variant: const PluginSessionVariant(id: "off"),
+          fastMode: false,
+          agent: "pi",
+          model: (providerID: "provider", modelID: "model"),
+        ),
+        throwsA(isA<PluginStaleOptionsException>()),
+      );
+      expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
+    });
+
     test("missing catalog models return scoped privacy-safe authentication guidance", () async {
       final missingModels = _Harness(
         failCommandDiscovery: false,
@@ -721,6 +741,7 @@ final class _Harness({
             spec: spec,
             catalogModelsAvailable: catalogModelsAvailable,
             catalogModelReasoning: catalogModelReasoning,
+            failThinkingDiscovery: failThinkingDiscovery,
             catalogCommand: catalogCommand,
             failCommandDiscovery: failCommandDiscovery,
           ),
@@ -747,6 +768,7 @@ final class _Harness({
   final List<({PiLaunchSpec spec, FakePiProcess process})> processes = [];
   final _CommandExecutor commands = _CommandExecutor();
   bool catalogModelReasoning = true;
+  bool failThinkingDiscovery = false;
 
   Future<FakePiProcess> nextSessionProcess() async {
     for (var attempt = 0; attempt < 100; attempt++) {
@@ -786,6 +808,7 @@ Future<void> _answerProcess({
   required PiLaunchSpec spec,
   required bool catalogModelsAvailable,
   required bool catalogModelReasoning,
+  required bool failThinkingDiscovery,
   required String catalogCommand,
   required bool failCommandDiscovery,
 }) async {
@@ -839,6 +862,8 @@ Future<void> _answerProcess({
         case "set_model":
         case "set_thinking_level":
           process.emitResponse(id: id, command: type);
+        case "get_available_thinking_levels" when failThinkingDiscovery:
+          process.emitFailure(id: id, command: type, error: "thinking discovery temporarily unavailable");
         case "get_available_thinking_levels":
           process.emitResponse(
             id: id,

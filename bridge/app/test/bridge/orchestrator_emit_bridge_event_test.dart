@@ -632,6 +632,7 @@ void main() {
     ) as SessionContinuationSubmitted;
     expect(outcome.errorMessageId, "second-quota");
     expect(outcome.promptId, plugin.sentPromptIds.single);
+    expect(outcome.acceptedAt, now);
 
     await harness.composition.session.cancel();
     await running.stopped.timeout(const Duration(seconds: 5));
@@ -745,6 +746,7 @@ void main() {
           expect(plugin.sentPromptIds, isEmpty);
         }
         expect(outcome.promptId, acceptedPromptId);
+        expect(outcome.acceptedAt, reset.add(const Duration(minutes: 2)));
         expect(
           await AcceptedPromptsDao(database: harness.database).hasRow(
             sessionId: "stable-session",
