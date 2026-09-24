@@ -1580,15 +1580,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListNewActivity => 'New activity';
 
   @override
-  String sessionListHarness(String harness) {
-    return '$harness session';
-  }
-
-  @override
   String get sessionListRunningRetrying => 'Running (retrying)';
 
   @override
   String get sessionListAwaitingInput => 'Awaiting input';
+
+  @override
+  String get sessionListWaiting => 'Waiting';
 
   @override
   String sessionListBackgroundTasks(int count) {

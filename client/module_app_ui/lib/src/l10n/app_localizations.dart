@@ -2929,12 +2929,6 @@ abstract class AppLocalizations {
   /// **'New activity'**
   String get sessionListNewActivity;
 
-  /// Screen-reader label for the harness driving a session; the visual signal is the brand logo leading the row. The harness name is a brand and is not translated.
-  ///
-  /// In en, this message translates to:
-  /// **'{harness} session'**
-  String sessionListHarness(String harness);
-
   /// Label shown next to the red dot for sessions that are active but in a retry/error state
   ///
   /// In en, this message translates to:
@@ -2946,6 +2940,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Awaiting input'**
   String get sessionListAwaitingInput;
+
+  /// Amber word leading a session row's meta line while the session waits for the user's answer or permission
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get sessionListWaiting;
 
   /// Label showing the number of active background tasks for a session
   ///
