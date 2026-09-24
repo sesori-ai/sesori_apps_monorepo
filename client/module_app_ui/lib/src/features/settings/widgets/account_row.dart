@@ -46,6 +46,7 @@ class const _ProviderLine({required final AuthProvider provider}) extends Statel
         Flexible(
           child: Text(
             context.loc.settingsAccountSignedInWith(provider.label),
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),

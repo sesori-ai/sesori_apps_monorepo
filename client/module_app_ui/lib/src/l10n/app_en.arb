@@ -300,8 +300,17 @@
   },
   "settingsLogout": "Log out",
   "settingsLogoutConfirmTitle": "Log out?",
+  "@settingsLogoutConfirmTitle": {
+    "description": "Title of the confirmation dialog shown before the user logs out."
+  },
   "settingsLogoutConfirmMessage": "You'll need to sign in again to reach your bridges from this device.",
+  "@settingsLogoutConfirmMessage": {
+    "description": "Body of the log-out confirmation dialog: logging out removes this device's access to the user's bridges until they sign in again."
+  },
   "settingsLogoutConfirmCancel": "Cancel",
+  "@settingsLogoutConfirmCancel": {
+    "description": "Button that closes the log-out confirmation dialog and keeps the user signed in."
+  },
   "settingsBridgeOffline": "Connect to a bridge to change these settings.",
   "@settingsBridgeOffline": {
     "description": "One line above the bridge settings group while no bridge is connected; the rows below it are dimmed."

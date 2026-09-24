@@ -751,19 +751,19 @@ abstract class AppLocalizations {
   /// **'Log out'**
   String get settingsLogout;
 
-  /// No description provided for @settingsLogoutConfirmTitle.
+  /// Title of the confirmation dialog shown before the user logs out.
   ///
   /// In en, this message translates to:
   /// **'Log out?'**
   String get settingsLogoutConfirmTitle;
 
-  /// No description provided for @settingsLogoutConfirmMessage.
+  /// Body of the log-out confirmation dialog: logging out removes this device's access to the user's bridges until they sign in again.
   ///
   /// In en, this message translates to:
   /// **'You\'ll need to sign in again to reach your bridges from this device.'**
   String get settingsLogoutConfirmMessage;
 
-  /// No description provided for @settingsLogoutConfirmCancel.
+  /// Button that closes the log-out confirmation dialog and keeps the user signed in.
   ///
   /// In en, this message translates to:
   /// **'Cancel'**
