@@ -63,8 +63,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   Use the owning `AntigravityRuntimeVersionValidator` / runtime service's
   initialize-only ACP contract with candidate release facts and isolated state.
   Confirm exact identity, protocol, capabilities, auth-method set and process
-  teardown before placement; create no session and initiate no OAuth. Linux extraction requires
-  Info-ZIP `unzip` with ZipInfo support. Never substitute normal Google profiles.
+  teardown before placement; create no session and initiate no OAuth. Linux
+  extraction requires Info-ZIP `unzip` with ZipInfo support. Never substitute
+  normal Google profiles.
 - **Opportunities:** inspect account/model discovery, auth, history, deletion and
   subagent gaps against the current matrix. The 2026-09-12 matrix assessment found
   only generic parent-local subagent tool calls, not child identity/lifecycle or
