@@ -108,7 +108,8 @@ class const ProjectTile({
       ),
       PregoMenuItem(
         leadingIcon: TablerRegular.eye_off,
-        title: loc.hideProject,
+        // A project whose folder is gone has nothing left to come back to.
+        title: project.directoryMissing ? loc.projectListRemove : loc.hideProject,
         subtitle: null,
         isSelected: false,
         shortcutLabel: null,
@@ -159,54 +160,78 @@ class const ProjectTile({
       // ListTile, whereas an InkWell contributes only the actions, not the
       // role, and leaves the row's three lines as three separate nodes to
       // swipe past.
-      child: GestureDetector(
-        onSecondaryTap: openMenu,
-        child: MergeSemantics(
-          child: Semantics(
-            button: true,
-            child: InkWell(
-              mouseCursor: WidgetStateMouseCursor.clickable,
-              onTap: () => _open(context: context, displayName: displayName),
-              onLongPress: openMenu,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: PregoSpacing.xl,
-                  vertical: PregoSpacing.lg,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        spacing: PregoSpacing.xs,
-                        children: [
-                          _titleRow(prego: prego, displayName: displayName),
-                          Text(
-                            pathLabel,
-                            style: prego.textTheme.textSm.regular.copyWith(
-                              color: prego.colors.textSecondary,
+      child: _withRemoveButton(
+        context: context,
+        row: GestureDetector(
+          onSecondaryTap: openMenu,
+          child: MergeSemantics(
+            child: Semantics(
+              button: true,
+              child: InkWell(
+                mouseCursor: WidgetStateMouseCursor.clickable,
+                onTap: () => _open(context: context, displayName: displayName),
+                onLongPress: openMenu,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: PregoSpacing.xl,
+                    vertical: PregoSpacing.lg,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: PregoSpacing.xs,
+                          children: [
+                            _titleRow(prego: prego, displayName: displayName),
+                            Text(
+                              pathLabel,
+                              style: prego.textTheme.textSm.regular.copyWith(
+                                color: prego.colors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            _StatusRow(project: project, activeSessions: activeSessions, unseen: unseen),
+                          ],
+                        ),
+                      ),
+                      if (!project.directoryMissing)
+                        ExcludeSemantics(
+                          child: Icon(
+                            TablerLight.chevron_right,
+                            size: _chevronSize,
+                            color: prego.colors.textSecondary,
                           ),
-                          _StatusRow(project: project, activeSessions: activeSessions, unseen: unseen),
-                        ],
-                      ),
-                    ),
-                    ExcludeSemantics(
-                      child: Icon(
-                        TablerLight.chevron_right,
-                        size: _chevronSize,
-                        color: prego.colors.textSecondary,
-                      ),
-                    ),
-                  ],
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// A row whose folder is gone gets Remove in place of its chevron, outside
+  /// the row's merged semantics so it stays its own button.
+  Widget _withRemoveButton({required BuildContext context, required Widget row}) {
+    if (!project.directoryMissing) return row;
+    return Row(
+      children: [
+        Expanded(child: row),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xl),
+          child: PregoButtonsSolid(
+            label: context.loc.projectListRemove,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.sm,
+            onPressed: () => unawaited(_hide(context: context)),
+          ),
+        ),
+      ],
     );
   }
 
@@ -227,7 +252,7 @@ class const ProjectTile({
   /// centered content rides the stretch. Not `fullWidth`: that needs a
   /// bounded parent, and at rest the strip's width is open-ended.
   Widget _hideAction({required BuildContext context, required VoidCallback close}) => _actionPill(
-    label: context.loc.hide,
+    label: project.directoryMissing ? context.loc.projectListRemove : context.loc.hide,
     icon: TablerRegular.eye_off,
     hierarchy: PregoButtonsSolidHierarchy.primary,
     type: PregoButtonsSolidType.warning,
@@ -336,11 +361,21 @@ class const _StatusRow({
           // The label yields and ellipsizes when the line runs out of width —
           // a narrow screen under a large text size — so it can't push the
           // timestamp out of the row.
-          if (activeSessions > 0)
+          // A missing folder needs the user, so it outranks everything else.
+          if (project.directoryMissing)
+            Flexible(
+              child: _StatusLabel(
+                icon: const Icon(TablerRegular.folder_off, size: PregoIconSize.sm),
+                label: loc.projectListFolderNotFound,
+                color: prego.colors.textWarningPrimary,
+              ),
+            )
+          else if (activeSessions > 0)
             Flexible(
               child: _StatusLabel(
                 icon: const PregoAiLoader(),
                 label: loc.projectListRunning(activeSessions),
+                color: prego.colors.textTertiary,
               ),
             )
           else if (unseen)
@@ -371,6 +406,7 @@ class const _StatusRow({
 class const _StatusLabel({
   required final Widget icon,
   required final String label,
+  required final Color color,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -382,7 +418,7 @@ class const _StatusLabel({
       spacing: PregoSpacing.xs,
       children: [
         IconTheme.merge(
-          data: IconThemeData(color: prego.colors.textTertiary),
+          data: IconThemeData(color: color),
           child: SizedBox(
             width: _statusSlotWidth,
             child: Center(child: icon),
@@ -391,9 +427,7 @@ class const _StatusLabel({
         Flexible(
           child: Text(
             label,
-            style: prego.textTheme.textSm.regular.copyWith(
-              color: prego.colors.textTertiary,
-            ),
+            style: prego.textTheme.textSm.regular.copyWith(color: color),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

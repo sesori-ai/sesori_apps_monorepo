@@ -23,5 +23,8 @@ class FakeFilesystemApi({
   }
 
   @override
+  Future<bool> directoryExistsAsync(String path) async => directoryExists(path);
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

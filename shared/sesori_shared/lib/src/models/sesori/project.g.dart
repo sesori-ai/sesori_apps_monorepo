@@ -24,6 +24,7 @@ _ProjectSummary _$ProjectSummaryFromJson(Map json) => _ProjectSummary(
       ? null
       : ProjectTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
   hasUnseenChanges: json['hasUnseenChanges'] as bool? ?? false,
+  directoryMissing: json['directoryMissing'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$ProjectSummaryToJson(_ProjectSummary instance) =>
@@ -33,6 +34,7 @@ Map<String, dynamic> _$ProjectSummaryToJson(_ProjectSummary instance) =>
       'path': instance.path,
       'time': ?instance.time?.toJson(),
       'hasUnseenChanges': instance.hasUnseenChanges,
+      'directoryMissing': instance.directoryMissing,
     };
 
 _Project _$ProjectFromJson(Map json) => _Project(

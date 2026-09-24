@@ -529,6 +529,18 @@ abstract class AppLocalizations {
   /// **'New activity'**
   String get projectListNewActivity;
 
+  /// Amber status on a project row whose folder was moved or deleted on the bridge's computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder not found'**
+  String get projectListFolderNotFound;
+
+  /// Action that removes a project whose folder no longer exists from the project list.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get projectListRemove;
+
   /// Message under the folders graphic on the connected-but-empty Projects screen.
   ///
   /// In en, this message translates to:

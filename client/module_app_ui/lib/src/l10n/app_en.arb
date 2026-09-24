@@ -165,6 +165,14 @@
   "@projectListNewActivity": {
     "description": "Status shown beside a static sparkle on a project row with unseen agent activity the user hasn't opened yet."
   },
+  "projectListFolderNotFound": "Folder not found",
+  "@projectListFolderNotFound": {
+    "description": "Amber status on a project row whose folder was moved or deleted on the bridge's computer."
+  },
+  "projectListRemove": "Remove",
+  "@projectListRemove": {
+    "description": "Action that removes a project whose folder no longer exists from the project list."
+  },
   "projectsEmptyMessage": "You don't have any projects created or opened yet.",
   "@projectsEmptyMessage": {
     "description": "Message under the folders graphic on the connected-but-empty Projects screen."

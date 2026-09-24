@@ -845,7 +845,19 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                               icon: PregoAvatarInitials(label: widget.name, size: 26),
                               expansion: widget.expansion,
                               selected: projectSelected,
-                              status: widget.running > 0 || widget.unseen
+                              // A missing folder needs the user, so it outranks activity. The row
+                              // has no room for the phrase beside a name; it rides in the tooltip.
+                              status: widget.project.directoryMissing
+                                  ? (
+                                      icon: Icon(
+                                        TablerRegular.folder_off,
+                                        size: PregoIconSize.sm,
+                                        color: context.prego.colors.fgWarningPrimary,
+                                      ),
+                                      label: loc.projectListFolderNotFound,
+                                      detail: null,
+                                    )
+                                  : widget.running > 0 || widget.unseen
                                   ? (
                                       icon: PregoAiLoader(size: 18, animate: widget.running > 0),
                                       label: widget.running > 0
