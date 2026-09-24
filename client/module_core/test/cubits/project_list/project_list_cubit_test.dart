@@ -1230,7 +1230,12 @@ void main() {
             path: any(named: "path"),
             gitAction: OpenProjectGitAction.promptIfNeeded,
           ),
-        ).thenAnswer((_) async => ApiResponse.success(testProject(id: "B", path: "/home/user/B")));
+        ).thenAnswer(
+          (_) async => ApiResponse.success((
+            project: testProjectSummary(id: "B", path: "/home/user/B"),
+            supportsDedicatedWorktrees: true,
+          )),
+        );
         return buildCubit();
       },
       act: (cubit) async {
@@ -1310,9 +1315,10 @@ void main() {
             gitAction: OpenProjectGitAction.initializeGit,
           ),
         ).thenAnswer(
-          (_) async => ApiResponse.success(
-            testProject(id: "B", path: "/home/user/B").copyWith(supportsDedicatedWorktrees: false),
-          ),
+          (_) async => ApiResponse.success((
+            project: testProjectSummary(id: "B", path: "/home/user/B"),
+            supportsDedicatedWorktrees: false,
+          )),
         );
         return buildCubit();
       },

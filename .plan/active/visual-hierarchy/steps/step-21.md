@@ -16,7 +16,9 @@
 - `formatTimestamp` names the month past 30 days: "15 Aug", with the year only
   when it differs.
 - Adding a project opens it. `OpenProjectOutcome` is now sealed, and
-  `OpenProjectAdded` carries the new `ProjectSummary`; `showAddProjectDialog`
+  `OpenProjectAdded` carries the new `ProjectSummary`, which
+  `ProjectRepository.discoverProject` maps from the bridge's `Project`
+  (architecture review); `showAddProjectDialog`
   takes `onProjectAdded`, which the phone's Projects screen, the desktop
   cockpit and the desktop's empty home wire to their open-project route.
 - Left for a follow-up PR: `activityById` has no reader left and goes with

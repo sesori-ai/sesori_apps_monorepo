@@ -776,21 +776,12 @@ class ProjectInventoryService({
     );
     if (_state.isClosed) return const OpenProjectFailed();
     switch (response) {
-      case SuccessResponse(:final data):
+      case SuccessResponse(data: (:final project, :final supportsDedicatedWorktrees)):
         await refreshProjects();
-        if (gitAction == OpenProjectGitAction.initializeGit && !data.supportsDedicatedWorktrees) {
+        if (gitAction == OpenProjectGitAction.initializeGit && !supportsDedicatedWorktrees) {
           return const OpenProjectGitSetupIncomplete();
         }
-        return OpenProjectAdded(
-          project: ProjectSummary(
-            id: data.id,
-            name: data.name,
-            // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges omit path and use the directory as id. Use data.path directly once those bridges are unsupported.
-            path: data.path.isEmpty ? data.id : data.path,
-            time: data.time,
-            hasUnseenChanges: data.hasUnseenChanges,
-          ),
-        );
+        return OpenProjectAdded(project: project);
       case ErrorResponse(:final error):
         if (error is NonSuccessCodeError && error.errorCode == 428) {
           return const OpenProjectGitChoiceRequired();
