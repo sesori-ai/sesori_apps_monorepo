@@ -28,6 +28,7 @@ class const ActivityTile({
       child: Semantics(
         button: true,
         child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           onTap: onOpen,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl, vertical: PregoSpacing.md),

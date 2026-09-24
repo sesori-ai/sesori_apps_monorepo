@@ -1,3 +1,5 @@
+import "package:flutter/gestures.dart";
+import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -36,4 +38,27 @@ void main() {
     expect(theme.scaffoldBackgroundColor, PregoDesignSystem.dark.colors.bgSurface1);
     expect(theme.appBarTheme.systemOverlayStyle, SystemUiOverlayStyle.light);
   });
+
+  testWidgets("buttons show the hand cursor on desktop, and a disabled one does not", (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildPregoThemeData(brightness: Brightness.light),
+        home: Scaffold(
+          body: Column(
+            children: [
+              IconButton(key: const Key("enabled"), onPressed: () {}, icon: const Icon(Icons.add)),
+              const IconButton(key: Key("disabled"), onPressed: null, icon: Icon(Icons.add)),
+            ],
+          ),
+        ),
+      ),
+    );
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse, pointer: 1);
+    await gesture.addPointer(location: tester.getCenter(find.byKey(const Key("enabled"))));
+    await tester.pump();
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.click);
+    await gesture.moveTo(tester.getCenter(find.byKey(const Key("disabled"))));
+    await tester.pump();
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.basic);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 }

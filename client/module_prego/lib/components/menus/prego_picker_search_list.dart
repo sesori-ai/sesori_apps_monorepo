@@ -256,6 +256,7 @@ class const _OptionRow({
       child: MouseRegion(
         onHover: pointer ? (_) => onHover() : null,
         child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           onTap: option.onPick,
           hoverColor: pointer ? Colors.transparent : null,
           borderRadius: radius,

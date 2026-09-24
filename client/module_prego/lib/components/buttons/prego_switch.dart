@@ -121,45 +121,48 @@ class _PregoSwitchState() extends State<PregoSwitch> with SingleTickerProviderSt
       toggled: widget.value,
       enabled: !isDisabled,
       onTap: isDisabled ? null : _handleTap,
-      child: GestureDetector(
-        onTap: isDisabled ? null : _handleTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedBuilder(
-          animation: _curvedAnimation,
-          builder: (context, child) {
-            final animationValue = _curvedAnimation.value;
-            final trackColor = lerpColorNonNull(trackColorOff, trackColorOn, animationValue);
+      child: MouseRegion(
+        cursor: isDisabled ? MouseCursor.defer : SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: isDisabled ? null : _handleTap,
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedBuilder(
+            animation: _curvedAnimation,
+            builder: (context, child) {
+              final animationValue = _curvedAnimation.value;
+              final trackColor = lerpColorNonNull(trackColorOff, trackColorOn, animationValue);
 
-            // Knob slides from _knobInset to (_trackWidth - _knobWidth - _knobInset).
-            final knobOffset = _knobInset + animationValue * (_trackWidth - _knobWidth - _knobInset * 2);
+              // Knob slides from _knobInset to (_trackWidth - _knobWidth - _knobInset).
+              final knobOffset = _knobInset + animationValue * (_trackWidth - _knobWidth - _knobInset * 2);
 
-            return SizedBox(
-              width: _trackWidth,
-              height: _trackHeight,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: trackColor,
-                  borderRadius: BorderRadius.circular(PregoRadius.full),
+              return SizedBox(
+                width: _trackWidth,
+                height: _trackHeight,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: trackColor,
+                    borderRadius: BorderRadius.circular(PregoRadius.full),
+                  ),
+                  child: Stack(
+                    children: [
+                      if (child case final knobWidget?)
+                        PositionedDirectional(
+                          start: knobOffset,
+                          top: _knobInset,
+                          child: knobWidget,
+                        ),
+                    ],
+                  ),
                 ),
-                child: Stack(
-                  children: [
-                    if (child case final knobWidget?)
-                      PositionedDirectional(
-                        start: knobOffset,
-                        top: _knobInset,
-                        child: knobWidget,
-                      ),
-                  ],
-                ),
+              );
+            },
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: knobColor,
+                borderRadius: BorderRadius.circular(PregoRadius.full),
               ),
-            );
-          },
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: knobColor,
-              borderRadius: BorderRadius.circular(PregoRadius.full),
+              child: const SizedBox(width: _knobWidth, height: _knobHeight),
             ),
-            child: const SizedBox(width: _knobWidth, height: _knobHeight),
           ),
         ),
       ),

@@ -682,6 +682,7 @@ class _InstallCommandBoxState() extends State<_InstallCommandBox> {
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           onTap: selected ? null : () => setState(() => _selectedIndex = index),
           borderRadius: BorderRadius.circular(PregoRadius.sm),
           child: Padding(
@@ -869,6 +870,7 @@ class const _CommandIconButton({
       child: Material(
         type: MaterialType.transparency,
         child: InkResponse(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           onTap: onTap,
           radius: 22,
           child: SizedBox(

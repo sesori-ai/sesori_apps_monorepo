@@ -704,6 +704,7 @@ class const _QuestionStep({
           child: Material(
             color: Colors.transparent,
             child: InkWell(
+              mouseCursor: WidgetStateMouseCursor.clickable,
               customBorder: const CircleBorder(),
               onTap: onTap,
               child: Center(
@@ -748,6 +749,7 @@ class const _ChoiceTile({
       shape: shape,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         customBorder: shape,
         onTap: onTap,
         child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), child: child),

@@ -177,6 +177,7 @@ class _WhyFaqItemState() extends State<_WhyFaqItem> {
             child: Material(
               type: MaterialType.transparency,
               child: InkWell(
+                mouseCursor: WidgetStateMouseCursor.clickable,
                 onTap: _toggle,
                 child: Padding(
                   padding: const EdgeInsetsDirectional.symmetric(

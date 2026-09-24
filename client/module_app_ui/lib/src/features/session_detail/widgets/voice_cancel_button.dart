@@ -35,42 +35,45 @@ class const VoiceCancelButton({
     return Semantics(
       button: true,
       label: loc.voiceCancelRecording,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onCancel,
-        // The drag scrubs repaints at pointer-move rate; keep them off the
-        // surrounding composer layer.
-        child: RepaintBoundary(
-          child: ValueListenableBuilder<double>(
-            valueListenable: progress,
-            builder: (context, value, _) {
-              final engaged = value.clamp(0.0, 1.0);
-              // The explicit box carries the footprint: a CustomPaint with a
-              // child sizes to that child, and the centred 18px icon would
-              // shrink both the ring and the tap target.
-              return SizedBox.square(
-                dimension: _size,
-                child: CustomPaint(
-                  painter: _CancelTargetPainter(
-                    engaged: engaged,
-                    dashColor: prego.colors.borderDisabled,
-                    fillColor: prego.colors.bgErrorSolid,
-                    // The filled state's hairline ring, from the design's
-                    // 2px rgba(255,255,255,0.12) border.
-                    ringColor: prego.colors.textWhite.withValues(alpha: 0.12),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      TablerRegular.x,
-                      size: PregoIconSize.md,
-                      color:
-                          Color.lerp(prego.colors.textSecondary, prego.colors.textWhite, engaged) ??
-                          prego.colors.textSecondary,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onCancel,
+          // The drag scrubs repaints at pointer-move rate; keep them off the
+          // surrounding composer layer.
+          child: RepaintBoundary(
+            child: ValueListenableBuilder<double>(
+              valueListenable: progress,
+              builder: (context, value, _) {
+                final engaged = value.clamp(0.0, 1.0);
+                // The explicit box carries the footprint: a CustomPaint with a
+                // child sizes to that child, and the centred 18px icon would
+                // shrink both the ring and the tap target.
+                return SizedBox.square(
+                  dimension: _size,
+                  child: CustomPaint(
+                    painter: _CancelTargetPainter(
+                      engaged: engaged,
+                      dashColor: prego.colors.borderDisabled,
+                      fillColor: prego.colors.bgErrorSolid,
+                      // The filled state's hairline ring, from the design's
+                      // 2px rgba(255,255,255,0.12) border.
+                      ringColor: prego.colors.textWhite.withValues(alpha: 0.12),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        TablerRegular.x,
+                        size: PregoIconSize.md,
+                        color:
+                            Color.lerp(prego.colors.textSecondary, prego.colors.textWhite, engaged) ??
+                            prego.colors.textSecondary,
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),

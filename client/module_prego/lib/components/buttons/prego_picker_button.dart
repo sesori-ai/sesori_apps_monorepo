@@ -58,6 +58,7 @@ class const PregoPickerButton({
             borderRadius: borderRadius,
             clipBehavior: Clip.antiAlias,
             child: InkWell(
+              mouseCursor: WidgetStateMouseCursor.clickable,
               onTap: onPressed,
               borderRadius: borderRadius,
               child: Padding(

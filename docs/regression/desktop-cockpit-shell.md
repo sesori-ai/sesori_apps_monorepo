@@ -189,6 +189,9 @@ The main pane hosts one full-width routed page.
   is on, which shows every archived session, and while the project has no sessions. Hovering a row, or
   moving keyboard focus into it, swaps its time for Mark read/unread and Archive without changing the row's
   height; an archived row offers no Archive. The phone list shows the same shared chips.
+- Every enabled control that acts on a click shows the hand cursor on hover: buttons, menu items, list
+  rows, tiles, switches, image previews and expand toggles. A disabled control keeps the arrow. Material
+  defaults to the arrow on desktop, so the Prego theme and each custom tap target opt in.
 - No page toolbar has a back arrow, so every toolbar starts its content at the same left edge.
   Cmd/Ctrl+[ returns a pushed page to its opener, including child-to-parent navigation, and does nothing
   on a page reached from the sidebar. The new session and session pages lead their title with the

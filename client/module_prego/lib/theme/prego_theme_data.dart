@@ -21,5 +21,20 @@ ThemeData buildPregoThemeData({required Brightness brightness}) {
     appBarTheme: AppBarTheme(
       systemOverlayStyle: brightness == Brightness.light ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light,
     ),
+    // Material defaults to the arrow over controls on desktop; Sesori shows the hand wherever a click acts.
+    textButtonTheme: const TextButtonThemeData(style: _clickableStyle),
+    iconButtonTheme: const IconButtonThemeData(style: _clickableStyle),
+    filledButtonTheme: const FilledButtonThemeData(style: _clickableStyle),
+    elevatedButtonTheme: const ElevatedButtonThemeData(style: _clickableStyle),
+    outlinedButtonTheme: const OutlinedButtonThemeData(style: _clickableStyle),
+    segmentedButtonTheme: const SegmentedButtonThemeData(style: _clickableStyle),
+    menuButtonTheme: const MenuButtonThemeData(style: _clickableStyle),
+    listTileTheme: const ListTileThemeData(mouseCursor: WidgetStateMouseCursor.clickable),
+    popupMenuTheme: const PopupMenuThemeData(mouseCursor: WidgetStateMouseCursor.clickable),
+    checkboxTheme: const CheckboxThemeData(mouseCursor: WidgetStateMouseCursor.clickable),
+    radioTheme: const RadioThemeData(mouseCursor: WidgetStateMouseCursor.clickable),
+    switchTheme: const SwitchThemeData(mouseCursor: WidgetStateMouseCursor.clickable),
   );
 }
+
+const ButtonStyle _clickableStyle = ButtonStyle(mouseCursor: WidgetStateMouseCursor.clickable);

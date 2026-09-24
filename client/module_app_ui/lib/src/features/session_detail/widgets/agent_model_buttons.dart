@@ -290,6 +290,7 @@ class const _FastModeButton({
                 borderRadius: borderRadius,
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
+                  mouseCursor: WidgetStateMouseCursor.clickable,
                   onTap: () => unawaited(_onTap(context)),
                   borderRadius: borderRadius,
                   child: Center(

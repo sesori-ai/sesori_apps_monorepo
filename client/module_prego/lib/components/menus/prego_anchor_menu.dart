@@ -517,6 +517,7 @@ class const _FlatMenuTile({
     return Opacity(
       opacity: isEnabled ? 1 : _disabledOpacity,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: isEnabled ? onTap : null,
         // The enclosing Material clips the menu to its configured radius. A
         // second radius here would round the shared edges between adjacent rows;

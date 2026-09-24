@@ -139,20 +139,23 @@ class const _HarnessSwitch({
 
     return Semantics(
       label: context.loc.harnessesEnabledLabel(plugin.setup.displayName),
-      child: GestureDetector(
-        key: Key("harness_management_enabled_target_${plugin.setup.id}"),
-        behavior: HitTestBehavior.opaque,
-        excludeFromSemantics: true,
-        onTap: blocked ? null : () => unawaited(setEnabled(enabled: !plugin.runtimeState.isEnabled)),
-        child: SizedBox(
-          height: 44,
-          // Expand the hit target without stretching the 64×28 design-system track.
-          child: Center(
-            widthFactor: 1,
-            child: PregoSwitch(
-              key: Key("harness_management_enabled_${plugin.setup.id}"),
-              value: plugin.runtimeState.isEnabled,
-              onChanged: blocked ? null : (value) => unawaited(setEnabled(enabled: value)),
+      child: MouseRegion(
+        cursor: blocked ? MouseCursor.defer : SystemMouseCursors.click,
+        child: GestureDetector(
+          key: Key("harness_management_enabled_target_${plugin.setup.id}"),
+          behavior: HitTestBehavior.opaque,
+          excludeFromSemantics: true,
+          onTap: blocked ? null : () => unawaited(setEnabled(enabled: !plugin.runtimeState.isEnabled)),
+          child: SizedBox(
+            height: 44,
+            // Expand the hit target without stretching the 64×28 design-system track.
+            child: Center(
+              widthFactor: 1,
+              child: PregoSwitch(
+                key: Key("harness_management_enabled_${plugin.setup.id}"),
+                value: plugin.runtimeState.isEnabled,
+                onChanged: blocked ? null : (value) => unawaited(setEnabled(enabled: value)),
+              ),
             ),
           ),
         ),

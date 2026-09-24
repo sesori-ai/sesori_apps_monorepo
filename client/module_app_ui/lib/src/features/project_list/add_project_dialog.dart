@@ -524,6 +524,7 @@ class const _FolderTile({
       child: Semantics(
         button: true,
         child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           onTap: onTap,
           child: DecoratedBox(
             decoration: BoxDecoration(
