@@ -140,6 +140,19 @@ void main() {
     expect(find.text("Today"), findsOneWidget);
   });
 
+  testWidgets("a narrow pane under large text folds New session to its icon without overflow", (tester) async {
+    tester.view.physicalSize = const Size(496, 800);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpPage(tester: tester, filter: SessionListFilter.active);
+
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byTooltip("New session"));
+    expect(newSessionTaps, 1);
+  });
+
   testWidgets("Archived toggles the cubit and reads as on while archived sessions show", (tester) async {
     await pumpPage(tester: tester, filter: SessionListFilter.active);
     const archived = Key("desktop-project-page-archived");
