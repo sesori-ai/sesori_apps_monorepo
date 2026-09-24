@@ -11,6 +11,7 @@ sealed class const QueuedSessionSubmission() {
     required List<ComposerAttachment> attachments,
     required String? agent,
     required AgentModel? agentModel,
+    required bool fastMode,
   }) = QueuedTextSubmission;
 
   const factory command({
@@ -19,6 +20,7 @@ sealed class const QueuedSessionSubmission() {
     required String command,
     required String? agent,
     required AgentModel? agentModel,
+    required bool fastMode,
   }) = QueuedCommandSubmission;
 
   /// A command rejected before acceptance because a refreshed catalog no
@@ -30,6 +32,7 @@ sealed class const QueuedSessionSubmission() {
     required String command,
     required String? agent,
     required AgentModel? agentModel,
+    required bool fastMode,
   }) = UnavailableQueuedCommandSubmission;
 
   /// Stable identity for this prompt across retries: the bridge queues,
@@ -41,6 +44,9 @@ sealed class const QueuedSessionSubmission() {
   List<ComposerAttachment> get attachments;
   String? get agent;
   AgentModel? get agentModel;
+
+  /// Whether this prompt runs in fast mode, resolved against [agentModel].
+  bool get fastMode;
 
   /// What the queued bubble should render, or `null` when the submission
   /// carries no text of its own — an attachment-only prompt. Callers decide
@@ -58,6 +64,7 @@ sealed class const QueuedSessionSubmission() {
   QueuedSessionSubmission withSelection({
     required String? agent,
     required AgentModel? agentModel,
+    required bool fastMode,
   }) => switch (this) {
     QueuedTextSubmission(:final promptId, :final text, :final inputMode, :final attachments) =>
       QueuedSessionSubmission.text(
@@ -67,6 +74,7 @@ sealed class const QueuedSessionSubmission() {
         attachments: attachments,
         agent: agent,
         agentModel: agentModel,
+        fastMode: fastMode,
       ),
     QueuedCommandSubmission(:final promptId, :final text, :final command) => QueuedSessionSubmission.command(
       promptId: promptId,
@@ -74,6 +82,7 @@ sealed class const QueuedSessionSubmission() {
       command: command,
       agent: agent,
       agentModel: agentModel,
+      fastMode: fastMode,
     ),
     UnavailableQueuedCommandSubmission(:final promptId, :final text, :final command) =>
       QueuedSessionSubmission.unavailableCommand(
@@ -82,6 +91,7 @@ sealed class const QueuedSessionSubmission() {
         command: command,
         agent: agent,
         agentModel: agentModel,
+        fastMode: fastMode,
       ),
   };
 }
@@ -93,6 +103,7 @@ final class const QueuedTextSubmission({
   @override required final List<ComposerAttachment> attachments,
   @override required final String? agent,
   @override required final AgentModel? agentModel,
+  @override required final bool fastMode,
 }) extends QueuedSessionSubmission {
   @override
   String? get command => null;
@@ -104,6 +115,7 @@ final class const QueuedCommandSubmission({
   @override required final String command,
   @override required final String? agent,
   @override required final AgentModel? agentModel,
+  @override required final bool fastMode,
 }) extends QueuedSessionSubmission {
   @override
   ComposerInputMode get inputMode => ComposerInputMode.typed;
@@ -121,6 +133,7 @@ final class const UnavailableQueuedCommandSubmission({
   @override required final String command,
   @override required final String? agent,
   @override required final AgentModel? agentModel,
+  @override required final bool fastMode,
 }) extends QueuedSessionSubmission {
   @override
   ComposerInputMode get inputMode => ComposerInputMode.typed;

@@ -5,6 +5,7 @@ import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart" show ClockProvider;
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
@@ -25,6 +26,7 @@ import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
@@ -143,6 +145,7 @@ void main() {
       ProjectViewingService? projectViewingService,
       LifecycleSource? lifecycleSource,
       PluginManagementService? pluginManagementService,
+      ClockProvider clock = const ClockProvider(),
     }) => SessionDetailCubit(
       mockConnectionService,
       claimProjectView: claimProjectView,
@@ -161,12 +164,148 @@ void main() {
       projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: mockFailureReporter,
+      clock: clock,
     );
 
     tearDown(() async {
       await sessionEvents.close();
       await globalEvents.close();
       await connectionStatus.close();
+    });
+
+    group("fast mode", () {
+      const fastModel = AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: "xhigh");
+      // testSession's last update, which stands in for model activity because
+      // the default transcript's assistant message carries no timestamps.
+      final lastActivity = DateTime.fromMillisecondsSinceEpoch(1700000000000);
+
+      setUp(() {
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            _fastModeProviders(fastMode: const FastModeSupport.available(promptCacheTtlSeconds: 1800)),
+          ),
+        );
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(
+            id: sessionId,
+            promptDefaults: const SessionPromptDefaults(agent: null, model: fastModel, fastMode: true),
+          ),
+        );
+      });
+
+      Future<SessionDetailLoaded> loaded(SessionDetailCubit cubit) => awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded,
+        description: "loaded",
+      ).then((state) => state as SessionDetailLoaded);
+
+      test("reconciles fast mode from the prompt defaults and sends it with prompts", () async {
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        final state = await loaded(cubit);
+
+        expect(state.fastMode, isTrue);
+        expect(state.fastModeControl, FastModeControl.on);
+
+        await cubit.sendMessage(text: "go", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+        verify(
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
+            sessionId: sessionId,
+            text: "go",
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: true,
+            command: null,
+          ),
+        ).called(1);
+
+        sessionEvents.add(
+          const SesoriSessionPromptDefaultsChanged(
+            sessionID: sessionId,
+            promptDefaults: SessionPromptDefaults(agent: null, model: fastModel, fastMode: false),
+          ),
+        );
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && !state.fastMode,
+          description: "fast mode reconciled off",
+        );
+        expect((cubit.state as SessionDetailLoaded).fastModeControl, FastModeControl.off);
+      });
+
+      test("sends fast mode off once the selected model's fast mode is unavailable", () async {
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            _fastModeProviders(
+              fastMode: const FastModeSupport.unavailable(reason: FastModeUnavailableReason.extraUsageDisabled),
+            ),
+          ),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        final state = await loaded(cubit);
+
+        expect(state.fastModeControl, FastModeControl.unavailable);
+        expect(
+          cubit.fastModeToggleDecision(),
+          isA<FastModeToggleUnavailable>().having(
+            (decision) => decision.reason,
+            "reason",
+            FastModeUnavailableReason.extraUsageDisabled,
+          ),
+        );
+
+        await cubit.sendMessage(text: "go", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+        verify(
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
+            sessionId: sessionId,
+            text: "go",
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: false,
+            command: null,
+          ),
+        ).called(1);
+      });
+
+      test("confirms a switch only while the prompt cache is warm", () async {
+        var now = lastActivity.add(const Duration(minutes: 10));
+        final cubit = buildCubit(clock: _FixedClock(() => now));
+        addTearDown(cubit.close);
+        await loaded(cubit);
+
+        expect(
+          cubit.fastModeToggleDecision(),
+          isA<FastModeToggleConfirmCacheReset>().having((decision) => decision.fastMode, "fastMode", isFalse),
+        );
+
+        now = lastActivity.add(const Duration(minutes: 30));
+        expect(
+          cubit.fastModeToggleDecision(),
+          isA<FastModeToggleApply>().having((decision) => decision.fastMode, "fastMode", isFalse),
+        );
+
+        cubit.setFastMode(false);
+        expect((cubit.state as SessionDetailLoaded).runsFastMode, isFalse);
+      });
     });
 
     for (final initialBlocked in [true, false]) {
@@ -210,6 +349,7 @@ void main() {
               agent: any(named: "agent"),
               model: any(named: "model"),
               variant: any(named: "variant"),
+              fastMode: any(named: "fastMode"),
               command: null,
             ),
           ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -290,6 +430,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
           ),
         );
@@ -790,6 +931,7 @@ void main() {
             agent: "coder",
             model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
+            fastMode: false,
             command: null,
           ),
         ).called(1);
@@ -844,6 +986,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         ).called(1);
@@ -889,6 +1032,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
           ),
         );
@@ -923,6 +1067,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
           ),
         );
@@ -957,6 +1102,7 @@ void main() {
             agent: "coder",
             model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
+            fastMode: false,
             command: "review",
           ),
         ).called(1);
@@ -1031,6 +1177,7 @@ void main() {
             agent: "coder",
             model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
+            fastMode: false,
             command: null,
           ),
         ).called(1);
@@ -1911,6 +2058,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         );
@@ -1953,6 +2101,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         );
@@ -1971,6 +2120,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -2003,6 +2153,7 @@ void main() {
             agent: "coder",
             model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
+            fastMode: false,
             command: null,
           ),
         ).called(1);
@@ -2086,6 +2237,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         );
@@ -2150,6 +2302,7 @@ void main() {
             agent: "coder",
             model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
+            fastMode: false,
             command: null,
           ),
         ).called(1);
@@ -2210,6 +2363,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "xhigh"),
+          fastMode: false,
           command: null,
         ),
       ).called(1);
@@ -2307,6 +2461,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "xhigh"),
+          fastMode: false,
           command: "review",
         ),
       ).called(1);
@@ -2326,6 +2481,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) async {
@@ -2419,6 +2575,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) async {
@@ -2462,6 +2619,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "xhigh"),
+          fastMode: false,
           command: null,
         ),
       ).called(1);
@@ -2521,6 +2679,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         ).called(1);
@@ -2533,6 +2692,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         ).called(1);
@@ -2553,6 +2713,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -2626,6 +2787,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         ).called(1);
@@ -2899,6 +3061,34 @@ Future<void> _awaitNotRefreshing(SessionDetailCubit cubit) async {
   );
 }
 
+final class _FixedClock(final DateTime Function() _now) implements ClockProvider {
+  @override
+  DateTime call() => _now();
+}
+
+ProviderListResponse _fastModeProviders({required FastModeSupport fastMode}) => ProviderListResponse(
+  connectedOnly: false,
+  items: [
+    ProviderInfo(
+      id: "anthropic",
+      name: "Anthropic",
+      defaultModelID: "claude-3-5-sonnet",
+      models: {
+        "claude-3-5-sonnet": ProviderModel(
+          fastMode: fastMode,
+          id: "claude-3-5-sonnet",
+          providerID: "anthropic",
+          name: "Claude 3.5 Sonnet",
+          variants: const ["xhigh"],
+          defaultVariant: null,
+          family: null,
+          releaseDate: null,
+        ),
+      },
+    ),
+  ],
+);
+
 void _stubAllDefaults(
   MockSessionRepository service,
   MockSessionRepository sessionService,
@@ -3019,6 +3209,7 @@ void _stubAllDefaults(
       agent: any(named: "agent"),
       model: any(named: "model"),
       variant: any(named: "variant"),
+      fastMode: any(named: "fastMode"),
       command: any(named: "command"),
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));

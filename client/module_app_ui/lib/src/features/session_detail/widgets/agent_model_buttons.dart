@@ -1,6 +1,18 @@
+import "dart:async";
+
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart" show ModelPickerSection, ModelPickerSectionBuilder;
+import "package:sesori_dart_core/sesori_dart_core.dart"
+    show
+        FastModeControl,
+        FastModeToggleApply,
+        FastModeToggleConfirmCacheReset,
+        FastModeToggleDecision,
+        FastModeToggleUnavailable,
+        ModelPickerSection,
+        ModelPickerSectionBuilder;
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
@@ -24,6 +36,13 @@ class const AgentModelButtons({
   required final void Function({required String providerID, required String modelID}) onModelSelected,
   required final List<SessionVariant> availableVariants,
   required final ValueChanged<SessionVariant> onVariantSelected,
+
+  /// How the fast-mode pill shows for the selected model.
+  required final FastModeControl fastModeControl,
+
+  /// Decides what a tap on the fast-mode pill does, read at tap time.
+  required final FastModeToggleDecision? Function() decideFastModeToggle,
+  required final ValueChanged<bool> onFastModeChanged,
 
   /// Whether each selector hugs its label at the leading edge (pointer shells)
   /// instead of sharing the strip's width equally (touch shells).
@@ -108,6 +127,13 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
             selectedVariant: selected?.variant,
             onVariantSelected: widget.onVariantSelected,
           ),
+        ),
+      if (widget.fastModeControl != FastModeControl.hidden)
+        _FastModeButton(
+          surfaceStyle: widget.surfaceStyle,
+          control: widget.fastModeControl,
+          decide: widget.decideFastModeToggle,
+          onFastModeChanged: widget.onFastModeChanged,
         ),
     ];
     return Padding(
@@ -222,6 +248,125 @@ class const _VariantMenu({
             onTap: () => onVariantSelected(variant),
           ),
       ],
+    );
+  }
+}
+
+/// Square ⚡ pill that toggles fast mode. It is highlighted while on and dimmed
+/// while the account cannot use fast mode; a tap then explains why.
+class const _FastModeButton({
+  required final PregoComposerSurfaceStyle surfaceStyle,
+  required final FastModeControl control,
+  required final FastModeToggleDecision? Function() decide,
+  required final ValueChanged<bool> onFastModeChanged,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final label = context.loc.sessionDetailFastMode;
+    final borderRadius = BorderRadius.circular(PregoRadius.full);
+    final (icon, color) = switch (control) {
+      FastModeControl.on => (TablerRegular.bolt, prego.colors.fgBrandPrimary),
+      FastModeControl.off => (TablerRegular.bolt, prego.colors.textSecondary),
+      FastModeControl.unavailable || FastModeControl.hidden => (TablerRegular.bolt_off, prego.colors.fgDisabled),
+    };
+    return Tooltip(
+      message: label,
+      excludeFromSemantics: true,
+      child: Semantics(
+        button: true,
+        toggled: control == FastModeControl.on,
+        label: label,
+        excludeSemantics: true,
+        child: SizedBox.square(
+          dimension: 36,
+          child: DecoratedBox(
+            decoration: pregoComposerSurfaceDecoration(prego: prego, style: surfaceStyle, borderRadius: borderRadius),
+            child: Padding(
+              padding: const EdgeInsets.all(1),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: borderRadius,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () => unawaited(_onTap(context)),
+                  borderRadius: borderRadius,
+                  child: Center(
+                    child: Icon(icon, size: PregoIconSize.sm, color: color),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onTap(BuildContext context) async {
+    switch (decide()) {
+      case null:
+        return;
+      case FastModeToggleApply(:final fastMode):
+        onFastModeChanged(fastMode);
+      case FastModeToggleUnavailable(:final reason):
+        final loc = context.loc;
+        PregoPopupAlertPresenter.of(context).show(
+          title: loc.sessionDetailFastModeUnavailableTitle,
+          variant: PregoPopupAlertsNotificationsVariant.error,
+          content: PregoPopupAlertContent(
+            message: switch (reason) {
+              FastModeUnavailableReason.extraUsageDisabled => loc.sessionDetailFastModeUnavailableExtraUsageDisabled,
+              FastModeUnavailableReason.notOnPlan => loc.sessionDetailFastModeUnavailableNotOnPlan,
+              FastModeUnavailableReason.disabledByOrganization =>
+                loc.sessionDetailFastModeUnavailableDisabledByOrganization,
+              FastModeUnavailableReason.unknown => loc.sessionDetailFastModeUnavailableUnknown,
+            },
+          ),
+        );
+      case FastModeToggleConfirmCacheReset(:final fastMode):
+        final confirmed = await _confirmCacheReset(context: context, fastMode: fastMode);
+        if (confirmed ?? false) onFastModeChanged(fastMode);
+    }
+  }
+
+  Future<bool?> _confirmCacheReset({required BuildContext context, required bool fastMode}) {
+    final loc = context.loc;
+    final prego = context.prego;
+    return showPregoModal<bool>(
+      context: context,
+      title: loc.sessionDetailFastModeConfirmTitle,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              fastMode ? loc.sessionDetailFastModeConfirmEnableBody : loc.sessionDetailFastModeConfirmDisableBody,
+              style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+            ),
+            const SizedBox(height: PregoSpacing.x2l),
+            PregoButtonsSolid(
+              key: const Key("fast_mode_confirm"),
+              label: loc.sessionDetailFastModeConfirmAction,
+              hierarchy: PregoButtonsSolidHierarchy.primary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => sheetContext.pop(true),
+            ),
+            const SizedBox(height: PregoSpacing.md),
+            PregoButtonsSolid(
+              key: const Key("fast_mode_cancel"),
+              label: loc.sessionDetailFastModeCancel,
+              hierarchy: PregoButtonsSolidHierarchy.tertiary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => sheetContext.pop(false),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

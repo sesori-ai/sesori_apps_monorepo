@@ -212,8 +212,8 @@ models only from new/resume responses and has no deletion capability.
 
 | Harness | Status |
 |---|---|
-| Codex | ✅ Implemented in the bridge; the composer ⚡ control ships in a later step. |
-| Claude | ✅ Implemented in the bridge for the Opus models the CLI reports as supporting it; fast turns draw on the account's extra usage. The composer ⚡ control ships in a later step. |
+| Codex | ✅ Implemented. |
+| Claude | ✅ Implemented for the Opus models the CLI reports as supporting it; fast turns draw on the account's extra usage. |
 | OpenCode, Antigravity, Copilot, Cursor, Hermes, Pi, OMP, DeepSeek, Grok | ⬜ Not implemented (not assessed). |
 
 Codex advertises fast mode per model as a `model/list` service tier: a model

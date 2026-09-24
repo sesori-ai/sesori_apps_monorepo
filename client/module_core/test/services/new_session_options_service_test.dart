@@ -134,6 +134,7 @@ void main() {
         commands: [_command(name: "old-command")],
         selectedAgent: "old-agent",
         selectedAgentModel: const AgentModel(providerID: "provider-a", modelID: "model-a", variant: null),
+        fastMode: false,
         stagedCommand: null,
         availableVariants: const [],
       );
@@ -269,6 +270,7 @@ void main() {
           agentName: "review",
           model: NewSessionModelIntent(providerId: "provider-a", modelId: "model-a"),
           variant: NewSessionVariantIntent(id: "low"),
+          fastMode: null,
         ),
         previousOptions: null,
       ) as NewSessionOptionsLoaded;
@@ -312,6 +314,7 @@ void main() {
           agentName: "build",
           model: null,
           variant: null,
+          fastMode: null,
         ),
         previousOptions: null,
       ) as NewSessionOptionsLoaded;
@@ -385,6 +388,7 @@ void main() {
           agentName: "missing",
           model: NewSessionModelIntent(providerId: "provider-a", modelId: "unavailable"),
           variant: NewSessionVariantIntent(id: "stale"),
+          fastMode: null,
         ),
         previousOptions: null,
       ) as NewSessionOptionsLoaded;
@@ -403,6 +407,7 @@ void main() {
         commands: [priorCommand],
         selectedAgent: null,
         selectedAgentModel: null,
+        fastMode: false,
         stagedCommand: priorCommand,
         availableVariants: const [],
       );
@@ -430,6 +435,7 @@ void main() {
           agentName: "build",
           model: NewSessionModelIntent(providerId: "provider-a", modelId: "model-a"),
           variant: NewSessionVariantIntent(id: "removed"),
+          fastMode: null,
         ),
         previousOptions: previous,
       ) as NewSessionOptionsLoaded;
@@ -479,6 +485,7 @@ void main() {
         commands: [],
         selectedAgent: null,
         selectedAgentModel: null,
+        fastMode: false,
         stagedCommand: null,
         availableVariants: [],
       );

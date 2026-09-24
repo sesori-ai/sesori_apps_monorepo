@@ -258,6 +258,7 @@ class SessionRepository({
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? command,
     required bool dedicatedWorktree,
   }) {
@@ -269,6 +270,7 @@ class SessionRepository({
       agent: agent,
       model: _normalizeModel(model: model),
       variant: variant,
+      fastMode: fastMode,
       command: command?.normalize(),
       dedicatedWorktree: dedicatedWorktree,
     );
@@ -282,6 +284,7 @@ class SessionRepository({
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? command,
   }) {
     return _api.sendMessage(
@@ -292,6 +295,7 @@ class SessionRepository({
       agent: agent,
       model: _normalizeModel(model: model),
       variant: variant,
+      fastMode: fastMode,
       command: command?.normalize(),
     );
   }

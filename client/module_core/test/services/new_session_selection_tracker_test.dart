@@ -21,6 +21,7 @@ void main() {
           agentName: "build",
           model: NewSessionModelIntent(providerId: "openai", modelId: "gpt-4"),
           variant: NewSessionVariantIntent(id: "fast"),
+          fastMode: null,
         ),
       );
       tracker.write(
@@ -30,6 +31,7 @@ void main() {
           agentName: "plan",
           model: NewSessionModelIntent(providerId: "anthropic", modelId: "claude-3"),
           variant: NewSessionVariantIntent(id: "slow"),
+          fastMode: null,
         ),
       );
 
@@ -131,6 +133,7 @@ void main() {
           agentName: "build",
           model: NewSessionModelIntent(providerId: "openai", modelId: "gpt-4"),
           variant: NewSessionVariantIntent(id: "slow"),
+          fastMode: null,
         ),
       );
       tracker.write(
@@ -140,6 +143,7 @@ void main() {
           agentName: "plan",
           model: NewSessionModelIntent(providerId: "anthropic", modelId: "claude-3"),
           variant: NewSessionVariantIntent(id: "deep"),
+          fastMode: null,
         ),
       );
 

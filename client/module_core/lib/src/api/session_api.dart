@@ -88,6 +88,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? command,
     required bool dedicatedWorktree,
   }) {
@@ -102,6 +103,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
           agent: agent,
           model: model,
           variant: variant,
+          fastMode: fastMode,
           command: command,
           dedicatedWorktree: dedicatedWorktree,
         ),
@@ -116,6 +118,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       agent: agent,
       model: model,
       variant: variant,
+      fastMode: fastMode,
       command: command,
       dedicatedWorktree: dedicatedWorktree,
     );
@@ -129,6 +132,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? command,
     required bool dedicatedWorktree,
   }) async {
@@ -140,6 +144,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       agent: agent,
       model: model,
       variant: variant,
+      fastMode: fastMode,
       command: command,
       dedicatedWorktree: dedicatedWorktree,
     );
@@ -160,6 +165,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? command,
   }) {
     return _client.post(
@@ -171,6 +177,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         agent: agent,
         model: model,
         variant: variant,
+        fastMode: fastMode,
         command: command,
         promptId: promptId,
       ),
