@@ -52,7 +52,9 @@ provider and platform verification remains in the
   preference; missing history selection falls back to stored defaults.
 - Pi's history can record the native thinking level `off` for a model without
   a thinking selector. Restoring that default must still allow an ordinary
-  prompt; other unsupported thinking levels remain rejected.
+  prompt when catalog discovery is complete; other unsupported thinking levels
+  remain rejected. Empty variants in a partial catalog cannot establish this
+  implicit default, because thinking-level discovery may have failed.
 - A single bridge timer checks due records every 30 seconds and on startup.
   Reset plus buffer, rather than time since observation, determines eligibility.
   A failed tick remains observable and rearms; disposal drains an in-flight tick.
@@ -96,7 +98,7 @@ provider and platform verification remains in the
   close/reopen, deduplication, preference retention, generation rejection, named
   versus batch cutoffs, and foreign-key deletion.
 - **L1:** Pi prompt-selection tests restore `off` for a non-reasoning model
-  while preserving variant validation for reasoning models.
+  while preserving variant validation for reasoning models and partial catalogs.
 - **L2:** Pi managed-target and minimum-PATH RPC probes with a synthetic provider:
   terminal quota text with known/unknown resets, transient recovery and retry exhaustion must each end in
   exactly one final settlement. See the dated

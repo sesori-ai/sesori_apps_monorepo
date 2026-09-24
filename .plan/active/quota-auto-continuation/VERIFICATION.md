@@ -131,6 +131,33 @@ This is native-client and pinned-runtime evidence with a synthetic provider.
 It does not prove real provider quota recovery. The unavailable-harness native
 screen remains unexecuted; existing shared widget coverage is separate.
 
+## Review follow-up checkpoint
+
+Commit `f7918ca304716f7d5ba0f1099065dddc253f927a`,
+tree `a7c009135affd6d6ace5e622c538dc6e7542cfe0`, was committed before running
+the following focused checks. All passed on that exact source checkpoint:
+
+- All **22** Pi plugin tests, including a failed-thinking-discovery regression
+  that failed before the guard. Implicit `off` is now accepted only with a
+  complete catalog; partial empty variants remain unconfirmed.
+- Both new composed bridge tests, now asserting the precise acceptance instant
+  from their injected `package:clock` clocks. Orchestrator already supplies this
+  clock to `SessionContinuationService`; its separate `ServerClock` is not the
+  scheduling policy clock. No production clock wiring changed.
+- Pi package and bridge app analysis with `--fatal-infos`.
+
+Commands are the Pi test/analyzer commands above and, from `bridge/app`:
+
+```sh
+dart test test/bridge/orchestrator_emit_bridge_event_test.dart \
+  --name 'quota continuation shares relay state|quota startup resumes' --reporter expanded
+dart analyze --fatal-infos
+```
+
+Native captures remain attributed to the earlier source checkpoints above.
+The follow-up changes the partial-catalog branch; the native fixture had a
+complete catalog. No additional native replay is claimed at this revision.
+
 ## Required matrix
 
 | Boundary | Current result | Remaining proof |

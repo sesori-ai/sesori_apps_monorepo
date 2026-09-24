@@ -10,7 +10,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 | 4 — Bridge scheduler | Merged | [#1654][scheduler-pr]; route, views, cancellation and dispatch. |
 | 5 — Shared chat controls | Merged | [#1656][controls-pr]; shared hint, indicator and three-dot toggle. |
 | 6 — Regression reconciliation | Merged | [#1659][regression-pr]; feature docs, provider scope and proof boundaries. |
-| 7 — Verification and Pi prompt fix | In review | [#1664][verification-pr]; [partial matrix](VERIFICATION.md). |
+| 7 — Verification and Pi prompt fix | Partial | [#1664][verification-pr]; [matrix](VERIFICATION.md). |
 
 [plan-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1601
 [normalization-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1641
@@ -110,4 +110,8 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 - Android notice/menu/message-echo smoke passes after an emulator restart
   recovered DNS/WebSocket failures. Android enable reaches iOS, and iOS
   disable reaches Android; bridge reads confirm both authoritative outcomes.
+- Step 7 review follow-up: implicit `off` requires a complete catalog, preserving
+  rejection when thinking discovery fails. The new regression failed before the
+  guard; all 22 Pi tests pass afterward. Both composed tests pass with exact
+  injected acceptance timestamps; both owning packages analyze cleanly.
 - Final L4 matrix: partial. See VERIFICATION.md; the plan cannot be retired yet.
