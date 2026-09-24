@@ -38,7 +38,7 @@ void main() {
           theme: buildPregoThemeData(brightness: Brightness.light),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const SessionDiffsView(onBack: null, banner: null),
+          home: const SessionDiffsView(chrome: SessionDiffsGlassBar(onBack: null, banner: null)),
         ),
       ),
     );
@@ -90,5 +90,71 @@ void main() {
       findsNWidgets(2),
       reason: "line-number and +/- gutters should each disable selection",
     );
+  });
+  testWidgets("the split shows the selected file's diff beside the list", (tester) async {
+    final cubit = _MockDiffCubit();
+    whenListen(
+      cubit,
+      const Stream<DiffState>.empty(),
+      // A decoded response's list, like the cubit's: freezed rewraps a plain
+      // list on every read, which the view would take for new files.
+      initialState: DiffState.loaded(
+        files: const SessionDiffsResponse(
+          diffs: <FileDiff>[
+            FileDiff.content(
+              file: "docs/a.txt",
+              before: "",
+              after: "alpha line",
+              additions: 1,
+              deletions: 0,
+              status: FileDiffStatus.added,
+            ),
+            FileDiff.content(
+              file: "docs/b.txt",
+              before: "",
+              after: "beta line",
+              additions: 1,
+              deletions: 0,
+              status: FileDiffStatus.added,
+            ),
+          ],
+        ).diffs,
+      ),
+    );
+    addTearDown(cubit.close);
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      BlocProvider<DiffCubit>.value(
+        value: cubit,
+        child: MaterialApp(
+          theme: buildPregoThemeData(brightness: Brightness.light),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SessionDiffsView(
+            chrome: SessionDiffsSplit(
+              headerBuilder: ({required context, required title, required summary}) => Text("$title | $summary"),
+            ),
+          ),
+        ),
+      ),
+    );
+    for (var attempt = 0; attempt < 20 && find.text("alpha line").evaluate().isEmpty; attempt++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump();
+    }
+
+    expect(find.text("File changes | 2 files changed  +2"), findsOneWidget);
+    expect(find.text("alpha line"), findsOneWidget);
+    expect(find.text("beta line"), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey("diff-file-list-1")));
+    await tester.pump();
+
+    expect(find.text("alpha line"), findsNothing);
+    expect(find.text("beta line"), findsOneWidget);
+    expect(find.text("docs/b.txt"), findsOneWidget);
   });
 }

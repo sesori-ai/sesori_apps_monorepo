@@ -52,7 +52,7 @@ void main() {
 
     expect(widget, isA<DesktopSessionDiffsScreen>());
     final screen = widget as DesktopSessionDiffsScreen;
-    expect(screen.projectId, "project-1");
+    expect(screen.projectName, "Sesori");
     expect(screen.sessionId, "session-1");
     expect(
       screen.key,
@@ -282,28 +282,25 @@ void main() {
     });
   }
 
-  testWidgets("diff back preserves the pushed detail including read-only state", (tester) async {
-    final router = _callbackRouter(initialRoute: _detail(readOnly: true));
+  testWidgets("direct newSession back falls back to all-sessions", (tester) async {
+    final router = _callbackRouter(
+      initialRoute: const AppRoute.newSession(projectId: "p", projectName: "UI / Core"),
+    );
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    await tester.tap(find.text("diffs"));
-    await tester.pumpAndSettle();
-    expect(router.state.uri.toString(), _diffs.buildPath());
     await tester.tap(find.text("back"));
     await tester.pumpAndSettle();
-    expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
+    expect(router.state.uri.toString(), _sessions.buildPath());
   });
 
-  for (final route in [const AppRoute.newSession(projectId: "p", projectName: "UI / Core"), _diffs]) {
-    testWidgets("direct ${route.def.name} back falls back to all-sessions", (tester) async {
-      final router = _callbackRouter(initialRoute: route);
-      addTearDown(router.dispose);
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-      await tester.tap(find.text("back"));
-      await tester.pumpAndSettle();
-      expect(router.state.uri.toString(), _sessions.buildPath());
-    });
-  }
+  testWidgets("the diffs breadcrumb opens the project", (tester) async {
+    final router = _callbackRouter(initialRoute: _diffs);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.tap(find.text("project"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _sessions.buildPath());
+  });
 }
 
 Iterable<_RouteRegistration> _routeRegistrations({
@@ -435,7 +432,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                           },
                         ),
                       ],
-                      DesktopSessionDiffsScreen() => [button(label: "back", action: screen.onBack)],
+                      DesktopSessionDiffsScreen() => [button(label: "project", action: screen.onOpenProject)],
                       _ => [const Text("home")],
                     },
                   ),

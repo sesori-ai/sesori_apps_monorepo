@@ -182,9 +182,13 @@ The main pane hosts one full-width routed page.
   Cmd/Ctrl+[ returns a pushed page to its opener, including child-to-parent navigation, and does nothing
   on a page reached from the sidebar. The new session and session pages lead their title with the
   project as a 14 pt tertiary breadcrumb that opens the project's all-sessions page. Archived rows open
-  read-only. New-session creation replaces its page with detail. Diff Back returns to the opener when
-  pushed, or to the project's all-sessions page for direct entry. Deleting the open session returns to
+  read-only. New-session creation replaces its page with detail. Deleting the open session returns to
   all sessions.
+- The Changes page uses the same toolbar: the project breadcrumb, the File changes title, and the file
+  count with total +/− under it; Cmd/Ctrl+[ goes back to the session. Below it the changed files are a
+  list on the left and the selected file's full path and diff on the right; the first file opens
+  selected, choosing another shows it from its top, and a refresh stays on the selected file while it
+  is still changed.
 - A session being archived is hidden from the sidebar, the Activity popout, the project page and its chip
   counts for as long as its Undo window or its archive request is open, and returns if the archive is
   undone, refused or fails. Archiving the open session leaves its page. See
@@ -325,7 +329,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - The all-sessions page: toolbar title with no New session button, Archived toggle state, no floating button, the
   timeline grouping with running sessions first under Today, and pointer-mode row height.
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
-  new-session replacement, diff/direct-entry Back, home states, package-font resolution.
+  new-session replacement, Changes breadcrumb and file selection, home states, package-font resolution.
 - Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
   project-collapse and section-fold persistence, Show more paging and its reset, a row's compact time with its
   spoken form and its drop under larger text, shared menu/route callbacks. All-project admission happens once per
