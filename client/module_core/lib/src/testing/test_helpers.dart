@@ -338,9 +338,6 @@ class MockSseEventTracker() extends Mock implements SseEventTracker {
   ValueStream<Map<String, int>> get projectActivity => _projectActivity.stream;
 
   @override
-  Map<String, int> get currentProjectActivity => _projectActivity.value;
-
-  @override
   ValueStream<Map<String, Map<String, SessionActivityInfo>>> get sessionActivity => _sessionActivity.stream;
 
   @override

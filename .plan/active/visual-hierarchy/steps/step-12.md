@@ -11,8 +11,8 @@ Split in two. 12.a rebuilds the row hierarchy and adds the running count.
   finds each project's running sessions with
   `SessionActivityCalculator.isRunning`; it now returns their count with the
   order. A session only waiting for input is not counted (MS10). The existing
-  `activityById` still counts every active session and still feeds the phone
-  list.
+  `activityById` kept feeding the phone list until step 21 moved it to this
+  count; #1675 then removed `activityById`.
 - Project rows are 14 medium primary in every state. Session titles, in the
   project tree and in Activity, are 14 regular secondary. An unread session is
   primary, with the sparkle it already had, instead of bold (D1).

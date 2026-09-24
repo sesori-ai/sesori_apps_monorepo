@@ -226,7 +226,7 @@ void main() {
   group("FAB", () {
     testWidgets("opens add project dialog when tapped", (tester) async {
       when(() => mockCubit.state).thenReturn(
-        const ProjectListState.loaded(projects: [], activityById: {}),
+        const ProjectListState.loaded(projects: []),
       );
       _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries, path: _homePath);
 
@@ -308,7 +308,7 @@ void main() {
   group("Empty state", () {
     testWidgets("shows no-projects text and add project button when list is empty", (tester) async {
       when(() => mockCubit.state).thenReturn(
-        const ProjectListState.loaded(projects: [], activityById: {}),
+        const ProjectListState.loaded(projects: []),
       );
 
       await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
@@ -320,7 +320,7 @@ void main() {
 
     testWidgets("empty state add button opens dialog", (tester) async {
       when(() => mockCubit.state).thenReturn(
-        const ProjectListState.loaded(projects: [], activityById: {}),
+        const ProjectListState.loaded(projects: []),
       );
       _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries);
 

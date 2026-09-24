@@ -64,7 +64,6 @@ void main() {
       const Stream<ProjectListState>.empty(),
       initialState: const ProjectListState.loaded(
         projects: [ProjectSummary(id: "project-1", name: "Sesori Desktop", path: "/work/sesori", time: null)],
-        activityById: {},
       ),
     );
     refreshService = _MockRefreshService();
@@ -213,7 +212,6 @@ void main() {
           ProjectSummary(id: "project-1", name: "Selected", path: "/work/selected", time: null),
           ProjectSummary(id: "project-2", name: "Another", path: "/work/another", time: null),
         ],
-        activityById: {},
       ),
     );
     await tester.pumpWidget(app(state: running));
@@ -440,7 +438,7 @@ void main() {
     for (final state in <ProjectListState>[
       const ProjectListState.loading(),
       const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
-      const ProjectListState.loaded(projects: [], activityById: {}, isRefreshing: true),
+      const ProjectListState.loaded(projects: [], isRefreshing: true),
     ]) {
       whenListen(projects, const Stream<ProjectListState>.empty(), initialState: state);
       await tester.pumpWidget(app(state: running));
@@ -471,18 +469,18 @@ void main() {
     whenListen(
       projects,
       updates.stream,
-      initialState: const ProjectListState.loaded(projects: [first, second], activityById: {}),
+      initialState: const ProjectListState.loaded(projects: [first, second]),
     );
     await tester.pumpWidget(app(state: running));
     final original = tester.element(find.byKey(const ValueKey("one")));
-    updates.add(const ProjectListState.loaded(projects: [second, first], activityById: {}));
+    updates.add(const ProjectListState.loaded(projects: [second, first]));
     await tester.pumpAndSettle();
     expect(tester.element(find.byKey(const ValueKey("one"))), same(original));
     expect(
       tester.getTopLeft(find.byKey(const ValueKey("two"))).dy,
       lessThan(tester.getTopLeft(find.byKey(const ValueKey("one"))).dy),
     );
-    updates.add(const ProjectListState.loaded(projects: [second], activityById: {}));
+    updates.add(const ProjectListState.loaded(projects: [second]));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey("one")), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -499,7 +497,7 @@ void main() {
     );
 
     await tester.pumpWidget(app(state: running));
-    updates.add(const ProjectListState.loaded(projects: [added], activityById: {}));
+    updates.add(const ProjectListState.loaded(projects: [added]));
     await tester.pumpAndSettle();
 
     verifyNever(() => recent.retry(projectId: any(named: "projectId")));
@@ -519,7 +517,7 @@ void main() {
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
-      initialState: const ProjectListState.loaded(projects: [projectOne, projectTwo], activityById: {}),
+      initialState: const ProjectListState.loaded(projects: [projectOne, projectTwo]),
     );
     whenListen(
       recent,
@@ -979,7 +977,7 @@ void main() {
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
-      initialState: const ProjectListState.loaded(projects: [projectOne, projectTwo], activityById: {}),
+      initialState: const ProjectListState.loaded(projects: [projectOne, projectTwo]),
     );
     whenListen(recent, updates.stream, initialState: entries(stillRunning: true));
     String? openedSession;
@@ -1256,7 +1254,6 @@ void main() {
           for (var index = 0; index < 20; index++)
             ProjectSummary(id: "project-$index", name: "Project $index", path: "/fixture/$index", time: null),
         ],
-        activityById: const {},
       ),
     );
     await tester.pumpWidget(app(state: running));
@@ -1359,7 +1356,7 @@ void main() {
     try {
       var opens = 0;
       const states = [
-        ProjectListState.loaded(projects: [], activityById: {}),
+        ProjectListState.loaded(projects: []),
         ProjectListState.loading(),
         ProjectListState.failed(reason: RemoteFailureReason.networkDown),
         ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
@@ -1457,7 +1454,7 @@ void main() {
       whenListen(
         projects,
         const Stream<ProjectListState>.empty(),
-        initialState: ProjectListState.loaded(projects: available, activityById: const {}),
+        initialState: ProjectListState.loaded(projects: available),
       );
       return app(
         state: running,
@@ -1561,7 +1558,6 @@ void main() {
       // A third session only waits for input, so it is active but not running.
       initialState: const ProjectListState.loaded(
         projects: [project],
-        activityById: {"project-1": 3},
         runningByProjectId: {"project-1": 2},
       ),
     );
@@ -1589,7 +1585,7 @@ void main() {
     expect(tester.getSize(rail).width, 56);
     expect(find.byTooltip(runningHint), findsOneWidget);
     expect(tester.getCenter(find.byType(PregoAiLoader)).dx, lessThan(56));
-    updates.add(const ProjectListState.loaded(projects: [project], activityById: {}));
+    updates.add(const ProjectListState.loaded(projects: [project]));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 800));
     expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isFalse);
@@ -1599,7 +1595,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
     updates.add(
-      const ProjectListState.loaded(projects: [project], activityById: {}, unseenByProjectId: {"project-1": false}),
+      const ProjectListState.loaded(projects: [project], unseenByProjectId: {"project-1": false}),
     );
     await tester.pumpAndSettle();
     expect(find.byType(PregoAiLoader), findsNothing);

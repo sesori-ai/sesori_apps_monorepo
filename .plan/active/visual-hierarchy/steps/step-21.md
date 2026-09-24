@@ -21,8 +21,8 @@
   (architecture review); `showAddProjectDialog`
   takes `onProjectAdded`, which the phone's Projects screen, the desktop
   cockpit and the desktop's empty home wire to their open-project route.
-- Left for a follow-up PR: `activityById` has no reader left and goes with
-  its producer.
+- `activityById`, left without a reader, was removed with its producer in
+  #1675.
 
 ## Verification
 
