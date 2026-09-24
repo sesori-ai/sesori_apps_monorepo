@@ -6,7 +6,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 |---|---|---|
 | 1 — Plan and support audit | Merged | [#1601][plan-pr]; audit and reviewed plan. |
 | 2 — Quota normalization | Merged | [#1641][normalization-pr]; typed terminal events and Claude/Pi reporting. |
-| 3 — Durable contracts and readiness | In progress locally | Storage, shared wire model and Claude/Pi named-session readiness. |
+| 3 — Durable contracts and readiness | In review | [#1649][foundation-pr]; storage, wire model and Claude/Pi readiness. |
 | 4 — Bridge scheduler | In progress locally | Typed route, enriched views, ordered cancellation and normal prompt dispatch. |
 | 5 — Shared chat controls | Not started | Inline hint, indicator and three-dot toggle on phone and desktop. |
 | 6 — Regression reconciliation | Not started | Complete affected feature docs and capability matrix. |
@@ -14,6 +14,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 
 [plan-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1601
 [normalization-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1641
+[foundation-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1649
 
 ## Confirmed user decisions
 
@@ -56,5 +57,9 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
   Pi RPC probes and separate release-critical from extended regression coverage.
 - Step 3/4 split: measured bridge work exceeded the authored review budget, so storage/wire/readiness
   are published separately from scheduling. Architecture and product scope remain unchanged.
+- Step 3 architecture implementation review: approved; no actionable findings.
+- Step 3 local validation: 221 focused tests pass, including file-backed DB reopen,
+  v17→v18 migration, wire compatibility and Claude/Pi readiness. Owning package
+  analysis and documentation links pass. Full commands are in EVIDENCE.md.
 - Live scheduled continuation: not run; scheduler is local work and controls are not implemented.
 - Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.

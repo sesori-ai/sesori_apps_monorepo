@@ -248,8 +248,9 @@ final class PiSessionService({
         _sessions.containsKey(sessionId) ||
         _pendingNewDirectories.containsKey(sessionId) ||
         await _catalog.findSessionById(sessionId: sessionId) != null;
-    if (_extensionUi.getPendingQuestions(sessionId: sessionId).isNotEmpty)
+    if (_extensionUi.getPendingQuestions(sessionId: sessionId).isNotEmpty) {
       return PluginQuotaContinuationReadiness.awaitingInput;
+    }
     final state = _sessions[sessionId];
     if (state?.status is PluginSessionStatusRetry) return PluginQuotaContinuationReadiness.retrying;
     if (state?.queue.isNotEmpty ?? false) return PluginQuotaContinuationReadiness.queued;

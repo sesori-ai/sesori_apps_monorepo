@@ -20,6 +20,11 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 
 ## Quota-reset auto continuation
 
+Claude/Pi also implement named-session readiness for idle, retry, queued work
+and pending input, including known persisted sessions without a resident process.
+Other harnesses return unavailable readiness. Durable storage and shared wire
+models are in place; scheduler, toggle route and chat controls remain unimplemented.
+
 Audit date: **2026-09-24**. Internal terminal quota reporting is implemented for
 the Claude Code and Pi cases below. Sesori does **not yet implement** scheduled
 quota continuation for any harness. The

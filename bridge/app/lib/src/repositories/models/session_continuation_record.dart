@@ -4,7 +4,15 @@ import "package:sesori_shared/sesori_shared.dart";
 part "session_continuation_record.freezed.dart";
 part "session_continuation_record.g.dart";
 
-enum SessionContinuationReadiness() { idle, busy, retrying, queued, awaitingInput, unavailable, unknown }
+enum SessionContinuationReadiness() {
+  idle,
+  busy,
+  retrying,
+  queued,
+  awaitingInput,
+  unavailable,
+  unknown,
+}
 
 final class const SessionContinuationRecord({
   required final String sessionId,

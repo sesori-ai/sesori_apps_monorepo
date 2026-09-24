@@ -7,6 +7,8 @@ original observation time, and either an absolute UTC reset or an explicit
 unknown reset. Reporting is internal to the bridge. Scheduled sending and chat
 opt-in controls are subsequent steps of the
 [active plan](../../.plan/active/quota-auto-continuation/PLAN.md).
+The bridge has durable session-owned continuation storage and shared wire
+models; runtime event handling, the toggle route and the timer follow separately.
 
 ## Required Behavior
 
@@ -29,6 +31,22 @@ opt-in controls are subsequent steps of the
   events are never serialized as client SSE messages.
 - Unverified harnesses advertise unavailable reporting. Generic 429s, billing,
   authentication and connection-reset text cannot infer a quota reset.
+- Claude/Pi named-session readiness distinguishes idle from native retries,
+  queued work and pending input. A recognized nonresident persisted session is
+  idle without spawning a process; an unknown session is not evidence of idle.
+  Other harnesses return unavailable readiness.
+- Continuation storage keeps the session preference independent of its latest
+  observation/outcome. Reset and pause deadlines survive a database reopen;
+  a cancelled or consumed error cannot rearm on replay. A later error retains
+  the session's preference. Session deletion cascades the record.
+- Stale runtime generations cannot persist observations or cancel current ones.
+  Due-record selection uses the caller's reset and pause cutoffs consistently
+  for batch and named-session reads; repositories do not choose a retry policy.
+- An omitted `Session.autoContinuation` remains unavailable to clients. Unknown
+  future status/enum values decode conservatively. This step does not populate
+  the view in routes or SSE and does not enable scheduling.
+- History-derived model/agent/variant defaults preserve the stored fast-mode
+  preference; missing history selection falls back to stored defaults.
 
 ## Coverage Worth Running
 
@@ -36,6 +54,10 @@ opt-in controls are subsequent steps of the
   core session-event and SSE mapper suites. Include terminal failure, retry
   recovery/exhaustion/cancellation, forwarded subagents, original timestamps,
   stable IDs, missing resets and timezone ambiguity.
+- **L1:** Shared continuation wire tests; bridge continuation repository and
+  v17→v18 migration tests; session repository defaults tests. Cover actual file
+  close/reopen, deduplication, preference retention, generation rejection, named
+  versus batch cutoffs, and foreign-key deletion.
 - **L2:** Pi managed-target and minimum-PATH RPC probes with a synthetic provider:
   terminal quota text, transient recovery and retry exhaustion must each end in
   exactly one final settlement. See the dated
@@ -55,6 +77,9 @@ opt-in controls are subsequent steps of the
 - Redelivery moves a relative reset forward, or an ambiguous time becomes known.
 - A cancelled turn leaves a candidate that a later result can publish.
 - An internal reporting event leaks into client transport or schedules a prompt.
+- A restart loses an opt-in or pause deadline, or replays a consumed observation.
+- Non-idle/unknown readiness is treated as permission to send.
+- History replay silently clears a session's fast-mode preference.
 
 ## Harness Scope
 

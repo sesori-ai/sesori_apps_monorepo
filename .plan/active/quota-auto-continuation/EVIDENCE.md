@@ -179,3 +179,28 @@ synthetic model itself makes no network requests and consumes no account quota.
   https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/_internal/message_parser.py
 [pi-codex]:
   https://github.com/earendil-works/pi/blob/main/packages/ai/src/api/openai-codex-responses.ts
+
+## Foundation verification — 2026-09-24
+
+The split step 3 verifies storage/wire/readiness only. It does not prove a live
+scheduled send or a chat control journey.
+
+- `bridge/app`: `dart test test/bridge/repositories/session_continuation_repository_test.dart test/bridge/repositories/session_repository_test.dart test/drift/default/session_continuation_migration_test.dart test/bridge/persistence/database_test.dart` — **62 passed**.
+  The new repository tests close and reopen a file-backed SQLite database,
+  preserve pause deadlines and session preferences, reject stale generations,
+  and retain consumed/cancelled observation identities. The migration verifies
+  v17→v18 and session-owned cascading deletion.
+- `bridge/sesori_plugin_claude`: `dart test test/claude_plugin_impl_test.dart test/claude_session_service_test.dart` — **80 passed**.
+  Readiness includes native retry/busy, pending approval, scheduled wakeup,
+  and persisted nonresident sessions without spawning Claude.
+- `bridge/sesori_plugin_pi`: `dart test test/pi_session_service_test.dart` — **75 passed**.
+  Native retries remain non-idle until final settlement; persisted nonresident
+  sessions can be recognized without spawning Pi.
+- `shared/sesori_shared`: `dart test test/models/session_auto_continuation_test.dart` — **4 passed**.
+  Covers old-bridge omission, UTC millisecond serialization, conservative future
+  status/enum handling, and an explicitly required toggle preference.
+- Static analysis passed for `bridge/app`, `sesori_plugin_interface`,
+  `sesori_plugin_claude`, `sesori_plugin_pi`, `shared/sesori_shared`, and the
+  affected client packages (`app`, `desktop`, `module_core`, `module_app_ui`,
+  `module_desktop_core`).
+- Documentation local links and `git diff --check` passed.

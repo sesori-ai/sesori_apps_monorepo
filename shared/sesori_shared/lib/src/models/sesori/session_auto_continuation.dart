@@ -3,11 +3,26 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "session_auto_continuation.freezed.dart";
 part "session_auto_continuation.g.dart";
 
-enum AutoContinuationAvailability() { conditional, unavailable, unknown }
+enum AutoContinuationAvailability() {
+  conditional,
+  unavailable,
+  unknown,
+}
 
-enum AutoContinuationPauseReason() { busy, retrying, queued, awaitingInput, unavailable, historyUnavailable, unknown }
+enum AutoContinuationPauseReason() {
+  busy,
+  retrying,
+  queued,
+  awaitingInput,
+  unavailable,
+  historyUnavailable,
+  unknown,
+}
 
-enum AutoContinuationFailureReason() { submissionRejected, unknown }
+enum AutoContinuationFailureReason() {
+  submissionRejected,
+  unknown,
+}
 
 /// Bridge-owned preference and outcome; clients never schedule from this view.
 @Freezed(fromJson: true, toJson: true, copyWith: false)

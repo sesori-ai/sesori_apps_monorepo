@@ -143,8 +143,9 @@ final class ClaudeSessionService({
     }
     if (_retryStatuses.containsKey(sessionId)) return PluginQuotaContinuationReadiness.retrying;
     final state = _turns[sessionId];
-    if (state?.aborting != null || _teardownsBySession.containsKey(sessionId))
+    if (state?.aborting != null || _teardownsBySession.containsKey(sessionId)) {
       return PluginQuotaContinuationReadiness.busy;
+    }
     if ((state?.queue.isNotEmpty ?? false) || state?.wakeupAt != null) return PluginQuotaContinuationReadiness.queued;
     if (state?.hasWork ?? false) return PluginQuotaContinuationReadiness.busy;
     if (state != null || (!_processes.isResident(sessionId: sessionId) && sessionExists)) {

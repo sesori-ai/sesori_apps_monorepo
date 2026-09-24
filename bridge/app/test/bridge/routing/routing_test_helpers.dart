@@ -15,8 +15,8 @@ import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dar
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
-import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
+import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/repositories/pr_source_repository.dart";
@@ -371,10 +371,12 @@ Future<void> recordSessionBinding({
 
 class _NoopSessionRepository() implements SessionRepository {
   @override
-  AutoContinuationAvailability quotaReportingAvailability({required String pluginId}) => AutoContinuationAvailability.unavailable;
+  AutoContinuationAvailability quotaReportingAvailability({required String pluginId}) =>
+      AutoContinuationAvailability.unavailable;
 
   @override
-  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async => SessionContinuationReadiness.unavailable;
+  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      SessionContinuationReadiness.unavailable;
 
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
@@ -683,10 +685,12 @@ class FakeSessionRepository({
   final AppDatabase? _persistenceDatabase,
 }) implements SessionRepository {
   @override
-  AutoContinuationAvailability quotaReportingAvailability({required String pluginId}) => AutoContinuationAvailability.unavailable;
+  AutoContinuationAvailability quotaReportingAvailability({required String pluginId}) =>
+      AutoContinuationAvailability.unavailable;
 
   @override
-  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async => SessionContinuationReadiness.unavailable;
+  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      SessionContinuationReadiness.unavailable;
 
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
