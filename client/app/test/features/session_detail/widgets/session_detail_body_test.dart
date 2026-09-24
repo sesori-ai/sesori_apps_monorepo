@@ -199,6 +199,12 @@ const _permission = SesoriPermissionAsked(
   description: "Allow writing the release notes",
 );
 
+/// The question as the open modal shows it, not the needs-you card's preview.
+final _openQuestion = find.descendant(
+  of: find.byType(QuestionModal),
+  matching: find.text("Choose a release channel"),
+);
+
 Finder _pickerMenuItem(String label) => find.descendant(
   of: find.byType(SingleChildScrollView),
   matching: find.widgetWithText(InkWell, label),
@@ -1020,6 +1026,40 @@ void main() {
     });
   }
 
+  testWidgets("needs-you cards dock above the composer at its width and open their modals", (tester) async {
+    final state = _loadedState(pendingQuestions: const [_question], pendingPermissions: const [_permission]);
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final cards = find.byType(SessionDetailNeedsYouCard);
+    expect(cards, findsNWidgets(2));
+    expect(find.text("1 pending question"), findsOneWidget);
+    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(find.text("1 permission request pending"), findsOneWidget);
+    expect(find.text("Allow writing the release notes"), findsOneWidget);
+
+    final composer = tester.getRect(find.byType(PromptInput));
+    final permission = tester.getRect(cards.last);
+    expect(tester.getRect(cards.first).bottom, lessThanOrEqualTo(permission.top));
+    expect(permission.bottom, lessThanOrEqualTo(composer.top));
+    final permissionCard = tester.getRect(
+      find.descendant(of: cards.last, matching: find.byType(DecoratedBox)).first,
+    );
+    expect(permissionCard.left, composer.left);
+    expect(permissionCard.right, composer.right);
+    final amber = tester.widget<DecoratedBox>(
+      find.descendant(of: cards.first, matching: find.byType(DecoratedBox)).first,
+    );
+    expect((amber.decoration as BoxDecoration).color, PregoDesignSystem.light.colors.bgWarningSolid);
+
+    await tester.tap(find.text("Answer"));
+    await tester.pumpAndSettle();
+    expect(_openQuestion, findsOneWidget);
+  });
+
   testWidgets("harness block closes an open question without answering", (tester) async {
     final questions = StreamController<SesoriQuestionAsked>.broadcast();
     final states = StreamController<SessionDetailState>.broadcast();
@@ -1034,11 +1074,11 @@ void main() {
     state = state.copyWith(pendingQuestions: const [_question]);
     questions.add(_question);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(_openQuestion, findsOneWidget);
     state = state.copyWith(interaction: authRequired);
     states.add(state);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsNothing);
+    expect(_openQuestion, findsNothing);
     expect(state.pendingQuestions, const [_question]);
     expect(find.byType(PromptInput), findsNothing);
     expect(tester.takeException(), isNull);
@@ -1133,14 +1173,14 @@ void main() {
     permissions.add(_permission);
     notices.add(const SessionDetailPromptOptionsUpdated());
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsNothing);
+    expect(_openQuestion, findsNothing);
     expect(find.text("write_release_notes"), findsNothing);
     expect(find.text("Prompt options changed. Updated settings and retrying your message."), findsNothing);
 
     when(() => cubit.isRouteVisible).thenReturn(true);
     questions.add(_question);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(_openQuestion, findsOneWidget);
   });
 
   testWidgets("shows an alert when stale prompt options are refreshed automatically", (tester) async {
@@ -1223,12 +1263,12 @@ void main() {
     state = state.copyWith(pendingQuestions: const [_question]);
     questions.add(_question);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(_openQuestion, findsOneWidget);
 
     state = state.copyWith(pendingQuestions: const []);
     states.add(state);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsNothing);
+    expect(_openQuestion, findsNothing);
   });
 
   testWidgets("does not leave a question stale when resolved during presentation", (tester) async {
@@ -1247,7 +1287,7 @@ void main() {
     state = state.copyWith(pendingQuestions: const []);
     await tester.pumpAndSettle();
 
-    expect(find.text("Choose a release channel"), findsNothing);
+    expect(_openQuestion, findsNothing);
   });
 
   testWidgets("closes an open permission when it leaves pending state", (tester) async {
@@ -1309,7 +1349,7 @@ void main() {
     state = state.copyWith(pendingQuestions: const [_question]);
     questionController.add(_question);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(_openQuestion, findsOneWidget);
 
     state = state.copyWith(pendingPermissions: const [_permission]);
     permissionController.add(_permission);
@@ -1356,13 +1396,13 @@ void main() {
     state = state.copyWith(pendingQuestions: const [_question]);
     questionController.add(_question);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsNothing);
+    expect(_openQuestion, findsNothing);
 
     await tester.tap(find.text("Allow"));
     await tester.pump(const Duration(milliseconds: 250));
     await tester.pumpAndSettle();
 
-    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(_openQuestion, findsOneWidget);
   });
 
   // Only the input container is grouped with the text field via a

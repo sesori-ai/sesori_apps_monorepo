@@ -59,8 +59,8 @@ class SessionDetailLoadedView extends StatefulWidget {
 
 class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
   /// Measured height of the floating bottom controls overlaying the bottom of
-  /// the chat — the background-tasks bar and composer. Fed to the message list
-  /// so the newest message rests just above them (and the
+  /// the chat — the needs-you cards, background-tasks bar and composer. Fed to
+  /// the message list so the newest message rests just above them (and the
   /// "jump to latest" pill clears them) while older content scrolls up behind
   /// the composer's fade. Read-only variants stay at 0.
   ///
@@ -91,7 +91,6 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
   Widget _buildContent({required BuildContext context, required double horizontalInset}) {
     final loc = context.loc;
     final state = widget.state;
-    final hasBottomControls = widget.bottomControls != null;
     final showEmptyState =
         !state.hasRenderableMessages &&
         state.retryErrorMessage == null &&
@@ -102,12 +101,35 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
         state.awaitingBridgeSubmissions.isEmpty &&
         state.bridgeQueuedPrompts.isEmpty;
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);
+    // An archived session's requests can never be answered.
+    final canAnswer = !widget.readOnly && !state.isArchived && state.interaction.canInteract;
+    final needsYou = [
+      if (state.pendingQuestions.firstOrNull?.questions.firstOrNull case final question? when canAnswer)
+        SessionDetailNeedsYouCard(
+          icon: TablerRegular.help,
+          label: questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount),
+          request: _firstLine(question.question),
+          action: loc.needsYouAnswer,
+          onPressed: widget.onShowPendingQuestions,
+        ),
+      if (state.pendingPermissions.firstOrNull case final permission? when canAnswer)
+        SessionDetailNeedsYouCard(
+          icon: TablerRegular.shield,
+          label: state.pendingPermissions.length == 1
+              ? loc.permissionBannerSingle
+              : loc.permissionBannerMultiple(state.pendingPermissions.length),
+          request: _firstLine(permission.description),
+          action: loc.needsYouReview,
+          onPressed: widget.onShowPendingPermissions,
+        ),
+    ];
+    final hasBottomControls = needsYou.isNotEmpty || widget.bottomControls != null;
 
     // The scaffold lets this view fill the full height behind the transparent
     // bar (reserveBarSpace: false), so the message list scrolls behind it like
     // every other screen. The chat's content inset — and the pinned refresh
-    // indicator / banners — come from PregoTopBarInsetBuilder so they clear
-    // the bar at rest and ride the top-nav connection banner's height
+    // indicator and archived notice — come from PregoTopBarInsetBuilder so
+    // they clear the bar at rest and ride the top-nav connection banner's height
     // animation frame-by-frame.
     return Stack(
       children: [
@@ -158,7 +180,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
             ),
           ],
         ),
-        // The refresh indicator and pending banners pin just below the
+        // The refresh indicator and archived notice pin just below the
         // transparent bar, floating over the chat that scrolls behind them —
         // rather than pushing the chat down out of the behind-bar region. The
         // cluster itself is inset-independent, so it rides through as `child`
@@ -175,39 +197,15 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
             children: [
               if (state.isRefreshing) const LinearProgressIndicator(),
               // Archiving is permanent, so this session is audit-only: say so
-              // where the composer used to be, and drop the pending banners —
-              // an archived session's requests can never be answered.
+              // where the composer used to be.
               if (state.isArchived) const SessionDetailArchivedNotice(),
-              if (!widget.readOnly &&
-                  !state.isArchived &&
-                  state.interaction.canInteract &&
-                  state.pendingQuestions.isNotEmpty)
-                SessionDetailPendingBanner(
-                  icon: TablerRegular.help,
-                  backgroundColor: context.prego.colors.bgBrandPrimary,
-                  foregroundColor: context.prego.colors.textBrandPrimary,
-                  label: questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount),
-                  onTap: widget.onShowPendingQuestions,
-                ),
-              if (!widget.readOnly &&
-                  !state.isArchived &&
-                  state.interaction.canInteract &&
-                  state.pendingPermissions.isNotEmpty)
-                SessionDetailPendingBanner(
-                  icon: TablerRegular.shield,
-                  backgroundColor: context.prego.colors.bgSuccessPrimary,
-                  foregroundColor: context.prego.colors.textSuccessPrimary,
-                  label: state.pendingPermissions.length == 1
-                      ? loc.permissionBannerSingle
-                      : loc.permissionBannerMultiple(state.pendingPermissions.length),
-                  onTap: widget.onShowPendingPermissions,
-                ),
             ],
           ),
         ),
-        // Floating bottom controls — the background-tasks bar and composer.
-        // Queued submissions are regular rows in the transcript above them.
-        if (widget.bottomControls case final bottomControls?)
+        // Floating bottom controls: the needs-you cards docked above the
+        // background-tasks bar and composer. Queued submissions are regular
+        // rows in the transcript above them.
+        if (hasBottomControls)
           Positioned(
             bottom: 0,
             left: horizontalInset,
@@ -217,13 +215,18 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                 if (!mounted) return;
                 _bottomControlsHeight.value = size.height;
               },
-              child: bottomControls,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [...needsYou, ?widget.bottomControls],
+              ),
             ),
           ),
       ],
     );
   }
 }
+
+String _firstLine(String text) => text.trim().split("\n").first;
 
 bool hasActiveWork({
   required SessionStatus sessionStatus,

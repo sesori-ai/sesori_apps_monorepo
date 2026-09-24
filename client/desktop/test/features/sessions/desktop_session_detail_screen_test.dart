@@ -266,10 +266,13 @@ void main() {
     // The page toolbar's menu, not a composer one.
     expect(find.byTooltip("More actions"), findsOneWidget);
 
-    await tester.tap(find.text("1 pending question"));
+    await tester.tap(find.text("Answer"));
     await tester.pumpAndSettle();
 
-    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(QuestionModal), matching: find.text("Choose a release channel")),
+      findsOneWidget,
+    );
   });
 
   testWidgets("desktop delegates child-session navigation", (tester) async {

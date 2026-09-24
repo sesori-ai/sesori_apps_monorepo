@@ -1022,6 +1022,8 @@
   "questionReplyFailed": "Failed to send answer. Please try again.",
   "questionRejectFailed": "Failed to reject question. Please try again.",
   "permissionReplyFailed": "Failed to send permission response. Please try again.",
+  "needsYouAnswer": "Answer",
+  "needsYouReview": "Review",
   "permissionBannerSingle": "1 permission request pending",
   "permissionBannerMultiple": "{count} permission requests pending",
   "@permissionBannerMultiple": {
