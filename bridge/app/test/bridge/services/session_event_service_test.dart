@@ -309,6 +309,35 @@ void main() {
       expect(stored?.fastMode, isTrue);
     });
 
+    test("publishes nothing when the plugin generation retires during the prompt-defaults write", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      sessionDao.duringNextPromptDefaultsUpdate = () => pluginRuntime.currentGeneration = 2;
+      final published = <SessionPromptDefaultsChange>[];
+      final subscription = promptService.promptDefaultsChanges.listen(published.add);
+      addTearDown(subscription.cancel);
+
+      await service.normalize(
+        allowDuringStop: false,
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 1,
+          event: const BridgeSseSessionPromptDefaultsChanged(
+            sessionID: "backend-root",
+            agent: "Default",
+            model: null,
+          ),
+        ),
+      );
+
+      expect(published, isEmpty, reason: "a retired generation must not update clients");
+    });
+
     test("publishes nothing when backend-originated prompt defaults fail to persist", () async {
       await _insertRoot(
         database: database,
@@ -1498,6 +1527,9 @@ class _TransactionGatedSessionDao(super.attachedDatabase) extends SessionDao {
     _failPromptDefaultsUpdate = true;
   }
 
+  /// Runs while the next prompt-defaults write is in flight.
+  void Function()? duringNextPromptDefaultsUpdate;
+
   @override
   Future<SessionDto?> updatePromptDefaults({
     required String sessionId,
@@ -1508,6 +1540,9 @@ class _TransactionGatedSessionDao(super.attachedDatabase) extends SessionDao {
       _failPromptDefaultsUpdate = false;
       return Future<SessionDto?>.error(StateError("prompt defaults write failed"));
     }
+    final during = duringNextPromptDefaultsUpdate;
+    duringNextPromptDefaultsUpdate = null;
+    during?.call();
     return super.updatePromptDefaults(sessionId: sessionId, agent: agent, agentModel: agentModel);
   }
 

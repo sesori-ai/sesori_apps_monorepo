@@ -471,6 +471,11 @@ class SessionEventService({
             sessionId: sessionID,
             agent: agent,
             agentModel: model,
+            isCurrentSource: () => isCurrentEvent(
+              pluginId: source.pluginId,
+              generation: source.generation,
+              allowDuringStop: allowDuringStop,
+            ),
           );
           return null;
         }(),
