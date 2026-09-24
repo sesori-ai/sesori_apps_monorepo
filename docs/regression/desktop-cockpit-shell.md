@@ -130,10 +130,10 @@ The main pane hosts one full-width routed page.
   Typing narrows all three by title words (an untitled session by "Untitled session"), bolding the matched
   letters; signing out closes the palette with the cockpit; nothing
   matching reads "No matches". Up/Down move the highlight past headings, Enter or a click closes the palette
-  and runs the pick, and Esc closes it. The highlighted row is plainly visible in both themes: pale brand
-  blue in light, the sidebar's selected tint in dark. The palette shows the lists as they stood when it opened. One
-  command list in the shell drives both the palette and the shortcuts; page-only commands such as Mark as
-  unread stay on their page.
+  and runs the pick, and Esc closes it. The highlighted row is plainly visible in both themes: a clear
+  grey in light, the sidebar's selected tint in dark. Hovering a row moves the same highlight. The palette
+  shows the lists as they stood when it opened. One command list in the shell drives both the palette and
+  the shortcuts; page-only commands such as Mark as unread stay on their page.
 - Project hover/keyboard focus reveals New session. Right-click project and
   session menus reuse the shared rename/hide and session action flows.
   Session title tooltips, selection, running/awaiting/unread signals and
