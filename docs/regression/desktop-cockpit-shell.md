@@ -231,9 +231,9 @@ The main pane hosts one full-width routed page.
   Notification activation dismisses root popups before revealing its session:
   the same session retains its page and Back stack; another gets the typed stack.
 - This computer opens a flat, screen-clamped popover in expanded and compact modes
-  without replacing the main pane. A Local bridge heading and process status
-  precede one clear Start/Stop/Retry/Take Over action; logs/configuration are
-  secondary. A crashed helper offers Retry despite retained On intent. A
+  without replacing the main pane. A Local bridge heading and the sidebar's
+  status dot with the process status precede the actions. Start, Retry and Take
+  Over are one solid button; Stop is a quiet row beside logs and configuration. A crashed helper offers Retry despite retained On intent. A
   displaced running helper also offers Stop without requiring takeover. Explicit
   Stop cannot become Start if the helper exits before dispatch. Busy states
   disable mutations, not diagnostics; Settings dismisses before opening.

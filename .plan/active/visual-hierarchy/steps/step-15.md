@@ -26,3 +26,18 @@ Split in two: 15.a is the window's chrome and pages; 15.b is the bridge popover.
   overflow at 250%, now fixed.
 - `client/module_app_ui` and `client/app` `test/features/settings` pass.
 - Rendered every tab in light and dark before and after and compared them.
+
+## 15.b What changed
+
+- The bridge popover's status leads with the same status dot as the
+  sidebar's This computer row; the colour logic moved into one shared
+  `desktopBridgeStatusColor`.
+- Stopping a healthy bridge is a quiet row beside Open logs and Bridge
+  settings instead of a full-width grey button. Start, Retry and Take over,
+  which recover a stopped or failed bridge, stay solid buttons.
+
+## 15.b Verification
+
+- `client/desktop` `dart analyze --fatal-infos lib test/core test/features` is
+  clean; `test/core` and `test/features` pass.
+- Rendered the running-bridge popover in light and dark before and after.
