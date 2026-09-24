@@ -41,6 +41,7 @@ class const DesktopSessionListScreen({
   /// Also opens a session the empty project's composer started.
   required final SessionOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
+  required final VoidCallback onNewSession,
   required final VoidCallback onOpenHarnessSettings,
 }) extends StatelessWidget {
   @override
@@ -49,6 +50,7 @@ class const DesktopSessionListScreen({
       projectName: projectName,
       onSessionTap: onSessionTap,
       actionDispatcher: actionDispatcher,
+      onNewSession: onNewSession,
       createNewSessionCubit: ({required projectId}) => createNewSessionCubit(locator: getIt, projectId: projectId),
       onOpenHarnessSettings: onOpenHarnessSettings,
     );
@@ -61,6 +63,7 @@ class const DesktopSessionListView({
   required final String? projectName,
   required final SessionOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
+  required final VoidCallback onNewSession,
   required final NewSessionCubit Function({required String projectId}) createNewSessionCubit,
   required final VoidCallback onOpenHarnessSettings,
 }) extends StatefulWidget {
@@ -108,6 +111,16 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
             title: projectName ?? loc.sessionListTitle,
             subtitle: buildProjectNavSubtitle(context),
             actions: [
+              // An empty project already shows the composer.
+              if (!showComposer)
+                PregoButtonsSolid(
+                  key: const Key("desktop-project-page-new-session"),
+                  label: loc.sessionListNewSession,
+                  leadingIcon: TablerRegular.plus,
+                  hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                  size: PregoButtonsSolidSize.sm,
+                  onPressed: widget.onNewSession,
+                ),
               Semantics(
                 toggled: showArchived,
                 child: PregoButtonsSolid(

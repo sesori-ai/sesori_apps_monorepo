@@ -41,6 +41,7 @@ void main() {
   late List<String> composersFor;
   late List<String> opened;
   late Stream<NewSessionState> newSessionStates;
+  late int newSessionTaps;
 
   setUp(() {
     cubit = _MockSessionListCubit();
@@ -54,6 +55,7 @@ void main() {
     composersFor = [];
     opened = [];
     newSessionStates = const Stream<NewSessionState>.empty();
+    newSessionTaps = 0;
   });
 
   NewSessionCubit newSessionCubit({required String projectId}) {
@@ -109,6 +111,7 @@ void main() {
             child: DesktopSessionListView(
               projectName: "sesori",
               onSessionTap: ({required session}) => opened.add(session.id),
+              onNewSession: () => newSessionTaps++,
               createNewSessionCubit: newSessionCubit,
               onOpenHarnessSettings: () {},
               actionDispatcher: const SessionListActionDispatcher(
@@ -125,12 +128,13 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets("the toolbar names the project and leaves New session to the sidebar", (tester) async {
+  testWidgets("the toolbar names the project and starts a new session in it", (tester) async {
     await pumpPage(tester: tester, filter: SessionListFilter.active);
 
     final toolbar = find.byType(DesktopPageToolbar);
     expect(find.descendant(of: toolbar, matching: find.text("sesori")), findsOneWidget);
-    expect(find.descendant(of: toolbar, matching: find.text("New session")), findsNothing);
+    await tester.tap(find.descendant(of: toolbar, matching: find.text("New session")));
+    expect(newSessionTaps, 1);
     expect(find.byType(FloatingActionButton), findsNothing);
     expect(find.text("Fix the build"), findsOneWidget);
     expect(find.text("Today"), findsOneWidget);
@@ -212,6 +216,7 @@ void main() {
     expect(composersFor, ["project-1"]);
     expect(find.byType(PromptInput), findsOneWidget);
     expect(find.text("Start your first session"), findsNothing);
+    expect(find.byKey(const Key("desktop-project-page-new-session")), findsNothing);
     expect(find.byKey(const Key("desktop-project-page-archived")), findsOneWidget);
 
     await pumpPage(tester: tester, filter: SessionListFilter.archived, sessions: const []);
