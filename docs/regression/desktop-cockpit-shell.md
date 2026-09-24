@@ -332,7 +332,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - The new session page: toolbar above a centred, width-capped column with room left below it, and the
   project selector reporting the chosen project (`desktop_new_session_screen_test`).
 - The all-sessions page: toolbar title with no New session button, Archived toggle state, no floating button, the
-  timeline grouping with running sessions first under Today, and pointer-mode row height.
+  timeline grouping with running sessions first under Today, and pointer-mode row height. With no active sessions
+  it shows the composer and the catalog scan row instead, keeps the composer until a started session opens even
+  when the list shows it first, and shows no composer under Archived (`desktop_session_list_screen_test`).
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
   new-session replacement, Changes breadcrumb and file selection, home states, package-font resolution.
 - Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
@@ -401,8 +403,6 @@ reorder or surviving a new pick, a running or waiting session under Recent, and 
 
 ## Maintenance Sources
 
-- Home starts a session in a project other than the one picked, keeps one project's draft after another is
-  picked, lists a running or waiting session under Recent, or shows an empty section heading.
 - `client/desktop/lib/core/widgets/desktop_cockpit_shell.dart`
 - `client/desktop/lib/core/widgets/desktop_sidebar.dart`
 - `client/desktop/lib/core/widgets/desktop_window_drag_area.dart`
@@ -428,6 +428,7 @@ reorder or surviving a new pick, a running or waiting session under Recent, and 
 - `client/module_prego/lib/components/navigation/prego_nav_title.dart`
 - `client/module_prego/test/components/prego_nav_title_test.dart`
 - `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`
+- `client/desktop/test/features/sessions/desktop_session_list_screen_test.dart`
 - `client/module_core/lib/src/cubits/recent_sessions/`
 - `client/module_core/lib/src/cubits/session_list/session_list_mode.dart`
 - `client/module_desktop_core/lib/src/cubits/desktop_sidebar/desktop_sidebar_cubit.dart`

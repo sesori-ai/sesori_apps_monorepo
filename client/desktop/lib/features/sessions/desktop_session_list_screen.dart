@@ -75,6 +75,11 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
   /// page shows the progress the pull gesture's own spinner used to.
   bool _refreshing = false;
 
+  /// The empty project's composer is creating a session. It stays mounted
+  /// until then, even if the bridge lists the new session first, so the
+  /// session it starts still opens.
+  bool _creating = false;
+
   Future<void> _refresh() async {
     setState(() => _refreshing = true);
     try {
@@ -92,7 +97,7 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
     final state = context.watch<SessionListCubit>().state;
     final loaded = state is SessionListLoaded ? state : null;
     final showArchived = loaded != null && loaded.filter != SessionListFilter.active;
-    final isEmptyProject = loaded != null && !showArchived && loaded.sessions.isEmpty;
+    final showComposer = loaded != null && !showArchived && (loaded.sessions.isEmpty || _creating);
     return Scaffold(
       body: Column(
         children: [
@@ -148,25 +153,33 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
             ],
           ),
           Expanded(
-            child: isEmptyProject
+            child: showComposer
                 ? BlocProvider(
                     create: (_) => widget.createNewSessionCubit(projectId: cubit.projectId),
-                    child: NewSessionView(
-                      projectId: cubit.projectId,
-                      projectName: projectName,
-                      // The page names its project; the header shows it without a picker.
-                      projects: const [],
-                      onProjectSelected: ({required projectId, required projectName}) {},
-                      onBack: () {},
-                      onOpenHarnessSettings: widget.onOpenHarnessSettings,
-                      onSessionCreated: onSessionTap,
-                      composerScopeBuilder: ({required child}) => DesktopComposerPresentationScope(child: child),
-                      // The desktop root owns its single connection banner.
-                      banner: null,
-                      pageChrome: const NewSessionPageChrome(
-                        topBar: SizedBox.shrink(),
-                        maxContentWidth: DesktopSessionListView.maxContentWidth,
-                        footer: null,
+                    child: BlocListener<NewSessionCubit, NewSessionState>(
+                      listener: (context, state) => setState(() => _creating = state.phase is NewSessionPhaseSending),
+                      child: NewSessionView(
+                        projectId: cubit.projectId,
+                        projectName: projectName,
+                        // The page names its project; the header shows it without a picker.
+                        projects: const [],
+                        onProjectSelected: ({required projectId, required projectName}) {},
+                        onBack: () {},
+                        onOpenHarnessSettings: widget.onOpenHarnessSettings,
+                        onSessionCreated: onSessionTap,
+                        composerScopeBuilder: ({required child}) => DesktopComposerPresentationScope(child: child),
+                        // The desktop root owns its single connection banner.
+                        banner: null,
+                        pageChrome: NewSessionPageChrome(
+                          // A scan started from the toolbar still reports here.
+                          topBar: CatalogScanRow(
+                            scan: loaded.catalogScan,
+                            onCancel: cubit.cancelCatalogScan,
+                            onDismiss: cubit.dismissCatalogScan,
+                          ),
+                          maxContentWidth: DesktopSessionListView.maxContentWidth,
+                          footer: null,
+                        ),
                       ),
                     ),
                   )

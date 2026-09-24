@@ -22,17 +22,16 @@ class _MockNewSessionCubit() extends MockCubit<NewSessionState> implements NewSe
 
 class _MockChatInputModeCubit() extends MockCubit<ChatInputMode> implements ChatInputModeCubit;
 
-const _composing = NewSessionState.composing(
-  config: NewSessionComposeConfig(
-    availablePlugins: [],
-    selectedPlugin: null,
-    options: NewSessionOptionsLoadState.unsupported(),
-    backendScope: NewSessionBackendScope.verified(bridgeId: null),
-    isPluginDiscoveryInFlight: false,
-    projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
-  ),
-  phase: NewSessionPhase.idle(),
+const _config = NewSessionComposeConfig(
+  availablePlugins: [],
+  selectedPlugin: null,
+  options: NewSessionOptionsLoadState.unsupported(),
+  backendScope: NewSessionBackendScope.verified(bridgeId: null),
+  isPluginDiscoveryInFlight: false,
+  projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
 );
+
+const _composing = NewSessionState.composing(config: _config, phase: NewSessionPhase.idle());
 
 void main() {
   late _MockSessionListCubit cubit;
@@ -225,5 +224,43 @@ void main() {
     await tester.pump();
 
     expect(opened, ["created"]);
+  });
+
+  testWidgets("the composer stays until its session opens, even when the list shows the session first", (
+    tester,
+  ) async {
+    final states = StreamController<NewSessionState>();
+    addTearDown(states.close);
+    newSessionStates = states.stream;
+    await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: const []);
+    states.add(
+      NewSessionState.composing(
+        config: _config,
+        phase: NewSessionPhase.sending(
+          submission: NewSessionSubmissionSnapshot.text(
+            draft: ComposerDraft.typed(text: "Go"),
+            attachments: const [],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final created = testSession(id: "created", title: "Created");
+    await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: [created]);
+    expect(find.byType(NewSessionView), findsOneWidget);
+    expect(composersFor, ["project-1"]);
+
+    states.add(NewSessionState.created(session: created));
+    await tester.pump();
+    await tester.pump();
+    expect(opened, ["created"]);
+  });
+
+  testWidgets("an empty project keeps the catalog scan row above the composer", (tester) async {
+    await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: const []);
+
+    expect(find.byType(CatalogScanRow), findsOneWidget);
+    expect(find.byType(PromptInput), findsOneWidget);
   });
 }
