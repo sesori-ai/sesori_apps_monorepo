@@ -121,6 +121,51 @@ verify the pinned driven runtime and commit/release before advertising support.
 - Codex and the other harnesses retain their unverified reporting status. This
   step adds no account-bucket guesses, scheduler, database state or chat controls.
 
+### Reproduction and measured revisions
+
+Initial plugin/core checks measured commit
+`b2ea432f33d85a0e73df4cb7b6a3746ddb1f3a06`. The review follow-up measured
+`94854f5bde9f9a8cb4108b7e9daefca4927cd6c1`, including the main merge and the
+Claude trailing-stream fix. Commands ran on the same file contents immediately
+before these commits. The evidence-only update does not change tested sources.
+Toolchain: repository-pinned Dart 3.13.4 / Flutter 3.47.5.
+
+All working directories below are relative to the repository root. Each listed
+command exited 0; counts refer to that command, not an inferred full-suite run.
+
+| Revision | Working directory | Exact command | Result |
+|---|---|---|---|
+| Initial | `bridge/sesori_plugin_pi` | `dart test test/pi_session_service_test.dart` | 74 passed |
+| Initial | `bridge/sesori_plugin_pi` | `dart test test/pi_quota_interruption_mapper_test.dart` | 3 passed |
+| Initial | `bridge` | `dart analyze sesori_plugin_interface sesori_plugin_claude sesori_plugin_pi app` | No issues |
+| Follow-up | `bridge/sesori_plugin_claude` | `dart test test/claude_session_service_test.dart --name 'quota observation'` | 8 passed |
+| Follow-up | `bridge/sesori_plugin_claude` | `dart test test/claude_session_service_test.dart test/claude_quota_interruption_mapper_test.dart test/claude_plugin_impl_test.dart` | 83 passed |
+| Follow-up | `bridge/app` | `dart test test/bridge/repositories/mappers/session_event_mapper_test.dart test/bridge/sse/bridge_event_mapper_test.dart` | 31 passed |
+| Follow-up | `bridge` | `dart analyze sesori_plugin_claude app` | No issues |
+| Follow-up | `bridge` | `dart pub get --enforce-lockfile --offline` | Succeeded; no lockfile diff |
+
+The new trailing-stream regression failed before the fix (the expected quota
+event was absent). After the fix, trailing frames preserve the complete error,
+while a new root `message_start` supersedes it.
+
+The committed [RPC probe][quota-probe] and [synthetic provider][quota-fixture]
+replace the original local-only probe scripts. Run from the repository root:
+
+```sh
+npx --yes --package=@earendil-works/pi-coding-agent@0.85.1 -- node bridge/sesori_plugin_pi/tool/quota_settlement_probe.mjs 0.85.1
+npx --yes --package=@earendil-works/pi-coding-agent@0.84.1 -- node bridge/sesori_plugin_pi/tool/quota_settlement_probe.mjs 0.84.1
+```
+
+Both commands passed on the follow-up revision: three scenarios each
+(`terminal`, `recover`, `exhausted`). The probe checks the actual CLI version,
+uses isolated settings under `bridge/.dart_tool/`, and prints JSON event
+summaries. It asserts assistant provider/timestamp/stop reason and retry-end
+ordering before final settlement. npm may download the pinned runtime; the
+synthetic model itself makes no network requests and consumes no account quota.
+
+[quota-probe]: ../../../bridge/sesori_plugin_pi/tool/quota_settlement_probe.mjs
+[quota-fixture]: ../../../bridge/sesori_plugin_pi/tool/quota_probe_provider.ts
+
 [pi-pinned-error]:
   https://github.com/earendil-works/pi/blob/v0.85.1/packages/ai/src/api/openai-codex-responses.ts
 [pi-pinned-session]:
