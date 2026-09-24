@@ -9,6 +9,14 @@ reconnect or restart.
 
 ## Required Behavior
 
+- Quota-continuation preferences and observed waits survive bridge restart;
+  the client restores the authoritative view through normal session reads and
+  updates. Reading or importing old quota history must never arm a new wait.
+  A consumed/unconfirmed attempt cannot send again after recovery. Reconnect
+  shows the saved setting without a client timer or inferred reset. See
+  [Quota auto continuation](quota-auto-continuation.md) for restart, sleep and
+  multi-client coverage.
+
 - Reading an already-synced session serves from the bridge store and
   never starts a stopped backend. Only a first backfill or a re-read after the
   backend advanced may reach it; backfill is lazy and per session, and a session

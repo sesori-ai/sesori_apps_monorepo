@@ -38,22 +38,23 @@ distinguishes observed local errors from upstream contracts and open checks.
 
 Eligibility depends on a terminal quota interruption **and** a usable reset
 time for the selected provider/account/model. Native transient retries are a
-different capability. “Unverified” below is an evidence limit, not a claim that
+different capability. “Not implemented; unverified” means the control is
+unavailable and protocol support has not yet been established. It is not a claim that
 the harness cannot support this feature; do not mark it 🚫 without verification.
 
-| Harness | Reset evidence | Reporting status |
+| Harness | Reset evidence | Sesori availability |
 |---|---|---|
 | Claude Code | Tagged session-limit error with IANA zone | ✅ Conditional; root terminal error only. |
 | Pi | Recognized `openai-codex` error text | ✅ Conditional; final RPC settlement verified on 0.85.1 / 0.84.1. |
-| Codex | Local and documented reset timestamps | Unverified; failed-turn bucket binding needs proof. |
-| OpenCode | Raw error data reaches mapper | Reset payload/provider attribution unverified. |
-| GitHub Copilot | ACP payload needs inspection | Reset reporting unverified. |
-| Cursor | Headless payload needs inspection | Reset reporting unverified. |
-| Hermes Agent | ACP payload needs inspection | Reset reporting unverified. |
-| Oh My Pi | ACP seam differs from Pi RPC | Reset reporting unverified. |
-| DeepSeek | ACP payload needs inspection | Reset reporting unverified. |
-| Grok Build | ACP payload needs inspection | Reset reporting unverified. |
-| Antigravity | Official ACP payload needs inspection | Reset reporting unverified. |
+| Codex | Local and documented reset timestamps | Not implemented; failed-turn bucket binding unverified. |
+| OpenCode | Raw error data reaches mapper | Not implemented; reset payload/provider attribution unverified. |
+| GitHub Copilot | ACP payload needs inspection | Not implemented; reset reporting unverified. |
+| Cursor | Headless payload needs inspection | Not implemented; reset reporting unverified. |
+| Hermes Agent | ACP payload needs inspection | Not implemented; reset reporting unverified. |
+| Oh My Pi | ACP seam differs from Pi RPC | Not implemented; reset reporting unverified. |
+| DeepSeek | ACP payload needs inspection | Not implemented; reset reporting unverified. |
+| Grok Build | ACP payload needs inspection | Not implemented; reset reporting unverified. |
+| Antigravity | Official ACP payload needs inspection | Not implemented; reset reporting unverified. |
 
 - Claude recognizes the tagged `rate_limit` assistant error beginning “You've
   hit your session limit”. The observed time/zone format yields a UTC reset
