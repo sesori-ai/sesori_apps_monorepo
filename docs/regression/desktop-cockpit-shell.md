@@ -28,8 +28,9 @@ The main pane hosts one full-width routed page.
   drag only after it travels further than a click tolerates, so toolbar controls keep their clicks,
   undelayed, and a text selection or a scrollbar still wins its own press. Where the band and a zooming
   region overlap, one press still reaches the host once.
-- The sidebar's collapse button sits in the panel's footer after refresh and settings, in both modes; the
-  rail fits two controls a line, so it wraps below them. The session list clips its rows' highlights, so a
+- Open, the sidebar's footer is one 44-point row: This computer, then Settings and collapse. Refresh sits
+  on the Projects header beside New project. The rail stacks the footer: This computer, then refresh and
+  Settings, then collapse, since it fits two controls a line. The session list clips its rows' highlights, so a
   highlighted row scrolled under the section above never shows through it.
 - The native window chrome is forced to the app's effective brightness (the in-app mode, or the system's
   while the app follows it) and again on every change, because a host can only be forced light or dark.
@@ -50,11 +51,11 @@ The main pane hosts one full-width routed page.
 - Windows narrower than 760 pixels temporarily collapse the sidebar without
   changing saved preferences. Widening restores the user's expanded/collapsed
   choice. The native minimum window remains 560 × 480.
-- Project shortcuts open the existing sessions route. The labeled New session button is the sidebar's primary
-  action. The small New project button on the Projects section header uses the shared folder dialog and project-list
+- Project shortcuts open the existing sessions route. New session is a quiet row at the top of the sidebar,
+  with its shortcut at the row's end; with no projects it reads Add project. The small New project button on the Projects section header uses the shared folder dialog and project-list
   cubit, and hides with the collapsed sidebar, where the home pane still offers it. The collapse control owns
   sidebar presentation. The compact Projects shortcut opens home, including empty/recovery states when the window is
-  too narrow to expand. The separated footer groups This computer with refresh and Settings icon controls.
+  too narrow to expand. The separated footer groups This computer with the Settings and collapse controls.
   Icon/status hints and truncated-label hints remain useful, while fully visible labels need no duplicate tooltip.
 - Explicit sidebar refresh runs through Layer-3 `DesktopSidebarRefreshService` over the same scoped project and recent
   inventory services. It awaits the project phase before refreshing admitted recent entries, joining initial reads
@@ -115,13 +116,13 @@ The main pane hosts one full-width routed page.
   avatar and ends with a compact last-activity time; its tooltip and screen-reader label say that time in full.
   Activity rows add the project name under the title. A running session shows no time, and a row drops the time
   before its title as it narrows or as the system text size grows.
-- Cmd+N (Ctrl+N on Windows/Linux) and the sidebar's New session button open New Session for the open project, else the
+- Cmd+N (Ctrl+N on Windows/Linux) and the sidebar's New session row open New Session for the open project, else the
   most recently active one; with no project yet they open the New project dialog. They do nothing until the project
   inventory has loaded, and never substitute another project for an open one that is missing from the inventory.
   Cmd/Ctrl+B toggles the saved sidebar choice except during automatic narrow-window collapse, where it does nothing
   like the disabled control. Cmd/Ctrl+, opens Settings. Held-key repeats do not repeat these commands; text-field
-  focus remains usable and root popups own their focus. Hints use the platform modifier; only the selected project's
-  New session button advertises the project shortcut. Windows and Linux retain native window chrome.
+  focus remains usable and root popups own their focus. Hints use the platform modifier; the sidebar's New session row
+  shows the shortcut. Windows and Linux retain native window chrome.
 - Project hover/keyboard focus reveals New session. Right-click project and
   session menus reuse the shared rename/hide and session action flows.
   Session title tooltips, selection, running/awaiting/unread signals and
@@ -167,7 +168,7 @@ The main pane hosts one full-width routed page.
   Only the all-sessions page creates a full list owner; recent-session menus
   remain non-viewing action scopes.
 - The all-sessions page is a toolbar over one timeline. The toolbar names the project and its repository,
-  toggles Archived, owns New session as the primary button, and keeps Refresh and Scan for sessions in its
+  toggles Archived, leaves New session to the sidebar, and keeps Refresh and Scan for sessions in its
   overflow menu; nothing floats over the list and there is no back arrow. The shared list sits in a centred
   column about 760 pt wide while the whole pane scrolls. It has no Running section: running sessions lead
   Today and read "Running" where the time would be. Rows are about 44 pt, keep the state sparkle in a fixed
@@ -318,7 +319,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   archived row.
 - The new session page: toolbar above a centred, width-capped column with room left below it, and the
   project selector reporting the chosen project (`desktop_new_session_screen_test`).
-- The all-sessions page: toolbar title and New session, Archived toggle state, no floating button, the
+- The all-sessions page: toolbar title with no New session button, Archived toggle state, no floating button, the
   timeline grouping with running sessions first under Today, and pointer-mode row height, leading sparkle
   and trailing "Running".
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,

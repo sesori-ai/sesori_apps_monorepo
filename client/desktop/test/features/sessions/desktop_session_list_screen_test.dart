@@ -60,7 +60,6 @@ void main() {
             child: DesktopSessionListScreen(
               projectName: "sesori",
               onSessionTap: ({required session}) {},
-              onNewSession: () {},
               actionDispatcher: const SessionListActionDispatcher(
                 deleteConfirmation: SessionDeleteConfirmation.sheet,
                 onSessionArchived: null,
@@ -75,15 +74,12 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets("the toolbar names the project and owns New session; nothing floats over the list", (tester) async {
+  testWidgets("the toolbar names the project and leaves New session to the sidebar", (tester) async {
     await pumpPage(tester: tester, filter: SessionListFilter.active);
 
     final toolbar = find.byType(DesktopPageToolbar);
     expect(find.descendant(of: toolbar, matching: find.text("sesori")), findsOneWidget);
-    expect(
-      find.descendant(of: toolbar, matching: find.byKey(const Key("desktop-project-page-new-session"))),
-      findsOneWidget,
-    );
+    expect(find.descendant(of: toolbar, matching: find.text("New session")), findsNothing);
     expect(find.byType(FloatingActionButton), findsNothing);
     expect(find.text("Fix the build"), findsOneWidget);
     expect(find.text("Today"), findsOneWidget);

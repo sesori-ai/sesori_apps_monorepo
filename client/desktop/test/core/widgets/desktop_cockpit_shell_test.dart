@@ -380,7 +380,8 @@ void main() {
     );
     when(projects.retryLoadProjects).thenAnswer((_) async {});
     await tester.pumpWidget(app(state: running));
-    expect(tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-refresh"))).onPressed, isNull);
+    // Refresh lives on the Projects header, which a failed load does not show.
+    expect(find.byKey(const Key("desktop-sidebar-refresh")), findsNothing);
     await tester.tap(find.text("Retry"));
     verify(projects.retryLoadProjects).called(1);
     verifyNever(projects.refreshProjects);
@@ -427,7 +428,7 @@ void main() {
     });
   }
 
-  testWidgets("refresh is disabled during initial load, disconnection and existing project refresh", (tester) async {
+  testWidgets("refresh is unavailable during initial load, disconnection and existing project refresh", (tester) async {
     for (final state in <ProjectListState>[
       const ProjectListState.loading(),
       const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
@@ -436,7 +437,13 @@ void main() {
       whenListen(projects, const Stream<ProjectListState>.empty(), initialState: state);
       await tester.pumpWidget(app(state: running));
       await tester.pump();
-      expect(tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-refresh"))).onPressed, isNull);
+      final refresh = find.byKey(const Key("desktop-sidebar-refresh"));
+      // Before projects load there is no Projects header to carry it.
+      if (state is ProjectListLoaded) {
+        expect(tester.widget<IconButton>(refresh).onPressed, isNull);
+      } else {
+        expect(refresh, findsNothing);
+      }
     }
     verifyNever(refreshService.refresh);
   });
@@ -1374,13 +1381,22 @@ void main() {
     }
   });
 
-  testWidgets("new session is the labeled primary action and new project sits on the Projects header", (tester) async {
+  testWidgets("new session is a quiet row, new project sits on the Projects header, the footer is one row", (
+    tester,
+  ) async {
     await tester.pumpWidget(app(state: running));
     expect(find.text("Sesori"), findsNothing);
-    expect(find.text("New session"), findsOneWidget);
+    final newSession = find.byKey(const Key("desktop-sidebar-new-session"));
+    expect(find.descendant(of: newSession, matching: find.text("New session")), findsOneWidget);
     expect(find.text("New project"), findsNothing);
-    expect(find.text(defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N"), findsOneWidget);
-    expect(tester.widget<FilledButton>(find.byKey(const Key("desktop-sidebar-new-session"))).onPressed, isNotNull);
+    expect(
+      find.descendant(
+        of: newSession,
+        matching: find.text(defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N"),
+      ),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: rail, matching: find.byType(FilledButton)), findsNothing);
     final newProject = tester.widget<IconButton>(
       find.descendant(
         of: find.byKey(const Key("desktop-sidebar-projects-header")),
@@ -1389,8 +1405,22 @@ void main() {
     );
     expect(newProject.tooltip, "New project");
     expect(newProject.onPressed, isNotNull);
-    final footer = tester.widget<Container>(find.byKey(const Key("desktop-sidebar-footer")));
-    expect((footer.decoration! as BoxDecoration).border, isNotNull);
+    // Refresh sits beside New project while the sidebar is open.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("desktop-sidebar-projects-header")),
+        matching: find.byKey(const Key("desktop-sidebar-refresh")),
+      ),
+      findsOneWidget,
+    );
+    final footer = find.byKey(const Key("desktop-sidebar-footer"));
+    expect((tester.widget<Container>(footer).decoration! as BoxDecoration).border, isNotNull);
+    // One 44-point row under a 1-point rule: This computer, then settings and collapse.
+    expect(tester.getSize(footer).height, 45);
+    final bridgeRow = tester.getCenter(find.text("This computer")).dy;
+    for (final key in ["desktop-sidebar-settings", "desktop-sidebar-toggle"]) {
+      expect(tester.getCenter(find.byKey(Key(key))).dy, bridgeRow);
+    }
   });
 
   group("new session", () {
@@ -1482,6 +1512,7 @@ void main() {
       GetIt.instance.registerSingleton<ConnectionService>(connection);
       await tester.pumpWidget(shell(selectedProjectId: null, available: const []));
       await tester.pumpAndSettle();
+      expect(find.text("Add project"), findsOneWidget);
       await tester.tap(find.byKey(const Key("desktop-sidebar-new-session")));
       await tester.pumpAndSettle();
       expect(started, isEmpty);

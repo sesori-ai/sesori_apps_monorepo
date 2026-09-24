@@ -38,3 +38,29 @@ Split in two. 12.a rebuilds the row hierarchy and adds the running count.
   - The signals test checks the "2 running" text, and the Show more test
     checks its count, size and colour.
 - Rendered the shell in the light theme and checked the sidebar by eye.
+
+## 12.b — New session row and one-row footer
+
+### What changed
+
+- The filled New session button becomes a quiet sidebar row with a plus icon
+  and the shortcut at its end (D1). With no projects it reads Add project. In
+  the rail the shortcut moves into its tooltip.
+- The project page's toolbar no longer has its own New session button; the
+  sidebar row is the one entry point.
+- Open, the footer is one 44-point row: This computer, Settings and collapse.
+  Refresh moved to the Projects header beside New project, because it reloads
+  projects and their sessions and the row had no room for the label. The rail
+  keeps refresh in its stacked footer, since it has no headers.
+
+### Verification
+
+- `client/desktop`: `dart analyze --fatal-infos` is clean on tracked files.
+  `test/core` and `test/features` pass.
+  - The shell test checks the quiet row and its shortcut, refresh on the
+    Projects header, and the footer's single 45-point row.
+  - The refresh tests check it is absent before projects load and disabled
+    while they refresh.
+  - The router and project page tests check that New session left the toolbar.
+- Rendered the shell in light and dark themes: "This computer" fits at the
+  default sidebar width, and the rail stacks its footer.

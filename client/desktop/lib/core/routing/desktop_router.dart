@@ -143,10 +143,6 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                   readOnly: session.time?.archived != null,
                 ),
               ),
-              onNewSession: () => _pushRoute(
-                context: context,
-                route: AppRoute.newSession(projectId: route.projectId, projectName: route.projectName),
-              ),
               actionDispatcher: _desktopSessionActions,
             ),
           );

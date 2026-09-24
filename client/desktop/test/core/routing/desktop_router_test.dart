@@ -247,7 +247,8 @@ void main() {
     final router = _callbackRouter(initialRoute: _sessions);
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    await tester.tap(find.text("new"));
+    // The sidebar's New session row pushes the page over the one it was opened from.
+    unawaited(router.push(const AppRoute.newSession(projectId: "p", projectName: "UI / Core").buildPath()));
     await tester.pumpAndSettle();
     expect(router.state.uri.path, const AppRoute.newSession(projectId: "p", projectName: null).buildPath());
     await tester.tap(find.text("created"));
@@ -401,7 +402,6 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                           label: "open archived",
                           action: () => list.onSessionTap(session: _session),
                         ),
-                        button(label: "new", action: list.onNewSession),
                       ],
                       DesktopNewSessionScreen() => [
                         button(
