@@ -10,6 +10,7 @@ import "../../extensions/build_context_x.dart";
 import "../../widgets/catalog_scan_row.dart";
 import "../../widgets/list_search_field.dart";
 import "../../widgets/remote_failure_view.dart";
+import "project_path_labels.dart";
 import "widgets/activity_tile.dart";
 import "widgets/project_tile.dart";
 

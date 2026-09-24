@@ -1,6 +1,6 @@
-import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:flutter_test/flutter_test.dart";
+import "package:sesori_app_ui/src/features/project_list/project_path_labels.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:test/test.dart";
 
 ProjectSummary _project(String id, String path) => ProjectSummary(id: id, name: null, path: path, time: null);
 
