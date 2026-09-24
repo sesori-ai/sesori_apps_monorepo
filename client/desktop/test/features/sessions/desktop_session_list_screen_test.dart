@@ -41,6 +41,7 @@ void main() {
   late List<String> composersFor;
   late List<String> opened;
   late Stream<NewSessionState> newSessionStates;
+  late int newSessionTaps;
 
   setUp(() {
     cubit = _MockSessionListCubit();
@@ -54,6 +55,7 @@ void main() {
     composersFor = [];
     opened = [];
     newSessionStates = const Stream<NewSessionState>.empty();
+    newSessionTaps = 0;
   });
 
   NewSessionCubit newSessionCubit({required String projectId}) {
@@ -109,6 +111,7 @@ void main() {
             child: DesktopSessionListView(
               projectName: "sesori",
               onSessionTap: ({required session}) => opened.add(session.id),
+              onNewSession: () => newSessionTaps++,
               createNewSessionCubit: newSessionCubit,
               onOpenHarnessSettings: () {},
               actionDispatcher: const SessionListActionDispatcher(
@@ -125,15 +128,29 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets("the toolbar names the project and leaves New session to the sidebar", (tester) async {
+  testWidgets("the toolbar names the project and starts a new session in it", (tester) async {
     await pumpPage(tester: tester, filter: SessionListFilter.active);
 
     final toolbar = find.byType(DesktopPageToolbar);
     expect(find.descendant(of: toolbar, matching: find.text("sesori")), findsOneWidget);
-    expect(find.descendant(of: toolbar, matching: find.text("New session")), findsNothing);
+    await tester.tap(find.descendant(of: toolbar, matching: find.text("New session")));
+    expect(newSessionTaps, 1);
     expect(find.byType(FloatingActionButton), findsNothing);
     expect(find.text("Fix the build"), findsOneWidget);
     expect(find.text("Today"), findsOneWidget);
+  });
+
+  testWidgets("a narrow pane under large text folds New session to its icon without overflow", (tester) async {
+    tester.view.physicalSize = const Size(496, 800);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpPage(tester: tester, filter: SessionListFilter.active);
+
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byTooltip("New session"));
+    expect(newSessionTaps, 1);
   });
 
   testWidgets("Archived toggles the cubit and reads as on while archived sessions show", (tester) async {
@@ -212,6 +229,7 @@ void main() {
     expect(composersFor, ["project-1"]);
     expect(find.byType(PromptInput), findsOneWidget);
     expect(find.text("Start your first session"), findsNothing);
+    expect(find.byKey(const Key("desktop-project-page-new-session")), findsNothing);
     expect(find.byKey(const Key("desktop-project-page-archived")), findsOneWidget);
 
     await pumpPage(tester: tester, filter: SessionListFilter.archived, sessions: const []);

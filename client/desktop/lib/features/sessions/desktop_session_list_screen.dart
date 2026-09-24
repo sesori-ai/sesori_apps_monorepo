@@ -41,6 +41,7 @@ class const DesktopSessionListScreen({
   /// Also opens a session the empty project's composer started.
   required final SessionOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
+  required final VoidCallback onNewSession,
   required final VoidCallback onOpenHarnessSettings,
 }) extends StatelessWidget {
   @override
@@ -49,6 +50,7 @@ class const DesktopSessionListScreen({
       projectName: projectName,
       onSessionTap: onSessionTap,
       actionDispatcher: actionDispatcher,
+      onNewSession: onNewSession,
       createNewSessionCubit: ({required projectId}) => createNewSessionCubit(locator: getIt, projectId: projectId),
       onOpenHarnessSettings: onOpenHarnessSettings,
     );
@@ -61,6 +63,7 @@ class const DesktopSessionListView({
   required final String? projectName,
   required final SessionOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
+  required final VoidCallback onNewSession,
   required final NewSessionCubit Function({required String projectId}) createNewSessionCubit,
   required final VoidCallback onOpenHarnessSettings,
 }) extends StatefulWidget {
@@ -102,58 +105,81 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
     return Scaffold(
       body: Column(
         children: [
-          DesktopPageToolbar(
-            breadcrumb: null,
-            status: null,
-            title: projectName ?? loc.sessionListTitle,
-            subtitle: buildProjectNavSubtitle(context),
-            actions: [
-              Semantics(
-                toggled: showArchived,
-                child: PregoButtonsSolid(
-                  key: const Key("desktop-project-page-archived"),
-                  label: loc.desktopProjectPageArchived,
-                  leadingIcon: TablerRegular.archive,
-                  // Blue means on.
-                  hierarchy: showArchived ? PregoButtonsSolidHierarchy.primary : PregoButtonsSolidHierarchy.secondary,
-                  size: PregoButtonsSolidSize.sm,
-                  // Held while the empty project's composer is creating a session,
-                  // so the composer stays mounted until that session opens.
-                  onPressed: loaded == null || _creating ? null : cubit.toggleArchived,
-                ),
-              ),
-              // A mouse has no pull gesture, so the pull's two refreshes live here.
-              PregoAnchorMenu(
-                flat: true,
-                menuWidth: 220,
-                acquireOpenLease: null,
-                entriesBuilder: () => [
-                  PregoMenuItem(
-                    title: loc.desktopProjectPageRefresh,
-                    subtitle: null,
-                    isSelected: false,
-                    shortcutLabel: null,
-                    leadingIcon: TablerRegular.refresh,
-                    isEnabled: !_refreshing,
-                    onTap: () => unawaited(_refresh()),
+          LayoutBuilder(
+            builder: (context, toolbar) => DesktopPageToolbar(
+              breadcrumb: null,
+              status: null,
+              title: projectName ?? loc.sessionListTitle,
+              subtitle: buildProjectNavSubtitle(context),
+              actions: [
+                // An empty project already shows the composer.
+                if (!showComposer)
+                  // Two labelled buttons crowd out the title on a narrow pane or
+                  // under large text, so this one folds to its icon there.
+                  // ponytail: fixed width per text scale; measure the labels if
+                  // more toolbar actions arrive.
+                  toolbar.maxWidth < MediaQuery.textScalerOf(context).scale(640)
+                      ? IconButton.filled(
+                          key: const Key("desktop-project-page-new-session"),
+                          tooltip: loc.sessionListNewSession,
+                          onPressed: widget.onNewSession,
+                          icon: const Icon(TablerRegular.plus, size: PregoIconSize.md),
+                        )
+                      : PregoButtonsSolid(
+                          key: const Key("desktop-project-page-new-session"),
+                          label: loc.sessionListNewSession,
+                          leadingIcon: TablerRegular.plus,
+                          hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                          size: PregoButtonsSolidSize.sm,
+                          onPressed: widget.onNewSession,
+                        ),
+                Semantics(
+                  toggled: showArchived,
+                  child: PregoButtonsSolid(
+                    key: const Key("desktop-project-page-archived"),
+                    label: loc.desktopProjectPageArchived,
+                    leadingIcon: TablerRegular.archive,
+                    // Blue means on.
+                    hierarchy: showArchived ? PregoButtonsSolidHierarchy.primary : PregoButtonsSolidHierarchy.secondary,
+                    size: PregoButtonsSolidSize.sm,
+                    // Held while the empty project's composer is creating a session,
+                    // so the composer stays mounted until that session opens.
+                    onPressed: loaded == null || _creating ? null : cubit.toggleArchived,
                   ),
-                  PregoMenuItem(
-                    title: loc.harnessManagementScan,
-                    subtitle: null,
-                    isSelected: false,
-                    shortcutLabel: null,
-                    leadingIcon: TablerRegular.radar_2,
-                    onTap: cubit.startCatalogScan,
-                  ),
-                ],
-                triggerBuilder: (context, openMenu) => IconButton(
-                  key: const Key("desktop-project-page-more"),
-                  tooltip: loc.sessionDetailMoreActions,
-                  onPressed: loaded == null ? null : openMenu,
-                  icon: const Icon(TablerRegular.dots, size: PregoIconSize.md),
                 ),
-              ),
-            ],
+                // A mouse has no pull gesture, so the pull's two refreshes live here.
+                PregoAnchorMenu(
+                  flat: true,
+                  menuWidth: 220,
+                  acquireOpenLease: null,
+                  entriesBuilder: () => [
+                    PregoMenuItem(
+                      title: loc.desktopProjectPageRefresh,
+                      subtitle: null,
+                      isSelected: false,
+                      shortcutLabel: null,
+                      leadingIcon: TablerRegular.refresh,
+                      isEnabled: !_refreshing,
+                      onTap: () => unawaited(_refresh()),
+                    ),
+                    PregoMenuItem(
+                      title: loc.harnessManagementScan,
+                      subtitle: null,
+                      isSelected: false,
+                      shortcutLabel: null,
+                      leadingIcon: TablerRegular.radar_2,
+                      onTap: cubit.startCatalogScan,
+                    ),
+                  ],
+                  triggerBuilder: (context, openMenu) => IconButton(
+                    key: const Key("desktop-project-page-more"),
+                    tooltip: loc.sessionDetailMoreActions,
+                    onPressed: loaded == null ? null : openMenu,
+                    icon: const Icon(TablerRegular.dots, size: PregoIconSize.md),
+                  ),
+                ),
+              ],
+            ),
           ),
           Expanded(
             child: showComposer
