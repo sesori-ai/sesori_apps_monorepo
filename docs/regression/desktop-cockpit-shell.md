@@ -394,10 +394,11 @@ wrong session-action targets, or lost navigation after switching projects. Vary 
 Unicode, window sizes, theme, and sidebar width; preserve any already-running
 bridge during UI-only checks.
 
+On home, watch for a session starting in a project other than the one picked, a draft following a project
+reorder or surviving a new pick, a running or waiting session under Recent, and an empty section heading.
+
 ## Maintenance Sources
 
-- Home starts a session in a project other than the one picked, keeps one project's draft after another is
-  picked, lists a running or waiting session under Recent, or shows an empty section heading.
 - `client/desktop/lib/core/widgets/desktop_cockpit_shell.dart`
 - `client/desktop/lib/core/widgets/desktop_sidebar.dart`
 - `client/desktop/lib/core/widgets/desktop_window_drag_area.dart`

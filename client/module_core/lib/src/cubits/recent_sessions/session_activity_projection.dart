@@ -12,11 +12,10 @@ typedef SessionActivityItem = ({ProjectSummary project, SessionActivityEntry ent
 final class SessionActivityProjection._({
   required final List<SessionActivityGroup> activityGroups,
 
-  /// The home's Recent: the latest sessions across projects that are neither
-  /// running nor waiting, newest first.
+  /// Sessions across projects that are neither running nor waiting, newest
+  /// first.
   required final List<SessionActivityItem> recent,
 }) {
-  static const int _recentLimit = 5;
 
   /// Sessions waiting on the user, in project order.
   List<SessionActivityItem> get needsYou => [
@@ -105,7 +104,7 @@ final class SessionActivityProjection._({
     settled.sort((a, b) => updated(b).compareTo(updated(a)));
     return SessionActivityProjection._(
       activityGroups: List.unmodifiable(groups),
-      recent: List.unmodifiable(settled.take(_recentLimit)),
+      recent: List.unmodifiable(settled),
     );
   }
 }

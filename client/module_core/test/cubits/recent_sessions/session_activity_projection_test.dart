@@ -146,7 +146,7 @@ void main() {
     expect(projection.running.map((item) => item.entry.session.id), ["running"]);
   });
 
-  test("recent holds the five newest settled sessions across projects, leaving hidden ones out", () {
+  test("recent holds settled sessions across projects newest first, leaving hidden ones out", () {
     final one = [for (var index = 1; index <= 4; index++) _session(id: "one-$index", projectId: "one", updated: index)];
     final two = [
       _session(id: "two-running", projectId: "two", updated: 99),
@@ -187,7 +187,7 @@ void main() {
 
     expect(
       projection.recent.map((item) => (item.project.id, item.entry.session.id)),
-      [("two", "two-unseen"), ("one", "one-4"), ("one", "one-3"), ("one", "one-2"), ("one", "one-1")],
+      [("two", "two-unseen"), ("one", "one-4"), ("one", "one-3"), ("one", "one-2"), ("one", "one-1"), ("two", "two-old")],
     );
     expect(projection.recent.first.entry.isUnseen, isTrue);
   });
