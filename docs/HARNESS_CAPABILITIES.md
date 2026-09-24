@@ -218,7 +218,9 @@ models only from new/resume responses and has no deletion capability.
 
 Codex advertises fast mode per model as a `model/list` service tier: a model
 offering a `serviceTiers` entry with id `"priority"` (Codex's "Fast" tier, e.g.
-"2x speed, increased usage") sets `PluginModel.supportsFastMode`. A selected
+"2x speed, increased usage") reports `PluginModel.fastMode` as available with
+a 30-minute prompt-cache lifetime; Codex has no account-level availability
+signal. A selected
 session's `fastMode` is sent as `serviceTier` on every `turn/start` —
 `"priority"` when on, `"default"` when off, which explicitly returns the
 thread to standard speed rather than leaving it on whatever tier a prior turn
@@ -230,14 +232,27 @@ first turn already runs fast.
 
 Claude Code reports fast-mode support per model as `supportsFastMode: true` in
 the stream-json `initialize` response (omitted for models without it; in CLI
-2.1.281 only some Opus models carry it), which sets
-`PluginModel.supportsFastMode`. Fast mode is not a launch flag: a fresh process
+2.1.281 only some Opus models carry it), which sets `PluginModel.fastMode` with a
+60-minute prompt-cache lifetime. Fast mode is not a launch flag: a fresh process
 starts with it off, and the plugin sends the `apply_flag_settings`
 control request (`{"subtype":"apply_flag_settings","settings":{"fastMode":…}}`, the shape the Agent SDK's `applyFlagSettings` sends) before a turn whenever the session's choice
 differs from what the resident process last applied. The CLI acknowledges the
 setting even when the model or account cannot use fast mode (for example, extra
-usage turned off) and then serves at standard speed; it reports why only
-through `fast_mode_disabled_reason`, which the plugin does not surface.
+usage turned off) and then serves at standard speed. The plugin reads the
+handshake's account-level `fast_mode_disabled_reason` and reports those models
+as unavailable with a closed reason: extra usage disabled (`extra_usage_disabled`),
+not on the plan (`free`), disabled by the organization (`preference`,
+`model_not_allowed`), or unknown (`not_first_party`, `disabled_by_env`,
+`unknown`, and unmapped values, which are logged). In CLI 2.1.281 the
+`sdk_opt_in_required` reason precedes the account checks and masks them, so the
+global catalog probe opts in with `apply_flag_settings {fastMode: true}` and
+sends a second `initialize`, whose reason is the real account state (verified
+live: `sdk_opt_in_required` became `extra_usage_disabled`). The flag is
+process-scoped (no settings file changes) and the probe is torn down afterwards.
+Only the probe feeds the catalog; user-session handshakes are never used for
+availability. If the opt-in or re-read fails, the failure is logged and fast
+mode stays offered. The transient `network_error` and `pending` reasons also
+keep it offered, with a log. Per-turn reasons from result messages are not tracked.
 
 ## Agent selection and harness modes
 

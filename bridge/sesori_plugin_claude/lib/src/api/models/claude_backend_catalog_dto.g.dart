@@ -10,6 +10,7 @@ _ClaudeBackendCatalogDto _$ClaudeBackendCatalogDtoFromJson(Map json) =>
     _ClaudeBackendCatalogDto(
       commands: _commandsOrEmpty(json['commands']),
       models: _modelsOrEmpty(json['models']),
+      fastModeDisabledReason: _stringOrNull(json['fast_mode_disabled_reason']),
     );
 
 _ClaudeCommandDto _$ClaudeCommandDtoFromJson(Map json) => _ClaudeCommandDto(

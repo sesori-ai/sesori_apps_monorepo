@@ -85,7 +85,8 @@ void main() {
       expect(decoration.color, prego.colors.bgSurface2);
       expect(decoration.borderRadius, BorderRadius.circular(12));
       expect(decoration.border?.top.color, prego.colors.borderPrimary);
-      expect(tester.getSize(find.byKey(_viewport)).height, 144);
+      // A short transcript keeps the panel short.
+      expect(tester.getSize(find.byKey(_viewport)).height, lessThan(144));
       expect(find.text("Shell"), findsOneWidget);
       expect(find.text("Done"), findsOneWidget);
       expect(find.text("\$ git status --short\n\n M file.dart"), findsOneWidget);
@@ -125,7 +126,7 @@ void main() {
     });
   }
 
-  testWidgets("copies the exact command and output separately", (tester) async {
+  testWidgets("one copy takes the transcript as shown", (tester) async {
     String? copied;
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
       if (call.method == "Clipboard.setData") copied = (call.arguments as Map)["text"] as String;
@@ -141,12 +142,10 @@ void main() {
     );
     await tester.tap(find.byKey(_toggle));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Copy command"));
+    expect(find.byTooltip("Copy"), findsOneWidget);
+    await tester.tap(find.byTooltip("Copy"));
     await tester.pump();
-    expect(copied, command);
-    await tester.tap(find.byTooltip("Copy output"));
-    await tester.pump();
-    expect(copied, output);
+    expect(copied, "\$ $command\n\n$output");
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -179,6 +178,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(vertical.offset, greaterThan(0));
     expect(tester.getSize(_panel).height, panelHeight);
+    expect(tester.getSize(viewport).height, 144);
+    // A sideways swipe on the panel's footer still scrolls the transcript.
+    final before = horizontal.offset;
+    await tester.drag(find.text("Done"), const Offset(-100, 0));
+    await tester.pumpAndSettle();
+    expect(horizontal.offset, greaterThan(before));
     expect(tester.takeException(), isNull);
   });
 

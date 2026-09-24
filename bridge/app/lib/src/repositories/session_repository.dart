@@ -1500,20 +1500,25 @@ class SessionRepository({
     );
   }
 
-  /// Records the agent and model the backend reports for [sessionId].
+  /// Records the agent and model the backend reports for [sessionId] and
+  /// returns the stored prompt defaults, or null when the session has no row.
   ///
   /// Leaves the stored fast mode untouched: only client requests choose it
-  /// (see [updateRequestedPromptDefaults]).
-  Future<void> updatePromptDefaults({
+  /// (see [updateRequestedPromptDefaults]). The returned value carries it, so
+  /// callers never publish a backend report without it.
+  Future<SessionPromptDefaults?> updatePromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
-  }) {
-    return _sessionDao.updatePromptDefaults(
+  }) async {
+    final row = await _sessionDao.updatePromptDefaults(
       sessionId: sessionId,
       agent: agent,
       agentModel: agentModel,
     );
+    return row == null
+        ? null
+        : SessionPromptDefaults(agent: row.lastAgent, model: row.lastAgentModel, fastMode: row.fastMode);
   }
 
   /// Records the selection a client prompt or command ran with, including

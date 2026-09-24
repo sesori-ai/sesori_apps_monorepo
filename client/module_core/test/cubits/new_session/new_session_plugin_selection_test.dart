@@ -2085,6 +2085,7 @@ ProviderListResponse _providerResponse() {
         name: "Provider",
         models: {
           "model": ProviderModel(
+            fastMode: null,
             id: "model",
             providerID: "provider",
             name: "Model",

@@ -558,6 +558,7 @@ class Orchestrator({
     );
     final sessionEventService = SessionEventService(
       sessionRepository: sessionRepository,
+      sessionPromptService: sessionPromptService,
       pluginRuntime: _pluginRuntime,
       eventMapper: const SessionEventMapper(),
       eventTracker: SessionEventTracker(

@@ -35,17 +35,26 @@ void main() {
       expect(served.map((message) => message.info.id), const ["m1"]);
     });
 
-    test("a first replay returns and persists the latest prompt defaults", () async {
+    test("a first replay persists the latest prompt defaults and returns them with the stored fast mode", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
         ..replayedPromptDefaults = const SessionPromptDefaults(
           agent: "build",
           model: AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
-        );
+        )
+        ..storedFastMode = true;
       final history = createTestChatHistory(sessionRepository: repository);
 
       final page = await history.service.getSessionMessages(sessionId: "ses_a");
 
-      expect(page.replayedPromptDefaults, repository.replayedPromptDefaults);
+      expect(
+        page.replayedPromptDefaults,
+        const SessionPromptDefaults(
+          agent: "build",
+          model: AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
+          fastMode: true,
+        ),
+        reason: "history does not record fast mode, so the stored choice must survive the replay",
+      );
       expect(repository.promptDefaultsUpdates, [repository.replayedPromptDefaults]);
 
       final cached = await history.service.getSessionMessages(sessionId: "ses_a");
@@ -53,7 +62,7 @@ void main() {
       expect(repository.promptDefaultsUpdates, hasLength(1));
     });
 
-    test("a replay still returns prompt defaults when persistence fails", () async {
+    test("a replay omits prompt defaults when persistence fails", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
         ..replayedPromptDefaults = const SessionPromptDefaults(
           agent: "build",
@@ -64,7 +73,7 @@ void main() {
 
       final page = await history.service.getSessionMessages(sessionId: "ses_a");
 
-      expect(page.replayedPromptDefaults, repository.replayedPromptDefaults);
+      expect(page.replayedPromptDefaults, isNull, reason: "without the stored fast mode it would reset the client's");
       expect(page.messages, repository.transcript);
     });
 
@@ -373,6 +382,7 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, fi
   int fetchCount = 0;
   SessionPromptDefaults? replayedPromptDefaults;
   Object? promptDefaultsUpdateError;
+  bool storedFastMode = false;
   final List<SessionPromptDefaults> promptDefaultsUpdates = [];
 
   /// Runs while the fetch is in flight, so a test can interleave live events.
@@ -394,7 +404,7 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, fi
   }
 
   @override
-  Future<void> updatePromptDefaults({
+  Future<SessionPromptDefaults?> updatePromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
@@ -403,6 +413,7 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, fi
       throw error;
     }
     promptDefaultsUpdates.add(SessionPromptDefaults(agent: agent, model: agentModel));
+    return SessionPromptDefaults(agent: agent, model: agentModel, fastMode: storedFastMode);
   }
 
   @override

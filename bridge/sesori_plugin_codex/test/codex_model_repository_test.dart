@@ -2,6 +2,7 @@ import "package:codex_plugin/src/api/codex_app_server_api.dart";
 import "package:codex_plugin/src/api/models/codex_model_dto.dart";
 import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:codex_plugin/src/repositories/codex_model_repository.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -267,10 +268,10 @@ void main() {
 
       final catalog = await repository.listModels();
 
-      final supportsFastModeById = {for (final model in catalog.models) model.id: model.supportsFastMode};
-      expect(supportsFastModeById["gpt-6-astra"], isTrue);
-      expect(supportsFastModeById["gpt-5.5"], isFalse);
-      expect(supportsFastModeById["gpt-5.6-sol"], isFalse);
+      final fastModeById = {for (final model in catalog.models) model.id: model.fastMode};
+      expect(fastModeById["gpt-6-astra"], const PluginFastModeSupport.available(promptCacheTtlSeconds: 1800));
+      expect(fastModeById["gpt-5.5"], isNull);
+      expect(fastModeById["gpt-5.6-sol"], isNull);
     });
 
     test("lists models newest generation first, then Astra, Sol, Terra, Luna, bare, other", () async {

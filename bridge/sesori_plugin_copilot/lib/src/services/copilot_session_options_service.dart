@@ -356,7 +356,7 @@ class CopilotSessionOptionsService({
             [
               for (final model in models)
                 PluginModel(
-                  supportsFastMode: false,
+                  fastMode: null,
                   id: model.value,
                   name: model.name,
                   // Strongest first; Copilot's first-listed level stays the default.
