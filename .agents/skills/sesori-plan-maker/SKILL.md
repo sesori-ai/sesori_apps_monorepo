@@ -192,7 +192,8 @@ aid, not a duplicate design document.
 
 Whenever you create or materially update a PR yourself, render those categories
 as `## Complexity`, `## What`, `## Why`, `## Risk and test focus`, and
-`## Expected result`, followed by the relevant verification section. Use real
+`## Expected result`, followed by the relevant verification section. Add before
+and after visuals for user-visible changes as `AGENTS.md` describes. Use real
 multiline Markdown through `--body-file` or stdin.
 
 ## Cleanup Assessment
