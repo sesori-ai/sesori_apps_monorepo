@@ -10,6 +10,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "widgets/account_row.dart";
 import "widgets/settings_section.dart";
+import "widgets/settings_window_page.dart";
 
 /// Vertical inset between the nav bar and the first card.
 const double _contentTopPadding = 10.0;
@@ -22,10 +23,7 @@ const double _contentTopPadding = 10.0;
 class const ProfileView({
   super.key,
   required final AuthUser? account,
-  required final String title,
-  required final bool automaticallyImplyLeading,
-  required final Widget? connectionBanner,
-  required final VoidCallback onClose,
+  required final SettingsPageChrome chrome,
   required final Future<bool> Function() logout,
 }) extends StatefulWidget {
   @override
@@ -67,18 +65,8 @@ class _ProfileViewState() extends State<ProfileView> {
     final loc = context.loc;
     final account = widget.account;
 
-    return PregoGlassScaffold(
-      title: widget.title,
-      titleMode: PregoTopNavigationTitleMode.inline,
-      automaticallyImplyLeading: widget.automaticallyImplyLeading,
-      banner: widget.connectionBanner,
-      actions: [
-        PregoButtonsIconGlass(
-          icon: TablerRegular.x,
-          semanticLabel: loc.settingsClose,
-          onPressed: widget.onClose,
-        ),
-      ],
+    return SettingsChromePage(
+      chrome: widget.chrome,
       slivers: [
         SliverToBoxAdapter(
           child: Padding(

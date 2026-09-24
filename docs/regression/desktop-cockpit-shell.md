@@ -245,6 +245,10 @@ The main pane hosts one full-width routed page.
   at 560 × 480, with independently scrollable tabs/content through 250% text scale and no scale reduction.
   A title-only line's natural height fits the toolbar without vertical clipping.
   Longer tab labels wrap while the tab rail itself scrolls.
+  Pages draw no title bar: the tab rail names the page, and one small X at the
+  top-right closes the window. The selected tab uses the main sidebar's fill.
+  Theme is a Light/Dark/System segmented control that drops below its label at
+  large text sizes. Bridge's connected-bridge intro sits inside its section.
   Escape/outside dismiss;
   active text editing and owned dialogs retain their closer dismissal order.
 - General contains appearance, launch-at-login, desktop app-update guidance and support/legal information.

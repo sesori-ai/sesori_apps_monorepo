@@ -75,6 +75,7 @@ export "src/features/settings/widgets/appearance_picker.dart";
 export "src/features/settings/widgets/bridge_settings_section.dart";
 export "src/features/settings/widgets/chat_input_mode_picker.dart";
 export "src/features/settings/widgets/settings_section.dart";
+export "src/features/settings/widgets/settings_window_page.dart";
 export "src/l10n/app_localizations.dart";
 export "src/l10n/app_localizations_en.dart";
 export "src/platform/external_link_opener.dart";

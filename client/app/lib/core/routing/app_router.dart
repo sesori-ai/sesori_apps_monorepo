@@ -492,7 +492,7 @@ ShellRoute buildHarnessSettingsRoute() {
           final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters)
               .presentation;
           return HarnessesSettingsView(
-            presentation: presentation,
+            chrome: _harnessChrome(presentation: presentation),
             connectionBanner: ConnectionBanner.maybeFor(context),
             onClose: () => close(context: context),
             onBack: () => close(context: context),
@@ -511,7 +511,7 @@ ShellRoute buildHarnessSettingsRoute() {
               );
               return HarnessSettingsDetailView(
                 pluginId: route.pluginId,
-                presentation: route.presentation,
+                chrome: _harnessChrome(presentation: route.presentation),
                 connectionBanner: ConnectionBanner.maybeFor(context),
                 onBack: () => context.pop(),
                 onClose: () => close(context: context),
@@ -646,3 +646,8 @@ void closeDeletedArchivedSessionRoute({
   // ignore: no_slop_linter/avoid_navigator_of, pop owned audit pages without replacing the root stack
   Navigator.of(context).popUntil((route) => route.isFirst);
 }
+
+HarnessSettingsChrome _harnessChrome({required HarnessSettingsPresentation presentation}) => switch (presentation) {
+  HarnessSettingsPresentation.modal => HarnessSettingsChrome.modal,
+  HarnessSettingsPresentation.pushed => HarnessSettingsChrome.pushed,
+};

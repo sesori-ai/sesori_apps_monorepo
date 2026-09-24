@@ -106,7 +106,7 @@ void main() {
   Widget app({
     String? detailId,
     double scale = 1,
-    HarnessSettingsPresentation presentation = HarnessSettingsPresentation.modal,
+    HarnessSettingsChrome chrome = HarnessSettingsChrome.modal,
   }) => BlocProvider.value(
     value: cubit,
     child: MaterialApp(
@@ -120,14 +120,14 @@ void main() {
       home: HarnessSettingsFlowView(
         child: detailId == null
             ? HarnessesSettingsView(
-                presentation: presentation,
+                chrome: chrome,
                 connectionBanner: null,
                 onClose: () {},
                 onBack: () {},
                 onOpenHarness: ({required pluginId}) => opened.add(pluginId),
               )
             : HarnessSettingsDetailView(
-                presentation: presentation,
+                chrome: chrome,
                 pluginId: detailId,
                 connectionBanner: null,
                 onBack: () {},
@@ -143,16 +143,17 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
-  for (final presentation in HarnessSettingsPresentation.values) {
+  // The window draws no bar of its own; the desktop settings window owns it.
+  for (final chrome in [HarnessSettingsChrome.modal, HarnessSettingsChrome.pushed]) {
     for (final detail in [false, true]) {
-      testWidgets("$presentation ${detail ? 'detail' : 'overview'} header offers only its navigation actions", (
+      testWidgets("$chrome ${detail ? 'detail' : 'overview'} header offers only its navigation actions", (
         tester,
       ) async {
         publish(plugins: [_ready]);
-        await tester.pumpWidget(app(detailId: detail ? "ready" : null, presentation: presentation));
+        await tester.pumpWidget(app(detailId: detail ? "ready" : null, chrome: chrome));
         await tester.pumpAndSettle();
-        final hasBack = detail || presentation == HarnessSettingsPresentation.pushed;
-        final hasClose = presentation == HarnessSettingsPresentation.modal;
+        final hasBack = detail || chrome == HarnessSettingsChrome.pushed;
+        final hasClose = chrome == HarnessSettingsChrome.modal;
         final back = find.bySemanticsLabel("Back");
         final close = find.bySemanticsLabel("Close settings");
         expect(back, hasBack ? findsOneWidget : findsNothing);
@@ -498,7 +499,7 @@ void main() {
             path: "/",
             builder: (context, state) => HarnessSettingsFlowView(
               child: HarnessesSettingsView(
-                presentation: HarnessSettingsPresentation.modal,
+                chrome: HarnessSettingsChrome.modal,
                 connectionBanner: null,
                 onClose: () {},
                 onBack: null,

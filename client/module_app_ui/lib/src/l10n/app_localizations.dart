@@ -1657,6 +1657,12 @@ abstract class AppLocalizations {
   /// **'Appearance'**
   String get settingsSectionAppearance;
 
+  /// No description provided for @desktopSettingsTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get desktopSettingsTheme;
+
   /// No description provided for @settingsSectionAnalytics.
   ///
   /// In en, this message translates to:

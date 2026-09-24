@@ -97,7 +97,7 @@ class const SettingsView({
                   ),
                 ),
                 const SizedBox(height: PregoSpacing.xl),
-                BridgeSettingsSection(title: loc.settingsSectionBridge),
+                BridgeSettingsSection(title: loc.settingsSectionBridge, description: null),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(
                   title: loc.settingsSectionSessions,

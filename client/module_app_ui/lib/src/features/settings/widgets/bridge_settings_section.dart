@@ -10,40 +10,60 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "settings_section.dart";
 
-class const BridgeSettingsSection({super.key, required final String title}) extends StatelessWidget {
+class const BridgeSettingsSection({
+  super.key,
+  required final String title,
+
+  /// A quiet sentence between the header and the card, or null for none.
+  required final String? description,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeSettingsCubit>().state;
+    final rows = PregoGroupedRows(
+      children: [
+        const _YoloSettingsRow(),
+        const _PluginWarmupSettingsRow(),
+        PregoGroupedRow(
+          key: const Key("pull_request_refresh_interval"),
+          icon: TablerRegular.refresh,
+          title: Text(context.loc.settingsPullRequestRefreshTitle),
+          subtitle: Text(_description(context: context, state: state)),
+          trailing: _trailing(context: context, state: state),
+          onTap: switch (state) {
+            BridgeSettingsReady(:final pullRequestRefreshMutation)
+                when pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress &&
+                    pullRequestRefreshMutation is! PullRequestRefreshMutationUncertain &&
+                    pullRequestRefreshMutation is! PullRequestRefreshMutationUnsupported &&
+                    (state is! BridgeSettingsReadyFull ||
+                        (state.yoloMutation is! YoloMutationInProgress &&
+                            state.pluginWarmupMutation is! PluginWarmupMutationInProgress)) =>
+              () => unawaited(_editInterval(context: context, state: state)),
+            BridgeSettingsLoading() ||
+            BridgeSettingsDisconnected() ||
+            BridgeSettingsUnsupported() ||
+            BridgeSettingsFailure() ||
+            BridgeSettingsReady() => null,
+          },
+        ),
+      ],
+    );
+    final description = this.description;
     return SettingsSection(
       title: title,
-      child: PregoGroupedRows(
-        children: [
-          const _YoloSettingsRow(),
-          const _PluginWarmupSettingsRow(),
-          PregoGroupedRow(
-            key: const Key("pull_request_refresh_interval"),
-            icon: TablerRegular.refresh,
-            title: Text(context.loc.settingsPullRequestRefreshTitle),
-            subtitle: Text(_description(context: context, state: state)),
-            trailing: _trailing(context: context, state: state),
-            onTap: switch (state) {
-              BridgeSettingsReady(:final pullRequestRefreshMutation)
-                  when pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress &&
-                      pullRequestRefreshMutation is! PullRequestRefreshMutationUncertain &&
-                      pullRequestRefreshMutation is! PullRequestRefreshMutationUnsupported &&
-                      (state is! BridgeSettingsReadyFull ||
-                          (state.yoloMutation is! YoloMutationInProgress &&
-                              state.pluginWarmupMutation is! PluginWarmupMutationInProgress)) =>
-                () => unawaited(_editInterval(context: context, state: state)),
-              BridgeSettingsLoading() ||
-              BridgeSettingsDisconnected() ||
-              BridgeSettingsUnsupported() ||
-              BridgeSettingsFailure() ||
-              BridgeSettingsReady() => null,
-            },
-          ),
-        ],
-      ),
+      child: description == null
+          ? rows
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: PregoSpacing.md,
+              children: [
+                Text(
+                  description,
+                  style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textTertiary),
+                ),
+                rows,
+              ],
+            ),
     );
   }
 }
@@ -259,9 +279,17 @@ Widget _trailing({required BuildContext context, required BridgeSettingsState st
       onPressed: context.read<BridgeSettingsCubit>().refresh,
       icon: const Icon(TablerRegular.refresh),
     ),
-    BridgeSettingsReady(:final pullRequestRefreshIntervalSeconds) => Text(
-      context.loc.settingsPullRequestRefreshSeconds(pullRequestRefreshIntervalSeconds),
-      style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+    // The value opens an editor, so it carries a chevron.
+    BridgeSettingsReady(:final pullRequestRefreshIntervalSeconds) => Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: PregoSpacing.xs,
+      children: [
+        Text(
+          context.loc.settingsPullRequestRefreshSeconds(pullRequestRefreshIntervalSeconds),
+          style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+        ),
+        Icon(TablerRegular.chevron_right, size: PregoIconSize.sm, color: context.prego.colors.textTertiary),
+      ],
     ),
     BridgeSettingsUnsupported() => Text(
       context.loc.settingsPullRequestRefreshUnavailable,

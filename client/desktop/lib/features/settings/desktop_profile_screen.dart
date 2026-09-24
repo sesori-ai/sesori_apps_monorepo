@@ -9,7 +9,6 @@ import "../../core/di/injection.dart";
 /// Desktop-shell composition for the shared profile view.
 class const DesktopProfileScreen({
   super.key,
-  required final VoidCallback onClose,
   required final VoidCallback onLogoutCompleted,
 }) extends StatelessWidget {
   @override
@@ -17,7 +16,6 @@ class const DesktopProfileScreen({
     return BlocProvider(
       create: (_) => ProductAnalyticsPreferenceCubit(service: getIt<ProductAnalyticsService>()),
       child: _DesktopProfileView(
-        onClose: onClose,
         onLogoutCompleted: onLogoutCompleted,
       ),
     );
@@ -25,7 +23,6 @@ class const DesktopProfileScreen({
 }
 
 class const _DesktopProfileView({
-  required final VoidCallback onClose,
   required final VoidCallback onLogoutCompleted,
 }) extends StatelessWidget {
   @override
@@ -38,10 +35,7 @@ class const _DesktopProfileView({
 
     return ProfileView(
       account: account,
-      title: context.loc.settingsSectionAccount,
-      automaticallyImplyLeading: false,
-      connectionBanner: null,
-      onClose: onClose,
+      chrome: SettingsPageInWindow(),
       logout: () async {
         final outcome = await authGateCubit.signOut();
         if (outcome != DesktopLogoutOutcome.completed) return false;

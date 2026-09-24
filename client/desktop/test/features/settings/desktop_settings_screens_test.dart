@@ -390,7 +390,7 @@ void main() {
     final router = await open(tester: tester, tab: DesktopSettingsTab.general);
     expect(router.state.uri.path, "/session");
     expect(find.byType(SettingsView), findsNothing);
-    expect(find.byType(AppearancePicker), findsOneWidget);
+    expect(find.byKey(const ValueKey("desktop-theme-system")), findsOneWidget);
     expect(find.byType(ChatInputModePicker), findsNothing);
     expect(find.text("Default input"), findsNothing);
     expect(find.text("Desktop updates"), findsOneWidget);
@@ -529,11 +529,7 @@ void main() {
         await tester.tap(target);
         await tester.pumpAndSettle();
         expect(
-          find
-              .byWidgetPredicate(
-                (widget) => widget is PregoButtonsIconGlass && widget.semanticLabel == "Close settings",
-              )
-              .hitTestable(),
+          find.byKey(const Key("desktop-settings-close")).hitTestable(),
           findsOneWidget,
         );
         expect(tester.takeException(), isNull, reason: "${tab.name} at scale $scale");
@@ -556,7 +552,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.comma);
       await tester.sendKeyUpEvent(modifier);
       await tester.pumpAndSettle();
-      expect(find.byType(AppearancePicker), findsOneWidget);
+      expect(find.byKey(const ValueKey("desktop-theme-system")), findsOneWidget);
       expect(router.state.uri.path, "/session");
       expect(tester.element(find.text("open", skipOffstage: false)), same(opener));
       expect(tester.takeException(), isNull);

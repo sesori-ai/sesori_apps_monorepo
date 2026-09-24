@@ -29,8 +29,8 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 11 | `visual-hierarchy/{icons-and-case,sentence-case}` | [11/41](#pr-titles) | ≤ 900 | done |
 | [x] | 12 | `visual-hierarchy/{sidebar,sidebar-new-session}` | [12/41](#pr-titles) | ≤ 700 | done |
 | [x] | 13 | `visual-hierarchy/{subtitle-ellipsis,session-rows}` | [13/41](#pr-titles) | ≤ 700 | done |
-| [ ] | 14 | `visual-hierarchy/needs-you-card` | [14/41](#pr-titles) | ≤ 600 | in-progress |
-| [ ] | 15 | `visual-hierarchy/settings-window` | [15/41](#pr-titles) | ≤ 600 | pending |
+| [x] | 14 | `visual-hierarchy/needs-you-card` | [14/41](#pr-titles) | ≤ 600 | done |
+| [ ] | 15 | `visual-hierarchy/{settings-window,bridge-popover}` | [15/41](#pr-titles) | ≤ 600 | in-progress |
 | [ ] | 16 | `visual-hierarchy/changes-file-list` | [16/41](#pr-titles) | ≤ 800 | pending |
 | [ ] | 17 | `visual-hierarchy/shared-activity` | [17/41](#pr-titles) | ≤ 900 | pending |
 | [ ] | 18 | `visual-hierarchy/desktop-home` | [18/41](#pr-titles) | ≤ 800 | pending |
@@ -101,6 +101,8 @@ Answered 2026-09-23; every answer took the recommended option.
    - `⚙️ [visual-hierarchy] Lead session rows with status and keep the time visible [step 13.b/41]`
 14. `⚙️ [visual-hierarchy] Dock one amber needs-you card above the composer [step 14/41]`
 15. `⚙️ [visual-hierarchy] Simplify the desktop settings window [step 15/41]`
+   - `⚙️ [visual-hierarchy] Simplify the desktop settings window [step 15.a/41]`
+   - `🌿 [visual-hierarchy] Quiet the bridge popover [step 15.b/41]`
 16. `⚙️ [visual-hierarchy] Add a file list to Changes [step 16/41]`
 17. `🚧 [visual-hierarchy] Share the activity projection and show Activity on the phone [step 17/41]`
 18. `⚙️ [visual-hierarchy] Start sessions from the desktop home and empty projects [step 18/41]`
