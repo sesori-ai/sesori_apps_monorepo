@@ -11,6 +11,7 @@ import "models/diff_view_model_builder.dart";
 import "widgets/diff_error_view.dart";
 import "widgets/diff_file_content_sliver.dart";
 import "widgets/diff_file_header_delegate.dart";
+import "widgets/diff_file_list.dart";
 
 /// Shared diff viewer: one pinned sticky header per file with expandable diff
 /// content underneath. Owns the expand/collapse state and post-collapse scroll
@@ -42,6 +43,11 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
   /// post-frame scroll adjustment can find the collapsed file's header.
   /// Keys are created lazily as files are rendered.
   final Map<int, GlobalKey> _headerKeys = <int, GlobalKey>{};
+
+  /// Keys on each file's sliver group. Unlike a header, which is built only
+  /// near the viewport, the group is laid out even far offscreen, so the
+  /// file list can scroll to any file.
+  final Map<int, GlobalKey> _fileKeys = <int, GlobalKey>{};
 
   @override
   Widget build(BuildContext context) {
@@ -145,8 +151,19 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
 
   List<Widget> _buildSlivers({required List<DiffFileViewModel> viewModels}) {
     return [
+      // One file needs no index.
+      if (viewModels.length > 1)
+        SliverPadding(
+          padding: const EdgeInsets.all(PregoSpacing.md),
+          sliver: SliverToBoxAdapter(
+            child: SelectionContainer.disabled(
+              child: DiffFileList(viewModels: viewModels, onSelect: _jumpToFile),
+            ),
+          ),
+        ),
       for (var i = 0; i < viewModels.length; i++)
         SliverMainAxisGroup(
+          key: _fileKeys.putIfAbsent(i, GlobalKey.new),
           slivers: [
             SliverPersistentHeader(
               pinned: true,
@@ -193,6 +210,7 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
       // Drop stale GlobalKeys from the previous file list so they don't
       // accumulate when the user switches sessions or refreshes.
       _headerKeys.clear();
+      _fileKeys.clear();
     });
     try {
       final viewModels = await DiffViewModelBuilder.build(
@@ -241,8 +259,16 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
       // After the sliver rebuilds with file `fileIndex` collapsed (body
       // shrunk to zero), realign the viewport so the collapsed header stays
       // at the top and the next file becomes visible just below it.
-      _scheduleScrollCompensation(collapsedIndex: fileIndex);
+      _scheduleScrollToHeader(fileIndex: fileIndex);
     }
+  }
+
+  /// Opens the file if it is collapsed and scrolls its header to the top.
+  void _jumpToFile(int fileIndex) {
+    if (!_expandedFileIndices.contains(fileIndex)) {
+      setState(() => _expandedFileIndices = {..._expandedFileIndices, fileIndex});
+    }
+    _scheduleScrollToHeader(fileIndex: fileIndex);
   }
 
   /// Returns true if the header identified by [headerKey] is currently
@@ -268,19 +294,27 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
     return headerTopInScrollable.abs() < 1.0;
   }
 
-  /// Schedules a post-frame adjustment that realigns the viewport so the
-  /// collapsed file's own header stays at the top, with the next file
-  /// visible just below it. The caller must have already verified (before
-  /// the rebuild) that the header was pinned at the top — we cannot
-  /// re-check after the collapse because the layout has shifted.
-  void _scheduleScrollCompensation({required int collapsedIndex}) {
-    final currentKey = _headerKeys[collapsedIndex];
+  /// Schedules a post-frame scroll that brings the file's header to the top:
+  /// after a collapse it keeps the collapsed header in place with the next
+  /// file just below it, and after a jump from the file list it shows that
+  /// file from its start. A collapse caller must have already verified (before the rebuild)
+  /// that the header was pinned at the top, since the layout then shifts.
+  void _scheduleScrollToHeader({required int fileIndex}) {
+    final currentKey = _fileKeys[fileIndex];
     if (currentKey == null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    void reveal({required bool settle}) => WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final context = currentKey.currentContext;
       if (context == null) return;
       Scrollable.ensureVisible(context, alignment: 0.0, duration: Duration.zero);
+      // Diff bodies far from the viewport report estimated heights until they
+      // are built, so the first reveal can land short; once the jump builds
+      // them, a second reveal lands exactly.
+      if (!settle) {
+        WidgetsBinding.instance.scheduleFrame();
+        reveal(settle: true);
+      }
     });
+    reveal(settle: false);
   }
 }

@@ -70,6 +70,12 @@ Future<void> _pumpLoadedScreen(WidgetTester tester) async {
   expect(find.byType(CustomScrollView), findsOneWidget, reason: "diff viewer did not finish loading");
 }
 
+/// A file's pinned header; the file list above the diffs repeats each name.
+Finder _header(String name) => find.descendant(of: find.byType(SliverPersistentHeader), matching: find.text(name));
+
+/// Height the file list adds above the first diff.
+double _listExtent(WidgetTester tester) => tester.getSize(find.byType(PregoGroupedRows)).height + 2 * PregoSpacing.md;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(registerAllFallbackValues);
@@ -122,10 +128,10 @@ void main() {
       // collapsing large title (~80px) above the file list, so the drag must
       // clear that before it reaches aaa's body — pinned headers then clamp at
       // the viewport top regardless of any extra scroll.
-      await tester.drag(scrollFinder, const Offset(0, -130));
+      await tester.drag(scrollFinder, Offset(0, -130 - _listExtent(tester)));
       await tester.pumpAndSettle();
 
-      final aaaHeader = find.text("aaa.dart");
+      final aaaHeader = _header("aaa.dart");
       expect(aaaHeader, findsOneWidget);
 
       final scrollRectBefore = tester.getRect(scrollFinder);
@@ -136,7 +142,7 @@ void main() {
         reason: "precondition: aaa's header should be pinned at the top of the viewport before the collapse",
       );
 
-      final bbbHeader = find.text("bbb.dart");
+      final bbbHeader = _header("bbb.dart");
       final bbbRectBefore = tester.getRect(bbbHeader);
       expect(
         bbbRectBefore.top,
@@ -185,7 +191,7 @@ void main() {
       final scrollFinder = find.byType(CustomScrollView);
       // Scroll deep into the list so that aaa's header is above the
       // viewport and bbb's header is pinned at the top instead.
-      await tester.drag(scrollFinder, const Offset(0, -700));
+      await tester.drag(scrollFinder, Offset(0, -700 - _listExtent(tester)));
       await tester.pumpAndSettle();
 
       final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
@@ -193,7 +199,7 @@ void main() {
 
       // Collapse aaa — its header is NOT pinned at the top, so the viewport
       // should not jump to a new file's header.
-      await tester.tap(find.text("aaa.dart"));
+      await tester.tap(_header("aaa.dart"));
       await tester.pumpAndSettle();
 
       final positionAfter = tester.state<ScrollableState>(find.byType(Scrollable).first).position.pixels;
@@ -225,7 +231,7 @@ void main() {
 
     final scrollFinder = find.byType(CustomScrollView);
     // Scroll past aaa.dart so bbb.dart's header is in the viewport.
-    await tester.drag(scrollFinder, const Offset(0, -200));
+    await tester.drag(scrollFinder, Offset(0, -200 - _listExtent(tester)));
     await tester.pumpAndSettle();
 
     final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
@@ -233,7 +239,7 @@ void main() {
 
     // Collapse the LAST file — there is no "next file" to anchor to, so
     // the scroll offset should not jump to a new file's header.
-    await tester.tap(find.text("bbb.dart"));
+    await tester.tap(_header("bbb.dart"));
     await tester.pumpAndSettle();
 
     final positionAfter = tester.state<ScrollableState>(find.byType(Scrollable).first).position.pixels;
@@ -242,6 +248,55 @@ void main() {
     // new maxScrollExtent — both are acceptable as long as we did not
     // jump to a new file's header.
     expect(positionAfter, lessThanOrEqualTo(positionBefore));
+  });
+
+  testWidgets("the file list jumps to a file and opens it when collapsed", (tester) async {
+    when(() => mockRepo.getSessionDiffs(sessionId: any(named: "sessionId"))).thenAnswer(
+      (_) async => ApiResponse.success(
+        SessionDiffsResponse(
+          diffs: [
+            _makeDiff("aaa.dart", lineCount: 30),
+            _makeDiff("bbb.dart", lineCount: 30),
+            FileDiff.content(
+              file: "lib/ccc.dart",
+              before: "",
+              after: List<String>.filled(30, "new line").join("\n"),
+              additions: 30,
+              deletions: 0,
+              status: FileDiffStatus.added,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await _pumpLoadedScreen(tester);
+
+    final list = find.byType(PregoGroupedRows);
+    expect(find.descendant(of: list, matching: find.text("lib")), findsNWidgets(3));
+    expect(find.descendant(of: list, matching: find.text("A")), findsOneWidget);
+    expect(find.descendant(of: list, matching: find.text("+30")), findsNWidgets(3));
+    expect(find.descendant(of: list, matching: find.text("−30")), findsNWidgets(2));
+
+    final scrollTop = tester.getRect(find.byType(CustomScrollView)).top;
+    await tester.tap(find.byKey(const ValueKey("diff-file-list-1")));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(_header("bbb.dart")).top, closeTo(scrollTop, 10.0));
+
+    // Collapse bbb, go back to the list, and jump to it again: it reopens.
+    Finder chevron(IconData icon) => find.descendant(
+      of: find.ancestor(of: _header("bbb.dart"), matching: find.byType(Row)).first,
+      matching: find.byIcon(icon),
+    );
+    await tester.tap(_header("bbb.dart"));
+    await tester.pumpAndSettle();
+    expect(chevron(TablerRegular.chevron_down), findsOneWidget);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, 5000));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey("diff-file-list-1")));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(_header("bbb.dart")).top, closeTo(scrollTop, 10.0));
+    expect(chevron(TablerRegular.chevron_up), findsOneWidget);
   });
 
   testWidgets(

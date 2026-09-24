@@ -31,7 +31,7 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 13 | `visual-hierarchy/{subtitle-ellipsis,session-rows}` | [13/41](#pr-titles) | ≤ 700 | done |
 | [x] | 14 | `visual-hierarchy/needs-you-card` | [14/41](#pr-titles) | ≤ 600 | done |
 | [ ] | 15 | `visual-hierarchy/{settings-window,bridge-popover}` | [15/41](#pr-titles) | ≤ 600 | in-progress |
-| [ ] | 16 | `visual-hierarchy/changes-file-list` | [16/41](#pr-titles) | ≤ 800 | pending |
+| [ ] | 16 | `visual-hierarchy/{changes-file-list,changes-split}` | [16/41](#pr-titles) | ≤ 800 | in-progress |
 | [ ] | 17 | `visual-hierarchy/shared-activity` | [17/41](#pr-titles) | ≤ 900 | pending |
 | [ ] | 18 | `visual-hierarchy/desktop-home` | [18/41](#pr-titles) | ≤ 800 | pending |
 | [ ] | 19 | `visual-hierarchy/phone-search` | [19/41](#pr-titles) | ≤ 600 | pending |
@@ -104,6 +104,8 @@ Answered 2026-09-23; every answer took the recommended option.
    - `⚙️ [visual-hierarchy] Simplify the desktop settings window [step 15.a/41]`
    - `🌿 [visual-hierarchy] Quiet the bridge popover [step 15.b/41]`
 16. `⚙️ [visual-hierarchy] Add a file list to Changes [step 16/41]`
+   - `🌿 [visual-hierarchy] List changed files at the top of Changes [step 16.a/41]`
+   - `⚙️ [visual-hierarchy] Split desktop Changes into a file list and one diff [step 16.b/41]`
 17. `🚧 [visual-hierarchy] Share the activity projection and show Activity on the phone [step 17/41]`
 18. `⚙️ [visual-hierarchy] Start sessions from the desktop home and empty projects [step 18/41]`
 19. `⚙️ [visual-hierarchy] Search project and session titles on the phone [step 19/41]`

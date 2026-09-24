@@ -190,6 +190,9 @@ state.
   Every other page, File Changes included, shows an 18 bold bar title, with a 12 tertiary subtitle when the
   page has one. A two-line bar title caps its text scale so it stays inside the bar; a title on its own scales
   fully.
+- File Changes with more than one file opens with a list of every file: its A, D or M status, name, folder and
+  nonzero +/− counts. A tap scrolls that file's diff to the top, reopening it if it was collapsed, however far
+  down the file is. A single-file change shows no list.
 - A project's pages show its repository slug as that subtitle, with no chevron or popover. A slug too long for
   the bar shortens in the middle, keeping owner and repository ends, and a long press or hover shows it whole.
 - Blue means selected, on or actionable (toggles, picker checks, the selected sidebar row, links, focus rings).
