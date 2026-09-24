@@ -263,6 +263,8 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
               minimumSize: const Size(44, 44),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               alignment: AlignmentDirectional.centerStart,
+              // The default stadium hover reads as a pill across the whole row.
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xs)),
             ),
             child: Row(
               children: [
@@ -311,9 +313,8 @@ class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTicke
                 width: double.infinity,
                 padding: EdgeInsets.all(prego.spacing.md),
                 decoration: BoxDecoration(
-                  color: prego.colors.bgSurface2,
-                  borderRadius: BorderRadius.circular(prego.radius.xl),
-                  border: Border.all(color: prego.colors.borderPrimary),
+                  color: prego.colors.bgSurface4,
+                  borderRadius: BorderRadius.circular(PregoRadius.xs),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -485,7 +486,7 @@ class _ToolOutputBlockState() extends State<_ToolOutputBlock> {
       width: double.infinity,
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: prego.colors.bgQuaternary,
+        color: prego.colors.bgSurface4,
         borderRadius: BorderRadius.circular(PregoRadius.xs),
       ),
       child: LayoutBuilder(

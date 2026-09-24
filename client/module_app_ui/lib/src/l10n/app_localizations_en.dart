@@ -1148,6 +1148,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAttachmentsNotWithCommands => 'Images can\'t be sent with slash commands.';
 
   @override
+  String codeBlockOpenAll(int count) {
+    return 'Open all $count lines';
+  }
+
+  @override
   String sessionDetailQueuedAttachmentCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

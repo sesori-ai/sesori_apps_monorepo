@@ -694,6 +694,15 @@
   "@sessionDetailAttachmentsNotWithCommands": {
     "description": "Snackbar shown when sending while both a slash command and image attachments are staged; the backend command paths carry only text, so the send is refused instead of silently dropping the images."
   },
+  "codeBlockOpenAll": "Open all {count} lines",
+  "@codeBlockOpenAll": {
+    "description": "Under a long code block in a chat message that shows only its first lines; opens the whole block in a modal.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sessionDetailQueuedAttachmentCount": "{count, plural, =1{1 image} other{{count} images}}",
   "@sessionDetailQueuedAttachmentCount": {
     "description": "Body of a queued-message bubble whose submission has image attachments but no text, e.g. '1 image'.",
