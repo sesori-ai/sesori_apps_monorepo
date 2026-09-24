@@ -89,63 +89,16 @@ class const DesktopSidebar({
         child: Column(
           children: [
             _TopStrip(windowHost: windowHost, expansion: expansion),
-            Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: DesktopSidebarPhaseBuilder(
-                      expansion: expansion,
-                      builder: (context, phase) => _ConditionalTooltip(
-                        enabled: phase != DesktopSidebarPhase.open,
-                        message: loc.desktopShortcutHint(loc.sessionListNewSession, newSessionShortcut),
-                        child: FilledButton(
-                          key: const Key("desktop-sidebar-new-session"),
-                          onPressed: state is ProjectListLoaded ? onStartNewSession : null,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: prego.colors.bgBrandSolid,
-                            foregroundColor: prego.colors.textWhite,
-                            minimumSize: const Size(0, 40),
-                            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.lg)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(TablerRegular.plus, size: PregoIconSize.md),
-                              if (phase != DesktopSidebarPhase.rail)
-                                Flexible(
-                                  child: FadeTransition(
-                                    opacity: expansion,
-                                    child: _LabelInset(
-                                      expansion: expansion,
-                                      child: _TooltipWhenTruncated(
-                                        message: loc.sessionListNewSession,
-                                        style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textWhite),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              if (phase == DesktopSidebarPhase.open)
-                                Padding(
-                                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
-                                  child: ExcludeSemantics(
-                                    child: Text(
-                                      newSessionShortcut,
-                                      style: prego.textTheme.textXs.regular.copyWith(
-                                        color: prego.colors.textWhite.withValues(alpha: 0.7),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            // A quiet row, not a filled button: with no projects it offers to add one.
+            _SidebarButton(
+              key: const Key("desktop-sidebar-new-session"),
+              label: state is ProjectListLoaded && state.projects.isEmpty ? loc.addProject : loc.sessionListNewSession,
+              icon: const Icon(TablerRegular.plus, size: PregoIconSize.md),
+              expansion: expansion,
+              selected: false,
+              status: null,
+              shortcut: newSessionShortcut,
+              onPressed: state is ProjectListLoaded ? onStartNewSession : null,
             ),
             DesktopSidebarPhaseBuilder(
               expansion: expansion,
@@ -160,6 +113,7 @@ class const DesktopSidebar({
                         expansion: kAlwaysDismissedAnimation,
                         selected: selectedProjectId == null,
                         status: null,
+                        shortcut: null,
                         onPressed: onOpenProjects,
                       ),
                     ),
@@ -199,6 +153,7 @@ class const DesktopSidebar({
                     expansion: expansion,
                     selected: false,
                     status: null,
+                    shortcut: null,
                     onPressed: () => unawaited(context.read<ProjectListCubit>().retryLoadProjects()),
                   ),
                   ProjectListBridgeDisconnected() => const SizedBox.shrink(),
@@ -246,6 +201,40 @@ class const _TopStrip({required final WindowHost? windowHost, required final Ani
   }
 }
 
+/// Reloads projects and their sessions: on the Projects header while the sidebar is open, in the rail's footer.
+class const _SidebarRefreshButton({
+  required final ProjectListState projectState,
+  required final double iconSize,
+  required final Color? color,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final refresh = context.watch<DesktopSidebarRefreshCubit>();
+    final refreshing =
+        refresh.state == DesktopSidebarRefreshState.refreshing ||
+        switch (projectState) {
+          ProjectListLoaded(:final isRefreshing) => isRefreshing,
+          ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => false,
+        };
+    final canRefresh = projectState is ProjectListLoaded && !refreshing;
+    return IconButton(
+      key: const Key("desktop-sidebar-refresh"),
+      tooltip: refreshing ? loc.desktopSidebarRefreshing : loc.desktopSidebarRefresh,
+      padding: EdgeInsets.zero,
+      onPressed: canRefresh ? () => unawaited(refresh.refresh()) : null,
+      icon: refreshing
+          ? Semantics(
+              label: loc.desktopSidebarRefreshing,
+              child: ExcludeSemantics(
+                child: SizedBox.square(dimension: iconSize, child: const PregoActivityIndicator(color: null)),
+              ),
+            )
+          : Icon(TablerRegular.refresh, size: iconSize, color: color, semanticLabel: loc.desktopSidebarRefresh),
+    );
+  }
+}
+
 class const _SidebarFooter({
   required final ProjectListState projectState,
   required final Animation<double> expansion,
@@ -260,19 +249,75 @@ class const _SidebarFooter({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final refresh = context.watch<DesktopSidebarRefreshCubit>();
-    final refreshing =
-        refresh.state == DesktopSidebarRefreshState.refreshing ||
-        switch (projectState) {
-          ProjectListLoaded(:final isRefreshing) => isRefreshing,
-          ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => false,
-        };
-    final canRefresh = projectState is ProjectListLoaded && !refreshing;
     Widget control(Widget button) => DesktopSidebarExpansionBuilder(
       expansion: expansion,
       builder: (expansion, button) => SizedBox.square(dimension: 28 + 8 * expansion, child: button),
       child: button,
     );
+    final bridgeButton = PregoPopover(
+      popoverWidth: 300,
+      popoverMaxHeight: null,
+      contentScrolls: false,
+      onClosed: null,
+      triggerBuilder: (context, toggle) => _SidebarButton(
+        label: loc.desktopSettingsThisComputer,
+        icon: const Icon(TablerRegular.server, size: PregoIconSize.md),
+        expansion: expansion,
+        selected: false,
+        // A status dot, not a glyph: no icon token applies.
+        status: (
+          icon: Icon(TablerSolid.circle, size: 8, color: bridgeColor),
+          label: bridge.statusLabel,
+          detail: null,
+        ),
+        shortcut: null,
+        onPressed: toggle,
+      ),
+      contentBuilder: (context, close) => DesktopBridgePopover(
+        close: close,
+        onOpenSettings: onOpenBridgeSettings,
+      ),
+    );
+    final refresh = control(_SidebarRefreshButton(projectState: projectState, iconSize: PregoIconSize.md, color: null));
+    final controls = [
+      control(
+        IconButton(
+          key: const Key("desktop-sidebar-settings"),
+          tooltip: loc.desktopShortcutHint(
+            loc.settingsTitle,
+            defaultTargetPlatform == TargetPlatform.macOS ? "⌘," : "Ctrl+,",
+          ),
+          padding: const EdgeInsets.all(PregoSpacing.sm),
+          onPressed: onOpenSettings,
+          icon: Icon(TablerRegular.settings, size: PregoIconSize.md, semanticLabel: loc.settingsTitle),
+        ),
+      ),
+      control(
+        DesktopSidebarExpansionSelector(
+          expansion: expansion,
+          select: (expansion) => expansion < 0.5,
+          builder: (context, railed) {
+            final toggleLabel = railed ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse;
+            return IconButton(
+              key: const Key("desktop-sidebar-toggle"),
+              tooltip: autoCollapsed
+                  ? toggleLabel
+                  : loc.desktopShortcutHint(
+                      toggleLabel,
+                      defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B",
+                    ),
+              padding: const EdgeInsets.all(PregoSpacing.sm),
+              onPressed: autoCollapsed ? null : onToggleCollapsed,
+              icon: Icon(
+                railed ? TablerRegular.layout_sidebar_left_expand : TablerRegular.layout_sidebar_left_collapse,
+                size: PregoIconSize.md,
+                color: autoCollapsed ? prego.colors.textDisabled : null,
+              ),
+            );
+          },
+        ),
+      ),
+    ];
     return BlocListener<DesktopSidebarRefreshCubit, DesktopSidebarRefreshState>(
       listenWhen: (_, current) =>
           current == DesktopSidebarRefreshState.succeeded || current == DesktopSidebarRefreshState.failed,
@@ -287,7 +332,6 @@ class const _SidebarFooter({
       },
       child: Container(
         key: const Key("desktop-sidebar-footer"),
-        padding: const EdgeInsets.symmetric(vertical: PregoSpacing.xs),
         decoration: BoxDecoration(
           color: prego.colors.bgSurface1,
           border: Border(top: BorderSide(color: prego.colors.borderPrimary)),
@@ -298,89 +342,30 @@ class const _SidebarFooter({
               expansion: expansion,
               builder: (context, phase) => DesktopBridgeRecoveryCard(compact: phase != DesktopSidebarPhase.open),
             ),
-            PregoPopover(
-              popoverWidth: 300,
-              popoverMaxHeight: null,
-              contentScrolls: false,
-              onClosed: null,
-              triggerBuilder: (context, toggle) => _SidebarButton(
-                label: loc.desktopSettingsThisComputer,
-                icon: const Icon(TablerRegular.server, size: PregoIconSize.md),
-                expansion: expansion,
-                selected: false,
-                // A status dot, not a glyph: no icon token applies.
-                status: (
-                  icon: Icon(TablerSolid.circle, size: 8, color: bridgeColor),
-                  label: bridge.statusLabel,
-                  detail: null,
-                ),
-                onPressed: toggle,
-              ),
-              contentBuilder: (context, close) => DesktopBridgePopover(
-                close: close,
-                onOpenSettings: onOpenBridgeSettings,
-              ),
-            ),
-            // The rail holds two controls a line, so the third wraps below them.
-            Wrap(
-              alignment: WrapAlignment.center,
-              children: [
-                control(
-                  IconButton(
-                    key: const Key("desktop-sidebar-refresh"),
-                    tooltip: refreshing ? loc.desktopSidebarRefreshing : loc.desktopSidebarRefresh,
-                    padding: const EdgeInsets.all(PregoSpacing.sm),
-                    onPressed: canRefresh ? () => unawaited(refresh.refresh()) : null,
-                    icon: refreshing
-                        ? Semantics(
-                            label: loc.desktopSidebarRefreshing,
-                            child: const ExcludeSemantics(
-                              child: SizedBox.square(dimension: 20, child: PregoActivityIndicator(color: null)),
-                            ),
-                          )
-                        : Icon(TablerRegular.refresh, size: PregoIconSize.md, semanticLabel: loc.desktopSidebarRefresh),
-                  ),
-                ),
-                control(
-                  IconButton(
-                    key: const Key("desktop-sidebar-settings"),
-                    tooltip: loc.desktopShortcutHint(
-                      loc.settingsTitle,
-                      defaultTargetPlatform == TargetPlatform.macOS ? "⌘," : "Ctrl+,",
+            // Open, the footer is one row; the rail stacks it and fits two controls a line.
+            DesktopSidebarPhaseBuilder(
+              expansion: expansion,
+              builder: (context, phase) => phase == DesktopSidebarPhase.open
+                  ? SizedBox(
+                      height: 44,
+                      child: Row(
+                        children: [
+                          Expanded(child: bridgeButton),
+                          // Refresh sits on the Projects header while the sidebar is open.
+                          ...controls,
+                          const SizedBox(width: PregoSpacing.xs),
+                        ],
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(vertical: PregoSpacing.xs),
+                      child: Column(
+                        children: [
+                          bridgeButton,
+                          Wrap(alignment: WrapAlignment.center, children: [refresh, ...controls]),
+                        ],
+                      ),
                     ),
-                    padding: const EdgeInsets.all(PregoSpacing.sm),
-                    onPressed: onOpenSettings,
-                    icon: Icon(TablerRegular.settings, size: PregoIconSize.md, semanticLabel: loc.settingsTitle),
-                  ),
-                ),
-                control(
-                  DesktopSidebarExpansionSelector(
-                    expansion: expansion,
-                    select: (expansion) => expansion < 0.5,
-                    builder: (context, railed) {
-                      final toggleLabel = railed ? loc.desktopSidebarExpand : loc.desktopSidebarCollapse;
-                      return IconButton(
-                        key: const Key("desktop-sidebar-toggle"),
-                        tooltip: autoCollapsed
-                            ? toggleLabel
-                            : loc.desktopShortcutHint(
-                                toggleLabel,
-                                defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B",
-                              ),
-                        padding: const EdgeInsets.all(PregoSpacing.sm),
-                        onPressed: autoCollapsed ? null : onToggleCollapsed,
-                        icon: Icon(
-                          railed
-                              ? TablerRegular.layout_sidebar_left_expand
-                              : TablerRegular.layout_sidebar_left_collapse,
-                          size: PregoIconSize.md,
-                          color: autoCollapsed ? prego.colors.textDisabled : null,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -485,6 +470,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                     label: activityStatuses.isEmpty ? null : activityStatuses.join(", "),
                     detail: null,
                   ),
+                  shortcut: null,
                   onPressed: toggle,
                 ),
                 // The popout sits on the root navigator, outside the cockpit's
@@ -555,19 +541,38 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                 collapsed: projectsFolded,
                 expansion: widget.expansion,
                 onToggle: () => unawaited(context.read<DesktopSidebarCubit>().toggleProjectsSection()),
-                action: SizedBox.square(
-                  dimension: 28,
-                  child: IconButton(
-                    key: const Key("desktop-sidebar-new-project"),
-                    padding: EdgeInsets.zero,
-                    tooltip: context.loc.desktopSidebarNewProject,
-                    onPressed: widget.onAddProject,
-                    icon: Icon(
-                      TablerRegular.folder_plus,
-                      size: PregoIconSize.sm,
-                      color: context.prego.colors.textSecondary,
+                action: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Until the sidebar is fully open, the footer still carries refresh.
+                    DesktopSidebarPhaseBuilder(
+                      expansion: widget.expansion,
+                      builder: (context, phase) => phase == DesktopSidebarPhase.open
+                          ? SizedBox.square(
+                              dimension: 28,
+                              child: _SidebarRefreshButton(
+                                projectState: context.watch<ProjectListCubit>().state,
+                                iconSize: PregoIconSize.sm,
+                                color: context.prego.colors.textSecondary,
+                              ),
+                            )
+                          : const SizedBox.shrink(),
                     ),
-                  ),
+                    SizedBox.square(
+                      dimension: 28,
+                      child: IconButton(
+                        key: const Key("desktop-sidebar-new-project"),
+                        padding: EdgeInsets.zero,
+                        tooltip: context.loc.desktopSidebarNewProject,
+                        onPressed: widget.onAddProject,
+                        icon: Icon(
+                          TablerRegular.folder_plus,
+                          size: PregoIconSize.sm,
+                          color: context.prego.colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -857,6 +862,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                                       detail: widget.running > 0 ? loc.projectListRunning(widget.running) : null,
                                     )
                                   : null,
+                              shortcut: null,
                               onPressed: () => widget.onOpenProject(
                                 context: actionContext,
                                 project: widget.project,
@@ -1221,7 +1227,10 @@ class const _SidebarButton({
 
   /// [detail] is short text shown beside [icon] while the sidebar is open.
   required final ({Widget icon, String? label, String? detail})? status,
-  required final VoidCallback onPressed,
+
+  /// Shown at the row's end while the sidebar is open, and in its tooltip otherwise.
+  required final String? shortcut,
+  required final VoidCallback? onPressed,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -1230,7 +1239,9 @@ class const _SidebarButton({
     final statusLabel = status?.label;
     final statusDetail = status?.detail;
     final description = statusLabel == null ? label : "$label, $statusLabel";
-    final color = prego.colors.textPrimary;
+    final shortcut = this.shortcut;
+    final tooltip = shortcut == null ? description : context.loc.desktopShortcutHint(description, shortcut);
+    final color = onPressed == null ? prego.colors.textDisabled : prego.colors.textPrimary;
     final textStyle = prego.textTheme.textSm.medium.copyWith(color: color);
     return DesktopSidebarPhaseBuilder(
       expansion: expansion,
@@ -1238,9 +1249,10 @@ class const _SidebarButton({
         padding: const EdgeInsets.symmetric(vertical: PregoSpacing.xxs),
         child: _ConditionalTooltip(
           enabled: phase != DesktopSidebarPhase.open || status != null,
-          message: description,
+          message: tooltip,
           child: Semantics(
             button: true,
+            enabled: onPressed != null,
             selected: selected,
             label: description,
             onTap: onPressed,
@@ -1293,6 +1305,16 @@ class const _SidebarButton({
                             child: status == null
                                 ? _TooltipWhenTruncated(message: label, style: textStyle)
                                 : Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle),
+                          ),
+                        ),
+                      ),
+                    if (shortcut != null && phase == DesktopSidebarPhase.open)
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
+                        child: ExcludeSemantics(
+                          child: Text(
+                            shortcut,
+                            style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
                           ),
                         ),
                       ),

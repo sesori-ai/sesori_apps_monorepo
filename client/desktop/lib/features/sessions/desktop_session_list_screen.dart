@@ -36,7 +36,6 @@ class const DesktopSessionListScreen({
   super.key,
   required final String? projectName,
   required final SessionOpenedCallback onSessionTap,
-  required final VoidCallback onNewSession,
   required final SessionListActionDispatcher actionDispatcher,
 }) extends StatefulWidget {
   static const double maxContentWidth = 760;
@@ -61,7 +60,7 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final DesktopSessionListScreen(:projectName, :onSessionTap, :onNewSession, :actionDispatcher) = widget;
+    final DesktopSessionListScreen(:projectName, :onSessionTap, :actionDispatcher) = widget;
     final loc = context.loc;
     final cubit = context.read<SessionListCubit>();
     final state = context.watch<SessionListCubit>().state;
@@ -82,19 +81,11 @@ class _DesktopSessionListScreenState() extends State<DesktopSessionListScreen> {
                   key: const Key("desktop-project-page-archived"),
                   label: loc.desktopProjectPageArchived,
                   leadingIcon: TablerRegular.archive,
-                  // Blue means on; the inverse pill is New session's.
+                  // Blue means on.
                   hierarchy: showArchived ? PregoButtonsSolidHierarchy.primary : PregoButtonsSolidHierarchy.secondary,
                   size: PregoButtonsSolidSize.sm,
                   onPressed: loaded == null ? null : cubit.toggleArchived,
                 ),
-              ),
-              PregoButtonsSolid(
-                key: const Key("desktop-project-page-new-session"),
-                label: loc.sessionListNewSession,
-                leadingIcon: TablerRegular.plus,
-                hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-                size: PregoButtonsSolidSize.sm,
-                onPressed: onNewSession,
               ),
               // A mouse has no pull gesture, so the pull's two refreshes live here.
               PregoAnchorMenu(
