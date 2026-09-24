@@ -302,3 +302,23 @@ Those were fixed in `91c165c38f1f481c59b95a8e959b49e42fb95f9d`; all **32/32**
 remote checks then passed. Later readiness/JSON review fixes are covered by the
 immutable local checkpoints above; final remote checks remain the PR monitor's
 responsibility. Do not infer a live quota-resumption journey from these checks.
+
+### Persisted Pi readiness follow-up
+
+Measured commit: `89ba1ddd0b57e475191222d139fb807ef78c253a`.
+Measured tree: `230dc3cabf723beca5e48b02aae270dc8bf85d86`.
+Working folder: `bridge/sesori_plugin_pi` in the dedicated worktree above.
+A primed directory without persisted session metadata reproduced an incorrect
+idle result before the fix. Readiness now requires actual persisted metadata
+for a nonresident session; the same test becomes idle once that metadata exists.
+Neither check starts Pi.
+
+```sh
+# Before the fix: expected unknown, received idle; exit 1.
+dart test test/pi_session_service_test.dart \
+  --name 'quota readiness does not treat a primed directory'
+# After the fix: 83 tests passed, exit 0.
+dart test test/pi_session_service_test.dart test/pi_session_catalog_repository_test.dart
+# After the fix: no findings, exit 0.
+dart analyze --fatal-infos --format=machine
+```

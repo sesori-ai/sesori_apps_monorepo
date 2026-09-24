@@ -63,5 +63,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
   the five-test repository suite also passes after the JSON-boundary follow-up.
   Bridge/shared/client analysis and documentation links pass. Measured commits,
   trees, working folders and exact commands are in EVIDENCE.md.
+- Step 3 Pi follow-up: a primed directory no longer proves persisted readiness;
+  the reproduced regression and all 83 Pi service/catalog tests pass after the fix.
 - Live scheduled continuation: not run; scheduler is local work and controls are not implemented.
 - Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.
