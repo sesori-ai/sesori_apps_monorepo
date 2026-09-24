@@ -26,9 +26,9 @@ void main() {
     expect(styleSheet.code?.color, prego.colors.textPrimary);
 
     final decoration = styleSheet.codeblockDecoration as BoxDecoration?;
-    expect(decoration?.color, prego.colors.bgSecondary);
-    expect(decoration?.borderRadius, BorderRadius.circular(8));
-    expect((decoration?.border as Border?)?.top.color, prego.colors.borderSecondary);
+    expect(decoration?.color, prego.colors.bgQuaternary);
+    expect(decoration?.borderRadius, BorderRadius.circular(PregoRadius.xs));
+    expect(decoration?.border, isNull);
   });
 
   test("tables and rules use explicit Prego lines, never the SDK's Material defaults", () {

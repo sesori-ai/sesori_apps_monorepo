@@ -54,10 +54,10 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
   );
 }
 
+/// The same inset as a tool's output, so code reads alike wherever it appears.
 BoxDecoration _codeBlockDecoration({required PregoDesignSystem prego}) => BoxDecoration(
-  color: prego.colors.bgSecondary,
-  borderRadius: BorderRadius.circular(PregoRadius.md),
-  border: Border.all(color: prego.colors.borderSecondary),
+  color: prego.colors.bgQuaternary,
+  borderRadius: BorderRadius.circular(PregoRadius.xs),
 );
 
 BoxDecoration _blockquoteDecoration({required PregoDesignSystem prego}) => BoxDecoration(

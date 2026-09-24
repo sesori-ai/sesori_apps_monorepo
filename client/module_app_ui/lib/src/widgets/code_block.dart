@@ -106,7 +106,7 @@ class _CodeBlockState() extends State<CodeBlock> {
       crossAxisAlignment: .start,
       children: [
         Padding(
-          padding: const EdgeInsetsDirectional.only(start: 12, end: 4, top: 4),
+          padding: const EdgeInsetsDirectional.only(start: 8, end: 4, top: 4),
           child: Row(
             children: [
               Expanded(
@@ -124,7 +124,7 @@ class _CodeBlockState() extends State<CodeBlock> {
         ),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 12),
+          padding: const EdgeInsetsDirectional.fromSTEB(8, 4, 8, 8),
           child: span != null ? Text.rich(span) : Text(widget.code, style: baseStyle),
         ),
       ],
