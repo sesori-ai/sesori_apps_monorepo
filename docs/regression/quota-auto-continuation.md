@@ -147,7 +147,8 @@ reported as a client end-to-end or live-provider pass.
 - A date is displayed in the wrong local day, pending input is shown as a ready
   schedule, or an unconfirmed/failed attempt is presented as a successful send.
 - The checked menu state cannot be disabled after support becomes unavailable,
-  or read-only chat surfaces expose mutation controls.
+  or archived/route-read-only chat surfaces expose mutation controls. An
+  unavailable-harness chat must still allow disabling an existing preference.
 
 ## Harness Scope
 
