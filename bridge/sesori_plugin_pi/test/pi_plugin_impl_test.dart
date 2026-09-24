@@ -152,6 +152,75 @@ void main() {
       });
     }
 
+    test("command discovery failure still accepts a non-reasoning model's restored off level", () async {
+      final partial = _Harness(failCommandDiscovery: true)..catalogModelReasoning = false;
+      addTearDown(partial.dispose);
+      partial.writeSession(id: "session", parentPath: null);
+      await partial.plugin.getSessions(projectId: partial.project.path, start: null, limit: null);
+
+      final discovery = await partial.plugin.getSessionOptions(
+        projectId: partial.project.path,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      );
+      final options = (discovery as PluginSessionOptionsDiscoveryObserved).options;
+      expect(options.completeness, PluginSessionOptionsCompleteness.partial);
+      expect(options.providers.providers.single.models.single.variants, isEmpty);
+
+      await partial.plugin.sendPrompt(
+        sessionId: "session",
+        promptId: "continuation",
+        parts: const [PluginPromptPart.text(text: "Continue.")],
+        variant: const PluginSessionVariant(id: "off"),
+        fastMode: false,
+        agent: "pi",
+        model: (providerID: "provider", modelID: "model"),
+      );
+      final process = await partial.nextSessionProcess();
+      expect((await waitForCommand(process: process, type: "prompt"))["message"], "Continue.");
+    });
+
+    test("catalog refresh replaces the model's implicit off capability with its options", () async {
+      harness.catalogModelReasoning = false;
+      harness.writeSession(id: "session", parentPath: null);
+      await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
+      await harness.plugin.getSessionOptions(
+        projectId: harness.project.path,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      );
+
+      // Reuse retains the known capability until the model catalog is refreshed.
+      harness.catalogModelReasoning = true;
+      harness.failThinkingDiscovery = true;
+      await harness.plugin.sendPrompt(
+        sessionId: "session",
+        promptId: "cached-capability",
+        parts: const [PluginPromptPart.text(text: "Continue.")],
+        variant: const PluginSessionVariant(id: "off"),
+        fastMode: false,
+        agent: "pi",
+        model: (providerID: "provider", modelID: "model"),
+      );
+      final process = await harness.nextSessionProcess();
+      expect((await waitForCommand(process: process, type: "prompt"))["message"], "Continue.");
+
+      await harness.plugin.getSessionOptions(
+        projectId: harness.project.path,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      );
+      await expectLater(
+        harness.plugin.sendPrompt(
+          sessionId: "session",
+          promptId: "refreshed-capability",
+          parts: const [PluginPromptPart.text(text: "Continue.")],
+          variant: const PluginSessionVariant(id: "off"),
+          fastMode: false,
+          agent: "pi",
+          model: (providerID: "provider", modelID: "model"),
+        ),
+        throwsA(isA<PluginStaleOptionsException>()),
+      );
+    });
+
     test("partial thinking discovery cannot establish an implicit off level", () async {
       harness.failThinkingDiscovery = true;
       harness.writeSession(id: "session", parentPath: null);

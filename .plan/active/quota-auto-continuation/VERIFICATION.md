@@ -138,8 +138,8 @@ tree `a7c009135affd6d6ace5e622c538dc6e7542cfe0`, was committed before running
 the following focused checks. All passed on that exact source checkpoint:
 
 - All **22** Pi plugin tests, including a failed-thinking-discovery regression
-  that failed before the guard. Implicit `off` is now accepted only with a
-  complete catalog; partial empty variants remain unconfirmed.
+  that failed before the guard. At this checkpoint implicit `off` required a
+  complete catalog; partial empty variants remained unconfirmed.
 - Both new composed bridge tests, now asserting the precise acceptance instant
   from their injected `package:clock` clocks. Orchestrator already supplies this
   clock to `SessionContinuationService`; its separate `ServerClock` is not the

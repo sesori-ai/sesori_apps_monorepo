@@ -110,8 +110,8 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 - Android notice/menu/message-echo smoke passes after an emulator restart
   recovered DNS/WebSocket failures. Android enable reaches iOS, and iOS
   disable reaches Android; bridge reads confirm both authoritative outcomes.
-- Step 7 review follow-up: implicit `off` requires a complete catalog, preserving
-  rejection when thinking discovery fails. The new regression failed before the
-  guard; all 22 Pi tests pass afterward. Both composed tests pass with exact
+- First step 7 review checkpoint: the complete-catalog guard preserved rejection
+  when thinking discovery failed. Its regression failed before the guard; all
+  22 Pi tests passed afterward. Both composed tests pass with exact
   injected acceptance timestamps; both owning packages analyze cleanly.
 - Final L4 matrix: partial. See VERIFICATION.md; the plan cannot be retired yet.

@@ -407,12 +407,23 @@ limitations. No product/database change.
 
 ### Step: 7
 
-**Exact proposed title:** 🌿 [quota-auto-continuation] Verify recovery and fix Pi restored thinking defaults [step 7/7]
+**Exact proposed title:** ⚙️ [quota-auto-continuation] Verify recovery and fix Pi restored thinking defaults [step 7/7]
 
 **Deliverable / expected result:** Run the matrix below and record results. Native verification found that
 Pi rejects its own persisted `off` thinking level for models without a thinking selector; fix that local
 validation and cover ordinary prompt acceptance. No database or wire change. Move the plan to completed
 only when the required matrix passes or the user explicitly accepts its remaining limitations.
+
+Pi follow-up: retain exact non-reasoning model identities from native discovery
+alongside options in the existing project catalog snapshot. Validation accepts
+their persisted `off` independently of unrelated command-discovery failures,
+while reasoning models still require an advertised level. Repository discovery,
+service composition and tracker replacement share one paired snapshot; no new
+mutable owner, cache, persistence or wire field. Remove the aggregate completeness
+guard this replaces. Reproduce the rejected ordinary prompt first, then run Pi
+plugin/repository/service tests and the package analyzer. This plugin-local
+contract propagation makes the step moderate complexity; target total authored
+churn remains below 1,500 lines.
 
 **Risk and validation:** L4 accumulated coverage through complete authoritative boundaries; partial/blocked
 stays active.
