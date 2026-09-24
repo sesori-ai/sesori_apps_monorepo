@@ -6,8 +6,8 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 |---|---|---|
 | 1 — Plan and support audit | Merged | [#1601][plan-pr]; audit and reviewed plan. |
 | 2 — Quota normalization | Merged | [#1641][normalization-pr]; typed terminal events and Claude/Pi reporting. |
-| 3 — Durable contracts and readiness | In review | [#1649][foundation-pr]; storage, wire model and Claude/Pi readiness. |
-| 4 — Bridge scheduler | In progress locally | Typed route, enriched views, ordered cancellation and normal prompt dispatch. |
+| 3 — Durable contracts and readiness | In review | [#1649][foundation-pr]; durable state and readiness. |
+| 4 — Bridge scheduler | In progress locally | Route, views, cancellation and dispatch. |
 | 5 — Shared chat controls | Not started | Inline hint, indicator and three-dot toggle on phone and desktop. |
 | 6 — Regression reconciliation | Not started | Complete affected feature docs and capability matrix. |
 | 7 — L4 verification and retirement | Not started | All recorded boundary/platform/provider coverage must pass. |
@@ -57,9 +57,13 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
   Pi RPC probes and separate release-critical from extended regression coverage.
 - Step 3/4 split: measured bridge work exceeded the authored review budget, so storage/wire/readiness
   are published separately from scheduling. Architecture and product scope remain unchanged.
-- Step 3 architecture implementation review: approved; no actionable findings.
-- Step 3 local validation: 221 focused tests pass, including file-backed DB reopen,
-  v17→v18 migration, wire compatibility and Claude/Pi readiness. Owning package
-  analysis and documentation links pass. Full commands are in EVIDENCE.md.
+- Step 3 architecture implementation review: approved twice, including the focused
+  mandatory-readiness and off-isolate lookup follow-up; no outstanding findings.
+- Step 3 local validation: 400 focused tests pass at the pinned readiness checkpoint;
+  the five-test repository suite also passes after the JSON-boundary follow-up.
+  Bridge/shared/client analysis and documentation links pass. Measured commits,
+  trees, working folders and exact commands are in EVIDENCE.md.
+- Step 3 Pi follow-up: a primed directory no longer proves persisted readiness;
+  the reproduced regression and all 83 Pi service/catalog tests pass after the fix.
 - Live scheduled continuation: not run; scheduler is local work and controls are not implemented.
 - Final L4 matrix: not run. Do not retire this plan on the plan PR's checks.

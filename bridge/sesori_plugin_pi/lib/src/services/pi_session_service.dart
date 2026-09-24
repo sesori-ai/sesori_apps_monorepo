@@ -247,7 +247,7 @@ final class PiSessionService({
     final sessionExists =
         _sessions.containsKey(sessionId) ||
         _pendingNewDirectories.containsKey(sessionId) ||
-        await _catalog.findSessionById(sessionId: sessionId) != null;
+        await _catalog.hasPersistedSession(sessionId: sessionId);
     if (_extensionUi.getPendingQuestions(sessionId: sessionId).isNotEmpty) {
       return PluginQuotaContinuationReadiness.awaitingInput;
     }

@@ -109,6 +109,10 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
   }
 
   /// Resolves a transcript by session id without reading any file.
+  /// Filesystem enumeration must not block the bridge while checking readiness.
+  Future<String?> findTranscriptPathInIsolate({required String sessionId}) =>
+      Isolate.run(() => findTranscriptPath(sessionId: sessionId));
+
   String? findTranscriptPath({required String sessionId}) {
     for (final path in _listTranscriptPaths()) {
       if (_rootIdFromPath(path) == sessionId || _childIdFromPath(path) == sessionId) return path;

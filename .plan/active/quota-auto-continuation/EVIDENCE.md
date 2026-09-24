@@ -182,25 +182,143 @@ synthetic model itself makes no network requests and consumes no account quota.
 
 ## Foundation verification — 2026-09-24
 
-The split step 3 verifies storage/wire/readiness only. It does not prove a live
-scheduled send or a chat control journey.
+These checkpoints supersede the initial uncommitted local runs. All working
+folders below are relative to the repository root. They verify storage, wire
+models and readiness, not a live scheduled send or a chat control journey.
 
-- `bridge/app`: `dart test test/bridge/repositories/session_continuation_repository_test.dart test/bridge/repositories/session_repository_test.dart test/drift/default/session_continuation_migration_test.dart test/bridge/persistence/database_test.dart` — **62 passed**.
-  The new repository tests close and reopen a file-backed SQLite database,
-  preserve pause deadlines and session preferences, reject stale generations,
-  and retain consumed/cancelled observation identities. The migration verifies
-  v17→v18 and session-owned cascading deletion.
-- `bridge/sesori_plugin_claude`: `dart test test/claude_plugin_impl_test.dart test/claude_session_service_test.dart` — **80 passed**.
-  Readiness includes native retry/busy, pending approval, scheduled wakeup,
-  and persisted nonresident sessions without spawning Claude.
-- `bridge/sesori_plugin_pi`: `dart test test/pi_session_service_test.dart` — **75 passed**.
-  Native retries remain non-idle until final settlement; persisted nonresident
-  sessions can be recognized without spawning Pi.
-- `shared/sesori_shared`: `dart test test/models/session_auto_continuation_test.dart` — **4 passed**.
-  Covers old-bridge omission, UTC millisecond serialization, conservative future
-  status/enum handling, and an explicitly required toggle preference.
-- Static analysis passed for `bridge/app`, `sesori_plugin_interface`,
-  `sesori_plugin_claude`, `sesori_plugin_pi`, `shared/sesori_shared`, and the
-  affected client packages (`app`, `desktop`, `module_core`, `module_app_ui`,
-  `module_desktop_core`).
-- Documentation local links and `git diff --check` passed.
+### Readiness and contracts checkpoint
+
+Measured commit: `857df9113a4fb1fdd825f10c26a2760c314bca49`.
+Measured tree: `8a440469eeea1b1c0b83e4ad0d37d206068cae2c`.
+All commands below exited 0 at this committed revision: **400 tests passed**.
+
+Working folder `bridge/app` — **62 tests passed**:
+
+```sh
+dart test test/bridge/repositories/session_continuation_repository_test.dart \
+  test/bridge/repositories/session_repository_test.dart \
+  test/drift/default/session_continuation_migration_test.dart \
+  test/bridge/persistence/database_test.dart
+```
+
+Working folder `bridge/sesori_plugin_claude` — **80 tests passed**:
+
+```sh
+dart test test/claude_plugin_impl_test.dart test/claude_session_service_test.dart
+```
+
+Working folder `bridge/sesori_plugin_pi` — **75 tests passed**:
+
+```sh
+dart test test/pi_session_service_test.dart
+```
+
+Working folder `shared/sesori_shared` — **4 tests passed**:
+
+```sh
+dart test test/models/session_auto_continuation_test.dart
+```
+
+Working folder `bridge/sesori_plugin_acp` — **63 tests passed**:
+
+```sh
+dart test test/acp_event_mapper_test.dart
+```
+
+Working folder `bridge/sesori_plugin_codex` — **65 tests passed**:
+
+```sh
+dart test test/codex_event_mapper_test.dart test/codex_plugin_impl_test.dart
+```
+
+Working folder `bridge/sesori_plugin_opencode` — **51 tests passed**:
+
+```sh
+dart test test/opencode_plugin_impl_test.dart
+```
+
+Analysis — exit 0, no findings, with CI's fatal-info policy:
+
+```sh
+# Working folder: bridge
+dart analyze --fatal-infos --format=machine
+# Working folder: shared/sesori_shared
+dart analyze --fatal-infos --format=machine
+# Working folder: client
+dart analyze --fatal-infos --format=machine \
+  app desktop module_core module_app_ui module_desktop_core
+```
+
+These cases cover file-backed SQLite close/reopen, reset and pause cutoffs,
+preference retention, deduplication, generation rejection, v17→v18 migration,
+and session-owned deletion. Harness cases cover retry/busy/input/queue states
+and known nonresident sessions without spawning a process. Wire cases cover
+omission, UTC millisecond values, and conservative unknown future values.
+
+### JSON-boundary follow-up
+
+Measured commit: `1946d8c002ed8b54063a7fb0384b45dec60e44dd`.
+Measured tree: `4acbd526cb595fd61e37241f6f29f4bcf6274187`.
+Only the continuation mapper and its repository test changed after the prior
+checkpoint. The repository uses `jsonDecodeMap`; malformed/non-object JSON
+fails explicitly with `FormatException`, without adding a persistence fallback.
+
+```sh
+# Working folder: bridge/app — 5 tests passed, exit 0
+dart test test/bridge/repositories/session_continuation_repository_test.dart
+# Working folder: bridge — no findings, exit 0
+dart analyze --fatal-infos --format=machine app
+```
+
+### Documentation and whitespace checkpoint
+
+Measured commit: `857df9113a4fb1fdd825f10c26a2760c314bca49` above.
+Working folder: repository root. Both commands exited 0; local links passed
+for seven documents. The evidence-only update after the code checkpoints adds
+no production or test changes.
+
+```sh
+git diff --check HEAD^ HEAD
+python3 - <<'PY_LINKS'
+from pathlib import Path
+import re
+files = list(Path('.plan/active/quota-auto-continuation').glob('*.md'))
+files += [Path('docs/regression/quota-auto-continuation.md'),
+          Path('docs/HARNESS_CAPABILITIES.md')]
+for file in files:
+    for target in re.findall(r'\]\(([^)]+)\)', file.read_text()):
+        target = target.split('#', 1)[0]
+        if target and '://' not in target:
+            assert (file.parent / target).exists(), (file, target)
+print('Local links passed:', len(files), 'documents')
+PY_LINKS
+```
+
+### CI follow-up
+
+The first PR head exposed missed ACP/Codex constructor arguments,
+Codex/OpenCode explicit interface implementations, and shared export ordering.
+Those were fixed in `91c165c38f1f481c59b95a8e959b49e42fb95f9d`; all **32/32**
+remote checks then passed. Later readiness/JSON review fixes are covered by the
+immutable local checkpoints above; final remote checks remain the PR monitor's
+responsibility. Do not infer a live quota-resumption journey from these checks.
+
+### Persisted Pi readiness follow-up
+
+Measured commit: `89ba1ddd0b57e475191222d139fb807ef78c253a`.
+Measured tree: `230dc3cabf723beca5e48b02aae270dc8bf85d86`.
+Working folder: `bridge/sesori_plugin_pi` in the dedicated worktree above.
+A primed directory without persisted session metadata reproduced an incorrect
+idle result before the fix. Readiness now requires actual persisted metadata
+for a nonresident session; the same test becomes idle once that metadata exists.
+Neither check starts Pi.
+
+```sh
+# Before the fix: expected unknown, received idle; exit 1.
+dart test test/pi_session_service_test.dart \
+  --name 'quota readiness does not treat a primed directory'
+# After the fix: 83 tests passed, exit 0.
+dart test test/pi_session_service_test.dart test/pi_session_catalog_repository_test.dart
+# After the fix: no findings, exit 0.
+dart analyze --fatal-infos --format=machine
+```

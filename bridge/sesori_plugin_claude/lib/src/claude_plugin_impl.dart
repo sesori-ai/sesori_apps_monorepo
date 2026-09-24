@@ -319,7 +319,8 @@ final class ClaudePlugin({
       _sessions.getQuotaContinuationReadiness(
         sessionId: sessionId,
         sessionExists:
-            _createdSessions.containsKey(sessionId) || _transcripts.findTranscriptPath(sessionId: sessionId) != null,
+            _createdSessions.containsKey(sessionId) ||
+            await _transcripts.findTranscriptPathInIsolate(sessionId: sessionId) != null,
       );
 
   @override

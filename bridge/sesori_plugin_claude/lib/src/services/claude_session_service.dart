@@ -131,7 +131,8 @@ final class ClaudeSessionService({
     null => false,
   };
 
-  /// The session's accepted-but-not-yet-visible prompts, in dispatch order.
+  /// Named-session readiness, including retries, queued work and pending input.
+  /// [sessionExists] establishes idle for a known nonresident transcript.
   PluginQuotaContinuationReadiness getQuotaContinuationReadiness({
     required String sessionId,
     required bool sessionExists,
@@ -154,6 +155,7 @@ final class ClaudeSessionService({
     return PluginQuotaContinuationReadiness.unknown;
   }
 
+  /// The session's accepted-but-not-yet-visible prompts, in dispatch order.
   List<PluginQueuedPrompt> queuedPrompts({required String sessionId}) {
     final state = _turns[sessionId];
     if (state == null) return const [];
