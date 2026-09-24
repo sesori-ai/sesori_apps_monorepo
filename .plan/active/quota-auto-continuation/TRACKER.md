@@ -10,7 +10,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 | 4 — Bridge scheduler | Merged | [#1654][scheduler-pr]; route, views, cancellation and dispatch. |
 | 5 — Shared chat controls | Merged | [#1656][controls-pr]; shared hint, indicator and three-dot toggle. |
 | 6 — Regression reconciliation | Merged | [#1659][regression-pr]; feature docs, provider scope and proof boundaries. |
-| 7 — Verification and Pi prompt fix | In progress | [Verification matrix](VERIFICATION.md); required native/provider coverage remains. |
+| 7 — Verification and Pi prompt fix | In review | [#1664][verification-pr]; [partial matrix](VERIFICATION.md). |
 
 [plan-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1601
 [normalization-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1641
@@ -18,6 +18,7 @@ Plan: [PLAN.md](PLAN.md). Series slug: `quota-auto-continuation`. Total: **7 PRs
 [scheduler-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1654
 [controls-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1656
 [regression-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1659
+[verification-pr]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1664
 
 ## Confirmed user decisions
 

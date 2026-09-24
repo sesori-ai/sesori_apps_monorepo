@@ -25,13 +25,32 @@ live-provider recovery or native-client evidence.
   no clients. Another fresh graph drains its startup tick without replaying the
   submitted observation; the accepted-prompt row remains durable.
 
-Code checkpoint: `113ff5003`; integrating main in `caae2798c` did not change this
-verified tree. Run from `bridge/app`:
+Immutable source checkpoints and result attribution:
+
+- Bridge test archive: commit `113ff5003716ad27793a262e8a90a0accda657c0`,
+  tree `2bf35163c23b86644272c892240334d5c671cf2b`. The local runs below were
+  incremental while preparing this commit; the earlier runs preceded addition
+  of the restart fixture. They are not a claim that the whole suite ran locally
+  from one clean checkout of the final archive.
+- Main integration: commit `caae2798c5dd6104021ac8133305da510d89dcf2`,
+  tree `2bf35163c23b86644272c892240334d5c671cf2b`. The identical full tree IDs
+  and a successful `git diff --quiet` between these commits prove that the merge
+  changed no files.
+- Pi fix/probe archive and passing CI head:
+  commit `44b6e65a803e43cc3c287f58068d50d31a1b9dd3`,
+  tree `c271e3e9f015a1f8a0a5e0c40e7b4fcd50a6d34e`. GitHub completed **20/20**
+  checks at this exact head. The local Pi and native results below were collected
+  while preparing this commit, not by rerunning native QA after committing it.
+
+Run from `bridge/app`:
 
 ```sh
-dart test test/bridge/orchestrator_emit_bridge_event_test.dart --name 'quota continuation shares relay state' --reporter expanded
-dart test test/bridge/orchestrator_emit_bridge_event_test.dart --name 'quota startup resumes' --reporter expanded
-dart test test/bridge/orchestrator_emit_bridge_event_test.dart --name '^(?!quota continuation shares relay state)' --reporter expanded
+dart test test/bridge/orchestrator_emit_bridge_event_test.dart \
+  --name 'quota continuation shares relay state' --reporter expanded
+dart test test/bridge/orchestrator_emit_bridge_event_test.dart \
+  --name 'quota startup resumes' --reporter expanded
+dart test test/bridge/orchestrator_emit_bridge_event_test.dart \
+  --name '^(?!quota continuation shares relay state)' --reporter expanded
 dart analyze --fatal-infos
 ```
 
@@ -46,9 +65,20 @@ is cumulative; unchanged passing suites were not rerun solely for confidence.
 The iOS 26.5 simulator and Android API 36 emulator use a dedicated dev-account
 bridge and the real relay. Pi is the published **0.85.1** runtime with isolated
 state and `tool/quota_probe_provider.ts`; the provider makes no network calls,
-uses no credentials and spends no model tokens. App builds use `caae2798c`;
-the bridge was restarted with the Pi validation fix included in this step.
-No production account was deliberately exhausted.
+uses no credentials and spends no model tokens. App builds use the main-integration
+checkpoint above. Its client tree `cb6903c7bbccff49e25c452539cfa7cfcca03975`
+is identical to the client tree in the Pi fix archive. The bridge was restarted
+with the Pi validation fix; no production account was deliberately exhausted.
+
+The local Pi test/analyzer results and corrected native bridge run used the
+following Dart sources, now preserved in the Pi fix archive above:
+
+- `pi_plugin_impl.dart`: blob `8282ce4be5a928d1bb7844220f7fc55cddb5e81e`.
+- `pi_plugin_impl_test.dart`: blob `1a3a6aaa56b1b24d636ce57c1a0e2aa03cc5bcb3`.
+
+The final four-mode RPC probes used the tool sources in that archive. The earlier
+native timed recovery used its `continuation` mode before the `unknown` mode was
+added; those fixture edits did not change the Dart plugin sources.
 
 `QUOTA_PROBE_MODE=continuation` returns a one-minute quota reset on the first
 prompt, then accepts the automatic `Continue.` in the same resident Pi session.
@@ -91,8 +121,10 @@ all four passed on both managed target **0.85.1** and PATH floor **0.84.1**.
 dart test test/pi_plugin_impl_test.dart --reporter expanded
 dart analyze --fatal-infos
 # From repository root
-npx --yes --package=@earendil-works/pi-coding-agent@0.85.1 node bridge/sesori_plugin_pi/tool/quota_settlement_probe.mjs 0.85.1
-npx --yes --package=@earendil-works/pi-coding-agent@0.84.1 node bridge/sesori_plugin_pi/tool/quota_settlement_probe.mjs 0.84.1
+npx --yes --package=@earendil-works/pi-coding-agent@0.85.1 \
+  node bridge/sesori_plugin_pi/tool/quota_settlement_probe.mjs 0.85.1
+npx --yes --package=@earendil-works/pi-coding-agent@0.84.1 \
+  node bridge/sesori_plugin_pi/tool/quota_settlement_probe.mjs 0.84.1
 ```
 
 This is native-client and pinned-runtime evidence with a synthetic provider.
@@ -103,16 +135,23 @@ screen remains unexecuted; existing shared widget coverage is separate.
 
 | Boundary | Current result | Remaining proof |
 |---|---|---|
-| Implemented plugin parsers and terminal settlement | Passed existing focused suites and pinned Pi RPC probes | Actual provider recovery is separate. |
-| Headless policy and cancellation | Passed existing deterministic service/lifecycle suites | Composed cases above add route/DAO/ordinary-prompt proof; they do not repeat every injected failure through Orchestrator. |
-| Relay and client independence | Passed composed headless boundary and native iOS/Android preference convergence/reconnect | The headless timed/restart tests use a fixture backend; live provider recovery is separate. |
-| Persistent startup and no replay | Passed with new file-backed bridge compositions | Abrupt process death remains the explicitly accepted consumed/unconfirmed policy, not guaranteed delivery. |
-| Pi `openai-codex` live provider | Partial: natural captured format plus pinned synthetic RPC settlement | Natural quota → post-reset provider acceptance in the same session. |
-| Claude Code live provider | Partial: natural captured format plus parser/lifecycle fixtures | Pinned live runtime quota delivery and post-reset provider acceptance. |
-| iOS simulator | Partial: native controls, local time, bridge restart/reconnect, unknown reset and automatic message echo passed | Unavailable-harness native state. |
-| macOS desktop | Blocked: user requested leaving the running app untouched | Complete native control/message-echo journey. |
-| Android shared UI | Passed native notice/menu layout, automatic message echo and acknowledged action smoke after emulator network recovery | No additional Android matrix required for this step. |
-| Released-peer compatibility | Partial: public baseline/source verified | Actual released-peer decoding, ordinary send/Stop and unavailable-control journey. |
+| Plugin parsers/settlement | Passed suites and pinned probes | Provider recovery is separate. |
+| Headless policy/cancellation | Passed service/lifecycle and composed cases | Fixture backend; see limits below. |
+| Relay/client independence | Passed composed headless and native client cases | Live provider recovery is separate. |
+| Persistent startup/no replay | Passed file-backed bridge compositions | Consumed/unconfirmed policy still applies. |
+| Pi live provider | Partial: captured format and synthetic RPC | Same-session post-reset provider acceptance. |
+| Claude Code live provider | Partial: captured format and parser fixtures | Runtime delivery and provider acceptance. |
+| iOS simulator | Partial: native journey above passed | Unavailable-harness native screen. |
+| macOS desktop | Blocked: user requested leaving the app untouched | Native control/message-echo journey. |
+| Android shared UI | Passed native action/layout/message smoke | None additional for this step. |
+| Released-peer compatibility | Partial: public baseline/source verified | Released-peer integration. |
+
+Composed cases add route/DAO/ordinary-prompt proof to the focused service tests;
+they do not repeat every injected failure through Orchestrator. The headless
+timed/restart cases use a fixture backend. Abrupt process death still follows
+the accepted consumed/unconfirmed policy, without guaranteed delivery.
+Released-peer integration must cover decoding, ordinary send/Stop and the
+unavailable-control journey.
 
 Do not deliberately exhaust accounts to complete the provider rows. A synthetic
 quota or fixture response does not prove that a real provider recovers.
