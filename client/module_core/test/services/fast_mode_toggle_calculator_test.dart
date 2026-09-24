@@ -104,15 +104,15 @@ void main() {
   });
 
   group("FastModeToggleCalculator lastModelActivity", () {
-    MessageWithParts assistant({required MessageSender sender, required int completed}) => MessageWithParts(
+    MessageWithParts assistant({required MessageSender sender, required int? completed}) => MessageWithParts(
       info: Message.assistant(
-        id: "msg-$completed",
+        id: "msg-${completed ?? "streaming"}",
         sessionID: "session-1",
         agent: null,
         modelID: null,
         providerID: null,
         sender: sender,
-        time: MessageTime(created: completed - 1000, completed: completed),
+        time: completed == null ? null : MessageTime(created: completed - 1000, completed: completed),
       ),
       parts: const [],
     );
@@ -132,6 +132,18 @@ void main() {
     test("falls back to the session update without agent activity", () {
       final activity = _calculator.lastModelActivity(
         messages: [assistant(sender: MessageSender.system, completed: 1700000900000)],
+        session: testSession(updatedAt: 1700000950000),
+      );
+
+      expect(activity, DateTime.fromMillisecondsSinceEpoch(1700000950000));
+    });
+
+    test("falls back to the session update while the newest agent message has no time yet", () {
+      final activity = _calculator.lastModelActivity(
+        messages: [
+          assistant(sender: MessageSender.agent, completed: 1700000100000),
+          assistant(sender: MessageSender.agent, completed: null),
+        ],
         session: testSession(updatedAt: 1700000950000),
       );
 
