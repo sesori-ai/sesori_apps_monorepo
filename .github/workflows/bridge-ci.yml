@@ -9,6 +9,8 @@ on:
       - 'install.sh'
       - 'install.ps1'
       - '.tool-versions'
+      - '.github/workflows/bridge-ci.yml'
+      - '.github/scripts/run_test_shard.sh'
   pull_request:
     paths:
       - 'bridge/**'
@@ -16,6 +18,12 @@ on:
       - 'install.sh'
       - 'install.ps1'
       - '.tool-versions'
+      - '.github/workflows/bridge-ci.yml'
+      - '.github/scripts/run_test_shard.sh'
+
+concurrency:
+  group: bridge-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   toolchain:
@@ -29,8 +37,25 @@ jobs:
         id: dart-version
         uses: ./.github/actions/resolve-flutter-dart-version
 
+  # Parallel slices so the slowest one, not the sum, sets the wall time.
+  # `app` tests alone take as long as every other bridge package combined, so
+  # both test slices are further split into file shards.
   test:
     needs: toolchain
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - task: analyze
+          - task: shared
+          - task: test-app
+            shard: 1/2
+          - task: test-app
+            shard: 2/2
+          - task: test-packages
+            shard: 1/2
+          - task: test-packages
+            shard: 2/2
     runs-on: ubuntu-latest
     env:
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
@@ -54,29 +79,34 @@ jobs:
         run: dart pub get
         working-directory: shared/no_slop_linter
 
-      - name: Analyze bridge packages
-        shell: bash
+      # One workspace-wide pass is several times faster than per-package runs.
+      - name: Analyze bridge workspace
+        if: matrix.task == 'analyze'
+        run: dart analyze --fatal-infos
         working-directory: bridge
-        run: |
-          for module in $(sed -n 's/^MODULES := //p' Makefile); do
-            echo "::group::analyze $module"
-            (cd "$module" && dart analyze --fatal-infos)
-            echo "::endgroup::"
-          done
 
       - name: Run bridge tests
+        if: startsWith(matrix.task, 'test-')
         shell: bash
         working-directory: bridge
+        env:
+          TASK: ${{ matrix.task }}
+          SHARD: ${{ matrix.shard }}
         run: |
           for module in $(sed -n 's/^MODULES := //p' Makefile); do
+            if [ "$TASK" = test-app ] && [ "$module" != app ]; then continue; fi
+            if [ "$TASK" = test-packages ] && [ "$module" = app ]; then continue; fi
             if [ -d "$module/test" ]; then
               echo "::group::test $module"
-              (cd "$module" && dart test)
+              # The default of half the cores leaves a 4-core runner mostly idle
+              # while tests wait on timers and subprocesses.
+              (cd "$module" && "$GITHUB_WORKSPACE/.github/scripts/run_test_shard.sh" dart "$SHARD" -j 4)
               echo "::endgroup::"
             fi
           done
 
       - name: Analyze and test shared packages
+        if: matrix.task == 'shared'
         shell: bash
         working-directory: shared
         run: |
