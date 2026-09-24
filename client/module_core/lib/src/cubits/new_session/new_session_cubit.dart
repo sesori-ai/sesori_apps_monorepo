@@ -614,13 +614,14 @@ class NewSessionCubit({
     if (plugin == null) {
       return data.isPluginDiscoveryInFlight ? const NewSessionComposerPending() : const NewSessionComposerRetry();
     }
+    // The project check comes first because Recheck retries it first.
+    if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable) {
+      return const NewSessionComposerProjectUnavailable();
+    }
     if (data.optionsState
         case NewSessionOptionsAuthenticationRequiredUnavailableState(:final actionHint) ||
             NewSessionOptionsAuthenticationRequiredRetainedState(:final actionHint)) {
       return NewSessionComposerLoginRequired(harnessName: plugin.displayName, actionHint: actionHint);
-    }
-    if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable) {
-      return const NewSessionComposerProjectUnavailable();
     }
     return switch (data.optionsState) {
       NewSessionOptionsLoadingState() => const NewSessionComposerPending(),

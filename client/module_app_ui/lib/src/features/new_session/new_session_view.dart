@@ -399,7 +399,12 @@ class _NewSessionViewState() extends State<NewSessionView> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ?notice,
+              // Plugin-provided guidance can outgrow a short phone at large text.
+              if (notice != null)
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height / 2),
+                  child: SingleChildScrollView(primary: false, child: notice),
+                ),
               Visibility(
                 key: const ValueKey("new_session_prompt"),
                 visible: notice == null,
