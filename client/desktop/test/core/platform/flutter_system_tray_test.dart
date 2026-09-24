@@ -11,7 +11,6 @@ void main() {
     registerFallbackValue(_MockImage());
   });
 
-  late _MockNativeTrayFactory native;
   late _MockTrayIcon icon;
   late _MockImage image;
   late _MockMenu menu;
@@ -20,26 +19,12 @@ void main() {
   late void Function(TrayIconEvent) iconListener;
 
   setUp(() {
-    native = _MockNativeTrayFactory();
     icon = _MockTrayIcon();
     image = _MockImage();
     menu = _MockMenu();
     items = <String, _MockMenuItem>{};
     itemListeners = <String, void Function(MenuEvent)>{};
 
-    when(() => native.loadAsset(path: any(named: "path"))).thenReturn(image);
-    when(native.createTrayIcon).thenReturn(icon);
-    when(native.createMenu).thenReturn(menu);
-    when(() => native.createMenuItem(label: any(named: "label"))).thenAnswer((invocation) {
-      final String label = invocation.namedArguments[#label] as String;
-      final _MockMenuItem item = _MockMenuItem();
-      when(() => item.addListener(any())).thenAnswer((listenerInvocation) {
-        itemListeners[label] = listenerInvocation.positionalArguments.single as void Function(MenuEvent);
-        return 1;
-      });
-      items[label] = item;
-      return item;
-    });
     when(() => icon.addListener(any())).thenAnswer((invocation) {
       iconListener = invocation.positionalArguments.single as void Function(TrayIconEvent);
       return 7;
@@ -49,19 +34,36 @@ void main() {
     when(() => icon.removeListener(any())).thenReturn(true);
   });
 
-  FlutterSystemTray createTray({required bool isLinux, required bool isWindows, required bool isMacOS}) {
-    return FlutterSystemTray.forTesting(
-      native: native,
+  _MockMenuItem createItem(String label) {
+    final _MockMenuItem item = _MockMenuItem();
+    when(() => item.addListener(any())).thenAnswer((invocation) {
+      itemListeners[label] = invocation.positionalArguments.single as void Function(MenuEvent);
+      return 1;
+    });
+    items[label] = item;
+    return item;
+  }
+
+  _TestSystemTray createTray({
+    required bool isLinux,
+    required bool isWindows,
+    required bool isMacOS,
+    required LinuxStatusNotifierHostProbe? linuxHostProbe,
+  }) {
+    return _TestSystemTray(
+      icon: icon,
+      image: image,
+      menu: menu,
+      createItem: createItem,
       isLinux: isLinux,
       isWindows: isWindows,
       isMacOS: isMacOS,
-      linuxHostProbe: () async => isLinux ? true : throw StateError("must not probe"),
+      linuxHostProbe: linuxHostProbe ?? () async => isLinux ? true : throw StateError("must not probe"),
     );
   }
 
   test("Linux requires positive StatusNotifier watcher evidence", () async {
-    final FlutterSystemTray tray = FlutterSystemTray.forTesting(
-      native: native,
+    final _TestSystemTray tray = createTray(
       isLinux: true,
       isWindows: false,
       isMacOS: false,
@@ -72,11 +74,11 @@ void main() {
     final SystemTrayAvailability availability = await tray.initialize(menu: _menu);
 
     expect(availability, SystemTrayAvailability.unavailable);
-    verifyNever(native.createTrayIcon);
+    expect(tray.loadedAssets, isEmpty);
   });
 
   test("renders typed menu entries and emits typed commands", () async {
-    final FlutterSystemTray tray = createTray(isLinux: true, isWindows: false, isMacOS: false);
+    final _TestSystemTray tray = createTray(isLinux: true, isWindows: false, isMacOS: false, linuxHostProbe: null);
     addTearDown(tray.dispose);
 
     final SystemTrayAvailability availability = await tray.initialize(menu: _menu);
@@ -86,7 +88,7 @@ void main() {
 
     expect(availability, SystemTrayAvailability.available);
     expect(items.keys, <String>["Bridge: Off", "Turn Bridge On"]);
-    verify(() => native.loadAsset(path: "assets/tray_icon.png")).called(1);
+    expect(tray.loadedAssets, <String>["assets/tray_icon.png"]);
     verify(() => icon.isIconTemplate = false).called(1);
     verify(() => icon.icon = image).called(1);
     verify(() => icon.setContextMenu(menu)).called(1);
@@ -98,7 +100,7 @@ void main() {
   });
 
   test("rebuilds the same menu and releases previous items after the click returns", () async {
-    final FlutterSystemTray tray = createTray(isLinux: false, isWindows: false, isMacOS: true);
+    final _TestSystemTray tray = createTray(isLinux: false, isWindows: false, isMacOS: true, linuxHostProbe: null);
     addTearDown(tray.dispose);
 
     await tray.initialize(menu: _menu);
@@ -118,7 +120,7 @@ void main() {
   });
 
   test("opens the same context menu for left and right icon clicks", () async {
-    final FlutterSystemTray tray = createTray(isLinux: false, isWindows: false, isMacOS: true);
+    final _TestSystemTray tray = createTray(isLinux: false, isWindows: false, isMacOS: true, linuxHostProbe: null);
     addTearDown(tray.dispose);
 
     await tray.initialize(menu: _menu);
@@ -130,12 +132,12 @@ void main() {
   });
 
   test("uses the bundled ICO asset on Windows and disposes the native tray", () async {
-    final FlutterSystemTray tray = createTray(isLinux: false, isWindows: true, isMacOS: false);
+    final _TestSystemTray tray = createTray(isLinux: false, isWindows: true, isMacOS: false, linuxHostProbe: null);
 
     await tray.initialize(menu: _menu);
     await tray.dispose();
 
-    verify(() => native.loadAsset(path: "assets/tray_icon.ico")).called(1);
+    expect(tray.loadedAssets, <String>["assets/tray_icon.ico"]);
     verify(() => icon.removeListener(7)).called(1);
     verify(icon.dispose).called(1);
     verify(menu.dispose).called(1);
@@ -143,7 +145,7 @@ void main() {
   });
 
   test("uses a macOS template icon for automatic light/dark recoloring", () async {
-    final FlutterSystemTray tray = createTray(isLinux: false, isWindows: false, isMacOS: true);
+    final _TestSystemTray tray = createTray(isLinux: false, isWindows: false, isMacOS: true, linuxHostProbe: null);
     addTearDown(tray.dispose);
 
     await tray.initialize(menu: _menu);
@@ -153,7 +155,7 @@ void main() {
 
   test("releases native handles when the icon cannot be shown", () async {
     when(() => icon.setVisible(any())).thenReturn(false);
-    final FlutterSystemTray tray = createTray(isLinux: false, isWindows: false, isMacOS: true);
+    final _TestSystemTray tray = createTray(isLinux: false, isWindows: false, isMacOS: true, linuxHostProbe: null);
     addTearDown(tray.dispose);
 
     await expectLater(tray.initialize(menu: _menu), throwsStateError);
@@ -176,7 +178,35 @@ final SystemTrayMenu _menu = SystemTrayMenu(
   ],
 );
 
-class _MockNativeTrayFactory() extends Mock implements NativeTrayFactory;
+class _TestSystemTray({
+  required final TrayIcon icon,
+  required final Image image,
+  required final Menu menu,
+  required final MenuItem Function(String label) createItem,
+  required super.isLinux,
+  required super.isWindows,
+  required super.isMacOS,
+  required super.linuxHostProbe,
+}) extends FlutterSystemTray {
+  this : super.forTesting();
+
+  final List<String> loadedAssets = <String>[];
+
+  @override
+  TrayIcon? createTrayIcon() => icon;
+
+  @override
+  Image? loadAsset({required String path}) {
+    loadedAssets.add(path);
+    return image;
+  }
+
+  @override
+  Menu? createMenu() => menu;
+
+  @override
+  MenuItem? createMenuItem({required String label}) => createItem(label);
+}
 
 class _MockTrayIcon() extends Mock implements TrayIcon;
 

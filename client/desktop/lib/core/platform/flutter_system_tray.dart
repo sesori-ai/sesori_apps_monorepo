@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:io";
 
 import "package:dbus/dbus.dart";
-import "package:flutter/foundation.dart" show visibleForTesting;
+import "package:flutter/foundation.dart" show protected, visibleForTesting;
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
@@ -11,25 +11,11 @@ import "package:tray_manager/tray_manager.dart";
 @visibleForTesting
 typedef LinuxStatusNotifierHostProbe = Future<bool> Function();
 
-/// The native constructors behind [FlutterSystemTray]. Tests replace them
-/// because they need the platform library.
-@visibleForTesting
-class const NativeTrayFactory() {
-  TrayIcon? createTrayIcon() => TrayIcon.create();
-
-  Image? loadAsset({required String path}) => ImageAsset.fromAsset(path);
-
-  Menu? createMenu() => Menu.create();
-
-  MenuItem? createMenuItem({required String label}) => MenuItem.createWithLabelAndType(label, MenuItemType.normal);
-}
-
 /// Flutter/tray_manager adapter. It renders the supplied menu verbatim and
 /// reports clicked entries as typed commands; lifecycle policy stays in
 /// `BridgeControlCubit`.
 @LazySingleton(as: SystemTray)
 class FlutterSystemTray.forTesting({
-  required final NativeTrayFactory _native,
   required final bool _isLinux,
   required final bool _isWindows,
   required final bool _isMacOS,
@@ -37,7 +23,6 @@ class FlutterSystemTray.forTesting({
 }) implements SystemTray {
   new()
     : this.forTesting(
-        native: const NativeTrayFactory(),
         isLinux: Platform.isLinux,
         isWindows: Platform.isWindows,
         isMacOS: Platform.isMacOS,
@@ -55,6 +40,24 @@ class FlutterSystemTray.forTesting({
   _NativeTray? _tray;
   bool _disposed = false;
 
+  // The native constructors need the platform library, so tests override
+  // them.
+  @protected
+  @visibleForTesting
+  TrayIcon? createTrayIcon() => TrayIcon.create();
+
+  @protected
+  @visibleForTesting
+  Image? loadAsset({required String path}) => ImageAsset.fromAsset(path);
+
+  @protected
+  @visibleForTesting
+  Menu? createMenu() => Menu.create();
+
+  @protected
+  @visibleForTesting
+  MenuItem? createMenuItem({required String label}) => MenuItem.createWithLabelAndType(label, MenuItemType.normal);
+
   @override
   Stream<SystemTrayCommand> get commands => _commands.stream;
 
@@ -70,9 +73,9 @@ class FlutterSystemTray.forTesting({
     }
 
     final String iconPath = _isWindows ? _windowsIconPath : _pngIconPath;
-    final Image? image = _native.loadAsset(path: iconPath);
-    final Menu? nativeMenu = _native.createMenu();
-    final TrayIcon? icon = _native.createTrayIcon();
+    final Image? image = loadAsset(path: iconPath);
+    final Menu? nativeMenu = createMenu();
+    final TrayIcon? icon = createTrayIcon();
     if (image == null || nativeMenu == null || icon == null) {
       image?.dispose();
       nativeMenu?.dispose();
@@ -147,7 +150,7 @@ class FlutterSystemTray.forTesting({
   }
 
   MenuItem _addItem({required _NativeTray tray, required String label, required bool enabled}) {
-    final MenuItem? item = _native.createMenuItem(label: label);
+    final MenuItem? item = createMenuItem(label: label);
     if (item == null) {
       throw StateError("Unable to create a system tray menu item");
     }
