@@ -250,6 +250,8 @@ void main() {
     await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: [created]);
     expect(find.byType(NewSessionView), findsOneWidget);
     expect(composersFor, ["project-1"]);
+    // Archived would unmount the composer mid-creation.
+    expect(tester.widget<PregoButtonsSolid>(find.byKey(const Key("desktop-project-page-archived"))).onPressed, isNull);
 
     states.add(NewSessionState.created(session: created));
     await tester.pump();

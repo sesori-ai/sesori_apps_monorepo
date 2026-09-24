@@ -97,6 +97,7 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
     final state = context.watch<SessionListCubit>().state;
     final loaded = state is SessionListLoaded ? state : null;
     final showArchived = loaded != null && loaded.filter != SessionListFilter.active;
+    final refreshing = _refreshing || (loaded != null && loaded.isRefreshing);
     final showComposer = loaded != null && !showArchived && (loaded.sessions.isEmpty || _creating);
     return Scaffold(
       body: Column(
@@ -116,7 +117,9 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                   // Blue means on.
                   hierarchy: showArchived ? PregoButtonsSolidHierarchy.primary : PregoButtonsSolidHierarchy.secondary,
                   size: PregoButtonsSolidSize.sm,
-                  onPressed: loaded == null ? null : cubit.toggleArchived,
+                  // Held while the empty project's composer is creating a session,
+                  // so the composer stays mounted until that session opens.
+                  onPressed: loaded == null || _creating ? null : cubit.toggleArchived,
                 ),
               ),
               // A mouse has no pull gesture, so the pull's two refreshes live here.
@@ -171,11 +174,17 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                         // The desktop root owns its single connection banner.
                         banner: null,
                         pageChrome: NewSessionPageChrome(
-                          // A scan started from the toolbar still reports here.
-                          topBar: CatalogScanRow(
-                            scan: loaded.catalogScan,
-                            onCancel: cubit.cancelCatalogScan,
-                            onDismiss: cubit.dismissCatalogScan,
+                          // The toolbar's Refresh and scan still report here.
+                          topBar: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (refreshing) const LinearProgressIndicator(),
+                              CatalogScanRow(
+                                scan: loaded.catalogScan,
+                                onCancel: cubit.cancelCatalogScan,
+                                onDismiss: cubit.dismissCatalogScan,
+                              ),
+                            ],
                           ),
                           maxContentWidth: DesktopSessionListView.maxContentWidth,
                           footer: null,
@@ -197,8 +206,7 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                           ),
                           sliver: SliverMainAxisGroup(
                             slivers: [
-                              if (_refreshing || (loaded != null && loaded.isRefreshing))
-                                const SliverToBoxAdapter(child: LinearProgressIndicator()),
+                              if (refreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
                               SliverToBoxAdapter(
                                 child: CatalogScanRow(
                                   scan: loaded?.catalogScan ?? const CatalogRescanState.idle(),
