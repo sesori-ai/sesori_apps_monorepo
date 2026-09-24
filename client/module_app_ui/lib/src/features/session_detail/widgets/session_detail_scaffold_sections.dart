@@ -3,6 +3,7 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
+import "package:theme_prego/theme/primitives/prego_color_primitives.g.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/remote_failure_view.dart";
@@ -44,7 +45,10 @@ class const SessionDetailNeedsYouCard({
                   children: [
                     Text(
                       label,
-                      style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textWarningPrimary),
+                      // The light token is 3.3:1 on cream; one step darker clears 4.5:1.
+                      style: prego.textTheme.textXs.medium.copyWith(
+                        color: isDark ? prego.colors.textWarningPrimary : PregoColorPrimitives.warning700,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
