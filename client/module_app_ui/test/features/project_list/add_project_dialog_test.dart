@@ -789,7 +789,7 @@ void main() {
           path: "/home/user/work",
           gitAction: OpenProjectGitAction.initializeGit,
         ),
-      ).thenAnswer((_) async => const OpenProjectGitSetupIncomplete());
+      ).thenAnswer((_) async => const OpenProjectGitSetupIncomplete(project: _addedProject));
 
       await tester.pumpWidget(
         _buildApp(
@@ -822,6 +822,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text("Project opened, Git setup incomplete"), findsNothing);
       expect(_addButton, findsNothing);
+      expect(_openedProjects, ["my-repo"]);
     });
 
     testWidgets("Create new folder makes it in the browsed dir and steps into it", (tester) async {

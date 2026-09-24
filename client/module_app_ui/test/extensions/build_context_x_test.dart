@@ -34,6 +34,10 @@ void main() {
     final context = await _pumpContext(tester, platformLocale: const Locale("en", "GB"));
 
     expect(context.formatTimestamp(lastYear.millisecondsSinceEpoch), "15 Aug ${lastYear.year}");
+    final past = DateTime.now().subtract(const Duration(days: 40));
+    final label = context.formatTimestamp(past.millisecondsSinceEpoch);
+    expect(label, past.year == DateTime.now().year ? isNot(contains("${past.year}")) : contains("${past.year}"));
+    expect(label, isNot(contains("ago")));
   });
 
   group("formatTimestampCompact", () {

@@ -19,8 +19,8 @@ class const OpenProjectAdded({required final ProjectSummary project}) extends Op
 /// The folder is not a git repository and the user must choose what to do.
 class const OpenProjectGitChoiceRequired() extends OpenProjectOutcome;
 
-/// The project was added, but initializing git did not finish.
-class const OpenProjectGitSetupIncomplete() extends OpenProjectOutcome;
+/// [project] was added, but initializing git did not finish.
+class const OpenProjectGitSetupIncomplete({required final ProjectSummary project}) extends OpenProjectOutcome;
 
 /// The bridge denied access to the folder (macOS permission / Full Disk Access).
 class const OpenProjectPermissionDenied() extends OpenProjectOutcome;

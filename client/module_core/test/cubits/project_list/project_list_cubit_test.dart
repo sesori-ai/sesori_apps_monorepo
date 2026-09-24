@@ -1328,7 +1328,7 @@ void main() {
           path: "/dev/plain",
           gitAction: OpenProjectGitAction.initializeGit,
         );
-        expect(result, isA<OpenProjectGitSetupIncomplete>());
+        expect(result, isA<OpenProjectGitSetupIncomplete>().having((outcome) => outcome.project.id, "project id", "B"));
       },
       skip: 1,
       expect: () => <ProjectListState>[],

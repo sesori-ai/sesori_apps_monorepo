@@ -779,7 +779,7 @@ class ProjectInventoryService({
       case SuccessResponse(data: (:final project, :final supportsDedicatedWorktrees)):
         await refreshProjects();
         if (gitAction == OpenProjectGitAction.initializeGit && !supportsDedicatedWorktrees) {
-          return const OpenProjectGitSetupIncomplete();
+          return OpenProjectGitSetupIncomplete(project: project);
         }
         return OpenProjectAdded(project: project);
       case ErrorResponse(:final error):

@@ -186,21 +186,16 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
           title: loc.projectDiscovered,
           variant: PregoPopupAlertsNotificationsVariant.success,
         );
-        // This context is still mounted while the sheet animates out; the
-        // presenter's may not be, as the empty view gives way to the list.
-        widget.onProjectAdded(
-          context: context,
-          project: project,
-          displayName: projectDisplayName(loc: loc, project: project),
-        );
+        _openAdded(project: project);
       case OpenProjectGitChoiceRequired():
         final choice = await _showGitChoiceDialog();
         if (!mounted || choice == null) return;
         await _onAdd(gitAction: choice);
-      case OpenProjectGitSetupIncomplete():
+      case OpenProjectGitSetupIncomplete(:final project):
         await _showGitSetupIncompleteDialog();
         if (!mounted) return;
         _dismissDialog();
+        _openAdded(project: project);
       case OpenProjectPermissionDenied():
         _showPopupAlert(
           message: loc.addProjectPermissionDenied,
@@ -212,6 +207,16 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
           variant: PregoPopupAlertsNotificationsVariant.error,
         );
     }
+  }
+
+  /// This context is still mounted while the sheet animates out; the
+  /// presenter's may not be, as the empty view gives way to the list.
+  void _openAdded({required ProjectSummary project}) {
+    widget.onProjectAdded(
+      context: context,
+      project: project,
+      displayName: projectDisplayName(loc: context.loc, project: project),
+    );
   }
 
   /// Creates a folder here and steps into it. Only the directory is made —

@@ -12,7 +12,7 @@ Map<String, String> projectPathLabels({
   required String Function(ProjectSummary project) nameOf,
 }) {
   final entries = [
-    for (final project in projects) (project: project, name: nameOf(project), segments: _segments(project.path)),
+    for (final project in projects) (project: project, name: nameOf(project), segments: _segments(path: project.path)),
   ];
   // ponytail: compares every pair, fine for a project list; group by name if lists reach thousands.
   return {
@@ -35,7 +35,7 @@ String _label({required String path, required List<String> segments, required Li
   while (count < segments.length && rivals.any((rival) => _sameTail(a: rival, b: segments, count: count))) {
     count++;
   }
-  if (count >= segments.length) return _toPosix(path);
+  if (count >= segments.length) return _toPosix(path: path);
   return "…/${segments.sublist(segments.length - count).join("/")}";
 }
 
@@ -47,7 +47,7 @@ bool _sameTail({required List<String> a, required List<String> b, required int c
   return true;
 }
 
-List<String> _segments(String path) => _toPosix(path).split("/").where((s) => s.isNotEmpty).toList();
+List<String> _segments({required String path}) => _toPosix(path: path).split("/").where((s) => s.isNotEmpty).toList();
 
 /// Bridges run on macOS, Linux or Windows, so both separator styles arrive.
-String _toPosix(String path) => path.replaceAll(r"\", "/");
+String _toPosix({required String path}) => path.replaceAll(r"\", "/");
