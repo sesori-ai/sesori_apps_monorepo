@@ -544,13 +544,19 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                 action: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox.square(
-                      dimension: 28,
-                      child: _SidebarRefreshButton(
-                        projectState: context.watch<ProjectListCubit>().state,
-                        iconSize: PregoIconSize.sm,
-                        color: context.prego.colors.textSecondary,
-                      ),
+                    // Until the sidebar is fully open, the footer still carries refresh.
+                    DesktopSidebarPhaseBuilder(
+                      expansion: widget.expansion,
+                      builder: (context, phase) => phase == DesktopSidebarPhase.open
+                          ? SizedBox.square(
+                              dimension: 28,
+                              child: _SidebarRefreshButton(
+                                projectState: context.watch<ProjectListCubit>().state,
+                                iconSize: PregoIconSize.sm,
+                                color: context.prego.colors.textSecondary,
+                              ),
+                            )
+                          : const SizedBox.shrink(),
                     ),
                     SizedBox.square(
                       dimension: 28,
@@ -1235,7 +1241,7 @@ class const _SidebarButton({
     final description = statusLabel == null ? label : "$label, $statusLabel";
     final shortcut = this.shortcut;
     final tooltip = shortcut == null ? description : context.loc.desktopShortcutHint(description, shortcut);
-    final color = prego.colors.textPrimary;
+    final color = onPressed == null ? prego.colors.textDisabled : prego.colors.textPrimary;
     final textStyle = prego.textTheme.textSm.medium.copyWith(color: color);
     return DesktopSidebarPhaseBuilder(
       expansion: expansion,
@@ -1246,6 +1252,7 @@ class const _SidebarButton({
           message: tooltip,
           child: Semantics(
             button: true,
+            enabled: onPressed != null,
             selected: selected,
             label: description,
             onTap: onPressed,

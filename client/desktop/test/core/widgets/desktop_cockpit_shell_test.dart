@@ -429,6 +429,7 @@ void main() {
   }
 
   testWidgets("refresh is unavailable during initial load, disconnection and existing project refresh", (tester) async {
+    final semantics = tester.ensureSemantics();
     for (final state in <ProjectListState>[
       const ProjectListState.loading(),
       const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
@@ -443,8 +444,14 @@ void main() {
         expect(tester.widget<IconButton>(refresh).onPressed, isNull);
       } else {
         expect(refresh, findsNothing);
+        // New session cannot start before projects load, and says so.
+        expect(
+          tester.getSemantics(find.byKey(const Key("desktop-sidebar-new-session"))),
+          isSemantics(isButton: true, isEnabled: false),
+        );
       }
     }
+    semantics.dispose();
     verifyNever(refreshService.refresh);
   });
 

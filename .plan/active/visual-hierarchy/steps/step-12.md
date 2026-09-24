@@ -58,7 +58,7 @@ Split in two. 12.a rebuilds the row hierarchy and adds the running count.
 - `client/desktop`: `dart analyze --fatal-infos` is clean on tracked files.
   `test/core` and `test/features` pass.
   - The shell test checks the quiet row and its shortcut, refresh on the
-    Projects header, and the footer's single 45-point row.
+    Projects header, and the footer's single 44-point row (45 with its top border).
   - The refresh tests check it is absent before projects load and disabled
     while they refresh.
   - The router and project page tests check that New session left the toolbar.
