@@ -8,6 +8,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "new_folder_dialog.dart";
+import "widgets/project_tile.dart";
 
 /// Shows the Add Project modal: a bottom sheet on touch, a dialog on pointer.
 ///
@@ -16,11 +17,12 @@ import "new_folder_dialog.dart";
 ///
 /// The [cubit] is passed explicitly so the dialog can call `discoverProject` /
 /// `createDirectory` without relying on the widget tree's BlocProvider (which
-/// lives in the parent screen).
+/// lives in the parent screen). [onProjectAdded] opens the project once added.
 Future<void> showAddProjectDialog({
   required BuildContext context,
   required ProjectListCubit cubit,
   required ConnectionService connectionService,
+  required ProjectOpenedCallback onProjectAdded,
 }) {
   // Capture before presenting: inside the route the top inset reads as 0.
   final topInset = MediaQuery.paddingOf(context).top;
@@ -30,6 +32,7 @@ Future<void> showAddProjectDialog({
       cubit: cubit,
       connectionService: connectionService,
       topInset: topInset,
+      onProjectAdded: onProjectAdded,
     ),
   );
 }
@@ -48,6 +51,7 @@ class const AddProjectDialog({
   /// The status-bar inset captured from the presenting context — the modal
   /// route strips it from the sheet's own MediaQuery.
   required final double topInset,
+  required final ProjectOpenedCallback onProjectAdded,
   super.key,
 }) extends StatefulWidget {
   @override
@@ -173,7 +177,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
 
     final loc = context.loc;
     switch (outcome) {
-      case OpenProjectOutcome.success:
+      case OpenProjectAdded(:final project):
         // Capture the route overlay before the pop so the alert outlives this
         // sheet and remains above the screen underneath it.
         final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
@@ -182,25 +186,37 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
           title: loc.projectDiscovered,
           variant: PregoPopupAlertsNotificationsVariant.success,
         );
-      case OpenProjectOutcome.gitChoiceRequired:
+        _openAdded(project: project);
+      case OpenProjectGitChoiceRequired():
         final choice = await _showGitChoiceDialog();
         if (!mounted || choice == null) return;
         await _onAdd(gitAction: choice);
-      case OpenProjectOutcome.gitSetupIncomplete:
+      case OpenProjectGitSetupIncomplete(:final project):
         await _showGitSetupIncompleteDialog();
         if (!mounted) return;
         _dismissDialog();
-      case OpenProjectOutcome.permissionDenied:
+        _openAdded(project: project);
+      case OpenProjectPermissionDenied():
         _showPopupAlert(
           message: loc.addProjectPermissionDenied,
           variant: PregoPopupAlertsNotificationsVariant.warning,
         );
-      case OpenProjectOutcome.otherError:
+      case OpenProjectFailed():
         _showPopupAlert(
           message: loc.projectDiscoverFailed,
           variant: PregoPopupAlertsNotificationsVariant.error,
         );
     }
+  }
+
+  /// This context is still mounted while the sheet animates out; the
+  /// presenter's may not be, as the empty view gives way to the list.
+  void _openAdded({required ProjectSummary project}) {
+    widget.onProjectAdded(
+      context: context,
+      project: project,
+      displayName: projectDisplayName(loc: context.loc, project: project),
+    );
   }
 
   /// Creates a folder here and steps into it. Only the directory is made —

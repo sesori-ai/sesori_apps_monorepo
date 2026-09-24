@@ -565,6 +565,7 @@ class _CatalogScanRowInActionExampleState() extends State<CatalogScanRowInAction
                 child: IgnorePointer(
                   child: ProjectTile(
                     project: example.project,
+                    pathLabel: example.project.path,
                     activeSessions: example.activeSessions,
                     unseen: example.unseen,
                     onOpen: ({required context, required project, required displayName}) {},

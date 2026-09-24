@@ -28,6 +28,18 @@ Future<BuildContext> _pumpContext(
 }
 
 void main() {
+  testWidgets("formatTimestamp names the month past a month ago", (tester) async {
+    final lastYear = DateTime(DateTime.now().year - 1, 8, 15);
+
+    final context = await _pumpContext(tester, platformLocale: const Locale("en", "GB"));
+
+    expect(context.formatTimestamp(lastYear.millisecondsSinceEpoch), "15 Aug ${lastYear.year}");
+    final past = DateTime.now().subtract(const Duration(days: 40));
+    final label = context.formatTimestamp(past.millisecondsSinceEpoch);
+    expect(label, past.year == DateTime.now().year ? isNot(contains("${past.year}")) : contains("${past.year}"));
+    expect(label, isNot(contains("ago")));
+  });
+
   group("formatTimestampCompact", () {
     testWidgets("uses the user's full platform locale for old session dates", (tester) async {
       final date = DateTime(DateTime.now().year - 1, 7, 8);

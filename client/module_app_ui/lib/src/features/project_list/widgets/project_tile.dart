@@ -30,21 +30,6 @@ String projectDisplayName({required AppLocalizations loc, required ProjectSummar
   return project.name ?? (basename.isEmpty ? loc.projectListDefaultName : basename);
 }
 
-/// [project]'s directory, shortened to the part that tells projects apart.
-///
-/// A row is far too narrow for a real path, and clipping one with an ellipsis
-/// would eat the tail — the only segments that differ between projects — and
-/// leave every row reading `/Users/someone/workspace/clien…`. So the head is
-/// dropped instead of the tail: the last two segments survive, marked with a
-/// leading ellipsis when anything was actually removed.
-String projectShortPath(ProjectSummary project) {
-  final segments = _toPosix(project.path).split("/").where((s) => s.isNotEmpty).toList();
-  if (segments.length <= _shortPathSegments) return segments.join("/");
-  return "…/${segments.sublist(segments.length - _shortPathSegments).join("/")}";
-}
-
-const int _shortPathSegments = 2;
-
 /// Bridges run on the phone's host or a Windows machine, so both separator
 /// styles reach us; the path libraries only parse one of them.
 String _toPosix(String path) => path.replaceAll(r"\", "/");
@@ -69,6 +54,9 @@ String _toPosix(String path) => path.replaceAll(r"\", "/");
 class const ProjectTile({
   super.key,
   required final ProjectSummary project,
+
+  /// [project]'s path as `projectPathLabels` shortened it against the list.
+  required final String pathLabel,
 
   /// How many of the project's sessions an agent is working in right now.
   required final int activeSessions,
@@ -186,7 +174,7 @@ class const ProjectTile({
                         children: [
                           _titleRow(prego: prego, displayName: displayName),
                           Text(
-                            projectShortPath(project),
+                            pathLabel,
                             style: prego.textTheme.textSm.regular.copyWith(
                               color: prego.colors.textSecondary,
                             ),
@@ -348,13 +336,16 @@ class const _StatusRow({
               ),
             )
           else if (unseen)
-            Flexible(
-              child: _StatusLabel(
-                // Unopened activity is a state, not an event: the sparkle marks
-                // it without moving, and the label carries the emphasis instead.
-                icon: const PregoAiLoader(animate: false),
-                label: loc.projectListNewActivity,
-                emphasis: true,
+            // Unopened activity is a state, not an event: the sparkle marks it
+            // without moving, and says it only to a screen reader.
+            Semantics(
+              label: loc.projectListNewActivity,
+              child: IconTheme.merge(
+                data: IconThemeData(color: prego.colors.textTertiary),
+                child: const SizedBox(
+                  width: _statusSlotWidth,
+                  child: Center(child: PregoAiLoader(animate: false)),
+                ),
               ),
             ),
           if (updatedAt != null)
@@ -372,9 +363,6 @@ class const _StatusRow({
 class const _StatusLabel({
   required final Widget icon,
   required final String label,
-
-  /// Whether the label is the row's headline rather than a quiet aside.
-  final bool emphasis = false,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -396,7 +384,7 @@ class const _StatusLabel({
           child: Text(
             label,
             style: prego.textTheme.textSm.regular.copyWith(
-              color: emphasis ? prego.colors.textPrimary : prego.colors.textTertiary,
+              color: prego.colors.textTertiary,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

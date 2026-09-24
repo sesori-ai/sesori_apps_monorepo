@@ -1230,7 +1230,12 @@ void main() {
             path: any(named: "path"),
             gitAction: OpenProjectGitAction.promptIfNeeded,
           ),
-        ).thenAnswer((_) async => ApiResponse.success(testProject(id: "B", path: "/home/user/B")));
+        ).thenAnswer(
+          (_) async => ApiResponse.success((
+            project: testProjectSummary(id: "B", path: "/home/user/B"),
+            supportsDedicatedWorktrees: true,
+          )),
+        );
         return buildCubit();
       },
       act: (cubit) async {
@@ -1242,7 +1247,7 @@ void main() {
           path: "/dev/B",
           gitAction: OpenProjectGitAction.promptIfNeeded,
         );
-        expect(result, OpenProjectOutcome.success);
+        expect(result, isA<OpenProjectAdded>().having((outcome) => outcome.project.id, "project id", "B"));
       },
       skip: 1,
       expect: () => [
@@ -1292,7 +1297,7 @@ void main() {
           path: "/dev/plain",
           gitAction: OpenProjectGitAction.promptIfNeeded,
         );
-        expect(result, OpenProjectOutcome.gitChoiceRequired);
+        expect(result, isA<OpenProjectGitChoiceRequired>());
       },
       skip: 1,
       expect: () => <ProjectListState>[],
@@ -1310,9 +1315,10 @@ void main() {
             gitAction: OpenProjectGitAction.initializeGit,
           ),
         ).thenAnswer(
-          (_) async => ApiResponse.success(
-            testProject(id: "B", path: "/home/user/B").copyWith(supportsDedicatedWorktrees: false),
-          ),
+          (_) async => ApiResponse.success((
+            project: testProjectSummary(id: "B", path: "/home/user/B"),
+            supportsDedicatedWorktrees: false,
+          )),
         );
         return buildCubit();
       },
@@ -1322,7 +1328,7 @@ void main() {
           path: "/dev/plain",
           gitAction: OpenProjectGitAction.initializeGit,
         );
-        expect(result, OpenProjectOutcome.gitSetupIncomplete);
+        expect(result, isA<OpenProjectGitSetupIncomplete>().having((outcome) => outcome.project.id, "project id", "B"));
       },
       skip: 1,
       expect: () => <ProjectListState>[],
@@ -1352,7 +1358,7 @@ void main() {
           path: "/dev/protected",
           gitAction: OpenProjectGitAction.openWithoutGit,
         );
-        expect(result, OpenProjectOutcome.permissionDenied);
+        expect(result, isA<OpenProjectPermissionDenied>());
       },
       skip: 1,
       expect: () => <ProjectListState>[],

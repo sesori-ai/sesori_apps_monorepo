@@ -54,7 +54,10 @@ void main() {
         path: "/project-1",
         gitAction: OpenProjectGitAction.initializeGit,
       ),
-      ApiResponse<Project>.success(project),
+      ApiResponse<({ProjectSummary project, bool supportsDedicatedWorktrees})>.success((
+        project: projectSummary,
+        supportsDedicatedWorktrees: project.supportsDedicatedWorktrees,
+      )),
     );
     expect(await repository.getProject(projectId: "project-1"), ApiResponse<Project>.success(project));
     expect(await repository.hideProject(projectId: "project-1"), ApiResponse<void>.success(null));

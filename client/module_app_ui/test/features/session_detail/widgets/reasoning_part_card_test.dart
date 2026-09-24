@@ -4,6 +4,14 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
+  setUp(() {
+    TestWidgetsFlutterBinding.instance.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    TestWidgetsFlutterBinding.instance.platformDispatcher.clearAccessibilityFeaturesTestValue();
+  });
+
   Widget buildApp({
     required String text,
     required bool isStreaming,
@@ -11,8 +19,8 @@ void main() {
     String messageId = "msg-1",
   }) {
     return MaterialApp(
-      theme: ThemeData(extensions: [PregoDesignSystem.light]),
-      darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
+      theme: buildPregoThemeData(brightness: Brightness.light),
+      darkTheme: buildPregoThemeData(brightness: Brightness.dark),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
@@ -33,14 +41,15 @@ void main() {
 
       expect(find.byType(ReasoningPartCard), findsOneWidget);
       expect(find.byType(SizedBox), findsOneWidget);
-      expect(find.byType(GestureDetector), findsNothing);
+      expect(find.byType(InkWell), findsNothing);
     });
 
     testWidgets("renders card when text is empty but streaming", (tester) async {
       await tester.pumpWidget(buildApp(text: "", isStreaming: true));
       await tester.pumpAndSettle();
 
-      expect(find.byType(GestureDetector), findsOneWidget);
+      expect(find.byType(InkWell), findsOneWidget);
+      expect(tester.getSize(find.byType(InkWell)).height, greaterThanOrEqualTo(44));
     });
   });
 
@@ -214,6 +223,86 @@ void main() {
 
       expect(ReasoningPartCard.streamingTail(text: text), "y" * 699);
     });
+  });
+
+  for (final brightness in Brightness.values) {
+    testWidgets("${brightness.name} reasoning uses unboxed activity typography", (tester) async {
+      tester.platformDispatcher.platformBrightnessTestValue = brightness;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      await tester.pumpWidget(buildApp(text: "Reviewing the next step", isStreaming: false));
+
+      final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
+      for (final text in ["Thought", "Reviewing the next step"]) {
+        final style = tester.widget<Text>(find.text(text)).style!;
+        expect(style.fontSize, 14);
+        expect(style.height, closeTo(20 / 14, 0.001));
+        expect(style.color, prego.colors.textSecondary);
+        expect(style.fontStyle, isNot(FontStyle.italic));
+      }
+      expect(
+        find.descendant(of: find.byType(ReasoningPartCard), matching: find.byType(Container)),
+        findsNothing,
+      );
+      expect(find.byIcon(TablerRegular.chevron_right), findsOneWidget);
+      expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isFalse);
+    });
+  }
+
+  testWidgets("streaming motion stops on completion and preserves the latest preview", (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures();
+    await tester.pumpWidget(buildApp(text: "First thought", isStreaming: true));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(PregoShimmer), findsOneWidget);
+    expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isTrue);
+
+    await tester.pumpWidget(buildApp(text: "**Updated thought**\n\nFinished detail.", isStreaming: false));
+    await tester.pumpAndSettle();
+    expect(find.text("Thought"), findsOneWidget);
+    expect(find.text("Updated thought"), findsOneWidget);
+    expect(find.byType(PregoShimmer), findsNothing);
+    expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isFalse);
+  });
+
+  testWidgets("reduced motion keeps the streaming status accessible and still", (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(buildApp(text: "Current thought", isStreaming: true));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel(RegExp(r"^Thinking\.\.\.\nCurrent thought$")), findsOneWidget);
+    expect(
+      tester.getSemantics(find.byType(MergeSemantics)),
+      isSemantics(isButton: true, hasTapAction: true),
+    );
+    expect(
+      find.descendant(of: find.byType(PregoShimmer), matching: find.byType(ShaderMask)),
+      findsNothing,
+    );
+    expect(tester.binding.hasScheduledFrame, isFalse);
+    semantics.dispose();
+  });
+
+  testWidgets("empty streaming reasoning remains a named disclosure", (tester) async {
+    await tester.pumpWidget(buildApp(text: "", isStreaming: true));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSemantics(find.byType(MergeSemantics)),
+      isSemantics(label: "Thinking...", isButton: true, hasTapAction: true),
+    );
+  });
+
+  testWidgets("narrow panes with large text keep the disclosure and preview inside the row", (tester) async {
+    tester.view.physicalSize = const Size(240, 700);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    for (final streaming in [false, true]) {
+      await tester.pumpWidget(buildApp(text: "A long thought about the next step " * 60, isStreaming: streaming));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(tester.getRect(find.byIcon(TablerRegular.chevron_right)).right, lessThanOrEqualTo(240));
+      expect(tester.getSize(find.byType(InkWell)).height, greaterThanOrEqualTo(44));
+    }
   });
 
   group("header text", () {
