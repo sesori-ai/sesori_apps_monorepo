@@ -113,6 +113,10 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               readOnly: false,
             ),
           ),
+          onOpenProject: ({required context, required project, required displayName}) => _goRoute(
+            context: context,
+            route: AppRoute.sessions(projectId: project.id, projectName: displayName),
+          ),
           onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
         ),
       ),

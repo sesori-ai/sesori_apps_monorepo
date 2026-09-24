@@ -35,11 +35,27 @@ class ProjectRepository({
     return parent == path ? null : parent;
   }
 
-  Future<ApiResponse<Project>> discoverProject({
+  /// Adds the folder at [path] as a project: the project as the list shows
+  /// it, and whether it can host dedicated worktrees.
+  Future<ApiResponse<({ProjectSummary project, bool supportsDedicatedWorktrees})>> discoverProject({
     required String path,
     required OpenProjectGitAction gitAction,
-  }) {
-    return _api.discoverProject(path: path, gitAction: gitAction);
+  }) async {
+    final response = await _api.discoverProject(path: path, gitAction: gitAction);
+    return switch (response) {
+      SuccessResponse(:final data) => ApiResponse.success((
+        project: ProjectSummary(
+          id: data.id,
+          name: data.name,
+          // COMPATIBILITY 2026-09-24 (v1.9.0): Bridges older than v1.5.0 omit path and use the directory as id. Use data.path directly once those bridges are unsupported.
+          path: data.path.isEmpty ? data.id : data.path,
+          time: data.time,
+          hasUnseenChanges: data.hasUnseenChanges,
+        ),
+        supportsDedicatedWorktrees: data.supportsDedicatedWorktrees,
+      )),
+      ErrorResponse(:final error) => ApiResponse.error(error),
+    };
   }
 
   Future<ApiResponse<Project>> getProject({required String projectId}) {

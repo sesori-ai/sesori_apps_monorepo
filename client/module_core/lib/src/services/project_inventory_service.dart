@@ -774,22 +774,22 @@ class ProjectInventoryService({
       path: path,
       gitAction: gitAction,
     );
-    if (_state.isClosed) return OpenProjectOutcome.otherError;
+    if (_state.isClosed) return const OpenProjectFailed();
     switch (response) {
-      case SuccessResponse(:final data):
+      case SuccessResponse(data: (:final project, :final supportsDedicatedWorktrees)):
         await refreshProjects();
-        if (gitAction == OpenProjectGitAction.initializeGit && !data.supportsDedicatedWorktrees) {
-          return OpenProjectOutcome.gitSetupIncomplete;
+        if (gitAction == OpenProjectGitAction.initializeGit && !supportsDedicatedWorktrees) {
+          return OpenProjectGitSetupIncomplete(project: project);
         }
-        return OpenProjectOutcome.success;
+        return OpenProjectAdded(project: project);
       case ErrorResponse(:final error):
         if (error is NonSuccessCodeError && error.errorCode == 428) {
-          return OpenProjectOutcome.gitChoiceRequired;
+          return const OpenProjectGitChoiceRequired();
         }
         if (_isPermissionDenied(error: error)) {
-          return OpenProjectOutcome.permissionDenied;
+          return const OpenProjectPermissionDenied();
         }
-        return OpenProjectOutcome.otherError;
+        return const OpenProjectFailed();
     }
   }
 
