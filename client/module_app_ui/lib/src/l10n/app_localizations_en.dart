@@ -129,7 +129,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get newSessionHeading => 'What should we work on?';
+  String get newSessionPromptHint => 'What should we work on?';
 
   @override
   String get desktopSessionPageChanges => 'Changes';
@@ -1866,10 +1866,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameProjectFailed => 'Failed to rename project';
 
   @override
-  String get newSessionDedicatedWorkspace => 'Dedicated workspace';
+  String get newSessionNewWorktree => 'New git worktree';
 
   @override
-  String get newSessionPluginChooserLabel => 'Coding tool';
+  String get newSessionNewWorktreeHint => 'Runs on a new branch in its own folder';
+
+  @override
+  String get newSessionProjectLabel => 'Project';
+
+  @override
+  String get newSessionSummaryWorktree => 'worktree';
+
+  @override
+  String get newSessionPluginChooserLabel => 'Harness';
 
   @override
   String get newSessionPluginDegraded => 'Needs attention';
@@ -1903,10 +1912,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionProjectUnavailable =>
-      'Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.';
-
-  @override
-  String get newSessionOptionsCached => 'Using cached coding tool options.';
+      'Couldn’t verify whether this project supports git worktrees. Try again before creating the session.';
 
   @override
   String get newSessionOptionsUnavailable =>

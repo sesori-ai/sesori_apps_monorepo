@@ -1,74 +1,97 @@
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "../../l10n/app_localizations.dart";
 import "../project_list/widgets/project_tile.dart";
 
 typedef NewSessionProjectSelected = void Function({required String projectId, required String projectName});
 
-/// The new session page's opening: what the page is for, and which project the
-/// session starts in. The selector opens only when there is another project to
-/// choose.
-class const NewSessionHeader({
+/// What to call the project a new session starts in. The loaded list knows the
+/// current name; the route's can be missing or stale.
+String newSessionProjectLabel({
+  required AppLocalizations loc,
+  required String projectId,
+  required String? projectName,
+  required List<ProjectSummary> projects,
+}) {
+  final current = projects.where((project) => project.id == projectId).firstOrNull;
+  return current == null ? projectName ?? loc.projectListDefaultName : projectDisplayName(loc: loc, project: current);
+}
+
+/// The new session card's first row: which project the session starts in. The
+/// row opens a project menu only when there is another project to choose.
+class const NewSessionProjectRow({
   super.key,
   required final String projectId,
   required final String? projectName,
   required final List<ProjectSummary> projects,
   required final NewSessionProjectSelected onProjectSelected,
 }) extends StatelessWidget {
+  /// Widest the project name may grow before it ellipsizes, so a long name
+  /// never crowds out the row's label.
+  static const double _valueMaxWidth = 200;
+
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
     final canSwitch = projects.any((project) => project.id != projectId);
-    // The loaded list knows the current name; the route's can be missing or stale.
-    final current = projects.where((project) => project.id == projectId).firstOrNull;
-    final label = current == null
-        ? projectName ?? loc.projectListDefaultName
-        : projectDisplayName(loc: loc, project: current);
-    return Column(
-      spacing: PregoSpacing.lg,
-      children: [
-        Text(
-          loc.newSessionHeading,
-          textAlign: TextAlign.center,
-          style: prego.textTheme.displayXs.bold.copyWith(color: prego.colors.textPrimary),
-        ),
-        PregoAnchorMenu(
-          flat: true,
-          menuWidth: 260,
-          acquireOpenLease: null,
-          entriesBuilder: () => [
-            for (final project in projects)
-              PregoMenuItem(
-                title: projectDisplayName(loc: loc, project: project),
-                subtitle: null,
-                isSelected: project.id == projectId,
-                shortcutLabel: null,
-                leadingIcon: TablerRegular.folder,
-                isEnabled: true,
-                onTap: () {
-                  if (project.id == projectId) return;
-                  onProjectSelected(
-                    projectId: project.id,
-                    projectName: projectDisplayName(loc: loc, project: project),
-                  );
-                },
-              ),
-          ],
-          triggerBuilder: (context, openMenu) => PregoButtonsSolid(
-            key: const Key("new_session_project"),
-            label: label,
+    final label = newSessionProjectLabel(
+      loc: loc,
+      projectId: projectId,
+      projectName: projectName,
+      projects: projects,
+    );
+    return PregoAnchorMenu(
+      flat: true,
+      menuWidth: 260,
+      acquireOpenLease: null,
+      entriesBuilder: () => [
+        for (final project in projects)
+          PregoMenuItem(
+            title: projectDisplayName(loc: loc, project: project),
+            subtitle: null,
+            isSelected: project.id == projectId,
+            shortcutLabel: null,
             leadingIcon: TablerRegular.folder,
-            trailingIcon: canSwitch ? TablerRegular.chevron_down : null,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: canSwitch ? openMenu : null,
+            isEnabled: true,
+            onTap: () {
+              if (project.id == projectId) return;
+              onProjectSelected(
+                projectId: project.id,
+                projectName: projectDisplayName(loc: loc, project: project),
+              );
+            },
+          ),
+      ],
+      triggerBuilder: (context, openMenu) => MergeSemantics(
+        child: Semantics(
+          button: canSwitch,
+          child: PregoGroupedRow(
+            key: const Key("new_session_project"),
+            title: Text(loc.newSessionProjectLabel),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: PregoSpacing.xs,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: _valueMaxWidth),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+                  ),
+                ),
+                if (canSwitch) const Icon(TablerRegular.chevron_right),
+              ],
+            ),
+            onTap: canSwitch ? openMenu : null,
           ),
         ),
-      ],
+      ),
     );
   }
 }

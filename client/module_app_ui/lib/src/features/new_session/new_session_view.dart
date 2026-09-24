@@ -2,7 +2,6 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
@@ -11,10 +10,9 @@ import "../session_detail/composer_presentation_scope.dart";
 import "../session_detail/widgets/agent_model_buttons.dart";
 import "../session_detail/widgets/composer_surface_style.dart";
 import "../session_detail/widgets/prompt_input.dart";
-import "new_session_header.dart";
 import "new_session_no_harness_notice.dart";
-import "new_session_options_skeleton.dart";
 import "new_session_plugin_chooser.dart";
+import "new_session_project_row.dart";
 
 typedef NewSessionComposerScopeBuilder = Widget Function({required Widget child});
 typedef NewSessionCreatedCallback = void Function({required Session session});
@@ -52,23 +50,9 @@ class const NewSessionView({
   State<NewSessionView> createState() => _NewSessionViewState();
 }
 
-/// Height of one options row, and the gap between rows — the rhythm the
-/// loading skeleton stands in for (Figma node 4435:16803).
-const double _optionRowHeight = 40;
-const double _optionRowSpacing = PregoSpacing.xl;
-
-/// Horizontal inset of the options block. Narrower than the composer's, so the
-/// row content lands on the design's margin once each row's own padding is
-/// added.
-const double _optionsHorizontalPadding = 10;
-
-/// Bottom padding of the options scroll view, so the last row can rest clear of
-/// the composer.
-const double _optionsBottomPadding = PregoSpacing.md;
-
-/// The gap the refresh action keeps above the composer when the options
-/// viewport has enough room (Figma node 4691:7507).
-const double _refreshBottomGap = PregoSpacing.xl;
+/// The page margin the options card and the composer share, so both start on
+/// one edge.
+const double _pageMargin = PregoSpacing.xl;
 
 class _NewSessionViewState() extends State<NewSessionView> {
   bool _dedicatedWorktree = true;
@@ -101,14 +85,17 @@ class _NewSessionViewState() extends State<NewSessionView> {
     widget.onBack();
   }
 
-  /// Runs the refresh action and keeps it on screen while the press is still
-  /// working. Every load it can start also clears the condition that put the
-  /// action there, so without this the only feedback for the press would be
-  /// the action vanishing — at the one moment the user is watching it.
+  /// Runs the harness menu's refresh and remembers the press while it is still
+  /// working, so the harness row can shimmer for it: the menu closes on the
+  /// tap, and without this nothing on screen would acknowledge the press.
   ///
-  /// Only the newest press governs: the harness chooser stays live during a
-  /// refresh, so a second press can begin while the first is still outstanding,
-  /// and the first finishing must not retire the action the second is running.
+  /// It shimmers while a press is running and the answers on screen are still
+  /// unsettled, rather than for the whole life of the press. A press outlives
+  /// its own subject — the harness chooser stays live during a refresh, and the
+  /// harness left behind may take as long as it likes to answer.
+  ///
+  /// Only the newest press governs: a second press can begin while the first is
+  /// still outstanding, and the first finishing must not end the second's.
   Future<void> _refreshOptions() async {
     final press = context.read<NewSessionCubit>().refreshOptions();
     // Block bodies: an arrow would hand setState the assigned Future, which it
@@ -187,12 +174,13 @@ class _NewSessionViewState() extends State<NewSessionView> {
     );
   }
 
-  /// Where the harness options came from, or why they are missing.
+  /// Why the harness options are missing or limited.
   ///
-  /// Null before a routable harness is known, or while a first load has
-  /// nothing to describe yet — there is nothing honest to say. A refresh over
-  /// options already on screen keeps describing those, so the line does not
-  /// blink out and shift the rows under it for the length of the load.
+  /// Null before a routable harness is known, while a first load has nothing
+  /// to describe yet, and whenever the options are simply available — there is
+  /// nothing the user needs to act on. A refresh over options already on
+  /// screen keeps describing those, so the line does not blink out and shift
+  /// the page for the length of the load.
   ({String message, bool isFailure})? _resolveOptionsStatus({required AgentModelData? data}) {
     final plugin = data?.plugin;
     if (data == null ||
@@ -230,57 +218,22 @@ class _NewSessionViewState() extends State<NewSessionView> {
         isFailure: false,
       ),
       NewSessionOptionsAvailableState(source: NewSessionOptionsSource.aggregate) ||
-      NewSessionOptionsRefreshingState(source: NewSessionOptionsSource.aggregate) => (
-        message: loc.newSessionOptionsCached,
-        isFailure: false,
-      ),
+      NewSessionOptionsRefreshingState(source: NewSessionOptionsSource.aggregate) ||
       NewSessionOptionsLoadingState() => null,
     };
   }
 
   Widget _buildOptionsStatus({required ({String message, bool isFailure}) status}) {
     final prego = context.prego;
+    // Inset like the card rows' content, so the line starts under their labels.
     return Padding(
-      padding: EdgeInsetsDirectional.only(
-        top: prego.spacing.sm,
-        start: prego.spacing.lg,
-        end: prego.spacing.lg,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
       child: Text(
         status.message,
         style: prego.textTheme.textXs.regular.copyWith(
           color: status.isFailure ? prego.colors.fgErrorPrimary : prego.colors.textSecondary,
         ),
       ),
-    );
-  }
-
-  /// The refresh action. Its surrounding sliver centres it just above the
-  /// composer when the options viewport has room, matching Figma node
-  /// 4691:7507. In a cramped viewport it follows the option rows in the same
-  /// scroll content instead of floating over one of them.
-  ///
-  /// It is one action with one name in every state. Which load it actually
-  /// repeats — harness discovery, the project check, or the options themselves
-  /// — is the cubit's to decide; naming that split here would ask the user to
-  /// track a distinction they cannot act on. The line above the composer
-  /// already says what is missing. A confirmed empty harness list has its own
-  /// notice and no refresh action.
-  /// It spins while a press is running and the answers on screen are still
-  /// unsettled, rather than for the whole life of the press. A press outlives
-  /// its own subject — the harness chooser stays live during a refresh, and the
-  /// harness left behind may take as long as it likes to answer — so a spinner
-  /// tied to the press alone would sit over another harness's settled options,
-  /// on an action the user then cannot press.
-  Widget _buildOptionsRefresh({required NewSessionCubit cubit, required bool isLoading}) {
-    return PregoButtonsSolid(
-      key: const Key("new_session_options_refresh"),
-      label: context.loc.newSessionOptionsRefresh,
-      hierarchy: PregoButtonsSolidHierarchy.tertiary,
-      size: PregoButtonsSolidSize.sm,
-      leadingIcon: TablerRegular.refresh,
-      isLoading: isLoading,
-      onPressed: cubit.canRefreshOptions ? _refreshOptions : null,
     );
   }
 
@@ -305,85 +258,106 @@ class _NewSessionViewState() extends State<NewSessionView> {
         : (pluginId: plugin.id, displayName: plugin.displayName, actionHint: actionHint);
   }
 
-  /// The options above the composer: which harness runs the session, and
-  /// whether it gets a workspace of its own.
+  /// Whether the worktree option is on offer. With no harness to run the
+  /// session there is nothing for it to shape.
+  bool _offersWorktree({required NewSessionCubit cubit, required AgentModelData? data}) =>
+      !cubit.needsHarnessDiscovery && data?.projectWorktreeCapability == NewSessionProjectWorktreeCapability.supported;
+
+  /// The options above the composer as one card, read top to bottom: the
+  /// project the session starts in, the harness that runs it, and whether it
+  /// gets a git worktree of its own. Why the options are missing or limited
+  /// follows the card.
   ///
-  /// Until the bridge has answered what it can run, neither question has an
-  /// answer to show, so the block shimmers placeholders on the rows' own
-  /// rhythm rather than popping controls in one at a time. A later discovery
-  /// (a reconnect) keeps the controls it already has, disabled — blanking a
-  /// known harness back to a shimmer would lose more than it says.
+  /// Until the bridge has answered what it can run, the harness row shimmers a
+  /// placeholder. A later discovery (a reconnect) keeps the harness it already
+  /// has, disabled — blanking a known harness back to a shimmer would lose more
+  /// than it says. When the bridge answered that it runs no harness at all, a
+  /// notice takes the harness row's place; when discovery failed instead, the
+  /// error banner explains it and the harness menu keeps the refresh.
   Widget _buildOptions({
+    required NewSessionCubit cubit,
     required AgentModelData? data,
     required ({String message, bool isFailure})? status,
-    required bool needsHarnessDiscovery,
-    required bool hasNoHarnesses,
-    required bool includeWorkspaceRow,
   }) {
-    if (data == null || (data.plugins.isEmpty && data.isPluginDiscoveryInFlight)) {
-      return const NewSessionOptionsSkeleton(
-        rowHeight: _optionRowHeight,
-        rowSpacing: _optionRowSpacing,
-      );
-    }
-
-    // With no harness there is nothing to choose between, and nothing for the
-    // workspace option to shape — no session can start. Say why in the
-    // chooser's place when the bridge answered that itself; when discovery
-    // failed instead, the error banner already explains it and only the retry
-    // above the composer is left standing.
-    if (needsHarnessDiscovery) {
-      return hasNoHarnesses
-          ? NewSessionNoHarnessNotice(
-              onSettingsPressed: widget.onOpenHarnessSettings,
-            )
-          : const SizedBox.shrink();
-    }
-
-    final hasPlugins = data.plugins.isNotEmpty;
-    final workspaceRow = includeWorkspaceRow ? _buildWorkspaceRow(data: data) : null;
+    final isDiscovering = data == null || (data.plugins.isEmpty && data.isPluginDiscoveryInFlight);
+    final hasNoHarnesses = cubit.hasNoHarnesses;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: PregoSpacing.lg,
       children: [
-        NewSessionPluginChooser(
-          plugins: data.plugins,
-          selectedPluginId: data.plugin?.id,
-          isSelectionEnabled: data.backendScope.isVerified && !data.isPluginDiscoveryInFlight,
-          onSelected: (pluginId) => context.read<NewSessionCubit>().selectPlugin(pluginId: pluginId),
-          onSettingsPressed: widget.onOpenHarnessSettings,
+        PregoGroupedRows(
+          children: [
+            NewSessionProjectRow(
+              projectId: widget.projectId,
+              projectName: widget.projectName,
+              projects: widget.projects,
+              onProjectSelected: widget.onProjectSelected,
+            ),
+            if (!hasNoHarnesses)
+              NewSessionPluginChooser(
+                plugins: data?.plugins ?? const [],
+                selectedPluginId: data?.plugin?.id,
+                isSelectionEnabled: data != null && data.backendScope.isVerified && !data.isPluginDiscoveryInFlight,
+                isLoading: isDiscovering || (_refreshPress != null && data.isLoading),
+                onSelected: (pluginId) => cubit.selectPlugin(pluginId: pluginId),
+                onSettingsPressed: widget.onOpenHarnessSettings,
+                onRefreshPressed: cubit.canRefreshOptions ? _refreshOptions : null,
+              ),
+            if (_offersWorktree(cubit: cubit, data: data))
+              _NewWorktreeRow(
+                value: _dedicatedWorktree,
+                onChanged: (value) => setState(() => _dedicatedWorktree = value),
+              ),
+          ],
         ),
+        if (hasNoHarnesses) NewSessionNoHarnessNotice(onSettingsPressed: widget.onOpenHarnessSettings),
         if (status != null) _buildOptionsStatus(status: status),
-        if (workspaceRow != null) ...[
-          if (hasPlugins) const SizedBox(height: _optionRowSpacing),
-          workspaceRow,
-        ],
       ],
     );
   }
 
-  Widget? _buildWorkspaceRow({required AgentModelData? data}) {
-    if (data?.projectWorktreeCapability != NewSessionProjectWorktreeCapability.supported) return null;
-    return _DedicatedWorkspaceRow(
-      value: _dedicatedWorktree,
-      onChanged: (value) => setState(() => _dedicatedWorktree = value),
+  /// One line naming what the card says — project, harness, and the worktree
+  /// when one is picked — for while the keyboard leaves no room for the card.
+  Widget _buildKeyboardSummary({required NewSessionCubit cubit, required AgentModelData? data}) {
+    final prego = context.prego;
+    final loc = context.loc;
+    final harness = data?.plugin?.displayName;
+    final parts = [
+      newSessionProjectLabel(
+        loc: loc,
+        projectId: widget.projectId,
+        projectName: widget.projectName,
+        projects: widget.projects,
+      ),
+      ?harness,
+      if (_dedicatedWorktree && _offersWorktree(cubit: cubit, data: data)) loc.newSessionSummaryWorktree,
+    ];
+    return Padding(
+      key: const Key("new_session_keyboard_summary"),
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        _pageMargin + PregoSpacing.xl,
+        0,
+        _pageMargin + PregoSpacing.xl,
+        PregoSpacing.sm,
+      ),
+      child: Text(
+        parts.join(" · "),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+      ),
     );
   }
 
-  /// The page under [chrome]: one centred column that scrolls as a whole when
-  /// the pane is too short for it.
+  /// The page under [chrome]: the options card over the composer, one centred
+  /// column that scrolls as a whole when the pane is too short for it.
   Widget _buildChromePage({
     required NewSessionPageChrome chrome,
-    required NewSessionCubit cubit,
     required NewSessionState state,
     required Widget launchStatus,
-    required Widget header,
-    required Widget Function({required bool includeWorkspaceRow}) options,
+    required Widget options,
     required Widget? composer,
-    required bool showsRefresh,
   }) {
-    final data = state.agentModelData;
-    final settled =
-        data != null && !cubit.needsHarnessDiscovery && !(data.plugins.isEmpty && data.isPluginDiscoveryInFlight);
     return Scaffold(
       body: Column(
         children: [
@@ -395,26 +369,16 @@ class _NewSessionViewState() extends State<NewSessionView> {
                 : Center(
                     child: SingleChildScrollView(
                       key: const Key("new_session_options_scroll"),
-                      padding: const EdgeInsets.all(PregoSpacing.xl),
+                      padding: const EdgeInsets.all(_pageMargin),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(maxWidth: chrome.maxContentWidth),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          spacing: PregoSpacing.lg,
+                          spacing: PregoSpacing.x3l,
                           children: [
-                            header,
-                            options(includeWorkspaceRow: false),
+                            options,
                             ?composer,
-                            if (settled) ?_buildWorkspaceRow(data: data),
-                            if (showsRefresh)
-                              Align(
-                                alignment: AlignmentDirectional.centerStart,
-                                child: _buildOptionsRefresh(
-                                  cubit: cubit,
-                                  isLoading: _refreshPress != null && (data?.isLoading ?? false),
-                                ),
-                              ),
                             ?chrome.footer,
                           ],
                         ),
@@ -456,7 +420,8 @@ class _NewSessionViewState() extends State<NewSessionView> {
                     context.read<NewSessionCubit>().acknowledgeRestoredSubmission(submission: submission);
                   }
                 },
-                hasMessages: false,
+                // The page's question lives where it is answered.
+                restingHint: context.loc.newSessionPromptHint,
                 attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
                 isBusy: false,
                 onSend: ({required draft, required command, required attachments}) {
@@ -499,7 +464,6 @@ class _NewSessionViewState() extends State<NewSessionView> {
     final loc = context.loc;
     final isSending = state.phase is NewSessionPhaseSending;
     final composerData = state.agentModelData;
-    final needsHarnessDiscovery = cubit.needsHarnessDiscovery;
     final hasNoHarnesses = cubit.hasNoHarnesses;
     final optionsStatus = _resolveOptionsStatus(data: composerData);
     final restoringSubmission = switch (state.phase) {
@@ -514,12 +478,8 @@ class _NewSessionViewState() extends State<NewSessionView> {
       NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
       NewSessionCommandSubmissionSnapshot() || null => const <ComposerAttachment>[],
     };
-    // A confirmed empty harness list is explained by the notice and has no
-    // refresh action. Keep discovery retry available only when discovery failed
-    // before the bridge could confirm what it runs. A press of its own keeps it
-    // on screen: the load it started is exactly what the user wants to watch.
-    final showsRefresh = (needsHarnessDiscovery && !hasNoHarnesses) || optionsStatus != null || _refreshPress != null;
     final isComposerEnabled = cubit.canCreateSession && !isSending;
+    final keyboardUp = MediaQuery.viewInsetsOf(context).bottom > 0;
     _isSending = isSending;
     // The listener can run while this route is being torn down. The route
     // object stays stable, so `isCurrent` remains safe to read at event time.
@@ -532,13 +492,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
         loc.newSessionLoadingMessage3,
       ],
     );
-    Widget options({required bool includeWorkspaceRow}) => _buildOptions(
-      data: composerData,
-      status: optionsStatus,
-      needsHarnessDiscovery: needsHarnessDiscovery,
-      hasNoHarnesses: hasNoHarnesses,
-      includeWorkspaceRow: includeWorkspaceRow,
-    );
+    final options = _buildOptions(cubit: cubit, data: composerData, status: optionsStatus);
     final composer = hasNoHarnesses
         ? null
         : _buildComposer(
@@ -548,23 +502,14 @@ class _NewSessionViewState() extends State<NewSessionView> {
             composerData: composerData,
             state: state,
           );
-    final header = NewSessionHeader(
-      projectId: widget.projectId,
-      projectName: widget.projectName,
-      projects: widget.projects,
-      onProjectSelected: widget.onProjectSelected,
-    );
     final chromePage = switch (widget.pageChrome) {
       null => null,
       final chrome => _buildChromePage(
         chrome: chrome,
-        cubit: cubit,
         state: state,
         launchStatus: launchStatus,
-        header: header,
         options: options,
         composer: composer,
-        showsRefresh: showsRefresh,
       ),
     };
 
@@ -604,8 +549,8 @@ class _NewSessionViewState() extends State<NewSessionView> {
         // Toolbar navigation is explicit: unlike Android system back, it must
         // not be vetoed by the composer's keyboard-dismissal PopScope.
         onBack: _dismissScreen,
-        // The header's project selector names the project, so the bar carries
-        // no subtitle.
+        // The card's project row names the project, so the bar carries no
+        // subtitle.
         titleMode: isSending ? PregoTopNavigationTitleMode.inline : PregoTopNavigationTitleMode.backLeading,
         subtitle: null,
         reserveBarSpace: false,
@@ -625,65 +570,43 @@ class _NewSessionViewState() extends State<NewSessionView> {
                 // composer rides above the keyboard when the field is focused.
                 SliverFillRemaining(
                   hasScrollBody: true,
-                  child: AbsorbPointer(
-                    absorbing: isSending,
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: PregoTopBarInsetBuilder(
-                            builder: (context, topInset, child) => CustomScrollView(
-                              key: const Key("new_session_options_scroll"),
-                              // The composer owns keyboard focus. This supporting
-                              // pane must not become the route's primary scroll and
-                              // jump to its trailing refresh when the keyboard opens.
-                              primary: false,
-                              slivers: [
-                                SliverPadding(
-                                  padding: EdgeInsetsDirectional.fromSTEB(
-                                    _optionsHorizontalPadding,
-                                    topInset + _optionRowSpacing,
-                                    _optionsHorizontalPadding,
-                                    showsRefresh ? 0 : _optionsBottomPadding,
-                                  ),
-                                  sliver: SliverToBoxAdapter(child: child),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: PregoTopBarInsetBuilder(
+                          builder: (context, topInset, child) => CustomScrollView(
+                            key: const Key("new_session_options_scroll"),
+                            // The composer owns keyboard focus. This supporting
+                            // pane must not become the route's primary scroll and
+                            // jump when the keyboard opens.
+                            primary: false,
+                            slivers: [
+                              SliverPadding(
+                                padding: EdgeInsetsDirectional.fromSTEB(
+                                  _pageMargin,
+                                  topInset + _pageMargin,
+                                  _pageMargin,
+                                  _pageMargin,
                                 ),
-                                if (showsRefresh)
-                                  SliverFillRemaining(
-                                    hasScrollBody: false,
-                                    child: Padding(
-                                      padding: const EdgeInsetsDirectional.fromSTEB(
-                                        _optionsHorizontalPadding,
-                                        _optionsBottomPadding,
-                                        _optionsHorizontalPadding,
-                                        _refreshBottomGap,
-                                      ),
-                                      child: Align(
-                                        alignment: AlignmentDirectional.bottomCenter,
-                                        child: _buildOptionsRefresh(
-                                          cubit: cubit,
-                                          isLoading: _refreshPress != null && (composerData?.isLoading ?? false),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              spacing: _optionRowSpacing,
-                              children: [
-                                // The keyboard leaves this pane a few rows tall;
-                                // they belong to the options being typed against.
-                                if (MediaQuery.viewInsetsOf(context).bottom == 0) header,
-                                options(includeWorkspaceRow: true),
-                              ],
-                            ),
+                                sliver: SliverToBoxAdapter(child: child),
+                              ),
+                            ],
                           ),
+                          // The keyboard leaves this pane a few rows tall, so the
+                          // card gives way to the summary line above the composer.
+                          child: keyboardUp
+                              ? (optionsStatus == null ? null : _buildOptionsStatus(status: optionsStatus))
+                              : options,
                         ),
-                        if (composer != null)
-                          Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: composer),
+                      ),
+                      if (composer != null) ...[
+                        if (keyboardUp) _buildKeyboardSummary(cubit: cubit, data: composerData),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: _pageMargin),
+                          child: composer,
+                        ),
                       ],
-                    ),
+                    ],
                   ),
                 ),
               ],
@@ -742,37 +665,21 @@ class _ComposerSurfaceStyleOwnerState() extends State<_ComposerSurfaceStyleOwner
 
 /// Whether the session gets a git worktree of its own instead of working in
 /// the project checkout everyone shares.
-class const _DedicatedWorkspaceRow({required final bool value, required final ValueChanged<bool> onChanged})
+class const _NewWorktreeRow({required final bool value, required final ValueChanged<bool> onChanged})
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final prego = context.prego;
-
-    return SizedBox(
-      height: _optionRowHeight,
-      // The label names what the switch does, so they must reach a screen
-      // reader as one control rather than as stray text beside a bare toggle.
-      child: MergeSemantics(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Padding(
-                padding: EdgeInsetsDirectional.only(start: prego.spacing.lg, end: prego.spacing.md),
-                child: Text(
-                  context.loc.newSessionDedicatedWorkspace,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
-                ),
-              ),
-            ),
-            PregoSwitch(
-              key: const Key("new_session_dedicated_workspace"),
-              value: value,
-              onChanged: onChanged,
-            ),
-          ],
+    final loc = context.loc;
+    // The label names what the switch does, so they must reach a screen reader
+    // as one control rather than as stray text beside a bare toggle.
+    return MergeSemantics(
+      child: PregoGroupedRow(
+        title: Text(loc.newSessionNewWorktree),
+        subtitle: Text(loc.newSessionNewWorktreeHint),
+        trailing: PregoSwitch(
+          key: const Key("new_session_new_worktree"),
+          value: value,
+          onChanged: onChanged,
         ),
       ),
     );

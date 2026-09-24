@@ -124,10 +124,10 @@ class const PromptInput({
   super.key,
   required final bool isBusy,
 
-  /// Whether the session already has (or has queued) messages. Drives the
-  /// resting hint copy ("Ask anything..." vs "Follow up...") and, in
-  /// text-first mode, which prompt the compact pill invites.
-  required final bool hasMessages,
+  /// The placeholder the empty field rests on ("Ask anything...", "Follow
+  /// up..."), and in text-first mode the prompt the compact pill invites. A
+  /// staged command's own argument hint takes its place.
+  required final String restingHint,
   required final PromptSubmitCallback onSend,
   required final VoidCallback? onVoiceTranscriptionCompleted,
   required final ValueChanged<ComposerDraft> onDraftChanged,
@@ -1048,7 +1048,7 @@ class _PromptInputState() extends State<PromptInput> {
       }
       return context.loc.sessionDetailCommandArgumentsHint;
     }
-    return widget.hasMessages ? context.loc.sessionDetailFollowUpHint : context.loc.sessionDetailPromptHint;
+    return widget.restingHint;
   }
 
   /// House transition timing for the composer's state morphs.

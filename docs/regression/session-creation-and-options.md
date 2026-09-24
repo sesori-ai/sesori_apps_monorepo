@@ -12,12 +12,18 @@ variant, and worktree mode, and creating the session with its first input.
   open the same typed setup route. The button and shortcut use the open project, else the most recently active
   one; with no project yet they open the New project dialog.
   It opens setup rather than creating a backend session, ignores held-key repeats and respects root popup focus.
-- On phone and desktop the setup page opens with the heading "What should we work on?" and a project
-  selector naming the session's project. The selector opens only when another project exists; choosing one
-  replaces the page with that project's setup page, so a session is never created in the project that was
-  left, and a draft stays with the project it was typed in. The phone lists projects itself for this and
-  names only the current project when that fails. On the phone the header sits above the options and hides
-  while the keyboard is open, so the options stay in view while typing.
+- On phone and desktop the setup page is one card above the composer, both on the same edges: a Project row
+  naming the session's project, a Harness row naming the selected harness, and, where the harness supports it,
+  "New git worktree" with the hint "Runs on a new branch in its own folder". The page's question, "What should
+  we work on?", is the composer's placeholder rather than a heading. The Project row opens a menu only when
+  another project exists; choosing one replaces the page with that project's setup page, so a session is never
+  created in the project that was left, and a draft stays with the project it was typed in. The phone lists
+  projects itself for this and names only the current project when that fails.
+- On the phone, while the keyboard is open, the card gives way to one line above the composer naming the
+  project, the harness and, when a new worktree is on, "worktree" ("Project · Claude Code · worktree"), so the
+  choices stay visible while typing.
+- Harness brand marks draw in square bounds, so a mark that is not square, such as OpenCode's, never shifts
+  the label beside it.
 - The composer shows the agent entry only when the harness advertises more than one selectable agent.
   Claude, Codex, Copilot, Cursor and OMP advertise only their default mode as one agent, so their composer
   shows model and effort alone; OpenCode lists its real agents. A released mode name such as Plan or Ask
@@ -182,15 +188,13 @@ variant, and worktree mode, and creating the session with its first input.
 - A choice made while a background refresh runs outranks it. The refresh was
   resolved against the agent, model, variant, and staged command as they stood
   when it started, so it is dropped rather than reverting the user.
-- The refresh action stays on screen for as long as the press it started is
-  still running, and the line explaining where the options came from keeps
-  describing the options still on screen. It spins only while the answers on
-  screen are unsettled: the harness chooser stays live during a refresh, so a
-  press abandoned for another harness must not leave a spinner over that
-  harness's settled options. When the viewport has room, the action rests above
-  the composer; when the keyboard or a multiline draft cramps that viewport,
-  it follows the option rows in their scroll content and never covers the
-  dedicated-workspace control.
+- Refresh is the last entry of the Harness row's menu, enabled whenever a
+  refresh can run, including after harness discovery failed before any harness
+  was found. Options served from a cache carry no explanatory line. While a
+  press runs and the answers on screen are unsettled, the Harness row's value
+  shimmers; the harness chooser stays live during a refresh, so a press
+  abandoned for another harness must not leave the shimmer over that harness's
+  settled options.
 - It is one action under one name in every state. Whether a press repeats
   harness discovery, the project check, or the options themselves is decided
   behind it; the surface never names that split, because the user cannot act on
@@ -265,7 +269,7 @@ variant, and worktree mode, and creating the session with its first input.
   shell-owned routing, DI, connection-banner policy, and platform capabilities.
   Mobile keeps voice capture and keyboard visibility. Desktop is explicitly
   text-first, constructs no voice cubit, uses its native image picker when the
-  selected plugin declares attachments, and exposes the same dedicated-workspace
+  selected plugin declares attachments, and exposes the same new git worktree
   option rather than substituting a desktop-only creation path.
 - A creation failure on the still-current route restores the exact submitted
   text/voice spans, command intent, and memory-only attachment identities once,
@@ -360,7 +364,7 @@ variant, and worktree mode, and creating the session with its first input.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
 | L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window or captured before the bridge process started is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `sesori/color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. |
-| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; refreshing on the New Session screen updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render. Scoped authentication-required discovery keeps Refresh available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
+| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the Harness row's refresh stays reachable in its menu; refreshing on the New Session screen updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render. Scoped authentication-required discovery keeps Refresh available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -469,7 +473,7 @@ highlight, Enter and Esc.
   auto-resends, or restores an incomplete/abandoned draft without the
   duplicate-risk warning.
 - Desktop cannot open the typed new-session route, constructs voice capture,
-  hides a supported dedicated-workspace option, or bypasses the shared creation
+  hides a supported new git worktree option, or bypasses the shared creation
   view and its restoration/launch semantics.
 - The ⚡ pill shows for a model without fast-mode support, hides for an
   unavailable one, sends `fastMode: true` for a model that cannot run it, or
