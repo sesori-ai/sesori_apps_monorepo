@@ -211,9 +211,9 @@ guarantee.
 - A tool stays running after the backend finished, or an error renders as a
   completion.
 - Shell details grow without bound, pad a short transcript to full height, lose
-  long command/output text, copy a truncated preview, hand a sideways swipe on
-  the panel to the transcript, close during updates, or hide tool attachments
-  when collapsed.
+  long command/output text, copy a truncated preview, let a sideways swipe on
+  the panel reveal message timestamps, close during updates, or hide tool
+  attachments when collapsed.
 - Tool details jump open or shut instead of easing, vanish before a blank area
   collapses, or animate under reduced motion; the tapped header moves while
   there is room below the row, the panel opens behind the composer, or the
