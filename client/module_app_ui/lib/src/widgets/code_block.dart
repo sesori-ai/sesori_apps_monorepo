@@ -1,7 +1,6 @@
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:markdown/markdown.dart" as md;
 import "package:material_ui/material_ui.dart";
-import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../extensions/build_context_x.dart";
@@ -114,12 +113,15 @@ class _CodeBlockState() extends State<CodeBlock> {
       context: context,
       title: _languageLabel,
       width: PregoModalWidth.code,
-      builder: (_) => SingleChildScrollView(
-        child: CodeBlock(
-          code: widget.code,
-          language: widget.language,
-          copyTooltip: widget.copyTooltip,
-          isFullView: true,
+      // A modal route sits outside the transcript's selection area, so it brings its own.
+      builder: (_) => PregoReadableSelectionArea(
+        child: SingleChildScrollView(
+          child: CodeBlock(
+            code: widget.code,
+            language: widget.language,
+            copyTooltip: widget.copyTooltip,
+            isFullView: true,
+          ),
         ),
       ),
     );
@@ -175,16 +177,20 @@ class _CodeBlockState() extends State<CodeBlock> {
             ).createShader(bounds),
             child: codeView,
           ),
-          PregoTappable(
-            onTap: _openAll,
-            borderRadius: BorderRadius.circular(PregoRadius.xs),
-            containerBuilder: (child) => child,
-            child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(8, 2, 8, 8),
-              child: Text(
-                context.loc.codeBlockOpenAll(lines.length),
-                style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(bottom: 4),
+            // A button, so the action takes keyboard focus and Enter as well as a click.
+            child: TextButton(
+              onPressed: _openAll,
+              style: TextButton.styleFrom(
+                foregroundColor: prego.colors.textPrimary,
+                padding: const EdgeInsetsDirectional.fromSTEB(8, 2, 8, 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xs)),
+                textStyle: prego.textTheme.textSm.medium,
               ),
+              child: Text(context.loc.codeBlockOpenAll(lines.length)),
             ),
           ),
         ] else

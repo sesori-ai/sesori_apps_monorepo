@@ -559,8 +559,8 @@ defaults and queued client sends coherent.
   settled responses share the same typography; code remains monospace and
   Markdown emphasis, selection, attachments and queued-state cues stay usable.
 - Markdown looks the same on phone and desktop in both themes. A fenced code
-  block is one quiet box (a secondary surface with a hairline border) holding its
-  language label, copy button and code. Inline code sits on a soft tertiary
+  block is one quiet box (the raised inset tool output uses, with no border)
+  holding its language label, copy button and code. Inline code sits on a soft tertiary
   background. Tables show hairline row lines under a bold, left-aligned header
   with no outer grid, and a horizontal rule is one hairline. None of these fall
   back to the SDK's purple-grey Material palette.
