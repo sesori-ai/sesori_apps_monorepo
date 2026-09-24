@@ -97,6 +97,14 @@ void main() {
     final firstImage = tester.widget<Image>(find.descendant(of: strip, matching: find.byType(Image)).first);
     expect(firstImage.fit, BoxFit.cover);
     expect((firstImage.image as ResizeImage).width, 156);
+    // Like the new session page, no session scope: a staged image still opens.
+    await tester.tap(find.byKey(ObjectKey(images.first)));
+    await tester.pumpAndSettle();
+    expect(find.byType(ImageAttachmentViewer), findsOneWidget);
+    await tester.tap(find.byTooltip("Close image"));
+    await tester.pumpAndSettle();
+    expect(find.byType(ImageAttachmentViewer), findsNothing);
+    expect(find.byType(PregoImageAttachmentPreview), findsNWidgets(8));
     await tester.drag(strip, const Offset(-500, 0));
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: find.byKey(ObjectKey(images.last)), matching: find.byIcon(TablerRegular.x)));

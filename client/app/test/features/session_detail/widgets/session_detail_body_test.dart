@@ -3172,7 +3172,7 @@ void main() {
 
     expect(tester.getSize(find.byType(PregoImageAttachmentPreview)), const Size(52, 52));
     final removeButton = semanticsWithLabel("Remove attachment");
-    expect(tester.getSize(removeButton), const Size(44, 44));
+    expect(tester.getSize(removeButton), const Size(24, 24));
     await tester.tap(removeButton);
     await tester.pumpAndSettle();
     expect(semanticsWithLabel("screenshot.png"), findsNothing);

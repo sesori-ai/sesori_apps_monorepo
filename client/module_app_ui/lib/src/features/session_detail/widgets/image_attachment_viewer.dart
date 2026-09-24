@@ -52,7 +52,9 @@ Future<void> showImageAttachmentViewer({
   required String? filename,
   required Key heroTag,
 }) {
-  final presentation = SessionDetailPresentationScope.read(context);
+  // The new session composer has no session scope; its view-only drafts need
+  // none of the capabilities it carries.
+  final presentation = context.getInheritedWidgetOfExactType<SessionDetailPresentationScope>();
   // ignore: no_slop_linter/avoid_navigator_of, the transient viewer must cover the split shell
   final rootNavigator = Navigator.of(context, rootNavigator: true);
   final sourceRoute = ModalRoute.of(context);
@@ -61,16 +63,8 @@ Future<void> showImageAttachmentViewer({
     opaque: false,
     transitionDuration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 260),
     reverseTransitionDuration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
-    pageBuilder: (_, _, _) => SessionDetailPresentationScope(
-      messageImageRepository: presentation.messageImageRepository,
-      imageSaver: presentation.imageSaver,
-      imageClipboard: presentation.imageClipboard,
-      imageSharer: presentation.imageSharer,
-      canShareImages: presentation.canShareImages,
-      openExternalLink: presentation.openExternalLink,
-      openSession: presentation.openSession,
-      openHarnessSettings: presentation.openHarnessSettings,
-      child: switch (image) {
+    pageBuilder: (_, _, _) {
+      final viewer = switch (image) {
         LoadedMessageImage() => ImageAttachmentViewer(
           image: image,
           flightImageProvider: image.provider,
@@ -95,8 +89,20 @@ Future<void> showImageAttachmentViewer({
           filename: filename,
           heroTag: heroTag,
         ),
-      },
-    ),
+      };
+      if (presentation == null) return viewer;
+      return SessionDetailPresentationScope(
+        messageImageRepository: presentation.messageImageRepository,
+        imageSaver: presentation.imageSaver,
+        imageClipboard: presentation.imageClipboard,
+        imageSharer: presentation.imageSharer,
+        canShareImages: presentation.canShareImages,
+        openExternalLink: presentation.openExternalLink,
+        openSession: presentation.openSession,
+        openHarnessSettings: presentation.openHarnessSettings,
+        child: viewer,
+      );
+    },
     transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
   );
   var shouldDismissViewerWithHistory = true;

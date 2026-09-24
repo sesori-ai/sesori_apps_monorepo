@@ -7,15 +7,17 @@ import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
 
 /// Staged image tile from Figma's Add files container (4590:9921).
-/// The caller supplies the image and owns its bytes and removal.
+/// The caller supplies the image and owns its bytes, opening, and removal.
 class const PregoImageAttachmentPreview({
   super.key,
   required final Widget image,
   required final String imageLabel,
+  required final VoidCallback onOpen,
   required final String removeLabel,
   required final VoidCallback onRemove,
 }) extends StatelessWidget {
   static const double size = 52;
+  static const double _removeTargetSize = 24;
 
   @override
   Widget build(BuildContext context) {
@@ -28,15 +30,21 @@ class const PregoImageAttachmentPreview({
         children: [
           Semantics(
             image: true,
+            button: true,
             label: imageLabel,
-            child: ExcludeSemantics(
-              child: DecoratedBox(
-                position: DecorationPosition.foreground,
-                decoration: BoxDecoration(
-                  borderRadius: radius,
-                  border: Border.all(color: prego.colors.borderSecondary),
+            child: PregoTappable(
+              onTap: onOpen,
+              borderRadius: radius,
+              containerBuilder: (child) => child,
+              child: ExcludeSemantics(
+                child: DecoratedBox(
+                  position: DecorationPosition.foreground,
+                  decoration: BoxDecoration(
+                    borderRadius: radius,
+                    border: Border.all(color: prego.colors.borderSecondary),
+                  ),
+                  child: ClipRRect(borderRadius: radius, child: image),
                 ),
-                child: ClipRRect(borderRadius: radius, child: image),
               ),
             ),
           ),
@@ -52,8 +60,8 @@ class const PregoImageAttachmentPreview({
                 child: PregoTappable(
                   onTap: onRemove,
                   borderRadius: radius,
-                  containerBuilder: (child) => SizedBox.square(dimension: 44, child: child),
-                  // Keep the Figma badge small without shrinking its tap target.
+                  // Just past the badge, so the rest of the tile opens the image.
+                  containerBuilder: (child) => SizedBox.square(dimension: _removeTargetSize, child: child),
                   child: Padding(
                     padding: const EdgeInsetsDirectional.only(top: 3, end: 4),
                     child: Align(

@@ -32,8 +32,10 @@ content the transcript renders live and after reload.
   backend-produced images into a client-safe attachment; host paths never cross
   that boundary.
 - Selected images use the shared Prego preview: 52px square center crops, 10px
-  corners, a subtle border, and a 14px close badge with a 44px touch target in
-  both themes. New-session and existing-session composers keep one 52px-high
+  corners, a subtle border, and a 14px close badge whose 24px target stays in
+  the tile's corner in both themes. Tapping the rest of the tile opens the
+  staged image in the full-screen viewer, view-only, on the new session page
+  too. New-session and existing-session composers keep one 52px-high
   horizontal row with 8px gaps. Overflow scrolls, with edge fades indicating
   hidden images in either direction. The leading fade appears after scrolling
   and clears on returning to the start; the trailing fade clears at the end.
