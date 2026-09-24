@@ -1425,6 +1425,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailPickerVariant => 'Variant';
 
   @override
+  String get sessionDetailFastMode => 'Fast mode';
+
+  @override
+  String get sessionDetailFastModeConfirmTitle => 'Switch speed?';
+
+  @override
+  String get sessionDetailFastModeConfirmEnableBody =>
+      'Switching speed drops the prompt cache, so the next message re-reads the whole conversation. Fast mode also uses more of your usage.';
+
+  @override
+  String get sessionDetailFastModeConfirmDisableBody =>
+      'Switching speed drops the prompt cache, so the next message re-reads the whole conversation.';
+
+  @override
+  String get sessionDetailFastModeConfirmAction => 'Switch';
+
+  @override
+  String get sessionDetailFastModeCancel => 'Cancel';
+
+  @override
+  String get sessionDetailFastModeUnavailableTitle => 'Fast mode is unavailable';
+
+  @override
+  String get sessionDetailFastModeUnavailableExtraUsageDisabled =>
+      'Turn on extra usage for your account to use fast mode.';
+
+  @override
+  String get sessionDetailFastModeUnavailableNotOnPlan => 'Your plan doesn\'t include fast mode.';
+
+  @override
+  String get sessionDetailFastModeUnavailableDisabledByOrganization => 'Your organization has turned off fast mode.';
+
+  @override
+  String get sessionDetailFastModeUnavailableUnknown => 'Fast mode can\'t be used with this account right now.';
+
+  @override
   String get sessionDetailModelSearch => 'Search models...';
 
   @override

@@ -337,6 +337,7 @@ void main() {
             command: "review",
             agent: "coder",
             agentModel: null,
+            fastMode: false,
           ),
         ],
       ),
@@ -888,6 +889,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -928,6 +930,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -959,6 +962,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -999,6 +1003,7 @@ void main() {
       command: "review",
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     const unavailable = QueuedSessionSubmission.unavailableCommand(
       promptId: "prompt-1",
@@ -1006,6 +1011,7 @@ void main() {
       command: "review",
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -1043,6 +1049,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(

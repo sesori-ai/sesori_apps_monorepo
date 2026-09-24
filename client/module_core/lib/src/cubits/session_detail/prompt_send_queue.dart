@@ -112,6 +112,7 @@ class PromptSendQueue() {
           :final command,
           :final agent,
           :final agentModel,
+          :final fastMode,
         )
             when submissionPromptId == promptId =>
           QueuedSessionSubmission.unavailableCommand(
@@ -120,6 +121,7 @@ class PromptSendQueue() {
             command: command,
             agent: agent,
             agentModel: agentModel,
+            fastMode: fastMode,
           ),
         QueuedTextSubmission() || QueuedCommandSubmission() || UnavailableQueuedCommandSubmission() => submission,
       },

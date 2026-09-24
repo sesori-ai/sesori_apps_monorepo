@@ -315,6 +315,43 @@ variant, and worktree mode, and creating the session with its first input.
   plugin's display name. A session-detail stale-option recovery also shows the bounded
   guidance and parks the prompt instead of retrying with unavailable options.
 
+### Fast mode
+
+- A model advertises fast mode through `ProviderModel.fastMode`. The composer
+  shows the ⚡ pill next to the effort pill, in New Session and in session
+  detail, only when that support is available or unavailable. An absent or
+  unknown value (older bridge, harness without fast mode, a model without it)
+  shows no pill.
+- Available: the pill is highlighted while on and neutral while off. Prompts,
+  slash commands, and session creation carry the choice as `fastMode`; a model
+  without available fast mode always sends `fastMode: false`, whatever was chosen.
+- Unavailable: the pill is dimmed. A tap changes nothing and shows the standard
+  error popup with the closed reason (extra usage turned off, not on the plan,
+  turned off by the organization, or unknown).
+- Switching speed drops the backend's prompt cache. When the session has
+  history and the model was last active less than the model's cache lifetime
+  ago (Codex 30 minutes, Claude 60 minutes), a confirmation explains the full
+  re-read, and in both directions; turning fast mode on also mentions the extra
+  usage. A session without history, or one whose cache has expired, switches
+  at once. Last activity is the newest assistant message's completion time
+  (its start time while it streams), else the session's last update.
+- The choice is part of the session's prompt defaults. Reopening the session,
+  or a `session.prompt_defaults_changed` event from another surface, restores
+  it. New Session remembers the last choice per project and plugin like the
+  variant, and seeds it from the plugin's last-used prompt defaults.
+- Codex sends the choice as the `priority` service tier (`default` when off) on
+  every turn, and on `thread/start` for a session created fast. Claude applies
+  it through the `apply_flag_settings` control request before a turn whose
+  choice differs from the resident process; the catalog probe opts in first so
+  the account's real availability reason is reported. See
+  `docs/HARNESS_CAPABILITIES.md` for the harness details.
+- Coverage: the toggle calculator's visibility, forced-off, and confirmation
+  matrix (including the exact cache-lifetime boundary) and the cubits' send and
+  reconciliation paths run as unit tests. The pill's hidden, dimmed, and on
+  states and its popup and confirmation dispatch run as widget tests. Release
+  coverage (L3) toggles fast mode on a live Codex and Claude session with a
+  warm and a cold cache and reopens the session to confirm the choice persists.
+
 ## Regression Levels
 
 | Level | Additional coverage |
@@ -432,6 +469,10 @@ highlight, Enter and Esc.
 - Desktop cannot open the typed new-session route, constructs voice capture,
   hides a supported dedicated-workspace option, or bypasses the shared creation
   view and its restoration/launch semantics.
+- The ⚡ pill shows for a model without fast-mode support, hides for an
+  unavailable one, sends `fastMode: true` for a model that cannot run it, or
+  switches without confirmation while the prompt cache is warm; the choice is
+  lost on reopen or not synchronized from another surface.
 
 ## Known Limitations
 
@@ -472,6 +513,8 @@ highlight, Enter and Esc.
 - Client: `client/module_core/lib/src/services/session_selection_calculator.dart`
   (the single owner of selection reconciliation),
   `client/module_core/lib/src/services/new_session_options_service.dart`,
+  `client/module_core/lib/src/services/fast_mode_toggle_calculator.dart`,
+  `client/module_app_ui/lib/src/features/session_detail/widgets/agent_model_buttons.dart`,
   `client/module_core/lib/src/services/session_detail_load_service.dart`,
   `client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart`,
   `client/module_app_ui/lib/src/features/new_session/`,

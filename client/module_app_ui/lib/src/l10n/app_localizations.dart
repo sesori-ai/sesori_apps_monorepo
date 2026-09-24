@@ -2647,6 +2647,72 @@ abstract class AppLocalizations {
   /// **'Variant'**
   String get sessionDetailPickerVariant;
 
+  /// No description provided for @sessionDetailFastMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast mode'**
+  String get sessionDetailFastMode;
+
+  /// No description provided for @sessionDetailFastModeConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch speed?'**
+  String get sessionDetailFastModeConfirmTitle;
+
+  /// No description provided for @sessionDetailFastModeConfirmEnableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching speed drops the prompt cache, so the next message re-reads the whole conversation. Fast mode also uses more of your usage.'**
+  String get sessionDetailFastModeConfirmEnableBody;
+
+  /// No description provided for @sessionDetailFastModeConfirmDisableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching speed drops the prompt cache, so the next message re-reads the whole conversation.'**
+  String get sessionDetailFastModeConfirmDisableBody;
+
+  /// No description provided for @sessionDetailFastModeConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get sessionDetailFastModeConfirmAction;
+
+  /// No description provided for @sessionDetailFastModeCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get sessionDetailFastModeCancel;
+
+  /// No description provided for @sessionDetailFastModeUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast mode is unavailable'**
+  String get sessionDetailFastModeUnavailableTitle;
+
+  /// No description provided for @sessionDetailFastModeUnavailableExtraUsageDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on extra usage for your account to use fast mode.'**
+  String get sessionDetailFastModeUnavailableExtraUsageDisabled;
+
+  /// No description provided for @sessionDetailFastModeUnavailableNotOnPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plan doesn\'t include fast mode.'**
+  String get sessionDetailFastModeUnavailableNotOnPlan;
+
+  /// No description provided for @sessionDetailFastModeUnavailableDisabledByOrganization.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organization has turned off fast mode.'**
+  String get sessionDetailFastModeUnavailableDisabledByOrganization;
+
+  /// No description provided for @sessionDetailFastModeUnavailableUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast mode can\'t be used with this account right now.'**
+  String get sessionDetailFastModeUnavailableUnknown;
+
   /// No description provided for @sessionDetailModelSearch.
   ///
   /// In en, this message translates to:

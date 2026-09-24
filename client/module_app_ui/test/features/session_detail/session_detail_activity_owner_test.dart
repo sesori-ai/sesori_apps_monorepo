@@ -44,6 +44,7 @@ const _loaded = SessionDetailState.loaded(
   availableCommands: [],
   selectedAgent: "build",
   selectedAgentModel: null,
+  fastMode: false,
   stagedCommand: null,
   isRefreshing: false,
 );

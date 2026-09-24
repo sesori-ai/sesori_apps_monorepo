@@ -16,7 +16,7 @@ class const ReconciledSelection({
   required final List<SessionVariant> availableVariants,
 });
 
-/// Resolves an agent/model/variant/command selection against the catalog a
+/// Resolves an agent/model/variant/fast-mode/command selection against the catalog a
 /// backend currently advertises.
 ///
 /// This is the one owner of that policy. It previously existed twice — once for
@@ -72,6 +72,28 @@ class const SessionSelectionCalculator() {
     final variants = availableVariants(providers: providers, model: model);
     final declared = _providerModel(providers: providers, model: model)?.defaultVariant;
     return variants.any((variant) => variant.id == declared) ? declared : variants.firstOrNull?.id;
+  }
+
+  /// The fast mode [model] offers, or null when it has none or the catalog no
+  /// longer offers the model.
+  FastModeSupport? fastModeSupport({
+    required List<ProviderInfo> providers,
+    required AgentModel? model,
+  }) {
+    if (model == null) return null;
+    final providerModel = _providerModel(providers: providers, model: model);
+    if (providerModel == null || !providerModel.isAvailable) return null;
+    return providerModel.fastMode;
+  }
+
+  /// Whether [model] runs in fast mode given the user's [requested] choice:
+  /// only while the model's fast mode is available, otherwise off.
+  bool resolvedFastMode({
+    required List<ProviderInfo> providers,
+    required AgentModel? model,
+    required bool requested,
+  }) {
+    return requested && fastModeSupport(providers: providers, model: model) is FastModeAvailable;
   }
 
   /// The agent to run, given [candidates] in preference order: the first the

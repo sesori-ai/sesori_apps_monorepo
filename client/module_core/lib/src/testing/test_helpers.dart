@@ -500,6 +500,7 @@ void delegateSessionRepository({
       agent: any(named: "agent"),
       model: any(named: "model"),
       variant: any(named: "variant"),
+      fastMode: any(named: "fastMode"),
       command: any(named: "command"),
     ),
   ).thenAnswer(
@@ -511,6 +512,7 @@ void delegateSessionRepository({
       agent: _namedArgument<String?>(invocation: invocation, name: #agent),
       model: _namedArgument<PromptModel?>(invocation: invocation, name: #model),
       variant: _namedArgument<SessionVariant?>(invocation: invocation, name: #variant),
+      fastMode: _namedArgument<bool>(invocation: invocation, name: #fastMode),
       command: _namedArgument<String?>(invocation: invocation, name: #command),
     ),
   );

@@ -465,6 +465,7 @@ void main() {
           agent: any(named: "agent"),
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((invocation) async {
@@ -504,6 +505,7 @@ void main() {
           agent: "Default",
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).called(1);
@@ -516,6 +518,7 @@ void main() {
           agent: "Agent",
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).called(1);
@@ -554,6 +557,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) async {
@@ -641,6 +645,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) async {
@@ -740,6 +745,7 @@ void main() {
           agent: any(named: "agent"),
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((_) async {
@@ -785,6 +791,7 @@ void main() {
           agent: "Agent",
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).called(1);
@@ -820,6 +827,7 @@ void main() {
           agent: any(named: "agent"),
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((_) async {
@@ -892,6 +900,7 @@ void main() {
           agent: any(named: "agent"),
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((_) async {
@@ -963,6 +972,7 @@ void main() {
           agent: any(named: "agent"),
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((_) async => ApiResponse.error(staleError));
@@ -1027,6 +1037,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: null,
         ),
       ).thenAnswer((invocation) async {
@@ -1074,6 +1085,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => sendCompleter.future);
@@ -1165,6 +1177,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => send.future);
@@ -1222,6 +1235,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1257,6 +1271,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) {
@@ -1346,6 +1361,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => send.future);
@@ -1401,6 +1417,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1447,6 +1464,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1491,6 +1509,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1533,6 +1552,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => send.future);
@@ -1577,6 +1597,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1603,6 +1624,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1644,6 +1666,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1673,6 +1696,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1707,6 +1731,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1862,6 +1887,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => sendCompleter.future);
@@ -1905,6 +1931,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) {
@@ -1958,6 +1985,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => sendCompleter.future);
@@ -2009,6 +2037,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).called(1);
@@ -2027,6 +2056,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) {
@@ -2089,6 +2119,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => sendCompleter.future);

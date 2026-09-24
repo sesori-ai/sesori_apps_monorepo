@@ -71,6 +71,7 @@ const _emptyState = SessionDetailState.loaded(
   availableCommands: [],
   selectedAgent: "build",
   selectedAgentModel: null,
+  fastMode: false,
   stagedCommand: null,
   isRefreshing: false,
 );
@@ -100,6 +101,7 @@ const _nonEmptyState = SessionDetailState.loaded(
   availableCommands: [],
   selectedAgent: "build",
   selectedAgentModel: null,
+  fastMode: false,
   stagedCommand: null,
   isRefreshing: false,
 );

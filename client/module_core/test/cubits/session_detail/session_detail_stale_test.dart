@@ -369,6 +369,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "low"),
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -395,6 +396,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "low"),
+          fastMode: false,
           command: null,
         ),
       ).called(1);
@@ -440,6 +442,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "sesori-local", modelID: "test-model"),
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -469,6 +472,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "sesori-local", modelID: "test-model"),
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).called(1);

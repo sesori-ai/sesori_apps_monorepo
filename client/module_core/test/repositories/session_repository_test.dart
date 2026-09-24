@@ -93,6 +93,7 @@ storedOnly: false,)).thenAnswer(
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
         variant: const SessionVariant(id: "xhigh"),
+        fastMode: false,
         command: "review",
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
@@ -128,6 +129,7 @@ storedOnly: false,);
       agent: "build",
       model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
       variant: const SessionVariant(id: "xhigh"),
+      fastMode: false,
       command: "review",
     );
     final abortResult = await repository.abortSession(
@@ -161,6 +163,7 @@ storedOnly: false,)).called(1);
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
         variant: const SessionVariant(id: "xhigh"),
+        fastMode: false,
         command: "review",
       ),
     ).called(1);
