@@ -366,7 +366,9 @@ class _DesktopHarnessSettingsPageState() extends State<_DesktopHarnessSettingsPa
           builders: {
             for (final platform in TargetPlatform.values)
               platform: _FadeThrough(
-                transitionDuration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 200),
+                transitionDuration: prefersReducedMotion(context) || GlassAccessibilityData.of(context).reduceMotion
+                    ? Duration.zero
+                    : const Duration(milliseconds: 200),
               ),
           },
         ),
