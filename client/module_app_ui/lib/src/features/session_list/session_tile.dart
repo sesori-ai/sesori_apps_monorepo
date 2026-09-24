@@ -449,12 +449,14 @@ class const SessionTile({
     };
     if (label == null || color == null) return null;
 
-    return Text(
+    final text = Text(
       label,
       style: prego.textTheme.textXs.medium.copyWith(color: color),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
+    // The status slot already speaks the waiting state.
+    return awaitingInput ? ExcludeSemantics(child: text) : text;
   }
 }
 

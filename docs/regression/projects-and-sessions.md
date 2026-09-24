@@ -240,12 +240,15 @@ state.
 - A session row leads with a 16-point status slot: a turning sparkle while
   running, an amber dot while waiting for the user (which wins over running),
   a resting sparkle when unread, or nothing, so titles line up. The time sits
-  at the right in secondary and shows whenever the session has an updated time. Under the title, one tertiary meta line holds any
-  state that needs words ("Waiting" in amber, retrying, background tasks), then
-  the harness name, the branch shortened in the middle and the pull request.
-  Every row names its harness, so rows are 70px at standard text size, and
-  they grow with accessibility text rather than clipping or overflowing. Regular rows form one
-  timeline with no Running section: running rows lead Today whatever their
+  at the right in secondary and shows whenever the session has an updated
+  time. Under the title, one tertiary meta line holds any state that needs
+  words ("Waiting" in amber, retrying, background tasks), then the harness
+  name, the branch shortened in the middle and the pull request. Screen
+  readers hear the waiting state once, from the status slot. Every row names
+  its harness, so rows are 70px at standard text size, and they grow with
+  accessibility text rather than clipping or overflowing. In a narrow pane
+  the pull request's indicators clip instead of overflowing. Regular rows form
+  one timeline with no Running section: running rows lead Today whatever their
   stored time, then idle rows follow in updated-time date buckets;
   archived rows retain archive-time date buckets. Awaiting-input-only rows stay
   in their updated-time bucket, and missing timestamps use an Unknown date

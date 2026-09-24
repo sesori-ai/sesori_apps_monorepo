@@ -260,6 +260,8 @@ void main() {
       ),
     );
     expect(find.bySemanticsLabel(RegExp("^Awaiting input\nMy Session")), findsOneWidget);
+    // The slot speaks the state, so the meta line's "Waiting" stays silent.
+    expect(find.bySemanticsLabel(RegExp("Waiting")), findsNothing);
 
     semantics.dispose();
   });
@@ -282,6 +284,29 @@ void main() {
     expect(find.text("sesori/add-search"), findsOneWidget);
     expect(find.text("PR #42"), findsOneWidget);
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+  });
+
+  testWidgets("a full meta line fits the narrow landscape split pane", (tester) async {
+    tester.view.physicalSize = const Size(258, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final session = testSession(title: "My Session", branchName: "sesori/a-very-long-worktree-branch", updatedAt: now)
+        .copyWith(
+          pullRequest: const PullRequestInfo(
+            number: 483,
+            url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/483",
+            title: "Redesign the session list item",
+            state: PrState.open,
+            mergeableStatus: PrMergeableStatus.conflicting,
+            reviewDecision: PrReviewDecision.changesRequested,
+            checkStatus: PrCheckStatus.failure,
+          ),
+        );
+
+    await pumpTile(tester, tile(session: session, awaitingInput: true));
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("the meta line survives scaled-up accessibility text without overflowing", (tester) async {
