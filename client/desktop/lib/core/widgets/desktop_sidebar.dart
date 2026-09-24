@@ -64,24 +64,7 @@ class const DesktopSidebar({
     final newSessionShortcut = defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N";
     final prego = context.prego;
     final bridge = context.watch<BridgeControlCubit>().state;
-    final bridgeColor = bridge.canTakeOver
-        ? prego.colors.textWarningPrimary
-        : switch (bridge.processState) {
-            BridgeProcessStopped() => prego.colors.textDisabled,
-            BridgeProcessStartFailed() || BridgeProcessCrashGiveUp() => prego.colors.textErrorPrimary,
-            BridgeProcessRunning()
-                when bridge.controlStatus.helperOnline &&
-                    bridge.controlStatus.startup == ControlStartupState.ready &&
-                    bridge.controlStatus.relay == ControlRelayConnectionState.connected &&
-                    bridge.controlStatus.plugin != ControlPluginHealthState.degraded =>
-              prego.colors.textSuccessPrimary,
-            BridgeProcessLoginRequired() ||
-            BridgeProcessStarting() ||
-            BridgeProcessRunning() ||
-            BridgeProcessStopping() ||
-            BridgeProcessContention() ||
-            BridgeProcessCrashRetryScheduled() => prego.colors.textWarningPrimary,
-          };
+    final bridgeColor = desktopBridgeStatusColor(colors: prego.colors, state: bridge);
     return Material(
       color: prego.colors.bgSecondary,
       child: SafeArea(
