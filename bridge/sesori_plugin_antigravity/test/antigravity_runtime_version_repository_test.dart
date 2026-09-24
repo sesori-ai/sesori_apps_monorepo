@@ -60,8 +60,9 @@ void main() {
     final versions = <AntigravityRuntimeVersion>[];
     for (final label in const [
       "agy_acp_server_20260818_01_RC01",
+      "agy_acp_server_1.1.1",
       AntigravityRelease.agentVersion,
-      "agy_acp_server_1.2.0",
+      "1.3.0",
     ]) {
       final result = await probe(
         outcome: () async => AntigravityVersionDto(exitCode: 0, buildLabel: label),
@@ -71,6 +72,7 @@ void main() {
 
     expect(versions[0].compareTo(versions[1]), isNegative);
     expect(versions[1].compareTo(versions[2]), isNegative);
+    expect(versions[2].compareTo(versions[3]), isNegative);
   });
 
   test("maps nonzero and missing-label DTOs without exposing command output", () async {
@@ -78,6 +80,8 @@ void main() {
       AntigravityVersionDto(exitCode: 23, buildLabel: AntigravityRelease.agentVersion),
       AntigravityVersionDto(exitCode: 0, buildLabel: null),
       AntigravityVersionDto(exitCode: 0, buildLabel: "agy_acp_server_not-a-version"),
+      AntigravityVersionDto(exitCode: 0, buildLabel: "20260818_01_RC01"),
+      AntigravityVersionDto(exitCode: 0, buildLabel: "private@example.com"),
     ]) {
       final result = await probe(outcome: () async => dto);
 

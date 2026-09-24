@@ -20,9 +20,10 @@ contract, see [Google Antigravity in Sesori](../ANTIGRAVITY.md).
   consults ambient working-directory state. Managed selection requires both a missing PATH server candidate and separate
   physical-absence evidence mapped through storage and repository layers. A harness-only directory does not shadow a
   later server pair, but harness-only, incomplete, broken, unreadable or invalid final PATH evidence remains
-  authoritative. The current exact pair is package `1.1.1` / server `agy_acp_server_1.1.1`, ACP 1.
-  Only that byte-exact label reports ready; equal-precedence labels remain unknown. Documented pre-semver official
-  labels order below that pin, while newer official semantic versions remain incompatible/unknown. Outdated PATH
+  authoritative. The current exact pair is package/server `1.2.1`, ACP 1. Setup recognizes the plain semantic
+  `Build label: 1.2.1` output and older `agy_acp_server_`-prefixed labels without exposing other build diagnostics.
+  Only the byte-exact current label reports ready; equal-precedence labels remain unknown. Documented pre-semver official
+  labels and earlier semantic releases order below that pin, while newer versions remain incompatible/unknown. Outdated PATH
   setup uses the dedicated runtime-outdated state. PATH-authoritative unknown and managed storage, profile or probe
   uncertainty use an install-blocked marker that suppresses Install in snapshots, direct command admission, and
   startup-upgrade admission. Explicit pairs never fall through to managed.
@@ -90,7 +91,9 @@ preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abo
   authority and runtime-service suites cover inert version parsing, domain mapping, physical absence, PATH diagnostics,
   and managed fallback. `antigravity_plugin_test.dart` covers exact
   whitespace-bearing live/replay stamping and cold-reset resume before strict dispatch.
-- **L5 Full:** the package `1.1.1` managed macOS arm64 pipeline has run against independently hashed official bytes in
-  disposable state, preserving both siblings and completing isolated initialize-only validation/cleanup before result.
-  Native Linux/Windows managed installs, real personal OAuth, cross-target launch/permissions, bridge import and
-  tombstone behavior remain unverified. Automated registration/composition evidence does not replace them.
+- **L5 Full:** package `1.2.1` has independently verified hashes and sibling layouts for all five selected archives.
+  macOS arm64 hardened extraction, `--version`, native initialize identity/capabilities and process teardown passed in
+  isolated, network-denied state. The complete current-target managed pipeline remains unverified because its probe
+  controller could not nest macOS sandboxes. Native Linux/Windows managed installs, real personal OAuth, cross-target
+  launch/permissions, bridge import and tombstone behavior remain unverified. Automated registration/composition
+  evidence does not replace them.

@@ -95,27 +95,34 @@ void main() {
     expect(launchSpecs, isEmpty);
   });
 
-  test("version accepts the documented legacy official build label", () async {
-    const label = "agy_acp_server_20260818_01_RC01";
-    api = AntigravityAcpApi(
-      commands: _VersionCommands(
-        result: const CommandResult(exitCode: 0, stdout: "Build label: $label\n", stderr: ""),
-      ),
-      stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: ({required line}) => false),
-      processFactory: (_) async => process,
-    );
+  for (final label in const ["1.2.1", "agy_acp_server_1.1.1", "agy_acp_server_20260818_01_RC01"]) {
+    test("version accepts the official build label $label", () async {
+      api = AntigravityAcpApi(
+        commands: _VersionCommands(
+          result: CommandResult(exitCode: 0, stdout: "Build label: $label\n", stderr: ""),
+        ),
+        stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: ({required line}) => false),
+        processFactory: (_) async => process,
+      );
 
-    final version = await api.version(
-      serverPath: "/runtime/agy_acp_server.par",
-      environment: const {},
-      timeout: const Duration(seconds: 1),
-    );
+      final version = await api.version(
+        serverPath: "/runtime/agy_acp_server.par",
+        environment: const {},
+        timeout: const Duration(seconds: 1),
+      );
 
-    expect(version.buildLabel, label);
-  });
+      expect(version.buildLabel, label);
+    });
+  }
 
   test("version rejects blank and unsafe build labels", () async {
-    for (final output in ["Build label:   \n", "Build label: private@example.com\n", "development build\n"]) {
+    for (final output in [
+      "Build label:   \n",
+      "Build label: private@example.com\n",
+      "Build label: 1.2.1 private@example.com\n",
+      "Build label: 20260818_01_RC01\n",
+      "development build\n",
+    ]) {
       api = AntigravityAcpApi(
         commands: _VersionCommands(
           result: CommandResult(exitCode: 0, stdout: output, stderr: ""),

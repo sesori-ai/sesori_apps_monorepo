@@ -8,25 +8,27 @@ idle suspension, the management snapshot, and lifecycle commands.
 
 ## Runtime Target Coverage
 
-These targets were adopted during the 2026-09-12–13 refresh. Managed installs
-use their target's verified asset digests; direct-CLI targets are recommendation
-metadata, not forced upgrades. Compatible PATH binaries remain authoritative.
-Independent minimums are unchanged; Antigravity retains its exact-pair policy
-rather than an independent floor. DeepSeek was excluded from this refresh and
-is not assessed by this table.
+Targets audited on **2026-09-24**, covering all eleven registered harnesses.
+Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 5,
+Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
+checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher
+attestations. Direct-CLI targets are recommendation metadata, not forced upgrades.
+Compatible PATH binaries remain authoritative. Independent minimums are unchanged;
+Antigravity retains its exact-pair policy rather than an independent floor.
 
-| Harness | Target | Minimum / exact policy | Native evidence and outstanding coverage |
+| Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
-| OpenCode | `1.18.30` | `1.14.0` | macOS ARM64 install/version, serve/health/SSE, typed reads, read-only catalog and shutdown passed. Database/WAL were unchanged; transient SQLite SHM bookkeeping changed. Provider/account behavior was not exercised. |
-| Antigravity | package `1.1.1`, server `agy_acp_server_1.1.1` | Exact package/server/ACP 1 | Five official archive hashes/layouts and the actual macOS ARM64 production validator/initialize/teardown passed. Current-target OAuth/session/model/delegation behavior was not exercised. |
-| Codex | `0.154.0` | `0.139.0` | macOS ARM64 package/install and both app-server transports were exercised; automatic probe teardown failed and remains unresolved. |
-| GitHub Copilot | `1.0.83` | `1.0.78` | macOS ARM64 install/version and exact ACP launch/initialize passed, including the advertised login method. No login or provider turn ran. |
-| Cursor | `2026.09.10-fd3934a` | date `2026.07.16` | macOS ARM64 package/install/initialize/cleanup were exercised; configured load/replay/model/mode remains unverified. |
-| Claude Code | `2.1.269` | `2.1.221` | Controlled-provider CLI permission/replay/interrupt/reuse and production transcript/event mapping passed. Real authentication/provider behavior and complete session-service orchestration are not claimed. |
-| Hermes Agent | `0.21.2` | `0.20.0` | A fresh-load attempt failed under an unaccepted launcher/isolation procedure; faithful CLI load/replay and configured persisted deletion remain unverified. |
-| Pi | `0.85.1` | `0.84.1` | macOS ARM64 package/RPC and production-plugin settlement, manual-compaction abort, ordering and fresh-process reuse passed. Real-provider/account coverage is not claimed. |
-| Oh My Pi | `18.1.19` | `17.2.13` | Eight direct-binary mappings, including Windows ARM64, have independently verified hashes. Native observations covered `18.1.18` only; current-target install/version/ACP and configured lifecycle/cleanup remain unverified. |
-| Grok Build | `1.0.30` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
+| OpenCode | `1.18.32` | `1.14.0` | Managed-pipeline probe blocked by the test controller's nested sandbox. Native serve/health/SSE, history and provider behavior remain unverified for this target. |
+| Antigravity | package/server `1.2.1` | Exact package/server/ACP 1 | Five archive layouts/hashes and macOS ARM64 hardened extraction, `--version`, ACP initialize and teardown passed. Managed-pipeline probe blocked by the test controller's nested sandbox; OAuth/session/model/delegation behavior unverified. |
+| Codex | `0.156.1` | `0.139.0` | Current-target native package/install, stdio and WebSocket app-server checks remain unverified. |
+| GitHub Copilot | `1.0.88` | `1.0.78` | Current-target native install/version, ACP initialize and configured lifecycle remain unverified. |
+| Cursor | `2026.09.23-86fc751` | date `2026.07.16` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. |
+| Claude Code | `2.1.281` | `2.1.221` | Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
+| Hermes Agent | `0.21.5` (`v2026.9.24`) | `0.20.0` | Current-target real CLI ACP initialize/list, configured new/load/replay and persisted deletion remain unverified. |
+| Pi | `0.87.1` | `0.84.1` | Current-target native package/RPC, settlement/retry/compaction, queue and fresh-process reuse remain unverified. |
+| Oh My Pi | `18.3.0` | `17.2.13` | Eight verified direct-binary mappings. Current-target native install/version/ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
+| DeepSeek | `0.1.7` (unchanged) | `0.1.5` | Latest stable owned adapter, embedding DeepSeek Harness `0.1.5-rc.2`. Six hashes rechecked; no fresh native or authenticated run. Newer upstream RCs require separate producer work, not an invented consumer release. |
+| Grok Build | `1.0.41` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
 
 Target/asset/descriptor unit coverage does not prove native or authenticated
 behavior. Other-platform native behavior is not inferred from macOS ARM64.

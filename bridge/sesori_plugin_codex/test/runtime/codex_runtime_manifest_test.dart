@@ -16,7 +16,7 @@ void main() {
     });
 
     test("pinned versions", () {
-      expect(CodexRuntimeManifest.targetVersion, "0.154.0");
+      expect(CodexRuntimeManifest.targetVersion, "0.156.1");
       expect(manifest.bundledVersion.toString(), CodexRuntimeManifest.targetVersion);
       expect(manifest.minPathVersion.toString(), "0.139.0");
       expect(manifest.runtimeId, const CodexPluginDescriptor().id);
@@ -29,31 +29,31 @@ void main() {
         PlatformOs.macos: {
           PlatformArch.arm64: (
             assetName: "codex-package-aarch64-apple-darwin.tar.gz",
-            sha256: "427ca74c027049e0cd1a330d611e7f8d1fe0f1eb6a6d85ac16f61bcf2cb4a485",
+            sha256: "fea42f9625091f011e38f059da974d52e57ba31831648bb1c7f0b1a385fde547",
           ),
           PlatformArch.x64: (
             assetName: "codex-package-x86_64-apple-darwin.tar.gz",
-            sha256: "8052c6accbe0361bfbd424a10aa5f2226636ed8afb6dcbd5e6437993e57b16d8",
+            sha256: "618dbcd55419fa041871f777a14b107ceb3fe2d339ef81e21e6ab5374420dc71",
           ),
         },
         PlatformOs.linux: {
           PlatformArch.arm64: (
             assetName: "codex-package-aarch64-unknown-linux-musl.tar.gz",
-            sha256: "97d93e11df72d3c26772db019e6ea8bb72c246500d46b98c760839f3240355e6",
+            sha256: "fdd47ed6aade0360796fd3f6f95a45096f327c15e19e8c7339f9dc5633041786",
           ),
           PlatformArch.x64: (
             assetName: "codex-package-x86_64-unknown-linux-musl.tar.gz",
-            sha256: "fc6e3e3b85f2cf7d664520ee5c66a7fe4aa12bae7d46834f47e2f165fd0d6f78",
+            sha256: "8b711520beddf385467b8da4d2c93736637c6ba1e46811cf0d8606b7c490b6f6",
           ),
         },
         PlatformOs.windows: {
           PlatformArch.arm64: (
             assetName: "codex-package-aarch64-pc-windows-msvc.tar.gz",
-            sha256: "fcd888733e50e40acaf4278bedfbf4245cb2b934c99c6e5b263da850fd9f90c2",
+            sha256: "85994caecdc7609c49fd585c1cdb5677fa9d0acbf789650cff23a13afc9505db",
           ),
           PlatformArch.x64: (
             assetName: "codex-package-x86_64-pc-windows-msvc.tar.gz",
-            sha256: "94cc5b3632769504c809f6c0364b693c0dfddc5c30c8361095d2263a07ac45a4",
+            sha256: "a2e017db9807e6a2269a26fea0e1d9546469cef4d472a33016bc9f3ad7d3b733",
           ),
         },
       };
@@ -85,7 +85,7 @@ void main() {
         manifest.downloadUrlFor(asset: asset),
         equals(
           "https://github.com/openai/codex/releases/download/"
-          "rust-v0.154.0/codex-package-aarch64-apple-darwin.tar.gz",
+          "rust-v0.156.1/codex-package-aarch64-apple-darwin.tar.gz",
         ),
       );
     });

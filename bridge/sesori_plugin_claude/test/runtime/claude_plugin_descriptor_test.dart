@@ -20,7 +20,7 @@ void main() {
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
-      expect(ClaudePluginDescriptor.targetVersion, "2.1.269");
+      expect(ClaudePluginDescriptor.targetVersion, "2.1.281");
       expect(
         descriptor.managementCapabilities(config: config),
         containsAll([PluginControlCapability.runtimeUpdate, PluginControlCapability.authentication]),

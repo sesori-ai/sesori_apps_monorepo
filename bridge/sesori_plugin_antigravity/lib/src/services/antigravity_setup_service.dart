@@ -72,7 +72,7 @@ class AntigravitySetupService({
         };
       case AntigravityRuntimeCandidateUnsupported():
         return const PluginSetupUnavailable(
-          actionHint: "Google does not publish the Antigravity ACP runtime for this platform.",
+          actionHint: "Sesori does not support the Antigravity ACP runtime on this platform.",
         );
     }
   }
