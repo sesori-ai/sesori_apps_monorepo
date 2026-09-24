@@ -1,8 +1,9 @@
 # Quota auto continuation
 
-Status: steps 1–5 merged, including the shared chat controls in
+Status: steps 1–6 merged, including the shared chat controls in
 [#1656](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1656).
-Step 6 regression reconciliation is in review. Final L4 verification remains outstanding.
+Regression reconciliation landed in [#1659](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1659).
+Final L4 verification is in progress; the plan remains active.
 Research: 2026-09-23. Current progress: [TRACKER.md](TRACKER.md).
 
 ## Goal and agreed scope
@@ -19,7 +20,7 @@ can provide a trustworthy quota interruption and reset time; provider/model
 limitations must remain visible.
 
 This document records the agreed design; the tracker and evidence distinguish
-implemented behavior from pending UI and live-provider verification.
+implemented behavior from pending native UI and live-provider verification.
 
 ## User experience
 
@@ -406,10 +407,23 @@ limitations. No product/database change.
 
 ### Step: 7
 
-**Exact proposed title:** 🌿 [quota-auto-continuation] Verify quota recovery and retire the plan [step 7/7]
+**Exact proposed title:** ⚙️ [quota-auto-continuation] Verify recovery and fix Pi restored thinking defaults [step 7/7]
 
-**Deliverable / expected result:** Run the matrix below, record results, move plan to completed only when it
-passes. No intended product/database change.
+**Deliverable / expected result:** Run the matrix below and record results. Native verification found that
+Pi rejects its own persisted `off` thinking level for models without a thinking selector; fix that local
+validation and cover ordinary prompt acceptance. No database or wire change. Move the plan to completed
+only when the required matrix passes or the user explicitly accepts its remaining limitations.
+
+Pi follow-up: retain exact non-reasoning model identities from native discovery
+alongside options in the existing project catalog snapshot. Validation accepts
+their persisted `off` independently of unrelated command-discovery failures,
+while reasoning models still require an advertised level. Repository discovery,
+service composition and tracker replacement share one paired snapshot; no new
+mutable owner, cache, persistence or wire field. Remove the aggregate completeness
+guard this replaces. Reproduce the rejected ordinary prompt first, then run Pi
+plugin/repository/service tests and the package analyzer. This plugin-local
+contract propagation makes the step moderate complexity; target total authored
+churn remains below 1,500 lines.
 
 **Risk and validation:** L4 accumulated coverage through complete authoritative boundaries; partial/blocked
 stays active.
@@ -470,6 +484,11 @@ runtime, client platform, or natural quota observation is **Blocked/Partial**,
 never a pass. Record concrete versions and boundary results in the tracker.
 Any reduction to this recorded matrix requires explicit user acceptance here
 before retirement.
+
+On 2026-09-24 the user requested that the running desktop app remain untouched;
+record macOS native QA as blocked. This does not retire the plan or waive the
+remaining provider and released-peer verification. Current results are in
+[VERIFICATION.md](VERIFICATION.md).
 
 ## Plan review
 

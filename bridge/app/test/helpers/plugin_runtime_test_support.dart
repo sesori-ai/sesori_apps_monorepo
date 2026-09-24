@@ -60,6 +60,7 @@ class TestPluginRuntime({
   /// Plugin ids that are registered but not running, so `useIfActive` reports
   /// them as unavailable while `use` would start them.
   final Set<String> stoppedPluginIds = {};
+  final Map<String, PluginQuotaReportingSupport> quotaReportingSupportByPlugin = {};
   Completer<void>? useStarted;
   Future<void>? useGate;
   bool generationCurrent = true;
@@ -78,6 +79,10 @@ class TestPluginRuntime({
 
   @override
   Set<String> get startAllowedPluginIds => Set<String>.unmodifiable(_plugins.keys);
+
+  @override
+  PluginQuotaReportingSupport quotaReportingSupport({required String pluginId}) =>
+      quotaReportingSupportByPlugin[pluginId] ?? PluginQuotaReportingSupport.unavailable;
 
   @override
   bool isCurrentGeneration({required String pluginId, required int generation}) {

@@ -15,7 +15,7 @@ const cli = realpathSync(binary);
 assert.equal(execFileSync(process.execPath, [cli, "--version"], { encoding: "utf8" }).trim(), version);
 const fixture = fileURLToPath(new URL("./quota_probe_provider.ts", import.meta.url));
 
-for (const mode of ["terminal", "recover", "exhausted"]) {
+for (const mode of ["terminal", "unknown", "recover", "exhausted"]) {
   const config = path.resolve("bridge/.dart_tool/quota-probe-" + version + "-" + mode);
   mkdirSync(config, { recursive: true });
   writeFileSync(path.join(config, "settings.json"), JSON.stringify({
@@ -57,13 +57,14 @@ for (const mode of ["terminal", "recover", "exhausted"]) {
     }) + "\n");
   });
   const assistants = events.filter((event) => event.type === "message_end" && event.message?.role === "assistant");
-  assert.equal(assistants.length, mode === "terminal" ? 1 : 2);
+  const retries = mode === "recover" || mode === "exhausted";
+  assert.equal(assistants.length, retries ? 2 : 1);
   assert.ok(assistants.every(({ message }) => message.provider === "openai-codex" && typeof message.timestamp === "number"));
   assert.equal(assistants.at(-1).message.stopReason, mode === "recover" ? "stop" : "error");
   assert.equal(events.filter((event) => event.type === "agent_settled").length, 1);
   const retry = events.findIndex((event) => event.type === "auto_retry_end");
   const settled = events.findIndex((event) => event.type === "agent_settled");
-  if (mode === "terminal") assert.equal(retry, -1);
+  if (!retries) assert.equal(retry, -1);
   else {
     assert.ok(retry >= 0 && retry < settled);
     assert.equal(events[retry].success, mode === "recover");

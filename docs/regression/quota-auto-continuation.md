@@ -50,6 +50,11 @@ provider and platform verification remains in the
   succeeds without another mutation.
 - History-derived model/agent/variant defaults preserve the stored fast-mode
   preference; missing history selection falls back to stored defaults.
+- Pi's history can record the native thinking level `off` for a model without
+  a thinking selector. Restoring that default must still allow an ordinary
+  prompt when native model discovery identifies it as non-reasoning, even when
+  command discovery fails. Reasoning models still require an advertised level;
+  an empty variant list after failed thinking discovery cannot establish `off`.
 - A single bridge timer checks due records every 30 seconds and on startup.
   Reset plus buffer, rather than time since observation, determines eligibility.
   A failed tick remains observable and rearms; disposal drains an in-flight tick.
@@ -92,8 +97,12 @@ provider and platform verification remains in the
   v17→v18 migration tests; session repository defaults tests. Cover actual file
   close/reopen, deduplication, preference retention, generation rejection, named
   versus batch cutoffs, and foreign-key deletion.
+- **L1:** Pi prompt-selection tests restore `off` for a non-reasoning model
+  through command-discovery failure while preserving variant validation for
+  reasoning models and failed thinking discovery. Catalog refresh/reuse retains
+  model capabilities with the corresponding options snapshot.
 - **L2:** Pi managed-target and minimum-PATH RPC probes with a synthetic provider:
-  terminal quota text, transient recovery and retry exhaustion must each end in
+  terminal quota text with known/unknown resets, transient recovery and retry exhaustion must each end in
   exactly one final settlement. See the dated
   [evidence record](../../.plan/active/quota-auto-continuation/EVIDENCE.md).
 - **L1/L2:** Scheduler, timer, mutation and route suites plus the composed bridge

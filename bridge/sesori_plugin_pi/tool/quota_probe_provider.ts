@@ -14,9 +14,15 @@ export default function (pi: any) {
     }],
     streamSimple: (model: any) => {
       const stream = createAssistantMessageEventStream();
-      const recovered = ++calls > 1 && process.env.QUOTA_PROBE_MODE === "recover";
-      const errorMessage = process.env.QUOTA_PROBE_MODE === "terminal"
-        ? "You have hit your ChatGPT usage limit (pro plan). Try again in ~5918 min."
+      // Native client QA waits one minute plus the bridge's two-minute buffer,
+      // then accepts Continue in the same resident session without model usage.
+      const mode = process.env.QUOTA_PROBE_MODE;
+      const continuation = mode === "continuation";
+      const recovered = ++calls > 1 && (continuation || mode === "recover");
+      const errorMessage = mode === "unknown"
+        ? "You have hit your ChatGPT usage limit (pro plan)."
+        : continuation || mode === "terminal"
+        ? `You have hit your ChatGPT usage limit (pro plan). Try again in ~${continuation ? 1 : 5918} min.`
         : "429 Too many requests";
       const output: any = {
         role: "assistant",
