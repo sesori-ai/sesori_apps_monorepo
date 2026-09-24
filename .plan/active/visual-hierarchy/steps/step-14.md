@@ -3,9 +3,9 @@
 ## What changed
 
 - `SessionDetailPendingBanner`, a brand or green glass tile floating over the
-  transcript and wider than the column, becomes `SessionDetailNeedsYouCard`: a solid amber card (D6) docked
-  above the composer, inside the same column as the composer and 16 points in
-  from its edges, so the two line up.
+  transcript and wider than the column, becomes `SessionDetailNeedsYouCard`:
+  a solid amber card (D6) docked above the composer, inside the same column
+  as the composer and 16 points in from its edges, so the two line up.
 - One card per request type, questions first. Each shows the existing count
   label ("1 pending question"), the first request's opening line, and an
   Answer or Review button that opens the existing modal.
