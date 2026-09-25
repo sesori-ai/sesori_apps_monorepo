@@ -347,6 +347,16 @@ defaults and queued client sends coherent.
   Native Claude Code 2.1.281 was verified with an isolated socket sender and
   loopback model fixture: idle wake-up, peer-origin stdout and persisted history.
   This is not authenticated-provider or full app-to-relay verification.
+- A Claude `<task-notification>` user turn (native `origin.kind:
+  task-notification`, or a whole envelope on CLIs without origin) never
+  renders as a user bubble, live or after transcript replay. When its tool-use
+  id names a known Agent or background Bash task it folds into that tile with
+  no row; otherwise (a SendMessage-resumed agent, an unknown or missing
+  tool-use id) it renders as one completed Automation step labelled by the
+  summary, with the result as output, or failed with the summary as error.
+  An unparseable envelope renders as Automation text. Live and replay produce
+  the same message id, sender and parts. A prompt that merely quotes an
+  envelope stays user input.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. The bridge-synthesized
@@ -724,7 +734,9 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   attribution between live and replay, changes agent/model defaults, or becomes
   completion-notification text. A Claude peer report disappears on history load
   solely because it carries `isMeta`, or ordinary user text is reclassified by
-  matching an automation-looking prefix.
+  matching an automation-looking prefix. A Claude task notification appears as
+  a user bubble, disappears on history load, or differs between live and
+  replay.
 - Prompt defaults regress, an approved plan exit does not restore Agent
   across clients and restart, or a defaults-write failure fails the send.
 - Reopening or importing a session silently switches its latest transcript

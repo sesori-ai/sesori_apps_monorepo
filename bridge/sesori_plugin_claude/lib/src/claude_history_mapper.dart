@@ -140,20 +140,29 @@ final class const ClaudeHistoryMapper({
             if (targets.length == 1) targets.single.content.add(record.content);
             continue;
           }
-          if (blocks.whereType<ClaudeMappedTaskNotificationContentBlock>().firstOrNull case final block?
-              when tasks.isKnownTask(toolUseId: block.notification.toolUseId)) {
-            tasks.taskNotified(
-              toolUseId: block.notification.toolUseId,
-              taskId: block.notification.taskId,
-              status: block.notification.status,
-              summary: block.notification.summary,
-              result: block.notification.result,
+          // The CLI's own delivery of a task outcome to the model, never a
+          // user-authored message: a known task absorbs it, anything else
+          // replays as the same Automation row the live path shows.
+          if (_content.isTaskNotification(blocks: blocks, originKind: record.originKind)) {
+            final notifications = [
+              for (final block in blocks)
+                if (block is ClaudeMappedTaskNotificationContentBlock) block.notification,
+            ];
+            final unclaimed = [
+              for (final notification in notifications)
+                if (tasks.envelopeNotified(notification: notification) == null) notification,
+            ];
+            if (notifications.isNotEmpty && unclaimed.isEmpty) continue;
+            final automation = _content.taskNotificationMessage(
+              sessionId: sessionId,
+              messageId: record.id,
+              time: _messageTime(record.timestamp),
+              content: record.content,
+              notifications: unclaimed,
             );
+            if (automation != null) entries.add(_MappedHistoryMessage(message: automation));
             continue;
           }
-          // The CLI's own delivery of a task outcome to the model, never a
-          // user-authored message, even when its envelope names no task here.
-          if (record.originKind == ClaudeMessageOriginKind.taskNotification) continue;
 
           final user = _content.userMessage(
             content: record.content,
