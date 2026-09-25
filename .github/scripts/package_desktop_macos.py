@@ -13,6 +13,7 @@ from pathlib import Path
 from qualify_desktop import ROOT, inventory, run
 
 ENTITLEMENTS = ROOT / "client/desktop/macos/Runner/Release.entitlements"
+BRIDGE_ENTITLEMENTS = ROOT / "client/desktop/macos/Bridge.entitlements"
 
 
 class NotaryStatus(Enum):
@@ -64,6 +65,8 @@ def sign_app(*, app: Path, arch: str, identity: str, keychain: Path, log: Path) 
             command += ["--options", "runtime"]
         if target == app:
             command += ["--entitlements", str(ENTITLEMENTS)]
+        elif target == helper:
+            command += ["--entitlements", str(BRIDGE_ENTITLEMENTS)]
         execute(command=command + [str(target)], log=log)
 
 

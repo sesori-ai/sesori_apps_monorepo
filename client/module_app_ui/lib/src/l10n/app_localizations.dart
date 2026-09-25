@@ -823,11 +823,11 @@ abstract class AppLocalizations {
   /// **'YOLO mode'**
   String get settingsYoloTitle;
 
-  /// No description provided for @settingsYoloWarning.
+  /// Plain statement of what YOLO mode does, under its Settings toggle and in the session page's YOLO explanation.
   ///
   /// In en, this message translates to:
-  /// **'Automatically approves all permission requests. Use with caution.'**
-  String get settingsYoloWarning;
+  /// **'Sesori approves every permission request for you, so the agent never stops to ask.'**
+  String get settingsYoloDescription;
 
   /// No description provided for @settingsYoloLoading.
   ///
@@ -2730,6 +2730,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Fast mode'**
   String get sessionDetailFastMode;
+
+  /// Label of the chip beside the session's model picker while the bridge's YOLO mode is on. Keep the product term YOLO.
+  ///
+  /// In en, this message translates to:
+  /// **'YOLO'**
+  String get sessionDetailYoloChip;
+
+  /// Title of the sheet or dialog opened by tapping the YOLO chip on the session page.
+  ///
+  /// In en, this message translates to:
+  /// **'YOLO mode is on'**
+  String get sessionDetailYoloTitle;
+
+  /// Button in the YOLO explanation that opens the settings where YOLO mode is turned off.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get sessionDetailYoloOpenSettings;
 
   /// No description provided for @sessionDetailFastModeConfirmTitle.
   ///

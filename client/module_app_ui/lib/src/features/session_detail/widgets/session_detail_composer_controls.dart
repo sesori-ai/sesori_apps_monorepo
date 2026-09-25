@@ -4,12 +4,14 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../composer_presentation_scope.dart";
+import "../session_detail_presentation_scope.dart";
 import "agent_model_buttons.dart";
 import "background_tasks_bar.dart";
 import "composer_surface_style.dart";
 import "prompt_input.dart";
 import "session_abort_scope_dialog.dart";
 import "session_detail_loaded_view.dart";
+import "yolo_chip.dart";
 
 /// Shared session composer controls injected below the transcript view.
 ///
@@ -110,6 +112,12 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                 decideFastModeToggle: context.read<SessionDetailCubit>().fastModeToggleDecision,
                 onFastModeChanged: context.read<SessionDetailCubit>().setFastMode,
                 compact: composerCapabilities.presentation == ComposerPresentation.pointer,
+                trailing: state.yoloEnabled
+                    ? YoloChip(
+                        surfaceStyle: surfaceStyle,
+                        onOpenSettings: () => SessionDetailPresentationScope.read(context).openBridgeSettings(),
+                      )
+                    : null,
               ),
             ),
             composerTrailing: state.children.isEmpty

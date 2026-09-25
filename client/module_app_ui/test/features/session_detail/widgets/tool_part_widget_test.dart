@@ -459,4 +459,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("File not found"), findsOneWidget);
   });
+
+  for (final disableAnimations in [false, true]) {
+    testWidgets("a running tool's label shimmers in place of a spinner (reduced motion: $disableAnimations)", (
+      tester,
+    ) async {
+      for (final command in ["make check", null]) {
+        await tester.pumpWidget(
+          _app(
+            part: _part(status: ToolStatus.running, command: command, output: null, error: null),
+            disableAnimations: disableAnimations,
+          ),
+        );
+        await tester.pump();
+        expect(find.byType(PregoActivityIndicator), findsNothing);
+        expect(find.byType(PregoShimmer), findsOneWidget);
+        // Reduced motion keeps the label still.
+        expect(
+          find.descendant(of: find.byType(PregoShimmer), matching: find.byType(ShaderMask)),
+          disableAnimations ? findsNothing : findsOneWidget,
+        );
+      }
+    });
+  }
 }

@@ -46,6 +46,13 @@ sub-agent parts, plus the signal that a tool changed files.
   harness exposes the carried-forward summary, tapping the row opens it as
   Markdown in a reading-width modal; without a summary the row is inert. See
   `docs/HARNESS_CAPABILITIES.md` for which harnesses mark compaction.
+- A running tool or sub-agent is a live row: its label shimmers in place of a
+  spinner, and reduced motion keeps it still while screen readers still hear
+  it. Streaming thinking shows a shimmering “Thinking...” with one line of its
+  latest words below, the older start fading out; a finished thought is one row,
+  “Thought” and its first line, that opens the full text. While the reader is
+  scrolled away, the jump button names the newest running step, shimmering,
+  even though the rows hold still, and says “Jump to latest” when nothing runs.
 - Tapping or keyboard-activating a command opens a Shell panel, on the same
   raised inset as other tool output and code blocks, with the
   full available command, output and error in a two-axis scroll viewport that
@@ -244,6 +251,9 @@ guarantee.
   assistant message, leaves a running `compact` tool beside the row, or opens an
   empty modal; the Claude summary appears live but not after reload, or the
   reverse.
+- A live row spins or shimmers under reduced motion, a thinking tail hides the
+  newest words or wraps past one line, or the jump button keeps naming a step
+  that has finished.
 - Backend naming or payload shape reaches the client unnormalized, or a local
   path or unsafe URL crosses the attachment contract.
 - A part carries fields owned by another variant, or a released known-type

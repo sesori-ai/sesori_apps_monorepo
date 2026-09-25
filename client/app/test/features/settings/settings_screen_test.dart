@@ -41,7 +41,7 @@ class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
 class _MockLegalRepository() extends Mock implements LegalRepository;
 
-class _MockBridgeSettingsRepository() extends Mock implements BridgeSettingsRepository;
+class _MockBridgeSettingsService() extends Mock implements BridgeSettingsService;
 
 const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null);
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
@@ -112,7 +112,7 @@ void main() {
   late _MockLegalRepository legalRepository;
   late MockProductAnalyticsService productAnalyticsService;
   late BehaviorSubject<ProductAnalyticsState> productAnalyticsStates;
-  late _MockBridgeSettingsRepository bridgeSettingsRepository;
+  late _MockBridgeSettingsService bridgeSettingsService;
   late MockConnectionService connectionService;
   late BehaviorSubject<ConnectionStatus> connectionStatuses;
 
@@ -183,8 +183,8 @@ void main() {
     legalRepository = _MockLegalRepository();
     GetIt.instance.registerSingleton<LegalRepository>(legalRepository);
 
-    bridgeSettingsRepository = _MockBridgeSettingsRepository();
-    when(bridgeSettingsRepository.load).thenAnswer(
+    bridgeSettingsService = _MockBridgeSettingsService();
+    when(bridgeSettingsService.load).thenAnswer(
       (_) async => const BridgeSettingsLoadSupported(
         response: BridgeSettingsResponse(
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
@@ -194,7 +194,7 @@ void main() {
       ),
     );
     when(
-      () => bridgeSettingsRepository.updatePullRequestRefresh(
+      () => bridgeSettingsService.updatePullRequestRefresh(
         intervalSeconds: any(named: "intervalSeconds"),
       ),
     ).thenAnswer((invocation) async {
@@ -203,17 +203,17 @@ void main() {
         response: PullRequestRefreshSettingsResponse(intervalSeconds: intervalSeconds),
       );
     });
-    when(() => bridgeSettingsRepository.updateYolo(enabled: any(named: "enabled"))).thenAnswer((invocation) async {
+    when(() => bridgeSettingsService.updateYolo(enabled: any(named: "enabled"))).thenAnswer((invocation) async {
       final enabled = invocation.namedArguments[#enabled] as bool;
       return YoloSettingsMutationCommitted(response: YoloSettingsResponse(enabled: enabled));
     });
-    when(() => bridgeSettingsRepository.updatePluginWarmup(enabled: any(named: "enabled"))).thenAnswer(
+    when(() => bridgeSettingsService.updatePluginWarmup(enabled: any(named: "enabled"))).thenAnswer(
       (invocation) async {
         final enabled = invocation.namedArguments[#enabled] as bool;
         return PluginWarmupSettingsMutationCommitted(enabled: enabled);
       },
     );
-    GetIt.instance.registerSingleton<BridgeSettingsRepository>(bridgeSettingsRepository);
+    GetIt.instance.registerSingleton<BridgeSettingsService>(bridgeSettingsService);
   });
 
   tearDown(() async {
@@ -301,7 +301,7 @@ void main() {
 
     expect(find.text("YOLO mode"), findsOneWidget);
     expect(
-      find.text("Automatically approves all permission requests. Use with caution."),
+      find.text("Sesori approves every permission request for you, so the agent never stops to ask."),
       findsOneWidget,
     );
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).value, isFalse);
@@ -309,7 +309,7 @@ void main() {
     await tester.tap(find.byKey(const Key("yolo_switch")));
     await tester.pumpAndSettle();
 
-    verify(() => bridgeSettingsRepository.updateYolo(enabled: true)).called(1);
+    verify(() => bridgeSettingsService.updateYolo(enabled: true)).called(1);
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).value, isTrue);
   });
 
@@ -328,14 +328,14 @@ void main() {
     await tester.tap(find.byKey(const Key("plugin_warmup_switch")));
     await tester.pumpAndSettle();
 
-    verify(() => bridgeSettingsRepository.updatePluginWarmup(enabled: false)).called(1);
+    verify(() => bridgeSettingsService.updatePluginWarmup(enabled: false)).called(1);
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("plugin_warmup_switch"))).value, isFalse);
   });
 
   testWidgets("YOLO disables interaction while an update is in progress", (tester) async {
     _useTallSurface(tester);
     final mutation = Completer<YoloSettingsMutationResult>();
-    when(() => bridgeSettingsRepository.updateYolo(enabled: true)).thenAnswer((_) => mutation.future);
+    when(() => bridgeSettingsService.updateYolo(enabled: true)).thenAnswer((_) => mutation.future);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
@@ -349,7 +349,7 @@ void main() {
       isNull,
     );
     await tester.tap(find.text("YOLO mode"));
-    verify(() => bridgeSettingsRepository.updateYolo(enabled: true)).called(1);
+    verify(() => bridgeSettingsService.updateYolo(enabled: true)).called(1);
 
     mutation.complete(
       const YoloSettingsMutationCommitted(response: YoloSettingsResponse(enabled: true)),
@@ -361,7 +361,7 @@ void main() {
     _useTallSurface(tester);
     final mutation = Completer<PullRequestRefreshSettingsMutationResult>();
     when(
-      () => bridgeSettingsRepository.updatePullRequestRefresh(intervalSeconds: 45),
+      () => bridgeSettingsService.updatePullRequestRefresh(intervalSeconds: 45),
     ).thenAnswer((_) => mutation.future);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
@@ -384,7 +384,7 @@ void main() {
 
   testWidgets("old bridges show YOLO as unsupported while keeping refresh settings", (tester) async {
     _useTallSurface(tester);
-    when(bridgeSettingsRepository.load).thenAnswer(
+    when(bridgeSettingsService.load).thenAnswer(
       (_) async => const BridgeSettingsLoadLegacyPartial(
         pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
       ),
@@ -401,7 +401,7 @@ void main() {
 
   testWidgets("a v1.8.2 bridge leaves only session-open warm-up unsupported", (tester) async {
     _useTallSurface(tester);
-    when(bridgeSettingsRepository.load).thenAnswer(
+    when(bridgeSettingsService.load).thenAnswer(
       (_) async => const BridgeSettingsLoadSupported(
         response: BridgeSettingsResponse(
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
@@ -422,7 +422,7 @@ void main() {
   testWidgets("uncertain YOLO mutation reloads and displays the authoritative value", (tester) async {
     _useTallSurface(tester);
     var loads = 0;
-    when(bridgeSettingsRepository.load).thenAnswer((_) async {
+    when(bridgeSettingsService.load).thenAnswer((_) async {
       loads++;
       return BridgeSettingsLoadSupported(
         response: BridgeSettingsResponse(
@@ -432,7 +432,7 @@ void main() {
         ),
       );
     });
-    when(() => bridgeSettingsRepository.updateYolo(enabled: true)).thenAnswer(
+    when(() => bridgeSettingsService.updateYolo(enabled: true)).thenAnswer(
       (_) async => const YoloSettingsMutationUncertain(),
     );
     await tester.pumpWidget(_app(appearance: appearance));
@@ -456,12 +456,15 @@ void main() {
     // descriptions and dim.
     expect(find.text("Connect to a bridge to change these settings."), findsOneWidget);
     expect(find.text("Offline"), findsNothing);
-    expect(find.text("Automatically approves all permission requests. Use with caution."), findsOneWidget);
+    expect(
+      find.text("Sesori approves every permission request for you, so the agent never stops to ask."),
+      findsOneWidget,
+    );
     expect(
       tester.widget<Opacity>(find.ancestor(of: find.text("YOLO mode"), matching: find.byType(Opacity)).first).opacity,
       lessThan(1),
     );
-    verifyNever(bridgeSettingsRepository.load);
+    verifyNever(bridgeSettingsService.load);
   });
 
   testWidgets("saves a custom interval and displays the committed response", (tester) async {
@@ -476,7 +479,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () => bridgeSettingsRepository.updatePullRequestRefresh(intervalSeconds: 45),
+      () => bridgeSettingsService.updatePullRequestRefresh(intervalSeconds: 45),
     ).called(1);
     expect(find.text("45 seconds"), findsOneWidget);
   });
@@ -501,7 +504,7 @@ void main() {
     );
     expect(find.byKey(const Key("pull_request_refresh_input")), findsOneWidget);
     verifyNever(
-      () => bridgeSettingsRepository.updatePullRequestRefresh(
+      () => bridgeSettingsService.updatePullRequestRefresh(
         intervalSeconds: any(named: "intervalSeconds"),
       ),
     );
@@ -524,7 +527,7 @@ void main() {
 
     expect(find.text("The bridge setting changed while you were editing. Try again."), findsOneWidget);
     verifyNever(
-      () => bridgeSettingsRepository.updatePullRequestRefresh(
+      () => bridgeSettingsService.updatePullRequestRefresh(
         intervalSeconds: any(named: "intervalSeconds"),
       ),
     );
@@ -534,7 +537,7 @@ void main() {
     _useTallSurface(tester);
     var updateCalls = 0;
     when(
-      () => bridgeSettingsRepository.updatePullRequestRefresh(
+      () => bridgeSettingsService.updatePullRequestRefresh(
         intervalSeconds: any(named: "intervalSeconds"),
       ),
     ).thenAnswer((_) async {
@@ -578,7 +581,7 @@ void main() {
   testWidgets("old bridges show the cadence setting as unsupported", (tester) async {
     _useTallSurface(tester);
     when(
-      bridgeSettingsRepository.load,
+      bridgeSettingsService.load,
     ).thenAnswer((_) async => const BridgeSettingsLoadUnsupported());
 
     await tester.pumpWidget(_app(appearance: appearance));
@@ -591,7 +594,7 @@ void main() {
   testWidgets("a failed cadence load exposes one retry that refreshes it", (tester) async {
     _useTallSurface(tester);
     var loadCalls = 0;
-    when(bridgeSettingsRepository.load).thenAnswer((_) async {
+    when(bridgeSettingsService.load).thenAnswer((_) async {
       loadCalls++;
       return loadCalls == 1
           ? BridgeSettingsLoadFailure(error: ApiError.generic())

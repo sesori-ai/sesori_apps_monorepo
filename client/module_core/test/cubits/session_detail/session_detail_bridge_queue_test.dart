@@ -239,6 +239,7 @@ void main() {
         projectId: "project-1",
         notificationCanceller: MockNotificationCanceller(),
         failureReporter: MockFailureReporter(),
+        bridgeSettingsService: stubbedBridgeSettingsService(),
       );
       addTearDown(cubit.close);
       await cubit.stream.firstWhere((state) => state is SessionDetailLoaded);

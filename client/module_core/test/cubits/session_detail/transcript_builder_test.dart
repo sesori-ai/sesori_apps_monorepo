@@ -317,6 +317,21 @@ void main() {
       expect(group.finishedSteps.map((step) => step.id), ["t1", "t3"]);
       expect(group.runningSteps.map((step) => step.id), ["t2"]);
     });
+
+    test("the live step is the newest running step", () {
+      final transcript = _build([
+        _assistant("m1", [_tool("t1", status: ToolStatus.running), _text("x1")]),
+        _assistant("m2", [_tool("t2", status: ToolStatus.running), _tool("t3")]),
+      ]);
+
+      expect(transcript.liveStep?.id, "t2");
+      expect(
+        _build([
+          _assistant("m1", [_tool("t1")]),
+        ]).liveStep,
+        isNull,
+      );
+    });
   });
 
   group("TranscriptBuilder summary", () {

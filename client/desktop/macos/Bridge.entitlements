@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The bundled Dart AOT runtime maps executable snapshot pages. Without
+	     this entitlement macOS 27 kills the hardened helper at startup with
+	     CODESIGNING / Invalid Page, before it can emit bridge logs.
+	     Keep this exception on the helper; its dylibs retain library validation. -->
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+</dict>
+</plist>

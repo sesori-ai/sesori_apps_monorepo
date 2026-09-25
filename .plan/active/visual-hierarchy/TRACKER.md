@@ -10,9 +10,12 @@ discussion backed by prototypes; no production code before the user picks a
 direction. Step 38 waits for the user to scope the sign-in rebuild (PLAN
 D16). Step 39 is an approval gate: it is built locally, shown as before and
 after screenshots of the running app, and **no PR opens until the user
-explicitly approves it**. Steps 40–41 wait for that approval or for the
+explicitly approves it**. Steps 48–49 wait for that approval or for the
 user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 2026-09-23, which moved the total from 38 to 41; steps 1–3 merged as `/38`.
+Steps 40–47 were added on 2026-09-25 from the user's feedback, which moved the
+total to 49; merged steps keep their `/41` titles. Step 41 is an approval
+gate: the user picks a variant from a local review page first.
 
 | Done | Step | Branch | Title | Target | State |
 |---|---|---|---|---|---|
@@ -46,17 +49,25 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 28 | `visual-hierarchy/filtered-rows` | [28/41](#pr-titles) | ≤ 300 | done |
 | [x] | 29 | `visual-hierarchy/archive-alert` | [29/41](#pr-titles) | ≤ 300 | done |
 | [x] | 30 | `visual-hierarchy/failed-sends` | [30/41](#pr-titles) | ≤ 700 | done |
-| [ ] | 31 | `visual-hierarchy/live-transcript` | [31/41](#pr-titles) | ≤ 1,200 | part 1 of 2 (grouping) done; part 2 (live row, thinking tail, jump) pending |
+| [x] | 31 | `visual-hierarchy/live-transcript` | [31/41](#pr-titles) | ≤ 1,200 | done (2 parts) |
 | [ ] | 32 | `visual-hierarchy/tool-kinds` | [32/41](#pr-titles) | ≤ 1,200 | pending |
-| [ ] | 33 | `visual-hierarchy/yolo` | [33/41](#pr-titles) | ≤ 500 | pending |
+| [x] | 33 | `visual-hierarchy/yolo` | [33/41](#pr-titles) | ≤ 500 | done |
 | [x] | 34 | `visual-hierarchy/changes-count` | [34/41](#pr-titles) | ≤ 800 | done |
-| [ ] | 35 | `visual-hierarchy/modal-lint` | [35/41](#pr-titles) | ≤ 600 | pending |
+| [x] | 35 | `visual-hierarchy/modal-lint` | [35/41](#pr-titles) | ≤ 600 | done |
 | [x] | 36 | `visual-hierarchy/compaction-row` | [36/41](#pr-titles) | ≤ 900 | done |
 | [ ] | 37 | `visual-hierarchy/turn-navigation` | [37/41](#pr-titles) | later | blocked on discussion |
 | [ ] | 38 | `desktop-sign-in/plan` | [38/41](#pr-titles) | ≤ 600 | blocked on scoping |
 | [ ] | 39 | `visual-hierarchy/header-backdrop` | [39/41](#pr-titles) | set at approval | blocked on approval |
-| [ ] | 40 | `visual-hierarchy/regression-docs` | [40/41](#pr-titles) | ≤ 600 | pending |
-| [ ] | 41 | `visual-hierarchy/retire` | [41/41](#pr-titles) | ≤ 300 | pending |
+| [ ] | 40 | `visual-hierarchy/folder-up-size` | [40/49](#pr-titles) | ≤ 150 | pending |
+| [ ] | 41 | `visual-hierarchy/recovery-card` | [41/49](#pr-titles) | ≤ 300 | blocked on the user's variant pick |
+| [ ] | 42 | `visual-hierarchy/busy-indicator` | [42/49](#pr-titles) | ≤ 700 | pending |
+| [ ] | 43 | `visual-hierarchy/continuation-notice` | [43/49](#pr-titles) | ≤ 500 | pending |
+| [ ] | 44 | `visual-hierarchy/yolo-icon` | [44/49](#pr-titles) | ≤ 150 | pending |
+| [ ] | 45 | `visual-hierarchy/session-yolo{,-clients}` | [45/49](#pr-titles) | ≤ 1,200 | pending |
+| [ ] | 46 | `visual-hierarchy/group-motion` | [46/49](#pr-titles) | ≤ 900 | pending |
+| [ ] | 47 | `visual-hierarchy/group-popover` | [47/49](#pr-titles) | ≤ 800 | pending |
+| [ ] | 48 | `visual-hierarchy/regression-docs` | [48/49](#pr-titles) | ≤ 600 | pending |
+| [ ] | 49 | `visual-hierarchy/retire` | [49/49](#pr-titles) | ≤ 300 | pending |
 
 ## Round 2 Answers
 
@@ -136,5 +147,15 @@ Answered 2026-09-23; every answer took the recommended option.
 37. `🌱 [visual-hierarchy] Prototype turn navigation for discussion [step 37/41]`
 38. `🌱 [visual-hierarchy] Plan the desktop sign-in rebuild [step 38/41]`
 39. `⚙️ [visual-hierarchy] Give headers a soft backdrop [step 39/41]`
-40. `🌱 [visual-hierarchy] Reconcile regression docs [step 40/41]`
-41. `🌱 [visual-hierarchy] Record the final matrix and retire the plan [step 41/41]`
+40. `🌱 [visual-hierarchy] Shrink the phone folder up button [step 40/49]`
+41. `🌿 [visual-hierarchy] Polish the desktop bridge recovery card [step 41/49]`
+42. `⚙️ [visual-hierarchy] Show a real busy indicator in the session [step 42/49]`
+43. `⚙️ [visual-hierarchy] Show the auto-continuation card only when it is due [step 43/49]`
+44. `🌱 [visual-hierarchy] Give YOLO its own icon [step 44/49]`
+45. `🚧 [visual-hierarchy] Choose YOLO per session [step 45/49]`, or two PRs:
+   - `⚙️ [visual-hierarchy] Store a per-session YOLO override on the bridge [step 45.a/49]`
+   - `⚙️ [visual-hierarchy] Pick YOLO per session from the composer [step 45.b/49]`
+46. `🚧 [visual-hierarchy] Animate steps folding into their group [step 46/49]`
+47. `⚙️ [visual-hierarchy] Open expanded step groups in an anchored panel [step 47/49]`
+48. `🌱 [visual-hierarchy] Reconcile regression docs [step 48/49]`
+49. `🌱 [visual-hierarchy] Record the final matrix and retire the plan [step 49/49]`

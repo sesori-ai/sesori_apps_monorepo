@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/scripts/test_bridge_build_workflow.py'
       - '.github/workflows/verify-macos-signing.yml'
       - '.github/workflows/submit-release.yml'
       - '.github/workflows/desktop-qualification.yml'
@@ -25,6 +26,7 @@ on:
       - 'client/app/android/fastlane/Fastfile'
   pull_request:
     paths:
+      - '.github/scripts/test_bridge_build_workflow.py'
       - '.github/workflows/verify-macos-signing.yml'
       - '.github/workflows/submit-release.yml'
       - '.github/workflows/desktop-qualification.yml'
@@ -57,6 +59,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
+      - name: Test bridge build workflow contracts
+        run: python -m unittest discover -s .github/scripts -p 'test_bridge_build_workflow.py'
       - name: Test automatic macOS signing workflow contracts
         run: python -m unittest discover -s .github/scripts -p 'test_macos_signing_workflows.py'
       - name: Test private desktop release preparation

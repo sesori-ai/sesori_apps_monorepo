@@ -135,6 +135,7 @@ void main() {
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
       eventRefreshMinInterval: eventRefreshMinInterval,
+      bridgeSettingsService: stubbedBridgeSettingsService(),
     );
 
     tearDown(() async {

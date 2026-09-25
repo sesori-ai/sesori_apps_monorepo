@@ -57,6 +57,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
       supportedLocales: AppLocalizations.supportedLocales,
       home: SessionDetailPresentationScope(
         openHarnessSettings: () {},
+        openBridgeSettings: () {},
         messageImageRepository: () => _messageImageRepository,
         imageSaver: _MockImageSaver.new,
         imageClipboard: _MockImageClipboard.new,
@@ -243,8 +244,10 @@ void main() {
     expect(find.text("Agent"), findsOneWidget);
     expect(find.text("Retry"), findsOneWidget);
 
+    // The pending tool's label shimmers forever, so pump past the easing.
     await tester.tap(find.text("1 sub-agent"));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text("Background task"), findsOneWidget);
   });
 
@@ -257,7 +260,7 @@ void main() {
     );
 
     expect(find.text("compact"), findsOneWidget);
-    expect(find.byType(PregoActivityIndicator), findsOneWidget);
+    expect(find.byType(PregoShimmer), findsOneWidget);
   });
 
   testWidgets("renders a finished compaction as one row that opens its summary", (tester) async {

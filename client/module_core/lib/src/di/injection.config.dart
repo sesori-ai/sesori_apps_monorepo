@@ -141,6 +141,8 @@ import 'package:sesori_dart_core/src/services/analytics_crawl_gate_service.dart'
     as _i317;
 import 'package:sesori_dart_core/src/services/attribution_service.dart'
     as _i492;
+import 'package:sesori_dart_core/src/services/bridge_settings_service.dart'
+    as _i1033;
 import 'package:sesori_dart_core/src/services/catalog_rescan_service.dart'
     as _i572;
 import 'package:sesori_dart_core/src/services/composer_attachment_dispatcher.dart'
@@ -643,6 +645,12 @@ extension GetItInjectableX on _i174.GetIt {
         productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
         failureReporter: gh<_i553.FailureReporter>(),
         catalogRescanService: gh<_i572.CatalogRescanService>(),
+      ),
+    );
+    gh.lazySingleton<_i1033.BridgeSettingsService>(
+      () => _i1033.BridgeSettingsService(
+        repository: gh<_i102.BridgeSettingsRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
       ),
     );
     gh.lazySingleton<_i72.MessageThumbnailCacheService>(

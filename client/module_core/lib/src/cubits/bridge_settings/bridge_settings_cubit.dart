@@ -5,12 +5,12 @@ import "package:sesori_auth/sesori_auth.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
-import "../../repositories/bridge_settings_repository.dart";
 import "../../repositories/models/bridge_settings_result.dart";
+import "../../services/bridge_settings_service.dart";
 import "bridge_settings_state.dart";
 
 class BridgeSettingsCubit({
-  required final BridgeSettingsRepository _repository,
+  required final BridgeSettingsService _service,
   required ConnectionService connectionService,
 }) extends Cubit<BridgeSettingsState> {
   this
@@ -48,7 +48,7 @@ class BridgeSettingsCubit({
     final validationBounds = _validationBoundsFor(state: state);
     emit(const BridgeSettingsLoading());
     try {
-      final result = await _repository.load();
+      final result = await _service.load();
       if (!_canPublish(operationEpoch: operationEpoch)) return;
       _publishLoad(result: result, validationBounds: validationBounds);
     } on Object catch (error) {
@@ -96,7 +96,7 @@ class BridgeSettingsCubit({
           ),
         );
         try {
-          final result = await _repository.updatePullRequestRefresh(intervalSeconds: intervalSeconds);
+          final result = await _service.updatePullRequestRefresh(intervalSeconds: intervalSeconds);
           if (!_canPublish(operationEpoch: operationEpoch)) return BridgeSettingsUpdateAcceptance.accepted;
           switch (result) {
             case PullRequestRefreshSettingsMutationCommitted(:final response):
@@ -171,7 +171,7 @@ class BridgeSettingsCubit({
     final operationEpoch = _connectionEpoch;
     emit(_withYolo(state: current, enabled: current.yoloEnabled, mutation: const YoloMutationInProgress()));
     try {
-      final result = await _repository.updateYolo(enabled: enabled);
+      final result = await _service.updateYolo(enabled: enabled);
       if (!_canPublish(operationEpoch: operationEpoch)) return;
       switch (result) {
         case YoloSettingsMutationCommitted(:final response):
@@ -222,7 +222,7 @@ class BridgeSettingsCubit({
       ),
     );
     try {
-      final result = await _repository.updatePluginWarmup(enabled: enabled);
+      final result = await _service.updatePluginWarmup(enabled: enabled);
       if (!_canPublish(operationEpoch: operationEpoch)) return;
       switch (result) {
         case PluginWarmupSettingsMutationCommitted(:final enabled):
@@ -269,7 +269,7 @@ class BridgeSettingsCubit({
     required int operationEpoch,
   }) async {
     try {
-      final result = await _repository.load();
+      final result = await _service.load();
       if (!_canPublish(operationEpoch: operationEpoch)) return;
       if (result case BridgeSettingsLoadFailure(:final error)) {
         emit(
@@ -302,7 +302,7 @@ class BridgeSettingsCubit({
 
   Future<void> _reconcileYolo({required BridgeSettingsReadyFull current, required int operationEpoch}) async {
     try {
-      final result = await _repository.load();
+      final result = await _service.load();
       if (!_canPublish(operationEpoch: operationEpoch)) return;
       if (result case BridgeSettingsLoadFailure(:final error)) {
         emit(
@@ -333,7 +333,7 @@ class BridgeSettingsCubit({
     required int operationEpoch,
   }) async {
     try {
-      final result = await _repository.load();
+      final result = await _service.load();
       if (!_canPublish(operationEpoch: operationEpoch)) return;
       if (result case BridgeSettingsLoadFailure(:final error)) {
         emit(

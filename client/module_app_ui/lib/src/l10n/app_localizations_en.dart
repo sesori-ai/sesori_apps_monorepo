@@ -411,7 +411,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsYoloTitle => 'YOLO mode';
 
   @override
-  String get settingsYoloWarning => 'Automatically approves all permission requests. Use with caution.';
+  String get settingsYoloDescription =>
+      'Sesori approves every permission request for you, so the agent never stops to ask.';
 
   @override
   String get settingsYoloLoading => 'Loading the bridge setting…';
@@ -1493,6 +1494,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailFastMode => 'Fast mode';
+
+  @override
+  String get sessionDetailYoloChip => 'YOLO';
+
+  @override
+  String get sessionDetailYoloTitle => 'YOLO mode is on';
+
+  @override
+  String get sessionDetailYoloOpenSettings => 'Open Settings';
 
   @override
   String get sessionDetailFastModeConfirmTitle => 'Switch speed?';

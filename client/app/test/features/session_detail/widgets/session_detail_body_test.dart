@@ -53,6 +53,7 @@ Widget _buildApp({
   StubChatInputModeCubit? chatInputModeCubit,
   bool startAtPreviousScreen = false,
   VoidCallback? onOpenHarnessSettings,
+  VoidCallback? onOpenBridgeSettings,
   VoidCallback? onClose,
   SessionDetailMenuEntriesBuilder? menuEntriesBuilder,
   DiffSummaryState diffSummary = const DiffSummaryState.unknown(),
@@ -78,6 +79,7 @@ Widget _buildApp({
           value: cubit,
           child: SessionDetailPresentationScope(
             openHarnessSettings: onOpenHarnessSettings ?? () {},
+            openBridgeSettings: onOpenBridgeSettings ?? () {},
             messageImageRepository: MockMessageImageRepository.new,
             imageSaver: MockImageSaver.new,
             imageClipboard: () => imageClipboard,
@@ -754,6 +756,32 @@ void main() {
 
     expect(find.text("Ask anything..."), findsOneWidget);
     expect(find.text("Follow up..."), findsNothing);
+  });
+
+  testWidgets("the model row shows the YOLO chip only while YOLO is on", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.text("YOLO"), findsNothing);
+
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(yoloEnabled: true);
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    var bridgeSettingsOpened = 0;
+    await tester.pumpWidget(_buildApp(cubit: cubit, onOpenBridgeSettings: () => bridgeSettingsOpened++));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("YOLO"));
+    await tester.pumpAndSettle();
+    expect(find.text("YOLO mode is on"), findsOneWidget);
+    expect(
+      find.text("Sesori approves every permission request for you, so the agent never stops to ask."),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text("Open Settings"));
+    await tester.pumpAndSettle();
+    expect(bridgeSettingsOpened, 1);
+    expect(find.text("YOLO mode is on"), findsNothing);
   });
 
   testWidgets("opens the variant picker and forwards the selection to the cubit", (tester) async {

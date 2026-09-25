@@ -8,6 +8,13 @@ packaging capability does not imply public downloads or an updater have shipped.
 
 ## Required Behavior
 
+- Apple CI selects Xcode through `.github/actions/setup-xcode`: stable 27.0 on the
+  ARM64 `xcode-27` hosted image and 26.6 on `macos-26-intel`. GitHub's Xcode 27 image
+  is in public preview; `macos-latest` does not supply this toolchain. Xcode 27 requires
+  an Apple silicon host, not an ARM64-only app target: preserve the existing deployment
+  targets, universal GUI and package-native helper checks. Missing pinned Xcode must
+  fail setup rather than silently use another installed compiler. The same selection
+  applies to desktop CI/probes, reusable bridge builds and iOS TestFlight builds.
 - Build from committed source with the pinned native SDK. Reject a nonempty
   build-recorded source patch before supplying signing credentials. Preserve framework
   symlinks, native CPU support and the complete `Contents/Helpers/bridge/bin`–`lib`
@@ -17,6 +24,11 @@ packaging capability does not imply public downloads or an updater have shipped.
 - Sign nested native code/frameworks inside-out, including every helper dylib;
   enable hardened runtime for the GUI/helper without adding speculative security
   exceptions. Keep the established non-sandboxed classic-Keychain configuration.
+  The Dart AOT bridge helper alone needs `allow-unsigned-executable-memory` for
+  its mapped snapshot pages; keep library validation enabled and do not apply
+  this exception to the GUI or helper dylibs. On macOS 27, verify the helper
+  starts without a `CODESIGNING / Invalid Page` crash or exit 137, including
+  `--version` and the installed GUI's supervised bridge startup.
 - Notarize/staple the app before creating the final ZIP. Sign/notarize/staple the
   DMG too. Both extracted payloads must retain valid signatures and tickets, pass
   Gatekeeper assessment and execute the native helper. Their extracted native
@@ -94,6 +106,10 @@ following the macOS QA process.
 
 ## Maintenance Sources
 
+- `.github/actions/setup-xcode/action.yml`
+- [Apple Xcode 27 release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-27-release-notes)
+- [GitHub Xcode 27 image](https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md)
+- [GitHub Intel image](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md)
 - `.github/workflows/desktop-qualification.yml`
 - `.github/scripts/macos_signing_ci.sh`
 - `.github/scripts/package_desktop_macos.py`
@@ -108,5 +124,6 @@ following the macOS QA process.
 - `client/desktop/tool/stage_desktop_bundle.dart`
 - `client/desktop/lib/core/di/register_module.dart`
 - `client/desktop/macos/Runner/Release.entitlements`
+- `client/desktop/macos/Bridge.entitlements`
 - `.agents/skills/macos-desktop-qa/SKILL.md`
 - `.plan/active/desktop-distribution/PLAN.md`

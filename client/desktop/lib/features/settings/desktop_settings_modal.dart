@@ -206,7 +206,7 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
     DesktopSettingsTab.harnesses => _DesktopHarnessSettingsPage(onClose: widget.onClose),
     DesktopSettingsTab.bridge => BlocProvider(
       create: (_) => BridgeSettingsCubit(
-        repository: getIt<BridgeSettingsRepository>(),
+        service: getIt<BridgeSettingsService>(),
         connectionService: getIt<ConnectionService>(),
       ),
       child: const _DesktopBridgeSettingsPage(),

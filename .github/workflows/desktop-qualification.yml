@@ -35,10 +35,12 @@ on:
   pull_request:
     paths:
       - '.github/workflows/desktop-qualification.yml'
+      - '.github/actions/setup-xcode/**'
       - '.github/scripts/qualify_desktop.py'
       - '.github/scripts/test_qualify_desktop.py'
       - '.github/scripts/package_desktop_macos.py'
       - '.github/scripts/test_package_desktop_macos.py'
+      - 'client/desktop/macos/Bridge.entitlements'
       - '.github/scripts/package_desktop_windows.py'
       - '.github/scripts/test_package_desktop_windows.py'
       - '.github/scripts/package_desktop_linux.py'
@@ -89,7 +91,7 @@ jobs:
         include:
           - runner: macos-26-intel
             arch: x64
-          - runner: macos-26
+          - runner: xcode-27
             arch: arm64
     runs-on: ${{ matrix.runner }}
     env:
@@ -107,8 +109,8 @@ jobs:
         with:
           python-version: '3.13'
           architecture: ${{ matrix.arch }}
-      - name: Select qualified Xcode
-        run: echo 'DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer' >> "$GITHUB_ENV"
+      - name: Set up native Xcode
+        uses: ./.github/actions/setup-xcode
 
       - name: Bootstrap pinned native SDK and stage committed source
         if: inputs.mode == 'macos-packaging'
@@ -239,7 +241,7 @@ jobs:
         include:
           - runner: macos-26-intel
             arch: x64
-          - runner: macos-26
+          - runner: xcode-27
             arch: arm64
     runs-on: ${{ matrix.runner }}
     env:
@@ -256,8 +258,8 @@ jobs:
         with:
           python-version: '3.13'
           architecture: ${{ matrix.arch }}
-      - name: Select qualified Xcode
-        run: echo 'DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer' >> "$GITHUB_ENV"
+      - name: Set up native Xcode
+        uses: ./.github/actions/setup-xcode
       - name: Validate selected runs
         env:
           GH_TOKEN: ${{ github.token }}
@@ -350,7 +352,7 @@ jobs:
         include:
           - runner: macos-26-intel
             architecture: x64
-          - runner: macos-26
+          - runner: xcode-27
             architecture: arm64
     runs-on: ${{ matrix.runner }}
     env:
@@ -367,8 +369,8 @@ jobs:
         with:
           python-version: '3.13'
           architecture: ${{ matrix.architecture }}
-      - name: Select qualified Xcode
-        run: echo 'DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer' >> "$GITHUB_ENV"
+      - name: Set up native Xcode
+        uses: ./.github/actions/setup-xcode
       - name: Validate selected runs on trusted main
         env:
           GH_TOKEN: ${{ github.token }}
@@ -801,7 +803,7 @@ jobs:
           - runner: macos-26-intel
             target: macos
             arch: x64
-          - runner: macos-26
+          - runner: xcode-27
             target: macos
             arch: arm64
           - runner: windows-2025
@@ -832,6 +834,10 @@ jobs:
           python-version: '3.13'
           architecture: ${{ matrix.arch }}
 
+      - name: Set up native Xcode
+        if: matrix.target == 'macos'
+        uses: ./.github/actions/setup-xcode
+
       - name: Verify native codesign requirement controls
         if: matrix.target == 'macos'
         run: python -m unittest discover -s .github/scripts -p test_macos_signing_workflows.py
@@ -847,10 +853,6 @@ jobs:
           mkdir -p build/desktop-qualification
           python .github/scripts/qualify_desktop.py bootstrap --arch '${{ matrix.arch }}' --sdk-dir "$SDK_DIR" \
             2>&1 | tee build/desktop-qualification/bootstrap.log
-
-      - name: Select Xcode with Icon Composer support
-        if: matrix.target == 'macos'
-        run: echo 'DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer' >> "$GITHUB_ENV"
 
       - name: Install Linux native build dependencies
         if: matrix.target == 'linux'

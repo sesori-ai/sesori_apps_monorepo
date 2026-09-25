@@ -19,6 +19,7 @@ class _MockImageSharer() extends Mock implements ImageSharer;
 Widget _presentationScope({required BuildContext context, required Widget child}) {
   return SessionDetailPresentationScope(
     openHarnessSettings: () {},
+    openBridgeSettings: () {},
     messageImageRepository: _MockMessageImageRepository.new,
     imageSaver: _MockImageSaver.new,
     imageClipboard: _MockImageClipboard.new,
@@ -256,17 +257,18 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets("a running sub-agent shows its spinner", (tester) async {
+    testWidgets("a running sub-agent's label shimmers", (tester) async {
       await pumpStatus(tester, status: TranscriptStepStatus.running);
 
-      expect(find.byType(PregoActivityIndicator), findsOneWidget);
+      expect(find.byType(PregoShimmer), findsOneWidget);
+      expect(find.byType(PregoActivityIndicator), findsNothing);
     });
 
     testWidgets("a finished sub-agent says nothing", (tester) async {
       await pumpStatus(tester, status: TranscriptStepStatus.finished);
 
       expect(find.text("Done"), findsNothing);
-      expect(find.byType(PregoActivityIndicator), findsNothing);
+      expect(find.byType(PregoShimmer), findsNothing);
       expect(find.byIcon(TablerSolid.alert_circle), findsNothing);
     });
 

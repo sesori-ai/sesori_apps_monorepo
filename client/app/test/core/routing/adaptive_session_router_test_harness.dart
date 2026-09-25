@@ -278,6 +278,7 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<PermissionRepository>(permissionRepository);
     getIt.registerSingleton<SessionDetailLoadService>(sessionDetailLoadService);
     getIt.registerSingleton<PluginManagementService>(stubbedPluginManagementService());
+    getIt.registerSingleton<BridgeSettingsService>(stubbedBridgeSettingsService());
     getIt.registerSingleton<SessionInteractionCalculator>(const SessionInteractionCalculator());
     getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
     getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);

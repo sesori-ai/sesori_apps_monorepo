@@ -28,6 +28,7 @@ import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../../services/bridge_settings_service.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
@@ -101,6 +102,7 @@ class SessionDetailCubit(
   required final bool claimProjectView,
   required final NotificationCanceller? _notificationCanceller,
   required final FailureReporter _failureReporter,
+  required final BridgeSettingsService _bridgeSettingsService,
 
   /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
@@ -227,9 +229,17 @@ class SessionDetailCubit(
           (_) => _onDataMayBeStale(trigger: _SessionRefreshTrigger.dataMayBeStale),
         ),
       )
-      ..add(_lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged));
+      ..add(_lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged))
+      ..add(_bridgeSettingsService.yoloEnabled.listen(_onYoloEnabled));
     unawaited(_pluginManagementService.refresh());
     unawaited(_loadMessages(isReload: false));
+  }
+
+  void _onYoloEnabled(bool yoloEnabled) {
+    if (isClosed) return;
+    if (state case final SessionDetailLoaded current when current.yoloEnabled != yoloEnabled) {
+      emit(current.copyWith(yoloEnabled: yoloEnabled));
+    }
   }
 
   SessionInteractionState _calculateInteraction({required Session session}) {
@@ -2945,6 +2955,7 @@ class SessionDetailCubit(
       stagedCommand: null,
       isRefreshing: false,
       availableVariants: reconciled.availableVariants,
+      yoloEnabled: _bridgeSettingsService.yoloEnabled.value,
     );
   }
 

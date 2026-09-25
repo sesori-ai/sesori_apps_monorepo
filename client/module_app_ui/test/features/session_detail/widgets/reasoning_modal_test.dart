@@ -215,6 +215,7 @@ void main() {
               openExternalLink: ({required url, required mode}) async => true,
               openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
               openHarnessSettings: () {},
+              openBridgeSettings: () {},
               child: Scaffold(
                 body: ReasoningPartCard(text: text, isStreaming: streaming, partId: "reasoning", messageId: "message"),
               ),
