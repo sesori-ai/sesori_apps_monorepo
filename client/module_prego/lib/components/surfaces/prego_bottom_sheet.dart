@@ -236,6 +236,7 @@ Future<T?> showPregoBottomSheet<T>({
   // modal route strips the top padding from the sheet's own MediaQuery, so the
   // sheet can't read it once inside.
   final topInset = MediaQuery.paddingOf(context).top;
+  // ignore: no_slop_linter/avoid_raw_modal_presenters, the touch frame behind showPregoModal
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,

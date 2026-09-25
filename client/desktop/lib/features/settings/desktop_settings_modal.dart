@@ -34,6 +34,7 @@ Future<void> showDesktopSettingsModal({
 }) async {
   final authGate = context.read<AuthGateCubit>();
   final reducedMotion = prefersReducedMotion(context) || GlassAccessibilityData.of(context).reduceMotion;
+  // ignore: no_slop_linter/avoid_raw_modal_presenters, a desktop-only full-window surface, not a modal sheet or dialog
   await showGeneralDialog<void>(
     context: context,
     useRootNavigator: true,

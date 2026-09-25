@@ -72,6 +72,7 @@ Future<T?> showPregoModal<T>({
 /// bottom sheet for touch and a dialog for pointer, as in [showPregoModal].
 Future<T?> showPregoModalRoute<T>({required BuildContext context, required WidgetBuilder builder}) {
   return switch (PregoInteractionScope.of(context)) {
+    // ignore: no_slop_linter/avoid_raw_modal_presenters, this is the adaptive presenter
     PregoInteractionMode.touch => showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
@@ -136,6 +137,7 @@ Future<T?> _showDialogFrame<T>({
   required bool isDismissible,
   required WidgetBuilder builder,
 }) {
+  // ignore: no_slop_linter/avoid_raw_modal_presenters, this is the adaptive presenter
   return showDialog<T>(
     context: context,
     barrierDismissible: isDismissible,

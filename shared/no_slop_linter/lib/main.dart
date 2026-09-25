@@ -11,6 +11,7 @@
 // - `avoid_hardcoded_colors`: Forbids Color() and Colors.xxx, use theme colorScheme
 // - `avoid_hardcoded_text_styles`: Forbids TextStyle(), use theme textTheme
 // - `avoid_navigator_of`: Forbids Navigator.of(), use AutoRoute
+// - `avoid_raw_modal_presenters`: Forbids showDialog/showModalBottomSheet/etc., use showPregoModal
 // - `avoid_as_cast`: Forbids force casts, use `is` or `as Type?`
 // - `avoid_mutable_class_fields`: Forbids non-final fields, use final
 // - `avoid_string_literals_in_widgets`: Forbids hardcoded strings in Text()
@@ -46,6 +47,7 @@ import 'src/rules/avoid_legacy_flutter_design_imports_rule.dart';
 import 'src/rules/avoid_mutable_class_fields_rule.dart';
 import 'src/rules/avoid_navigator_of_rule.dart';
 import 'src/rules/avoid_raw_go_router_rule.dart';
+import 'src/rules/avoid_raw_modal_presenters_rule.dart';
 import 'src/rules/avoid_string_literals_in_widgets_rule.dart';
 import 'src/rules/prefer_edge_insets_directional_rule.dart';
 import 'src/rules/prefer_exhaustive_switch_rule.dart';
@@ -73,6 +75,7 @@ class _NoSlopLinterPlugin extends Plugin {
     registry.registerWarningRule(AvoidMutableClassFieldsRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidNavigatorOfRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidRawGoRouterRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidRawModalPresentersRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidStringLiteralsInWidgetsRule(ignoreTestFiles: true));
     registry.registerWarningRule(PreferSpecificTypeRule(ignoreTestFiles: true));
     registry.registerWarningRule(PreferEdgeInsetsDirectionalRule(ignoreTestFiles: true));
