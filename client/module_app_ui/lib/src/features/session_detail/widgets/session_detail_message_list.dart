@@ -488,7 +488,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   static String _liveStepLabel({required AppLocalizations loc, required TranscriptStep step}) => switch (step) {
     TranscriptThinkingStep() => loc.sessionDetailThinking,
     TranscriptToolStep(:final part) => switch (part.state.shellCommand) {
-      final command? => "${loc.sessionDetailToolRunning} \$ $command",
+      // A live tool is pending or running; the row names which.
+      final command? =>
+        "${part.state.status == ToolStatus.pending ? loc.sessionDetailToolPending : loc.sessionDetailToolRunning} \$ $command",
       null => [if (part.tool.isEmpty) loc.sessionDetailToolUnknown else part.tool, ?part.state.title].join(" "),
     },
     TranscriptSubAgentStep(:final part) => [

@@ -1150,6 +1150,11 @@ void main() {
     expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsOneWidget);
 
     harnessKey.currentState!.removeMessage("run-1");
+    harnessKey.currentState!.appendNewestMessage(toolMessage(id: "queued", status: ToolStatus.pending));
+    await _pumpListUpdate(tester);
+    expect(find.descendant(of: pill, matching: find.text(r"Pending $ make check")), findsOneWidget);
+
+    harnessKey.currentState!.removeMessage("queued");
     harnessKey.currentState!.appendNewestMessage(toolMessage(id: "run-2", status: ToolStatus.completed));
     await _pumpListUpdate(tester);
     expect(find.descendant(of: pill, matching: find.text("Jump to latest")), findsOneWidget);
