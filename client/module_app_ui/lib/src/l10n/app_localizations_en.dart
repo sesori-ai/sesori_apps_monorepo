@@ -135,6 +135,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSessionPageChanges => 'Changes';
 
   @override
+  String get desktopSessionParentBreadcrumb => 'Main session';
+
+  @override
   String get listSearchNoMatches => 'No matches';
 
   @override

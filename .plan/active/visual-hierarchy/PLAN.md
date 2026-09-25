@@ -254,8 +254,9 @@ Data paths:
   add them later if a product decision needs the numbers.
 - **D19 Transcript groups (R1.2–R1.4).** A group of steps ends at every piece
   of text, so steps, a sentence and more steps keep their order. When the live
-  row is off screen, the jump button shows it and a turning sparkle leads the
-  session title. Running sub-agents are live rows too and fold into their
+  row is off screen, the jump button shows it; the desktop session title
+  already shimmers while the session runs (user decision 2026-09-24). Running
+  sub-agents are live rows too and fold into their
   group as "2 sub-agents"; the sub-agent pill by the composer stays.
 - **D20 Summary words (R1.1, R5, R6).** The summary counts by kind in order of
   first appearance, plus failures: "Thought · read 2 files · ran 1 command".
@@ -557,8 +558,8 @@ live row with a shimmering label, then folds into its group when it finishes.
 Thinking shows a short tail of its latest words while it streams. Finished
 rows say nothing; failures keep one signal. Until step 32 the summary names
 only what the part types already tell: thinking, sub-agents, a step count for
-tools, and failures. When the live row is off screen, the jump button shows it
-and a turning sparkle leads the session title. This replaces the tool "Done",
+tools, and failures. When the live row is off screen, the jump button shows it;
+the title's running shimmer already exists. This replaces the tool "Done",
 the thought card box and the blue output "Show more". Grouping and counting
 are a pure `module_core` builder over the loaded messages, beside
 `session_detail_state.dart`; widgets only render its groups. Whether the live

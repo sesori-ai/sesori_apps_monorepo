@@ -307,6 +307,12 @@ abstract class AppLocalizations {
   /// **'Changes'**
   String get desktopSessionPageChanges;
 
+  /// Desktop subtask toolbar breadcrumb that returns to the session that started the subtask.
+  ///
+  /// In en, this message translates to:
+  /// **'Main session'**
+  String get desktopSessionParentBreadcrumb;
+
   /// Shown under a list's search field when no loaded title matches the query.
   ///
   /// In en, this message translates to:

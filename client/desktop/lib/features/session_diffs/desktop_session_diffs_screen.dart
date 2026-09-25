@@ -35,6 +35,7 @@ class const DesktopSessionDiffsScreen({
           headerBuilder: ({required context, required title, required summary}) => DesktopPageToolbar(
             breadcrumb: (label: projectName ?? context.loc.sessionListTitle, onPressed: onOpenProject),
             status: null,
+            isRunning: false,
             title: title,
             subtitle: summary == null ? null : PregoNavSubtitle(text: summary),
             actions: const [],
