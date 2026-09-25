@@ -180,6 +180,13 @@ final Finder _createFolderButton = find.widgetWithIcon(PregoButtonsSolid, Tabler
 /// state.
 PregoButtonsSolid _button(WidgetTester tester, Finder finder) => tester.widget<PregoButtonsSolid>(finder);
 
+/// The quick-navigation button labelled [label] in the row above the breadcrumb.
+Finder _placeButton(String label) => find.widgetWithText(PregoButtonsSolid, label);
+
+/// The breadcrumb's Home segment. The Home place button comes first in the
+/// tree, so the breadcrumb's is the last "Home".
+final Finder _breadcrumbHome = find.text("Home").last;
+
 void main() {
   setUpAll(() {
     registerCoreFallbackValues();
@@ -243,9 +250,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Single view — titled, with the bridge-returned host path as a
-      // breadcrumb over the listing.
+      // breadcrumb over the listing, under the Home and Root buttons.
       expect(find.descendant(of: find.byType(AddProjectDialog), matching: find.text("Add project")), findsOneWidget);
-      expect(find.text("Home"), findsOneWidget);
+      expect(find.text("Home"), findsNWidgets(2));
       expect(find.text("projects"), findsOneWidget);
       expect(find.widgetWithText(PregoButtonsSolid, "Add user"), findsOneWidget);
     });
@@ -410,11 +417,9 @@ void main() {
       // serving the filesystem request. The folders above Home collapse into
       // it, and the root stays reachable ahead of it.
       expect(find.text("/"), findsOneWidget);
-      expect(find.text("Home"), findsOneWidget);
+      expect(find.text("Home"), findsNWidgets(2));
       expect(find.text("home"), findsNothing);
       expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
-      // Without drives from the bridge there is no row of places to jump to.
-      expect(find.byIcon(TablerRegular.server), findsNothing);
 
       expect(_button(tester, _addButton).onPressed, isNotNull);
       expect(_button(tester, _createFolderButton).onPressed, isNotNull);
@@ -459,7 +464,7 @@ void main() {
       expect(find.text("lib-two"), findsOneWidget);
       expect(find.text("work"), findsNothing);
       // The breadcrumb follows, with the folder being browsed last.
-      expect(find.text("Home"), findsOneWidget);
+      expect(find.text("Home"), findsNWidgets(2));
       expect(find.text("projects"), findsOneWidget);
       expect(find.widgetWithText(PregoButtonsSolid, "Add projects"), findsOneWidget);
       expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
@@ -504,7 +509,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text("app-one"), findsOneWidget);
 
-      await tester.tap(find.text("Home"));
+      await tester.tap(_breadcrumbHome);
       await tester.pumpAndSettle();
 
       expect(find.text("projects"), findsOneWidget);
@@ -555,8 +560,8 @@ void main() {
       await tester.tap(find.text("/"));
       await tester.pumpAndSettle();
       // At the root the breadcrumb is the root alone, and the listing names
-      // the folders under it.
-      expect(find.text("Home"), findsNothing);
+      // the folders under it. Only the Home button still reads Home.
+      expect(find.text("Home"), findsOneWidget);
       expect(find.text("/"), findsOneWidget);
       expect(find.text("home"), findsOneWidget);
 
@@ -564,7 +569,7 @@ void main() {
       await tester.tap(find.text("home"));
       await tester.pumpAndSettle();
       expect(find.text("home"), findsOneWidget);
-      expect(find.text("Home"), findsNothing);
+      expect(find.text("Home"), findsOneWidget);
       expect(find.widgetWithText(PregoButtonsSolid, "Add home"), findsOneWidget);
     });
 
@@ -602,24 +607,75 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pumpAndSettle();
 
-      // Home and each drive are chips; C:\ and Home also lead the breadcrumb.
-      expect(find.byIcon(TablerRegular.home), findsOneWidget);
-      expect(find.byIcon(TablerRegular.server), findsNWidgets(2));
+      // Home and each drive are buttons in place of Root; C:\ and Home also
+      // lead the breadcrumb.
+      expect(_placeButton("Home"), findsOneWidget);
+      expect(_placeButton(r"C:\"), findsOneWidget);
+      expect(_placeButton(r"D:\"), findsOneWidget);
+      expect(find.text("Root"), findsNothing);
       expect(find.text("Home"), findsNWidgets(2));
       expect(find.text(r"C:\"), findsNWidgets(2));
-      expect(find.text(r"D:\"), findsOneWidget);
+      // Home is where the browser starts, so its button is disabled.
+      expect(_button(tester, _placeButton("Home")).onPressed, isNull);
+      expect(_button(tester, _placeButton(r"D:\")).onPressed, isNotNull);
 
-      await tester.tap(find.text(r"D:\"));
+      await tester.tap(_placeButton(r"D:\"));
       await tester.pumpAndSettle();
 
       verify(() => mockCubit.fetchFilesystemSuggestions(prefix: r"D:\")).called(1);
       expect(find.text("games"), findsOneWidget);
       expect(find.widgetWithText(PregoButtonsSolid, r"Add D:\"), findsOneWidget);
+      expect(_button(tester, _placeButton(r"D:\")).onPressed, isNull);
 
       // The drives stay listed while browsing, so Home is one tap away.
-      await tester.tap(find.byIcon(TablerRegular.home));
+      await tester.tap(_placeButton("Home"));
       await tester.pumpAndSettle();
       verify(() => mockCubit.fetchFilesystemSuggestions(prefix: windowsHome)).called(1);
+    });
+
+    testWidgets("a POSIX host lists Home and Root, disabling the one being browsed", (tester) async {
+      _stubSuggestionsPerPrefix(
+        mockCubit,
+        byPrefix: {
+          "": _homeDirEntries,
+          "/": const [FilesystemSuggestion(path: "/home", name: "home", isGitRepo: false)],
+          _homePath: _homeDirEntries,
+        },
+      );
+
+      await tester.pumpWidget(
+        _buildApp(
+          cubit: mockCubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(_placeButton("Home"), findsOneWidget);
+      expect(_placeButton("Root"), findsOneWidget);
+      expect(_button(tester, _placeButton("Home")).onPressed, isNull);
+      expect(_button(tester, _placeButton("Root")).onPressed, isNotNull);
+
+      // Root is the host root the starting folder resolves to.
+      await tester.tap(_placeButton("Root"));
+      await tester.pumpAndSettle();
+      verify(() => mockCubit.fetchFilesystemSuggestions(prefix: "/")).called(1);
+      expect(find.text("home"), findsOneWidget);
+      expect(_button(tester, _placeButton("Home")).onPressed, isNotNull);
+      expect(_button(tester, _placeButton("Root")).onPressed, isNull);
+
+      await tester.tap(_placeButton("Home"));
+      await tester.pumpAndSettle();
+      verify(() => mockCubit.fetchFilesystemSuggestions(prefix: _homePath)).called(1);
+      expect(_button(tester, _placeButton("Home")).onPressed, isNull);
     });
 
     testWidgets("a listing that lands after stepping back out is ignored", (tester) async {
@@ -656,7 +712,7 @@ void main() {
 
       await tester.tap(find.text("projects"));
       await tester.pump();
-      await tester.tap(find.text("Home"));
+      await tester.tap(_breadcrumbHome);
       await tester.pumpAndSettle();
 
       projectsListing.complete(

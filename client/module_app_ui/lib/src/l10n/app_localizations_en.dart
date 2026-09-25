@@ -1758,6 +1758,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get folderPickerHome => 'Home';
 
   @override
+  String get folderPickerRoot => 'Root';
+
+  @override
   String get fetchDirectoryFailed => 'Could not load directory contents';
 
   @override

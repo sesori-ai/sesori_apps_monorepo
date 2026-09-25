@@ -63,8 +63,12 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   /// user's home directory, so this is also the breadcrumb's Home segment.
   String? _startingPath;
 
-  /// A Windows host's drive roots, listed beside Home. Empty on other hosts
-  /// and from a bridge that predates drive listing.
+  /// The host filesystem root resolved from [_startingPath], listed beside
+  /// Home when the host names no drives.
+  String? _rootPath;
+
+  /// A Windows host's drive roots, listed beside Home instead of Root. Empty
+  /// on other hosts and from a bridge that predates drive listing.
   List<String> _driveRoots = const [];
 
   /// The folder being listed. Empty until the first fetch resolves the start.
@@ -117,6 +121,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
           if (_currentPath.isEmpty && resolvedPath != null && resolvedPath.isNotEmpty) {
             _currentPath = resolvedPath;
             _startingPath = resolvedPath;
+            _rootPath = _resolveRootPath(path: resolvedPath);
             _driveRoots = suggestions.driveRoots;
           }
           _entries = suggestions.data;
@@ -137,6 +142,15 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   void _navigateInto({required String path}) {
     setState(() => _currentPath = path);
     _fetchEntries();
+  }
+
+  String _resolveRootPath({required String path}) {
+    var root = path;
+    while (true) {
+      final parent = widget.cubit.parentHostPath(path: root);
+      if (parent == null) return root;
+      root = parent;
+    }
   }
 
   /// Every folder from the host root down to the one being browsed. The root
@@ -357,6 +371,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
     // user's thumb as they navigate.
     final bodyHeight = MediaQuery.heightOf(context) - widget.topInset - PregoBottomSheet.contentTopInset;
     final startingPath = _startingPath;
+    final rootPath = _rootPath;
 
     return PregoModalSurface(
       // Navigation lives in the browser body's breadcrumb.
@@ -380,12 +395,14 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
             child: Column(
               children: [
                 _FilesystemAccessBanner(connectionService: widget.connectionService),
-                if (startingPath != null && _driveRoots.isNotEmpty)
+                if (startingPath != null)
                   _Places(
                     places: [
-                      (label: loc.folderPickerHome, path: startingPath, icon: TablerRegular.home),
-                      for (final root in _driveRoots) (label: root, path: root, icon: TablerRegular.server),
+                      (label: loc.folderPickerHome, path: startingPath),
+                      if (_driveRoots.isEmpty && rootPath != null) (label: loc.folderPickerRoot, path: rootPath),
+                      for (final root in _driveRoots) (label: root, path: root),
                     ],
+                    currentPath: _currentPath,
                     onNavigate: (path) => _navigateInto(path: path),
                   ),
                 if (_currentPath.isNotEmpty)
@@ -555,56 +572,34 @@ class const _Breadcrumb({
   }
 }
 
-/// A place the browser can jump to, with the glyph that marks its kind.
-typedef _Place = ({String label, String path, IconData icon});
+/// A place the browser can jump to: what its button reads and the folder it opens.
+typedef _Place = ({String label, String path});
 
-/// Home and a Windows host's drives, as a row of chips above the breadcrumb:
-/// the breadcrumb only reaches the drive being browsed, so another drive is
-/// opened from here.
+/// Home plus Root, or a Windows host's drives, as a row of buttons above the
+/// breadcrumb: the breadcrumb only reaches the drive being browsed, so another
+/// drive is opened from here. The place already being browsed is disabled.
 class const _Places({
   required final List<_Place> places,
+  required final String currentPath,
   required final ValueChanged<String> onNavigate,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final prego = context.prego;
     return Container(
       alignment: AlignmentDirectional.centerStart,
-      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.sm),
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
         child: Row(
-          spacing: PregoSpacing.sm,
+          spacing: PregoSpacing.md,
           children: [
             for (final place in places)
-              Semantics(
-                button: true,
-                child: InkWell(
-                  mouseCursor: WidgetStateMouseCursor.clickable,
-                  borderRadius: BorderRadius.circular(PregoRadius.sm),
-                  onTap: () => onNavigate(place.path),
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: prego.colors.borderPrimary),
-                      borderRadius: BorderRadius.circular(PregoRadius.sm),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.xs),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      spacing: PregoSpacing.xs,
-                      children: [
-                        ExcludeSemantics(
-                          child: Icon(place.icon, size: PregoIconSize.sm, color: prego.colors.textSecondary),
-                        ),
-                        Text(
-                          place.label,
-                          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              PregoButtonsSolid(
+                label: place.label,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.sm,
+                onPressed: place.path == currentPath ? null : () => onNavigate(place.path),
               ),
           ],
         ),

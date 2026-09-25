@@ -3247,11 +3247,17 @@ abstract class AppLocalizations {
   /// **'Only folders are listed, so any files in it stay hidden.'**
   String get folderBrowserNoFoldersDetail;
 
-  /// Breadcrumb segment in the add-project browser that stands for the host user's home folder.
+  /// Breadcrumb segment and shortcut button in the add-project browser that stand for the host user's home folder.
   ///
   /// In en, this message translates to:
   /// **'Home'**
   String get folderPickerHome;
+
+  /// Shortcut button that jumps to the host filesystem root in the add-project browser. Shown on hosts without drive letters.
+  ///
+  /// In en, this message translates to:
+  /// **'Root'**
+  String get folderPickerRoot;
 
   /// No description provided for @fetchDirectoryFailed.
   ///

@@ -1057,7 +1057,11 @@
   },
   "folderPickerHome": "Home",
   "@folderPickerHome": {
-    "description": "Breadcrumb segment in the add-project browser that stands for the host user's home folder."
+    "description": "Breadcrumb segment and shortcut button in the add-project browser that stand for the host user's home folder."
+  },
+  "folderPickerRoot": "Root",
+  "@folderPickerRoot": {
+    "description": "Shortcut button that jumps to the host filesystem root in the add-project browser. Shown on hosts without drive letters."
   },
   "fetchDirectoryFailed": "Could not load directory contents",
   "fetchDirectoryRetry": "Retry",
