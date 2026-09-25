@@ -14,7 +14,6 @@ import "package:sign_in_with_apple/sign_in_with_apple.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
-import "../../core/extensions/login_failed_reason_x.dart";
 import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/legal_document_sheet.dart";

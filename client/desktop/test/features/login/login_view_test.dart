@@ -3,6 +3,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/features/login/login_screen.dart";
 
@@ -31,6 +32,8 @@ void main() {
     whenListen(cubit, const Stream<LoginState>.empty(), initialState: state);
     return tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<LoginCubit>.value(
           value: cubit,
           child: const LoginView(),
