@@ -3,8 +3,8 @@
 ## Execution
 
 - Status: #1739 merged with 24 passing checks. Native capabilities (PR 8)
-  pass 28 focused channel/directory tests, two shell analyses and Android XML
-  configuration validation; implementation review pending.
+  pass 28 focused channel/directory tests, two shell analyses, Android XML
+  configuration validation and architecture review.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
@@ -28,7 +28,7 @@
 | 3.c — Shared Drift/primitive persistence | Merged | #1729; 29 tests, architecture approval, clean analysis/generation and 25 passing CI checks. |
 | 3.d — Cached shared secrets | Merged | #1734; 46 shared tests, architecture approval, clean analysis/generation and 24 passing CI checks. |
 | 4.a — Deprecated mobile import | Merged | #1739; 11 recovery tests, three analyses, architecture approval and 24 passing CI checks; unwired. |
-| 4.b — Native capabilities and backup | Verified locally | PR 8; 28 channel/directory tests, two analyses, DB-only Android XML exclusions; no native qualification; review pending. |
+| 4.b — Native capabilities and backup | Architecture approved | PR 8; 28 channel/directory tests, two analyses, DB-only Android XML exclusions; no native qualification. |
 | 4.c — Both-client cutover | Not started | PR 9; lockstep consumers, migration/failure startup gate and runtime adapter removal. |
 | 5 — Regression reconciliation | Not started | PR 10; behavior docs also accompany their implementation. |
 | 6 — Required qualification/retirement | Not started | PR 11; plan remains active until recorded mobile + desktop matrix passes. |
@@ -150,6 +150,9 @@
   confirms manifest bindings and only `file:persistence/` exclusions in old/full
   backup, cloud and device-transfer policies; legacy preferences are unchanged.
   These tests do not invoke the Keychain, Keystore, Credential Manager or libsecret.
+- Native-capability review `12180381-83ef-42c8-9963-633f1e74f283` approved exact
+  range `d07c69d..b234217`, all 26 paths, without findings. Consumer cutover,
+  migration invocation and real native qualification were outside that scope.
 - None of this evidence establishes released-mobile migration, mobile
   backup/restore, real credential behavior, packaged replacement or actual
   prompt counts. Those gates remain.

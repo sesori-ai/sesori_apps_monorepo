@@ -487,3 +487,6 @@ or successful build is not native authorization, migration or distribution proof
 - Deprecated-importer implementation review `d885b123-0d8a-49db-982e-be35c37e0413`
   approved exact range `f1f00ee..3b8ac72` (all 25 paths) without findings. Native
   adapters and future consumer/bootstrap cutover remain outside that approval.
+- Native-capability implementation review `12180381-83ef-42c8-9963-633f1e74f283`
+  approved exact range `d07c69d..b234217` (all 26 paths) without findings. Consumer
+  cutover, migration invocation and actual native qualification remain separate.
