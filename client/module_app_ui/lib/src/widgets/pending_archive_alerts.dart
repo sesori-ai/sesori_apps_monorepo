@@ -25,6 +25,10 @@ class const PendingArchiveAlerts({
 class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
   late final StreamSubscription<PendingSessionArchiveOutcome> _outcomes;
 
+  /// A failure that arrived while an Undo alert was showing. The presenter
+  /// holds one alert at a time, so it waits for the Undo window to close.
+  bool _failureHeld = false;
+
   @override
   void initState() {
     super.initState();
@@ -58,12 +62,30 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
         primaryAction: PregoPopupAlertsNotificationsAction(
           label: context.loc.sessionListArchiveUndo,
           onPressed: () {
-            cubit.undo();
             presenter.dismiss();
+            cubit.undo();
           },
         ),
       ),
     );
+  }
+
+  void _showFailure() {
+    _presenter?.show(
+      title: context.loc.sessionListArchiveFailed,
+      variant: PregoPopupAlertsNotificationsVariant.error,
+    );
+  }
+
+  void _onWindowChanged(PendingArchiveWindow window) {
+    switch (window) {
+      case PendingArchiveOpen():
+        _offerUndo();
+      case PendingArchiveIdle():
+        if (!_failureHeld) return;
+        _failureHeld = false;
+        _showFailure();
+    }
   }
 
   Future<void> _onOutcome(PendingSessionArchiveOutcome outcome) async {
@@ -72,10 +94,11 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
       case PendingSessionArchiveCommitted():
         return;
       case PendingSessionArchiveFailed():
-        _presenter?.show(
-          title: context.loc.sessionListArchiveFailed,
-          variant: PregoPopupAlertsNotificationsVariant.error,
-        );
+        if (context.read<PendingSessionArchiveCubit>().state.window is PendingArchiveOpen) {
+          _failureHeld = true;
+        } else {
+          _showFailure();
+        }
       case PendingSessionArchiveRefused(:final session, :final rejection):
         final cubit = context.read<PendingSessionArchiveCubit>();
         final navigatorKey = widget.navigatorKey;
@@ -91,8 +114,8 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
 
   @override
   Widget build(BuildContext context) => BlocListener<PendingSessionArchiveCubit, PendingSessionArchiveState>(
-    listenWhen: (previous, current) => current.window is PendingArchiveOpen && current.window != previous.window,
-    listener: (_, _) => _offerUndo(),
+    listenWhen: (previous, current) => current.window != previous.window,
+    listener: (_, state) => _onWindowChanged(state.window),
     child: widget.child,
   );
 }
