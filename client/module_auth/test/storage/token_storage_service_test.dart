@@ -1,34 +1,37 @@
 import "dart:convert";
 
 import "package:mocktail/mocktail.dart";
-import "package:sesori_auth/sesori_auth.dart" show SecureStorage;
+import "package:sesori_auth/sesori_auth.dart" show AuthSecretKey;
 import "package:sesori_auth/src/storage/oauth_storage_service.dart";
 import "package:sesori_auth/src/storage/token_storage_service.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart" show AuthProvider, AuthUser, parseJwtExpiry;
 import "package:test/test.dart";
 
-class MockSecureStorage() extends Mock implements SecureStorage;
+class MockSecrets() extends Mock implements SecureStorageRepository;
 
 void main() {
-  late MockSecureStorage mockStorage;
+  late MockSecrets mockStorage;
   late TokenStorageService tokenStorageService;
   late OAuthStorageService oauthStorageService;
 
   setUp(() {
-    mockStorage = MockSecureStorage();
-    tokenStorageService = TokenStorageService(mockStorage);
-    oauthStorageService = OAuthStorageService(mockStorage);
+    mockStorage = MockSecrets();
+    tokenStorageService = TokenStorageService(storage: mockStorage);
+    oauthStorageService = OAuthStorageService(storage: mockStorage);
   });
 
   group("TokenStorageService", () {
     test("saveTokens writes access and refresh tokens", () async {
       // given
-      when(() => mockStorage.write(key: "access_token", value: "test_access_token_12345")).thenAnswer((_) async {
-        return;
-      });
-      when(() => mockStorage.write(key: "refresh_token", value: "test_refresh_token_67890")).thenAnswer((_) async {
-        return;
-      });
+      when(() => mockStorage.write(key: AuthSecretKey.accessToken, value: "test_access_token_12345"))
+          .thenAnswer((_) async {
+            return;
+          });
+      when(() => mockStorage.write(key: AuthSecretKey.refreshToken, value: "test_refresh_token_67890"))
+          .thenAnswer((_) async {
+            return;
+          });
 
       // when
       await tokenStorageService.saveTokens(
@@ -37,56 +40,56 @@ void main() {
       );
 
       // then
-      verify(() => mockStorage.write(key: "access_token", value: "test_access_token_12345")).called(1);
-      verify(() => mockStorage.write(key: "refresh_token", value: "test_refresh_token_67890")).called(1);
+      verify(() => mockStorage.write(key: AuthSecretKey.accessToken, value: "test_access_token_12345")).called(1);
+      verify(() => mockStorage.write(key: AuthSecretKey.refreshToken, value: "test_refresh_token_67890")).called(1);
     });
 
     test("saveTokens rethrows on storage error", () async {
       // given
       final error = Exception("write failed");
-      when(() => mockStorage.write(key: "access_token", value: "token")).thenThrow(error);
+      when(() => mockStorage.write(key: AuthSecretKey.accessToken, value: "token")).thenThrow(error);
 
       // when/then
       await expectLater(
         tokenStorageService.saveTokens(accessToken: "token", refreshToken: "refresh"),
         throwsA(same(error)),
       );
-      verify(() => mockStorage.write(key: "access_token", value: "token")).called(1);
+      verify(() => mockStorage.write(key: AuthSecretKey.accessToken, value: "token")).called(1);
     });
 
     test("getAccessToken returns null when storage returns null", () async {
       // given
-      when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => null);
+      when(() => mockStorage.read(key: AuthSecretKey.accessToken)).thenAnswer((_) async => null);
 
       // when
       final result = await tokenStorageService.getAccessToken();
 
       // then
-      verify(() => mockStorage.read(key: "access_token")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.accessToken)).called(1);
       expect(result, isNull);
     });
 
     test("getAccessToken returns null when storage returns empty string", () async {
       // given
-      when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => "");
+      when(() => mockStorage.read(key: AuthSecretKey.accessToken)).thenAnswer((_) async => "");
 
       // when
       final result = await tokenStorageService.getAccessToken();
 
       // then
-      verify(() => mockStorage.read(key: "access_token")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.accessToken)).called(1);
       expect(result, isNull);
     });
 
     test("getAccessToken returns null when token is not a parseable JWT", () async {
       // given
-      when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => "opaque-token");
+      when(() => mockStorage.read(key: AuthSecretKey.accessToken)).thenAnswer((_) async => "opaque-token");
 
       // when
       final result = await tokenStorageService.getAccessToken();
 
       // then
-      verify(() => mockStorage.read(key: "access_token")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.accessToken)).called(1);
       expect(result, isNull);
     });
 
@@ -94,14 +97,14 @@ void main() {
       // given
       final pastExp = DateTime.now().toUtc().subtract(const Duration(minutes: 2));
       when(
-        () => mockStorage.read(key: "access_token"),
+        () => mockStorage.read(key: AuthSecretKey.accessToken),
       ).thenAnswer((_) async => buildJwt(exp: pastExp.millisecondsSinceEpoch ~/ 1000));
 
       // when
       final result = await tokenStorageService.getAccessToken();
 
       // then
-      verify(() => mockStorage.read(key: "access_token")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.accessToken)).called(1);
       expect(result, isNull);
     });
 
@@ -109,13 +112,13 @@ void main() {
       // given
       final futureExp = DateTime.now().toUtc().add(const Duration(minutes: 10));
       final accessToken = buildJwt(exp: futureExp.millisecondsSinceEpoch ~/ 1000);
-      when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => accessToken);
+      when(() => mockStorage.read(key: AuthSecretKey.accessToken)).thenAnswer((_) async => accessToken);
 
       // when
       final result = await tokenStorageService.getAccessToken();
 
       // then
-      verify(() => mockStorage.read(key: "access_token")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.accessToken)).called(1);
       expect(result, isNotNull);
       expect(result?.token, accessToken);
       expect(result!.validityLeft, greaterThan(Duration.zero));
@@ -124,80 +127,85 @@ void main() {
 
     test("getRefreshToken reads with correct key and returns value", () async {
       // given
-      when(() => mockStorage.read(key: "refresh_token")).thenAnswer((_) async => "stored_refresh_token");
+      when(() => mockStorage.read(key: AuthSecretKey.refreshToken)).thenAnswer((_) async => "stored_refresh_token");
 
       // when
       final result = await tokenStorageService.getRefreshToken();
 
       // then
-      verify(() => mockStorage.read(key: "refresh_token")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.refreshToken)).called(1);
       expect(result, "stored_refresh_token");
     });
 
     test("getRefreshToken returns null on storage error", () async {
       // given
-      when(() => mockStorage.read(key: "refresh_token")).thenThrow(Exception("read failed"));
+      when(() => mockStorage.read(key: AuthSecretKey.refreshToken)).thenThrow(Exception("read failed"));
 
       // when
       final result = await tokenStorageService.getRefreshToken();
 
       // then
-      verify(() => mockStorage.read(key: "refresh_token")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.refreshToken)).called(1);
       expect(result, isNull);
     });
 
     test("hasLocallyValidSession returns true when refresh token is not expired", () async {
       final futureExp = DateTime.now().toUtc().add(const Duration(minutes: 10));
       final refreshToken = buildJwt(exp: futureExp.millisecondsSinceEpoch ~/ 1000);
-      when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => null);
-      when(() => mockStorage.read(key: "refresh_token")).thenAnswer((_) async => refreshToken);
+      when(() => mockStorage.read(key: AuthSecretKey.accessToken)).thenAnswer((_) async => null);
+      when(() => mockStorage.read(key: AuthSecretKey.refreshToken)).thenAnswer((_) async => refreshToken);
 
       final result = await tokenStorageService.hasLocallyValidSession();
 
-      verify(() => mockStorage.read(key: "refresh_token")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.refreshToken)).called(1);
       expect(result, isTrue);
     });
 
     test("hasLocallyValidSession returns true for valid access token with opaque refresh token", () async {
       final futureExp = DateTime.now().toUtc().add(const Duration(minutes: 10));
       final accessToken = buildJwt(exp: futureExp.millisecondsSinceEpoch ~/ 1000);
-      when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => accessToken);
-      when(() => mockStorage.read(key: "refresh_token")).thenAnswer((_) async => "opaque-refresh-token");
+      when(() => mockStorage.read(key: AuthSecretKey.accessToken)).thenAnswer((_) async => accessToken);
+      when(() => mockStorage.read(key: AuthSecretKey.refreshToken)).thenAnswer((_) async => "opaque-refresh-token");
 
       final result = await tokenStorageService.hasLocallyValidSession();
 
-      verify(() => mockStorage.read(key: "refresh_token")).called(1);
-      verify(() => mockStorage.read(key: "access_token")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.refreshToken)).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.accessToken)).called(1);
       expect(result, isTrue);
     });
 
     test("hasLocallyValidSession returns false when refresh token is expired", () async {
       final pastExp = DateTime.now().toUtc().subtract(const Duration(minutes: 2));
       final refreshToken = buildJwt(exp: pastExp.millisecondsSinceEpoch ~/ 1000);
-      when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => null);
-      when(() => mockStorage.read(key: "refresh_token")).thenAnswer((_) async => refreshToken);
+      when(() => mockStorage.read(key: AuthSecretKey.accessToken)).thenAnswer((_) async => null);
+      when(() => mockStorage.read(key: AuthSecretKey.refreshToken)).thenAnswer((_) async => refreshToken);
 
       final result = await tokenStorageService.hasLocallyValidSession();
 
-      verify(() => mockStorage.read(key: "refresh_token")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.refreshToken)).called(1);
       expect(result, isFalse);
     });
 
     test("hasLocallyValidSession returns false when refresh token cannot be parsed", () async {
-      when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => null);
-      when(() => mockStorage.read(key: "refresh_token")).thenAnswer((_) async => "opaque-token");
+      when(() => mockStorage.read(key: AuthSecretKey.accessToken)).thenAnswer((_) async => null);
+      when(() => mockStorage.read(key: AuthSecretKey.refreshToken)).thenAnswer((_) async => "opaque-token");
 
       final result = await tokenStorageService.hasLocallyValidSession();
 
-      verify(() => mockStorage.read(key: "refresh_token")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.refreshToken)).called(1);
       expect(result, isFalse);
     });
 
     test("saveUser writes the json-encoded user", () async {
       // given
-      const testUser = AuthUser(id: "user-1", provider: AuthProvider.github, providerUserId: "gh-1", providerUsername: "octocat");
+      const testUser = AuthUser(
+        id: "user-1",
+        provider: AuthProvider.github,
+        providerUserId: "gh-1",
+        providerUsername: "octocat",
+      );
       final encoded = jsonEncode(testUser.toJson());
-      when(() => mockStorage.write(key: "auth_user", value: encoded)).thenAnswer((_) async {
+      when(() => mockStorage.write(key: AuthSecretKey.user, value: encoded)).thenAnswer((_) async {
         return;
       });
 
@@ -205,12 +213,12 @@ void main() {
       await tokenStorageService.saveUser(testUser);
 
       // then
-      verify(() => mockStorage.write(key: "auth_user", value: encoded)).called(1);
+      verify(() => mockStorage.write(key: AuthSecretKey.user, value: encoded)).called(1);
     });
 
     test("saveUser deletes the key when user is null", () async {
       // given
-      when(() => mockStorage.delete(key: "auth_user")).thenAnswer((_) async {
+      when(() => mockStorage.delete(key: AuthSecretKey.user)).thenAnswer((_) async {
         return;
       });
 
@@ -218,25 +226,30 @@ void main() {
       await tokenStorageService.saveUser(null);
 
       // then
-      verify(() => mockStorage.delete(key: "auth_user")).called(1);
+      verify(() => mockStorage.delete(key: AuthSecretKey.user)).called(1);
     });
 
     test("getUser parses the stored user", () async {
       // given
-      const testUser = AuthUser(id: "user-1", provider: AuthProvider.github, providerUserId: "gh-1", providerUsername: "octocat");
-      when(() => mockStorage.read(key: "auth_user")).thenAnswer((_) async => jsonEncode(testUser.toJson()));
+      const testUser = AuthUser(
+        id: "user-1",
+        provider: AuthProvider.github,
+        providerUserId: "gh-1",
+        providerUsername: "octocat",
+      );
+      when(() => mockStorage.read(key: AuthSecretKey.user)).thenAnswer((_) async => jsonEncode(testUser.toJson()));
 
       // when
       final result = await tokenStorageService.getUser();
 
       // then
-      verify(() => mockStorage.read(key: "auth_user")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.user)).called(1);
       expect(result, testUser);
     });
 
     test("getUser returns null when nothing is stored", () async {
       // given
-      when(() => mockStorage.read(key: "auth_user")).thenAnswer((_) async => null);
+      when(() => mockStorage.read(key: AuthSecretKey.user)).thenAnswer((_) async => null);
 
       // when
       final result = await tokenStorageService.getUser();
@@ -247,7 +260,7 @@ void main() {
 
     test("getUser returns null on invalid stored json", () async {
       // given
-      when(() => mockStorage.read(key: "auth_user")).thenAnswer((_) async => "not-json");
+      when(() => mockStorage.read(key: AuthSecretKey.user)).thenAnswer((_) async => "not-json");
 
       // when
       final result = await tokenStorageService.getUser();
@@ -258,25 +271,25 @@ void main() {
 
     test("getUser returns null on storage error", () async {
       // given
-      when(() => mockStorage.read(key: "auth_user")).thenThrow(Exception("read failed"));
+      when(() => mockStorage.read(key: AuthSecretKey.user)).thenThrow(Exception("read failed"));
 
       // when
       final result = await tokenStorageService.getUser();
 
       // then
-      verify(() => mockStorage.read(key: "auth_user")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.user)).called(1);
       expect(result, isNull);
     });
 
     test("clearTokens deletes access, refresh, and user keys", () async {
       // given
-      when(() => mockStorage.delete(key: "access_token")).thenAnswer((_) async {
+      when(() => mockStorage.delete(key: AuthSecretKey.accessToken)).thenAnswer((_) async {
         return;
       });
-      when(() => mockStorage.delete(key: "refresh_token")).thenAnswer((_) async {
+      when(() => mockStorage.delete(key: AuthSecretKey.refreshToken)).thenAnswer((_) async {
         return;
       });
-      when(() => mockStorage.delete(key: "auth_user")).thenAnswer((_) async {
+      when(() => mockStorage.delete(key: AuthSecretKey.user)).thenAnswer((_) async {
         return;
       });
 
@@ -284,9 +297,9 @@ void main() {
       await tokenStorageService.clearTokens();
 
       // then
-      verify(() => mockStorage.delete(key: "access_token")).called(1);
-      verify(() => mockStorage.delete(key: "refresh_token")).called(1);
-      verify(() => mockStorage.delete(key: "auth_user")).called(1);
+      verify(() => mockStorage.delete(key: AuthSecretKey.accessToken)).called(1);
+      verify(() => mockStorage.delete(key: AuthSecretKey.refreshToken)).called(1);
+      verify(() => mockStorage.delete(key: AuthSecretKey.user)).called(1);
     });
 
     group("parseJwtExpiry", () {
@@ -343,12 +356,36 @@ void main() {
   });
 
   group("OAuthStorageService", () {
+    test("session tokens and ISO-8601 expiry use their typed secret identities", () async {
+      final expiry = DateTime.utc(2030, 4, 5, 6, 7, 8);
+      final encodedExpiry = expiry.toIso8601String();
+      when(() => mockStorage.write(key: AuthSecretKey.oauthSessionToken, value: "fixture-session"))
+          .thenAnswer((_) async {});
+      when(() => mockStorage.write(key: AuthSecretKey.oauthSessionExpiry, value: encodedExpiry))
+          .thenAnswer((_) async {});
+
+      await oauthStorageService.saveOAuthSession(sessionToken: "fixture-session", expiresAt: expiry);
+      verifyInOrder([
+        () => mockStorage.write(key: AuthSecretKey.oauthSessionToken, value: "fixture-session"),
+        () => mockStorage.write(key: AuthSecretKey.oauthSessionExpiry, value: encodedExpiry),
+      ]);
+      when(() => mockStorage.read(key: AuthSecretKey.oauthSessionToken)).thenAnswer((_) async => "fixture-session");
+      when(() => mockStorage.read(key: AuthSecretKey.oauthSessionExpiry)).thenAnswer((_) async => encodedExpiry);
+      expect(await oauthStorageService.getOAuthSession(), (sessionToken: "fixture-session", expiresAt: expiry));
+
+      when(() => mockStorage.delete(key: AuthSecretKey.oauthSessionToken)).thenAnswer((_) async {});
+      when(() => mockStorage.delete(key: AuthSecretKey.oauthSessionExpiry)).thenAnswer((_) async {});
+      await oauthStorageService.clearOAuthSession();
+      verify(() => mockStorage.delete(key: AuthSecretKey.oauthSessionToken)).called(1);
+      verify(() => mockStorage.delete(key: AuthSecretKey.oauthSessionExpiry)).called(1);
+    });
+
     test("saveAuthProviderAndPkceVerifier writes provider and verifier", () async {
       // given
-      when(() => mockStorage.write(key: "pkce_verifier", value: "test_pkce_verifier")).thenAnswer((_) async {
+      when(() => mockStorage.write(key: AuthSecretKey.pkceVerifier, value: "test_pkce_verifier")).thenAnswer((_) async {
         return;
       });
-      when(() => mockStorage.write(key: "oauth_provider", value: "github")).thenAnswer((_) async {
+      when(() => mockStorage.write(key: AuthSecretKey.oauthProvider, value: "github")).thenAnswer((_) async {
         return;
       });
 
@@ -359,25 +396,25 @@ void main() {
       );
 
       // then
-      verify(() => mockStorage.write(key: "pkce_verifier", value: "test_pkce_verifier")).called(1);
-      verify(() => mockStorage.write(key: "oauth_provider", value: "github")).called(1);
+      verify(() => mockStorage.write(key: AuthSecretKey.pkceVerifier, value: "test_pkce_verifier")).called(1);
+      verify(() => mockStorage.write(key: AuthSecretKey.oauthProvider, value: "github")).called(1);
     });
 
     test("getPkceVerifier reads with correct key and returns value", () async {
       // given
-      when(() => mockStorage.read(key: "pkce_verifier")).thenAnswer((_) async => "stored_pkce_verifier");
+      when(() => mockStorage.read(key: AuthSecretKey.pkceVerifier)).thenAnswer((_) async => "stored_pkce_verifier");
 
       // when
       final result = await oauthStorageService.getPkceVerifier();
 
       // then
-      verify(() => mockStorage.read(key: "pkce_verifier")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.pkceVerifier)).called(1);
       expect(result, "stored_pkce_verifier");
     });
 
     test("clearPkceVerifier deletes with correct key", () async {
       // given
-      when(() => mockStorage.delete(key: "pkce_verifier")).thenAnswer((_) async {
+      when(() => mockStorage.delete(key: AuthSecretKey.pkceVerifier)).thenAnswer((_) async {
         return;
       });
 
@@ -385,36 +422,36 @@ void main() {
       await oauthStorageService.clearPkceVerifier();
 
       // then
-      verify(() => mockStorage.delete(key: "pkce_verifier")).called(1);
+      verify(() => mockStorage.delete(key: AuthSecretKey.pkceVerifier)).called(1);
     });
 
     test("getAuthProvider returns enum for stored provider key", () async {
       // given
-      when(() => mockStorage.read(key: "oauth_provider")).thenAnswer((_) async => "google");
+      when(() => mockStorage.read(key: AuthSecretKey.oauthProvider)).thenAnswer((_) async => "google");
 
       // when
       final result = await oauthStorageService.getAuthProvider();
 
       // then
-      verify(() => mockStorage.read(key: "oauth_provider")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.oauthProvider)).called(1);
       expect(result, AuthProvider.google);
     });
 
     test("getAuthProvider returns null for unknown provider key", () async {
       // given
-      when(() => mockStorage.read(key: "oauth_provider")).thenAnswer((_) async => "unknown");
+      when(() => mockStorage.read(key: AuthSecretKey.oauthProvider)).thenAnswer((_) async => "unknown");
 
       // when
       final result = await oauthStorageService.getAuthProvider();
 
       // then
-      verify(() => mockStorage.read(key: "oauth_provider")).called(1);
+      verify(() => mockStorage.read(key: AuthSecretKey.oauthProvider)).called(1);
       expect(result, isNull);
     });
 
     test("clearAuthProvider deletes with correct key", () async {
       // given
-      when(() => mockStorage.delete(key: "oauth_provider")).thenAnswer((_) async {
+      when(() => mockStorage.delete(key: AuthSecretKey.oauthProvider)).thenAnswer((_) async {
         return;
       });
 
@@ -422,7 +459,7 @@ void main() {
       await oauthStorageService.clearAuthProvider();
 
       // then
-      verify(() => mockStorage.delete(key: "oauth_provider")).called(1);
+      verify(() => mockStorage.delete(key: AuthSecretKey.oauthProvider)).called(1);
     });
   });
 }

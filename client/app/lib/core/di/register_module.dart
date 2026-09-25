@@ -56,7 +56,7 @@ abstract class RegisterModule() {
   );
 
   // Temporary old-keyspace capability; neither creating the adapter nor lazy
-  // registration performs native I/O. Production admission comes at cutover.
+  // registration performs native I/O. Only production startup resolves it.
   @lazySingleton
   LegacyNativeStorage legacyNativeStorage() => FlutterLegacyNativeStorageAdapter(
     storage: const FlutterSecureStorage(
@@ -64,14 +64,6 @@ abstract class RegisterModule() {
       // Query all old accessibility classes without mutating their protection.
       iOptions: IOSOptions(accessibility: null),
       mOptions: MacOsOptions(accountName: "Sesori"),
-    ),
-  );
-
-  @lazySingleton
-  FlutterSecureStorage get secureStorage => const FlutterSecureStorage(
-    aOptions: AndroidOptions(resetOnError: false),
-    mOptions: MacOsOptions(
-      accountName: "Sesori",
     ),
   );
 }

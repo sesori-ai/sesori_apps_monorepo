@@ -17,6 +17,7 @@ import "package:sesori_mobile/core/platform/package_info_installed_app_build_sou
 import "package:sesori_mobile/core/platform/path_provider_temporary_directory_provider.dart";
 import "package:sesori_mobile/core/platform/singular/singular_attribution_client.dart";
 import "package:sesori_mobile/core/platform/singular/singular_static_adapter.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 void main() {
@@ -24,6 +25,7 @@ void main() {
 
   setUp(() async {
     await configureDependencies(
+      scope: PersistenceScope.development,
       firebaseEnabled: false,
       createAnalyticsRuntimeBootstrap: ({required crawlGateService}) async => AnalyticsRuntimeBootstrap(
         capability: const AnalyticsRuntimeCapability.disabled(

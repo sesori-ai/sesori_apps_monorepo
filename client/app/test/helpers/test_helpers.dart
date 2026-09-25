@@ -1,7 +1,6 @@
 import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
-import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:flutter_svg/flutter_svg.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:http/http.dart" as http;
@@ -76,8 +75,6 @@ class MockRecordingFileProvider() extends Mock implements RecordingFileProvider;
 class MockWakeLockService() extends Mock implements WakeLockService;
 
 class MockAudioFormatConfig() extends Mock implements AudioFormatConfig;
-
-class MockFlutterSecureStorage() extends Mock implements FlutterSecureStorage;
 
 void stubProductAnalyticsService({required MockProductAnalyticsService service}) {
   final states = BehaviorSubject<ProductAnalyticsState>.seeded(ProductAnalyticsState.initial);

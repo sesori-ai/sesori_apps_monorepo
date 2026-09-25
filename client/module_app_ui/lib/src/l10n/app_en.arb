@@ -2,6 +2,8 @@
   "@@locale": "en",
   "sessionDetailHarnessLegacyWarning": "Update your bridge to check harness availability.",
   "appTitle": "Sesori Mobile",
+  "persistenceStartupFailureTitle": "Storage upgrade paused",
+  "persistenceStartupFailureDescription": "Sesori couldn’t finish upgrading your local storage. Close and reopen Sesori to try again.",
   "connectErrorUnexpectedFormat": "Unexpected response format",
   "connectErrorUnknown": "An unknown error occurred",
   "apiErrorNotAuthenticated": "Not authenticated — check your connection",

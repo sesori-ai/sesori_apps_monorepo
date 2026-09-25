@@ -1,6 +1,7 @@
 import "package:injectable/injectable.dart";
-import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 
+import "../foundation/persistence/persistence_keys.dart";
 import "../logging/logging.dart";
 
 /// Which theme the app renders in: the device setting, or a pinned choice.
@@ -24,22 +25,16 @@ enum AppearanceMode({
 
 /// Persists the user's appearance choice across app runs.
 ///
-/// The value is not a secret, but [SecureStorage] is the only key/value store
-/// the shells already have, so it carries this preference too rather than
-/// pulling in a second storage plugin. It survives logout by design: the theme
-/// is a device preference, not account state.
+/// The value is an ordinary plaintext preference. It survives logout by
+/// design: the theme is a device preference, not account state.
 @lazySingleton
-class AppearanceStore({required SecureStorage secureStorage}) {
-  static const _storageKey = "appearance_mode";
-
-  final SecureStorage _storage = secureStorage;
-
+class AppearanceStore({required final PersisterRepository _persister}) {
   /// The stored appearance preference, or [AppearanceMode.system] when nothing
   /// was ever chosen, the stored value is unreadable, or storage fails. A
   /// theme preference is never worth failing startup over.
   Future<AppearanceMode> read() async {
     try {
-      final stored = await _storage.read(key: _storageKey);
+      final stored = await _persister.readString(key: StringPreferenceKey.appearanceMode);
       if (stored == null) return AppearanceMode.system;
 
       final mode = AppearanceMode.tryParse(value: stored);
@@ -59,7 +54,7 @@ class AppearanceStore({required SecureStorage secureStorage}) {
   /// logged rather than surfaced.
   Future<void> write({required AppearanceMode mode}) async {
     try {
-      await _storage.write(key: _storageKey, value: mode.storageValue);
+      await _persister.writeString(key: StringPreferenceKey.appearanceMode, value: mode.storageValue);
     } on Object catch (error, stackTrace) {
       logw("Failed to persist the appearance mode", error, stackTrace);
     }

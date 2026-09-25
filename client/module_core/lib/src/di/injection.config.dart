@@ -275,6 +275,13 @@ extension GetItInjectableX on _i174.GetIt {
         provider: gh<_i800.TemporaryDirectoryProvider>(),
       ),
     );
+    gh.lazySingleton<_i217.RegisteredBridgesStore>(
+      () => _i217.RegisteredBridgesStore(
+        persister: gh<_i903.PersisterRepository>(),
+        authSession: gh<_i442.AuthSession>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i107.VoiceRepository>(
       () => _i107.VoiceRepository(api: gh<_i176.VoiceApi>()),
     );
@@ -282,12 +289,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i198.ComposerDraftRepository(
         storage: gh<_i64.ComposerDraftStorage>(),
       ),
-    );
-    gh.lazySingleton<_i209.AppearanceStore>(
-      () => _i209.AppearanceStore(secureStorage: gh<_i442.SecureStorage>()),
-    );
-    gh.lazySingleton<_i901.ChatInputModeStore>(
-      () => _i901.ChatInputModeStore(secureStorage: gh<_i442.SecureStorage>()),
     );
     gh.lazySingleton<_i695.LegacyNativeStorageMigrationRepository>(
       () => _i695.LegacyNativeStorageMigrationRepository(
@@ -299,6 +300,9 @@ extension GetItInjectableX on _i174.GetIt {
         loopbackServer: gh<_i456.PluginAuthenticationLoopbackServer>(),
         browser: gh<_i732.PluginAuthenticationBrowser>(),
       ),
+    );
+    gh.lazySingleton<_i895.RoomKeyStorage>(
+      () => _i895.RoomKeyStorage(storage: gh<_i903.SecureStorageRepository>()),
     );
     gh.lazySingleton<_i258.InstalledAppBuildApi>(
       () => _i258.InstalledAppBuildApi(
@@ -317,19 +321,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i274.AnalyticsRepository>(
       () => _i274.AnalyticsRepository(api: gh<_i727.AnalyticsApi>()),
     );
-    gh.lazySingleton<_i958.PluginPreferenceApi>(
-      () => _i958.PluginPreferenceApi(storage: gh<_i442.SecureStorage>()),
-    );
-    gh.lazySingleton<_i407.NotificationPreferencesDeviceIdStorage>(
-      () => _i407.NotificationPreferencesDeviceIdStorage(
-        storage: gh<_i442.SecureStorage>(),
-      ),
-    );
-    gh.lazySingleton<_i197.ProductAnalyticsPreferenceStorage>(
-      () => _i197.ProductAnalyticsPreferenceStorage(
-        storage: gh<_i442.SecureStorage>(),
-      ),
-    );
     gh.lazySingleton<_i516.NotificationOpenDispatcher>(
       () => _i516.NotificationOpenDispatcher(
         authSession: gh<_i442.AuthSession>(),
@@ -338,6 +329,27 @@ extension GetItInjectableX on _i174.GetIt {
         routeDispatcher: gh<_i951.RouteDispatcher>(),
         routeSource: gh<_i366.RouteSource>(),
       ),
+    );
+    gh.lazySingleton<_i958.PluginPreferenceApi>(
+      () =>
+          _i958.PluginPreferenceApi(persister: gh<_i903.PersisterRepository>()),
+    );
+    gh.lazySingleton<_i407.NotificationPreferencesDeviceIdStorage>(
+      () => _i407.NotificationPreferencesDeviceIdStorage(
+        persister: gh<_i903.PersisterRepository>(),
+      ),
+    );
+    gh.lazySingleton<_i197.ProductAnalyticsPreferenceStorage>(
+      () => _i197.ProductAnalyticsPreferenceStorage(
+        persister: gh<_i903.PersisterRepository>(),
+      ),
+    );
+    gh.lazySingleton<_i209.AppearanceStore>(
+      () => _i209.AppearanceStore(persister: gh<_i903.PersisterRepository>()),
+    );
+    gh.lazySingleton<_i901.ChatInputModeStore>(
+      () =>
+          _i901.ChatInputModeStore(persister: gh<_i903.PersisterRepository>()),
     );
     gh.lazySingleton<_i507.InstalledAppBuildRepository>(
       () => _i507.InstalledAppBuildRepository(
@@ -349,18 +361,8 @@ extension GetItInjectableX on _i174.GetIt {
         source: gh<_i345.AnalyticsReleaseCutoffSource>(),
       ),
     );
-    gh.lazySingleton<_i895.RoomKeyStorage>(
-      () => _i895.RoomKeyStorage(gh<_i442.SecureStorage>()),
-    );
     gh.lazySingleton<_i205.BridgeRepository>(
       () => _i205.BridgeRepository(api: gh<_i384.BridgeApi>()),
-    );
-    gh.lazySingleton<_i217.RegisteredBridgesStore>(
-      () => _i217.RegisteredBridgesStore(
-        secureStorage: gh<_i442.SecureStorage>(),
-        authSession: gh<_i442.AuthSession>(),
-      ),
-      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i843.LegacyNativeStorageMigrationService>(
       () => _i843.LegacyNativeStorageMigrationService(

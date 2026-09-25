@@ -16,6 +16,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "core/di/analytics_runtime_bootstrap.dart";
 import "core/di/injection.dart";
+import "core/di/register_module.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/platform/firebase_analytics_startup.dart";
 import "core/platform/singular_attribution_startup.dart";
@@ -72,6 +73,7 @@ void main() async {
     shouldInitializeFirebase: shouldInitializeFirebase,
     configureDependenciesFn: () async {
       final analyticsBootstrap = await configureDependencies(
+        scope: clientPersistenceScope,
         firebaseEnabled: shouldInitializeFirebase,
         createAnalyticsRuntimeBootstrap: ({required crawlGateService}) => _createAnalyticsRuntimeBootstrap(
           shouldInitializeFirebase: shouldInitializeFirebase,
@@ -85,6 +87,7 @@ void main() async {
       );
       return analyticsBootstrap;
     },
+    disposeDependenciesFn: getIt.reset,
     prepareSingularAttributionFn: _prepareSingularAttribution,
     applySingularCrawlGateFn: _applySingularCrawlGate,
     initializeDeepLinks: () => getIt<DeepLinkService>().init(),
@@ -108,6 +111,7 @@ void main() async {
 Future<void> bootstrapSesoriApp({
   required bool shouldInitializeFirebase,
   required Future<AnalyticsRuntimeBootstrap> Function() configureDependenciesFn,
+  required Future<void> Function() disposeDependenciesFn,
   required void Function() prepareSingularAttributionFn,
   required void Function({required AnalyticsStoreCrawlGate crawlGate}) applySingularCrawlGateFn,
   required void Function() initializeDeepLinks,
@@ -119,7 +123,19 @@ Future<void> bootstrapSesoriApp({
   required Future<ChatInputMode> Function() readChatInputModeFn,
   required void Function(Widget app) runAppFn,
 }) async {
-  final analyticsBootstrap = await configureDependenciesFn();
+  final AnalyticsRuntimeBootstrap analyticsBootstrap;
+  try {
+    analyticsBootstrap = await configureDependenciesFn();
+  } on LegacyStorageMigrationException catch (error, stackTrace) {
+    loge("Unable to finish the local storage upgrade", error, stackTrace);
+    try {
+      await disposeDependenciesFn();
+    } on Object catch (disposeError, disposeStackTrace) {
+      loge("Failed to dispose startup dependencies after the storage upgrade failed", disposeError, disposeStackTrace);
+    }
+    runAppFn(const PersistenceStartupFailureApp());
+    return;
+  }
   prepareSingularAttributionFn();
   initializeDeepLinks();
   await startProductAnalyticsFn();

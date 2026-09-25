@@ -16,8 +16,7 @@ export "package:sesori_auth/sesori_auth.dart"
         OAuthDeviceDescriptor,
         OAuthDeviceDescriptorProvider,
         OAuthFlowProvider,
-        OAuthHandoff,
-        SecureStorage;
+        OAuthHandoff;
 export "package:sesori_auth/sesori_auth.dart"
     show
         ApiError,

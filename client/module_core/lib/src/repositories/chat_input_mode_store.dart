@@ -1,6 +1,7 @@
 import "package:injectable/injectable.dart";
-import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 
+import "../foundation/persistence/persistence_keys.dart";
 import "../logging/logging.dart";
 
 /// Which input the session composer leads with: press-and-hold voice
@@ -24,22 +25,16 @@ enum ChatInputMode({
 
 /// Persists the user's chat input mode choice across app runs.
 ///
-/// The value is not a secret, but [SecureStorage] is the only key/value store
-/// the shells already have, so it carries this preference too rather than
-/// pulling in a second storage plugin. It survives logout by design: how the
-/// composer leads is a device preference, not account state.
+/// The value is an ordinary plaintext preference. It survives logout by
+/// design: how the composer leads is a device preference, not account state.
 @lazySingleton
-class ChatInputModeStore({required SecureStorage secureStorage}) {
-  static const _storageKey = "chat_input_mode";
-
-  final SecureStorage _storage = secureStorage;
-
+class ChatInputModeStore({required final PersisterRepository _persister}) {
   /// The stored chat input preference, or [ChatInputMode.voiceFirst] when
   /// nothing was ever chosen, the stored value is unreadable, or storage
   /// fails. A composer preference is never worth failing startup over.
   Future<ChatInputMode> read() async {
     try {
-      final stored = await _storage.read(key: _storageKey);
+      final stored = await _persister.readString(key: StringPreferenceKey.chatInputMode);
       if (stored == null) return ChatInputMode.voiceFirst;
 
       final mode = ChatInputMode.tryParse(value: stored);
@@ -59,7 +54,7 @@ class ChatInputModeStore({required SecureStorage secureStorage}) {
   /// logged rather than surfaced.
   Future<void> write({required ChatInputMode mode}) async {
     try {
-      await _storage.write(key: _storageKey, value: mode.storageValue);
+      await _persister.writeString(key: StringPreferenceKey.chatInputMode, value: mode.storageValue);
     } on Object catch (error, stackTrace) {
       logw("Failed to persist the chat input mode", error, stackTrace);
     }

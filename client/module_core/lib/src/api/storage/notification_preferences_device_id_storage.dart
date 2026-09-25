@@ -1,13 +1,13 @@
 import "dart:math";
 
 import "package:injectable/injectable.dart";
-import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 
+import "../../foundation/persistence/persistence_keys.dart";
 import "../../logging/logging.dart";
 
 @lazySingleton
-class NotificationPreferencesDeviceIdStorage({required final SecureStorage _storage}) {
-  static const _storageKey = "notification_preferences_device_id_v1";
+class NotificationPreferencesDeviceIdStorage({required final PersisterRepository _persister}) {
   static final _uuidV4Pattern = RegExp(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
   );
@@ -40,14 +40,14 @@ class NotificationPreferencesDeviceIdStorage({required final SecureStorage _stor
   }
 
   Future<String> _loadOrCreate() async {
-    final stored = await _storage.read(key: _storageKey);
+    final stored = await _persister.readString(key: StringPreferenceKey.notificationPreferencesDeviceId);
     if (stored != null && _uuidV4Pattern.hasMatch(stored)) return stored;
     if (stored != null) {
       logw("Stored notification preferences device ID was invalid; replacing it");
     }
 
     final generated = _generateUuidV4();
-    await _storage.write(key: _storageKey, value: generated);
+    await _persister.writeString(key: StringPreferenceKey.notificationPreferencesDeviceId, value: generated);
     return generated;
   }
 

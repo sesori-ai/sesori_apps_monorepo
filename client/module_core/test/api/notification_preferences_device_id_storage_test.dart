@@ -1,26 +1,28 @@
+import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:test/test.dart";
 
-final class _MemorySecureStorage() implements SecureStorage {
+final class _MemoryPersister() extends Fake implements PersisterRepository {
   final Map<String, String> values = {};
   int readCount = 0;
   int writeCount = 0;
 
   @override
-  Future<String?> read({required String key}) async {
+  Future<String?> readString({required StringPersistenceKey key}) async {
     readCount++;
-    return values[key];
+    return values[key.storageKey];
   }
 
   @override
-  Future<void> write({required String key, required String value}) async {
+  Future<void> writeString({required StringPersistenceKey key, required String value}) async {
     writeCount++;
-    values[key] = value;
+    values[key.storageKey] = value;
   }
 
   @override
-  Future<void> delete({required String key}) async {
-    values.remove(key);
+  Future<void> deleteString({required StringPersistenceKey key}) async {
+    values.remove(key.storageKey);
   }
 }
 
@@ -30,28 +32,28 @@ void main() {
   );
 
   test("generates and persists a stable UUIDv4", () async {
-    final secureStorage = _MemorySecureStorage();
-    final storage = NotificationPreferencesDeviceIdStorage(storage: secureStorage);
+    final persister = _MemoryPersister();
+    final storage = NotificationPreferencesDeviceIdStorage(persister: persister);
 
     final generated = await storage.getOrCreate();
     final cached = await storage.getOrCreate();
-    final restored = await NotificationPreferencesDeviceIdStorage(storage: secureStorage).getOrCreate();
+    final restored = await NotificationPreferencesDeviceIdStorage(persister: persister).getOrCreate();
 
     expect(generated, matches(uuidV4Pattern));
     expect(cached, generated);
     expect(restored, generated);
-    expect(secureStorage.values.values.single, generated);
-    expect(secureStorage.writeCount, 1);
+    expect(persister.values.values.single, generated);
+    expect(persister.writeCount, 1);
   });
 
   test("coalesces concurrent first reads", () async {
-    final secureStorage = _MemorySecureStorage();
-    final storage = NotificationPreferencesDeviceIdStorage(storage: secureStorage);
+    final persister = _MemoryPersister();
+    final storage = NotificationPreferencesDeviceIdStorage(persister: persister);
 
     final values = await Future.wait(List.generate(4, (_) => storage.getOrCreate()));
 
     expect(values.toSet(), hasLength(1));
-    expect(secureStorage.readCount, 1);
-    expect(secureStorage.writeCount, 1);
+    expect(persister.readCount, 1);
+    expect(persister.writeCount, 1);
   });
 }

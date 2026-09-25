@@ -18,7 +18,6 @@ import 'package:firebase_messaging/firebase_messaging.dart' as _i892;
 import 'package:firebase_remote_config/firebase_remote_config.dart' as _i627;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     as _i163;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
 import 'package:image_picker/image_picker.dart' as _i183;
@@ -74,8 +73,6 @@ import 'package:sesori_mobile/core/platform/flutter_persistence_directory.dart'
     as _i512;
 import 'package:sesori_mobile/core/platform/flutter_plugin_authentication_browser.dart'
     as _i987;
-import 'package:sesori_mobile/core/platform/flutter_secure_storage_adapter.dart'
-    as _i816;
 import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
 import 'package:sesori_mobile/core/platform/flutter_voice_capture.dart'
     as _i698;
@@ -134,9 +131,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i833.DeviceInfoPlugin>(
       () => registerModule.deviceInfoPlugin,
-    );
-    gh.lazySingleton<_i558.FlutterSecureStorage>(
-      () => registerModule.secureStorage,
     );
     gh.lazySingleton<_i948.LegacyNativeStorage>(
       () => registerModule.legacyNativeStorage(),
@@ -202,9 +196,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i903.MasterKeyStore>(
       () => registerModule.masterKeyStore(scope: gh<_i903.PersistenceScope>()),
-    );
-    gh.lazySingleton<_i948.SecureStorage>(
-      () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
     );
     gh.lazySingleton<_i948.ComposerImagePicker>(
       () => _i111.FlutterComposerImagePicker(picker: gh<_i183.ImagePicker>()),

@@ -2,17 +2,16 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:injectable/injectable.dart";
-import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 
+import "../../foundation/persistence/persistence_keys.dart";
 import "../../logging/logging.dart";
 
 @lazySingleton
-class RoomKeyStorage(final SecureStorage _storage) {
-  static const _key = "relay_room_key";
-
+class RoomKeyStorage({required final SecureStorageRepository _storage}) {
   Future<Uint8List?> getRoomKey() async {
     try {
-      final encoded = await _storage.read(key: _key);
+      final encoded = await _storage.read(key: CoreSecretKey.relayRoomKey);
       if (encoded == null) return null;
       return base64Url.decode(encoded);
     } catch (e) {
@@ -23,7 +22,7 @@ class RoomKeyStorage(final SecureStorage _storage) {
 
   Future<void> saveRoomKey(Uint8List key) async {
     try {
-      await _storage.write(key: _key, value: base64Url.encode(key));
+      await _storage.write(key: CoreSecretKey.relayRoomKey, value: base64Url.encode(key));
     } catch (e) {
       loge("Failed to save room key", e);
       rethrow;
@@ -32,7 +31,7 @@ class RoomKeyStorage(final SecureStorage _storage) {
 
   Future<void> clearRoomKey() async {
     try {
-      await _storage.delete(key: _key);
+      await _storage.delete(key: CoreSecretKey.relayRoomKey);
     } catch (e) {
       loge("Failed to clear room key", e);
       rethrow;

@@ -19,11 +19,10 @@ no new blanket suppression is added.
 - Service: orchestrate the source repository and shared typed primitive/secret
   repositories. No persistent state except one final completion bool.
 
-This slice is **unwired**. At consumer cutover, production mobile must resolve
-and await the service after shared/core registration and before auth, analytics,
-preferences or other consumers. Check `PersistenceScope.production` **before**
-resolving it: development must not construct the legacy source. Desktop never
-invokes it. The mobile legacy adapter remains inside its own deprecated folder;
+Production mobile resolves and awaits the service after shared/core registration
+and before auth, analytics, preferences or other consumers. Bootstrap checks
+`PersistenceScope.production` **before** resolving it: development must not
+construct the legacy source. Desktop never invokes it. The mobile legacy adapter remains inside its own deprecated folder;
 normal storage/native master adapters never import migration types.
 
 ## Data and restart contract
@@ -43,30 +42,36 @@ normal storage/native master adapters never import migration types.
 
 A failure retains its original typed cause and stack in
 `LegacyStorageMigrationException`, with payload-free presentation and the failed
-operation. Bootstrap must dispose its partial graph and render the fixed upgrade
-failure root instead of starting normal consumers. OS close/relaunch retries;
+operation. Bootstrap awaits disposal of its partial graph and renders the fixed
+upgrade failure root instead of starting normal consumers. It logs disposal
+failure separately and still renders recovery. OS close/relaunch retries;
 clearing app data, replacing keys and automatic re-entry are not recovery paths.
 
 ## Native gates (not established by pure-Dart tests)
 
-The mobile source adapter is now prepared under its own deprecated folder. It
+The mobile source adapter stays under its own deprecated folder. It
 preserves the old namespace/algorithms/protection, disables Android `resetOnError`,
 and uses the same iOS account/group without an accessibility filter for both
 enumeration and named cleanup. Plugin-channel fixtures verify options and error
 forwarding, not actual native completeness. Native/decryption failure must throw,
-not look like an empty snapshot. Actual iOS/Android released-format enumeration, failure
-propagation, startup admission/disposal and backup/restore require qualification.
-Android legacy credential-backup exclusions must land with import/cutover, not
-while released credentials still depend on backup behavior.
+not look like an empty snapshot. Shell tests exercise production admission,
+startup ordering/disposal, pending disable and offline restoration through real
+SQL/crypto with fake native sources. Actual iOS/Android released-format
+enumeration, failure propagation and backup/restore still require qualification.
+Android now excludes old/new credential preferences with the database subtree.
 
 ## Retirement condition
 
 Remove only when supported direct upgrades exclude the **last publicly released
-per-value-native mobile build**. Record that exact production build and the
-public baseline evidence here at consumer cutover; the importer is not active
-yet, so its final legacy production build is not known. Do not invent a retirement
-version, treat an internal tag as a production baseline, or equate plan completion
-with permission to remove upgrade compatibility.
+per-value-native mobile build**. The public baseline observed on 2026-09-25 is
+**1.9.0 on both stores**: [Apple lookup](https://itunes.apple.com/lookup?bundleId=com.sesori.app&country=us)
+reports an iOS release at `2026-09-25T02:28:01Z`;
+[Google Play](https://play.google.com/store/apps/details?id=com.sesori.app&hl=en&gl=US)
+reports Android 1.9.0 with public release-note commit `ffa5935`. Public listings do
+not establish exact iOS build numbers or native upgrade qualification. Reconcile
+any later per-value-native production release at rollout and before retirement.
+Do not invent a retirement version, treat internal `1.9.1+1` as a public baseline,
+or equate plan completion with permission to remove upgrade compatibility.
 
 ## Deletion checklist
 
