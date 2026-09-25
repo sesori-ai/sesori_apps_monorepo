@@ -78,10 +78,12 @@
   a fresh profile and synthetic project. The owned process was terminated and reaped. This is native REST
   shape evidence, not authenticated provider execution or native transcript/tool lifecycle evidence.
 - Sanitized native REST fixtures are committed alongside their provenance. Transcript/form examples are
-  source-derived. Seventeen mapper cases pass, including per-image and collection byte/count bounds,
+  source-derived. Eighteen mapper cases pass, including per-image and collection byte/count bounds,
   unsafe URL fallback and malformed images; owning-package analyzer is clean. Full build_runner ran.
-- Architecture review approved `465baf1` with no findings. Scope: 1,363 authored + 97 generated changed lines
-  (1,460 total). No v1 code or public wire/database contract changes.
+- Architecture review approved `465baf1` with no findings. Scope: 1,386 authored + 97 generated changed lines
+  (1,483 total). No v1 code or public wire/database contract changes.
+- Review follow-up gates shell-command extraction on recognized shell tools, with custom-tool regression coverage.
+  A pinned Dart 3.13.4 probe confirms `UriData.contentText` preserves Base64; no decode/re-encode is needed.
 - Step 7 must use synthetic-message descriptions for user-visible compaction arguments rather than expose
   bridge-authored model guidance. Form answers must reuse the visible field order and convert labels to
   native option values; external fields and conditional rendering remain the accepted D7 gap.

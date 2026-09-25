@@ -79,9 +79,26 @@ void main() {
         PluginToolStatus.error,
       ),
     ]) {
-      final result = mapper.mapToolState(state: SessionMessageToolState.fromJson(raw));
+      final result = mapper.mapToolState(toolName: "bash", state: SessionMessageToolState.fromJson(raw));
       expect(result.status, expected);
       if (expected == PluginToolStatus.error) expect(result.error, "Exact failure");
+    }
+  });
+
+  test("only recognized shell tools expose command input as shell commands", () {
+    final state = SessionMessageToolState.fromJson(const <String, dynamic>{
+      "status": "running",
+      "input": <String, dynamic>{"command": "fixture command"},
+      "metadata": <String, dynamic>{"title": "Native task"},
+    });
+    for (final (name, expected) in const <(String, String?)>[
+      ("bash", "fixture command"),
+      ("shell", "fixture command"),
+      ("mcp-command", null),
+    ]) {
+      final result = mapper.mapToolState(toolName: name, state: state);
+      expect(result.shellCommand, expected);
+      expect(result.title, "Native task");
     }
   });
 
@@ -191,6 +208,7 @@ void main() {
 
   test("bounds standalone tool images and excludes local or credentialed URLs", () {
     final result = mapper.mapToolState(
+      toolName: "bash",
       state: SessionMessageToolState.fromJson(<String, dynamic>{
         "status": "completed",
         "input": const <String, dynamic>{"command": 42},
@@ -209,6 +227,7 @@ void main() {
     );
     expect(result.attachments.first, isA<PluginMessageAttachmentRemoteUrl>());
     expect(result.attachments.skip(1).take(3), everyElement(isA<PluginMessageAttachmentInlineImage>()));
+    expect((result.attachments[1] as PluginMessageAttachmentInlineImage).base64, "AQID");
     expect(result.attachments.skip(4), everyElement(isA<PluginMessageAttachmentMetadata>()));
     expect(result.shellCommand, isNull);
     expect(result.title, isNull);

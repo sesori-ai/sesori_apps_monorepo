@@ -221,12 +221,12 @@ class const V2MessageMapper() {
       messageID: messageId,
       tool: content.name,
       kind: toolKind(name: content.name),
-      state: mapToolState(state: content.state),
+      state: mapToolState(toolName: content.name, state: content.state),
     ),
     _ => _unsupportedContent(),
   };
 
-  PluginToolState mapToolState({required SessionMessageToolState state}) {
+  PluginToolState mapToolState({required String toolName, required SessionMessageToolState state}) {
     final (status, input, metadata, content, error) = switch (state) {
       SessionMessageToolStateStreaming() => (PluginToolStatus.pending, null, null, const <ToolContent>[], null),
       SessionMessageToolStateRunning() => (
@@ -256,7 +256,9 @@ class const V2MessageMapper() {
     return PluginToolState(
       status: status,
       title: metadata == null ? null : V2ToolPresentationFields.fromJson(metadata).title,
-      shellCommand: input == null ? null : V2ToolPresentationFields.fromJson(input).command,
+      shellCommand: input == null || toolKind(name: toolName) != PluginToolKind.command
+          ? null
+          : V2ToolPresentationFields.fromJson(input).command,
       output: text.isEmpty ? null : _truncate(text: text.join("\n")),
       error: error,
       attachments: _limitAttachments(
