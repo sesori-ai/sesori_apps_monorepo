@@ -3,8 +3,8 @@
 ## Execution
 
 - Status: #1729 merged with 25 passing checks. Cached shared secrets (PR 6)
-  are reconciled with that SQL layer and pass focused verification;
-  implementation review pending.
+  are reconciled with that SQL layer and pass focused verification and
+  architecture review.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
@@ -27,7 +27,7 @@
 | 3.a — Initial cipher foundation | Merged | #1715; 15 tests, architecture approval, 15 passing CI checks. |
 | 3.b — Shared storage foundations | Merged | #1726; 26 shared tests, one Android options test, architecture approval, four clean analyses; 23 checks passed at readiness. |
 | 3.c — Shared Drift/primitive persistence | Merged | #1729; 29 tests, architecture approval, clean analysis/generation and 25 passing CI checks. |
-| 3.d — Cached shared secrets | Verified locally | PR 6; 46 shared tests, clean owning analysis/generation; review pending; no app cutover. |
+| 3.d — Cached shared secrets | Architecture approved | PR 6; 46 shared tests, clean owning analysis/generation; no app cutover. |
 | 4.a — Deprecated mobile import | Not started | PR 7; isolated module, explicit deprecation, domain keys and recovery tests. |
 | 4.b — Native capabilities and backup | Not started | PR 8; narrow platform adapters and actual mobile backup boundary. |
 | 4.c — Both-client cutover | Not started | PR 9; lockstep consumers, migration/failure startup gate and runtime adapter removal. |
@@ -127,6 +127,9 @@
   initialization, native denial/loss, ciphertext-before-key exclusion and
   rollback. Dependency resolution, generation, formatting and owning analysis
   passed. Native access remains fake; app bindings are unchanged.
+- Cached-secret review `51bf34aa-9408-4082-ae7e-7ba5a3a55c39` approved exact
+  range `0818f4b..bae788a`, all 13 paths, without findings. Native shell adapters,
+  migration and consumer cutover were excluded.
 - None of this evidence establishes released-mobile migration, mobile
   backup/restore, real credential behavior, packaged replacement or actual
   prompt counts. Those gates remain.

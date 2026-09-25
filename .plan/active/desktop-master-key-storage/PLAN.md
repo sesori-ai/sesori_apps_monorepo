@@ -466,3 +466,6 @@ or successful build is not native authorization, migration or distribution proof
 - SQL implementation review `7ee56961-ed06-48a5-aa30-2cff50d8bbd5` approved exact
   range `af23da2..2e1309b` (all 20 paths) without findings. The cached-secret
   successor, native capabilities and consumer/migration cutover were excluded.
+- Cached-secret implementation review `51bf34aa-9408-4082-ae7e-7ba5a3a55c39`
+  approved exact range `0818f4b..bae788a` (all 13 paths) without findings. This
+  does not approve native shell adapters, migration or future app cutover.
