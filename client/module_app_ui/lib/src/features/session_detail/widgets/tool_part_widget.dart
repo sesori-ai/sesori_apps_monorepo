@@ -8,6 +8,7 @@ import "../../../l10n/app_localizations.dart";
 import "../../../utils/copy_text_to_clipboard.dart";
 import "attachment_collection_widget.dart";
 import "transcript_disclosure.dart";
+import "transcript_live_row.dart";
 
 class const ToolPartWidget({super.key, required final MessagePartTool part}) extends StatelessWidget {
   @override
@@ -60,6 +61,7 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
     final status = state.status;
     final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
     final command = state.shellCommand;
+    final live = _isLive(status: status);
 
     if (command != null) {
       final verb = switch (status) {
@@ -73,11 +75,14 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
       final rowStyle = status == ToolStatus.error ? style.copyWith(color: prego.colors.textErrorPrimary) : style;
       return Row(
         children: [
-          Icon(TablerRegular.terminal_2, size: PregoIconSize.sm, color: rowStyle.color),
+          if (live)
+            const TranscriptLiveSparkle()
+          else
+            Icon(TablerRegular.terminal_2, size: PregoIconSize.sm, color: rowStyle.color),
           SizedBox(width: prego.spacing.md),
           Expanded(
             child: _LiveLabel(
-              live: _isLive(status: status),
+              live: live,
               label: Text.rich(
                 TextSpan(
                   text: "$verb ",
@@ -102,11 +107,11 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
     final label = [ToolPartWidget._toolName(loc: loc, part: part), ?state.title].join(" ");
     return Row(
       children: [
-        _statusIcon(status: status, prego: prego),
+        if (live) const TranscriptLiveSparkle() else _statusIcon(status: status, prego: prego),
         SizedBox(width: prego.spacing.md),
         Expanded(
           child: _LiveLabel(
-            live: _isLive(status: status),
+            live: live,
             label: Text(label, style: style, maxLines: 1, overflow: .ellipsis),
             semanticLabel: label,
           ),
@@ -118,6 +123,7 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
   static bool _isLive({required ToolStatus status}) => status == ToolStatus.pending || status == ToolStatus.running;
 
   static Widget _statusIcon({required ToolStatus status, required PregoDesignSystem prego}) => switch (status) {
+    // A live tool leads with the sparkle instead.
     ToolStatus.pending || ToolStatus.running || ToolStatus.completed => Icon(
       TablerRegular.tool,
       size: PregoIconSize.sm,
@@ -279,16 +285,10 @@ class _ToolPanelState() extends State<_ToolPanel> {
   }
 }
 
-/// A running step's label shimmers in place of a spinner; reduced motion keeps
-/// it still.
+/// A running step's label shimmers after the sparkle; reduced motion keeps
+/// both still.
 class const _LiveLabel({required final bool live, required final Widget label, required final String semanticLabel})
     extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    if (!live) return label;
-    return Align(
-      alignment: AlignmentDirectional.centerStart,
-      child: PregoShimmer(appearDelay: Duration.zero, semanticLabel: semanticLabel, child: label),
-    );
-  }
+  Widget build(BuildContext context) => live ? TranscriptLiveLabel(label: label, semanticLabel: semanticLabel) : label;
 }
