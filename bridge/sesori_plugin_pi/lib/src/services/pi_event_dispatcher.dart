@@ -6,6 +6,7 @@ import "../api/models/pi_session_history_dto.dart";
 import "../models/pi_assistant_stop_reason.dart";
 import "../repositories/mappers/pi_history_mapper.dart";
 import "../repositories/mappers/pi_message_identity_builder.dart";
+import "../repositories/mappers/pi_tool_kind_mapper.dart";
 import "../trackers/pi_message_identity_tracker.dart";
 import "../trackers/pi_tool_tracker.dart";
 
@@ -786,6 +787,7 @@ PluginMessagePart _toolPart({required String sessionId, required PiTrackedTool t
   sessionID: sessionId,
   messageID: tool.messageId,
   tool: tool.name,
+  kind: PiToolKindMapper.map(name: tool.name),
   state: tool.state,
 );
 

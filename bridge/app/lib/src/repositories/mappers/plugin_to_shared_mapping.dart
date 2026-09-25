@@ -16,6 +16,16 @@ extension PluginToolStatusMapping on PluginToolStatus {
   };
 }
 
+extension PluginToolKindMapping on PluginToolKind {
+  ToolKind toShared() => switch (this) {
+    PluginToolKind.read => ToolKind.read,
+    PluginToolKind.edit => ToolKind.edit,
+    PluginToolKind.command => ToolKind.command,
+    PluginToolKind.search => ToolKind.search,
+    PluginToolKind.other => ToolKind.other,
+  };
+}
+
 extension SessionAbortSubAgentPolicyMapping on SessionAbortSubAgentPolicy {
   PluginAbortSubAgentPolicy toPlugin() => switch (this) {
     SessionAbortSubAgentPolicy.confirm => PluginAbortSubAgentPolicy.confirm,
@@ -121,12 +131,13 @@ extension PluginMessagePartMapping on PluginMessagePart {
       messageID: messageID,
       text: text,
     ),
-    PluginMessagePartTool(:final id, :final messageID, :final tool, :final state) => MessagePart.tool(
+    PluginMessagePartTool(:final id, :final messageID, :final tool, :final kind, :final state) => MessagePart.tool(
       id: id,
       sessionID: sessionId,
       messageID: messageID,
       tool: tool ?? "",
       state: state.toShared(retainSummary: false),
+      kind: kind.toShared(),
     ),
     PluginMessagePartSubtask(
       :final id,

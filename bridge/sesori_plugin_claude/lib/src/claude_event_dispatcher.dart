@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/claude_stream_message.dart";
+import "models/claude_agent_selection.dart";
 import "models/claude_task_notification.dart";
 import "models/claude_tool_use_result.dart";
 import "repositories/mappers/claude_api_error_mapper.dart";
@@ -375,7 +376,7 @@ final class ClaudeEventDispatcher({
           info: PluginMessage.error(
             id: messageId,
             sessionID: sessionId,
-            agent: "claude",
+            agent: ClaudeAgentSelection.messageAgent,
             modelID: _modelId(sessionId: sessionId),
             providerID: "anthropic",
             variant: _variant(sessionId: sessionId),
@@ -600,7 +601,7 @@ final class ClaudeEventDispatcher({
         info: PluginMessage.error(
           id: messageId,
           sessionID: sessionId,
-          agent: "claude",
+          agent: ClaudeAgentSelection.messageAgent,
           modelID: _modelId(sessionId: sessionId),
           providerID: "anthropic",
           variant: _variant(sessionId: sessionId),
@@ -619,7 +620,7 @@ final class ClaudeEventDispatcher({
   }) => PluginMessage.assistant(
     id: messageId,
     sessionID: sessionId,
-    agent: "claude",
+    agent: ClaudeAgentSelection.messageAgent,
     modelID: _modelId(sessionId: sessionId),
     providerID: "anthropic",
     variant: _variant(sessionId: sessionId),

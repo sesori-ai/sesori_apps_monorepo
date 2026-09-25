@@ -22,6 +22,11 @@ enum ClaudeAgentSelection({
     permissionMode: ClaudePermissionMode.plan,
   );
 
+  /// The agent recorded on assistant and error messages. It must stay a
+  /// selectable agent: the bridge resends the latest message's agent, for
+  /// example when it auto-continues after a usage limit.
+  static String get messageAgent => standard.displayName;
+
   static ClaudeAgentSelection? tryParse(String value) {
     final normalized = value.trim().toLowerCase();
     for (final selection in values) {

@@ -125,7 +125,7 @@ void main() {
       final assistant = messages[1];
       expect(assistant.info, isA<PluginMessageAssistant>());
       expect(assistant.info.id, "assistant-message-id");
-      expect((assistant.info as PluginMessageAssistant).agent, "claude");
+      expect((assistant.info as PluginMessageAssistant).agent, "Agent");
       expect((assistant.info as PluginMessageAssistant).modelID, "claude-test-model");
       expect((assistant.info as PluginMessageAssistant).providerID, "anthropic");
       expect((assistant.info as PluginMessageAssistant).variant, "high");

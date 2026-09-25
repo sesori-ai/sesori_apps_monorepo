@@ -77,23 +77,21 @@ class const _SummaryRow({required final TranscriptSummary summary, required fina
           color: style.color,
         ),
         SizedBox(width: prego.spacing.md),
-        Expanded(
-          child: Text.rich(
-            TextSpan(
-              text: [for (final count in summary.counts) _countLabel(loc: loc, count: count)].join(" · "),
-              children: [
-                if (failedCount > 0)
-                  TextSpan(
-                    text: " · ${loc.transcriptSummaryFailed(failedCount)}",
-                    style: style.copyWith(color: prego.colors.textErrorPrimary),
-                  ),
-              ],
-            ),
+        // The counts ellipsize on a narrow screen; the failure count never does.
+        Flexible(
+          child: Text(
+            [for (final count in summary.counts) _countLabel(loc: loc, count: count)].join(" · "),
             style: style,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
+        if (failedCount > 0)
+          Text(
+            " · ${loc.transcriptSummaryFailed(failedCount)}",
+            style: style.copyWith(color: prego.colors.textErrorPrimary),
+            maxLines: 1,
+          ),
       ],
     );
   }
@@ -101,6 +99,10 @@ class const _SummaryRow({required final TranscriptSummary summary, required fina
   static String _countLabel({required AppLocalizations loc, required TranscriptKindCount count}) =>
       switch (count.kind) {
         TranscriptStepKind.thinking => loc.transcriptSummaryThought,
+        TranscriptStepKind.read => loc.transcriptSummaryRead(count.count),
+        TranscriptStepKind.edit => loc.transcriptSummaryEdited(count.count),
+        TranscriptStepKind.command => loc.transcriptSummaryRan(count.count),
+        TranscriptStepKind.search => loc.transcriptSummarySearches(count.count),
         TranscriptStepKind.tool => loc.transcriptSummarySteps(count.count),
         TranscriptStepKind.subAgent => loc.transcriptSummarySubAgents(count.count),
       };

@@ -100,7 +100,7 @@ void main() {
       expect(info, isA<PluginMessageAssistant>());
       final assistant = info as PluginMessageAssistant;
       expect(assistant.id, "msg-1");
-      expect(assistant.agent, "claude");
+      expect(assistant.agent, "Agent");
       expect(assistant.modelID, "claude-opus-5");
       expect(assistant.providerID, "anthropic");
       expect((textStart.last as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);

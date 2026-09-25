@@ -55,6 +55,10 @@ provider and platform verification remains in the
   prompt when native model discovery identifies it as non-reasoning, even when
   command discovery fails. Reasoning models still require an advertised level;
   an empty variant list after failed thinking discovery cannot establish `off`.
+- The continuation resends the latest agent-authored message's agent without
+  catalog filtering, so every plugin must record a selectable agent on its
+  assistant and error messages. Claude records `Agent`; a quota error replayed
+  from Claude history must be accepted as the continuation's selection.
 - A single bridge timer checks due records every 30 seconds and on startup.
   Reset plus buffer, rather than time since observation, determines eligibility.
   A failed tick remains observable and rearms; disposal drains an in-flight tick.
@@ -92,7 +96,8 @@ provider and platform verification remains in the
 - **L1:** Claude/Pi quota mapper tests; their existing session-service suites;
   core session-event and SSE mapper suites. Include terminal failure, retry
   recovery/exhaustion/cancellation, forwarded subagents, original timestamps,
-  stable IDs, missing resets and timezone ambiguity.
+  stable IDs, missing resets and timezone ambiguity. The Claude plugin test
+  sends a continuation with the selection replayed on a history quota error.
 - **L1:** Shared continuation wire tests; bridge continuation repository and
   v17→v18 migration tests; session repository defaults tests. Cover actual file
   close/reopen, deduplication, preference retention, generation rejection, named
@@ -151,6 +156,8 @@ reported as a client end-to-end or live-provider pass.
 - A prompt is sent before the reset buffer, twice for one observation, or after
   disable/manual cancellation; failed acceptance recording causes a retry.
 - History replay silently clears a session's fast-mode preference.
+- A continuation is rejected as a stale selection because history recorded an
+  agent the plugin does not accept.
 - A failed setting request makes the UI appear enabled, a second client keeps
   stale state after a session update, or an unsupported bridge appears schedulable.
 - A date is displayed in the wrong local day, pending input is shown as a ready

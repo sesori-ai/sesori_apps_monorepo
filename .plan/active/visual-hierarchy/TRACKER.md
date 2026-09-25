@@ -50,7 +50,7 @@ gate: the user picks a variant from a local review page first.
 | [x] | 29 | `visual-hierarchy/archive-alert` | [29/41](#pr-titles) | ≤ 300 | done |
 | [x] | 30 | `visual-hierarchy/failed-sends` | [30/41](#pr-titles) | ≤ 700 | done |
 | [x] | 31 | `visual-hierarchy/live-transcript` | [31/41](#pr-titles) | ≤ 1,200 | done (2 parts) |
-| [ ] | 32 | `visual-hierarchy/tool-kinds` | [32/41](#pr-titles) | ≤ 1,200 | pending |
+| [x] | 32 | `visual-hierarchy/tool-kinds` | [32/41](#pr-titles) | ≤ 1,200 | done |
 | [x] | 33 | `visual-hierarchy/yolo` | [33/41](#pr-titles) | ≤ 500 | done |
 | [x] | 34 | `visual-hierarchy/changes-count` | [34/41](#pr-titles) | ≤ 800 | done |
 | [x] | 35 | `visual-hierarchy/modal-lint` | [35/41](#pr-titles) | ≤ 600 | done |

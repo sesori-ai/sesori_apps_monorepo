@@ -5,12 +5,19 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-MessagePart _tool({required String id, required String name, required ToolStatus status}) => MessagePart.tool(
+/// An older bridge sends no kind, so [kind] defaults to unknown.
+MessagePart _tool({
+  required String id,
+  required String name,
+  required ToolStatus status,
+  ToolKind kind = ToolKind.unknown,
+}) => MessagePart.tool(
   id: id,
   sessionID: "s",
   messageID: "m",
   tool: name,
   state: ToolState(status: status, title: null, shellCommand: null, output: null, error: null),
+  kind: kind,
 );
 
 MessagePart _thought({required String id, required String text}) =>
@@ -47,7 +54,7 @@ TranscriptGroupBlock _group({required List<MessagePart> parts, Map<String, Strin
   return transcript.blocksFor(messageId: "m").whereType<TranscriptGroupBlock>().single;
 }
 
-Widget _app({required TranscriptGroupBlock group, bool disableAnimations = false}) => MaterialApp(
+Widget _app({required TranscriptGroupBlock group, bool disableAnimations = false, double width = 400}) => MaterialApp(
   theme: buildPregoThemeData(brightness: Brightness.light),
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
@@ -57,7 +64,7 @@ Widget _app({required TranscriptGroupBlock group, bool disableAnimations = false
       child: Align(
         alignment: Alignment.topLeft,
         child: SizedBox(
-          width: 400,
+          width: width,
           child: TranscriptGroupWidget(key: ValueKey(group.id), projectId: null, group: group),
         ),
       ),
@@ -78,7 +85,8 @@ void main() {
   testWidgets("a finished group collapses to one summary that eases open and shut", (tester) async {
     await tester.pumpWidget(_app(group: _group(parts: _finishedParts)));
 
-    expect(find.text("Thought · 2 steps · 1 sub-agent · 1 failed"), findsOneWidget);
+    expect(find.text("Thought · 2 steps · 1 sub-agent"), findsOneWidget);
+    expect(find.text(" · 1 failed"), findsOneWidget);
     expect(find.text("read"), findsNothing);
     expect(find.text("Explore the repo"), findsNothing);
     final collapsed = _height(tester);
@@ -144,6 +152,48 @@ void main() {
 
     expect(find.text("2 steps"), findsOneWidget);
     expect(find.text("bash"), findsNothing);
+  });
+
+  testWidgets("the summary names tool calls by kind and keeps unknown kinds as steps", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        group: _group(
+          parts: [
+            _thought(id: "r1", text: "Plan the change"),
+            _tool(id: "t1", name: "Read", status: ToolStatus.completed, kind: ToolKind.read),
+            _tool(id: "t2", name: "Read", status: ToolStatus.completed, kind: ToolKind.read),
+            _tool(id: "t3", name: "Edit", status: ToolStatus.completed, kind: ToolKind.edit),
+            _tool(id: "t4", name: "Bash", status: ToolStatus.error, kind: ToolKind.command),
+            _tool(id: "t5", name: "Grep", status: ToolStatus.completed, kind: ToolKind.search),
+            _tool(id: "t6", name: "mcp", status: ToolStatus.completed),
+          ],
+        ),
+      ),
+    );
+
+    expect(find.text("Thought · read 2 files · edited 1 file · ran 1 command · 1 search · 1 step"), findsOneWidget);
+    expect(find.text(" · 1 failed"), findsOneWidget);
+  });
+
+  testWidgets("a narrow summary ellipsizes its counts but keeps the failure count", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        width: 220,
+        group: _group(
+          parts: [
+            _tool(id: "t1", name: "Read", status: ToolStatus.completed, kind: ToolKind.read),
+            _tool(id: "t2", name: "Edit", status: ToolStatus.completed, kind: ToolKind.edit),
+            _tool(id: "t3", name: "Bash", status: ToolStatus.error, kind: ToolKind.command),
+            _tool(id: "t4", name: "Grep", status: ToolStatus.completed, kind: ToolKind.search),
+          ],
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    final failed = tester.getRect(find.text(" · 1 failed"));
+    final group = tester.getRect(find.byType(TranscriptGroupWidget));
+    expect(failed.right, lessThanOrEqualTo(group.right));
   });
 
   testWidgets("a group of only running steps shows no summary", (tester) async {
