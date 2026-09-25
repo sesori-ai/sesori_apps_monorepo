@@ -4,11 +4,13 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 4/10 — v2 API and event transport implemented on `sesori/opencode-v2-step-4`.
+- Current step: 5.a (PR 5/12) — catalog normalization, [#1733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1733),
+  on `sesori/opencode-v2-step-5`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
-  Step 3 [#1716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1716).
-- One-step-ahead successor: Step 5 read mapping and repository; keep local until Step 4 merges.
+  Step 3 [#1716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1716),
+  Step 4 [#1720](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1720).
+- One-step-ahead successor: Step 5.b transcript mapping (PR 6/12); prepare locally, publish after #1733 merges.
 - Takeover: continue from `aqua-hummingbird`; preserve the existing published Step 2/3 history.
 - Architecture review: first pass rejected 9 layering points; all applied (see PLAN.md Status)
 
@@ -20,12 +22,14 @@
 | 2. Detect v2 and refuse it honestly | 🌿 | 800 (557 authored + 170 generated at review) |
 | 3. Generate v2 models | ⚙️ | 1,500 authored + generated |
 | 4. v2 API and event stream | ⚙️ | 1,200 authored + generated |
-| 5. v2 read mapping and repository | 🚧 | 1,400 |
-| 6. v2 live events, activity and service | 🚧 | 1,400 |
-| 7. v2 writes and activation | 🚧 | 1,500 |
-| 8. Managed runtime on v2 | 🌿 | 500 |
-| 9. Reconcile docs | 🌱 | 400 |
-| 10. Run coverage and retire | 🌱 | 300 |
+| 5.a. v2 catalog normalization (PR 5/12) | ⚙️ | 1,000 total, including generated output |
+| 5.b. v2 transcript mapping (PR 6/12) | 🚧 | 1,200 total, including generated output |
+| 5.c. v2 repository integration (PR 7/12) | 🚧 | 1,200 |
+| 6. v2 live events, activity and service (PR 8/12) | 🚧 | 1,400 |
+| 7. v2 writes and activation (PR 9/12) | 🚧 | 1,500 |
+| 8. Managed runtime on v2 (PR 10/12) | 🌿 | 500 |
+| 9. Reconcile docs (PR 11/12) | 🌱 | 400 |
+| 10. Run coverage and retire (PR 12/12) | 🌱 | 300 |
 
 ## Step 3 Evidence And Handoff
 
@@ -61,6 +65,34 @@
 - Includes the valid post-merge #1716 finding: unconstrained compaction arrays now retain null elements,
   fixed in the generator and exercised both directly and through an API acknowledgement.
 - No active v2 adapter, runtime target, database, shared wire contract, or user-visible behavior change.
+
+## Step 5 Checkpoint
+
+- #1733 now contains catalog/session/form projection and an immutable agent-name lookup only.
+  Display names are exposed in agent selections and session defaults; native-ID resolution stays in the plugin.
+  Project IDs remain canonical directories. No runtime path uses these foundations yet.
+- The official macOS ARM64 2.0.16 npm archive matches its published SHA-512 integrity and carries
+  Anomaly Innovations' Developer ID signature. It is retained under `.pi/opencode-v2-live/runtime/`.
+- Native fixture capture succeeded after the user approved narrow read-only sandbox allowances for OS
+  timezone data, notification-center shared memory and exact ancestor-directory entries. Real profiles,
+  unrelated source contents and external networking stayed blocked. Earlier failed attempts were preserved.
+- The 2.0.16 server produced project, location, session, agent and model/provider catalog responses under
+  a fresh profile and synthetic project. The owned process was terminated and reaped. This is native REST
+  shape evidence, not authenticated provider execution or native transcript/tool lifecycle evidence.
+- Native fixture provenance stays with the catalog slice; form examples are source-derived.
+  Seven catalog/form/identity tests, full code generation and owning-package analysis pass.
+  Second architecture pass approved `f830e46`: 727 authored + 88 generated changed lines (815 total), catalog-only scope.
+- Published history through `ef5015416a` preserves the extracted transcript mapper, its typed tool-display DTOs
+  and generated parts, and `v2_message_mapper_test.dart`. Restore these into Step 5.b rather than rebuilding them.
+  That checkpoint passed 11 transcript cases and analysis; it includes the accepted shell-classification fix.
+- Step 5.b must also preserve assistant retry metadata and agent-switch notices from the second #1733 review,
+  and use `V2AgentNames` for transcript attribution. These findings are accepted, not silently dropped.
+  A Dart 3.13.4 probe disproved the data-URL finding: `UriData.contentText` preserves Base64.
+- Duplicate option-label machinery was declined without a concrete producer: the pinned question tool maps
+  both native value and label from the same option label. Revisit if a real distinct-value collision is demonstrated.
+- Step 7 must use synthetic-message descriptions for user-visible compaction arguments rather than expose
+  bridge-authored model guidance. Form answers must reuse the visible field order and convert labels to
+  native option values; external fields and conditional rendering remain the accepted D7 gap.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.
