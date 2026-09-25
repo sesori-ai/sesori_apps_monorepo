@@ -104,12 +104,13 @@ Widget _buildVariantApp({required ValueChanged<SessionVariant> onVariantSelected
 }
 
 Widget _buildFastModeApp({
+  required PregoDesignSystem designSystem,
   required FastModeControl control,
   required FastModeToggleDecision decision,
   required ValueChanged<bool> onFastModeChanged,
 }) {
   return MaterialApp(
-    theme: ThemeData(extensions: [PregoDesignSystem.light]),
+    theme: ThemeData(extensions: [designSystem]),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: Scaffold(
@@ -145,6 +146,7 @@ void main() {
     testWidgets("is hidden when the model has no fast mode", (tester) async {
       await tester.pumpWidget(
         _buildFastModeApp(
+          designSystem: PregoDesignSystem.light,
           control: FastModeControl.hidden,
           decision: const FastModeToggleApply(fastMode: true),
           onFastModeChanged: (_) {},
@@ -155,30 +157,36 @@ void main() {
       expect(find.byIcon(TablerRegular.bolt_off), findsNothing);
     });
 
-    testWidgets("is highlighted while on and applies a cold switch directly", (tester) async {
-      final changes = <bool>[];
-      await tester.pumpWidget(
-        _buildFastModeApp(
-          control: FastModeControl.on,
-          decision: const FastModeToggleApply(fastMode: false),
-          onFastModeChanged: changes.add,
-        ),
-      );
-      final context = tester.element(find.byType(AgentModelButtons));
+    for (final (name, designSystem, expected) in [
+      ("dark", PregoDesignSystem.dark, const Color(0xFFFEC84B)),
+      ("light", PregoDesignSystem.light, const Color(0xFFF79009)),
+    ]) {
+      testWidgets("is tinted yellow while on in $name theme and applies a cold switch directly", (tester) async {
+        final changes = <bool>[];
+        await tester.pumpWidget(
+          _buildFastModeApp(
+            designSystem: designSystem,
+            control: FastModeControl.on,
+            decision: const FastModeToggleApply(fastMode: false),
+            onFastModeChanged: changes.add,
+          ),
+        );
 
-      final icon = tester.widget<Icon>(find.byIcon(TablerRegular.bolt));
-      expect(icon.color, context.prego.colors.fgBrandPrimary);
-      expect(tester.getSemantics(pill()), isSemantics(isButton: true, isToggled: true));
+        final icon = tester.widget<Icon>(find.byIcon(TablerRegular.bolt));
+        expect(icon.color, expected);
+        expect(tester.getSemantics(pill()), isSemantics(isButton: true, isToggled: true));
 
-      await tester.tap(pill());
-      await tester.pumpAndSettle();
-      expect(changes, [false]);
-    });
+        await tester.tap(pill());
+        await tester.pumpAndSettle();
+        expect(changes, [false]);
+      });
+    }
 
     testWidgets("is dimmed when unavailable and a tap explains why", (tester) async {
       final changes = <bool>[];
       await tester.pumpWidget(
         _buildFastModeApp(
+          designSystem: PregoDesignSystem.light,
           control: FastModeControl.unavailable,
           decision: const FastModeToggleUnavailable(reason: FastModeUnavailableReason.notOnPlan),
           onFastModeChanged: changes.add,
@@ -201,6 +209,7 @@ void main() {
       final changes = <bool>[];
       await tester.pumpWidget(
         _buildFastModeApp(
+          designSystem: PregoDesignSystem.light,
           control: FastModeControl.off,
           decision: const FastModeToggleConfirmCacheReset(fastMode: true),
           onFastModeChanged: changes.add,
