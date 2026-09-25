@@ -30,6 +30,8 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late List<QueuedSessionSubmission> _queuedMessages;
   late List<QueuedSessionPrompt> _bridgeQueuedPrompts;
   QueuedSessionSubmission? _sendingSubmission;
+  QueuedSessionSubmission? _failedSubmission;
+  int retriedFailedSends = 0;
   List<QueuedSessionSubmission> _awaitingBridgeSubmissions = const [];
   Map<String, List<ComposerAttachment>> _bridgePromptAttachments = const {};
   final List<String> cancelledBridgePromptIds = [];
@@ -98,6 +100,13 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     });
   }
 
+  void failSending() {
+    setState(() {
+      _failedSubmission = _sendingSubmission;
+      _sendingSubmission = null;
+    });
+  }
+
   void acceptSendingSubmission() {
     setState(() {
       _awaitingBridgeSubmissions = [..._awaitingBridgeSubmissions, _sendingSubmission!];
@@ -163,6 +172,14 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           onLoadOlderMessages: widget.onLoadOlderMessages,
           messages: _messages,
           sendingSubmission: _sendingSubmission,
+          failedSubmission: _failedSubmission,
+          harnessName: "OpenCode",
+          onRetryFailedSend: () => setState(() {
+            retriedFailedSends++;
+            _sendingSubmission = _failedSubmission;
+            _failedSubmission = null;
+          }),
+          onRemoveFailedSend: () => setState(() => _failedSubmission = null),
           awaitingBridgeSubmissions: _awaitingBridgeSubmissions,
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
@@ -549,6 +566,61 @@ void main() {
 
     expect(harnessKey.currentState?.lastCancelledQueuedMessageIndex, 0);
     expect(find.text("/review src"), findsNothing);
+  });
+
+  testWidgets("a failed send shows Couldn't send with Retry while later messages stay queued", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialQueuedMessages: [
+          _textSubmission(promptId: "prm_failed", text: "first"),
+          _textSubmission(promptId: "prm_later", text: "second"),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    harnessKey.currentState!.beginSending();
+    await tester.pump();
+    harnessKey.currentState!.failSending();
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn’t send"), findsOneWidget);
+    expect(find.text("Queued"), findsOneWidget);
+    expect(find.widgetWithText(TextButton, "Remove"), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, "Retry"));
+    await tester.pumpAndSettle();
+
+    expect(harnessKey.currentState!.retriedFailedSends, 1);
+    expect(find.text("Couldn’t send"), findsNothing);
+    expect(find.text("Sending"), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("a slow send names the harness after a short delay", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialQueuedMessages: [_textSubmission(promptId: "prm_slow", text: "slow")],
+      ),
+    );
+    await tester.pumpAndSettle();
+    harnessKey.currentState!.beginSending();
+    await tester.pump();
+
+    expect(find.text("Sending"), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1900));
+    expect(find.text("Sending to OpenCode…"), findsNothing);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text("Sending"), findsNothing);
+    expect(find.text("Sending to OpenCode…"), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets("a bridge-queued prompt transforms into its message without a blank frame", (tester) async {
@@ -1985,3 +2057,14 @@ void main() {
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
 }
+
+QueuedSessionSubmission _textSubmission({required String promptId, required String text}) =>
+    QueuedSessionSubmission.text(
+      promptId: promptId,
+      text: text,
+      inputMode: ComposerInputMode.typed,
+      attachments: const [],
+      agent: null,
+      agentModel: null,
+      fastMode: false,
+    );

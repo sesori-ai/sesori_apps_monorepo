@@ -54,6 +54,7 @@ SessionDetailState _loadedState({
     queuedMessages: const [],
     bridgePromptAttachments: const {},
     sendingSubmission: null,
+    failedSubmission: null,
     availableAgents: const [],
     availableProviders: const [],
     availableCommands: const [],

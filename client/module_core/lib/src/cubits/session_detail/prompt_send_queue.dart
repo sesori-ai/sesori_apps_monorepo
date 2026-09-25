@@ -13,6 +13,11 @@ class PromptSendQueue() {
   final Queue<QueuedSessionSubmission> _items = Queue<QueuedSessionSubmission>();
   QueuedSessionSubmission? _active;
 
+  /// The head submission whose send really failed. It stays out of the
+  /// pending list so later submissions wait behind it until the user retries
+  /// or removes it.
+  QueuedSessionSubmission? _failed;
+
   /// Retained bridge previews may hold at most one maximum-size submission
   /// across the whole session. Older previews fall back to attachment counts.
   static const maxBridgePreviewBytes = maxComposerPromptAttachmentBytes;
@@ -31,6 +36,7 @@ class PromptSendQueue() {
     for (final submission in [
       for (final entry in _awaitingBridge) entry.submission,
       if (!isActiveSettledElsewhere) ?_active,
+      ?_failed,
       ..._items,
     ]) {
       final attachments = submission.attachments;
@@ -66,6 +72,9 @@ class PromptSendQueue() {
 
   bool get isSending => _active != null;
 
+  /// The failed head submission, shown with Retry until the user acts on it.
+  QueuedSessionSubmission? get failed => _failed;
+
   /// Whether the queue has no pending messages.
   bool get isEmpty => _items.isEmpty;
 
@@ -77,7 +86,9 @@ class PromptSendQueue() {
 
   /// Moves the first pending submission into the active slot.
   QueuedSessionSubmission? beginSend() {
-    if (_active != null || _items.isEmpty || _items.first is UnavailableQueuedCommandSubmission) return null;
+    if (_active != null || _failed != null || _items.isEmpty || _items.first is UnavailableQueuedCommandSubmission) {
+      return null;
+    }
     return _active = _items.removeFirst();
   }
 
@@ -136,6 +147,35 @@ class PromptSendQueue() {
     if (_settledElsewhere.remove(active.promptId)) return false;
     _items.addFirst(active);
     return true;
+  }
+
+  /// Holds the active submission in the failed slot after a real send failure.
+  ///
+  /// Returns whether it was held. Like [failSend], a submission the bridge
+  /// already settled is discarded instead.
+  bool holdFailedSend() {
+    final active = _active;
+    if (active == null) return false;
+    _active = null;
+    if (_settledElsewhere.remove(active.promptId)) return false;
+    _failed = active;
+    return true;
+  }
+
+  /// Puts the failed submission back at the head, unchanged, so its resend
+  /// carries the same prompt id and the bridge's dedup can never run it twice.
+  void retryFailedSend() {
+    final failed = _failed;
+    if (failed == null) return;
+    _failed = null;
+    _items.addFirst(failed);
+  }
+
+  /// Drops the failed submission (user removal) and returns it.
+  QueuedSessionSubmission? removeFailedSend() {
+    final failed = _failed;
+    _failed = null;
+    return failed;
   }
 
   /// Rewrites pending submissions in place while preserving FIFO order.
@@ -206,6 +246,7 @@ class PromptSendQueue() {
   void _removeStagedByPromptId({required String promptId}) {
     _items.removeWhere((item) => item.promptId == promptId);
     _awaitingBridge.removeWhere((entry) => entry.submission.promptId == promptId);
+    if (_failed?.promptId == promptId) _failed = null;
     if (_active?.promptId == promptId) _settledElsewhere.add(promptId);
   }
 
@@ -214,6 +255,7 @@ class PromptSendQueue() {
     _items.clear();
     _awaitingBridge.clear();
     _active = null;
+    _failed = null;
     _settledElsewhere.clear();
     _bridgePromptAttachments.clear();
   }

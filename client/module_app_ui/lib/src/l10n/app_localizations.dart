@@ -2641,6 +2641,18 @@ abstract class AppLocalizations {
   /// **'Sending'**
   String get sessionDetailSendingMessage;
 
+  /// Status under a message whose send is still in flight after a short delay; names the harness, e.g. OpenCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending to {harnessName}…'**
+  String sessionDetailSendingToHarness(String harnessName);
+
+  /// Status under a message whose send failed; Retry and Remove buttons follow it.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t send'**
+  String get sessionDetailSendFailed;
+
   /// No description provided for @sessionDetailPromptOptionsUpdated.
   ///
   /// In en, this message translates to:

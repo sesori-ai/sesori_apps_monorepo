@@ -875,6 +875,19 @@
   "sessionDetailUnavailableCommand": "Command unavailable",
   "sessionDetailQueueCancellationFailed": "Cancellation was not confirmed. The message may already have been sent.",
   "sessionDetailSendingMessage": "Sending",
+  "sessionDetailSendingToHarness": "Sending to {harnessName}…",
+  "@sessionDetailSendingToHarness": {
+    "description": "Status under a message whose send is still in flight after a short delay; names the harness, e.g. OpenCode.",
+    "placeholders": {
+      "harnessName": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionDetailSendFailed": "Couldn’t send",
+  "@sessionDetailSendFailed": {
+    "description": "Status under a message whose send failed; Retry and Remove buttons follow it."
+  },
   "sessionDetailPromptOptionsUpdated": "Prompt options changed. Updated settings and retrying your message.",
   "sessionDetailPromptOptionsRecoveryFailed": "Couldn’t apply updated prompt options. Your message remains queued.",
   "sessionDetailAuthenticationRequired": "Provider login required",

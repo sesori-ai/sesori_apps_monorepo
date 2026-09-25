@@ -630,7 +630,7 @@ void main() {
         ],
       );
       expect(sendCalls, 1);
-      expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
+      expect((cubit.state as SessionDetailLoaded).failedSubmission, isNotNull);
 
       unawaited(cubit.reload());
       await _awaitCondition(() => refreshes.length == 1);
@@ -640,6 +640,8 @@ void main() {
         ),
       );
       await Future<void>.delayed(Duration.zero);
+      // Retry while offline stages the image again without sending it.
+      cubit.retryFailedSend();
       expect(cubit.state, isA<SessionDetailLoading>());
 
       connectionStatus.add(connectedStatus);
@@ -934,6 +936,8 @@ void main() {
         ),
       );
       await Future<void>.delayed(Duration.zero);
+      // Retry while offline stages the image again without sending it.
+      cubit.retryFailedSend();
       connectionStatus.add(connectedStatus);
 
       refreshes.first.complete(

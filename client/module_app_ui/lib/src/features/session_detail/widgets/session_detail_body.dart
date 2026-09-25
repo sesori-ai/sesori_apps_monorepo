@@ -26,14 +26,6 @@ String? _resolveModelName({required AgentModel? model, required List<ProviderInf
   return model.modelID;
 }
 
-/// The harness name the bridge reported, e.g. "Claude Code"; null until the
-/// harness status loads or when an older bridge does not report it.
-String? _harnessName({required SessionInteractionState interaction}) => switch (interaction) {
-  SessionInteractionAvailable(:final displayName) => displayName,
-  SessionInteractionBlocked(:final displayName) => displayName,
-  SessionInteractionChecking() || SessionInteractionLegacyUnverified() => null,
-};
-
 /// "Claude Code · Haiku", or whichever part is known.
 String? _subtitle({required String? harnessName, required String? modelName}) {
   final parts = [?harnessName, ?modelName];
@@ -191,11 +183,11 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     };
     final subtitle = switch (state) {
       SessionDetailLoaded(:final interaction, :final assistantAgentModel, :final availableProviders) => _subtitle(
-        harnessName: _harnessName(interaction: interaction),
+        harnessName: interaction.harnessDisplayName,
         modelName: _resolveModelName(model: assistantAgentModel, providers: availableProviders),
       ),
       SessionDetailHarnessUnavailable(:final interaction) => _subtitle(
-        harnessName: _harnessName(interaction: interaction),
+        harnessName: interaction.harnessDisplayName,
         modelName: null,
       ),
       SessionDetailLoading() || SessionDetailFailed() => null,

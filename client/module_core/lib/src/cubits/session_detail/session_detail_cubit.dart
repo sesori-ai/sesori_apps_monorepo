@@ -789,6 +789,7 @@ class SessionDetailCubit(
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
         sendingSubmission: queue.sendingSubmission,
+        failedSubmission: queue.failedSubmission,
       ),
     );
 
@@ -928,6 +929,7 @@ class SessionDetailCubit(
               queuedMessages: queue.queuedMessages,
               awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
               sendingSubmission: queue.sendingSubmission,
+              failedSubmission: queue.failedSubmission,
               isRefreshing: false,
               availableVariants: availableVariants,
             ),
@@ -986,6 +988,7 @@ class SessionDetailCubit(
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
         sendingSubmission: queue.sendingSubmission,
+        failedSubmission: queue.failedSubmission,
       ),
     );
   }
@@ -1564,6 +1567,7 @@ class SessionDetailCubit(
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
         sendingSubmission: queue.sendingSubmission,
+        failedSubmission: queue.failedSubmission,
       ),
     );
     // A settlement can outrun the send response. Keep the single-flight slot
@@ -1587,6 +1591,7 @@ class SessionDetailCubit(
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
         sendingSubmission: queue.sendingSubmission,
+        failedSubmission: queue.failedSubmission,
       ),
     );
   }
@@ -1619,6 +1624,7 @@ class SessionDetailCubit(
           queuedMessages: queue.queuedMessages,
           awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
           sendingSubmission: queue.sendingSubmission,
+          failedSubmission: queue.failedSubmission,
         ),
       );
     } finally {
@@ -2003,6 +2009,7 @@ class SessionDetailCubit(
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
         sendingSubmission: queue.sendingSubmission,
+        failedSubmission: queue.failedSubmission,
       ),
     );
   }
@@ -2037,6 +2044,7 @@ class SessionDetailCubit(
     queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
     awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: bridgePrompts),
     sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
+    failedSubmission: _visibleFailed(bridgePrompts: bridgePrompts),
     bridgePromptAttachments: _promptQueue.bridgePromptAttachments,
   );
 
@@ -2065,6 +2073,12 @@ class SessionDetailCubit(
     final active = _promptQueue.active;
     if (active == null || _promptQueue.isActiveSettledElsewhere) return null;
     return bridgePrompts.any((prompt) => prompt.id == active.promptId) ? null : active;
+  }
+
+  QueuedSessionSubmission? _visibleFailed({required List<QueuedSessionPrompt> bridgePrompts}) {
+    final failed = _promptQueue.failed;
+    if (failed == null) return null;
+    return bridgePrompts.any((prompt) => prompt.id == failed.promptId) ? null : failed;
   }
 
   Future<void> _drainQueuedMessages() async {
@@ -2133,11 +2147,11 @@ class SessionDetailCubit(
             }
           }
         case ErrorResponse(:final error):
-          sendSettledElsewhere = !_promptQueue.failSend();
+          sendSettledElsewhere = !_settleFailedSend(sendConnectionGeneration: sendConnectionGeneration);
           logw("Failed to send queued session submission", error);
       }
     } on Object catch (error, stackTrace) {
-      sendSettledElsewhere = !_promptQueue.failSend();
+      sendSettledElsewhere = !_settleFailedSend(sendConnectionGeneration: sendConnectionGeneration);
       logw("Failed to send queued session submission", error, stackTrace);
     }
 
@@ -2163,6 +2177,31 @@ class SessionDetailCubit(
         unawaited(_drainQueuedMessages());
       }
     }
+  }
+
+  /// A failure on the connection the send started on is real: the head is
+  /// held with Retry and later submissions wait behind it. A failure after the
+  /// connection dropped is re-queued and re-sent automatically on reconnect.
+  /// Returns whether the submission was kept (false when the bridge settled
+  /// it while the send was in flight).
+  bool _settleFailedSend({required int sendConnectionGeneration}) =>
+      sendConnectionGeneration == _connectionGeneration ? _promptQueue.holdFailedSend() : _promptQueue.failSend();
+
+  /// Sends the failed head again under its original prompt id.
+  void retryFailedSend() {
+    if (_promptQueue.failed == null) return;
+    _promptQueue.retryFailedSend();
+    _emitQueueUpdate();
+    _tryDrainQueue();
+  }
+
+  /// Drops the failed head so the submissions behind it can send.
+  void removeFailedSend() {
+    final removed = _promptQueue.removeFailedSend();
+    if (removed == null) return;
+    _staleOptionsRecoveryAttemptedPromptIds.remove(removed.promptId);
+    _emitQueueUpdate();
+    _tryDrainQueue();
   }
 
   /// Rediscovers the catalog after the bridge rejected a send for naming an
@@ -2803,6 +2842,7 @@ class SessionDetailCubit(
   void _clearLocalPromptQueue() {
     if (_promptQueue.isEmpty &&
         !_promptQueue.isSending &&
+        _promptQueue.failed == null &&
         _promptQueue.awaitingBridge.isEmpty &&
         _promptQueue.bridgePromptAttachments.isEmpty) {
       return;
@@ -2889,6 +2929,7 @@ class SessionDetailCubit(
       queuedMessages: queue.queuedMessages,
       awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
       sendingSubmission: queue.sendingSubmission,
+      failedSubmission: queue.failedSubmission,
       availableAgents: agents,
       availableProviders: providers,
       availableCommands: snapshot.commands,
@@ -2965,6 +3006,7 @@ typedef _QueueView = ({
   List<QueuedSessionSubmission> queuedMessages,
   List<QueuedSessionSubmission> awaitingBridgeSubmissions,
   QueuedSessionSubmission? sendingSubmission,
+  QueuedSessionSubmission? failedSubmission,
 });
 
 typedef _SnapshotDerivation = ({

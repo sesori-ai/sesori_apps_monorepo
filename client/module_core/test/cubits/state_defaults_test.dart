@@ -28,6 +28,7 @@ void main() {
       queuedMessages: [],
       bridgePromptAttachments: {},
       sendingSubmission: null,
+      failedSubmission: null,
       availableAgents: [],
       availableProviders: [],
       availableCommands: [],

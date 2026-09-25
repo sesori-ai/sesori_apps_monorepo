@@ -54,6 +54,9 @@ sealed class SessionDetailState with _$SessionDetailState {
     required List<QueuedSessionSubmission> queuedMessages,
     // Submission currently awaiting bridge acceptance.
     required QueuedSessionSubmission? sendingSubmission,
+    // The head submission whose send failed; later [queuedMessages] wait
+    // behind it until the user retries or removes it.
+    required QueuedSessionSubmission? failedSubmission,
 
     // Prompts the bridge has accepted and retains until their user echo is visible,
     // owned by the bridge (snapshot + session.queued-prompts events). Distinct

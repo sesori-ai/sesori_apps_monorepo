@@ -560,7 +560,7 @@ void main() {
             inputMode: ComposerInputMode.typed,
             attachments: const [],
           );
-          expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
+          expect((cubit.state as SessionDetailLoaded).failedSubmission, isNotNull);
           final savedMetadata = await mockSessionRepository.getSession(sessionId: sessionId);
           final metadata = Completer<ApiResponse<Session>>();
           when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
@@ -578,8 +578,8 @@ void main() {
           );
           expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
           expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.busy());
-          cubit.cancelQueuedMessage(0);
-          expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+          cubit.removeFailedSend();
+          expect((cubit.state as SessionDetailLoaded).failedSubmission, isNull);
           await cubit.cancelBridgeQueuedPrompt(promptId: "remote-prompt");
           verifyNever(() => mockSessionRepository.cancelQueuedPrompt(sessionId: sessionId, promptId: "remote-prompt"));
         }
@@ -2310,8 +2310,52 @@ void main() {
       },
     );
 
+    test("Retry resends a failed send under its prompt id, then drains what waited behind it", () async {
+      final sentPromptIds = <String>[];
+      final sentTexts = <String>[];
+      when(
+        () => mockSessionService.sendMessage(
+          promptId: any(named: "promptId"),
+          attachments: const [],
+          sessionId: any(named: "sessionId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: null,
+        ),
+      ).thenAnswer((invocation) async {
+        sentPromptIds.add(invocation.namedArguments[#promptId] as String);
+        sentTexts.add(invocation.namedArguments[#text] as String);
+        return sentPromptIds.length == 1 ? ApiResponse.error(ApiError.generic()) : ApiResponse.success(null);
+      });
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      await cubit.sendMessage(attachments: const [], text: "first", command: null, inputMode: ComposerInputMode.typed);
+      await cubit.sendMessage(attachments: const [], text: "second", command: null, inputMode: ComposerInputMode.typed);
+
+      final failed = cubit.state as SessionDetailLoaded;
+      expect(failed.failedSubmission?.displayText, "first");
+      expect(failed.queuedMessages.map((message) => message.displayText), ["second"]);
+      expect(sentTexts, ["first"]);
+
+      cubit.retryFailedSend();
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && sentTexts.length == 3 && state.sendingSubmission == null,
+        description: "retry and the waiting send accepted",
+      );
+
+      expect(sentTexts, ["first", "first", "second"]);
+      expect(sentPromptIds[1], sentPromptIds[0]);
+      expect((cubit.state as SessionDetailLoaded).failedSubmission, isNull);
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "sendMessage re-queues on send failure",
+      "sendMessage holds a failed send for Retry",
       build: () {
         when(
           () => mockSessionService.sendMessage(
@@ -2342,8 +2386,8 @@ void main() {
         isA<SessionDetailLoaded>(),
         _queuedSubmission("hello"),
         _sendingSubmission("hello"),
-        // Message re-queued after failed send.
-        _queuedSubmission("hello"),
+        // The failure on the same connection is held for Retry.
+        _failedSubmission("hello"),
       ],
       verify: (_) {
         verify(
@@ -2902,7 +2946,7 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "queued message send failure re-queues the message",
+      "a queued message that fails after reconnect is held for Retry",
       build: () {
         // Make sendMessage always fail — it is only called during drain,
         // not during initial load, so this is safe.
@@ -2957,9 +3001,9 @@ void main() {
           cubit: cubit,
           predicate: (state) =>
               state is SessionDetailLoaded &&
-              state.queuedMessages.map((message) => message.displayText).contains("will fail") &&
+              state.failedSubmission?.displayText == "will fail" &&
               state.sendingSubmission == null,
-          description: "failed queued message re-queued",
+          description: "failed queued message held",
         );
       },
       expect: () => [
@@ -2972,12 +3016,8 @@ void main() {
           ["will fail"],
         ),
         _sendingSubmission("will fail"),
-        // Re-queued after failure.
-        isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
-          "queuedMessages",
-          ["will fail"],
-        ),
+        // Held after the failure on the reconnected connection.
+        _failedSubmission("will fail"),
       ],
       verify: (_) {
         verify(
@@ -3209,6 +3249,11 @@ Matcher _queuedSubmission(String text) => isA<SessionDetailLoaded>()
 Matcher _sendingSubmission(String text) => isA<SessionDetailLoaded>()
     .having((state) => state.queuedMessages, "queuedMessages", isEmpty)
     .having((state) => state.sendingSubmission?.displayText, "sendingSubmission", text);
+
+Matcher _failedSubmission(String text) => isA<SessionDetailLoaded>()
+    .having((state) => state.queuedMessages, "queuedMessages", isEmpty)
+    .having((state) => state.sendingSubmission, "sendingSubmission", isNull)
+    .having((state) => state.failedSubmission?.displayText, "failedSubmission", text);
 
 final Matcher _noPendingSubmission = isA<SessionDetailLoaded>()
     .having((state) => state.queuedMessages, "queuedMessages", isEmpty)

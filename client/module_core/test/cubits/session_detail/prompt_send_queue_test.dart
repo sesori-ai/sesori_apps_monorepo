@@ -277,6 +277,50 @@ void main() {
       expect(queue.items.map((e) => e.displayText), ["retried", "existing"]);
     });
 
+    test("holdFailedSend keeps the failed head apart and later submissions wait behind it", () {
+      queue.enqueue(_retried);
+      queue.enqueue(_existing);
+      queue.beginSend();
+
+      expect(queue.holdFailedSend(), isTrue);
+
+      expect(queue.active, isNull);
+      expect(queue.failed?.displayText, "retried");
+      expect(queue.items.map((e) => e.displayText), ["existing"]);
+      expect(queue.beginSend(), isNull);
+    });
+
+    test("retryFailedSend resends the same submission first, under the same prompt id", () {
+      queue.enqueue(_retried);
+      queue.enqueue(_existing);
+      final first = queue.beginSend();
+      queue.holdFailedSend();
+
+      queue.retryFailedSend();
+
+      expect(queue.failed, isNull);
+      final resent = queue.beginSend();
+      expect(resent, same(first));
+      expect(resent?.promptId, first?.promptId);
+      queue.completeSend();
+      expect(queue.beginSend()?.displayText, "existing");
+    });
+
+    test("removeFailedSend and bridge settlement release the queue", () {
+      queue.enqueue(_retried);
+      queue.enqueue(_existing);
+      queue.beginSend();
+      queue.holdFailedSend();
+
+      expect(queue.removeFailedSend()?.displayText, "retried");
+      expect(queue.failed, isNull);
+
+      queue.beginSend();
+      queue.holdFailedSend();
+      queue.removeByPromptId(_existing.promptId);
+      expect(queue.failed, isNull);
+    });
+
     test("replacePending preserves FIFO while updating selections", () {
       queue.enqueue(_a);
       queue.enqueue(_b);

@@ -39,6 +39,7 @@ const _loaded = SessionDetailState.loaded(
   queuedMessages: [],
   bridgePromptAttachments: {},
   sendingSubmission: null,
+  failedSubmission: null,
   availableAgents: [],
   availableProviders: [],
   availableCommands: [],

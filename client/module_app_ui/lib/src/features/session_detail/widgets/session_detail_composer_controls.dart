@@ -67,6 +67,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
             hasMessages:
                 state.hasRenderableMessages ||
                 state.sendingSubmission != null ||
+                state.failedSubmission != null ||
                 state.queuedMessages.isNotEmpty ||
                 state.awaitingBridgeSubmissions.isNotEmpty ||
                 state.bridgeQueuedPrompts.isNotEmpty,

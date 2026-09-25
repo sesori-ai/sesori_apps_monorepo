@@ -98,6 +98,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
         state.olderMessagesCursor == null &&
         !state.isLoadingOlderMessages &&
         state.sendingSubmission == null &&
+        state.failedSubmission == null &&
         state.queuedMessages.isEmpty &&
         state.awaitingBridgeSubmissions.isEmpty &&
         state.bridgeQueuedPrompts.isEmpty;
@@ -146,7 +147,15 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           projectId: widget.projectId,
                           messages: state.messages,
                           sendingSubmission: state.sendingSubmission,
+                          failedSubmission: state.failedSubmission,
                           queuedMessages: state.queuedMessages,
+                          harnessName: state.interaction.harnessDisplayName,
+                          onRetryFailedSend: widget.readOnly
+                              ? null
+                              : context.read<SessionDetailCubit>().retryFailedSend,
+                          onRemoveFailedSend: widget.readOnly
+                              ? null
+                              : context.read<SessionDetailCubit>().removeFailedSend,
                           bridgeQueuedPrompts: state.bridgeQueuedPrompts,
                           bridgePromptAttachments: state.bridgePromptAttachments,
                           awaitingBridgeSubmissions: state.awaitingBridgeSubmissions,
