@@ -47,6 +47,15 @@ for composition/fixtures, but neither shell invokes it yet. No coding plugin par
 - The removal checklist lives with the deprecated module. Retire it only when
   supported direct upgrades exclude public per-value-native mobile builds.
 
+## Prepared Startup Recovery
+
+The mobile bootstrap catches typed import failure around dependency setup,
+awaits injected graph disposal and renders `PersistenceStartupFailureApp` before
+normal consumers. Disposal failure remains observable and does not prevent
+rendering. The standalone localized/themed root reads no DI or stored state and
+directs OS close/reopen, without raw errors, analytics, automatic retry or
+reinstall/data-clear advice. This seam is prepared; no shell invokes import yet.
+
 ## Prepared Native Capabilities (Not Yet Consumed)
 
 - Both shells register development scope for debug/profile and production for
@@ -94,12 +103,14 @@ fixture files; never seed or read a personal Keychain/application directory.
 - Legacy cleanup before all copies commit, unknown items deleted, a completed
   import reading legacy storage, or restart erasing already committed rows.
 - Pending analytics disable, scoped identity, empty value or diagnostic cause lost.
+- Typed import failure reaching normal startup, rendering before disposal settles,
+  disposal failure suppressing recovery, or failure copy exposing payloads.
 
 ## Known Limitations
 
 - No product-client cutover or native released-mobile migration is active yet.
   The pure-Dart importer tests do not establish actual native enumeration/error
-  behavior, production-only admission, startup failure presentation, consent
+  behavior, production-only admission, native startup failure presentation, consent
   ordering, authorization, backup/restore or packaged-client behavior. Those
   required gates remain in the active plan. Channel tests across platform options
   on one host are not native OS coverage. Android XML validation is configuration
@@ -111,6 +122,8 @@ fixture files; never seed or read a personal Keychain/application directory.
 ## Sources
 
 - `client/module_persistence/` and its cipher, repository, database and DI tests.
+- Bootstrap failure tests verify disposal-before-render and no normal consumer
+  callbacks. Shared recovery-widget tests cover light/dark and large text without DI.
 - Mobile/desktop persistence capability tests, mobile deprecated-source tests
   and Android manifest/full-backup/data-extraction XML.
 - `client/module_core/lib/src/migrations/deprecated_native_storage_v1/`, its
