@@ -1736,7 +1736,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(messages.first.parts.single.text, generatedWithPath);
     });
 
-    test("message projection preserves compacted rollout records as completed tools", () {
+    test("message projection maps compacted rollout records to compaction rows", () {
       final path = _writeRollout(
         codexHome,
         path: "sessions/2026/07/23/rollout-compacted.jsonl",
@@ -1757,6 +1757,11 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
               ],
             },
           }),
+          jsonEncode({
+            "timestamp": "2026-07-23T14:50:00.000Z",
+            "type": "compacted",
+            "payload": {"message": "Continue the auth work.", "replacement_history": <Object?>[]},
+          }),
         ],
       );
 
@@ -1767,15 +1772,19 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         structuredToolStatusByCallId: const {},
       );
 
-      expect(messages, hasLength(1));
-      expect(messages.single.info, isA<PluginMessageAssistant>());
-      expect(messages.single.info.id, "codex-compaction-1");
-      expect(messages.single.info.time?.created, 1784818097959);
-      final part = messages.single.parts.single;
-      expect(part.tool, "compact");
-      expect(part.state.title, isNull);
-      expect(part.state.status, PluginToolStatus.completed);
-      expect(part.state.output, isNull);
+      expect(messages, hasLength(2));
+      expect(messages.first.info, isA<PluginMessageAssistant>());
+      expect(messages.first.info.id, "codex-compaction-1");
+      expect(messages.first.info.time?.created, 1784818097959);
+      // Remote compaction keeps its summary encrypted, so there is none to show.
+      expect(
+        messages.first.parts.single,
+        isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", isNull),
+      );
+      expect(
+        messages.last.parts.single,
+        isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", "Continue the auth work."),
+      );
     });
 
     test("message projection restores image generations with stable persisted and fallback ids", () {

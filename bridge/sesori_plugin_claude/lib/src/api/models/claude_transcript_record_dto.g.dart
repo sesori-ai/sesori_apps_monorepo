@@ -20,6 +20,7 @@ _ClaudeTranscriptRecordDto _$ClaudeTranscriptRecordDtoFromJson(Map json) =>
       uuid: _stringOrNull(json['uuid']),
       isMeta: _boolOrNull(json['isMeta']),
       isVisibleInTranscriptOnly: _boolOrNull(json['isVisibleInTranscriptOnly']),
+      isCompactSummary: _boolOrNull(json['isCompactSummary']),
       isApiErrorMessage: _boolOrNull(json['isApiErrorMessage']),
       apiErrorStatus: _intOrNull(json['apiErrorStatus']),
       effort: _stringOrNull(json['effort']),

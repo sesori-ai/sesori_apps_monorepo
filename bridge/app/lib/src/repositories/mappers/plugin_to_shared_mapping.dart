@@ -201,10 +201,11 @@ extension PluginMessagePartMapping on PluginMessagePart {
       attempt: attempt,
       retryError: retryError,
     ),
-    PluginMessagePartCompaction(:final id, :final messageID) => MessagePart.compaction(
+    PluginMessagePartCompaction(:final id, :final messageID, :final summary) => MessagePart.compaction(
       id: id,
       sessionID: sessionId,
       messageID: messageID,
+      summary: summary,
     ),
     PluginMessagePartUnknown() => throw StateError(
       "PluginMessagePartUnknown must be filtered out before mapping to shared model",

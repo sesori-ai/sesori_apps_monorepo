@@ -4,6 +4,7 @@ import "assistant_message_mapper.dart";
 import "message_part_mapper.dart";
 import "models/openapi/assistant_message.g.dart";
 import "models/openapi/message.g.dart";
+import "models/openapi/part.g.dart";
 import "models/openapi/user_message.g.dart";
 import "models/sse_event_data.g.dart";
 import "plugin_model_mapper.dart";
@@ -16,6 +17,13 @@ import "question_info_mapper.dart";
 class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = const AssistantMessageMapper()}) {
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
   final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper();
+
+  /// Maps a live part; the text of a compaction summary message becomes a
+  /// compaction part, as on the REST load path.
+  PluginMessagePart _mapLivePart(Part raw, {required Set<String> summaryMessageIds}) {
+    final part = _messagePartMapper.mapPart(raw);
+    return summaryMessageIds.contains(part.messageID) ? _messagePartMapper.mapSummaryPart(part) : part;
+  }
 
   /// Maps a `message.updated` payload to its plugin envelope, mirroring the
   /// REST load path ([PluginModelMapper.mapMessageWithParts]). Crucially this
@@ -51,7 +59,15 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
   /// plugin (see [OpenCodePlugin._promptIdForEvent]) for the user message its
   /// own send created. Both are passed-in values so this mapper stays a pure,
   /// dependency-free transformation.
-  BridgeSseEvent? map(SseEventData event, {String? displaySessionId, String? promptId}) {
+  ///
+  /// [summaryMessageIds] are the compaction summary messages the plugin has
+  /// seen (see `SummaryMessageTracker`).
+  BridgeSseEvent? map(
+    SseEventData event, {
+    String? displaySessionId,
+    String? promptId,
+    Set<String> summaryMessageIds = const {},
+  }) {
     return switch (event) {
       SseServerConnected() => const BridgeSseServerConnected(),
       SseServerHeartbeat() => const BridgeSseServerHeartbeat(),
@@ -87,7 +103,9 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         sessionID: sessionID,
         messageID: messageID,
       ),
-      SseMessagePartUpdated(:final part) => BridgeSseMessagePartUpdated(part: _messagePartMapper.mapPart(part)),
+      SseMessagePartUpdated(:final part) => BridgeSseMessagePartUpdated(
+        part: _mapLivePart(part, summaryMessageIds: summaryMessageIds),
+      ),
       SseMessagePartDelta(
         :final sessionID,
         :final messageID,

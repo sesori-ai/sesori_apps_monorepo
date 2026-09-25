@@ -263,6 +263,54 @@ void main() {
     expect(find.byType(PregoShimmer), findsOneWidget);
   });
 
+  testWidgets("renders a finished compaction as one row that opens its summary", (tester) async {
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(
+          parts: [
+            const MessagePart.compaction(
+              id: "compaction-tool",
+              sessionID: "session-1",
+              messageID: "assistant-1",
+              summary: "Carried-forward goal",
+            ),
+          ],
+        ),
+        streamingText: const {},
+      ),
+    );
+
+    expect(find.text("Context compacted"), findsOneWidget);
+    expect(find.text("Carried-forward goal"), findsNothing);
+
+    await tester.tap(find.text("Context compacted"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Compaction summary"), findsOneWidget);
+    expect(find.text("Carried-forward goal"), findsOneWidget);
+  });
+
+  testWidgets("renders a compaction without a summary as an inert row", (tester) async {
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(
+          parts: [
+            const MessagePart.compaction(
+              id: "compaction-tool",
+              sessionID: "session-1",
+              messageID: "assistant-1",
+              summary: null,
+            ),
+          ],
+        ),
+        streamingText: const {},
+      ),
+    );
+
+    expect(find.text("Context compacted"), findsOneWidget);
+    expect(tester.widget<TextButton>(find.byType(TextButton)).onPressed, isNull);
+  });
+
   testWidgets("streaming text updates the rendered markdown without breaking the SelectionArea", (tester) async {
     final harnessKey = GlobalKey<_AssistantMessageCardHarnessState>();
     const partId = "streaming-part";

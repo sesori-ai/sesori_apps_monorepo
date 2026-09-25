@@ -137,7 +137,11 @@ class const PluginModelMapper({
       MessageUnknown(:final raw) => throw FormatException("Unknown message role: $raw"),
       _ => throw FormatException("Unknown message role: $info"),
     };
-    final parts = raw.parts.map(_messagePartMapper.mapPart).where((part) => part.type.isVisible).toList();
+    final isSummary = info is AssistantMessage && (info.summary ?? false);
+    final parts = [
+      for (final part in raw.parts.map(_messagePartMapper.mapPart))
+        if (part.type.isVisible) isSummary ? _messagePartMapper.mapSummaryPart(part) : part,
+    ];
     return PluginMessageWithParts(
       info: pluginInfo,
       parts: _messagePartMapper.applyAttachmentBudget(

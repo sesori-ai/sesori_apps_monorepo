@@ -494,6 +494,7 @@ ClaudeTranscriptUserRecord _userRecord({
   content: content,
   isMeta: false,
   isVisibleInTranscriptOnly: false,
+  isCompactSummary: false,
   toolUseResult: toolUseResult,
   isTaskNotification: isTaskNotification,
   cwd: "/tmp/project",

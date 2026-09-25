@@ -31,6 +31,9 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
     @JsonKey(fromJson: _stringOrNull) required String? uuid,
     @JsonKey(fromJson: _boolOrNull) required bool? isMeta,
     @JsonKey(fromJson: _boolOrNull) required bool? isVisibleInTranscriptOnly,
+
+    /// Marks the continuation summary the CLI injects after a compaction.
+    @JsonKey(fromJson: _boolOrNull) required bool? isCompactSummary,
     @JsonKey(fromJson: _boolOrNull) required bool? isApiErrorMessage,
     @JsonKey(fromJson: _intOrNull) required int? apiErrorStatus,
     @JsonKey(fromJson: _stringOrNull) required String? effort,

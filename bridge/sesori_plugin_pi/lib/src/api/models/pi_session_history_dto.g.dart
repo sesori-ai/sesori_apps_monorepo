@@ -70,6 +70,7 @@ PiCompactionEntryDto _$PiCompactionEntryDtoFromJson(Map json) =>
       id: json['id'] as String,
       parentId: json['parentId'] as String?,
       timestamp: DateTime.parse(json['timestamp'] as String),
+      summary: _nonEmptyStringOrNull(json['summary']),
       $type: json['type'] as String?,
     );
 
@@ -156,6 +157,7 @@ PiSessionFileCompactionEntryDto _$PiSessionFileCompactionEntryDtoFromJson(
   id: json['id'] as String?,
   parentId: json['parentId'] as String?,
   timestamp: DateTime.parse(json['timestamp'] as String),
+  summary: _nonEmptyStringOrNull(json['summary']),
   $type: json['type'] as String?,
 );
 

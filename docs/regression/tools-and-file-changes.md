@@ -48,6 +48,12 @@ sub-agent parts, plus the signal that a tool changed files.
   are calls, so reading one file twice reads “read 2 files”, and edits carry no
   line counts. An other kind, a kind the app does not know, and a part from an
   older bridge that sends no kind all count as plain steps.
+- A finished context compaction renders as one quiet "Context compacted" row in
+  the step style; like visible text it ends a group. While it runs, Pi and Codex
+  show a running `compact` tool that the finished row replaces in place. When the
+  harness exposes the carried-forward summary, tapping the row opens it as
+  Markdown in a reading-width modal; without a summary the row is inert. See
+  `docs/HARNESS_CAPABILITIES.md` for which harnesses mark compaction.
 - A running tool or sub-agent is a live row: its label shimmers in place of a
   spinner, and reduced motion keeps it still while screen readers still hear
   it. Streaming thinking shows a shimmering “Thinking...” with one line of its
@@ -252,6 +258,10 @@ guarantee.
 - A summary names a backend tool, counts distinct files instead of calls, shows
   line counts for edits, or fails to decode a tool part whose kind is missing
   or new; a reloaded session reports different kinds than the live one did.
+- A finished compaction shows no row, shows its summary inline as a user or
+  assistant message, leaves a running `compact` tool beside the row, or opens an
+  empty modal; the Claude summary appears live but not after reload, or the
+  reverse.
 - A live row spins or shimmers under reduced motion, a thinking tail hides the
   newest words or wraps past one line, or the jump button keeps naming a step
   that has finished.
@@ -317,6 +327,9 @@ guarantee.
   child sessions remain unsupported in Sesori.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.
+- An older client decodes the compaction part but ignores its summary and
+  renders nothing, so Pi and Codex compactions lose their finished `compact`
+  tool card there.
 - An older client does not tolerate an unknown message-part `type` from a newer
   bridge: history decoding fails and the corresponding SSE event is dropped as
   malformed. Unknown tool status remains forward-compatible.

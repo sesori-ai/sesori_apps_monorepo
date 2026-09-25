@@ -1187,12 +1187,14 @@ as String,
 @JsonSerializable(createFactory: false)
 
 class PluginMessagePartCompaction extends PluginMessagePart {
-  const PluginMessagePartCompaction({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'compaction',super._();
+  const PluginMessagePartCompaction({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.summary,  String? $type}): $type = $type ?? 'compaction',super._();
   
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
+/// The continuation summary, or null when the harness does not expose one.
+@JsonKey(includeToJson: true) final  String? summary;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1211,18 +1213,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.summary, summary) || other.summary == summary));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,sessionID,messageID);
+    return Object.hash(runtimeType,id,sessionID,messageID,summary);
 }
 
 @override
 String toString() {
-    return 'PluginMessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'PluginMessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID, summary: $summary)';
 }
 
 
@@ -1233,7 +1235,7 @@ abstract mixin class $PluginMessagePartCompactionCopyWith<$Res> implements $Plug
   factory $PluginMessagePartCompactionCopyWith(PluginMessagePartCompaction value, $Res Function(PluginMessagePartCompaction) _then) = _$PluginMessagePartCompactionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID
+ String id, String sessionID, String messageID,@JsonKey(includeToJson: true) String? summary
 });
 
 
@@ -1250,12 +1252,13 @@ class _$PluginMessagePartCompactionCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? summary = freezed,}) {
   return _then(PluginMessagePartCompaction(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
-as String,
+as String,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

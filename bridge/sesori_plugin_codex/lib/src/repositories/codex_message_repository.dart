@@ -570,22 +570,20 @@ class CodexMessageRepository({
           continue;
         case CodexRolloutInterAgentCommunicationMetadataLineDto():
           continue;
-        case CodexRolloutCompactedLineDto(:final timestamp):
+        case CodexRolloutCompactedLineDto(:final timestamp, :final summary):
           messageCounter += 1;
           final messageId = "codex-compaction-$messageCounter";
           messages.add(
-            _toolMessage(
-              messageId: messageId,
-              sessionId: sessionId,
-              info: assistantInfo(
-                id: messageId,
-                time: _messageTimeFrom(timestamp),
-              ),
-              tool: "compact",
-              title: null,
-              status: PluginToolStatus.completed,
-              output: null,
-              attachments: const [],
+            PluginMessageWithParts(
+              info: assistantInfo(id: messageId, time: _messageTimeFrom(timestamp)),
+              parts: [
+                PluginMessagePart.compaction(
+                  id: "$messageId-tool",
+                  sessionID: sessionId,
+                  messageID: messageId,
+                  summary: summary,
+                ),
+              ],
             ),
           );
           continue;

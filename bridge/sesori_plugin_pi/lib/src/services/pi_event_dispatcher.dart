@@ -121,13 +121,15 @@ final class PiEventDispatcher({
     PiAutoRetryEndEvent() ||
     PiSummarizationRetryAttemptStartEvent() => _status(sessionId: sessionId, event: event, now: now),
     PiCompactionStartEvent() => _compactionStart(sessionId: sessionId, event: event, now: now),
-    PiCompactionEndEvent(:final reason, :final aborted, :final willRetry, :final errorMessage) => _compactionEnd(
-      sessionId: sessionId,
-      reason: reason,
-      aborted: aborted,
-      willRetry: willRetry,
-      errorMessage: errorMessage,
-    ),
+    PiCompactionEndEvent(:final reason, :final aborted, :final willRetry, :final errorMessage, :final summary) =>
+      _compactionEnd(
+        sessionId: sessionId,
+        reason: reason,
+        aborted: aborted,
+        willRetry: willRetry,
+        errorMessage: errorMessage,
+        summary: summary,
+      ),
     PiExtensionErrorEvent(:final extensionPath, event: final operation, :final error) => _extensionError(
       extensionPath: extensionPath,
       operation: operation,
@@ -672,6 +674,7 @@ final class PiEventDispatcher({
     required bool aborted,
     required bool willRetry,
     required String? errorMessage,
+    required String? summary,
   }) {
     if (errorMessage != null) {
       Log.w(
@@ -689,7 +692,7 @@ final class PiEventDispatcher({
     final state = _session(sessionId);
     final messageId = state.identities.commitCompaction();
     state.compactionMessageId = null;
-    final mapped = _historyMapper.mapCompaction(sessionId: sessionId, messageId: messageId);
+    final mapped = _historyMapper.mapCompaction(sessionId: sessionId, messageId: messageId, summary: summary);
     return [
       BridgeSseSessionCompacted(sessionID: sessionId),
       BridgeSseMessageUpdated(info: mapped.info),

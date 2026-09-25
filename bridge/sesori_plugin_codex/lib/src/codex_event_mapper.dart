@@ -554,19 +554,34 @@ class CodexEventMapper({
           attachments: const [],
         );
       case "contextCompaction":
-        return [
-          ..._toolItemEvents(
+        if (!completed) {
+          return _toolItemEvents(
             threadId: threadId,
             itemId: itemId,
             tool: "compact",
             shellCommand: null,
             // Status already conveys progress; compaction has no additional detail.
             title: null,
-            status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
+            status: PluginToolStatus.running,
             time: time,
             attachments: const [],
+          );
+        }
+        return [
+          BridgeSseMessageUpdated(
+            info: _assistantMessage(itemId: itemId, threadId: threadId, time: time),
           ),
-          if (completed) BridgeSseSessionCompacted(sessionID: threadId),
+          // Keeps the running card's part id, so the row replaces it in place.
+          // The live item carries no summary; a replayed rollout can.
+          BridgeSseMessagePartUpdated(
+            part: PluginMessagePart.compaction(
+              id: "$itemId-tool",
+              sessionID: threadId,
+              messageID: itemId,
+              summary: null,
+            ),
+          ),
+          BridgeSseSessionCompacted(sessionID: threadId),
         ];
       default:
         // todoList, hookPrompt, … — codex item kinds with no mobile
