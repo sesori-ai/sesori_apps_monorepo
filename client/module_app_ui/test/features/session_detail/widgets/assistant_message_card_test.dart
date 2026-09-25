@@ -193,6 +193,33 @@ void main() {
     }
   });
 
+  testWidgets("an empty row takes no height and its first part eases in", (tester) async {
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(parts: const []),
+        streamingText: const {},
+      ),
+    );
+    expect(tester.getSize(find.byType(AssistantMessageCard)).height, 0);
+
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(
+          parts: [_textPart(id: "part-1", text: "First paragraph")],
+        ),
+        streamingText: const {},
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    final opacities = tester.widgetList<Opacity>(
+      find.ancestor(of: find.byType(MarkdownBody), matching: find.byType(Opacity)),
+    );
+    expect(opacities.any((opacity) => opacity.opacity > 0 && opacity.opacity < 1), isTrue);
+
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.byType(MarkdownBody), findsOneWidget);
+  });
+
   testWidgets("preserves mixed text-tool-text rendering inside one SelectionArea", (tester) async {
     await tester.pumpWidget(
       _AssistantMessageCardHarness(

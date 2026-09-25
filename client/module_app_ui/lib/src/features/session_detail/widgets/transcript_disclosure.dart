@@ -5,8 +5,7 @@ import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-
-const _disclosureDuration = Duration(milliseconds: 200);
+import "transcript_motion.dart";
 
 /// A transcript row that eases a panel open below it when tapped.
 ///
@@ -24,12 +23,11 @@ class const TranscriptDisclosure({
 }
 
 class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with SingleTickerProviderStateMixin {
-  late final AnimationController _disclosure = AnimationController(vsync: this, duration: _disclosureDuration);
-  // Both directions decelerate: easeIn run backwards starts the close fast.
+  late final AnimationController _disclosure = AnimationController(vsync: this, duration: transcriptMotionDuration);
   late final CurvedAnimation _panelSize = CurvedAnimation(
     parent: _disclosure,
-    curve: Curves.easeOut,
-    reverseCurve: Curves.easeIn,
+    curve: transcriptMotionCurve,
+    reverseCurve: transcriptMotionReverseCurve,
   );
 
   /// The user's choice. The panel itself stays mounted until it has closed.

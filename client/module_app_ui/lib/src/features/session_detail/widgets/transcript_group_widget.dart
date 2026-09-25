@@ -8,10 +8,12 @@ import "reasoning_part_card.dart";
 import "subtask_part_widget.dart";
 import "tool_part_widget.dart";
 import "transcript_disclosure.dart";
+import "transcript_motion.dart";
+import "transcript_rolling_line.dart";
 
 /// A run of tool, thinking and sub-agent steps: one summary row that eases its
 /// finished steps open, with each running step below it as a live row until it
-/// finishes and folds into the summary.
+/// finishes and folds into the summary, whose count rolls to take it in.
 class const TranscriptGroupWidget({
   super.key,
   required final String? projectId,
@@ -20,9 +22,7 @@ class const TranscriptGroupWidget({
   @override
   Widget build(BuildContext context) {
     final finished = group.finishedSteps;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return TranscriptPresenceColumn(
       children: [
         if (finished.isNotEmpty)
           TranscriptDisclosure(
@@ -31,10 +31,7 @@ class const TranscriptGroupWidget({
             headerBuilder: ({required expanded}) => _SummaryRow(summary: group.summary, expanded: expanded),
             panel: Padding(
               padding: EdgeInsetsDirectional.only(start: context.prego.spacing.xl),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [for (final step in finished) _step(step: step)],
-              ),
+              child: TranscriptPresenceColumn(children: [for (final step in finished) _step(step: step)]),
             ),
           ),
         for (final step in group.runningSteps) _step(step: step),
@@ -79,19 +76,25 @@ class const _SummaryRow({required final TranscriptSummary summary, required fina
         SizedBox(width: prego.spacing.md),
         // The counts ellipsize on a narrow screen; the failure count never does.
         Flexible(
-          child: Text(
-            [for (final count in summary.counts) _countLabel(loc: loc, count: count)].join(" · "),
+          child: TranscriptRollingLine(
+            segments: [
+              for (final (index, count) in summary.counts.indexed)
+                (key: count.kind, text: "${index > 0 ? " · " : ""}${_countLabel(loc: loc, count: count)}"),
+            ],
             style: style,
-            maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        if (failedCount > 0)
-          Text(
-            " · ${loc.transcriptSummaryFailed(failedCount)}",
-            style: style.copyWith(color: prego.colors.textErrorPrimary),
-            maxLines: 1,
-          ),
+        // Built with no segment while nothing failed, so the first failure
+        // wipes in rather than appearing.
+        TranscriptRollingLine(
+          segments: [
+            if (failedCount > 0)
+              (key: TranscriptStepStatus.failed, text: " · ${loc.transcriptSummaryFailed(failedCount)}"),
+          ],
+          style: style.copyWith(color: prego.colors.textErrorPrimary),
+          overflow: TextOverflow.clip,
+        ),
       ],
     );
   }
