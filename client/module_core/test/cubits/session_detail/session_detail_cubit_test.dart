@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/connection_s
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
@@ -2309,6 +2310,40 @@ void main() {
         );
       },
     );
+
+    for (final (label, error, failure) in [
+      ("a bridge rejection", ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null), LocalSendFailure.rejected),
+      ("a lost response", ApiError.dartHttpClient(Exception("timed out")), LocalSendFailure.uncertain),
+    ]) {
+      test("$label marks the failed send ${failure.name}", () async {
+        when(
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
+            attachments: const [],
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: null,
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await _awaitLoaded(cubit);
+
+        await cubit.sendMessage(
+          attachments: const [],
+          text: "hello",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+        );
+
+        final localSend = (cubit.state as SessionDetailLoaded).localSend;
+        expect(localSend, isA<LocalSendFailed>().having((phase) => phase.failure, "failure", failure));
+      });
+    }
 
     test("Retry resends a failed send under its prompt id, then drains what waited behind it", () async {
       final sentPromptIds = <String>[];

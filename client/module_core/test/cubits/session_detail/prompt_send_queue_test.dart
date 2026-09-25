@@ -1,5 +1,6 @@
 import "dart:typed_data";
 
+import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/prompt_send_queue.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
@@ -282,10 +283,10 @@ void main() {
       queue.enqueue(_existing);
       queue.beginSend();
 
-      expect(queue.holdFailedSend(), isTrue);
+      expect(queue.holdFailedSend(failure: LocalSendFailure.rejected), isTrue);
 
       expect(queue.active, isNull);
-      expect(queue.failed?.displayText, "retried");
+      expect(queue.failed?.submission.displayText, "retried");
       expect(queue.items.map((e) => e.displayText), ["existing"]);
       expect(queue.beginSend(), isNull);
     });
@@ -294,7 +295,7 @@ void main() {
       queue.enqueue(_retried);
       queue.enqueue(_existing);
       final first = queue.beginSend();
-      queue.holdFailedSend();
+      queue.holdFailedSend(failure: LocalSendFailure.rejected);
 
       queue.retryFailedSend();
 
@@ -310,13 +311,13 @@ void main() {
       queue.enqueue(_retried);
       queue.enqueue(_existing);
       queue.beginSend();
-      queue.holdFailedSend();
+      queue.holdFailedSend(failure: LocalSendFailure.rejected);
 
       expect(queue.removeFailedSend()?.displayText, "retried");
       expect(queue.failed, isNull);
 
       queue.beginSend();
-      queue.holdFailedSend();
+      queue.holdFailedSend(failure: LocalSendFailure.rejected);
       queue.removeByPromptId(_existing.promptId);
       expect(queue.failed, isNull);
     });

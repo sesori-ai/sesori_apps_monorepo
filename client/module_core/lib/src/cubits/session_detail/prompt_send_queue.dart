@@ -1,6 +1,7 @@
 import "dart:collection";
 
 import "../../foundation/models/composer/composer_attachment.dart";
+import "local_send_phase.dart";
 import "queued_session_submission.dart";
 
 /// Manages a queue of queued submissions waiting to be sent.
@@ -16,7 +17,7 @@ class PromptSendQueue() {
   /// The head submission whose send really failed. It stays out of the
   /// pending list so later submissions wait behind it until the user retries
   /// or removes it.
-  QueuedSessionSubmission? _failed;
+  LocalSendFailed? _failed;
 
   /// Retained bridge previews may hold at most one maximum-size submission
   /// across the whole session. Older previews fall back to attachment counts.
@@ -36,7 +37,7 @@ class PromptSendQueue() {
     for (final submission in [
       for (final entry in _awaitingBridge) entry.submission,
       if (!isActiveSettledElsewhere) ?_active,
-      ?_failed,
+      ?_failed?.submission,
       ..._items,
     ]) {
       final attachments = submission.attachments;
@@ -73,7 +74,7 @@ class PromptSendQueue() {
   bool get isSending => _active != null;
 
   /// The failed head submission, shown with Retry until the user acts on it.
-  QueuedSessionSubmission? get failed => _failed;
+  LocalSendFailed? get failed => _failed;
 
   /// Whether the queue has no pending messages.
   bool get isEmpty => _items.isEmpty;
@@ -153,12 +154,12 @@ class PromptSendQueue() {
   ///
   /// Returns whether it was held. Like [failSend], a submission the bridge
   /// already settled is discarded instead.
-  bool holdFailedSend() {
+  bool holdFailedSend({required LocalSendFailure failure}) {
     final active = _active;
     if (active == null) return false;
     _active = null;
     if (_settledElsewhere.remove(active.promptId)) return false;
-    _failed = active;
+    _failed = LocalSendFailed(submission: active, failure: failure);
     return true;
   }
 
@@ -168,14 +169,14 @@ class PromptSendQueue() {
     final failed = _failed;
     if (failed == null) return;
     _failed = null;
-    _items.addFirst(failed);
+    _items.addFirst(failed.submission);
   }
 
   /// Drops the failed submission (user removal) and returns it.
   QueuedSessionSubmission? removeFailedSend() {
     final failed = _failed;
     _failed = null;
-    return failed;
+    return failed?.submission;
   }
 
   /// Rewrites pending submissions in place while preserving FIFO order.
@@ -246,7 +247,7 @@ class PromptSendQueue() {
   void _removeStagedByPromptId({required String promptId}) {
     _items.removeWhere((item) => item.promptId == promptId);
     _awaitingBridge.removeWhere((entry) => entry.submission.promptId == promptId);
-    if (_failed?.promptId == promptId) _failed = null;
+    if (_failed?.submission.promptId == promptId) _failed = null;
     if (_active?.promptId == promptId) _settledElsewhere.add(promptId);
   }
 

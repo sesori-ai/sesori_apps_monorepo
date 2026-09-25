@@ -39,6 +39,7 @@ import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
 import "../../services/transcript_snapshot_calculator.dart";
 import "deferred_part_event_buffer.dart";
+import "local_send_phase.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
 import "session_abort_outcome.dart";
@@ -788,8 +789,7 @@ class SessionDetailCubit(
         bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-        sendingSubmission: queue.sendingSubmission,
-        failedSubmission: queue.failedSubmission,
+        localSend: queue.localSend,
       ),
     );
 
@@ -928,8 +928,7 @@ class SessionDetailCubit(
               ),
               queuedMessages: queue.queuedMessages,
               awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-              sendingSubmission: queue.sendingSubmission,
-              failedSubmission: queue.failedSubmission,
+              localSend: queue.localSend,
               isRefreshing: false,
               availableVariants: availableVariants,
             ),
@@ -987,8 +986,7 @@ class SessionDetailCubit(
         bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-        sendingSubmission: queue.sendingSubmission,
-        failedSubmission: queue.failedSubmission,
+        localSend: queue.localSend,
       ),
     );
   }
@@ -1566,8 +1564,7 @@ class SessionDetailCubit(
         bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-        sendingSubmission: queue.sendingSubmission,
-        failedSubmission: queue.failedSubmission,
+        localSend: queue.localSend,
       ),
     );
     // A settlement can outrun the send response. Keep the single-flight slot
@@ -1591,8 +1588,7 @@ class SessionDetailCubit(
         bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-        sendingSubmission: queue.sendingSubmission,
-        failedSubmission: queue.failedSubmission,
+        localSend: queue.localSend,
       ),
     );
     // The bridge owning the failed prompt releases the sends waiting behind it.
@@ -1626,8 +1622,7 @@ class SessionDetailCubit(
           bridgePromptAttachments: queue.bridgePromptAttachments,
           queuedMessages: queue.queuedMessages,
           awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-          sendingSubmission: queue.sendingSubmission,
-          failedSubmission: queue.failedSubmission,
+          localSend: queue.localSend,
         ),
       );
     } finally {
@@ -2011,8 +2006,7 @@ class SessionDetailCubit(
         bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-        sendingSubmission: queue.sendingSubmission,
-        failedSubmission: queue.failedSubmission,
+        localSend: queue.localSend,
       ),
     );
   }
@@ -2046,8 +2040,7 @@ class SessionDetailCubit(
   _QueueView _queueView({required List<QueuedSessionPrompt> bridgePrompts}) => (
     queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
     awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: bridgePrompts),
-    sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
-    failedSubmission: _visibleFailed(bridgePrompts: bridgePrompts),
+    localSend: _visibleLocalSend(bridgePrompts: bridgePrompts),
     bridgePromptAttachments: _promptQueue.bridgePromptAttachments,
   );
 
@@ -2072,16 +2065,18 @@ class SessionDetailCubit(
     ];
   }
 
-  QueuedSessionSubmission? _visibleStagedSending({required List<QueuedSessionPrompt> bridgePrompts}) {
+  /// The in-flight or failed head, unless the bridge queue already lists it.
+  LocalSendPhase _visibleLocalSend({required List<QueuedSessionPrompt> bridgePrompts}) {
+    bool listed(QueuedSessionSubmission submission) => bridgePrompts.any((prompt) => prompt.id == submission.promptId);
     final active = _promptQueue.active;
-    if (active == null || _promptQueue.isActiveSettledElsewhere) return null;
-    return bridgePrompts.any((prompt) => prompt.id == active.promptId) ? null : active;
-  }
-
-  QueuedSessionSubmission? _visibleFailed({required List<QueuedSessionPrompt> bridgePrompts}) {
+    if (active != null) {
+      return _promptQueue.isActiveSettledElsewhere || listed(active)
+          ? const LocalSendPhase.idle()
+          : LocalSendPhase.sending(submission: active);
+    }
     final failed = _promptQueue.failed;
-    if (failed == null) return null;
-    return bridgePrompts.any((prompt) => prompt.id == failed.promptId) ? null : failed;
+    if (failed == null || listed(failed.submission)) return const LocalSendPhase.idle();
+    return failed;
   }
 
   Future<void> _drainQueuedMessages() async {
@@ -2150,11 +2145,25 @@ class SessionDetailCubit(
             }
           }
         case ErrorResponse(:final error):
-          sendSettledElsewhere = !_settleFailedSend(sendConnectionGeneration: sendConnectionGeneration);
+          sendSettledElsewhere = !_settleFailedSend(
+            sendConnectionGeneration: sendConnectionGeneration,
+            // Only a bridge answer proves the prompt was not accepted. A
+            // transport error or timeout may have reached it anyway.
+            failure: switch (error) {
+              NonSuccessCodeError() || NotAuthenticatedError() => LocalSendFailure.rejected,
+              DartHttpClientError() ||
+              GenericError() ||
+              EmptyResponseError() ||
+              JsonParsingError() => LocalSendFailure.uncertain,
+            },
+          );
           logw("Failed to send queued session submission", error);
       }
     } on Object catch (error, stackTrace) {
-      sendSettledElsewhere = !_settleFailedSend(sendConnectionGeneration: sendConnectionGeneration);
+      sendSettledElsewhere = !_settleFailedSend(
+        sendConnectionGeneration: sendConnectionGeneration,
+        failure: LocalSendFailure.uncertain,
+      );
       logw("Failed to send queued session submission", error, stackTrace);
     }
 
@@ -2187,8 +2196,10 @@ class SessionDetailCubit(
   /// connection dropped is re-queued and re-sent automatically on reconnect.
   /// Returns whether the submission was kept (false when the bridge settled
   /// it while the send was in flight).
-  bool _settleFailedSend({required int sendConnectionGeneration}) =>
-      sendConnectionGeneration == _connectionGeneration ? _promptQueue.holdFailedSend() : _promptQueue.failSend();
+  bool _settleFailedSend({required int sendConnectionGeneration, required LocalSendFailure failure}) =>
+      sendConnectionGeneration == _connectionGeneration
+      ? _promptQueue.holdFailedSend(failure: failure)
+      : _promptQueue.failSend();
 
   /// Sends the failed head again under its original prompt id.
   void retryFailedSend() {
@@ -2355,7 +2366,7 @@ class SessionDetailCubit(
               staged: latest.stagedCommand,
             ),
             queuedMessages: _visibleStagedItems(bridgePrompts: latest.bridgeQueuedPrompts),
-            sendingSubmission: _visibleStagedSending(bridgePrompts: latest.bridgeQueuedPrompts),
+            localSend: _visibleLocalSend(bridgePrompts: latest.bridgeQueuedPrompts),
           ),
         );
         _optionsGeneration++;
@@ -2931,8 +2942,7 @@ class SessionDetailCubit(
       isArchived: snapshot.isArchived,
       queuedMessages: queue.queuedMessages,
       awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-      sendingSubmission: queue.sendingSubmission,
-      failedSubmission: queue.failedSubmission,
+      localSend: queue.localSend,
       availableAgents: agents,
       availableProviders: providers,
       availableCommands: snapshot.commands,
@@ -3008,8 +3018,7 @@ typedef _QueueView = ({
   Map<String, List<ComposerAttachment>> bridgePromptAttachments,
   List<QueuedSessionSubmission> queuedMessages,
   List<QueuedSessionSubmission> awaitingBridgeSubmissions,
-  QueuedSessionSubmission? sendingSubmission,
-  QueuedSessionSubmission? failedSubmission,
+  LocalSendPhase localSend,
 });
 
 typedef _SnapshotDerivation = ({

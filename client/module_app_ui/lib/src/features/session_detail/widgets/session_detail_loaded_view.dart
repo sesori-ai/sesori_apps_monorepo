@@ -97,11 +97,18 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
         state.retryErrorMessage == null &&
         state.olderMessagesCursor == null &&
         !state.isLoadingOlderMessages &&
-        state.sendingSubmission == null &&
-        state.failedSubmission == null &&
+        state.localSend is LocalSendIdle &&
         state.queuedMessages.isEmpty &&
         state.awaitingBridgeSubmissions.isEmpty &&
         state.bridgeQueuedPrompts.isEmpty;
+    // A lost response may already have reached the bridge, so only an
+    // authoritative rejection can be removed.
+    final canRemoveFailedSend =
+        !widget.readOnly &&
+        switch (state.localSend) {
+          LocalSendFailed(:final failure) => failure == LocalSendFailure.rejected,
+          LocalSendIdle() || LocalSendSending() => false,
+        };
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);
     // An archived session's requests can never be answered.
     final canAnswer = !widget.readOnly && !state.isArchived && state.interaction.canInteract;
@@ -150,12 +157,12 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           failedSubmission: state.failedSubmission,
                           queuedMessages: state.queuedMessages,
                           harnessName: state.interaction.harnessDisplayName,
-                          onRetryFailedSend: widget.readOnly
+                          onRetryFailedSend: widget.readOnly || !state.interaction.canInteract
                               ? null
                               : context.read<SessionDetailCubit>().retryFailedSend,
-                          onRemoveFailedSend: widget.readOnly
-                              ? null
-                              : context.read<SessionDetailCubit>().removeFailedSend,
+                          onRemoveFailedSend: canRemoveFailedSend
+                              ? context.read<SessionDetailCubit>().removeFailedSend
+                              : null,
                           bridgeQueuedPrompts: state.bridgeQueuedPrompts,
                           bridgePromptAttachments: state.bridgePromptAttachments,
                           awaitingBridgeSubmissions: state.awaitingBridgeSubmissions,

@@ -30,6 +30,14 @@
   the failed prompt clears it and resumes draining the sends behind it. The
   failed row's label and actions wrap, so Retry and Remove stay reachable in a
   narrow pane at large text. Each has a test that fails without its fix.
+- Second review round: the state carries one sealed `LocalSendPhase` (idle,
+  sending or failed) instead of two independent nullable submissions. A failed
+  phase records `LocalSendFailure`: `rejected` for a bridge answer
+  (`NonSuccessCodeError`, `NotAuthenticatedError`), `uncertain` for a timeout,
+  lost response or thrown failure. An uncertain failure offers only Retry,
+  because the bridge may already have accepted that prompt id. Retry is hidden
+  while the harness cannot take prompts; Remove stays. A cubit test covers
+  both failure kinds and widget tests cover both action gates.
 - Both apps mount this list, so the change covers phone and desktop.
 
 ## Deviations

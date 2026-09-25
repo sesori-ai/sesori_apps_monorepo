@@ -159,8 +159,7 @@ SessionDetailLoaded _loadedState({
     isArchived: false,
     queuedMessages: const [],
     bridgePromptAttachments: const {},
-    sendingSubmission: null,
-    failedSubmission: null,
+    localSend: const LocalSendPhase.idle(),
     availableAgents: [testAgentInfo()],
     availableProviders: [provider],
     availableCommands: const [],
@@ -607,14 +606,16 @@ void main() {
 
   testWidgets("sending feedback replaces the empty transcript label", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
-      sendingSubmission: const QueuedSessionSubmission.text(
-        promptId: "prompt-1",
-        text: "Cold-start prompt",
-        inputMode: ComposerInputMode.typed,
-        attachments: [],
-        agent: "coder",
-        agentModel: null,
-        fastMode: false,
+      localSend: const LocalSendPhase.sending(
+        submission: QueuedSessionSubmission.text(
+          promptId: "prompt-1",
+          text: "Cold-start prompt",
+          inputMode: ComposerInputMode.typed,
+          attachments: [],
+          agent: "coder",
+          agentModel: null,
+          fastMode: false,
+        ),
       ),
     );
     when(() => cubit.state).thenReturn(state);
@@ -789,8 +790,7 @@ void main() {
       isArchived: false,
       queuedMessages: const [],
       bridgePromptAttachments: const {},
-      sendingSubmission: null,
-      failedSubmission: null,
+      localSend: const LocalSendPhase.idle(),
       availableAgents: [testAgentInfo()],
       availableProviders: testProviderListResponse().items,
       availableCommands: const [],
@@ -3886,7 +3886,10 @@ void main() {
           .outlined,
       isTrue,
     );
-    state = state.copyWith(queuedMessages: const [followingSubmission], sendingSubmission: submission);
+    state = state.copyWith(
+      queuedMessages: const [followingSubmission],
+      localSend: const LocalSendPhase.sending(submission: submission),
+    );
     states.add(state);
     await tester.idle();
     await tester.pump();
@@ -3933,7 +3936,10 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    state = state.copyWith(queuedMessages: const [], sendingSubmission: submission);
+    state = state.copyWith(
+      queuedMessages: const [],
+      localSend: const LocalSendPhase.sending(submission: submission),
+    );
     states.add(state);
     await tester.idle();
     await tester.pump();
@@ -3945,14 +3951,16 @@ void main() {
 
   testWidgets("an in-flight submission stays visible without a cancel action", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
-      sendingSubmission: const QueuedSessionSubmission.text(
-        promptId: "prompt-1",
-        text: "Cold-start prompt",
-        inputMode: ComposerInputMode.typed,
-        attachments: [],
-        agent: "coder",
-        agentModel: null,
-        fastMode: false,
+      localSend: const LocalSendPhase.sending(
+        submission: QueuedSessionSubmission.text(
+          promptId: "prompt-1",
+          text: "Cold-start prompt",
+          inputMode: ComposerInputMode.typed,
+          attachments: [],
+          agent: "coder",
+          agentModel: null,
+          fastMode: false,
+        ),
       ),
     );
     when(() => cubit.state).thenReturn(state);
@@ -3964,5 +3972,62 @@ void main() {
     expect(find.text("Cold-start prompt"), findsOneWidget);
     expect(find.text("Sending"), findsOneWidget);
     expect(find.text("Cancel"), findsNothing);
+  });
+
+  group("failed send actions", () {
+    const failedPrompt = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
+      text: "Failed prompt",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+      fastMode: false,
+    );
+
+    Future<void> pumpFailed(
+      WidgetTester tester, {
+      required LocalSendFailure failure,
+      required SessionInteractionState interaction,
+    }) async {
+      final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+        localSend: LocalSendPhase.failed(submission: failedPrompt, failure: failure),
+        interaction: interaction,
+      );
+      when(() => cubit.state).thenReturn(state);
+      whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pump();
+    }
+
+    testWidgets("a lost response offers Retry without Remove", (tester) async {
+      await pumpFailed(
+        tester,
+        failure: LocalSendFailure.uncertain,
+        interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
+      );
+
+      expect(find.text("Couldn’t send"), findsOneWidget);
+      expect(find.text("Retry"), findsOneWidget);
+      expect(find.text("Remove"), findsNothing);
+    });
+
+    testWidgets("a blocked harness hides Retry but keeps Remove", (tester) async {
+      await pumpFailed(
+        tester,
+        failure: LocalSendFailure.rejected,
+        interaction: const SessionInteractionState.blocked(
+          reason: SessionInteractionBlockedReason.authenticationRequired,
+          displayName: "Claude Code",
+          actionHint: null,
+          refreshError: null,
+        ),
+      );
+
+      expect(find.text("Couldn’t send"), findsOneWidget);
+      expect(find.text("Retry"), findsNothing);
+      await tester.tap(find.text("Remove"));
+      verify(() => cubit.removeFailedSend()).called(1);
+    });
   });
 }

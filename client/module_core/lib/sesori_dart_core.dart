@@ -92,6 +92,7 @@ export "src/cubits/recent_sessions/recent_sessions_cubit.dart";
 export "src/cubits/recent_sessions/recent_sessions_resolvers.dart";
 export "src/cubits/recent_sessions/session_activity_projection.dart";
 export "src/cubits/recent_sessions/sessions_by_recency.dart";
+export "src/cubits/session_detail/local_send_phase.dart";
 export "src/cubits/session_detail/queued_session_submission.dart";
 export "src/cubits/session_detail/session_abort_outcome.dart";
 export "src/cubits/session_detail/session_detail_cubit.dart";
