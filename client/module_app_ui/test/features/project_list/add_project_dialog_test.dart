@@ -733,6 +733,27 @@ void main() {
       semantics.dispose();
     });
 
+    testWidgets("on touch the up button draws at 40 but keeps a 44 tap target", (tester) async {
+      _stubSuggestionsPerPrefix(
+        mockCubit,
+        byPrefix: {
+          "": _homeDirEntries,
+          "/home": const [FilesystemSuggestion(path: _homePath, name: "user", isGitRepo: false)],
+        },
+      );
+
+      await tester.pumpWidget(_buildOpenerApp(cubit: mockCubit));
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(tester.getSize(_upButton), const Size(40, 40));
+
+      // A tap just above the drawn button, inside the 44 target, still goes up.
+      await tester.tapAt(tester.getCenter(_upButton) - const Offset(0, 21));
+      await tester.pumpAndSettle();
+      verify(() => mockCubit.fetchFilesystemSuggestions(prefix: "/home")).called(1);
+    });
+
     testWidgets("a short breadcrumb segment gets a touch-sized tap target", (tester) async {
       _stubSuggestionsPerPrefix(mockCubit, byPrefix: {"": _homeDirEntries});
 
