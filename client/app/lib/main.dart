@@ -85,6 +85,7 @@ void main() async {
       );
       return analyticsBootstrap;
     },
+    disposeDependenciesFn: getIt.reset,
     prepareSingularAttributionFn: _prepareSingularAttribution,
     applySingularCrawlGateFn: _applySingularCrawlGate,
     initializeDeepLinks: () => getIt<DeepLinkService>().init(),
@@ -108,6 +109,7 @@ void main() async {
 Future<void> bootstrapSesoriApp({
   required bool shouldInitializeFirebase,
   required Future<AnalyticsRuntimeBootstrap> Function() configureDependenciesFn,
+  required Future<void> Function() disposeDependenciesFn,
   required void Function() prepareSingularAttributionFn,
   required void Function({required AnalyticsStoreCrawlGate crawlGate}) applySingularCrawlGateFn,
   required void Function() initializeDeepLinks,
@@ -119,7 +121,19 @@ Future<void> bootstrapSesoriApp({
   required Future<ChatInputMode> Function() readChatInputModeFn,
   required void Function(Widget app) runAppFn,
 }) async {
-  final analyticsBootstrap = await configureDependenciesFn();
+  final AnalyticsRuntimeBootstrap analyticsBootstrap;
+  try {
+    analyticsBootstrap = await configureDependenciesFn();
+  } on LegacyStorageMigrationException catch (error, stackTrace) {
+    loge("Unable to finish the local storage upgrade", error, stackTrace);
+    try {
+      await disposeDependenciesFn();
+    } on Object catch (disposeError, disposeStackTrace) {
+      loge("Failed to dispose startup dependencies after the storage upgrade failed", disposeError, disposeStackTrace);
+    }
+    runAppFn(const PersistenceStartupFailureApp());
+    return;
+  }
   prepareSingularAttributionFn();
   initializeDeepLinks();
   await startProductAnalyticsFn();
