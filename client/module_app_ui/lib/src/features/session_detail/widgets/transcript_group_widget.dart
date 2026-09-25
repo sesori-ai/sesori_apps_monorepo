@@ -1,4 +1,5 @@
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
@@ -74,8 +75,7 @@ class const TranscriptGroupWidget({
             title: _SummaryRow.label(loc: context.loc, summary: group.summary),
             builder: (sheetContext) => _panel(
               from: context,
-              // ignore: no_slop_linter/avoid_navigator_of, closes the transient sheet route this panel lives in
-              close: () => Navigator.of(sheetContext).pop(),
+              close: () => sheetContext.pop(),
               padding: EdgeInsets.zero,
             ),
           ),

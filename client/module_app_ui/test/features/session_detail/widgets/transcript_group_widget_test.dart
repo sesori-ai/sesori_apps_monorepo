@@ -2,6 +2,7 @@ import "package:bloc_test/bloc_test.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
@@ -67,41 +68,56 @@ Widget _app({
   PregoInteractionMode mode = PregoInteractionMode.touch,
   String? projectId,
   SessionDetailSessionOpener? openSession,
-}) => PregoInteractionScope(
-  mode: mode,
-  child: MaterialApp(
-    theme: buildPregoThemeData(brightness: Brightness.light),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: SessionDetailPresentationScope(
-      messageImageRepository: () => throw UnimplementedError(),
-      imageSaver: () => throw UnimplementedError(),
-      imageClipboard: () => throw UnimplementedError(),
-      imageSharer: () => throw UnimplementedError(),
-      canShareImages: false,
-      openExternalLink: ({required url, required mode}) async => false,
-      openSession:
-          openSession ?? ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-      openHarnessSettings: () {},
-      openBridgeSettings: () {},
-      child: BlocProvider<SessionDetailCubit>.value(
-        value: _MockSessionDetailCubit(),
-        child: Scaffold(
-          body: MediaQuery(
-            data: MediaQueryData(disableAnimations: disableAnimations),
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: SizedBox(
-                width: width,
-                child: TranscriptGroupWidget(key: ValueKey(group.id), projectId: projectId, group: group),
-              ),
+  // A fresh router per pump would drop widget state, so only a test that
+  // pumps once and pops a sheet through go_router asks for one.
+  bool routed = false,
+}) {
+  final page = SessionDetailPresentationScope(
+    messageImageRepository: () => throw UnimplementedError(),
+    imageSaver: () => throw UnimplementedError(),
+    imageClipboard: () => throw UnimplementedError(),
+    imageSharer: () => throw UnimplementedError(),
+    canShareImages: false,
+    openExternalLink: ({required url, required mode}) async => false,
+    openSession: openSession ?? ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+    openHarnessSettings: () {},
+    openBridgeSettings: () {},
+    child: BlocProvider<SessionDetailCubit>.value(
+      value: _MockSessionDetailCubit(),
+      child: Scaffold(
+        body: MediaQuery(
+          data: MediaQueryData(disableAnimations: disableAnimations),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: width,
+              child: TranscriptGroupWidget(key: ValueKey(group.id), projectId: projectId, group: group),
             ),
           ),
         ),
       ),
     ),
-  ),
-);
+  );
+  final theme = buildPregoThemeData(brightness: Brightness.light);
+  return PregoInteractionScope(
+    mode: mode,
+    child: routed
+        ? MaterialApp.router(
+            theme: theme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            routerConfig: GoRouter(
+              routes: [GoRoute(path: "/", builder: (_, _) => page)],
+            ),
+          )
+        : MaterialApp(
+            theme: theme,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: page,
+          ),
+  );
+}
 
 final _finishedParts = [
   _thought(id: "r1", text: "Plan the change"),
@@ -184,6 +200,7 @@ void main() {
           ),
           mode: mode,
           projectId: "p",
+          routed: true,
           openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
               opened.add(sessionId),
         ),
