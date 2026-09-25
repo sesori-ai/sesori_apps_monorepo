@@ -354,7 +354,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // A lone finished sub-agent keeps its own row.
-    await tester.tap(find.text("Child session"));
+    await tester.tap(find.text("Explore Child session"));
     expect(
       openedSession,
       (

@@ -31,6 +31,89 @@ class const TranscriptLiveLabel({super.key, required final Widget label, require
   );
 }
 
+/// The one line every step kind shows, so all of them line up: the status
+/// icon, or the live sparkle, centred in a sparkle-sized slot, then the step's
+/// bold label and its detail. A one-line row stands as tall as a button at the
+/// theme's density, so tappable and inert rows match.
+class const TranscriptStepRow({
+  super.key,
+  required final Widget leading,
+  required final String label,
+  required final TextSpan? detail,
+
+  /// Shimmers the text; a live row leads with [TranscriptLiveSparkle].
+  required final bool live,
+
+  /// Replaces the secondary text colour, such as a failed shell's red line.
+  required final Color? color,
+
+  /// Under the label, such as a streaming thought's latest words.
+  required final Widget? below,
+}) extends StatelessWidget {
+  /// Every label starts with a capital, a raw tool name too. Only the label:
+  /// the detail keeps its own case.
+  static String capitalize({required String label}) =>
+      label.characters.take(1).toUpperCase().string + label.characters.skip(1).string;
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final color = this.color ?? prego.colors.textSecondary;
+    final detail = this.detail;
+    final below = this.below;
+    final span = TextSpan(
+      children: [
+        TextSpan(
+          text: capitalize(label: label),
+          style: prego.textTheme.textSm.bold.copyWith(color: color),
+        ),
+        if (detail != null) ...[const TextSpan(text: " "), detail],
+      ],
+    );
+    final text = Text.rich(
+      span,
+      style: prego.textTheme.textSm.regular.copyWith(color: color),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+    // A button's 44 px minimum, adjusted for density as the button adjusts it.
+    final height = 44 + Theme.of(context).visualDensity.baseSizeAdjustment.dy;
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: (height - TranscriptLiveSparkle.size) / 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox.square(
+                dimension: TranscriptLiveSparkle.size,
+                child: Center(child: leading),
+              ),
+              SizedBox(width: prego.spacing.md),
+              Expanded(
+                // The text reads in place, as a settled row's does, so a row
+                // that merges its semantics announces the label first.
+                child: live
+                    ? Semantics(
+                        label: span.toPlainText(),
+                        child: TranscriptLiveLabel(label: text, semanticLabel: null),
+                      )
+                    : text,
+              ),
+            ],
+          ),
+          if (below != null)
+            Padding(
+              padding: EdgeInsetsDirectional.only(start: TranscriptLiveSparkle.size + prego.spacing.md),
+              child: below,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// The live row at the newest end of the transcript while the session works
 /// and no step is live: before the first token and between steps.
 class const TranscriptWorkingRow({super.key}) extends StatelessWidget {

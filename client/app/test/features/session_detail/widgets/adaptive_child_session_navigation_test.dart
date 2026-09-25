@@ -134,7 +134,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("Child Session"));
+      await tester.tap(find.text("Agent Child Session"));
       await tester.pumpAndSettle();
 
       // Push adds to stack, so canPop should be true.
@@ -163,7 +163,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("Child Session"));
+      await tester.tap(find.text("Agent Child Session"));
       await tester.pumpAndSettle();
 
       expect(find.text("canPop=true"), findsOneWidget);
@@ -189,7 +189,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("Child Session"));
+      await tester.tap(find.text("Agent Child Session"));
       await tester.pumpAndSettle();
 
       expect(find.text("sessionId=agent-42"), findsOneWidget);
@@ -211,7 +211,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("Explore the plugin"));
+      await tester.tap(find.text("Agent Explore the plugin"));
       await tester.pumpAndSettle();
 
       expect(find.text("sessionId=agent-42"), findsOneWidget);
@@ -232,7 +232,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("Explore the plugin"));
+      await tester.tap(find.text("Agent Explore the plugin"));
       await tester.pumpAndSettle();
 
       expect(find.textContaining("sessionId="), findsNothing);

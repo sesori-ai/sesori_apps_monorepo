@@ -18,6 +18,7 @@ import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "system_message_card.dart";
+import "tool_part_widget.dart";
 import "transcript_live_row.dart";
 import "transcript_motion.dart";
 import "user_message_card.dart";
@@ -540,7 +541,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       // A live tool is pending or running; the row names which.
       final command? =>
         "${part.state.status == ToolStatus.pending ? loc.sessionDetailToolPending : loc.sessionDetailToolRunning} \$ $command",
-      null => [if (part.tool.isEmpty) loc.sessionDetailToolUnknown else part.tool, ?part.state.title].join(" "),
+      null => [ToolPartWidget.toolName(loc: loc, part: part), ?part.state.title].join(" "),
     },
     TranscriptSubAgentStep(:final part) => [
       part.description,

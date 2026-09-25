@@ -24,9 +24,15 @@ sub-agent parts, plus the signal that a tool changed files.
   Skills that load through a file read of `SKILL.md` are visible by that path.
   Pi learns the title at `toolcall_end`, so a card announced by `toolcall_start`
   shows it from the running or terminal update onward, live and after replay.
-  Ordinary tools render as lightweight secondary-text rows with a status icon,
-  the tool name and title; a finished tool says nothing more, and a failed one
-  keeps one signal, its red icon. An explicit `shellCommand` instead renders an underlined
+  Every step (a tool, a command, a thought, a sub-agent, a finished compaction)
+  renders as one lightweight secondary-text row layout, on phone and desktop
+  alike: its icon, or the live sparkle, centred in one 20 px slot, then one
+  14 px line holding a bold label and its regular detail, at a button's height
+  for the surface's density. A group summary's chevron sits in the same slot.
+  Every label starts with a capital, raw tool names included (“Apply_patch”);
+  the detail keeps its own case. Ordinary tools show the tool name and title;
+  a finished tool says nothing more, and a failed one keeps one signal, its
+  red icon. A sub-agent shows its agent, then its task. An explicit `shellCommand` instead renders an underlined
   command disclosure: completed calls say “Ran”; other calls retain their
   pending/running/failed/cancelled/unknown status. Tool-name strings never decide
   whether a shell panel is available.
@@ -241,7 +247,7 @@ sub-agent parts, plus the signal that a tool changed files.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, eased and reduced-motion disclosure, enlarged text and both themes; attachment visibility and title-only older-peer rendering; the sparkle leading a live row, and the “Working…” row showing while busy with no live step or streaming text and leaving when a step starts, text streams, the session idles or a retry row shows; a finished live row folding into its group while its count rolls, including one that finishes before it has eased in, a new segment wiping in, a group opening in a desktop popover (Esc and outside-click dismissal, capped height) or a phone sheet without changing the transcript height, instant changes under reduced motion, and a pinned reader staying pinned through the fold. Authoritative tool execution still requires a live turn. |
+| L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, eased and reduced-motion disclosure, enlarged text and both themes; attachment visibility and title-only older-peer rendering; every step kind lining up in one row layout with a bold, capitalised label at phone and desktop density; the sparkle leading a live row, and the “Working…” row showing while busy with no live step or streaming text and leaving when a step starts, text streams, the session idles or a retry row shows; a finished live row folding into its group while its count rolls, including one that finishes before it has eased in, a new segment wiping in, a group opening in a desktop popover (Esc and outside-click dismissal, capped height) or a phone sheet without changing the transcript height, instant changes under reduced motion, and a pinned reader staying pinned through the fold. Authoritative tool execution still requires a live turn. |
 | L2 Routine | Live plugin, representative: a file-editing tool produces a lightweight tool part with name and terminal status, while a shell tool preserves its command and bounded result. |
 | L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok target coverage: a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. Grok owned-phone coverage passed completed-tile rendering, exact read-only child navigation, and genuine permission Once. File diff/invalidation, mutating-tool permission linkage, failing-tool presentation, and permission denial remain unexecuted. |
 | L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity and status intact, shell commands retain their results, and non-shell snippets remain absent; a failing shell command surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. |
@@ -281,6 +287,10 @@ guarantee.
   there is room below the row, the panel opens behind the composer, or the
   transcript scrolls in a second step after the panel has opened or after a
   later resize of an open panel.
+- One step kind's row differs from the others: its icon is sized or placed
+  differently, its label starts at another inset, or it stands taller or
+  shorter; or a label is not bold or starts lowercase, or the row changes its
+  detail's case.
 - Steps separated by visible text merge into one group, a group swallows a text
   or file part, a summary counts a running step, a finished step stays outside
   its summary, or a finished tool or sub-agent shows a “Done” label.
@@ -407,6 +417,9 @@ guarantee.
   live/history states, subtask outcomes/IDs, multibyte bounds, released title
   decoding and attachments. ACP cases include partial/reordered updates and
   Antigravity alias/exit-only behavior.
+- `client/module_app_ui/test/features/session_detail/widgets/transcript_step_row_test.dart`
+  measures every step kind's icon, label inset, height and label weight at
+  phone and desktop density.
 - Owning Claude content/history/tracker, Pi history/dispatcher, OpenCode part
   mapper, Codex rollout/tracker/history, ACP replay/content, Grok adapter,
   Antigravity normalizer and DeepSeek replay/time tests guard backend semantics.

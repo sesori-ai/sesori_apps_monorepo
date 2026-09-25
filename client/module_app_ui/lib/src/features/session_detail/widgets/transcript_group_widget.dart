@@ -10,6 +10,7 @@ import "../session_detail_presentation_scope.dart";
 import "reasoning_part_card.dart";
 import "subtask_part_widget.dart";
 import "tool_part_widget.dart";
+import "transcript_live_row.dart";
 import "transcript_motion.dart";
 import "transcript_rolling_line.dart";
 
@@ -64,20 +65,20 @@ class const TranscriptGroupWidget({
       ),
       child: _SummaryRow(summary: group.summary),
     );
-    const key = ValueKey("transcriptGroup.summary");
-    return switch (PregoInteractionScope.of(context)) {
-      PregoInteractionMode.pointer => PregoPopover(
-        key: key,
-        popoverWidth: panelWidth,
-        popoverMaxHeight: panelMaxHeight,
-        contentScrolls: false,
-        onClosed: null,
-        triggerBuilder: (_, open) => button(onPressed: open),
-        contentBuilder: (_, close) => _panel(from: context, close: close, padding: EdgeInsets.all(prego.spacing.lg)),
-      ),
-      PregoInteractionMode.touch => KeyedSubtree(
-        key: key,
-        child: button(
+    // Spaced as a step row is.
+    return Padding(
+      key: const ValueKey("transcriptGroup.summary"),
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: switch (PregoInteractionScope.of(context)) {
+        PregoInteractionMode.pointer => PregoPopover(
+          popoverWidth: panelWidth,
+          popoverMaxHeight: panelMaxHeight,
+          contentScrolls: false,
+          onClosed: null,
+          triggerBuilder: (_, open) => button(onPressed: open),
+          contentBuilder: (_, close) => _panel(from: context, close: close, padding: EdgeInsets.all(prego.spacing.lg)),
+        ),
+        PregoInteractionMode.touch => button(
           onPressed: () => showPregoModal<void>(
             context: context,
             title: _SummaryRow.label(loc: context.loc, summary: group.summary),
@@ -88,8 +89,8 @@ class const TranscriptGroupWidget({
             ),
           ),
         ),
-      ),
-    };
+      },
+    );
   }
 
   /// The finished steps, as they were when the group opened. The panel is a
@@ -145,10 +146,14 @@ class const _SummaryRow({required final TranscriptSummary summary}) extends Stat
     final loc = context.loc;
     final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
     // Hugs its text, so the popover centres under the summary, not the row.
+    // The chevron sits in a step row's icon slot, so the text lines up.
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(TablerRegular.chevron_right, size: PregoIconSize.sm, color: style.color),
+        SizedBox.square(
+          dimension: TranscriptLiveSparkle.size,
+          child: Icon(TablerRegular.chevron_right, size: PregoIconSize.sm, color: style.color),
+        ),
         SizedBox(width: prego.spacing.md),
         // The counts ellipsize on a narrow screen; the failure count never does.
         Flexible(
