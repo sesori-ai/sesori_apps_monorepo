@@ -111,7 +111,7 @@ jobs:
     needs: next-build-number
     uses: ./.github/workflows/_reusable-ios-testflight.yml
     with:
-      runner: macos-latest
+      runner: xcode-27
       build_number: ${{ needs.next-build-number.outputs.build_number }}
     secrets:
       APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}

@@ -8,6 +8,13 @@ packaging capability does not imply public downloads or an updater have shipped.
 
 ## Required Behavior
 
+- Apple CI selects Xcode through `.github/actions/setup-xcode`: stable 27.0 on the
+  ARM64 `xcode-27` hosted image and 26.6 on `macos-26-intel`. GitHub's Xcode 27 image
+  is in public preview; `macos-latest` does not supply this toolchain. Xcode 27 requires
+  an Apple silicon host, not an ARM64-only app target: preserve the existing deployment
+  targets, universal GUI and package-native helper checks. Missing pinned Xcode must
+  fail setup rather than silently use another installed compiler. The same selection
+  applies to desktop CI/probes, reusable bridge builds and iOS TestFlight builds.
 - Build from committed source with the pinned native SDK. Reject a nonempty
   build-recorded source patch before supplying signing credentials. Preserve framework
   symlinks, native CPU support and the complete `Contents/Helpers/bridge/bin`–`lib`
@@ -94,6 +101,10 @@ following the macOS QA process.
 
 ## Maintenance Sources
 
+- `.github/actions/setup-xcode/action.yml`
+- [Apple Xcode 27 release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-27-release-notes)
+- [GitHub Xcode 27 image](https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md)
+- [GitHub Intel image](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md)
 - `.github/workflows/desktop-qualification.yml`
 - `.github/scripts/macos_signing_ci.sh`
 - `.github/scripts/package_desktop_macos.py`

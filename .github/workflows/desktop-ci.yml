@@ -89,6 +89,7 @@ jobs:
               - 'client/Makefile'
               - 'client/app/all_lint_rules.yaml'
               - '.github/workflows/desktop-ci.yml'
+              - '.github/actions/setup-xcode/**'
               - '.tool-versions'
             supervised_e2e:
               # The helper is a native workspace build; keep this gate broad so
@@ -98,6 +99,7 @@ jobs:
               - 'shared/sesori_shared/**'
               - 'shared/no_slop_linter/**'
               - '.github/workflows/desktop-ci.yml'
+              - '.github/actions/setup-xcode/**'
               - '.tool-versions'
             # Inputs that can break a macOS or Windows build while the Linux
             # build stays green: native runner projects, in-repo plugin sources
@@ -110,6 +112,7 @@ jobs:
               - 'client/**/pubspec.yaml'
               - 'client/pubspec.lock'
               - '.github/workflows/desktop-ci.yml'
+              - '.github/actions/setup-xcode/**'
               - '.tool-versions'
 
       # PRs build Linux only unless a native input changed. Pushes to main
@@ -122,7 +125,7 @@ jobs:
           ALL_PLATFORMS: ${{ github.event_name == 'push' || steps.filter.outputs.native == 'true' }}
         run: |
           linux='{"os":"ubuntu-latest","target":"linux"}'
-          macos='{"os":"macos-latest","target":"macos"}'
+          macos='{"os":"xcode-27","target":"macos"}'
           windows='{"os":"windows-latest","target":"windows"}'
           if [ "$ALL_PLATFORMS" = true ]; then
             echo "matrix=[$macos,$windows,$linux]" >> "$GITHUB_OUTPUT"
@@ -173,12 +176,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [xcode-27, windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     env:
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
     steps:
       - uses: actions/checkout@v6
+
+      - name: Set up native Xcode
+        if: runner.os == 'macOS'
+        uses: ./.github/actions/setup-xcode
 
       - uses: subosito/flutter-action@v2
         with:
@@ -225,6 +232,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
+
+      - name: Set up native Xcode
+        if: runner.os == 'macOS'
+        uses: ./.github/actions/setup-xcode
 
       - uses: subosito/flutter-action@v2
         with:
