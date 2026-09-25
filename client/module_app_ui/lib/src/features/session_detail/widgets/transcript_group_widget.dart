@@ -122,7 +122,9 @@ class const _SummaryRow({required final TranscriptSummary summary}) extends Stat
     final prego = context.prego;
     final loc = context.loc;
     final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
+    // Hugs its text, so the popover centres under the summary, not the row.
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(TablerRegular.chevron_right, size: PregoIconSize.sm, color: style.color),
         SizedBox(width: prego.spacing.md),
