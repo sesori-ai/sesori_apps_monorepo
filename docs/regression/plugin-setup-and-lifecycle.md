@@ -453,6 +453,11 @@ envelopes preserve frame identity/location; unknown or malformed events are logg
 and dropped without terminating later decoding. These tests do not claim an active
 v2 adapter or authenticated native-session parity.
 
+Inactive v2 catalog mapping adds sanitized native 2.0.16 catalog/session responses,
+display-ready agent names with plugin-local native-ID lookup, plugin-neutral session
+JSON, model/variant defaults and form field ordering. The form examples are
+source-derived; this coverage does not prove native turn or form execution.
+
 ## Exploration Guidance
 
 Vary which harness runs first and which stays disabled, and the configuration: default

@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-v2`
-- **Status:** Active; Steps 1–3 merged, Step 4 API and event transport implemented for review.
+- **Status:** Active; Steps 1–4 merged, Step 5.a catalog normalization in review (#1733, PR 5/12).
 - **Plan date:** 2026-09-25
 - **Implementation base:** `main` at `fed841c2f9`
 - **Trigger:** issue #1677 — OpenCode 2.0.11 on PATH fails cold start with `FormatException ... <!doctype html>`.
@@ -117,11 +117,13 @@ All v2 code lives under `bridge/sesori_plugin_opencode/lib/src/v2/`, one directo
 | Path | Class | Layer |
 |---|---|---|
 | `models/openapi/*.g.dart`, `models/v2_event.g.dart` | generated DTOs | 0 |
+| `models/v2_agent_names.dart` | `V2AgentNames` | 0 (immutable identity/display lookup) |
 | `api/opencode_v2_api.dart` | `OpenCodeV2Api` | 1 |
 | `sse/v2_event_parser.dart` | `V2EventParser` | 1 |
 | `repositories/opencode_v2_repository.dart` | `OpenCodeV2Repository` | 2 |
 | `repositories/opencode_v2_activity_tracker.dart` | `OpenCodeV2ActivityTracker` | 2 (standalone state) |
 | `repositories/v2_model_mapper.dart` | `V2ModelMapper` | 2 (pure) |
+| `repositories/v2_message_mapper.dart` | `V2MessageMapper` | 2 (pure transcript projection, reused for event parity) |
 | `sse/v2_event_mapper.dart` | `V2EventMapper` | pure, stateless |
 | `mappers/v2_form_answer_mapper.dart` | `V2FormAnswerMapper` | pure |
 | `mappers/v2_form_answer_validator.dart` | `V2FormAnswerValidator` | pure |
@@ -130,7 +132,13 @@ All v2 code lives under `bridge/sesori_plugin_opencode/lib/src/v2/`, one directo
 
 ## Steps
 
-Series titles: `<emoji> [opencode-v2] <description> [step x/10]`.
+Series titles: `<emoji> [opencode-v2] <description> [step x/12]`.
+
+Step 5 is split into 5.a catalog normalization (PR 5), 5.b transcript mapping (PR 6), and
+5.c repository integration (PR 7). Durable Steps 6–10 correspond to PRs 8–12; earlier PRs keep ordinals 1–4.
+Review feedback exposed independent catalog/identity and transcript seams near the soft cap. The transcript
+implementation through `ef5015416a` remains in #1733's published history and moves into the immediate successor;
+no history rewrite, compatibility shim or new mutable owner is needed. Count all authored/generated churn.
 
 1. **🌱 Raise plan.** Adds `PLAN.md` and `TRACKER.md` only.
 2. **🌿 Detect v2 and refuse it honestly.**
@@ -160,13 +168,21 @@ Series titles: `<emoji> [opencode-v2] <description> [step x/10]`.
    - `SseConnection` takes its event path as a parameter.
    - `V2EventParser` decodes the envelope; unknown types are logged and dropped.
    - Tests: `MockClient` HTTP tests and parser tests.
-5. **🚧 v2 read mapping and repository.**
+5.a. **⚙️ v2 catalog normalization (PR 5/12).**
    - `V2ModelMapper`: project and session (`location.directory`, `time`, `parentID`) → plugin models and
-     `shared.Session`.
-   - Messages: flat v2 messages → existing plugin message/part models. Text/reasoning parts get the deterministic id
-     `<messageID>:<ordinal>`; tool parts use the tool `id`.
-   - Tool state: `streaming` → pending, `running`, `completed`, `error`. User/synthetic/compaction/shell messages map to
-     their closest v1 equivalents.
+     `shared.Session`; agents, providers/models/variants, commands and form/permission presentation.
+   - `V2AgentNames`: immutable catalog lookup keeps display names in selections and session defaults,
+     with reverse translation to native IDs inside the plugin. No cache or mutable lifecycle owner.
+   - Tests: native 2.0.16 catalog/session fixtures and source-derived form projection cases.
+5.b. **🚧 v2 transcript mapping (PR 6/12).**
+   - Restore the transcript mapper and typed tool-display DTOs preserved in `ef5015416a`.
+   - Flat v2 messages → existing plugin message/part models. Text/reasoning retain `<messageID>:<ordinal>`;
+     tools retain their native tool IDs. Apply the catalog's agent-name lookup at projection boundaries.
+   - Tool state: `streaming` → pending, `running`, `completed`, `error`; shell-command extraction is gated
+     on recognized shell tools. Preserve bounded attachments and native errors without payload logging.
+   - Include assistant retry metadata and system-authored agent-switch notices raised during #1733 review.
+   - Source-derived transcript tests; no caches, timers, persistence or lifecycle owners.
+5.c. **🚧 v2 repository integration (PR 7/12).**
    - `OpenCodeV2Repository` (Api → mapped plugin models) reads projects, sessions, children, messages, agents, models
      with variants and commands. It also exposes, per directory, active sessions, pending permission requests and
      pending forms, and every write Step 7 needs:
@@ -174,7 +190,8 @@ Series titles: `<emoji> [opencode-v2] <description> [step x/10]`.
      - rename, delete, worktree delete;
      - compact, synthetic message;
      - permission reply, form reply/cancel.
-   - Tests: mapper fixtures captured from a live 2.0.16 server, and repository tests over a fake `OpenCodeV2Api`.
+   - Compose the immutable agent-name lookup from the native catalog for readable selections and native write IDs.
+   - Tests: repository tests over a fake `OpenCodeV2Api`, using the preceding mapper fixtures.
 6. **🚧 v2 live events, activity and service.**
    - `V2EventMapper` is stateless:
      - session created/renamed/deleted → `BridgeSseSession*`;
@@ -256,8 +273,9 @@ requires the user's explicit acceptance recorded here.
 - **Flat-content → part mapping fidelity** for tool metadata and diffs. Accepted: tool output and state are mapped;
   rare metadata-only fields may not render.
 - **Managed users migrate one-way** to a v2 database (D9, user-accepted).
-- **Evidence level:** the protocol facts come from source plus a live sandbox probe. Streaming event order is from
-  source only and is confirmed in Step 5/6 fixture capture.
+- **Evidence level:** protocol facts include a live sandbox probe and Step 5 native catalog/session REST fixtures.
+  Transcript/form examples and streaming event order remain source-derived; native turn/event parity still requires
+  the later native-fixture and L3 gates.
 
 ## Cleanup Assessment
 
