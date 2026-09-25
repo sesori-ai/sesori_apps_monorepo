@@ -226,6 +226,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               ),
             ),
             onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
+            onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
             sessionActions: _desktopSessionActions,
             onMarkedUnread: () => _goRoute(
               context: context,

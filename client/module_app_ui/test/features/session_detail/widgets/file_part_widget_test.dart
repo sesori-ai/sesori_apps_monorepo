@@ -79,6 +79,7 @@ Widget _presentationScope({required Widget child, required bool canShareImages})
   final dependencies = GetIt.instance;
   return SessionDetailPresentationScope(
     openHarnessSettings: () {},
+    openBridgeSettings: () {},
     messageImageRepository: dependencies.get<MessageImageRepository>,
     imageSaver: dependencies.get<ImageSaver>,
     imageClipboard: dependencies.get<ImageClipboard>,

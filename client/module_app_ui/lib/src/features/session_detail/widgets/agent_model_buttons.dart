@@ -47,6 +47,9 @@ class const AgentModelButtons({
   /// Whether each selector hugs its label at the leading edge (pointer shells)
   /// instead of sharing the strip's width equally (touch shells).
   required final bool compact,
+
+  /// Shown after the selectors, such as the session's YOLO chip.
+  required final Widget? trailing,
 }) extends StatefulWidget {
   @override
   State<AgentModelButtons> createState() => _AgentModelButtonsState();
@@ -135,6 +138,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
           decide: widget.decideFastModeToggle,
           onFastModeChanged: widget.onFastModeChanged,
         ),
+      ?widget.trailing,
     ];
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),

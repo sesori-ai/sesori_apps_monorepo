@@ -8,26 +8,26 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/bridge_settings/bridge_settings_cubit.dart";
 import "package:sesori_dart_core/src/cubits/bridge_settings/bridge_settings_state.dart";
-import "package:sesori_dart_core/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_dart_core/src/repositories/models/bridge_settings_result.dart";
+import "package:sesori_dart_core/src/services/bridge_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockBridgeSettingsRepository() extends Mock implements BridgeSettingsRepository;
+class _MockBridgeSettingsService() extends Mock implements BridgeSettingsService;
 
 void main() {
-  late _MockBridgeSettingsRepository service;
+  late _MockBridgeSettingsService service;
   late _FakeConnectionService connection;
 
   setUp(() {
-    service = _MockBridgeSettingsRepository();
+    service = _MockBridgeSettingsService();
     connection = _FakeConnectionService(initialStatus: _connected);
     addTearDown(connection.dispose);
   });
 
   test("loads one full aggregate snapshot", () async {
     _stubFullLoad(service, intervalSeconds: 30, yoloEnabled: true);
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     addTearDown(cubit.close);
 
     await _waitForState<BridgeSettingsReadyFull>(cubit);
@@ -55,7 +55,7 @@ void main() {
         ),
       ),
     );
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     addTearDown(cubit.close);
 
     await _waitForState<BridgeSettingsReadyFull>(cubit);
@@ -72,7 +72,7 @@ void main() {
         pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 45),
       ),
     );
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     addTearDown(cubit.close);
 
     await _waitForState<BridgeSettingsReadyLegacyPartial>(cubit);
@@ -90,7 +90,7 @@ void main() {
     when(() => service.updateYolo(enabled: true)).thenAnswer(
       (_) async => YoloSettingsMutationFailure(error: ApiError.generic()),
     );
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     addTearDown(cubit.close);
     await _waitForState<BridgeSettingsReadyFull>(cubit);
 
@@ -110,7 +110,7 @@ void main() {
     when(() => service.updatePluginWarmup(enabled: false)).thenAnswer(
       (_) async => const PluginWarmupSettingsMutationCommitted(enabled: false),
     );
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     addTearDown(cubit.close);
     await _waitForState<BridgeSettingsReadyFull>(cubit);
 
@@ -130,7 +130,7 @@ void main() {
     when(() => service.updatePullRequestRefresh(intervalSeconds: 45)).thenAnswer(
       (_) async => const PullRequestRefreshSettingsMutationUnsupported(),
     );
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     addTearDown(cubit.close);
     await _waitForState<BridgeSettingsReadyFull>(cubit);
 
@@ -151,7 +151,7 @@ void main() {
     when(() => service.updatePullRequestRefresh(intervalSeconds: 10)).thenAnswer(
       (_) async => PullRequestRefreshSettingsMutationRejected(bounds: bounds),
     );
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     addTearDown(cubit.close);
     await _waitForState<BridgeSettingsReadyFull>(cubit);
 
@@ -174,7 +174,7 @@ void main() {
       if (loadCalls == 1) throw StateError("unexpected load failure");
       return Future.value(_fullResult(intervalSeconds: 30, yoloEnabled: false));
     });
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     addTearDown(cubit.close);
     await _waitForState<BridgeSettingsFailure>(cubit);
 
@@ -193,7 +193,7 @@ void main() {
           : BridgeSettingsLoadFailure(error: ApiError.generic());
     });
     when(() => service.updateYolo(enabled: true)).thenAnswer((_) async => const YoloSettingsMutationUncertain());
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     addTearDown(cubit.close);
     await _waitForState<BridgeSettingsReadyFull>(cubit);
 
@@ -208,7 +208,7 @@ void main() {
   test("closing during an aggregate load suppresses its late result", () async {
     final load = Completer<BridgeSettingsLoadResult>();
     when(service.load).thenAnswer((_) => load.future);
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     await _waitUntil(() => cubit.state is BridgeSettingsLoading);
 
     final close = cubit.close();
@@ -225,7 +225,7 @@ void main() {
       return _fullResult(intervalSeconds: 30, yoloEnabled: loadCalls > 1);
     });
     when(() => service.updateYolo(enabled: true)).thenAnswer((_) async => const YoloSettingsMutationUncertain());
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     addTearDown(cubit.close);
     await _waitForState<BridgeSettingsReadyFull>(cubit);
 
@@ -243,7 +243,7 @@ void main() {
     });
     final mutation = Completer<YoloSettingsMutationResult>();
     when(() => service.updateYolo(enabled: true)).thenAnswer((_) => mutation.future);
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     addTearDown(cubit.close);
     await _waitForState<BridgeSettingsReadyFull>(cubit);
 
@@ -272,7 +272,7 @@ void main() {
       loadCalls++;
       return loadCalls == 1 ? firstLoad.future : Future.value(_fullResult(intervalSeconds: 60, yoloEnabled: false));
     });
-    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
     addTearDown(cubit.close);
     await _waitUntil(() => loadCalls == 1);
     connection.emitStatus(const ConnectionStatus.connectionLost(config: _config));
@@ -317,7 +317,7 @@ BridgeSettingsLoadSupported _fullResult({required int intervalSeconds, required 
 }
 
 void _stubFullLoad(
-  _MockBridgeSettingsRepository service, {
+  _MockBridgeSettingsService service, {
   required int intervalSeconds,
   required bool yoloEnabled,
 }) {

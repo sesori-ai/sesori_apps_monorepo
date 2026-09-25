@@ -89,6 +89,7 @@ Widget _buildApp({
               decideFastModeToggle: () => null,
               onFastModeChanged: (_) {},
               compact: mode == PregoInteractionMode.pointer,
+              trailing: null,
             ),
           ],
         ),

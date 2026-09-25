@@ -18,6 +18,9 @@ class const SessionDetailPresentationScope({
   required final ExternalLinkOpener openExternalLink,
   required final SessionDetailSessionOpener openSession,
   required final VoidCallback openHarnessSettings,
+
+  /// Opens the settings that hold the connected bridge's YOLO toggle.
+  required final VoidCallback openBridgeSettings,
   required super.child,
 }) extends InheritedWidget {
   static SessionDetailPresentationScope of(BuildContext context) {
@@ -39,7 +42,8 @@ class const SessionDetailPresentationScope({
       canShareImages != oldWidget.canShareImages ||
       openExternalLink != oldWidget.openExternalLink ||
       openSession != oldWidget.openSession ||
-      openHarnessSettings != oldWidget.openHarnessSettings;
+      openHarnessSettings != oldWidget.openHarnessSettings ||
+      openBridgeSettings != oldWidget.openBridgeSettings;
 }
 
 typedef SessionDetailCapabilityProvider<T> = T Function();

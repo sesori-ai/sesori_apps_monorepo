@@ -99,6 +99,7 @@ class const _MobileSessionDetailBody({
       imageSharer: getIt.get<ImageSharer>,
       canShareImages: kIsWeb || defaultTargetPlatform != TargetPlatform.linux,
       openExternalLink: openExternalLink,
+      openBridgeSettings: () => context.pushRoute(const AppRoute.settings()),
       openHarnessSettings: () => context.pushRoute(
         const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
       ),
