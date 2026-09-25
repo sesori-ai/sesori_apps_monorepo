@@ -43,7 +43,11 @@ sub-agent parts, plus the signal that a tool changed files.
   agent messages and renders in the first one's row, while an automation
   message groups only within itself. A running step stays below the summary as
   its own row and folds into the summary when it finishes; a group of only
-  running steps shows no summary. The fold is animated over 200 ms: the live
+  running steps shows no summary. A group with exactly one finished step shows
+  no summary either: that step keeps its own row, in step order among any live
+  rows, with its own label and details (for example a lone background-task
+  notice reads `Agent "…" finished`, never “1 step”), and it folds into the
+  new summary when a second step finishes. The fold is animated over 200 ms: the live
   row keeps its last look while its height shrinks, it fades and slides up a
   little, and the summary takes it in: a changed count rolls (the old number
   slides up and out, the new one in from below, so “read 2 files” rolls only
