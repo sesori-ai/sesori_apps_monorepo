@@ -51,11 +51,13 @@
   dispatches nested data, and logs/drops malformed or unsupported frames without presenting transcript data.
 - SSE transport accepts an explicit path. The active v1 plugin still supplies `/global/event`; v2 `/api/event`
   is exercised only by fixtures until Step 7 activation. Authentication and lifecycle ownership are unchanged.
+- Architecture implementation review approved `167e627` with no findings.
 - Focused v1/v2 model, HTTP and SSE suites pass (80 cases across seven suites); analyzer is clean.
   Two fixture corrections (required project active time and unbuffered HTTP streaming) were verified by
   rerunning the affected API/connection suites. Unchanged passing suites were not rerun.
 - Full owning-package build_runner and v1/v2 REST/SSE generators ran. v1 generated output remains unchanged.
-  Most added lines are Freezed/JSON request-envelope boilerplate kept with its source.
+  About half the diff is generated boilerplate: 1,044 authored + 1,003 generated changed lines at review.
+  The 1,003 generated lines stay with their source; the authored change is within the planned ceiling.
 - Includes the valid post-merge #1716 finding: unconstrained compaction arrays now retain null elements,
   fixed in the generator and exercised both directly and through an API acknowledgement.
 - No active v2 adapter, runtime target, database, shared wire contract, or user-visible behavior change.
