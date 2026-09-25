@@ -226,7 +226,7 @@ String _yoloDescription({required BuildContext context, required BridgeSettingsS
     BridgeSettingsFailure() => context.loc.settingsYoloLoadFailed,
     BridgeSettingsReadyFull(yoloMutation: YoloMutationUncertain()) => context.loc.settingsYoloUncertain,
     BridgeSettingsReadyFull(yoloMutation: YoloMutationFailed()) => context.loc.settingsYoloUpdateFailed,
-    BridgeSettingsReadyFull() || BridgeSettingsDisconnected() => context.loc.settingsYoloWarning,
+    BridgeSettingsReadyFull() || BridgeSettingsDisconnected() => context.loc.settingsYoloDescription,
   };
 }
 

@@ -812,6 +812,7 @@ SessionDetailCubit _buildCubit({
     projectId: projectId,
     notificationCanceller: notificationCanceller,
     failureReporter: failureReporter,
+    bridgeSettingsService: stubbedBridgeSettingsService(),
   );
 }
 

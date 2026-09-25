@@ -195,6 +195,7 @@ void main() {
             },
             child: DesktopSessionDetailView(
               onOpenHarnessSettings: () {},
+              onOpenBridgeSettings: () {},
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Desktop session",
@@ -303,6 +304,7 @@ void main() {
             imageClipboard: _MockImageClipboard.new,
             child: DesktopSessionDetailView(
               onOpenHarnessSettings: () {},
+              onOpenBridgeSettings: () {},
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Desktop session",
@@ -396,6 +398,7 @@ void main() {
                 imageClipboard: _MockImageClipboard.new,
                 child: DesktopSessionDetailView(
                   onOpenHarnessSettings: () {},
+                  onOpenBridgeSettings: () {},
                   projectId: "project-1",
                   sessionId: "session-1",
                   sessionTitle: "Desktop session",

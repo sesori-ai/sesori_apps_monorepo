@@ -31,6 +31,7 @@ class const DesktopSessionDetailScreen({
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
   required final VoidCallback onOpenHarnessSettings,
+  required final VoidCallback onOpenBridgeSettings,
   required final SessionListActionDispatcher sessionActions,
 
   /// Leaves the session once it is marked unread, so viewing it cannot mark
@@ -76,6 +77,7 @@ class const DesktopSessionDetailScreen({
             onShowDiffs: onShowDiffs,
             onOpenSession: onOpenSession,
             onOpenHarnessSettings: onOpenHarnessSettings,
+            onOpenBridgeSettings: onOpenBridgeSettings,
             sessionActions: sessionActions,
             onMarkedUnread: onMarkedUnread,
             messageImageRepository: getIt.get<MessageImageRepository>,
@@ -106,6 +108,7 @@ class const DesktopSessionDetailView({
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
   required final VoidCallback onOpenHarnessSettings,
+  required final VoidCallback onOpenBridgeSettings,
   required final SessionListActionDispatcher sessionActions,
 
   /// Leaves the session once it is marked unread, so viewing it cannot mark
@@ -128,6 +131,7 @@ class const DesktopSessionDetailView({
       openExternalLink: openDesktopExternalLink,
       openSession: onOpenSession,
       openHarnessSettings: onOpenHarnessSettings,
+      openBridgeSettings: onOpenBridgeSettings,
       child: _MarkUnreadShortcut(
         onMarkUnread: () {
           final session = context.read<SessionDetailCubit>().state.hydratedSession;

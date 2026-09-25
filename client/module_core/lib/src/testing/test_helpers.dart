@@ -35,6 +35,7 @@ import "../repositories/project_repository.dart";
 import "../repositories/registered_bridges_store.dart";
 import "../repositories/session_repository.dart";
 import "../routing/app_routes.dart";
+import "../services/bridge_settings_service.dart";
 import "../services/catalog_rescan_service.dart";
 import "../services/models/catalog_rescan_state.dart";
 import "../services/models/session_activity_info.dart";
@@ -83,6 +84,17 @@ MockPluginManagementService stubbedPluginManagementService() {
   when(() => mock.snapshots).thenAnswer((_) => snapshots);
   when(mock.refresh).thenAnswer((_) async {});
   when(mock.onDispose).thenAnswer((_) async {});
+  return mock;
+}
+
+class MockBridgeSettingsService() extends Mock implements BridgeSettingsService;
+
+/// A [MockBridgeSettingsService] whose YOLO flag stays off, for session tests
+/// that do not exercise it.
+MockBridgeSettingsService stubbedBridgeSettingsService() {
+  final mock = MockBridgeSettingsService();
+  final yoloEnabled = BehaviorSubject.seeded(false);
+  when(() => mock.yoloEnabled).thenAnswer((_) => yoloEnabled.stream);
   return mock;
 }
 

@@ -100,6 +100,7 @@ Future<void> showImageAttachmentViewer({
         openExternalLink: presentation.openExternalLink,
         openSession: presentation.openSession,
         openHarnessSettings: presentation.openHarnessSettings,
+        openBridgeSettings: presentation.openBridgeSettings,
         child: viewer,
       );
     },

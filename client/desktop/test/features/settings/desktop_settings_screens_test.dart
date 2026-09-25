@@ -30,7 +30,7 @@ class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements
 class _MockFileAccessCubit() extends MockCubit<FileAccessState> implements FileAccessCubit;
 class _MockAppearanceStore() extends Mock implements AppearanceStore;
 class _MockChatInputModeStore() extends Mock implements ChatInputModeStore;
-class _MockBridgeSettingsRepository() extends Mock implements BridgeSettingsRepository;
+class _MockBridgeSettingsService() extends Mock implements BridgeSettingsService;
 class _MockConnectionService() extends Mock implements ConnectionService;
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 class _MockPluginManagementService() extends Mock implements PluginManagementService;
@@ -105,7 +105,7 @@ void main() {
   late _MockAppearanceStore appearanceStore;
   late AppearanceCubit appearanceCubit;
   late ChatInputModeCubit chatInputModeCubit;
-  late _MockBridgeSettingsRepository repository;
+  late _MockBridgeSettingsService bridgeSettingsService;
   late _MockDesktopAttentionService desktopAttentionService;
   late _MockPluginManagementService pluginService;
   late BehaviorSubject<ConnectionStatus> connectionStatuses;
@@ -158,8 +158,8 @@ void main() {
     connectionStatuses = BehaviorSubject<ConnectionStatus>.seeded(_connected);
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatuses.value);
     when(() => connectionService.status).thenAnswer((_) => connectionStatuses.stream);
-    repository = _MockBridgeSettingsRepository();
-    when(repository.load).thenAnswer(
+    bridgeSettingsService = _MockBridgeSettingsService();
+    when(bridgeSettingsService.load).thenAnswer(
       (_) async => const BridgeSettingsLoadSupported(
         response: BridgeSettingsResponse(
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
@@ -168,7 +168,7 @@ void main() {
         ),
       ),
     );
-    getIt.registerSingleton<BridgeSettingsRepository>(repository);
+    getIt.registerSingleton<BridgeSettingsService>(bridgeSettingsService);
     getIt.registerSingleton<ConnectionService>(connectionService);
     attentionPreferences = BehaviorSubject<DesktopAttentionPreference>.seeded(DesktopAttentionPreference.enabled);
     desktopAttentionService = _MockDesktopAttentionService();
@@ -400,7 +400,7 @@ void main() {
     expect(find.text("Warm harness on session open"), findsNothing);
     expect(find.text("AI interactions"), findsNothing);
     verify(bridgeControl.refreshLaunchAtLogin).called(1);
-    verifyNever(repository.load);
+    verifyNever(bridgeSettingsService.load);
     await tester.tap(find.text("Dark"));
     await tester.pumpAndSettle();
     expect(appearanceCubit.state, AppearanceMode.dark);

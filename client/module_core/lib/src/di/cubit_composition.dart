@@ -13,6 +13,7 @@ import "../repositories/composer_draft_repository.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
+import "../services/bridge_settings_service.dart";
 import "../services/catalog_rescan_service.dart";
 import "../services/new_session_options_service.dart";
 import "../services/new_session_plugin_service.dart";
@@ -61,6 +62,7 @@ SessionDetailCubit createSessionDetailCubit({
     projectId: projectId,
     notificationCanceller: locator<NotificationCanceller>(),
     failureReporter: locator<FailureReporter>(),
+    bridgeSettingsService: locator<BridgeSettingsService>(),
   );
 }
 

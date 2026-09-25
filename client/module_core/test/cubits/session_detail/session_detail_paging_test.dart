@@ -94,6 +94,7 @@ void main() {
       projectId: "project-1",
       notificationCanceller: MockNotificationCanceller(),
       failureReporter: MockFailureReporter(),
+      bridgeSettingsService: stubbedBridgeSettingsService(),
     );
     addTearDown(cubit.close);
     await _awaitLoaded(cubit);

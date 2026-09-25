@@ -30,6 +30,7 @@ import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/bridge_settings_service.dart";
 import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
@@ -150,6 +151,7 @@ void main() {
       ProjectViewingService? projectViewingService,
       LifecycleSource? lifecycleSource,
       PluginManagementService? pluginManagementService,
+      BridgeSettingsService? bridgeSettingsService,
       ClockProvider clock = const ClockProvider(),
     }) => SessionDetailCubit(
       mockConnectionService,
@@ -170,6 +172,7 @@ void main() {
       projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: mockFailureReporter,
+      bridgeSettingsService: bridgeSettingsService ?? stubbedBridgeSettingsService(),
       clock: clock,
     );
 
@@ -177,6 +180,28 @@ void main() {
       await sessionEvents.close();
       await globalEvents.close();
       await connectionStatus.close();
+    });
+
+    test("carries the last-known YOLO flag and follows its changes", () async {
+      final yoloEnabled = BehaviorSubject.seeded(true);
+      addTearDown(yoloEnabled.close);
+      final bridgeSettingsService = MockBridgeSettingsService();
+      when(() => bridgeSettingsService.yoloEnabled).thenAnswer((_) => yoloEnabled.stream);
+      final cubit = buildCubit(bridgeSettingsService: bridgeSettingsService);
+      addTearDown(cubit.close);
+
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.yoloEnabled,
+        description: "loaded with YOLO on",
+      );
+
+      yoloEnabled.add(false);
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && !state.yoloEnabled,
+        description: "YOLO off",
+      );
     });
 
     group("auto continuation", () {
@@ -1819,6 +1844,7 @@ void main() {
         projectId: "project-1",
         notificationCanceller: null,
         failureReporter: mockFailureReporter,
+        bridgeSettingsService: stubbedBridgeSettingsService(),
       );
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);

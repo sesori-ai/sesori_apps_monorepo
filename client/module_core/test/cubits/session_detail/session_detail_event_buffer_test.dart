@@ -103,6 +103,7 @@ void main() {
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
+        bridgeSettingsService: stubbedBridgeSettingsService(),
       );
       addTearDown(cubit.close);
       return cubit;

@@ -84,6 +84,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     required CommandInfo? stagedCommand,
     required bool isRefreshing,
     @Default([]) List<SessionVariant> availableVariants,
+
+    /// Whether the connected bridge approves every permission request, as
+    /// last known by `BridgeSettingsService`.
+    @Default(false) bool yoloEnabled,
   }) = SessionDetailLoaded;
 
   /// The harness is blocked *and* the bridge's store holds nothing for this
