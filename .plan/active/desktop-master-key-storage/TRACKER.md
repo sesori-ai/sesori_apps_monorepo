@@ -2,11 +2,9 @@
 
 ## Execution
 
-- Status: scoped-cipher slice (3.a) verified and architecture-approved; publishing PR 3/7.
+- Status: synced Drift/backend slice (3.b) verified; architecture review pending.
 - Plan PR: [#1698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1698), merged.
-- Branch: `sesori/desktop-master-key-storage-cipher`.
-- One local successor: `sesori/desktop-master-key-storage-drift` preserves the
-  combined tested backend checkpoint; sync it with 3.a before publication.
+- Branch: `sesori/desktop-master-key-storage-drift`.
 - Use the supplied worktree only; one open PR and at most one local successor.
 - Current total: **7 PRs**. Original Step 3 is split into 3.a (PR 3) and 3.b (PR 4);
   integration/documentation/qualification retain milestone IDs 4/5/6 (PRs 5/6/7).
@@ -16,8 +14,8 @@
 |---|---|---|
 | 1 — Reviewed Drift plan | Merged | #1698; both reviews' concrete findings applied without a third review. |
 | 2 — Shared typed persistence contracts | Merged | #1708; 10 local tests, architecture approval and 27 passing CI checks. |
-| 3.a — Scoped secret encryption | Ready for PR | 15 tests, clean analysis and architecture approval; no storage I/O. |
-| 3.b — Encrypted Drift desktop boundary | Local successor | Database, raw APIs and key-owning repository; still unwired. |
+| 3.a — Scoped secret encryption | Merged | #1715; 15 focused tests, architecture approval and 15 passing CI checks. |
+| 3.b — Encrypted Drift desktop boundary | In progress | 20 backend tests and clean analysis on merged 3.a; review pending. |
 | 4 — Consumer and platform integration | Not started | Mobile native format preserved; desktop adopts Drift. |
 | 5 — Regression/distribution reconciliation | Not started | Behavior-specific docs also change with Step 4. |
 | 6 — Required qualification and retirement | Not started | Keep active until all recorded gates pass. |
@@ -73,6 +71,9 @@
   dependency. Architecture review `dd2c7b27-5c57-4ab7-b051-7b915aa39be3`
   approved the exact `3ffe4a1..634f109` scope with no findings. This slice adds no
   storage I/O; broader backend and integration gates remain pending.
+- Independent 3.b slice after syncing merged 3.a: 20 database/repository tests
+  pass, owning-package analysis is clean, and Drift/Injectable generation succeeds.
+  The generated DI conflict was resolved by regeneration, not manual editing.
 - Combined Step 3 checkpoint: 35 focused cipher, repository and real SQLite tests
   passed, including file/WAL inspection, reopen, pending/failed key initialization,
   independent writes/deletes, SQL rollback, scope isolation and GetIt disposal.

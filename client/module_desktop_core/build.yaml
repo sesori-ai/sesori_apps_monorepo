@@ -1,6 +1,9 @@
 targets:
   $default:
     builders:
+      drift_dev:
+        options:
+          generate_manager: false
       freezed:
         options:
           format: false

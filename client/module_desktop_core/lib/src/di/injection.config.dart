@@ -23,6 +23,10 @@ import 'package:sesori_desktop_core/src/api/control_channel_api.dart' as _i639;
 import 'package:sesori_desktop_core/src/api/desktop_instance_api.dart' as _i828;
 import 'package:sesori_desktop_core/src/api/desktop_instance_storage.dart'
     as _i155;
+import 'package:sesori_desktop_core/src/api/desktop_primitive_storage_api.dart'
+    as _i693;
+import 'package:sesori_desktop_core/src/api/desktop_secure_storage_api.dart'
+    as _i918;
 import 'package:sesori_desktop_core/src/control/control_message_dispatcher.dart'
     as _i21;
 import 'package:sesori_desktop_core/src/foundation/control_channel_server.dart'
@@ -31,6 +35,8 @@ import 'package:sesori_desktop_core/src/foundation/desktop_storage_cipher.dart'
     as _i479;
 import 'package:sesori_desktop_core/src/foundation/desktop_storage_scope.dart'
     as _i126;
+import 'package:sesori_desktop_core/src/foundation/persistence/desktop_persistence_database.dart'
+    as _i381;
 import 'package:sesori_desktop_core/src/foundation/platform/bridge_executable_path_resolver.dart'
     as _i962;
 import 'package:sesori_desktop_core/src/foundation/platform/bridge_process_environment.dart'
@@ -39,6 +45,8 @@ import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_
     as _i695;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_terminator.dart'
     as _i746;
+import 'package:sesori_desktop_core/src/foundation/platform/desktop_master_key_store.dart'
+    as _i978;
 import 'package:sesori_desktop_core/src/foundation/platform/launch_at_login.dart'
     as _i589;
 import 'package:sesori_desktop_core/src/foundation/platform/window_host.dart'
@@ -57,6 +65,8 @@ import 'package:sesori_desktop_core/src/repositories/control_command_repository.
     as _i171;
 import 'package:sesori_desktop_core/src/repositories/desktop_instance_repository.dart'
     as _i210;
+import 'package:sesori_desktop_core/src/repositories/desktop_secure_storage_repository.dart'
+    as _i845;
 import 'package:sesori_desktop_core/src/services/bridge_process_service.dart'
     as _i765;
 import 'package:sesori_desktop_core/src/services/control_command_service.dart'
@@ -164,6 +174,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i479.DesktopStorageCipher>(
       () => _i479.DesktopStorageCipher(scope: gh<_i126.DesktopStorageScope>()),
     );
+    gh.lazySingleton<_i381.DesktopPersistenceDatabase>(
+      () => _i381.DesktopPersistenceDatabase.open(
+        applicationSupportDirectory:
+            gh<_i695.DesktopApplicationSupportDirectory>(),
+        scope: gh<_i126.DesktopStorageScope>(),
+      ),
+      dispose: (i) => i.close(),
+    );
     gh.lazySingleton<_i210.DesktopInstanceRepository>(
       () => _i210.DesktopInstanceRepository(
         api: gh<_i828.DesktopInstanceApi>(),
@@ -216,6 +234,23 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i494.DesktopInstanceService>(
       () => _i494.DesktopInstanceService(
         repository: gh<_i210.DesktopInstanceRepository>(),
+      ),
+    );
+    gh.lazySingleton<_i918.DesktopSecureStorageApi>(
+      () => _i918.DesktopSecureStorageApi(
+        database: gh<_i381.DesktopPersistenceDatabase>(),
+        masterKeyStore: gh<_i978.DesktopMasterKeyStore>(),
+      ),
+    );
+    gh.lazySingleton<_i693.DesktopPrimitiveStorageApi>(
+      () => _i693.DesktopPrimitiveStorageApi(
+        database: gh<_i381.DesktopPersistenceDatabase>(),
+      ),
+    );
+    gh.lazySingleton<_i845.DesktopSecureStorageRepository>(
+      () => _i845.DesktopSecureStorageRepository(
+        storageApi: gh<_i918.DesktopSecureStorageApi>(),
+        cipher: gh<_i479.DesktopStorageCipher>(),
       ),
     );
     gh.lazySingleton<_i68.WindowBoundsService>(
