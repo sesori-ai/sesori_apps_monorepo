@@ -30,6 +30,12 @@ class const SubtaskPartWidget({
     final childSession = this.childSession;
     final targetSessionId = part.childSessionID ?? childSession?.id;
     final targetProjectId = projectId ?? childSession?.projectID;
+    final title = Text(
+      description,
+      style: prego.textTheme.textSm.regular.copyWith(fontWeight: FontWeight.w500),
+      maxLines: 2,
+      overflow: .ellipsis,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -56,12 +62,7 @@ class const SubtaskPartWidget({
             child: Row(
               children: [
                 switch (status) {
-                  TranscriptStepStatus.running => const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: PregoActivityIndicator(color: null),
-                  ),
-                  TranscriptStepStatus.finished => Icon(
+                  TranscriptStepStatus.running || TranscriptStepStatus.finished => Icon(
                     TablerRegular.robot,
                     size: PregoIconSize.sm,
                     color: prego.colors.textTertiary,
@@ -77,14 +78,12 @@ class const SubtaskPartWidget({
                   child: Column(
                     crossAxisAlignment: .start,
                     children: [
-                      Text(
-                        description,
-                        style: prego.textTheme.textSm.regular.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 2,
-                        overflow: .ellipsis,
-                      ),
+                      if (status == TranscriptStepStatus.running)
+                        // A running sub-agent's label shimmers in place of a
+                        // spinner; reduced motion keeps it still.
+                        PregoShimmer(appearDelay: Duration.zero, semanticLabel: description, child: title)
+                      else
+                        title,
                       if (agent.isNotEmpty)
                         Text(
                           agent,

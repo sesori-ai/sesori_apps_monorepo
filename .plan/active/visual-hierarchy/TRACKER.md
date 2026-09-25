@@ -49,7 +49,7 @@ gate: the user picks a variant from a local review page first.
 | [x] | 28 | `visual-hierarchy/filtered-rows` | [28/41](#pr-titles) | ≤ 300 | done |
 | [x] | 29 | `visual-hierarchy/archive-alert` | [29/41](#pr-titles) | ≤ 300 | done |
 | [x] | 30 | `visual-hierarchy/failed-sends` | [30/41](#pr-titles) | ≤ 700 | done |
-| [ ] | 31 | `visual-hierarchy/live-transcript` | [31/41](#pr-titles) | ≤ 1,200 | part 1 of 2 (grouping) done; part 2 (live row, thinking tail, jump) pending |
+| [x] | 31 | `visual-hierarchy/live-transcript` | [31/41](#pr-titles) | ≤ 1,200 | done (2 parts) |
 | [ ] | 32 | `visual-hierarchy/tool-kinds` | [32/41](#pr-titles) | ≤ 1,200 | pending |
 | [x] | 33 | `visual-hierarchy/yolo` | [33/41](#pr-titles) | ≤ 500 | done |
 | [x] | 34 | `visual-hierarchy/changes-count` | [34/41](#pr-titles) | ≤ 800 | done |

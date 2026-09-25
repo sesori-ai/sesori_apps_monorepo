@@ -145,6 +145,7 @@ class _ReasoningModalState() extends State<ReasoningModal> {
               ? (ctx) => JumpToEdgePill(
                   tapTargetKey: _kFollowOutputKey,
                   label: loc.sessionDetailFollowOutput,
+                  live: false,
                   onTap: () => _follow.animateToEdge(),
                   // No floating composer here, but the list runs to the
                   // screen's bottom edge, so lift the pill clear of the
