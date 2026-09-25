@@ -458,6 +458,12 @@ display-ready agent names with plugin-local native-ID lookup, plugin-neutral ses
 JSON, model/variant defaults and form field ordering. The form examples are
 source-derived; this coverage does not prove native turn or form execution.
 
+Inactive v2 transcript coverage retains ordinal text/reasoning IDs, native tool IDs,
+stable retry IDs, agent-switch notices and display-ready attribution. It verifies
+terminal tool/compaction/shell states, shell-only command projection, preserved error
+text, inline-image byte limits and combined inline/remote candidate limits. Local and
+credentialed URLs remain metadata-only. These cases are source-derived, not native turns.
+
 ## Exploration Guidance
 
 Vary which harness runs first and which stays disabled, and the configuration: default
