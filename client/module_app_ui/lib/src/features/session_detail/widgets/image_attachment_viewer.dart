@@ -91,18 +91,7 @@ Future<void> showImageAttachmentViewer({
         ),
       };
       if (presentation == null) return viewer;
-      return SessionDetailPresentationScope(
-        messageImageRepository: presentation.messageImageRepository,
-        imageSaver: presentation.imageSaver,
-        imageClipboard: presentation.imageClipboard,
-        imageSharer: presentation.imageSharer,
-        canShareImages: presentation.canShareImages,
-        openExternalLink: presentation.openExternalLink,
-        openSession: presentation.openSession,
-        openHarnessSettings: presentation.openHarnessSettings,
-        openBridgeSettings: presentation.openBridgeSettings,
-        child: viewer,
-      );
+      return presentation.around(child: viewer);
     },
     transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
   );

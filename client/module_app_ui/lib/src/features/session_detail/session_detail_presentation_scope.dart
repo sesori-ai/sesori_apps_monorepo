@@ -33,6 +33,21 @@ class const SessionDetailPresentationScope({
     return scope ?? (throw StateError("SessionDetailPresentationScope was not found in the widget tree"));
   }
 
+  /// This scope again around [child], for a route pushed from below it: the
+  /// route's content does not inherit the session page's scope.
+  SessionDetailPresentationScope around({required Widget child}) => SessionDetailPresentationScope(
+    messageImageRepository: messageImageRepository,
+    imageSaver: imageSaver,
+    imageClipboard: imageClipboard,
+    imageSharer: imageSharer,
+    canShareImages: canShareImages,
+    openExternalLink: openExternalLink,
+    openSession: openSession,
+    openHarnessSettings: openHarnessSettings,
+    openBridgeSettings: openBridgeSettings,
+    child: child,
+  );
+
   @override
   bool updateShouldNotify(SessionDetailPresentationScope oldWidget) =>
       messageImageRepository != oldWidget.messageImageRepository ||

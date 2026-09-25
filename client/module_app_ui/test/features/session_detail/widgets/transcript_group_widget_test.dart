@@ -1,3 +1,6 @@
+import "package:bloc_test/bloc_test.dart";
+import "package:flutter/services.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -55,18 +58,42 @@ TranscriptGroupBlock _group({required List<MessagePart> parts, Map<String, Strin
   return transcript.blocksFor(messageId: "m").whereType<TranscriptGroupBlock>().single;
 }
 
-Widget _app({required TranscriptGroupBlock group, bool disableAnimations = false, double width = 400}) => MaterialApp(
-  theme: buildPregoThemeData(brightness: Brightness.light),
-  localizationsDelegates: AppLocalizations.localizationsDelegates,
-  supportedLocales: AppLocalizations.supportedLocales,
-  home: Scaffold(
-    body: MediaQuery(
-      data: MediaQueryData(disableAnimations: disableAnimations),
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: SizedBox(
-          width: width,
-          child: TranscriptGroupWidget(key: ValueKey(group.id), projectId: null, group: group),
+class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
+
+Widget _app({
+  required TranscriptGroupBlock group,
+  bool disableAnimations = false,
+  double width = 400,
+  PregoInteractionMode mode = PregoInteractionMode.touch,
+}) => PregoInteractionScope(
+  mode: mode,
+  child: MaterialApp(
+    theme: buildPregoThemeData(brightness: Brightness.light),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: SessionDetailPresentationScope(
+      messageImageRepository: () => throw UnimplementedError(),
+      imageSaver: () => throw UnimplementedError(),
+      imageClipboard: () => throw UnimplementedError(),
+      imageSharer: () => throw UnimplementedError(),
+      canShareImages: false,
+      openExternalLink: ({required url, required mode}) async => false,
+      openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+      openHarnessSettings: () {},
+      openBridgeSettings: () {},
+      child: BlocProvider<SessionDetailCubit>.value(
+        value: _MockSessionDetailCubit(),
+        child: Scaffold(
+          body: MediaQuery(
+            data: MediaQueryData(disableAnimations: disableAnimations),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: width,
+                child: TranscriptGroupWidget(key: ValueKey(group.id), projectId: null, group: group),
+              ),
+            ),
+          ),
         ),
       ),
     ),
@@ -83,22 +110,24 @@ final _finishedParts = [
 double _height(WidgetTester tester) => tester.getSize(find.byType(TranscriptGroupWidget)).height;
 
 void main() {
-  testWidgets("a finished group collapses to one summary that eases open and shut", (tester) async {
-    await tester.pumpWidget(_app(group: _group(parts: _finishedParts)));
+  testWidgets("under a pointer a group opens its steps in a popover, closed by Esc or an outside click", (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        group: _group(parts: _finishedParts),
+        mode: PregoInteractionMode.pointer,
+      ),
+    );
 
     expect(find.text("Thought · 2 steps · 1 sub-agent"), findsOneWidget);
     expect(find.text(" · 1 failed"), findsOneWidget);
     expect(find.text("read"), findsNothing);
-    expect(find.text("Explore the repo"), findsNothing);
     final collapsed = _height(tester);
 
     await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.r1")));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-    final opening = _height(tester);
     await tester.pumpAndSettle();
-    final open = _height(tester);
-    expect(opening, allOf(greaterThan(collapsed), lessThan(open)));
+    expect(find.byType(PregoPopover), findsOneWidget);
     expect(find.text("Thought"), findsOneWidget);
     expect(find.text("read"), findsOneWidget);
     expect(find.text("grep"), findsOneWidget);
@@ -107,22 +136,54 @@ void main() {
     expect(find.text("Done"), findsNothing);
     expect(find.text("Failed"), findsNothing);
     expect(find.byIcon(TablerSolid.alert_circle), findsOneWidget);
+    // The popover sits below the summary and leaves the transcript alone.
+    expect(tester.getTopLeft(find.text("read")).dy, greaterThan(tester.getBottomLeft(find.text(" · 1 failed")).dy));
+    expect(_height(tester), collapsed);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text("read"), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.r1")));
     await tester.pumpAndSettle();
-    expect(_height(tester), collapsed);
+    expect(find.text("read"), findsOneWidget);
+    await tester.tapAt(const Offset(700, 580));
+    await tester.pumpAndSettle();
     expect(find.text("read"), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("reduced motion opens the group at once", (tester) async {
-    await tester.pumpWidget(_app(group: _group(parts: _finishedParts), disableAnimations: true));
+  testWidgets("under touch a group opens its steps in a sheet titled with its summary", (tester) async {
+    await tester.pumpWidget(_app(group: _group(parts: _finishedParts)));
     final collapsed = _height(tester);
 
     await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.r1")));
-    await tester.pump();
-    expect(_height(tester), greaterThan(collapsed));
+    await tester.pumpAndSettle();
+    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    expect(find.text("Thought · 2 steps · 1 sub-agent · 1 failed"), findsOneWidget);
     expect(find.text("read"), findsOneWidget);
+    expect(find.text("Explore the repo"), findsOneWidget);
+    expect(_height(tester), collapsed);
+
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.text("read"), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("a large group's popover scrolls within its cap and never grows the transcript", (tester) async {
+    final large = _group(
+      parts: [for (var i = 0; i < 60; i++) _tool(id: "t$i", name: "tool $i", status: ToolStatus.completed)],
+    );
+    await tester.pumpWidget(_app(group: large, mode: PregoInteractionMode.pointer));
+    final collapsed = _height(tester);
+
+    await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.t0")));
+    await tester.pumpAndSettle();
+    expect(find.text("tool 0"), findsOneWidget);
+    expect(_height(tester), collapsed);
+    final panel = find.ancestor(of: find.text("tool 0"), matching: find.byType(SingleChildScrollView));
+    expect(tester.getSize(panel).height, lessThanOrEqualTo(TranscriptGroupWidget.panelMaxHeight));
   });
 
   testWidgets("a running step is a live row below the summary and folds in when it finishes", (tester) async {
