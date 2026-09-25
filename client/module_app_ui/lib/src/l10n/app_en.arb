@@ -87,6 +87,8 @@
   "@newSessionHeading": {"description": "Heading of the new session page, above the project selector and the prompt input."},
   "desktopSessionPageChanges": "Changes",
   "@desktopSessionPageChanges": {"description": "Desktop session page toolbar button that opens the session's file changes."},
+  "desktopSessionParentBreadcrumb": "Main session",
+  "@desktopSessionParentBreadcrumb": {"description": "Desktop subtask toolbar breadcrumb that returns to the session that started the subtask."},
   "listSearchNoMatches": "No matches",
   "@listSearchNoMatches": {"description": "Shown under a list's search field when no loaded title matches the query."},
   "listSearchClear": "Clear search",

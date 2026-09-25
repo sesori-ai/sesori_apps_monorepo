@@ -20,10 +20,13 @@ class const DesktopPageToolbar({
   /// Null on a page with nothing above it.
   required final DesktopBreadcrumb? breadcrumb,
 
-  /// Leads the title in the sidebar's status slot, such as a running
-  /// session's sparkle; null leaves the title at the left edge.
+  /// Leads the title in the sidebar's status slot, such as a session waiting
+  /// for an answer; null leaves the title at the left edge.
   required final Widget? status,
   required final String title,
+
+  /// Sweeps a shimmer across the title while the page's session works.
+  required final bool isRunning,
 
   /// A second, quieter line under the title; null leaves the title alone.
   required final Widget? subtitle,
@@ -37,6 +40,12 @@ class const DesktopPageToolbar({
     final breadcrumb = this.breadcrumb;
     final status = this.status;
     final subtitle = this.subtitle;
+    final titleText = Text(
+      title,
+      style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
     final tertiary = prego.colors.textTertiary;
     return Container(
       // A floor, not a fixed slot: scaled-up text grows the bar instead of spilling out of it.
@@ -67,15 +76,18 @@ class const DesktopPageToolbar({
                           borderRadius: BorderRadius.circular(PregoRadius.sm),
                           child: Text(
                             breadcrumb.label,
-                            style: prego.textTheme.textSm.regular.copyWith(color: tertiary),
+                            style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
-                        child: Icon(TablerRegular.chevron_right, size: PregoIconSize.sm, color: tertiary),
+                      // One size and baseline with the title, so a text slash lines up where an icon would not.
+                      ExcludeSemantics(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
+                          child: Text("/", style: prego.textTheme.textMd.regular.copyWith(color: tertiary)),
+                        ),
                       ),
                     ],
                     if (status != null)
@@ -84,14 +96,12 @@ class const DesktopPageToolbar({
                         child: Center(child: status),
                       ),
                     Flexible(
+                      // One heading node carries the title; the shimmer is decorative.
                       child: Semantics(
                         header: true,
-                        child: Text(
-                          title,
-                          style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        label: title,
+                        excludeSemantics: true,
+                        child: isRunning ? PregoShimmer(appearDelay: Duration.zero, child: titleText) : titleText,
                       ),
                     ),
                   ],

@@ -86,6 +86,7 @@ class const DesktopNewSessionView({
         topBar: DesktopPageToolbar(
           breadcrumb: (label: _projectLabel(context: context), onPressed: onOpenProject),
           status: null,
+          isRunning: false,
           title: context.loc.sessionListNewSession,
           subtitle: null,
           actions: const [],
