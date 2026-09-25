@@ -408,11 +408,20 @@ Credential migration is complete, but parent and native/public ship gates still 
 `🚧 [desktop-distribution] Join the shared product release cycle [step 8.j/14]`.
 Reuse private native macOS qualification, preserve core finalization/production approval,
 then attach immutable verified assets behind default-off platform admission. Focused
-Python fixture tests and workflow lint; fresh main-only native qualification follows
-merge. No app/database changes or public publication in this implementation step.
+Python fixture tests and workflow lint; merged as #1724. Private native packaging and
+read-only preparation then passed for the older tagged `1.9.1+981` source. The first
+scheduled shared run failed workflow validation, not a build; details are in step 6.
+No app/database changes or public publication in this implementation step.
 Complexity budget: one repository admission variable and existing transient CI/artifact
 state; no new service, credential, persistent schema, lifecycle owner or updater. Remove
 superseded separate desktop-tag/approval assumptions; keep useful read-only QA tooling.
+
+**Step 6 caller-permission correction:**
+`🌿 [desktop-distribution] Grant desktop callers read-only PR provenance [step 8.k/14]`.
+Grant only the nested upgrade jobs' required `pull-requests: read` to both desktop
+callers, including when those jobs are skipped. Reproduce the omission in the workflow
+contract test, then verify the correction and GitHub call-graph admission. No new
+mutable state, credentials, write authority or cleanup is needed.
 
 **Step 6 continuation PR:**
 `🚧 [desktop-distribution] Qualify signed macOS manual replacement [step 8/14]`.
