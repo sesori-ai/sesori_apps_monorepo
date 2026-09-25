@@ -26,6 +26,22 @@ void main() {
       await temporaryDirectory.delete(recursive: true);
     });
 
+    test("reports an OpenCode 2.x database as unavailable before validating its schema", () async {
+      final database = sqlite3.open(databasePath);
+      // A 1.x table whose schema no longer validates: the session_v2 check
+      // must win before schema validation throws.
+      database.execute("CREATE TABLE project(id TEXT PRIMARY KEY)");
+      database.execute("CREATE TABLE session_v2(id TEXT PRIMARY KEY)");
+      database.close();
+
+      final result = await _repository().read(
+        environment: {"OPENCODE_DB": databasePath, "HOME": temporaryDirectory.path},
+        cancellation: const _NeverCancelled(),
+      );
+
+      expect(result, isA<PluginCatalogSnapshotUnavailable>());
+    });
+
     test("reads every root and descendant without transcript tables or pagination", () async {
       final database = sqlite3.open(databasePath);
       _createSchema(database: database);

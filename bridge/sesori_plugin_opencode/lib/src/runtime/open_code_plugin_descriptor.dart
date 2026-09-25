@@ -15,6 +15,7 @@ import "../plugin_model_mapper.dart";
 import "../repositories/open_code_catalog_repository.dart";
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
+import "open_code_protocol.dart";
 import "open_code_record_mapper.dart";
 import "open_code_runtime_manifest.dart";
 import "open_code_runtime_policy.dart";
@@ -628,7 +629,9 @@ class const OpenCodePluginDescriptor({
       } on PluginStartException catch (error) {
         Log.w(
           "[opencode] cannot reach OpenCode at port $attachPort (auto-start disabled): ${error.message}. "
-          "Bridge will start anyway; start OpenCode manually to enable proxying.",
+          "Bridge will start anyway; start OpenCode 1.x manually to enable proxying. "
+          "For an existing OpenCode 2.x installation, restart the bridge after starting its server "
+          "to check protocol support; do not downgrade OpenCode.",
         );
         handle = null;
       }
@@ -712,6 +715,16 @@ class const OpenCodePluginDescriptor({
       }
     }
 
+    // Probe before the late-abort check so an abort during the probe is honored.
+    final protocol = handle == null
+        ? null
+        : await probeOpenCodeProtocol(
+            port: port,
+            password: apiPassword,
+            clientFactory: probeClientFactory,
+            host: connectHost,
+          );
+
     // Honor a late abort: a managed start the supervisor returned just as the
     // bridge aborted must release the owned child before we surface it.
     if (host.startAborted.isAborted) {
@@ -720,6 +733,21 @@ class const OpenCodePluginDescriptor({
         await service.stopOwnedRuntime(record: ownedHandle.record!);
       }
       throw const PluginStartAbortedException();
+    }
+
+    // OpenCode 2.x speaks an HTTP protocol this plugin cannot drive yet. Refuse
+    // it now, releasing an owned child, instead of failing later on every call.
+    // 2.x has already migrated the OpenCode database in place, so the message
+    // must not suggest going back to 1.x.
+    if (protocol case OpenCodeProtocolV2(:final version)) {
+      if (handle case ManagedRuntimeHandle(isOwned: true, :final record?)) {
+        await service.stopOwnedRuntime(record: record);
+      }
+      throw PluginStartException(
+        "OpenCode ${version.raw} is not supported by this Sesori bridge yet; "
+        "do not downgrade OpenCode, update the Sesori bridge once 2.x support ships",
+        cause: null,
+      );
     }
 
     final ownedRecord = handle?.record;
