@@ -23,6 +23,14 @@ import "open_code_raw_http_client.dart";
 
 const _directoryOpenCodeHeader = "x-opencode-directory";
 
+/// HTTP header values must be ASCII, so a non-ASCII directory is
+/// percent-encoded; OpenCode `decodeURIComponent`s this header, like its own SDK
+/// sends it. ASCII paths stay raw so they reach older servers byte-for-byte.
+String? _directoryHeaderValue(String? directory) {
+  if (directory == null || directory.codeUnits.every((unit) => unit < 0x80)) return directory;
+  return Uri.encodeFull(directory);
+}
+
 /// Typed facade over the OpenCode REST API.
 ///
 /// Knows each endpoint's path, request-specific headers, body encoding, and how
@@ -67,7 +75,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
         if (roots) "roots": "true",
       },
       headers: {
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
     );
 
@@ -89,7 +97,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
       path: "/command",
       timeout: _commandListTimeout,
       headers: {
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
     );
 
@@ -116,7 +124,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
       path: "/session",
       headers: {
         "content-type": "application/json",
-        _directoryOpenCodeHeader: directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
       body: jsonEncode(body),
     );
@@ -130,7 +138,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client.get(
       path: "/session/$sessionId",
       headers: {
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
     );
     return Session.fromJson(jsonDecodeMap(response.body));
@@ -145,7 +153,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
       path: "/session/$sessionId",
       headers: {
         "content-type": "application/json",
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
       body: jsonEncode(body),
     );
@@ -163,7 +171,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
       path: "/project/$projectId",
       headers: {
         "content-type": "application/json",
-        _directoryOpenCodeHeader: directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
       body: jsonEncode(body.toJson()),
     );
@@ -177,7 +185,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     await _client.delete(
       path: "/session/$sessionId",
       headers: {
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
     );
   }
@@ -195,7 +203,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
       path: "/experimental/worktree",
       headers: {
         "content-type": "application/json",
-        _directoryOpenCodeHeader: directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
       body: jsonEncode({"directory": worktreePath}),
     );
@@ -208,7 +216,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client.get(
       path: "/session/$sessionId/children",
       headers: {
-        _directoryOpenCodeHeader: ?directory, // probably irrelevant for this endpoint
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory), // probably irrelevant for this endpoint
       },
     );
 
@@ -223,7 +231,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client.post(
       path: "/session/$sessionId/fork",
       headers: {
-        _directoryOpenCodeHeader: directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
     );
     return Session.fromJson(jsonDecodeMap(response.body));
@@ -236,7 +244,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client.get(
       path: "/session/$sessionId/message",
       headers: {
-        _directoryOpenCodeHeader: ?directory, // probably irrelevant for this endpoint
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory), // probably irrelevant for this endpoint
       },
     );
 
@@ -257,7 +265,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
       path: "/session/$sessionId/${body.noReply ? "message" : "prompt_async"}",
       headers: {
         "content-type": "application/json",
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
       body: jsonEncode(body.toJson()),
     );
@@ -276,7 +284,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
       path: "/session/$sessionId/message/$messageId/part/$partId",
       headers: {
         "content-type": "application/json",
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
       body: jsonEncode(part.toJson()),
     );
@@ -290,7 +298,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     await _client.delete(
       path: "/session/$sessionId/message/$messageId",
       headers: {
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
     );
   }
@@ -321,7 +329,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
       path: "/session/$sessionId/command",
       headers: {
         "content-type": "application/json",
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
       body: jsonEncode(body.toJson()),
       timeout: null,
@@ -335,7 +343,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     await _client.post(
       path: "/session/$sessionId/abort",
       headers: {
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
       body: "",
     );
@@ -347,7 +355,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client.get(
       path: "/agent",
       headers: {
-        _directoryOpenCodeHeader: directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
     );
 
@@ -361,7 +369,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client.get(
       path: "/question",
       headers: {
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
     );
     Log.v("[getPendingQuestions] response: ${response.body}");
@@ -376,7 +384,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client.get(
       path: "/permission",
       headers: {
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
     );
     Log.v("[getPendingPermissions] response: ${response.body}");
@@ -395,7 +403,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client.post(
       path: "/question/$questionId/reply",
       headers: {
-        _directoryOpenCodeHeader: ?directory, // doesn't work well with the directory header
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory), // doesn't work well with the directory header
         "content-type": "application/json",
       },
       body: encodedBody,
@@ -413,7 +421,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     await _client.post(
       path: "/permission/$requestId/reply",
       headers: {
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
         "content-type": "application/json",
       },
       body: body,
@@ -428,7 +436,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client.post(
       path: "/question/$questionId/reject",
       headers: {
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
       body: "",
     );
@@ -441,7 +449,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client.get(
       path: "/project/current",
       headers: {
-        _directoryOpenCodeHeader: directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
     );
     return Project.fromJson(jsonDecodeMap(response.body));
@@ -488,7 +496,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client.get(
       path: "/config/providers",
       headers: {
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
     );
     return ConfigProvidersResponse.fromJson(
@@ -500,7 +508,7 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     final response = await _client.get(
       path: "/session/status",
       headers: {
-        _directoryOpenCodeHeader: ?directory,
+        _directoryOpenCodeHeader: ?_directoryHeaderValue(directory),
       },
     );
 

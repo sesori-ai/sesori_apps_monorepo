@@ -171,6 +171,24 @@ void main() {
       expect(agents.single.name, equals("build"));
     });
 
+    test("percent-encodes a non-ASCII directory header", () async {
+      late http.BaseRequest capturedRequest;
+      final api = OpenCodeApi(
+        client: OpenCodeRawHttpClient(
+          serverURL: "http://localhost:1234",
+          password: "test-pass",
+          client: MockClient((request) async {
+            capturedRequest = request;
+            return http.Response("[]", 200);
+          }),
+        ),
+      );
+
+      await api.listAgents(directory: "/home/u/Projects/Diseño");
+
+      expect(capturedRequest.headers["x-opencode-directory"], equals("/home/u/Projects/Dise%C3%B1o"));
+    });
+
     test("includes the upstream response body in the thrown exception", () async {
       final mockClient = MockClient((request) async {
         return http.Response('{"name":"UnknownError","data":{"message":"boom"}}', 500);
