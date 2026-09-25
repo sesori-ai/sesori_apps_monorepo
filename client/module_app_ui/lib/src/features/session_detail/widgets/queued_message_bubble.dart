@@ -192,19 +192,28 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
           ],
         ],
       ),
-      FailedMessageBubblePresentation(:final onRetry, :final onRemove) => Row(
-        mainAxisSize: MainAxisSize.min,
+      // Wraps so both actions stay reachable in a narrow pane or at large text.
+      FailedMessageBubblePresentation(:final onRetry, :final onRemove) => Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: PregoSpacing.xs,
         children: [
-          _status(
-            prego: prego,
-            icon: Icon(TablerRegular.alert_circle, size: PregoIconSize.sm, color: prego.colors.fgErrorPrimary),
-            label: loc.sessionDetailSendFailed,
-            color: prego.colors.textErrorPrimary,
+          // Inside the Wrap the label is bounded, so it may wrap itself.
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(TablerRegular.alert_circle, size: PregoIconSize.sm, color: prego.colors.fgErrorPrimary),
+              const SizedBox(width: PregoSpacing.xs),
+              Flexible(
+                child: Text(
+                  loc.sessionDetailSendFailed,
+                  style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textErrorPrimary),
+                ),
+              ),
+            ],
           ),
-          if (onRetry != null) ...[
-            const SizedBox(width: PregoSpacing.xs),
+          if (onRetry != null)
             _action(prego: prego, icon: TablerRegular.refresh, label: loc.sessionDetailRetry, onPressed: onRetry),
-          ],
           if (onRemove != null)
             _action(prego: prego, icon: TablerRegular.x, label: loc.sessionDetailRemoveQueued, onPressed: onRemove),
         ],

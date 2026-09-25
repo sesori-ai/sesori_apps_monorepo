@@ -1125,6 +1125,60 @@ void main() {
       sendCompleter.complete(ApiResponse.success(null));
     });
 
+    test("the bridge owning a failed send releases the sends waiting behind it", () async {
+      final sentTexts = <String>[];
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((invocation) async {
+        sentTexts.add(invocation.namedArguments[#text] as String);
+        return sentTexts.length == 1 ? ApiResponse.error(ApiError.generic()) : ApiResponse.success(null);
+      });
+      final cubit = await createLoadedCubit();
+
+      await cubit.sendMessage(text: "lost", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await cubit.sendMessage(
+        text: "waiting",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      final failed = (cubit.state as SessionDetailLoaded).failedSubmission;
+      expect(failed?.displayText, "lost");
+      expect(sentTexts, ["lost"]);
+
+      // The response was lost after the bridge accepted the prompt.
+      sessionEvents.add(
+        SesoriSseEvent.sessionQueuedPrompts(
+          sessionID: _sessionId,
+          prompts: [
+            QueuedSessionPrompt(
+              id: failed?.promptId ?? "",
+              text: "lost",
+              command: null,
+              attachmentCount: 0,
+              createdAt: 100,
+            ),
+          ],
+        ) as SesoriSessionEvent,
+      );
+      for (var attempt = 0; attempt < 20 && sentTexts.length < 2; attempt++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect((cubit.state as SessionDetailLoaded).failedSubmission, isNull);
+      expect(sentTexts, ["lost", "waiting"]);
+    });
+
     test("keeps the queued entry through the bare envelope and releases it on the first part", () async {
       final cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
 

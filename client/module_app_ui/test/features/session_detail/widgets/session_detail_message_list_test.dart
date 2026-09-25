@@ -600,6 +600,47 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets("a failed send's actions wrap instead of overflowing in a narrow pane at large text", (tester) async {
+    var retries = 0;
+    var removals = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topRight,
+            child: SizedBox(
+              width: 280,
+              child: QueuedMessageBubble(
+                displayText: "first",
+                isCommand: false,
+                attachmentCount: 0,
+                localAttachments: const [],
+                presentation: QueuedMessageBubblePresentation.failed(
+                  onRetry: () => retries++,
+                  onRemove: () => removals++,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.widgetWithText(TextButton, "Retry"));
+    await tester.tap(find.widgetWithText(TextButton, "Remove"));
+    expect(retries, 1);
+    expect(removals, 1);
+  });
+
   testWidgets("a slow send names the harness after a short delay", (tester) async {
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(

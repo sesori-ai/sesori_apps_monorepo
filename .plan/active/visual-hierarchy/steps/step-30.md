@@ -26,6 +26,10 @@
 - The message list's two transient booleans became one private
   `_TransientStage` enum, so a row is exactly one of awaiting bridge, sending,
   failed or pending.
+- Review fixes: a `session.queued-prompts` update that shows the bridge owns
+  the failed prompt clears it and resumes draining the sends behind it. The
+  failed row's label and actions wrap, so Retry and Remove stay reachable in a
+  narrow pane at large text. Each has a test that fails without its fix.
 - Both apps mount this list, so the change covers phone and desktop.
 
 ## Deviations

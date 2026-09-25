@@ -1582,6 +1582,7 @@ class SessionDetailCubit(
     if (isClosed) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
+    final hadFailedSend = _promptQueue.failed != null;
     _promptQueue.reconcileBridgeQueue(promptIds: {for (final prompt in prompts) prompt.id});
     final queue = _queueView(bridgePrompts: prompts);
     emit(
@@ -1594,6 +1595,8 @@ class SessionDetailCubit(
         failedSubmission: queue.failedSubmission,
       ),
     );
+    // The bridge owning the failed prompt releases the sends waiting behind it.
+    if (hadFailedSend && _promptQueue.failed == null) _tryDrainQueue();
   }
 
   /// Removes a prompt only after confirmed cancellation. A refusal can mean
