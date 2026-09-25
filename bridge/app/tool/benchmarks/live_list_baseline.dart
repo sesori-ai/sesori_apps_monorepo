@@ -417,6 +417,7 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
           pluginId: pluginIds.first,
           title: null,
           catalogTitle: "Child session",
+          approvalOverride: null,
         ),
       ],
     );
@@ -580,6 +581,7 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
         pluginId: pluginIds[index % pluginIds.length],
         title: null,
         catalogTitle: "Session $index",
+        approvalOverride: null,
       ),
       growable: false,
     );

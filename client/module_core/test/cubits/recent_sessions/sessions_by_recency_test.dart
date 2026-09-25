@@ -26,6 +26,7 @@ void main() {
 }
 
 Session _session({required String id, required int updated}) => Session(
+  approvalOverride: null,
   id: id,
   title: id,
   projectID: "project",

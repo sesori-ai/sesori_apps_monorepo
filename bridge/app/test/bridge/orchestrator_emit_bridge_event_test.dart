@@ -1338,6 +1338,7 @@ Future<void> _insertEventSession({required AppDatabase database, required String
 BridgeSseSessionUpdated _lateSessionUpdate({required String pluginId}) {
   return BridgeSseSessionUpdated(
     info: Session(
+      approvalOverride: null,
       autoContinuation: null,
       id: "backend-session",
       pluginId: pluginId,

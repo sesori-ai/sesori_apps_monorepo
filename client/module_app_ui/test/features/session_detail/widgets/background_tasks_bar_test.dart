@@ -9,6 +9,7 @@ import "package:theme_prego/module_prego.dart";
 /// disposable sub-agents must not look as if all of them were running.
 void main() {
   Session child(int index) => Session(
+    approvalOverride: null,
     autoContinuation: null,
     branchName: null,
     id: "child-$index",

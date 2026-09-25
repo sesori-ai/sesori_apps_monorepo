@@ -894,6 +894,7 @@ class CodexEventMapper({
       cwd: thread.directory,
     );
     return shared.Session(
+      approvalOverride: null,
       autoContinuation: null,
       branchName: null,
       id: thread.id,
@@ -944,6 +945,7 @@ class CodexEventMapper({
   }) {
     final projectId = _projectIdForThread(id);
     return shared.Session(
+      approvalOverride: null,
       autoContinuation: null,
       branchName: null,
       id: id,

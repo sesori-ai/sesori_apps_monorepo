@@ -91,6 +91,7 @@ void main() {
       pluginId: "codex",
       title: null,
       catalogTitle: "Observed title",
+      approvalOverride: null,
     );
 
     final session = mapper.map(row: row, pullRequest: null, unseen: true);
@@ -134,6 +135,7 @@ void main() {
       pluginId: "claude",
       title: null,
       catalogTitle: null,
+      approvalOverride: null,
     );
 
     Session mapped(SessionDto row) => mapper.map(row: row, pullRequest: null, unseen: false);
@@ -179,6 +181,7 @@ void main() {
       pluginId: "codex",
       title: "Override",
       catalogTitle: "Observed",
+      approvalOverride: null,
     );
 
     final stored = row.toStoredSession();

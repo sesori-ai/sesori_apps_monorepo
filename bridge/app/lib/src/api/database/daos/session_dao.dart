@@ -66,6 +66,26 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
+  /// Sets the approval override for [sessionId] (null clears it). Returns
+  /// whether a row was written.
+  Future<bool> setApprovalOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) async {
+    final updatedRows = await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(approvalOverride: Value(approvalOverride)),
+    );
+    return updatedRows == 1;
+  }
+
+  Future<bool> hasApprovalOverride({required SessionApprovalMode approvalOverride}) async {
+    final query = selectOnly(sessionTable)
+      ..addColumns([sessionTable.sessionId])
+      ..where(sessionTable.approvalOverride.equalsValue(approvalOverride))
+      ..limit(1);
+    return await query.getSingleOrNull() != null;
+  }
+
   Future<bool> setTitleIfNull({
     required String sessionId,
     required String title,

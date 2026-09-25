@@ -1,11 +1,13 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_shared/sesori_shared.dart" show PendingPermission, PermissionReply;
+import "package:sesori_shared/sesori_shared.dart" show PendingPermission, PermissionReply, SessionApprovalMode;
 
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/session_repository.dart";
 import "pending_interaction_service.dart";
 
+/// Owns YOLO approval: which sessions are in YOLO, and approving their
+/// permission requests once.
 class PermissionAutoApprovalService({
   required final SessionRepository _sessionRepository,
   required final PermissionRepository _permissionRepository,
@@ -20,8 +22,20 @@ class PermissionAutoApprovalService({
     return _approvedPermissions.remove((requestId: requestId, sessionId: sessionId));
   }
 
+  /// Whether [sessionId]'s permission requests are approved automatically:
+  /// the session's own override, or its nearest ancestor's, when one is set;
+  /// otherwise the bridge-wide YOLO setting.
+  Future<bool> isYolo({required String sessionId}) async {
+    return switch (await _sessionRepository.resolveApprovalOverride(sessionId: sessionId)) {
+      SessionApprovalMode.yolo => true,
+      SessionApprovalMode.ask => false,
+      null => _bridgeSettingsRepository.currentSettings.yolo,
+    };
+  }
+
+  /// Approves the request once when its session is in YOLO; a no-op otherwise.
   Future<void> approve({required String requestId, required String sessionId}) async {
-    if (_disposed || !_bridgeSettingsRepository.currentSettings.yolo) return;
+    if (_disposed || !await isYolo(sessionId: sessionId)) return;
     final key = (requestId: requestId, sessionId: sessionId);
     if (!_approvedPermissions.add(key)) return;
 
@@ -40,19 +54,19 @@ class PermissionAutoApprovalService({
 
   /// Resolves a pending-permission snapshot under YOLO before it is served.
   ///
-  /// With YOLO off the snapshot passes through untouched. With YOLO on, each
-  /// permission is auto-approved and the ones that could not be approved are
-  /// returned, so a request YOLO cannot answer — one asked before YOLO was
+  /// A permission whose session is not in YOLO passes through untouched. Each
+  /// other permission is auto-approved and the ones that could not be approved
+  /// are returned, so a request YOLO cannot answer — one asked before YOLO was
   /// enabled while no phone listened, or one whose reply failed — surfaces for
   /// manual action instead of staying invisible behind an "awaiting input"
   /// badge forever.
   Future<List<PendingPermission>> resolveSnapshot({required List<PendingPermission> permissions}) async {
-    if (_disposed || permissions.isEmpty || !_bridgeSettingsRepository.currentSettings.yolo) return permissions;
+    if (_disposed || permissions.isEmpty || !await _anySessionMayBeYolo()) return permissions;
     final unresolved = <PendingPermission>[];
     for (final permission in permissions) {
-      // Re-read per item: disabling YOLO mid-snapshot makes approve() a no-op,
-      // and hiding the untouched remainder would leave it unanswerable.
-      if (_disposed || !_bridgeSettingsRepository.currentSettings.yolo) {
+      // Check per item: switching YOLO off mid-snapshot makes approve() a
+      // no-op, and hiding the untouched remainder would leave it unanswerable.
+      if (_disposed || !await isYolo(sessionId: permission.sessionID)) {
         unresolved.add(permission);
         continue;
       }
@@ -70,11 +84,15 @@ class PermissionAutoApprovalService({
     return unresolved;
   }
 
+  /// Approves every pending request whose session is in YOLO. Runs when YOLO
+  /// is switched on, for the bridge or for one session, and when a backend
+  /// reconnects or reports project activity.
   Future<void> approvePending() async {
     if (_disposed) return;
 
     List<String> rootSessionIds;
     try {
+      if (!await _anySessionMayBeYolo()) return;
       rootSessionIds = [
         for (final summary in await _sessionRepository.getProjectActivitySummaries())
           for (final session in summary.activeSessions)
@@ -126,6 +144,12 @@ class PermissionAutoApprovalService({
         }
       }
     }
+  }
+
+  /// A cheap gate that skips the pending-permission sweep while no session can
+  /// be in YOLO.
+  Future<bool> _anySessionMayBeYolo() async {
+    return _bridgeSettingsRepository.currentSettings.yolo || await _sessionRepository.hasYoloApprovalOverride();
   }
 
   void dispose() {
