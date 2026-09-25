@@ -7,11 +7,11 @@ FLUTTER := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/flutter
 # right Flutter even when the shell exports a stale FLUTTER_ROOT (e.g. asdf global).
 export FLUTTER_ROOT := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)
 
-# Dependency order: module_auth -> module_core -> module_prego -> module_app_ui -> module_desktop_core -> design_catalog -> app -> desktop
-MODULES := module_auth module_core module_prego module_app_ui module_desktop_core design_catalog app desktop
+# Dependency order starts with persistence, then auth/core and the presentation/desktop packages.
+MODULES := module_persistence module_auth module_core module_prego module_app_ui module_desktop_core design_catalog app desktop
 
 # Modules with active build_runner generators.
-CODEGEN_MODULES := module_auth module_core module_prego module_desktop_core app desktop
+CODEGEN_MODULES := module_persistence module_auth module_core module_prego module_desktop_core app desktop
 
 .PHONY: codegen pub-get test analyze generate-assets generate-tokens catalog-manifest catalog-manifest-check catalog-analyze catalog-test catalog-build catalog-check
 
