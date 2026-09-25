@@ -1,22 +1,38 @@
+import "package:drift/drift.dart";
 import "package:injectable/injectable.dart";
 
-import "../foundation/platform/primitive_storage.dart";
+import "../foundation/persistence/persistence_database.dart";
 
-/// Raw I/O boundary; does not interpret domain values or select a backend.
+/// Raw typed-table access; ordinary preferences never consult the master key.
 @lazySingleton
-class PersisterApi({required PrimitiveStorage primitiveStorage}) {
-  final PrimitiveStorage _storage = primitiveStorage;
+class PersisterApi({required PersistenceDatabase database}) {
+  final PersistenceDatabase _database = database;
 
-  Future<String?> readString({required String key}) => _storage.readString(key: key);
+  Future<String?> readString({required String key}) => (_database.select(
+    _database.stringValues,
+  )..where((table) => table.key.equals(key))).map((row) => row.value).getSingleOrNull();
 
-  Future<void> writeString({required String key, required String value}) =>
-      _storage.writeString(key: key, value: value);
+  Future<void> writeString({required String key, required String value}) async {
+    await _database
+        .into(_database.stringValues)
+        .insertOnConflictUpdate(StringValuesCompanion.insert(key: key, value: value));
+  }
 
-  Future<void> deleteString({required String key}) => _storage.deleteString(key: key);
+  Future<void> deleteString({required String key}) async {
+    await _database.delete(_database.stringValues).delete(StringValuesCompanion(key: Value(key)));
+  }
 
-  Future<bool?> readBool({required String key}) => _storage.readBool(key: key);
+  Future<bool?> readBool({required String key}) => (_database.select(
+    _database.boolValues,
+  )..where((table) => table.key.equals(key))).map((row) => row.value).getSingleOrNull();
 
-  Future<void> writeBool({required String key, required bool value}) => _storage.writeBool(key: key, value: value);
+  Future<void> writeBool({required String key, required bool value}) async {
+    await _database
+        .into(_database.boolValues)
+        .insertOnConflictUpdate(BoolValuesCompanion.insert(key: key, value: value));
+  }
 
-  Future<void> deleteBool({required String key}) => _storage.deleteBool(key: key);
+  Future<void> deleteBool({required String key}) async {
+    await _database.delete(_database.boolValues).delete(BoolValuesCompanion(key: Value(key)));
+  }
 }
