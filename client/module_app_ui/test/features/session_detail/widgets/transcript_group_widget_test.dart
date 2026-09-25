@@ -1,6 +1,7 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -246,8 +247,12 @@ void main() {
     expect(summaryTop, lessThan(tester.getTopLeft(find.text("read")).dy));
     expect(tester.getTopLeft(find.text("read")).dy, lessThan(tester.getTopLeft(find.text("bash")).dy));
     final midway = _height(tester);
+    Iterable<String> presences() => tester.stateList(find.byType(TranscriptPresence)).map((state) => "$state");
+    expect(presences().where((state) => state.contains("tracking 1 ticker")), isNotEmpty);
 
     await tester.pump(const Duration(milliseconds: 150));
+    // Settled rows hold no controller or ticker.
+    expect(presences().where((state) => state.contains("tracking 1 ticker")), isEmpty);
     expect(find.text("read"), findsNothing);
     expect(_height(tester), greaterThan(oneRow));
     expect(midway, lessThan(_height(tester)));

@@ -35,7 +35,9 @@ class const TranscriptPresence({
   State<TranscriptPresence> createState() => _TranscriptPresenceState();
 }
 
-class _TranscriptPresenceState() extends State<TranscriptPresence> with SingleTickerProviderStateMixin {
+// Not the single-ticker mixin: a row that settled and later leaves makes a
+// second controller.
+class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerProviderStateMixin {
   AnimationController? _controller;
   CurvedAnimation? _curve;
 
@@ -74,14 +76,22 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with SingleTi
       ..addListener(() => setState(() {}))
       ..addStatusListener((status) {
         if (status.isDismissed && widget.exiting) widget.onExited?.call();
+        // A settled row gives its controller back; leaving makes a new one.
+        if (status.isCompleted) setState(_release);
       });
     return controller;
   }
 
-  @override
-  void dispose() {
+  void _release() {
     _curve?.dispose();
     _controller?.dispose();
+    _curve = null;
+    _controller = null;
+  }
+
+  @override
+  void dispose() {
+    _release();
     super.dispose();
   }
 
