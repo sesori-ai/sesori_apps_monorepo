@@ -1061,6 +1061,24 @@
   "@sessionListRunning": {
     "description": "Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle"
   },
+  "sessionListResumes": "Resumes {time}",
+  "@sessionListResumes": {
+    "description": "Shown on a session row, in place of its last-activity time, while the bridge has scheduled an automatic continuation after a quota reset. The time is local, with the date only when it is not today.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionListResumesAtDescription": "Resumes at {time}",
+  "@sessionListResumesAtDescription": {
+    "description": "Screen-reader and tooltip wording for a session row whose automatic continuation is scheduled; the time includes the date.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "sessionListNewActivity": "New activity",
   "@sessionListNewActivity": {
     "description": "Screen-reader label for a session with unopened agent activity; the visual signal is the resting sparkle"

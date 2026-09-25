@@ -71,6 +71,7 @@ export "src/features/session_list/session_list_filtered_content.dart";
 export "src/features/session_list/session_list_panel.dart";
 export "src/features/session_list/session_list_scaffold.dart";
 export "src/features/session_list/session_row_metrics.dart";
+export "src/features/session_list/session_scheduled_resume.dart";
 export "src/features/session_list/session_tile.dart";
 export "src/features/settings/default_input_settings_view.dart";
 export "src/features/settings/harness_settings_flow_view.dart";
