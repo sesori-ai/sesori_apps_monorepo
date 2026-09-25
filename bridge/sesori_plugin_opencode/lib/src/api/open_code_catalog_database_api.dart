@@ -36,15 +36,22 @@ class const OpenCodeCatalogSessionRow({
   required final int? archivedAt,
 });
 
-class const OpenCodeCatalogDatabaseSnapshot({
+sealed class const OpenCodeCatalogDatabaseReadResult();
+
+/// The v1 catalog rows.
+final class const OpenCodeCatalogDatabaseSnapshot({
   required final List<OpenCodeCatalogProjectRow> projects,
   required final List<OpenCodeCatalogProjectDirectoryRow> projectDirectories,
   required final List<OpenCodeCatalogSessionRow> sessions,
-});
+}) implements OpenCodeCatalogDatabaseReadResult;
+
+/// OpenCode 2.x migrated the database: its v1 tables are stale copies, so
+/// they are not read.
+final class const OpenCodeCatalogDatabaseMigratedToV2() implements OpenCodeCatalogDatabaseReadResult;
 
 /// Isolate worker dependency. It must capture only sendable values and
 /// open/close native resources inside the invocation.
-typedef OpenCodeCatalogDatabaseWorker = FutureOr<OpenCodeCatalogDatabaseSnapshot> Function({
+typedef OpenCodeCatalogDatabaseWorker = FutureOr<OpenCodeCatalogDatabaseReadResult> Function({
   required String databasePath,
 });
 
@@ -54,18 +61,27 @@ class const OpenCodeCatalogDatabaseApi({required final OpenCodeCatalogDatabaseWo
     return OpenCodeCatalogDatabaseApi(worker: const _SqliteOpenCodeCatalogDatabaseWorker().read);
   }
 
-  Future<OpenCodeCatalogDatabaseSnapshot> read({required String databasePath}) {
+  Future<OpenCodeCatalogDatabaseReadResult> read({required String databasePath}) {
     final worker = _worker;
     return Isolate.run(() => worker(databasePath: databasePath));
   }
 }
 
 class const _SqliteOpenCodeCatalogDatabaseWorker() {
-  OpenCodeCatalogDatabaseSnapshot read({required String databasePath}) {
+  OpenCodeCatalogDatabaseReadResult read({required String databasePath}) {
     Database? database;
     try {
       database = sqlite3.open(databasePath, mode: OpenMode.readOnly);
       database.execute("BEGIN");
+      // Checked before schema validation so a 2.x database is reported, not
+      // rejected for a schema this reader never needs to understand.
+      final sessionV2Tables = database.select(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'session_v2' LIMIT 1",
+      );
+      if (sessionV2Tables.isNotEmpty) {
+        database.execute("COMMIT");
+        return const OpenCodeCatalogDatabaseMigratedToV2();
+      }
       _validateSchema(database: database);
       _validateSandboxJson(database: database);
 
