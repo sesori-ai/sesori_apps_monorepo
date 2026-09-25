@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/bridge-npm-publish.yml'
       - '.github/scripts/test_bridge_build_workflow.py'
       - '.github/workflows/verify-macos-signing.yml'
       - '.github/workflows/submit-release.yml'
@@ -24,8 +25,11 @@ on:
       - 'client/app/fastlane/**'
       - 'client/app/ios/fastlane/Fastfile'
       - 'client/app/android/fastlane/Fastfile'
+      - '.github/scripts/publish_desktop_release.py'
+      - '.github/scripts/test_publish_desktop_release.py'
   pull_request:
     paths:
+      - '.github/workflows/bridge-npm-publish.yml'
       - '.github/scripts/test_bridge_build_workflow.py'
       - '.github/workflows/verify-macos-signing.yml'
       - '.github/workflows/submit-release.yml'
@@ -46,6 +50,8 @@ on:
       - 'client/app/fastlane/**'
       - 'client/app/ios/fastlane/Fastfile'
       - 'client/app/android/fastlane/Fastfile'
+      - '.github/scripts/publish_desktop_release.py'
+      - '.github/scripts/test_publish_desktop_release.py'
 
 permissions:
   contents: read
@@ -63,8 +69,10 @@ jobs:
         run: python -m unittest discover -s .github/scripts -p 'test_bridge_build_workflow.py'
       - name: Test automatic macOS signing workflow contracts
         run: python -m unittest discover -s .github/scripts -p 'test_macos_signing_workflows.py'
-      - name: Test private desktop release preparation
-        run: python -m unittest discover -s .github/scripts -p 'test_prepare_desktop_release.py'
+      - name: Test desktop release preparation and publication boundaries
+        run: |
+          python -m unittest discover -s .github/scripts -p 'test_prepare_desktop_release.py'
+          python -m unittest discover -s .github/scripts -p 'test_publish_desktop_release.py'
       - name: Lint release gate
         run: shellcheck .github/scripts/check_internal_release.sh
       - name: Test automatic release decisions and attempt recording

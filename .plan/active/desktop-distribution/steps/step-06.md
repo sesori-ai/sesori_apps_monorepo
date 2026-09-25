@@ -1,14 +1,15 @@
-# Step 6 — Private release preparation and publication gate
+# Step 6 — Shared release cycle and desktop publication gate
 
-Ordinal 8/14. Builds on merged step 5 (#1506). Public publication remains blocked;
-this implementation prepares evidence without tags, releases, signing, website
-writes, new credentials, or changes to CLI/mobile finalizers.
+Ordinal 8/14. Builds on merged step 5 (#1506). Private preparation is already merged.
+The user selected the shared bridge/mobile release cycle on 2026-09-25. Continuation
+`8.j/14` wires native macOS builds and gated asset attachment into that cycle without
+changing the existing bridge/mobile finalizers or publishing a desktop release.
 
 ## Code-informed implementation boundary
 
-- `.github/workflows/desktop-release.yml` is manual and read-only. It downloads
-  both CPUs' private packages/evidence from one successful qualification run.
-  Source SHA, run ID and channel are explicit inputs; this workflow is macOS-only.
+- `.github/workflows/desktop-release.yml` remains manual and read-only. It downloads
+  both CPUs' packages/evidence from one successful qualification/shared release run.
+  Source SHA, run ID and channel are explicit inputs; this QA aid is macOS-only.
   Checkout is
   the workflow's tooling revision; it is not mislabeled as the package source.
 - `.github/scripts/prepare_desktop_release.py` checks the producer run, both bundle
@@ -31,26 +32,51 @@ artifacts stay in the producer run with their existing retention. No storage
 service, persistent state, new application lifecycle owner or updater is introduced.
 Transient Python values only; no architecture-bearing application code changes.
 
-## Release isolation and blockers
+## Shared-cycle continuation and blockers
 
-Proposed tags use `desktop-vX.Y.Z` or `desktop-vX.Y.Z-internal.N`. Explicit bridge
-selectors require a `v` prefix, so desktop tags do not qualify. Generic GitHub
-Latest is repository-wide: eventual publication must use `--latest=false` for
-both desktop channels. This step generates a proposed tag but never creates it.
-It neither consumes mobile/CLI versions nor moves `internal-release-attempt`.
+`release-all-platforms.yml` reuses the private macOS producer with its resolved
+build number/source and internal channel. Desktop-only changes now enter the same
+product cycle. `submit-release.yml` uses the resolved source/build with the stable
+channel for admitted macOS releases; beta and `bridge-only` keep their existing scope.
+Core mobile/bridge success conditions, tags, attempt recording and finalizers remain
+unchanged. A desktop build failure stays visible without rolling back other products.
+
+`_reusable-desktop-publish.yml` runs only after native desktop success and the shared
+release job. Production therefore already passed `store-production`; no second
+approval is added. `DESKTOP_MACOS_PUBLICATION_ENABLED` defaults off and is not enabled
+by this change. Internal packages stay in Actions artifacts until the owner admits
+macOS publication. Windows/Linux publishing is not enabled.
+
+The publisher checks both native payload sets against producer evidence, binds them
+to the shared version/build/source, and adds only four macOS installers plus
+`desktop-checksums.txt` and `desktop-release.json`. It never changes bridge checksums,
+creates/promotes releases, moves tags or changes Latest. It anonymously retrieves and
+hashes each asset, refuses replacement on retries, and uploads the manifest last.
+Private evidence, logs and screenshots are never attached to the public release.
+
+Production's workflow commit is not its older resolved product source; both are
+recorded. Own-run finalization admits an in-progress producer only for that exact run
+and workflow SHA, after its native job dependency succeeds. Other selected runs must
+be completed successfully. Upgrade probes also accept the shared producers while
+retaining package-source main ancestry and the exact historical baseline exception.
 
 Do not claim step 6 shipped from preparation. The owner-approved signing migration
 is complete: all five values live only in `macos-signing`, shared CLI and direct
 desktop native proof passed on both CPUs after repository-copy removal, and the
 migration plan retired in #1534. Remaining gates:
 
-- Full native macOS manual upgrade/data-preservation gates and parent desktop-app
-  prerequisites; existing private package probes do not establish these.
+- Remaining native/macOS and parent desktop-app checks. Authenticated/helper-Off
+  replacement already passed for build 122 on both CPUs. Existing shutdown tests
+  passed 82 cases; that is not packaged fault injection. The user reports desktop
+  checklist success on M4 Pro/macOS 27.0 (26A428), with app build unspecified.
+  The configured deployment minimum is macOS 12.0; execution on that minimum,
+  remaining cross-device cases and fresh candidate attribution are still unproven.
 - Verified public download links on `https://sesori.com/desktop/`. The page itself went
   live on 2026-09-18 (sesori-ai/landingpage#107) with all eight build anchors and
   `linux-package-managers`; every row is still an unshipped placeholder.
-- Actual immutable publication and public retrieval/signature checks, then channel
-  metadata last. No publication credentials or hosted resources are provisioned here.
+- Owner admission before enabling `DESKTOP_MACOS_PUBLICATION_ENABLED`, then actual
+  immutable publication/public retrieval/trust checks before exposing website links.
+  No publication credentials or hosted resources are provisioned here.
 
 No automatic updater layers remain to clean up. The private producer stays separate
 from public release authority. Windows/Linux publication remains disabled.

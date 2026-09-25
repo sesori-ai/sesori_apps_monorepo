@@ -1,7 +1,7 @@
 name: Desktop Release Preparation
 
-# Preparation only. Public releases remain blocked on owner-approved credential
-# migration and native/parent ship gates. No tags, releases, signing, or website writes.
+# Read-only qualification aid, not an independent release cycle or publication authority.
+# Shared release workflows own publication; native/parent ship gates remain in force.
 on:
   workflow_dispatch:
     inputs:
@@ -10,7 +10,7 @@ on:
         type: string
         required: true
       packaging_run:
-        description: 'Successful private macOS packaging run from that source'
+        description: 'Successful qualification or shared release run containing both native macOS packages'
         type: string
         required: true
       channel:

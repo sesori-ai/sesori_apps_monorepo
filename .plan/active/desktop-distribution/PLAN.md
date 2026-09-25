@@ -9,8 +9,10 @@
   `35573213361` (authenticated helper-On/Keychain) and `35575012582` (helper-Off)
   accepted private signed `1.8.4+24 → 1.9.0+122` replacement on native x64 and arm64.
   Read-only preparation `35575015316` also passed for build `122`; no product rebuild
-  was needed after the QA signing-partition fix. Failed-stop, interactive user-account/TCC,
-  minimum-OS and public gates remain open. Public
+  was needed after the QA signing-partition fix. Existing shutdown-failure coverage passed
+  82 focused tests; packaged fault injection is separate. The user reports the desktop
+  checklist passing on M4 Pro/macOS 27.0 (26A428), without identifying the app build.
+  Interactive/cross-device, minimum-OS and public gates remain open. Public
   macOS/Windows/Linux publication and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
   releases. The independently executable private portion of step 11 is in progress;
   its public-release reconciliation and final plan retirement remain blocked. Shipping
@@ -70,6 +72,7 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 | D5 | Linux: DEB and RPM packages with signed APT/RPM repositories. No AppImage, Flatpak, Snap, or custom Linux self-updater in this plan. |
 | D6 | Trust, maturity, broad adoption, and simple integration outrank automation (user clarification 2026-09-15). The explicitly approved manual fallback is selected for macOS in step 5; Sparkle background preparation/install-on-quit is not part of the implementation. No custom updater, security layer, or shutdown machinery just to preserve automation. Windows uses manual signed-installer updates; Linux remains package-manager-owned. Ordinary Quit never unexpectedly reopens the app. |
 | D7 | GitHub Releases hosts downloadable installers; static GCS hosts signed Linux repositories. No new backend release service. Linux repositories also host their package payloads, rather than relying on cross-origin package-manager redirects. |
+| D8 | Selected 2026-09-25: share the bridge/mobile release cycle; retain platform gates and macOS-first delivery. |
 
 ### Proposed implementation defaults
 
@@ -81,11 +84,12 @@ changing user intent, adding material infrastructure, or reducing the matrix.
   the GUI. Use separate architecture artifacts rather than inventing universal
   Dart/native-asset bundles. Harness runtimes remain installed on demand through
   existing plugin management; PATH-installed harnesses retain precedence.
-- Keep shared product semantic versioning, adding desktop to `tool/sync_versions.dart`.
-  Desktop release attempts have their own build number, tags, download indexes, and publication
-  gate; they never query TestFlight/Play to obtain a desktop build number.
-- Start with explicit internal and stable desktop release dispatches. No new hourly
-  scheduler, release database, rollout service, or automatic stable promotion.
+- Share the existing product version, resolved build number, source commit and release
+  tags. Reuse the existing internal scheduler and production submission approval;
+  desktop does not query stores independently or introduce another approval environment.
+- Keep private qualification/preparation dispatches for testing. They are not a separate
+  publication cycle. No new scheduler, release database, rollout service or automatic
+  stable promotion.
 - Stable is the installed default. Internal testing is an explicit separate download/
   repository selection; do not build an in-app channel-switching feature now.
 - Use mature distribution tooling, not a new archive downloader/swap/rollback engine.
@@ -130,7 +134,7 @@ Verified against the implementation checkout, not inferred from the superseded p
   that workaround cannot compile the Flutter GUI by itself.
 - `release-all-platforms.yml` and `check_internal_release.sh` preserve a scheduled,
   immutable-commit, all-or-nothing mobile/CLI release with no automatic retry of an
-  attempted commit. Desktop-only changes intentionally do not consume store uploads.
+  attempted commit. Under D8, desktop-only product changes now qualify for the shared cycle.
 - The GitHub source repository is public. Existing bridge installers/updaters consume
   its releases; new desktop assets/tags must not change their release selection.
 
@@ -283,47 +287,54 @@ services, subscriptions or terminal-action variants. OS package trust and publis
 verification remain mandatory; the download link does not verify an installer.
 Native signed N→N+1 manual replacement and preservation are still release gates.
 
-### 4. Publication and release isolation
+### 4. Shared publication cycle and platform isolation
 
-Step 6 first delivers private read-only preparation as described in
-[step-06](steps/step-06.md). Public publication remains blocked on the prerequisites
-below; merging preparation does not clear the macOS ship gate.
+D8 replaces the separate desktop publication cycle. `release-all-platforms.yml`
+reuses native macOS qualification with its existing aligned build number and commit.
+Desktop-only product changes now qualify for that same scheduled cycle, including its
+mobile uploads. Duplicate/failed-attempt suppression and manual retry policy remain.
 
-Add a desktop-owned `desktop-release.yml` with explicit immutable ref, channel, and
-platform inputs and reusable platform build legs. It must not depend on mobile
-store jobs, move `internal-release-attempt`, or change the existing mobile/CLI
-finalizer's success conditions. PR packaging CI has no signing/publication secrets;
-manual trusted release jobs use protected environments and least-privilege OIDC
-where supported. Private qualification now uses the owner-approved `macos-signing`
-environment, which admits `main` with no reviewer or wait gate so routine CLI signing
-remains automatic.
-All five repository-level copies are removed after post-deletion native proof; shared
-reusable callers use reviewed inheritance while TestFlight/Android credentials remain
-separate. Desktop publication still requires a different human-approved environment.
-Preserve source revision versus workflow revision when reusing actions for older refs.
+`submit-release.yml` rebuilds admitted macOS packages from the resolved internal source
+with the stable channel. Its existing `store-production` approval remains authoritative:
+no extra environment or approval prompt. Beta and explicit `bridge-only` submissions
+retain their existing scope. The signing environment remains main-only `macos-signing`,
+with no reviewer/wait gate or changes to mobile/signing credentials.
+
+`DESKTOP_MACOS_PUBLICATION_ENABLED` is absent/false until the owner accepts the macOS
+ship gates. While disabled, internal desktop builds remain Actions artifacts, not
+public prerelease assets. Enabling this repository variable is a separate explicit
+platform-admission action, not a side effect of merging implementation. Windows/Linux
+have no publication legs yet. The existing bridge/mobile finalizer stays unchanged;
+desktop attaches assets only after it and both native desktop jobs succeed.
+
+Private `macos-packaging` accepts an exact main-ancestor source/build override so the
+selected production candidate can be tested before enabling publication. The read-only
+`desktop-release.yml` remains a qualification aid, consuming completed qualification/shared
+runs without executing packages or publishing. Source revision
+and producer/preparation workflow revisions remain distinct for stable rebuilds.
 
 - Artifact identity includes semantic version, build number, source SHA, platform,
   architecture, digest, and signing evidence. Both architectures in a platform leg
   share only the release version/build number/source SHA; each artifact has its own
   complete identity, architecture, digest and signing evidence. Feeds select and
-  verify that specific artifact. Extend desktop version/bundle checks without making
-  a desktop signing outage block mobile/CLI release.
-- Use separate `desktop-vX.Y.Z-internal.N` / `desktop-vX.Y.Z` tags and explicit desktop
-  asset names. Set GitHub releases `--latest=false`; do not move a published tag or
-  overwrite a published stable artifact. Verify legacy bridge selectors ignore the
-  new tags, including generic GitHub latest-release behavior.
+  verify that specific artifact. A desktop failure is visible in the shared run but
+  does not alter bridge/mobile finalization or roll back completed store uploads.
+- Attach explicit desktop asset names to existing `vX.Y.Z-internal.N` / `vX.Y.Z`
+  releases. Never create/promote another release or change Latest. Preserve bridge
+  archives and `checksums.txt`; desktop owns `desktop-checksums.txt` and
+  `desktop-release.json`. Refuse to overwrite any existing desktop asset.
 - Internal download entries reference only internal desktop builds; stable entries reference only
   approved stable artifacts. A stable build uses the tested source SHA and clean
   version, following the existing bridge production rebuild precedent; an internal
   binary with a prerelease version is not silently relabeled as stable. Reverify the
   actual stable signed package before publication. Do not claim byte-for-byte
   promotion when version baking/signing rebuilds the artifact.
-- Upload immutable payloads and versioned metadata first, verify their public HTTPS
-  retrieval and signatures, then publish each channel entry point last. Serialize
-  publication to that platform/channel using workflow concurrency and conditional
-  object writes. GCS has atomic object replacement, not an atomic multi-object
-  transaction: APT by-hash/versioned indexes and immutable RPM metadata must keep
-  readers valid across the switch. Retain referenced old artifacts through upgrades.
+- Verify native signatures/notarization before upload and anonymously retrieve/hash
+  each public payload. Upload desktop checksums and the completion manifest last;
+  expose website links only after public retrieval/trust is accepted. A retry reuses
+  identical public assets, never clobbers them. Existing workflow concurrency owns
+  ordering. Linux later uses conditional GCS object writes and APT by-hash/versioned
+  indexes plus immutable RPM metadata to keep readers valid across repository switches.
 - Linux repository payloads live alongside signed repository metadata in GCS; the
   same DEB/RPM bytes can also be downloadable GitHub release assets. Do not make
   package managers depend on user-specific tokens or expiring download URLs.
@@ -392,6 +403,16 @@ history and keeps lifecycle changes out of the package-signing review.
 
 Step 6 delivered read-only private metadata/checksums in PR #1511 without publication.
 Credential migration is complete, but parent and native/public ship gates still apply.
+
+**Step 6 shared-cycle continuation:**
+`🚧 [desktop-distribution] Join the shared product release cycle [step 8.j/14]`.
+Reuse private native macOS qualification, preserve core finalization/production approval,
+then attach immutable verified assets behind default-off platform admission. Focused
+Python fixture tests and workflow lint; fresh main-only native qualification follows
+merge. No app/database changes or public publication in this implementation step.
+Complexity budget: one repository admission variable and existing transient CI/artifact
+state; no new service, credential, persistent schema, lifecycle owner or updater. Remove
+superseded separate desktop-tag/approval assumptions; keep useful read-only QA tooling.
 
 **Step 6 continuation PR:**
 `🚧 [desktop-distribution] Qualify signed macOS manual replacement [step 8/14]`.

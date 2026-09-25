@@ -111,10 +111,12 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Download release assets
+      - name: Download bridge release assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir artifacts --pattern "*.tar.gz" --pattern "*.zip" --pattern "checksums.txt"
+        run: |
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir artifacts \
+            --pattern "sesori-bridge-*.tar.gz" --pattern "sesori-bridge-*.zip" --pattern "checksums.txt"
 
       - name: Verify release archive checksums
         shell: bash

@@ -1,0 +1,182 @@
+"""Exercise publication with local artifacts and mocked GitHub/public HTTP boundaries."""
+import hashlib
+import io
+import json
+from pathlib import Path
+import unittest
+from unittest.mock import patch
+
+import publish_desktop_release as publisher
+import test_prepare_desktop_release as fixtures
+
+
+class PublishDesktopReleaseTest(unittest.TestCase):
+    def setUp(self):
+        self.fixture = fixtures.PrepareDesktopReleaseTest()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.root = self.fixture.root
+        self.uploads = []
+        self.public = {}
+        self.release = {"draft": False, "prerelease": False, "assets": []}
+        self.args = dict(root=self.root, output=self.fixture.output, source_sha=fixtures.SOURCE,
+                         tooling_sha=fixtures.TOOLING, channel="stable", repository=fixtures.REPO,
+                         run_id=42, current_run_id=None, version="1.8.4", build_number=24)
+
+    @property
+    def tag(self):
+        return "v1.8.4-internal.24" if self.args["channel"] == "internal" else "v1.8.4"
+
+    def github(self, *, arguments):
+        if arguments[0] == "api":
+            self.assertEqual(arguments, ["api", f"repos/{fixtures.REPO}/releases/tags/{self.tag}"])
+            return json.dumps(self.release)
+        self.assertEqual(arguments[:3], ["release", "upload", self.tag])
+        self.assertEqual(arguments[4:], ["--repo", fixtures.REPO])
+        path = Path(arguments[3])
+        self.assertNotIn(path.name, self.public, "Existing assets must never be overwritten")
+        self.uploads.append(path.name)
+        self.public[path.name] = path.read_bytes()
+        return ""
+
+    def download(self, url, *, timeout):
+        self.assertEqual(timeout, 60)
+        prefix = f"https://github.com/{fixtures.REPO}/releases/download/{self.tag}/"
+        self.assertTrue(url.startswith(prefix))
+        return io.BytesIO(self.public[url.removeprefix(prefix)])
+
+    def publish(self):
+        with patch.object(publisher, "github", side_effect=self.github), \
+                patch.object(publisher, "urlopen", side_effect=self.download):
+            publisher.publish(**self.args)
+
+    def test_payloads_verified_before_metadata_and_no_bridge_assets_changed(self):
+        self.publish()
+        self.assertEqual(self.uploads, [
+            "Sesori-macos-arm64.dmg", "Sesori-macos-arm64.zip",
+            "Sesori-macos-x64.dmg", "Sesori-macos-x64.zip",
+            "desktop-checksums.txt", "desktop-release.json",
+        ])
+        metadata = json.loads(self.public["desktop-release.json"])
+        self.assertEqual(metadata["tag"], "v1.8.4")
+        self.assertEqual(metadata["sourceSha"], fixtures.SOURCE)
+
+    def use_internal(self):
+        self.args["channel"] = "internal"
+        for path in self.root.glob("*/desktop-bundle/dart-defines.env"):
+            path.write_text(path.read_text().replace("CHANNEL=stable", "CHANNEL=internal"))
+
+    def test_internal_uses_the_existing_shared_prerelease(self):
+        self.use_internal()
+        self.release["prerelease"] = True
+        self.publish()
+        self.assertEqual(json.loads(self.public["desktop-release.json"])["tag"], "v1.8.4-internal.24")
+
+    def test_internal_cannot_attach_to_a_stable_release(self):
+        self.use_internal()
+        with self.assertRaisesRegex(ValueError, "internal pre-release"):
+            self.publish()
+        self.assertEqual(self.uploads, [])
+
+    def test_partial_upload_retry_reuses_identical_asset(self):
+        name = "Sesori-macos-arm64.dmg"
+        self.public[name] = (self.root / "desktop-macos-packages-arm64" / name).read_bytes()
+        self.release["assets"] = [{"name": name}]
+        self.publish()
+        self.assertNotIn(name, self.uploads)
+        self.assertEqual(len(self.uploads), 5)
+
+    def test_conflicting_existing_asset_refuses_replacement_and_metadata(self):
+        name = "Sesori-macos-arm64.dmg"
+        self.public[name] = b"already delivered different bytes"
+        self.release["assets"] = [{"name": name}]
+        with self.assertRaisesRegex(ValueError, "refusing replacement"):
+            self.publish()
+        self.assertEqual(self.uploads, [])
+
+    def test_bad_public_download_never_publishes_completion_metadata(self):
+        with patch.object(publisher, "github", side_effect=self.github), \
+                patch.object(publisher, "public_sha256", return_value="0" * 64):
+            with self.assertRaisesRegex(ValueError, "digest mismatch"):
+                publisher.publish(**self.args)
+        self.assertEqual(self.uploads, ["Sesori-macos-arm64.dmg"])
+
+    def test_shared_identity_mismatch_never_calls_github(self):
+        for field, value in (("version", "1.8.5"), ("build_number", 25)):
+            with self.subTest(field=field), patch.object(publisher, "github") as gh:
+                with self.assertRaisesRegex(ValueError, "shared release"):
+                    publisher.publish(**(self.args | {field: value, "output": self.root / field}))
+                gh.assert_not_called()
+
+    def test_draft_release_cannot_claim_public_retrieval(self):
+        self.release["draft"] = True
+        with self.assertRaisesRegex(ValueError, "already be public"):
+            self.publish()
+        self.assertEqual(self.uploads, [])
+
+    def test_http_hash_reads_without_auth_and_in_bounded_chunks(self):
+        payload = b"fixture" * 200_000
+        response = io.BytesIO(payload)
+        with patch.object(publisher, "urlopen", return_value=response) as opened, \
+                patch.object(response, "read", wraps=response.read) as chunks:
+            result = publisher.public_sha256(url="https://example.invalid/asset.zip")
+        opened.assert_called_once_with("https://example.invalid/asset.zip", timeout=60)
+        self.assertEqual(len(chunks.call_args_list), 3)
+        self.assertTrue(all(call.args == (1024 * 1024,) for call in chunks.call_args_list))
+        self.assertEqual(result, hashlib.sha256(payload).hexdigest())
+
+
+class DesktopReleaseWorkflowTest(unittest.TestCase):
+    def test_shared_calls_keep_existing_finalizers_and_approval_boundary(self):
+        root = Path(__file__).resolve().parents[1] / "workflows"
+        for filename, build_job, dependency, channel in (
+            ("release-all-platforms.yml", "desktop-macos", "finalize", "internal"),
+            ("submit-release.yml", "build-desktop-macos", "release", "stable"),
+        ):
+            with self.subTest(workflow=filename):
+                text = (root / filename).read_text()
+                build = text.split(f"  {build_job}:\n", 1)[1].split("\n  publish-desktop:", 1)[0]
+                self.assertIn("uses: ./.github/workflows/desktop-qualification.yml", build)
+                self.assertIn("secrets: inherit", build)
+                self.assertIn("build_number: ${{ needs.", build)
+                publish = text.split("  publish-desktop:\n", 1)[1].split("\n  #", 1)[0]
+                self.assertIn("vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'", publish)
+                self.assertIn(build_job, publish)
+                self.assertIn(dependency, publish)
+                self.assertIn(f"channel: {channel}", publish)
+                self.assertIn("uses: ./.github/workflows/_reusable-desktop-publish.yml", publish)
+        submit = (root / "submit-release.yml").read_text()
+        self.assertIn("environment: store-production", submit)
+        release = submit.split("\n  release:\n", 1)[1]
+        self.assertIn("needs.tag.result == 'success'", release)
+        self.assertNotIn("build-desktop-macos", release)
+        internal = (root / "release-all-platforms.yml").read_text().split("\n  finalize:\n", 1)[1]
+        self.assertIn("needs: [preflight, next-build-number, ios, android, bridge]", internal)
+
+    def test_npm_downloads_only_bridge_assets_from_the_shared_release(self):
+        root = Path(__file__).resolve().parents[1]
+        workflow = (root / "workflows/bridge-npm-publish.yml").read_text()
+        self.assertIn('--pattern "sesori-bridge-*.tar.gz"', workflow)
+        self.assertIn('--pattern "sesori-bridge-*.zip"', workflow)
+        self.assertNotIn('--pattern "*.zip"', workflow)
+        self.assertNotIn('--pattern "*.tar.gz"', workflow)
+
+    def test_publisher_cannot_create_or_promote_releases_or_expose_private_evidence(self):
+        root = Path(__file__).resolve().parents[1]
+        workflow = (root / "workflows/_reusable-desktop-publish.yml").read_text()
+        self.assertIn("vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'", workflow)
+        self.assertIn('"$GITHUB_REF" == refs/heads/main', workflow)
+        for forbidden in ("secrets.", "environment:", "workflow_dispatch:", "gh release create", "gh release edit"):
+            self.assertNotIn(forbidden, workflow)
+        producer = (root / "workflows/desktop-qualification.yml").read_text()
+        self.assertIn("workflow_call:", producer)
+        self.assertIn("ref: ${{ inputs.source_sha || github.sha }}", producer)
+        self.assertIn("${{ inputs.build_number || github.run_number }}", producer)
+        self.assertIn("git merge-base --is-ancestor HEAD origin/main", producer)
+        self.assertIn("desktop-qualification-${{ github.workflow }}-", producer)
+        self.assertIn("'/.ci-workflow/'", producer)
+        self.assertIn("git rev-parse --git-path info/exclude", producer)
+
+
+if __name__ == "__main__":
+    unittest.main()
