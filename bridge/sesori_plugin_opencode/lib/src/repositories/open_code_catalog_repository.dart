@@ -47,9 +47,15 @@ class OpenCodeCatalogRepository({
     if (cancellation.isCancelled) throw const PluginStartAbortedException();
     final raw = await databaseApi.read(databasePath: databasePath);
     if (cancellation.isCancelled) throw const PluginStartAbortedException();
-    // An OpenCode 2.x database is not read here; the live import covers it.
-    if (raw.hasSessionV2Table) return const PluginCatalogSnapshotUnavailable();
-    final snapshot = await _mapSnapshot(raw: raw, cancellation: cancellation);
+    final OpenCodeCatalogDatabaseSnapshot rows;
+    switch (raw) {
+      case OpenCodeCatalogDatabaseSnapshot():
+        rows = raw;
+      // An OpenCode 2.x database is not read here; the live import covers it.
+      case OpenCodeCatalogDatabaseMigratedToV2():
+        return const PluginCatalogSnapshotUnavailable();
+    }
+    final snapshot = await _mapSnapshot(raw: rows, cancellation: cancellation);
     return PluginCatalogSnapshotAvailable(snapshot: snapshot);
   }
 

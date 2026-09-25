@@ -36,18 +36,22 @@ class const OpenCodeCatalogSessionRow({
   required final int? archivedAt,
 });
 
-class const OpenCodeCatalogDatabaseSnapshot({
-  /// Whether the database has OpenCode 2.x's `session_v2` table. Such a
-  /// database is not read, so the row lists are empty.
-  required final bool hasSessionV2Table,
+sealed class const OpenCodeCatalogDatabaseReadResult();
+
+/// The v1 catalog rows.
+final class const OpenCodeCatalogDatabaseSnapshot({
   required final List<OpenCodeCatalogProjectRow> projects,
   required final List<OpenCodeCatalogProjectDirectoryRow> projectDirectories,
   required final List<OpenCodeCatalogSessionRow> sessions,
-});
+}) implements OpenCodeCatalogDatabaseReadResult;
+
+/// OpenCode 2.x migrated the database: its v1 tables are stale copies, so
+/// they are not read.
+final class const OpenCodeCatalogDatabaseMigratedToV2() implements OpenCodeCatalogDatabaseReadResult;
 
 /// Isolate worker dependency. It must capture only sendable values and
 /// open/close native resources inside the invocation.
-typedef OpenCodeCatalogDatabaseWorker = FutureOr<OpenCodeCatalogDatabaseSnapshot> Function({
+typedef OpenCodeCatalogDatabaseWorker = FutureOr<OpenCodeCatalogDatabaseReadResult> Function({
   required String databasePath,
 });
 
@@ -57,14 +61,14 @@ class const OpenCodeCatalogDatabaseApi({required final OpenCodeCatalogDatabaseWo
     return OpenCodeCatalogDatabaseApi(worker: const _SqliteOpenCodeCatalogDatabaseWorker().read);
   }
 
-  Future<OpenCodeCatalogDatabaseSnapshot> read({required String databasePath}) {
+  Future<OpenCodeCatalogDatabaseReadResult> read({required String databasePath}) {
     final worker = _worker;
     return Isolate.run(() => worker(databasePath: databasePath));
   }
 }
 
 class const _SqliteOpenCodeCatalogDatabaseWorker() {
-  OpenCodeCatalogDatabaseSnapshot read({required String databasePath}) {
+  OpenCodeCatalogDatabaseReadResult read({required String databasePath}) {
     Database? database;
     try {
       database = sqlite3.open(databasePath, mode: OpenMode.readOnly);
@@ -76,12 +80,7 @@ class const _SqliteOpenCodeCatalogDatabaseWorker() {
       );
       if (sessionV2Tables.isNotEmpty) {
         database.execute("COMMIT");
-        return const OpenCodeCatalogDatabaseSnapshot(
-          hasSessionV2Table: true,
-          projects: [],
-          projectDirectories: [],
-          sessions: [],
-        );
+        return const OpenCodeCatalogDatabaseMigratedToV2();
       }
       _validateSchema(database: database);
       _validateSandboxJson(database: database);
@@ -141,7 +140,6 @@ class const _SqliteOpenCodeCatalogDatabaseWorker() {
       ];
       database.execute("COMMIT");
       return OpenCodeCatalogDatabaseSnapshot(
-        hasSessionV2Table: false,
         projects: List.unmodifiable(projects),
         projectDirectories: List.unmodifiable(projectDirectories),
         sessions: List.unmodifiable(sessions),

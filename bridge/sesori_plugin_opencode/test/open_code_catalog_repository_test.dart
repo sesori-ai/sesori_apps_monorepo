@@ -338,7 +338,6 @@ void main() {
     test("Windows database paths map forward slashes to native separators", () async {
       final databaseApi = _FakeCatalogDatabaseApi(
         snapshot: const OpenCodeCatalogDatabaseSnapshot(
-          hasSessionV2Table: false,
           projects: [
             OpenCodeCatalogProjectRow(
               id: "real",
@@ -540,7 +539,6 @@ class _GatedCatalogDatabaseWorker({required final SendPort started}) {
     await release.first;
     release.close();
     return const OpenCodeCatalogDatabaseSnapshot(
-      hasSessionV2Table: false,
       projects: [],
       projectDirectories: [],
       sessions: [],

@@ -91,7 +91,10 @@ state.
   native SQLite finishes. The connection uses the live database and WAL normally
   (never immutable mode or checkpointing), and performs no migration or mutation. Missing,
   unreadable, malformed, incompatible, or unidentifiable data fails closed to the
-  existing live server import before any partial catalog publication. Explicit
+  existing live server import before any partial catalog publication. A database
+  that OpenCode 2.x has migrated (it has a `session_v2` table) is not read
+  directly: its v1 tables are stale copies, so importing them would surface
+  outdated sessions. It falls back to the live server import. Explicit
   `OPENCODE_DB` paths and `OPENCODE_DISABLE_CHANNEL_DB` are honored. Ordinary
   non-overridden OpenCode installs use the public-channel `opencode.db`; an explicit
   custom binary does not guess that default or a channel-specific filename. OpenCode
