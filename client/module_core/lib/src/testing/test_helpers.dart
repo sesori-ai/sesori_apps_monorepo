@@ -632,6 +632,7 @@ ProjectSummary testProjectSummary({
 
 /// A minimal session for const state fixtures that do not care which one.
 const Session testConstSession = Session(
+  approvalOverride: null,
   autoContinuation: null,
   branchName: null,
   id: "session-1",
@@ -661,6 +662,7 @@ Session testSession({
   String? branchName = _noString,
 }) {
   return Session(
+    approvalOverride: null,
     autoContinuation: null,
     branchName: branchName,
     id: id ?? "session-1",

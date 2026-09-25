@@ -28,6 +28,7 @@ enum SessionOperation() {
   insertObservedChild,
   getProjectQuestions,
   setAutoContinuation,
+  setApprovalOverride,
   observeQuotaInterruption,
   cancelQuotaContinuation,
   continueAfterQuota,

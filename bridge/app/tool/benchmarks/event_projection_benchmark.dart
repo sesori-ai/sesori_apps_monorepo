@@ -277,6 +277,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
         generation: 1,
         event: BridgeSseSessionUpdated(
           info: Session(
+            approvalOverride: null,
             autoContinuation: null,
             id: _backendSessionId,
             pluginId: _pluginId,

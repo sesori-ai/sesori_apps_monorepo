@@ -77,6 +77,7 @@ MessagePart _file(String id) => MessagePart.file(
 );
 
 Session _child(String id, {String? title}) => Session(
+  approvalOverride: null,
   id: id,
   projectID: "p",
   directory: "/d",

@@ -406,6 +406,7 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            approvalOverride: null,
             autoContinuation: null,
             branchName: null,
             id: "s1",
@@ -448,6 +449,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       const staleSession = Session(
+        approvalOverride: null,
         autoContinuation: null,
         branchName: "feature/private",
         id: "stale-session",
@@ -563,6 +565,7 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            approvalOverride: null,
             autoContinuation: null,
             branchName: null,
             id: "s1",
@@ -577,6 +580,7 @@ void main() {
             lastUserActivityAt: null,
           ),
           Session(
+            approvalOverride: null,
             autoContinuation: null,
             branchName: null,
             id: "s2",
@@ -654,6 +658,7 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            approvalOverride: null,
             autoContinuation: null,
             branchName: null,
             id: "native-session",
@@ -668,6 +673,7 @@ void main() {
             lastUserActivityAt: null,
           ),
           Session(
+            approvalOverride: null,
             autoContinuation: null,
             branchName: null,
             id: "derived-session",
@@ -3005,6 +3011,7 @@ class _CountingSessionDao({required final Set<String> tombstones, required final
       pluginId: "fake",
       title: null,
       catalogTitle: null,
+      approvalOverride: null,
     );
   }
 

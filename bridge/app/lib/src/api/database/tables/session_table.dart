@@ -79,6 +79,10 @@ class SessionTable() extends Table {
   TextColumn get title => text().nullable()();
   TextColumn get catalogTitle => text().nullable()();
 
+  /// How this session answers permission requests when it differs from the
+  /// bridge-wide YOLO setting. Null follows that setting.
+  TextColumn get approvalOverride => textEnum<SessionApprovalMode>().nullable()();
+
   @override
   bool get withoutRowId => true;
 
@@ -114,5 +118,6 @@ sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns
     required String pluginId,
     required String? title,
     required String? catalogTitle,
+    required SessionApprovalMode? approvalOverride,
   }) = _SessionDto;
 }

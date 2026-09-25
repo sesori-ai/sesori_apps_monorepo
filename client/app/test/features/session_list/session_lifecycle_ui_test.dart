@@ -79,6 +79,7 @@ Widget _buildScreenApp({required Widget child}) {
 
 Session _testSessionWithPullRequest() {
   return const Session(
+    approvalOverride: null,
     autoContinuation: null,
     branchName: null,
     id: "session-pr-1",

@@ -5,6 +5,7 @@ void main() {
   group("Session.pluginId", () {
     test("round-trips a non-null value", () {
       const session = Session(
+        approvalOverride: null,
         autoContinuation: null,
         branchName: null,
         id: "session-1",

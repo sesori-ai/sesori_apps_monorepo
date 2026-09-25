@@ -799,6 +799,7 @@ void main() {
       "SSE session.created for same project adds to list",
       build: () {
         const existing = Session(
+          approvalOverride: null,
           autoContinuation: null,
           branchName: null,
           id: "s1",
@@ -828,6 +829,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionCreated(
               info: Session(
+                approvalOverride: null,
                 autoContinuation: null,
                 branchName: null,
                 id: "s2",
@@ -1061,6 +1063,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionCreated(
               info: Session(
+                approvalOverride: null,
                 autoContinuation: null,
                 branchName: null,
                 id: "child-1",
@@ -1344,6 +1347,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionCreated(
               info: Session(
+                approvalOverride: null,
                 autoContinuation: null,
                 branchName: null,
                 id: "foreign-session",
@@ -1386,6 +1390,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionUpdated(
               info: Session(
+                approvalOverride: null,
                 autoContinuation: null,
                 branchName: null,
                 id: "foreign-session",
@@ -1426,6 +1431,7 @@ void main() {
           SseEvent(
             data: const SesoriSseEvent.sessionDeleted(
               info: Session(
+                approvalOverride: null,
                 autoContinuation: null,
                 branchName: null,
                 id: "foreign-session",
@@ -1457,6 +1463,7 @@ void main() {
       build: () {
         const sessions = [
           Session(
+            approvalOverride: null,
             autoContinuation: null,
             branchName: null,
             id: "s1",
@@ -1471,6 +1478,7 @@ void main() {
             lastUserActivityAt: null,
           ),
           Session(
+            approvalOverride: null,
             autoContinuation: null,
             branchName: null,
             id: "s2",

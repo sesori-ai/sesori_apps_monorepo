@@ -49,6 +49,7 @@ const _question = SesoriQuestionAsked(
 );
 
 const _child = Session(
+  approvalOverride: null,
   autoContinuation: null,
   branchName: null,
   id: "child-1",
@@ -65,6 +66,7 @@ const _child = Session(
 
 /// A child session: the sidebar inventory never holds one, the page does.
 const _session = Session(
+  approvalOverride: null,
   autoContinuation: null,
   branchName: null,
   id: "session-1",
