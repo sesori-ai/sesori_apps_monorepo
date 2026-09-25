@@ -13,11 +13,17 @@
 //   # Override the output directory (default: lib/src):
 //   dart run tool/generate_opencode_client.dart --tag v1.16.2 --out-dir lib/src
 //
+//   # Generate another API surface (default: tool/opencode_v1_surface.json).
+//   # The surface file also names the spec path inside the upstream repo:
+//   dart run tool/generate_opencode_client.dart --tag v2.0.16 \
+//     --surface tool/opencode_v2_surface.json --out-dir lib/src/v2
+//
 // Exactly one of --tag, --branch, --commit, or --local is required. There
 // is no default: this script will not guess what you meant.
 //
-// This script consumes an OpenAPI 3.1 JSON document (OpenCode's
-// `packages/sdk/openapi.json`) and emits, relative to outDir:
+// This script consumes an OpenAPI 3.1 JSON document (the surface file's
+// `specPath`, e.g. OpenCode's `packages/sdk/openapi.json`) and emits,
+// relative to outDir:
 //   - opencode_client.dart                 — public API client class (Layer 1, only with --with-client)
 //   - models/openapi/<SchemaName>.g.dart   — one file per included top-level schema (Layer 0)
 //
@@ -36,7 +42,6 @@ import 'package:http/http.dart' as http;
 
 const _upstreamOwner = 'anomalyco';
 const _upstreamRepo = 'opencode';
-const _specPathInRepo = 'packages/sdk/openapi.json';
 
 /// Resolved upstream ref description passed to the codegen. Exactly one
 /// of [tag], [branch], [commit] is non-null. [commitSha] is the 40-char
@@ -64,6 +69,7 @@ Future<void> main(List<String> args) async {
   String? commit;
   String? localSpecPath;
   var outDir = 'lib/src';
+  var surfacePath = 'tool/opencode_v1_surface.json';
   var verbose = false;
   var withClient = false;
 
@@ -108,6 +114,13 @@ Future<void> main(List<String> args) async {
           exit(2);
         }
         outDir = args[i++];
+      case '--surface':
+        if (i >= args.length) {
+          stderr.writeln('error: --surface requires a value');
+          _printUsage();
+          exit(2);
+        }
+        surfacePath = args[i++];
       case '--verbose':
       case '-v':
         verbose = true;
@@ -137,6 +150,8 @@ Future<void> main(List<String> args) async {
     exit(2);
   }
 
+  final surface = SurfaceSpec.load(surfacePath);
+
   String? specPath;
   SourceRef? sourceRef;
   var deleteSpecPathOnExit = false;
@@ -145,6 +160,7 @@ Future<void> main(List<String> args) async {
     sourceRef = await _resolveAndFetch(
       kind: 'tag',
       value: tag,
+      specPathInRepo: surface.specPath,
       verbose: verbose,
       onSpecPath: (p) {
         specPath = p;
@@ -155,6 +171,7 @@ Future<void> main(List<String> args) async {
     sourceRef = await _resolveAndFetch(
       kind: 'branch',
       value: branch,
+      specPathInRepo: surface.specPath,
       verbose: verbose,
       onSpecPath: (p) {
         specPath = p;
@@ -169,6 +186,7 @@ Future<void> main(List<String> args) async {
     sourceRef = SourceRef(kind: 'commit', value: commit, commitSha: commit);
     specPath = await _fetchSpec(
       commit,
+      specPathInRepo: surface.specPath,
       verbose: verbose,
     );
     deleteSpecPathOnExit = true;
@@ -179,9 +197,17 @@ Future<void> main(List<String> args) async {
   stdout.writeln('Reading OpenAPI spec: $specPath');
   final raw = File(specPath!).readAsStringSync();
   final spec = jsonDecode(raw) as Map<String, dynamic>;
+  final specSchemas = ((spec['components'] as Map<String, dynamic>?)?['schemas'] as Map<String, dynamic>?) ?? const {};
+  _hoistInlineSchemas(specSchemas, surface.hoistSchemas);
+  // Collapse first: a collapsed named schema becomes a primitive whose
+  // refs are then inlined.
+  _collapseOpenStringUnions(spec);
+  _inlinePrimitiveRefs(spec, specSchemas);
+  _collidingDottedNames = _findCollidingDottedNames(specSchemas.keys);
 
   final gen = Codegen(
     spec: spec,
+    surface: surface,
     outDir: outDir,
     verbose: verbose,
     sourceRef: sourceRef,
@@ -206,7 +232,7 @@ void _printUsage() {
   stderr.writeln(
     'Usage: dart run tool/generate_opencode_client.dart '
     '[--tag <tag> | --branch <branch> | --commit <sha> | --local <path>] '
-    '[--out-dir <dir>] [--with-client] [--verbose]',
+    '[--out-dir <dir>] [--surface <file>] [--with-client] [--verbose]',
   );
   stderr.writeln('');
   stderr.writeln(
@@ -226,6 +252,7 @@ void _printUsage() {
     '(no upstream ref recorded in headers)',
   );
   stderr.writeln('  --out-dir <dir>     Output directory (default: lib/src)');
+  stderr.writeln('  --surface <file>    API surface allowlist (default: tool/opencode_v1_surface.json)');
   stderr.writeln('  --with-client       Also generate opencode_client.dart (default: off)');
   stderr.writeln('  --verbose, -v       Print extra progress information');
 }
@@ -233,10 +260,10 @@ void _printUsage() {
 /// Fetch the OpenCode openapi.json from upstream at [ref] (a branch name,
 /// tag name, or commit SHA) and return the path to the downloaded temp
 /// file. Caller is responsible for deleting the file.
-Future<String> _fetchSpec(String ref, {required bool verbose}) async {
+Future<String> _fetchSpec(String ref, {required String specPathInRepo, required bool verbose}) async {
   final url = Uri.parse(
     'https://raw.githubusercontent.com/$_upstreamOwner/$_upstreamRepo/'
-    '$ref/$_specPathInRepo',
+    '$ref/$specPathInRepo',
   );
   if (verbose) stdout.writeln('Fetching $url');
   final response = await http.get(url);
@@ -255,6 +282,7 @@ Future<String> _fetchSpec(String ref, {required bool verbose}) async {
 Future<SourceRef> _resolveAndFetch({
   required String kind,
   required String value,
+  required String specPathInRepo,
   required bool verbose,
   required void Function(String specPath) onSpecPath,
 }) async {
@@ -294,13 +322,14 @@ Future<SourceRef> _resolveAndFetch({
   if (verbose) stdout.writeln('Resolved $kind "$value" to commit $sha');
   // Fetch the spec at the resolved commit so we get a reproducible
   // tree even if the branch head moves after we resolved the SHA.
-  final specPath = await _fetchSpec(sha, verbose: verbose);
+  final specPath = await _fetchSpec(sha, specPathInRepo: specPathInRepo, verbose: verbose);
   onSpecPath(specPath);
   return SourceRef(kind: kind, value: value, commitSha: sha);
 }
 
 class Codegen({
   required final Map<String, dynamic> spec,
+  required final SurfaceSpec surface,
   required final String outDir,
   required final bool verbose,
   required final bool withClient,
@@ -387,7 +416,6 @@ class Codegen({
   }
 
   void _run() {
-    final surface = _loadSurface();
     _synthesizeInlineResponseModels();
     operations = _selectSurfaceOperations(surface.operations);
     final selectedSchemas = _selectSurfaceSchemas(surface.extraSchemas);
@@ -453,15 +481,6 @@ class Codegen({
     }
   }
 
-  SurfaceSpec _loadSurface() {
-    final file = File('tool/opencode_v1_surface.json');
-    if (!file.existsSync()) {
-      throw StateError('Missing tool/opencode_v1_surface.json');
-    }
-    final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-    return SurfaceSpec.fromJson(json);
-  }
-
   List<Operation> _selectSurfaceOperations(List<String> allowedIds) {
     final byId = <String, Operation>{
       for (final op in operations)
@@ -503,7 +522,9 @@ class Codegen({
   }
 
   Set<String> _eventSchemasFromManifest() {
-    final file = File('tool/opencode_events_v1.json');
+    final manifestPath = surface.eventManifest;
+    if (manifestPath == null) return const {};
+    final file = File(manifestPath);
     if (!file.existsSync()) return const {};
     final manifest = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
     final events = (manifest['events'] as List).cast<Map<String, dynamic>>();
@@ -521,7 +542,7 @@ class Codegen({
     for (final schemaName in specEvents) {
       final type = schemaName.substring('Event.'.length);
       if (!manifestTypes.contains(type)) {
-        stderr.writeln('warning: OpenAPI schema $schemaName is absent from tool/opencode_events_v1.json');
+        stderr.writeln('warning: OpenAPI schema $schemaName is absent from $manifestPath');
       }
     }
     return out;
@@ -566,13 +587,7 @@ class Codegen({
   }
 
   void _synthesizeInlineResponseModels() {
-    const names = {
-      'global.health': 'GlobalHealthResponse',
-      'session.messages': 'SessionMessagesResponseItem',
-      'session.command': 'SessionCommandResponse',
-      'config.providers': 'ConfigProvidersResponse',
-      'provider.list': 'ProviderListResponse',
-    };
+    final names = surface.inlineResponseModels;
     for (final op in operations) {
       final className = names[op.operationId];
       if (className == null) continue;
@@ -1190,13 +1205,41 @@ class Operation.fromOpenApi({
 }
 
 class SurfaceSpec({
+  /// Path of the OpenAPI document inside the upstream repository.
+  required final String specPath,
   required final List<String> operations,
   required final List<String> extraSchemas,
+
+  /// Hand-curated SSE event manifest whose events are cross-checked against
+  /// the spec's per-event `Event.*` schemas. Null when the spec's event union
+  /// is opaque and events are generated from a manifest alone.
+  required final String? eventManifest,
+
+  /// Operation id -> class name for inline success-response schemas that
+  /// should become named models.
+  required final Map<String, String> inlineResponseModels,
+
+  /// New schema name -> `<SchemaName>#<json pointer>` of an inline schema
+  /// (typically an inline union) to hoist into a named model.
+  required final Map<String, String> hoistSchemas,
 }) {
+  factory load(String path) {
+    final file = File(path);
+    if (!file.existsSync()) {
+      stderr.writeln('error: missing surface file $path');
+      exit(2);
+    }
+    return SurfaceSpec.fromJson(jsonDecode(file.readAsStringSync()) as Map<String, dynamic>);
+  }
+
   factory fromJson(Map<String, dynamic> json) {
     return SurfaceSpec(
+      specPath: json['specPath'] as String,
       operations: (json['operations'] as List).cast<String>(),
       extraSchemas: ((json['extraSchemas'] as List?) ?? const []).cast<String>(),
+      eventManifest: json['eventManifest'] as String?,
+      inlineResponseModels: ((json['inlineResponseModels'] as Map?) ?? const {}).cast<String, String>(),
+      hoistSchemas: ((json['hoistSchemas'] as Map?) ?? const {}).cast<String, String>(),
     );
   }
 }
@@ -1634,7 +1677,13 @@ class ModelWriter({
 
     _usesImmutable = true;
     b.writeln('@immutable');
-    b.writeln('abstract interface class $name {');
+    // A union nested inside another union implements the outer one, so
+    // the outer `fromJson` can return the nested union's decode.
+    b.writeln(
+      implementsClass != null
+          ? 'abstract interface class $name implements $implementsClass {'
+          : 'abstract interface class $name {',
+    );
     b.writeln('  const $name();');
     b.writeln();
     b.writeln('  /// Serialize the underlying variant. Variants must override this.');
@@ -2765,16 +2814,17 @@ class ModelWriter({
   String? _findDiscriminator(List<Map<String, dynamic>> variants) {
     // Inspect every variant — both $ref and inline. A discriminator is
     // a string property that (1) every variant declares as a single-
-    // value enum, and (2) every variant marks as required. We do not
-    // restrict ourselves to the conventional `type`/`role`/`kind`/
-    // `status` names: any common single-value enum works (e.g.
-    // `MCPStatus` uses `status`, `SessionStatus` uses `type`).
+    // value enum, (2) every variant marks as required, and (3) takes a
+    // distinct value per variant. We do not restrict ourselves to the
+    // conventional `type`/`role`/`kind`/`status` names: any common
+    // single-value enum works (e.g. `MCPStatus` uses `status`,
+    // `SessionStatus` uses `type`). A $ref variant that is itself a union
+    // contributes its leaf variants; they must share one value.
     final resolved = <Map<String, dynamic>>[];
     for (final v in variants) {
       final r = v[r'$ref'];
       if (r is String) {
-        final s = schemas[_schemaNameFromRef(r)] as Map<String, dynamic>?;
-        if (s != null) resolved.add(s);
+        resolved.addAll(_unionLeafSchemas(_schemaNameFromRef(r)));
       } else if (v['type'] == 'object') {
         resolved.add(v);
       }
@@ -2805,15 +2855,46 @@ class ModelWriter({
           break;
         }
       }
-      if (allRequired) return candidate;
+      if (allRequired && _hasDistinctValues(variants, candidate)) return candidate;
     }
     return null;
+  }
+
+  bool _hasDistinctValues(List<Map<String, dynamic>> variants, String discName) {
+    final seen = <String>{};
+    for (final v in variants) {
+      final r = v[r'$ref'];
+      final value = r is String
+          ? _discriminatorValue(_schemaNameFromRef(r), schemas, discName)
+          : _inlineDiscriminatorValue(v, discName);
+      if (value == null || !seen.add(value)) return false;
+    }
+    return true;
+  }
+
+  /// The object schemas behind [schemaName]: the schema itself, or the
+  /// leaves of a union of $refs (recursively).
+  List<Map<String, dynamic>> _unionLeafSchemas(String schemaName) {
+    final schema = schemas[schemaName] as Map<String, dynamic>?;
+    if (schema == null) return const [];
+    final variants = schema['anyOf'] ?? schema['oneOf'];
+    if (variants is! List) return [schema];
+    return [
+      for (final v in variants.cast<Map<String, dynamic>>())
+        if (v[r'$ref'] is String) ..._unionLeafSchemas(_schemaNameFromRef(v[r'$ref'] as String)) else v,
+    ];
   }
 
   String? _discriminatorValue(String variantName, Map<String, dynamic> schemas, String? discName) {
     if (discName == null) return null;
     final schema = schemas[variantName] as Map<String, dynamic>?;
     if (schema == null) return null;
+    if (schema['anyOf'] is List || schema['oneOf'] is List) {
+      // A nested union dispatches as one variant when all its leaves
+      // share the same discriminator value.
+      final values = {for (final leaf in _unionLeafSchemas(variantName)) _inlineDiscriminatorValue(leaf, discName)};
+      return values.length == 1 ? values.first : null;
+    }
     final props = schema['properties'] as Map<String, dynamic>?;
     if (props == null) return null;
     final p = props[discName] as Map<String, dynamic>?;
@@ -3011,22 +3092,116 @@ String _emitEnumBody(String enumName, List<String> values) {
 // Naming utilities
 // ---------------------------------------------------------------------------
 
-String _pascalFromSnake(String name) {
+// ---------------------------------------------------------------------------
+// Spec normalization (runs before generation)
+// ---------------------------------------------------------------------------
+
+/// Moves inline schemas named by the surface's `hoistSchemas` into
+/// `components/schemas` and replaces them with a `$ref`, so inline unions
+/// become named, dispatchable union classes. Each location is
+/// `<SchemaName>#<json pointer>` (e.g. `Foo#/properties/bar/items`).
+void _hoistInlineSchemas(Map<String, dynamic> schemas, Map<String, String> hoists) {
+  for (final MapEntry(key: name, value: location) in hoists.entries) {
+    final [schemaName, pointer] = location.split('#');
+    final segments = pointer.split('/').where((s) => s.isNotEmpty).toList();
+    Object? parent = schemas[schemaName];
+    for (final segment in segments.take(segments.length - 1)) {
+      parent = parent is Map ? parent[segment] : null;
+    }
+    final last = segments.last;
+    final inline = parent is Map ? parent[last] : null;
+    if (parent is! Map || inline is! Map<String, dynamic>) {
+      stderr.writeln('error: hoistSchemas location $location does not name an inline schema');
+      exit(1);
+    }
+    schemas[name] = inline;
+    parent[last] = <String, dynamic>{r'$ref': '#/components/schemas/$name'};
+  }
+}
+
+/// Replaces `$ref`s to named primitive schemas (e.g. `Money.USD` =
+/// `{"type": "number"}`) with a copy of the primitive, so fields decode as
+/// Dart primitives instead of referencing a class that cannot exist.
+void _inlinePrimitiveRefs(Map<String, dynamic> spec, Map<String, dynamic> schemas) {
+  bool isPrimitive(Object? schema) =>
+      schema is Map &&
+      const {'string', 'number', 'integer', 'boolean'}.contains(schema['type']) &&
+      schema['enum'] == null;
+  void walk(Object? node) {
+    if (node is Map<String, dynamic>) {
+      final ref = node[r'$ref'];
+      if (ref is String && ref.startsWith('#/components/schemas/')) {
+        final target = schemas[ref.substring('#/components/schemas/'.length)];
+        if (isPrimitive(target)) {
+          node
+            ..remove(r'$ref')
+            ..addAll(Map<String, dynamic>.from(target as Map));
+        }
+      }
+      node.values.forEach(walk);
+    } else if (node is List) {
+      node.forEach(walk);
+    }
+  }
+
+  walk(spec);
+}
+
+/// Collapses an `anyOf`/`oneOf` whose variants are all inline strings and
+/// which accepts any string (known values plus a free-form fallback) into
+/// a plain string schema.
+void _collapseOpenStringUnions(Object? node) {
+  if (node is Map<String, dynamic>) {
+    for (final key in const ['anyOf', 'oneOf']) {
+      final variants = node[key];
+      if (variants is List &&
+          variants.isNotEmpty &&
+          variants.every((v) => v is Map && v[r'$ref'] == null && v['type'] == 'string') &&
+          variants.any((v) => (v as Map)['enum'] == null)) {
+        node
+          ..remove(key)
+          ..['type'] = 'string';
+      }
+    }
+    node.values.forEach(_collapseOpenStringUnions);
+  } else if (node is List) {
+    node.forEach(_collapseOpenStringUnions);
+  }
+}
+
+/// Dotted spec schema names whose Pascal form collides with another schema's.
+/// Set once from the spec before generation starts.
+var _collidingDottedNames = <String>{};
+
+Set<String> _findCollidingDottedNames(Iterable<String> schemaNames) {
+  final namesByPascal = <String, List<String>>{};
+  for (final name in schemaNames) {
+    namesByPascal.putIfAbsent(_pascalBase(name), () => []).add(name);
+  }
+  return {
+    for (final names in namesByPascal.values)
+      if (names.length > 1) ...names.where((name) => name.contains('.')),
+  };
+}
+
+String _pascalBase(String name) {
   // Strip Effect schema prefix and leading underscores/dots.
   var s = name;
   if (s.startsWith('effect_')) {
     s = s.substring('effect_'.length);
   }
   s = s.replaceAll(RegExp('^[._]+'), '');
+  return _pascalCore(s);
+}
 
-  final pascal = _pascalCore(s);
-  // When the raw SCHEMA name contained a dot, `_pascalFromSnake` collapses
-  // the two sides into the same identifier as a sibling that uses an
-  // underscore (e.g. `Event.tui.command.execute` vs
-  // `EventTuiCommandExecute`). Append a short stable hash of the raw name
+String _pascalFromSnake(String name) {
+  final pascal = _pascalBase(name);
+  // A dotted SCHEMA name collapses into the same identifier as a sibling
+  // that uses an underscore or no separator (e.g. `Event.tui.command.execute`
+  // vs `EventTuiCommandExecute`). Append a short stable hash of the raw name
   // so both siblings stay distinct without leaking the original dots into
   // identifiers (Dart identifiers may not contain `.`).
-  if (name.contains('.')) {
+  if (_collidingDottedNames.contains(name)) {
     return '$pascal${_hashSuffix(name)}';
   }
   return pascal;
