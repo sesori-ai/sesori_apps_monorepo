@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Entire future database directory, including WAL/SHM/journals.
+         Credential preferences remain eligible until the migration/cutover. -->
+    <exclude domain="file" path="persistence/" />
+</full-backup-content>

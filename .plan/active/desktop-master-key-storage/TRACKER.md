@@ -2,16 +2,16 @@
 
 ## Execution
 
-- Status: #1734 merged with 24 passing checks. The isolated deprecated importer
-  (PR 7) passes 11 real-SQL recovery tests, core/auth/mobile analysis and
-  architecture review.
+- Status: #1739 merged with 24 passing checks. Native capabilities (PR 8)
+  pass 28 focused channel/directory tests, two shell analyses, Android XML
+  configuration validation and architecture review.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
   with a retirement condition and deletion checklist.
-- Current branch: `sesori/desktop-master-key-storage-legacy-import`, from fixed
-  main `f1f00ee` in the supplied worktree. No additional worktree is allowed;
-  no native-capability successor has started.
+- Current branch: `sesori/desktop-master-key-storage-native-capabilities`, from
+  fixed main `d07c69d` in the supplied worktree. No additional worktree is
+  allowed; no consumer-cutover successor has started.
 - #1717 is closed as superseded, not merged. Its published desktop checkpoint
   `4a27888` and the full shared checkpoint `de38951` remain in history.
 - One open PR and at most one local successor. Current total: **11 PRs** after
@@ -27,8 +27,8 @@
 | 3.b — Shared storage foundations | Merged | #1726; 26 shared tests, one Android options test, architecture approval, four clean analyses; 23 checks passed at readiness. |
 | 3.c — Shared Drift/primitive persistence | Merged | #1729; 29 tests, architecture approval, clean analysis/generation and 25 passing CI checks. |
 | 3.d — Cached shared secrets | Merged | #1734; 46 shared tests, architecture approval, clean analysis/generation and 24 passing CI checks. |
-| 4.a — Deprecated mobile import | Architecture approved | PR 7; deprecated layered importer, domain keys and 11 recovery tests; three clean analyses; unwired. |
-| 4.b — Native capabilities and backup | Not started | PR 8; narrow platform adapters and actual mobile backup boundary. |
+| 4.a — Deprecated mobile import | Merged | #1739; 11 recovery tests, three analyses, architecture approval and 24 passing CI checks; unwired. |
+| 4.b — Native capabilities and backup | Architecture approved | PR 8; 28 channel/directory tests, two analyses, DB-only Android XML exclusions; no native qualification. |
 | 4.c — Both-client cutover | Not started | PR 9; lockstep consumers, migration/failure startup gate and runtime adapter removal. |
 | 5 — Regression reconciliation | Not started | PR 10; behavior docs also accompany their implementation. |
 | 6 — Required qualification/retirement | Not started | PR 11; plan remains active until recorded mobile + desktop matrix passes. |
@@ -141,6 +141,18 @@
 - Importer review `d885b123-0d8a-49db-982e-be35c37e0413` approved exact range
   `f1f00ee..3b8ac72`, all 25 paths, without findings. Native adapters and the
   future consumer/bootstrap cutover were explicitly outside that scope.
+- #1739 merged with current-head Codex complete and no findings; its terminal
+  monitor report recorded 24 passing checks. The documented narrow declaration
+  suppression retains the required deprecation against internal 0.x lint policy.
+- Native capability slice: 14 mobile and 14 desktop focused tests pass, using
+  mocked native channels and disposable directories. Both shell analyses,
+  dependency resolution, generated DI and formatting pass. XML validation
+  confirms manifest bindings and only `file:persistence/` exclusions in old/full
+  backup, cloud and device-transfer policies; legacy preferences are unchanged.
+  These tests do not invoke the Keychain, Keystore, Credential Manager or libsecret.
+- Native-capability review `12180381-83ef-42c8-9963-633f1e74f283` approved exact
+  range `d07c69d..b234217`, all 26 paths, without findings. Consumer cutover,
+  migration invocation and real native qualification were outside that scope.
 - None of this evidence establishes released-mobile migration, mobile
   backup/restore, real credential behavior, packaged replacement or actual
   prompt counts. Those gates remain.

@@ -47,11 +47,29 @@ for composition/fixtures, but neither shell invokes it yet. No coding plugin par
 - The removal checklist lives with the deprecated module. Retire it only when
   supported direct upgrades exclude public per-value-native mobile builds.
 
+## Prepared Native Capabilities (Not Yet Consumed)
+
+- Both shells register development scope for debug/profile and production for
+  release. Native ports are lazy and perform only scoped master read/write;
+  the shared repository remains the sole initialization/cache owner.
+- Mobile master storage uses the new Android namespace and iOS Keychain service,
+  preserving standard protection and disabling Android destructive reset.
+  The legacy source retains its old namespace; iOS enumeration and named
+  deletion omit the accessibility query filter without changing stored ACLs.
+- Desktop master storage uses classic macOS Keychain in its new service and the
+  existing Windows/Linux plugin protection. No desktop legacy import is added.
+- Directory adapters reuse existing app-support resolvers and create only the
+  `persistence/` subtree, never a cache. Repeated resolution preserves existing
+  files; lookup/creation errors propagate.
+- Android full-backup/cloud/device-transfer XML excludes the complete unused
+  database subtree, including sidecars. Legacy credential preferences remain
+  unchanged until migration/cutover. iOS backup eligibility remains unchanged.
+
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Typed primitive/secret roundtrips, absence/defaults, false/empty values and key-local updates/deletes through the shared repositories. Automated with real SQLite and fake native storage; no plugin. |
+| L1 Smoke | Typed primitive/secret roundtrips, absence/defaults, false/empty values and key-local updates/deletes through the shared repositories. Verify shell master keys/options, lazy construction, missing values/error forwarding and persistent directory resolution. Automated with real SQLite and mocked native channels; no coding plugin. |
 | L2 Routine | Concurrent initialization, cached failure, pending/denied unlock without blocking preferences, key-save-before-ciphertext ordering, corruption and rollback. Import inventory/identities, unknown-item retention, completion skip, malformed bool, failed read/copy/cleanup/marker and relaunch recovery. Automated; no plugin. |
 | L3 Release | Production lazy file-open path, WAL inspection for fixture plaintext/master absence, cold reopen, scope separation and DI disposal. Import through real shared SQL/crypto/DI, including partial cleanup and post-cleanup marker failure across cold reopen. Automated using isolated temporary files and fake native sources; no plugin. |
 | L4 Extended | Repeat authoritative SQLite/crypto fixtures on macOS, Windows and Linux. Alternate platform failures remain blocked, not inferred from another OS. Automated; no plugin. |
@@ -83,7 +101,9 @@ fixture files; never seed or read a personal Keychain/application directory.
   The pure-Dart importer tests do not establish actual native enumeration/error
   behavior, production-only admission, startup failure presentation, consent
   ordering, authorization, backup/restore or packaged-client behavior. Those
-  required gates remain in the active plan.
+  required gates remain in the active plan. Channel tests across platform options
+  on one host are not native OS coverage. Android XML validation is configuration
+  evidence, not proof of actual cloud/device-transfer restore behavior.
 - Shared implementation is not shared files or cross-device synchronization.
   Plaintext preferences and row IDs are inspectable, as is unlocked process
   memory. One native item does not guarantee zero OS authorization prompts.
@@ -91,6 +111,8 @@ fixture files; never seed or read a personal Keychain/application directory.
 ## Sources
 
 - `client/module_persistence/` and its cipher, repository, database and DI tests.
+- Mobile/desktop persistence capability tests, mobile deprecated-source tests
+  and Android manifest/full-backup/data-extraction XML.
 - `client/module_core/lib/src/migrations/deprecated_native_storage_v1/`, its
   matching tests, and permanent auth/core domain key definitions.
 - Active `.plan/active/desktop-master-key-storage/` for remaining cutover and

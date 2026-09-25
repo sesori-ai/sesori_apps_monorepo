@@ -37,7 +37,7 @@ depend on registrations from an earlier one at resolution time.
   outside `lib/core/di/`. Auth functionality is consumed through
   `sesori_dart_core` interfaces.
 - Platform adapters implement interfaces from `sesori_dart_core` /
-  `sesori_desktop_core` and live in `lib/core/platform/`. Adapters stay dumb —
+  `sesori_desktop_core` / `sesori_persistence` and live in `lib/core/platform/`. Adapters stay dumb —
   no process lifecycle or status state.
 - May import `theme_prego` directly for shell-owned presentation and
   `module_app_ui` for shared localization, route presentation, settings/harness
@@ -46,6 +46,17 @@ depend on registrations from an earlier one at resolution time.
 - Never import bridge-workspace code (e.g. the bridge's OAuth browser opener);
   desktop equivalents go through platform adapters (ADR A11).
 - Follow the repo-root `AGENTS.md` error-handling and naming rules.
+
+## Prepared Shared Persistence Capabilities
+
+Bootstrap registers the build-mode scope explicitly and native master/directory
+capabilities lazily. They are unused until the shared-backend consumer cutover.
+The persistence directory reuses `DesktopApplicationSupportDirectory` without
+moving logs, helper state or other desktop files. macOS uses the new master-item
+service in classic Keychain mode; Windows/Linux keep existing native plugin
+protection and use the scoped logical master key. No desktop legacy importer or
+automatic credential cleanup is added. Primary-process admission remains before
+storage I/O and the current four-phase consumer sequence is unchanged.
 
 ## Commands
 
