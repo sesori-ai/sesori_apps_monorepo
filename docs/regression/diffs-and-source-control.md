@@ -59,6 +59,9 @@ that baseline, and the branch and worktree facts a session carries.
   two seconds. A failed refresh keeps the last totals. A missing session is
   a 404 with a `sessionNotFound` body; an older bridge's bare 404 for the
   unknown route makes the page stop asking and keep plain "Changes".
+  The button resizes smoothly as the counts arrive, change or leave, with the
+  counts fading, and the phone circle stretches into its pill. Under reduced
+  motion the change is instant.
 
 ## Regression Levels
 
@@ -92,6 +95,8 @@ and in-place sessions, and default versus explicit base branches.
 - The Changes totals disagree with the diff's summed counts, never grow after
   an edit, show a zero side, or keep asking an older bridge after its first
   bare 404.
+- The Changes button pops to its new size when the counts arrive or leave,
+  animates under reduced motion, or stretches taller than its own content.
 - Generated refinement renames a branch after it switches or becomes published,
   moves the worktree directory, leaves durable/current branch facts disagreeing,
   or leaves Git and persistence on different branch names after failure.
@@ -125,5 +130,6 @@ and in-place sessions, and default versus explicit base branches.
   `bridge/app/test/bridge/routing/get_session_diff_summary_handler_test.dart`,
   `client/module_core/test/cubits/session_diffs/diff_summary_cubit_test.dart`,
   `client/module_app_ui/test/features/session_diffs/`,
+  `client/module_prego/test/components/prego_button_trailing_test.dart`,
   `client/app/test/features/session_diffs/session_diffs_collapse_scroll_test.dart`, and
   `client/desktop/test/core/routing/desktop_router_test.dart`

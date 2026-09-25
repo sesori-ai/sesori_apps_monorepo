@@ -3,6 +3,7 @@ import "package:material_ui/material_ui.dart";
 
 import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
+import "prego_button_trailing.dart";
 
 // Horizontal padding for md size — not a named spacing token.
 // Figma specifies 14px for md (between spacing-lg=12 and spacing-xl=16).
@@ -192,7 +193,8 @@ class PregoButtonsSolid extends StatefulWidget {
   final IconData? trailingIcon;
 
   /// Optional content right after the label, such as counts in their own
-  /// colours. Ignored when [iconOnly] is `true`.
+  /// colours. The button resizes smoothly as it arrives, changes or leaves.
+  /// Ignored when [iconOnly] is `true`.
   final Widget? labelTrailing;
 
   /// When `true` the button shows a spinner and the button label instead of
@@ -364,10 +366,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
         children.add(SizedBox(width: gap));
       }
       children.add(labelWidget);
-      if (widget.labelTrailing case final labelTrailing?) {
-        children.add(SizedBox(width: gap));
-        children.add(labelTrailing);
-      }
+      children.add(PregoButtonTrailing(gap: gap, child: widget.labelTrailing));
       if (widget.trailingIcon != null) {
         children.add(SizedBox(width: gap));
         children.add(
