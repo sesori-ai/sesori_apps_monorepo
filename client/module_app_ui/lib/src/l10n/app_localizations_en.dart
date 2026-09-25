@@ -1259,6 +1259,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailThinking => 'Thinking...';
 
   @override
+  String get sessionDetailWorking => 'Working…';
+
+  @override
   String get sessionDetailThought => 'Thought';
 
   @override

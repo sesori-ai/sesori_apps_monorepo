@@ -205,13 +205,11 @@ class const DesktopSessionDetailView({
         ),
         null => (label: projectName ?? loc.sessionListTitle, onPressed: onOpenProject),
       },
-      // Running shows as the title's shimmer; only a waiting question takes the status slot, or running
-      // when reduced motion stills the shimmer.
-      status: isAwaitingInput || (isBusy && prefersReducedMotion(context))
+      // The turning sparkle leads the title while the session works; a waiting question takes its place.
+      status: isAwaitingInput || isBusy
           ? DesktopSessionSignals(isAwaitingInput: isAwaitingInput, isRunning: !isAwaitingInput, isUnseen: false)
           : null,
       title: title,
-      isRunning: isBusy,
       subtitle: null,
       actions: [
         if (onShowDiffs != null)

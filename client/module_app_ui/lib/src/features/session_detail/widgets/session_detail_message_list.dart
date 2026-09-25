@@ -18,6 +18,7 @@ import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "system_message_card.dart";
+import "transcript_live_row.dart";
 import "user_message_card.dart";
 
 /// Chat-style message list for the session detail screen.
@@ -51,6 +52,10 @@ class const SessionDetailMessageList({
   required final Map<String, String> streamingText,
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
+
+  /// Whether the session works, by `hasActiveWork`. With no live step and
+  /// no text streaming, a "Working…" row closes the transcript.
+  required final bool isBusy,
 
   /// Requests the page of messages before the ones shown, or null when the
   /// start of the transcript is already loaded.
@@ -89,6 +94,7 @@ typedef _DetachedSnapshot = ({
   List<Session> children,
   Map<String, SessionStatus> childStatuses,
   String? retryErrorMessage,
+  bool isBusy,
 });
 
 enum _TransientStage() {
@@ -127,6 +133,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// edge. Domain message ids come from the assistant backend and cannot
   /// collide with this.
   static const _kRetryErrorRowId = "session-detail-retry-error-row";
+
+  /// Synthetic id for the live row that closes the transcript while the
+  /// session works.
+  static const _kWorkingRowId = "session-detail-working-row";
   static const _kPromptRowPrefix = "session-detail-prompt-";
 
   /// Distance from the oldest edge at which the next older page starts
@@ -229,6 +239,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         children: frozen.children,
         childStatuses: frozen.childStatuses,
         retryErrorMessage: frozen.retryErrorMessage,
+        isBusy: frozen.isBusy,
       );
     });
     // The prepended rows render against the frozen `streamingText` and
@@ -264,6 +275,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           children: List<Session>.unmodifiable(widget.children),
           childStatuses: Map<String, SessionStatus>.unmodifiable(widget.childStatuses),
           retryErrorMessage: widget.retryErrorMessage,
+          isBusy: widget.isBusy,
         );
       }
     });
@@ -308,6 +320,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
     required bool hasRetryError,
+    required bool isBusy,
   }) {
     final deliveredPromptIds = <String>{
       for (final message in messages)
@@ -318,6 +331,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       for (final message in messages)
         if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
       if (hasRetryError) _kRetryErrorRowId,
+      // The retry row already says the session is working.
+      if (isBusy && !hasRetryError) _kWorkingRowId,
       for (final prompt in bridgeQueuedPrompts)
         if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
       for (final submission in awaitingBridgeSubmissions)
@@ -363,6 +378,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final children = snap?.children ?? widget.children;
     final childStatuses = snap?.childStatuses ?? widget.childStatuses;
     final retryErrorMessage = snap?.retryErrorMessage ?? widget.retryErrorMessage;
+    final isBusy = snap?.isBusy ?? widget.isBusy;
 
     final indexById = _indexByIdFor(messages: messages);
     final transcript = const TranscriptBuilder().build(
@@ -399,6 +415,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
       awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
       hasRetryError: retryErrorMessage != null,
+      isBusy: isBusy,
     );
     // Coalesced post-frame pin-to-edge while following. The scheduler
     // collapses repeated calls within a frame and the jump is skipped
@@ -513,6 +530,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       if (retryErrorMessage == null) return const SizedBox.shrink();
       // Synthetic row: no timestamp, but it still slides with the rest.
       return _revealable(createdAtMs: null, child: RetryErrorMessageCard(message: retryErrorMessage));
+    }
+    if (entryId == _kWorkingRowId) {
+      // Streaming text or a live step already shows progress; the row fills
+      // only the gaps: before the first token and between steps.
+      final show = transcript.liveStep == null && streamingText.isEmpty;
+      return _revealable(createdAtMs: null, child: _workingRow(show: show));
     }
     if (entryId.startsWith(_kPromptRowPrefix)) {
       // One row serves the prompt's whole lifecycle. Resolve the most settled
@@ -636,6 +659,20 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       curve: Curves.easeInOutCubic,
       alignment: AlignmentDirectional.topEnd,
       child: child,
+    );
+  }
+
+  /// While a step is live, the step is the live row; the working row eases
+  /// away as it starts and back when it ends.
+  Widget _workingRow({required bool show}) {
+    final row = show ? const TranscriptWorkingRow() : const SizedBox(width: double.infinity);
+    // No wrapper under reduced motion: see [_animatedPromptRow].
+    if (context.isReducedMotion) return row;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeInOutCubic,
+      alignment: AlignmentDirectional.topStart,
+      child: AnimatedSwitcher(duration: const Duration(milliseconds: 240), child: row),
     );
   }
 

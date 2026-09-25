@@ -786,6 +786,7 @@
     }
   },
   "sessionDetailThinking": "Thinking...",
+  "sessionDetailWorking": "Working…",
   "sessionDetailThought": "Thought",
   "sessionDetailToolUnknown": "Tool",
   "sessionDetailImageOpen": "Open image",

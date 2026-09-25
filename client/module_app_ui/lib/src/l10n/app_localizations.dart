@@ -2329,6 +2329,12 @@ abstract class AppLocalizations {
   /// **'Thinking...'**
   String get sessionDetailThinking;
 
+  /// No description provided for @sessionDetailWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Working…'**
+  String get sessionDetailWorking;
+
   /// No description provided for @sessionDetailThought.
   ///
   /// In en, this message translates to:

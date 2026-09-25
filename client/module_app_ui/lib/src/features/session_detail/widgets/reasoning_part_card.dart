@@ -7,6 +7,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../session_detail_presentation_scope.dart";
 import "reasoning_modal.dart";
+import "transcript_live_row.dart";
 
 class const ReasoningPartCard({
   super.key,
@@ -102,12 +103,7 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
                           ),
                           SizedBox(width: prego.spacing.md),
                           if (widget.isStreaming)
-                            Expanded(
-                              child: Align(
-                                alignment: AlignmentDirectional.centerStart,
-                                child: PregoShimmer(appearDelay: Duration.zero, child: heading),
-                              ),
-                            )
+                            Expanded(child: TranscriptLiveLabel(label: heading, semanticLabel: null))
                           else ...[
                             ExcludeSemantics(child: heading),
                             if (widget.text.isNotEmpty) ...[

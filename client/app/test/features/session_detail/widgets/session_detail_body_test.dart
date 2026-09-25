@@ -632,6 +632,22 @@ void main() {
     expect(find.text("Cold-start prompt"), findsOneWidget);
   });
 
+  testWidgets("a busy session with no messages shows the Working row instead of the empty label", (tester) async {
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      sessionStatus: const SessionStatus.busy(),
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+
+    expect(find.text("No messages yet"), findsNothing);
+    expect(find.text("Working…"), findsOneWidget);
+  });
+
   testWidgets("settled user text renders Markdown inside the shared neutral bubble", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],
