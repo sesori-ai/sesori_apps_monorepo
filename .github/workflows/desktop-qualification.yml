@@ -39,6 +39,7 @@ on:
       - '.github/scripts/test_qualify_desktop.py'
       - '.github/scripts/package_desktop_macos.py'
       - '.github/scripts/test_package_desktop_macos.py'
+      - 'client/desktop/macos/Bridge.entitlements'
       - '.github/scripts/package_desktop_windows.py'
       - '.github/scripts/test_package_desktop_windows.py'
       - '.github/scripts/package_desktop_linux.py'
