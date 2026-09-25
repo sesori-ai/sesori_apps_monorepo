@@ -13,8 +13,11 @@
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_persistence/src/api/persister_api.dart' as _i449;
+import 'package:sesori_persistence/src/foundation/persistence_scope.dart'
+    as _i143;
 import 'package:sesori_persistence/src/foundation/platform/primitive_storage.dart'
     as _i599;
+import 'package:sesori_persistence/src/foundation/storage_cipher.dart' as _i527;
 import 'package:sesori_persistence/src/repositories/persister_repository.dart'
     as _i865;
 
@@ -25,6 +28,9 @@ extension GetItInjectableX on _i174.GetIt {
     _i526.EnvironmentFilter? environmentFilter,
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
+    gh.lazySingleton<_i527.StorageCipher>(
+      () => _i527.StorageCipher(scope: gh<_i143.PersistenceScope>()),
+    );
     gh.lazySingleton<_i449.PersisterApi>(
       () => _i449.PersisterApi(primitiveStorage: gh<_i599.PrimitiveStorage>()),
     );

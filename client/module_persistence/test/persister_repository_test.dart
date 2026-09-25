@@ -6,6 +6,7 @@ void main() {
   late GetIt getIt;
   late _MemoryPrimitiveStorage storage;
   late int platformResolutions;
+  late int scopeResolutions;
 
   PersisterRepository repository() => getIt<PersisterRepository>();
 
@@ -13,6 +14,11 @@ void main() {
     getIt = GetIt.asNewInstance();
     storage = _MemoryPrimitiveStorage();
     platformResolutions = 0;
+    scopeResolutions = 0;
+    getIt.registerLazySingleton<PersistenceScope>(() {
+      scopeResolutions++;
+      return PersistenceScope.development;
+    });
     getIt.registerLazySingleton<PrimitiveStorage>(() {
       platformResolutions++;
       return storage;
@@ -30,7 +36,13 @@ void main() {
     expect(repository(), same(first));
     expect(platformResolutions, 1);
     expect(storage.operationCount, 0);
-    expect(getIt.isRegistered<SecureStorage>(), isFalse);
+    expect(scopeResolutions, 0);
+    final cipher = getIt<StorageCipher>();
+    expect(getIt<StorageCipher>(), same(cipher));
+    expect(scopeResolutions, 1);
+    expect(storage.operationCount, 0);
+    expect(getIt.isRegistered<MasterKeyStore>(), isFalse);
+    expect(getIt.isRegistered<PersistenceDirectory>(), isFalse);
   });
 
   test("missing strings stay absent; defaults do not persist a value", () async {

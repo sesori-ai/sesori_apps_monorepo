@@ -1,86 +1,107 @@
-# Desktop master-key storage tracker
+# Shared client persistence tracker
 
 ## Execution
 
-- Status: scoped-cipher slice (3.a) verified and architecture-approved; publishing PR 3/7.
-- Plan PR: [#1698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1698), merged.
-- Branch: `sesori/desktop-master-key-storage-cipher`.
-- One local successor: `sesori/desktop-master-key-storage-drift` preserves the
-  combined tested backend checkpoint; sync it with 3.a before publication.
-- Use the supplied worktree only; one open PR and at most one local successor.
-- Current total: **7 PRs**. Original Step 3 is split into 3.a (PR 3) and 3.b (PR 4);
-  integration/documentation/qualification retain milestone IDs 4/5/6 (PRs 5/6/7).
-- Source of truth: [PLAN.md](PLAN.md).
+- Status: shared-client plan findings applied without another approval round.
+  Shared foundations verified and architecture-approved for replacement PR 4.
+- User approved one Drift backend on both mobile and desktop, with mobile data
+  migration in this work. No postponed mobile-native runtime backend.
+- Migration must be isolated and explicitly deprecated from its first commit,
+  with a retirement condition and deletion checklist.
+- Current branch: `sesori/desktop-master-key-storage-shared-foundation`, based on
+  main in the supplied worktree. No additional worktree is allowed.
+- #1717 is closed as superseded, not merged. Its published backend checkpoint is
+  preserved at `4a27888` on `sesori/desktop-master-key-storage-drift`; carry that
+  implementation into shared-backend PR 5 without rewriting published history.
+- One open PR and at most one local successor. Current total: **10 PRs**;
+  published series titles are synchronized.
+- Source of truth: [PLAN.md](PLAN.md). Original directory slug stays stable.
 
-| Step | State | PR / evidence |
+| Milestone | State | PR / evidence |
 |---|---|---|
-| 1 — Reviewed Drift plan | Merged | #1698; both reviews' concrete findings applied without a third review. |
-| 2 — Shared typed persistence contracts | Merged | #1708; 10 local tests, architecture approval and 27 passing CI checks. |
-| 3.a — Scoped secret encryption | Ready for PR | 15 tests, clean analysis and architecture approval; no storage I/O. |
-| 3.b — Encrypted Drift desktop boundary | Local successor | Database, raw APIs and key-owning repository; still unwired. |
-| 4 — Consumer and platform integration | Not started | Mobile native format preserved; desktop adopts Drift. |
-| 5 — Regression/distribution reconciliation | Not started | Behavior-specific docs also change with Step 4. |
-| 6 — Required qualification and retirement | Not started | Keep active until all recorded gates pass. |
+| 1 — Initial reviewed plan | Merged | #1698; original scope now revised by user direction. |
+| 2 — Typed persistence contracts | Merged | #1708; 10 tests, architecture approval, 27 passing CI checks. |
+| 3.a — Initial cipher foundation | Merged | #1715; 15 tests, architecture approval, 15 passing CI checks. |
+| 3.b — Shared storage foundations | Architecture approved | Replacement PR 4; 26 shared tests, one Android options test, four clean package analyses. |
+| 3.c — Shared encrypted Drift backend | Checkpoint preserved | Replacement PR 5; reuse tested backend and fold primitive delegation. Unused secure interface removed in PR 4. |
+| 4.a — Deprecated mobile import | Not started | PR 6; isolated module, explicit deprecation, domain keys and recovery tests. |
+| 4.b — Native capabilities and backup | Not started | PR 7; narrow platform adapters and actual mobile backup boundary. |
+| 4.c — Both-client cutover | Not started | PR 8; lockstep consumers, migration/failure startup gate and runtime adapter removal. |
+| 5 — Regression reconciliation | Not started | PR 9; behavior docs also accompany their implementation. |
+| 6 — Required qualification/retirement | Not started | PR 10; plan remains active until recorded mobile + desktop matrix passes. |
 
-## Decisions
+## Decisions and code-informed constraints
 
-- Unchanged app relaunches do not prompt after Always Allow. First-run native
-  authorization fan-out is the target; zero system prompts is not promised.
-- User selected Drift + typed keys after comparison with the wallet reference:
-  plaintext typed primitives, separately encrypted secret rows, a persister
-  repository, and one lazily cached desktop master key.
-- Only secrets unlock the key. Plain preferences remain usable while unlocking
-  is pending or denied. SQLite owns atomic writes and connection lifecycle.
-- Shared enum-keyed consumers and the lower persistence module are approved.
-  Mobile keeps exact native item names/encodings, including pending opt-out data;
-  no mobile Drift rollout or storage migration.
+- Shared schema, crypto, raw APIs, typed repositories and one cached master key
+  live in `module_persistence`. Domain keys/serialization remain in auth/core.
+- Only native master-item access and a ready persistent directory/backup policy
+  vary by shell. Normal repositories contain no migration or backend selector.
+- Deprecated mobile import lives under core's
+  `migrations/deprecated_native_storage_v1/` and a matching mobile platform area.
+  It is awaited before auth, analytics, deep links or other consumers resolve.
+- Copy every present known value, then remove copied native items, then mark
+  complete. Retry by merging remaining source values into committed destination
+  rows; never replace/clear a partial snapshot or run legacy fallback reads.
+- Mobile production data includes all auth/OAuth fields, the relay room key,
+  scoped plugin preferences and pending analytics opt-out JSON.
+- iOS currently shares its bundle ID between build modes. Only production scope
+  imports its legacy namespace; development must not steal production data.
+- Disable Android native `resetOnError` on the active legacy instance in PR 4,
+  then retain it on the protected master/legacy adapters. Delay exclusions for
+  old credential preferences until the migration/cutover PR.
+  Exclude DB/native credential files from Android backup; retain and qualify
+  paired iOS database/master-key encrypted backup instead of adding needless
+  exclusion machinery. Copied ciphertext without its master fails explicitly.
+- Keep the new native master namespace separate from the deprecated source.
+  iOS legacy enumeration omits the accessibility query filter without changing
+  stored ACLs; native legacy-envelope completeness/error behavior needs proof.
+- Mobile import failure must preserve data and present a startup failure state;
+  it must not silently boot logged out or start analytics with default consent.
+- Native cleanup completes before the marker. Current-device logout is local,
+  so leaving usable old auth items as a parallel source is not an acceptable
+  successful migration outcome. Failure/relaunch recovery is explicitly tested.
 - Desktop is unpublished: sign out in the old build before cutover, then sign in
-  once in the new store. No automatic old-item reads, migrations or deletions.
-- Every implementation-time behavior change updates its regression statements;
-  the penultimate step completes the catalog/evidence reconciliation.
-- No user app/helper launches, personal Keychain changes, real secret reads, or
-  wallet source modifications are authorized by these fixture checks.
+  once. No legacy desktop migration, automatic old-Keychain cleanup or claims
+  that new local logout revokes old internal builds' separate sessions.
+- One-time mobile import may require native access; normal plaintext operations
+  do not. One master-item lookup does not promise zero OS authorization dialogs.
+- No running app/helper launches, personal credential reads/Keychain changes or
+  wallet modifications are authorized by fixture tests or plan editing.
 
-## Evidence and review
+## Evidence retained, not overclaimed
 
-- Initial architecture review `2359dc5a-26c5-4e8a-a2d4-195b638c8e70` produced
-  concrete repository/API, DI-order, scope and export findings; these informed
-  the revision. Its reporter failed after the review completed; report recovered.
-- Read-only wallet inspection confirmed typed primitive tables, enum-keyed
-  `PersisterRepository -> Persister -> PrimitivesDao -> Drift`, and encryption
-  of secret values before insertion rather than full-database encryption.
-- The obsolete file-store prototype was uncommitted, unwired and untested. It
-  has been removed; it creates no persisted-format compatibility obligation.
-- PR #1698 merged automatically after its eight then-registered checks settled.
-  All three initial threads have explicit prefixed dispositions; they were not
-  dismissed merely because the storage technology changed. Latest-head Codex
-  review was still running at the startup assessment; no completed result from
-  that review is claimed.
-- Revised review `52fff904-c1da-49bd-9c99-f06e30d1d21f`: four concrete omissions
-  corrected (workspace dependencies, exact DI calls, canonical type ownership,
-  and the full stable-key matrix). No repeat approval is claimed.
-- Full second review recovered from the original write at session line 202,
-  SHA256 `7e550c2e1629b4bffbb9af8c7dca6df17c621efb713590526173f8e79d876bfc`;
-  the short overwritten acknowledgement was not treated as complete evidence.
-- Step 2: `dart pub get` and Injectable generation passed. The final package has
-  10 passing tests and clean `dart analyze --fatal-infos`; changed workflows pass
-  `actionlint`. No native backend, app storage or platform bootstrap is switched.
-- Step 2 architecture review `240d3ac4-7970-4398-9917-2ee9b58e2a79` approved
-  `origin/main..fc8b270` with no findings. The full final response was captured;
-  no report recovery or repeat review was needed.
-- Independent 3.a slice: 15 cipher tests pass after extraction, owning-package
-  analysis is clean, and DI generation succeeds without any Drift/native backend
-  dependency. Architecture review `dd2c7b27-5c57-4ab7-b051-7b915aa39be3`
-  approved the exact `3ffe4a1..634f109` scope with no findings. This slice adds no
-  storage I/O; broader backend and integration gates remain pending.
-- Combined Step 3 checkpoint: 35 focused cipher, repository and real SQLite tests
-  passed, including file/WAL inspection, reopen, pending/failed key initialization,
-  independent writes/deletes, SQL rollback, scope isolation and GetIt disposal.
-  These are fixture checks, not packaged/native credential or prompt-count proof.
-- Measured the combined Step 3 diff at about 1,700 changed lines (667 generated).
-  Split the independent cipher/scope foundation before publication; the three
-  tables and their generated schema stay together in 3.b. No extra feature scope.
-- The new package is included in workspace discovery, local Makefile commands,
-  shared mobile/client test coverage, and desktop change detection. Existing
-  consumers and the original auth-owned interface remain in use until Step 4,
-  where that interface and the native-per-value desktop adapter are removed.
+- Read-only wallet inspection informed typed primitives/selective encryption.
+  The discarded unwired file-store prototype established no compatibility data.
+- Original and revised plan reviews supplied concrete layering, DI, package,
+  public-export and stable-key inventory corrections. The second full report
+  was recovered after its acknowledgement overwrote the saved artifact:
+  SHA256 `7e550c2e1629b4bffbb9af8c7dca6df17c621efb713590526173f8e79d876bfc`.
+- Shared-contract review `240d3ac4-7970-4398-9917-2ee9b58e2a79` approved
+  `origin/main..fc8b270`. Its tests, analysis, generation and workflow validation
+  passed; app bindings were not switched.
+- Cipher review `dd2c7b27-5c57-4ab7-b051-7b915aa39be3` approved
+  `3ffe4a1..634f109`. Fifteen cipher tests and analysis passed; no storage I/O.
+- Preserved backend review `94992f10-0bb1-4d18-8a90-9703e659e2e5` approved
+  `ee30870..bd6e7a4`, with 20 backend tests, clean analysis and regenerated
+  Drift/Injectable output. The final published diff was 1,459 lines: 743 authored,
+  660 generated Dart and 56 lockfile. #1717 Codex completed without findings.
+- Combined original fixture coverage: 35 tests across cipher/database/repository,
+  including real SQLite/WAL/reopen, key failure/concurrency, rollback, scope and
+  disposal. Native access was fake; real user/application state was untouched.
+- Shared-plan review `96c6ea95-da0d-475e-8729-68a8f24d74b8` passed its pre-review
+  gate and rejected six concrete details. All were corrected: canonical auth
+  model/export, backup/reset rollout, exact production guard, typed bootstrap
+  failure/disposal/rendering seam, nested deprecated layers and cutover guidance.
+  No repeat approval is claimed or required for these fixes.
+- Shared-foundation slice: moved cipher/scope/errors and tests to persistence,
+  added native master/directory contracts, removed the unused shared secure
+  interface, and disabled Android destructive native reset. Generation and
+  formatting passed; 26 shared tests plus one mobile native-options test passed.
+  Analysis is clean in persistence, desktop-core, mobile app and desktop shell.
+  Native calls were not exercised; no database or app binding was switched.
+- Shared-foundation review `4d74e149-75fb-486c-919e-e5124b39a3a8` approved exact
+  range `66db48e..f38a2f7`, all 24 changed paths, without findings. No future
+  migration/cutover implementation or unrelated architecture was reviewed.
+- None of this evidence establishes released-mobile migration, mobile
+  backup/restore, real credential behavior, packaged replacement or actual
+  prompt counts. Those gates remain.
