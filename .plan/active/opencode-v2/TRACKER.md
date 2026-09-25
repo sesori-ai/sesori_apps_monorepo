@@ -4,7 +4,7 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 5.c (PR 7/12) — repository integration, local on `sesori/opencode-v2-step-5c-repository`.
+- Current step: 5.c (PR 7/12) — repository integration, in review on `sesori/opencode-v2-step-5c-repository`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
   Step 3 [#1716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1716),
@@ -111,7 +111,8 @@
   mixed. Project IDs remain canonical paths while opened worktree directories and session locations remain distinct.
 - The repository preserves native defaults, resolves explicit display-name selections before writes, exposes global
   active IDs and retains directory-scoped native input constraints. History failures propagate without empty fallback.
-- Twenty-eight focused repository/API cases and owning-package analysis pass; architecture review is pending.
+- Twenty-eight focused repository/API cases and owning-package analysis pass.
+  Architecture review approved `7f4977e` with no findings (866 authored lines; no generated churn).
   No generated source changed, so generation was not rerun. Evidence is fixture/fake/HTTP-boundary only.
 - Step 7 must verify parent-linked creation: plain native creation has no parent field, while fork/import routes
   exist. Inspect their semantics before satisfying `parentSessionId`; never silently create an unrelated root.
