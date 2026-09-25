@@ -60,10 +60,10 @@ class SessionDetailLoadedView extends StatefulWidget {
 
 class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
   /// Measured height of the floating bottom controls overlaying the bottom of
-  /// the chat — the needs-you cards, background-tasks bar and composer. Fed to
-  /// the message list so the newest message rests just above them (and the
-  /// "jump to latest" pill clears them) while older content scrolls up behind
-  /// the composer's fade. Read-only variants stay at 0.
+  /// the chat — the needs-you cards, background-tasks bar and composer, or a
+  /// read-only session's run details. Fed to the message list so the newest
+  /// message rests just above them (and the "jump to latest" pill clears them)
+  /// while older content scrolls up behind the composer's fade.
   ///
   /// A notifier rather than state: the composer's layout morphs animate its
   /// height frame-by-frame, and each measurement must re-inset only the

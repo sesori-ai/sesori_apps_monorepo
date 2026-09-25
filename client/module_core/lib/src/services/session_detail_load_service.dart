@@ -127,23 +127,14 @@ class SessionDetailLoadService({
       );
       final childrenFuture = _repository.getChildren(sessionId: sessionId);
       final isArchived = session.time?.archived != null;
-      final optionsFuture = isArchived
-          ? Future<_SessionDetailOptionsResult>.value(
-              const _SessionDetailOptionsAvailable(
-                options: (
-                  agents: <AgentInfo>[],
-                  providerData: null,
-                  commands: <CommandInfo>[],
-                  areStale: false,
-                ),
-              ),
-            )
-          : _loadSessionOptions(
-              projectId: effectiveProjectId,
-              pluginId: pluginId,
-              requireComplete: requireCompleteOptions,
-              mode: optionsMode,
-            );
+      // An archived session cannot prompt; its options only name what it ran
+      // with, so a cached catalog is enough and never wakes the harness.
+      final optionsFuture = _loadSessionOptions(
+        projectId: effectiveProjectId,
+        pluginId: pluginId,
+        requireComplete: requireCompleteOptions && !isArchived,
+        mode: isArchived ? SessionOptionsRequestMode.cacheOnly : optionsMode,
+      );
       final promptAttachmentSupportFuture = isArchived
           ? Future<bool?>.value(null)
           : _loadPromptAttachmentSupport(pluginId: pluginId);

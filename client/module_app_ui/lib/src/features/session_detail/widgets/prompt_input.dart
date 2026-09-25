@@ -1062,31 +1062,14 @@ class _PromptInputState() extends State<PromptInput> {
 
   @override
   Widget build(BuildContext context) {
-    final prego = context.prego;
     final capabilities = ComposerPresentationScope.of(context);
     _renderedVoiceState = capabilities.voiceSupport.isSupported
         ? context.watch<VoiceInputCubit>().state
         : const VoiceInputState.idle();
 
     return DecoratedBox(
-      // Floating composer: no bar surface, no separator line. The scaffold
-      // background fades up behind the floating controls so chat content
-      // dissolves as it scrolls past — the same scrim the glass top navigation
-      // bar uses (PregoGlassScaffold), mirrored to the bottom edge: opaque
-      // where the controls sit, transparent where content emerges above. The
-      // controls keep their own surfaces.
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.center,
-          end: Alignment.topCenter,
-          colors: [
-            prego.colors.bgSurface1.withValues(alpha: 0.98),
-            prego.colors.bgSurface1.withValues(alpha: 0.88),
-            prego.colors.bgSurface1.withValues(alpha: 0),
-          ],
-          stops: const [0, 0.8, 1.0],
-        ),
-      ),
+      // Floating composer: no bar surface, no separator line.
+      decoration: composerScrimDecoration(prego: context.prego),
       child: Column(
         mainAxisSize: .min,
         children: [

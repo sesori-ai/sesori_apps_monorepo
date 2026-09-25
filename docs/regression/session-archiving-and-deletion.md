@@ -96,7 +96,10 @@ entirely along with its transcript and, optionally, its worktree.
   only archived rows, grouped by their actual archive date, newest first; an
   active-only project shows the archive artwork and “No archived sessions”. It
   has no new-session button or bottom floating navigation.
-- Archived detail is read-only from its first frame. Back returns to the retained
+- Archived detail is read-only from its first frame. In the composer's place it
+  shows what the newest agent reply ran with as read-only pills (see
+  [Session creation and options](session-creation-and-options.md)), from options
+  read from the bridge's cache only, never discovered. Back returns to the retained
   archive list; X closes the entire modal to its original opener, preserving its
   list/scroll and draft. Both controls remain available during loading and errors,
   including related-session audit navigation. Direct archive entry has a safe X

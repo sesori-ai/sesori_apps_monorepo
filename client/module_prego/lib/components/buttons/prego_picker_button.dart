@@ -6,7 +6,8 @@ import "../prego_ellipsis_text.dart";
 import "../surfaces/prego_surfaces.dart";
 
 /// A solid pill that opens a picker: leading glyph, one-line [label], and a
-/// trailing unfold caret signalling the popup.
+/// trailing unfold caret signalling the popup. Without [onPressed] it only
+/// shows the value: no caret and no press feedback.
 ///
 /// Its surface matches the composer's background, border, and elevation on
 /// every platform, while its press feedback uses the same Material ripple.
@@ -35,8 +36,9 @@ class const PregoPickerButton({
   /// Outline emphasis shared with the current composer state.
   required final PregoComposerSurfaceStyle surfaceStyle,
 
-  /// Called when the pill is tapped. Wire this to the menu's open callback.
-  required final VoidCallback onPressed,
+  /// Called when the pill is tapped. Wire this to the menu's open callback, or
+  /// pass null for a value that cannot be changed here.
+  required final VoidCallback? onPressed,
 
   /// Whether the label and caret show. Without them the pill is only its
   /// glyph, keeping [label] as its tooltip and accessible name, for rows too
@@ -48,6 +50,31 @@ class const PregoPickerButton({
     final prego = context.prego;
     final foreground = prego.colors.textSecondary;
     final borderRadius = BorderRadius.circular(PregoRadius.full);
+    final onPressed = this.onPressed;
+    final content = !showLabel
+        ? Center(
+            child: Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
+          )
+        : Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: PregoEllipsisText(
+                    text: label,
+                    ellipsis: PregoEllipsis.start,
+                    style: prego.textTheme.textXs.medium.copyWith(color: foreground),
+                  ),
+                ),
+                if (onPressed != null) ...[
+                  const SizedBox(width: 4),
+                  Icon(TablerRegular.selector, size: PregoIconSize.sm, color: foreground),
+                ],
+              ],
+            ),
+          );
     final pill = SizedBox(
       width: double.infinity,
       height: 36,
@@ -59,38 +86,19 @@ class const PregoPickerButton({
         ),
         child: Padding(
           padding: const EdgeInsets.all(1),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: borderRadius,
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              mouseCursor: WidgetStateMouseCursor.clickable,
-              onTap: onPressed,
-              borderRadius: borderRadius,
-              child: !showLabel
-                  ? Center(
-                      child: Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        children: [
-                          Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: PregoEllipsisText(
-                              text: label,
-                              ellipsis: PregoEllipsis.start,
-                              style: prego.textTheme.textXs.medium.copyWith(color: foreground),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(TablerRegular.selector, size: PregoIconSize.sm, color: foreground),
-                        ],
-                      ),
-                    ),
-            ),
-          ),
+          child: onPressed == null
+              ? content
+              : Material(
+                  color: Colors.transparent,
+                  borderRadius: borderRadius,
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    mouseCursor: WidgetStateMouseCursor.clickable,
+                    onTap: onPressed,
+                    borderRadius: borderRadius,
+                    child: content,
+                  ),
+                ),
         ),
       ),
     );
@@ -98,7 +106,7 @@ class const PregoPickerButton({
     return Tooltip(
       message: label,
       excludeFromSemantics: true,
-      child: Semantics(button: true, label: label, child: pill),
+      child: Semantics(button: onPressed != null, label: label, child: pill),
     );
   }
 }

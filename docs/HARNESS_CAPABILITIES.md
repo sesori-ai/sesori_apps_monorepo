@@ -343,6 +343,53 @@ that still arrives from a catalog captured earlier is honoured, never run in
 the default mode. Naming the advertised default returns a session left in
 another mode to the default with its next prompt.
 
+## Read-only run details
+
+Child sessions and archived sessions cannot prompt, so where the composer would
+sit they show the agent, model and effort variant the session ran with as
+read-only pills. A value Sesori does not know leaves its pill out. The agent
+pill follows the composer's rule and appears only for a harness with an agent
+choice; every other harness stamps a placeholder agent. What a child session
+shows (verified from plugin code on 2026-09-26):
+
+| Harness | Agent | Model | Variant |
+|---|---|---|---|
+| Claude | ⬜ placeholder | ✅ | ✅ after a history read |
+| OpenCode | ✅ | ✅ | ✅ |
+| Codex | ⬜ placeholder | ✅ from history | ✅ from history |
+| DeepSeek | 🚫 | ✅ live, 🚫 after a restart | 🚫 |
+| Grok | ⬜ placeholder | ✅ live, unverified from history | Unverified from history, 🚫 live |
+| Pi (forks) | 🚫 | ✅ | ✅ |
+
+Antigravity, Copilot, Cursor, Hermes and OMP produce no child sessions.
+
+- Claude, Codex and Grok record the sub-agent's type natively, but it only
+  labels the parent's subtask tile.
+- Claude streams no effort, so a child seen only live names no variant until
+  the bridge reads its history. A model the catalog does not list shows its raw
+  id.
+- OpenCode leaves the variant pill out when the child ran without one. Right
+  after a child compacts, its agent reads `compaction` until its next reply.
+- Codex takes a child's model and effort from its rollout's `turn_context`. A
+  running child whose rollout is not flushed yet is stamped live with the
+  `config.toml` default model until its history is read again. A turn that
+  recorded no effort shows no variant.
+- DeepSeek's protocol records no model or effort for a child. A child seen live
+  carries the root's model at spawn, which is the model the adapter runs it on.
+  After a bridge restart its history is stamped with the process default, so
+  the model pill shows a guess.
+- Grok names a child's model at spawn. History values come from the child's
+  `session/load` and have not been checked against a live child.
+- Pi has no sub-agents. A session forked in Pi records its parent, so it opens
+  as a child session.
+
+Archived sessions of every harness show the agent and model of their newest
+agent reply. Archiving clears the bridge's stored defaults and a reply records
+no variant, so the variant pill never shows (⬜). Display names and the
+OpenCode agent choice come from the cached option catalog, so opening an
+archived session never wakes its harness. Without a cached catalog the model
+shows its id and the agent pill is left out.
+
 ## ACP multi-select form questions
 
 | Harness | Sesori implementation | Verification boundary |

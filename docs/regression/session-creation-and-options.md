@@ -30,6 +30,14 @@ variant, and worktree mode, and creating the session with its first input.
   and command buttons are always visible and the box grows with the draft instead of opening an editor
   sheet. It stops at a third of the window and the draft scrolls, so even the minimum window keeps the
   selectors on screen.
+- A session that cannot prompt, a sub-agent's page or an archived session, shows what it ran with in the
+  composer's place: the same agent, model and effort pills, sized as on that surface, with no caret, no
+  press feedback and no picker; screen readers hear values, not buttons. The bridge's prompt defaults
+  decide them, else the newest agent reply's agent and model. A value the session cannot know is left out,
+  never guessed: the agent shows only where the harness lists more than one, and the effort only where the
+  harness reported it (per-harness gaps in `docs/HARNESS_CAPABILITIES.md`). Archiving clears the defaults,
+  so an archived session never shows an effort; its options come from the bridge's cache only, never from
+  discovery. A harness notice sits above the pills, and with nothing known there is no strip.
 - A session with sub-agents shows a pill at the strip's trailing edge. While any sub-agent works it leads
   with a spinner and the running count, then the sub-agent glyph and the total, muted; idle, it shows the
   glyph and the total only. It never claims sub-agents are finished, since an idle one can be resumed.
@@ -363,7 +371,7 @@ variant, and worktree mode, and creating the session with its first input.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
 | L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window or captured before the bridge process started is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `sesori/color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. |
-| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; loading keeps the layout with shimmering pills and a failure shows one retry; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render. Scoped authentication-required discovery replaces the composer with the login card, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
+| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; loading keeps the layout with shimmering pills and a failure shows one retry; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render; a sub-agent's page and an archived session show only the run details their harness knows, as read-only pills. Scoped authentication-required discovery replaces the composer with the login card, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -476,6 +484,8 @@ highlight, Enter and Esc.
 - Desktop cannot open the typed new-session route, constructs voice capture,
   hides a supported dedicated-workspace option, or bypasses the shared creation
   view and its restoration/launch semantics.
+- A sub-agent's or archived session's run-detail pills open a picker, show a caret or press feedback, name
+  a placeholder agent or a guessed effort, or make the harness discover options.
 - The ⚡ pill shows for a model without fast-mode support, hides for an
   unavailable one, sends `fastMode: true` for a model that cannot run it, or
   switches without confirmation while the prompt cache is warm; the choice is
@@ -530,6 +540,9 @@ highlight, Enter and Esc.
 - Client tests: `client/app/test/core/widgets/agent_model_buttons_test.dart`,
   `client/app/test/features/new_session/new_session_screen_test.dart`,
   `client/desktop/test/features/new_session/desktop_new_session_screen_test.dart`,
-  and `client/desktop/test/core/routing/desktop_router_test.dart`
+  `client/desktop/test/core/routing/desktop_router_test.dart`, and, for read-only run details,
+  `client/app/test/features/session_detail/widgets/session_detail_body_test.dart`,
+  `client/desktop/test/features/sessions/desktop_session_detail_screen_test.dart` and
+  `client/module_core/test/cubits/session_detail/session_detail_resolvers_test.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,
   `setup-aware-plugin-lifecycle`

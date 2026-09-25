@@ -2066,7 +2066,7 @@ as String?,
 /// @nodoc
 mixin _$CodexRolloutTurnContextPayloadDto {
 
- String? get model;@JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) String? get effort;
+ String? get model;@JsonKey(fromJson: _stringOrNull) String? get effort;
 /// Create a copy of CodexRolloutTurnContextPayloadDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2102,7 +2102,7 @@ abstract mixin class $CodexRolloutTurnContextPayloadDtoCopyWith<$Res>  {
   factory $CodexRolloutTurnContextPayloadDtoCopyWith(CodexRolloutTurnContextPayloadDto value, $Res Function(CodexRolloutTurnContextPayloadDto) _then) = _$CodexRolloutTurnContextPayloadDtoCopyWithImpl;
 @useResult
 $Res call({
- String? model,@JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) String? effort
+ String? model,@JsonKey(fromJson: _stringOrNull) String? effort
 });
 
 
@@ -2135,11 +2135,11 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class _CodexRolloutTurnContextPayloadDto implements CodexRolloutTurnContextPayloadDto {
-  const _CodexRolloutTurnContextPayloadDto({required this.model, @JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) required this.effort});
+  const _CodexRolloutTurnContextPayloadDto({required this.model, @JsonKey(fromJson: _stringOrNull) required this.effort});
   factory _CodexRolloutTurnContextPayloadDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTurnContextPayloadDtoFromJson(json);
 
 @override final  String? model;
-@override@JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) final  String? effort;
+@override@JsonKey(fromJson: _stringOrNull) final  String? effort;
 
 /// Create a copy of CodexRolloutTurnContextPayloadDto
 /// with the given fields replaced by the non-null parameter values.
@@ -2173,7 +2173,7 @@ abstract mixin class _$CodexRolloutTurnContextPayloadDtoCopyWith<$Res> implement
   factory _$CodexRolloutTurnContextPayloadDtoCopyWith(_CodexRolloutTurnContextPayloadDto value, $Res Function(_CodexRolloutTurnContextPayloadDto) _then) = __$CodexRolloutTurnContextPayloadDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? model,@JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) String? effort
+ String? model,@JsonKey(fromJson: _stringOrNull) String? effort
 });
 
 

@@ -207,6 +207,35 @@ void main() {
       );
     });
 
+    test("keeps the bridge's prompt defaults as reported for surfaces that only show them", () async {
+      const recorded = SessionPromptDefaults(
+        agent: "explore",
+        model: AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: "high"),
+      );
+      stubSessionRepositoryGetSession(
+        repository: mockSessionRepository,
+        sessionId: sessionId,
+        session: testSession(id: sessionId, promptDefaults: recorded),
+      );
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+
+      final loaded = await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded,
+        description: "loaded",
+      );
+      expect((loaded as SessionDetailLoaded).promptDefaults, recorded);
+
+      const changed = SessionPromptDefaults(agent: "general", model: null);
+      sessionEvents.add(const SesoriSessionPromptDefaultsChanged(sessionID: sessionId, promptDefaults: changed));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.promptDefaults == changed,
+        description: "prompt defaults followed",
+      );
+    });
+
     group("approval mode", () {
       Future<SessionDetailCubit> loadedCubit({
         required bool bridgeYolo,
