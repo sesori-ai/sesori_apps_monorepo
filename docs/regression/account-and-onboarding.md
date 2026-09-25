@@ -24,6 +24,8 @@ participates.
   already absent or the saved authentication session has expired. Non-sandboxed
   macOS desktop builds store through flutter_secure_storage's classic Keychain
   mode, which needs no provisioned Data Protection Keychain access group.
+  Android native storage failures must propagate without automatically resetting
+  stored credentials or preferences; existing namespaces and encodings remain intact.
 - Log out asks first on both apps; only its confirmation starts logout, and
   Cancel or dismissal leaves the session untouched.
 - Auth-server URLs behave identically with or without trailing slashes, and
@@ -58,7 +60,7 @@ participates.
 | L1 Smoke | Signed-in launch restores the local session and reaches Projects with no network work at splash; the macOS desktop writes and reads a token through the classic login Keychain; a bridge start reaches readiness. Client end to end plus headless bridge; no plugin. |
 | L2 Routine | One provider through sign-in and logout on the release-target client platform, including an in-flight restore/refresh race and definitive refresh rejection, plus the prompt decision for marker-present, already-registered, and absent accounts. Client end to end plus headless bridge; no plugin. |
 | L3 Release | Every sign-in option on the release-target client platform, both empty-Projects states, and prompt ordering proved by a real client joining, completing key exchange, and issuing a request while the prompt shows. Client end to end plus relay integration; no plugin. |
-| L4 Extended | Background/resume mid sign-in, unreachable or rejecting auth server, expiry refresh, logout while connected, logout during restore/login persistence, refresh rejection followed by relaunch, withheld push registration, delayed status check, second mobile platform. Client end to end where the app observes it, headless where the bridge owns it. |
+| L4 Extended | Android native storage failure without an automatic data reset, background/resume mid sign-in, unreachable or rejecting auth server, expiry refresh, logout while connected, logout during restore/login persistence, refresh rejection followed by relaunch, withheld push registration, delayed status check, second mobile platform. Client end to end where the app observes it, headless where the bridge owns it. |
 | L5 Full | Store builds: native Apple sign-in on a real device, email flow, legal and analytics-preference surfaces, marker rewrite after a fresh install, and the status-endpoint-unavailable path against an older auth deployment. Packaged or external; no plugin. |
 
 ## Exploration Guidance
@@ -76,7 +78,8 @@ the prompt and a reused one when testing suppression.
   emitting authenticated after logout, a malformed or non-2xx login response
   persisting tokens, a rejected refresh leaving credentials
   restorable after relaunch, a transport failure clearing a usable session, or
-  macOS OAuth completion failing with a missing Keychain entitlement (`-34018`).
+  macOS OAuth completion failing with a missing Keychain entitlement (`-34018`),
+  or an Android storage error silently resetting credentials/preferences.
 - A delayed persisted registered-bridge read restoring the previous account's
   offline banner or recovery flow after logout.
 - The prompt appearing before readiness, after a failed start, on an account that

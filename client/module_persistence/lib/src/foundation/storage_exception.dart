@@ -1,5 +1,5 @@
 /// Operations whose underlying exceptions may carry protected payload bytes.
-enum DesktopStorageOperation() {
+enum StorageOperation() {
   readMasterKey,
   writeMasterKey,
   decodeMasterKey,
@@ -8,16 +8,16 @@ enum DesktopStorageOperation() {
 }
 
 /// Retains the original diagnostic cause without rendering key/value payloads.
-class const DesktopStorageException({
-  required final DesktopStorageOperation operation,
+class const StorageException({
+  required final StorageOperation operation,
   required final Object innerError,
 }) implements Exception {
   @override
-  String toString() => "Desktop storage failed during ${operation.name}";
+  String toString() => "Client storage failed during ${operation.name}";
 }
 
 /// Encrypted data cannot be recovered by silently generating a different key.
-class const DesktopMasterKeyMissingException() implements Exception {
+class const MasterKeyMissingException() implements Exception {
   @override
-  String toString() => "The desktop master key is missing while encrypted values exist; existing data was not replaced";
+  String toString() => "The client master key is missing while encrypted values exist; existing data was not replaced";
 }

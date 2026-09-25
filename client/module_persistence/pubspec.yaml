@@ -1,5 +1,5 @@
 name: sesori_persistence
-description: Typed, surface-neutral primitive and secret persistence contracts for Sesori clients.
+description: Shared typed persistence and encryption infrastructure for Sesori clients.
 version: 0.1.0
 publish_to: none
 resolution: workspace
@@ -8,6 +8,7 @@ environment:
   sdk: ^3.13.4
 
 dependencies:
+  cryptography: ^2.9.0
   get_it: ^9.3.0
   injectable: ^3.0.0
   meta: ^1.19.0

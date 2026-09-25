@@ -13,7 +13,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
         RouteSource,
         SessionRepository;
 
-import "../foundation/desktop_storage_scope.dart";
 import "../foundation/platform/bridge_executable_path_resolver.dart";
 import "../foundation/platform/bridge_process_environment.dart";
 import "../foundation/platform/desktop_application_support_directory.dart";
@@ -46,7 +45,6 @@ import "injection.config.dart";
     BridgeRepository,
     DesktopApplicationSupportDirectory,
     DesktopApplicationTerminator,
-    DesktopStorageScope,
     LaunchAtLogin,
     WindowHost,
   ],
