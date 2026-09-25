@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-v2`
-- **Status:** Active; Steps 1–4 and 5.a–b merged, Step 5.c repository integration in review (PR 7/12).
+- **Status:** Active; Steps 1–5 merged, Step 6.a event projection preparing PR 8/13.
 - **Plan date:** 2026-09-25
 - **Implementation base:** `main` at `fed841c2f9`
 - **Trigger:** issue #1677 — OpenCode 2.0.11 on PATH fails cold start with `FormatException ... <!doctype html>`.
@@ -132,10 +132,12 @@ All v2 code lives under `bridge/sesori_plugin_opencode/lib/src/v2/`, one directo
 
 ## Steps
 
-Series titles: `<emoji> [opencode-v2] <description> [step x/12]`.
+Series titles: `<emoji> [opencode-v2] <description> [step x/13]`.
 
 Step 5 is split into 5.a catalog normalization (PR 5), 5.b transcript mapping (PR 6), and
-5.c repository integration (PR 7). Durable Steps 6–10 correspond to PRs 8–12; earlier PRs keep ordinals 1–4.
+5.c repository integration (PR 7). Step 6 splits into 6.a event projection (PR 8) and
+6.b activity/service integration (PR 9); durable Steps 7–10 correspond to PRs 10–13.
+The stateless event boundary and stateful refresh/summary owner are separate reviewable changes.
 Review feedback exposed independent catalog/identity and transcript seams near the soft cap. The transcript
 implementation through `ef5015416a` remains in #1733's published history and moves into the immediate successor;
 no history rewrite, compatibility shim or new mutable owner is needed. Count all authored/generated churn.
@@ -198,19 +200,28 @@ no history rewrite, compatibility shim or new mutable owner is needed. Count all
    - Complexity budget: three final injected dependencies, no mutable runtime state, caches, timers or new
      persistence. No obsolete production mechanism is replaced; v1 and the v2 startup refusal remain intact.
    - Tests: repository tests over a fake `OpenCodeV2Api`, using preceding fixtures, plus scoped root-paging HTTP tests.
-6. **🚧 v2 live events, activity and service.**
-   - `V2EventMapper` is stateless:
-     - session created/renamed/deleted → `BridgeSseSession*`;
-     - execution started/succeeded/failed/interrupted and retry → status;
-     - text/reasoning/tool started/delta/ended/success/failed → part updated/delta events with the Step 5 ids;
-     - permission and form events → existing permission/question events;
-     - add `session.agent.selected` to the manifest and reuse the transcript's agent-switch and retry part identities.
-   - `OpenCodeV2ActivityTracker` is a standalone tracker with no Api or Repository dependency. It holds active sessions,
-     pending permissions and pending forms, and exposes `seed(...)`, `apply(event)` and `reset()`.
-   - `OpenCodeV2Service(repository, tracker)` owns cold start and the reconnect re-fetch: it reads global active IDs
-     and pending permissions/forms per known directory through the repository and seeds the tracker. It also builds
-     activity summaries, and it never touches `OpenCodeV2Api`.
-   - Tests: event-sequence tests for the mapper/tracker, and service tests over a fake repository.
+6.a. **🚧 v2 live-event projection.**
+   - `V2EventMapper` stays stateless, reusing the transcript's part/retry identities and tool/attachment policies.
+     Directly map text/reasoning deltas, tool start, retry/status, permission/form and agent/synthetic notices.
+   - Add `session.inbox.*`, `session.synthetic`, `session.agent.selected` and typed interrupt reasons to the manifest.
+     Inbox enqueue is not a user transcript message; delivery is. Queue controls remain out of scope.
+   - Add single-message and latest-by-type REST reads to API/repository. Native tool terminal events omit the name/input;
+     compaction completion omits the message ID. Hydrate those from committed native projections, not a second transcript
+     cache. Native bus projection commits before SSE publication (`core/src/bus.ts` and `session/projector.ts`).
+   - Hydrated tool events emit only their named tool part; assistant terminal snapshots emit only the header/retry state,
+     never replaying unrelated text into a stream of later deltas. Compaction uses the latest native compaction row.
+   - Session-event projection receives the authoritative shared session value from the later service. No nullable
+     multi-purpose enrichment container, mutable name cache, stream subscription or lifecycle owner is introduced.
+   - Tests: parser/mapper sequences plus targeted REST/repository reads. V2 remains inactive.
+6.b. **🚧 v2 activity and service integration.**
+   - `OpenCodeV2ActivityTracker` is standalone, with no Api or Repository dependency. It owns session metadata for
+     hierarchy/project attribution, active/retry states, native pending permissions/forms, and baseline trust.
+     It exposes `seed(...)`, `apply(event)` and `reset()`; deletion can use previously observed session metadata.
+   - `OpenCodeV2Service` owns cold start and reconnect re-fetch through the repository, seeds the tracker, resolves
+     event enrichments and uses the stateless mapper. It builds activity summaries and never touches `OpenCodeV2Api`.
+   - Seed session metadata globally, then read pending inputs for the observed session directories and active IDs
+     globally. Preserve unknown work state until a complete baseline; do not copy v1's instance/alias registries.
+   - Tests: event-sequence tests for tracker state, and service tests over a fake repository.
 7. **🚧 v2 writes and activation.**
    - `OpenCodeV2Service` gains the write flows:
      - create + first prompt; prompt with files; command;
@@ -269,8 +280,10 @@ requires the user's explicit acceptance recorded here.
 
 ## Complexity Budget
 
-- **New in-memory mutable state:** only `OpenCodeV2ActivityTracker` (active sessions, pending permissions and pending
-  forms). This is the same kind of state v1 tracks, and it has a single owner, `OpenCodeV2Service`.
+- **New in-memory mutable state:** only `OpenCodeV2ActivityTracker`: four maps (session metadata, active/retry state,
+  pending permissions, pending forms) and baseline trust. Metadata is required to attribute active children and pending
+  input to the correct root/project and to represent deletions after native rows disappear. Baseline trust prevents a
+  failed refresh from claiming idle. No transcript, tool-input, agent-name or inbox cache is added.
 - **Stateless:** `V2EventMapper`, because part ids are derived deterministically.
 - **Not added:** persistence, protocol switching at runtime, dual-protocol generic services, or event replay through
   `/session/{id}/log`. Reconnect re-fetches over REST, as v1 does.

@@ -1,6 +1,9 @@
+import "dart:io" show HttpStatus;
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
+import "../../open_code_raw_http_client.dart";
 import "../api/opencode_v2_api.dart";
 import "../models/openapi/form_info.g.dart";
 import "../models/openapi/form_reply.g.dart";
@@ -11,8 +14,10 @@ import "../models/openapi/permission_request.g.dart";
 import "../models/openapi/project.g.dart";
 import "../models/openapi/prompt_input_file_attachment.g.dart";
 import "../models/openapi/session_info.g.dart";
+import "../models/openapi/session_message_info.g.dart";
 import "../models/openapi/worktree_remove_input.g.dart";
 import "../models/v2_agent_names.dart";
+import "../models/v2_message_filter.dart";
 import "../models/v2_request_bodies.dart";
 import "v2_message_mapper.dart";
 import "v2_model_mapper.dart";
@@ -112,6 +117,44 @@ class OpenCodeV2Repository({
         ?_messageMapper.mapMessage(sessionId: sessionId, message: message, agentNames: names),
     ];
   }
+
+  /// Control inbox entries need not project a transcript message on delivery.
+  Future<PluginMessageWithParts?> getMessage({
+    required String sessionId,
+    required String messageId,
+    required String directory,
+  }) async {
+    final SessionMessageInfo message;
+    try {
+      message = await _api.getMessage(sessionId: sessionId, messageId: messageId);
+    } on OpenCodeApiException catch (error) {
+      if (error.statusCode == HttpStatus.notFound) return null;
+      rethrow;
+    }
+    return await _mapMessage(sessionId: sessionId, message: message, directory: directory);
+  }
+
+  Future<PluginMessageWithParts?> getLatestMessage({
+    required String sessionId,
+    required V2MessageFilter filter,
+    required String directory,
+  }) async => await _mapMessage(
+    sessionId: sessionId,
+    message: await _api.getLatestMessage(sessionId: sessionId, filter: filter),
+    directory: directory,
+  );
+
+  Future<PluginMessageWithParts?> _mapMessage({
+    required String sessionId,
+    required SessionMessageInfo? message,
+    required String directory,
+  }) async => message == null
+      ? null
+      : _messageMapper.mapMessage(
+          sessionId: sessionId,
+          message: message,
+          agentNames: await getAgentNames(directory: directory),
+        );
 
   Future<List<PluginAgent>> getAgents({required String directory}) async => [
     for (final agent in await _api.listAgents(directory: directory)) _modelMapper.mapAgent(agent: agent),

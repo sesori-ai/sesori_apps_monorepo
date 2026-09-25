@@ -4,14 +4,15 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 5.c (PR 7/12) — repository integration, in review on `sesori/opencode-v2-step-5c-repository`.
+- Current step: 6.a (PR 8/13) — event projection, local on `sesori/opencode-v2-step-6a-event-projection`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
   Step 3 [#1716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1716),
   Step 4 [#1720](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1720),
   Step 5.a [#1733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1733),
-  Step 5.b [#1743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1743).
-- One-step-ahead successor: Step 6 events/activity/service (PR 8/12); do not start before Step 5.c is in PR.
+  Step 5.b [#1743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1743),
+  Step 5.c [#1748](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1748).
+- One-step-ahead successor: Step 6.b activity/service (PR 9/13); do not start before Step 6.a is in PR.
 - Takeover: continue from `aqua-hummingbird`; preserve the existing published Step 2/3 history.
 - Architecture review: first pass rejected 9 layering points; all applied (see PLAN.md Status)
 
@@ -23,14 +24,15 @@
 | 2. Detect v2 and refuse it honestly | 🌿 | 800 (557 authored + 170 generated at review) |
 | 3. Generate v2 models | ⚙️ | 1,500 authored + generated |
 | 4. v2 API and event stream | ⚙️ | 1,200 authored + generated |
-| 5.a. v2 catalog normalization (PR 5/12) | ⚙️ | 1,000 total, including generated output |
-| 5.b. v2 transcript mapping (PR 6/12) | 🚧 | 1,200 total, including generated output |
-| 5.c. v2 repository integration (PR 7/12) | 🚧 | 1,200 |
-| 6. v2 live events, activity and service (PR 8/12) | 🚧 | 1,400 |
-| 7. v2 writes and activation (PR 9/12) | 🚧 | 1,500 |
-| 8. Managed runtime on v2 (PR 10/12) | 🌿 | 500 |
-| 9. Reconcile docs (PR 11/12) | 🌱 | 400 |
-| 10. Run coverage and retire (PR 12/12) | 🌱 | 300 |
+| 5.a. v2 catalog normalization (PR 5/13) | ⚙️ | 1,000 total, including generated output |
+| 5.b. v2 transcript mapping (PR 6/13) | 🚧 | 1,200 total, including generated output |
+| 5.c. v2 repository integration (PR 7/13) | 🚧 | 1,200 |
+| 6.a. v2 live-event projection (PR 8/13) | 🚧 | 1,400 including generated output |
+| 6.b. v2 activity and service integration (PR 9/13) | 🚧 | 1,200 |
+| 7. v2 writes and activation (PR 10/13) | 🚧 | 1,500 |
+| 8. Managed runtime on v2 (PR 11/13) | 🌿 | 500 |
+| 9. Reconcile docs (PR 12/13) | 🌱 | 400 |
+| 10. Run coverage and retire (PR 13/13) | 🌱 | 300 |
 
 ## Step 3 Evidence And Handoff
 
@@ -116,6 +118,27 @@
   No generated source changed, so generation was not rerun. Evidence is fixture/fake/HTTP-boundary only.
 - Step 7 must verify parent-linked creation: plain native creation has no parent field, while fork/import routes
   exist. Inspect their semantics before satisfying `parentSessionId`; never silently create an unrelated root.
+
+## Step 6 Evidence And Handoff
+
+- #1748 merged at accepted head `065171a`, with CI 21/21 and 867 authored changed lines. The request to combine
+  the repository with its later consumer was declined against the explicitly approved inactive, review-sized sequence.
+- Step 6.a starts from `main` at `4008c597dc`. Step 6 is split before implementation to keep stateless event projection
+  and the stateful activity/refresh owner independently reviewable; the series now has 13 PRs.
+- Native durable projections commit before SSE publication. Use single-message reads for tool/assistant snapshots and
+  native newest-first, type-filtered reads for compaction and terminal assistant state. This avoids a transcript cache.
+- Native cursor requests now omit `order` after the first page, retaining directory/parent/project filters.
+  Inbox delivery, not enqueue, projects the user/synthetic transcript row. Native message lookup distinguishes
+  genuinely absent control projections from transport failures; ordinary history failures still propagate.
+- The 2.0.11 source also supports single-message reads, newest-by-type filtering and all four interrupt reasons.
+  Shutdown preserves the native execution claim, so it does not emit a false idle transition.
+- Sixty-one focused API/repository/event-mapper/parser/model tests and owning-package analysis pass.
+  V2 REST/SSE regeneration completed (30 selected operations, 41 event variants); unfiltered build_runner wrote
+  no changed output. Architecture review is pending. Evidence remains source/fixture/fake-HTTP, not native turns.
+- Event projection contains no mutable state. Native readback supplies tool context and compaction identity;
+  targeted tool/assistant updates never replay unrelated snapshot text ahead of queued deltas.
+- The event slice ceiling is revised from 1,200 to 1,400 after measuring approximately 1,100 authored plus 202
+  generated lines. Keep generated output with the six new event definitions; activity/service remains a separate PR.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.
