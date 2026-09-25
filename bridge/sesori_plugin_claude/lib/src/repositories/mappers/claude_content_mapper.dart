@@ -10,6 +10,7 @@ import "package:sesori_shared/sesori_shared.dart"
         maxTranscriptImageCollectionBytes;
 
 import "../../api/models/claude_content_block_dto.dart";
+import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_task_notification.dart";
 import "claude_shell_command_mapper.dart";
 import "claude_tool_kind_mapper.dart";
@@ -126,6 +127,49 @@ final class const ClaudeContentMapper() {
     if (prefix.isEmpty) return trailing.isEmpty ? null : trailing;
     if (!prefix.startsWith("/")) return text;
     return trailing.isEmpty ? prefix : "$prefix $trailing";
+  }
+
+  /// Projects visible user-role content consistently for live and stored rows.
+  /// A correlated stdin replay belongs to the user's queued prompt; otherwise
+  /// only explicit peer provenance identifies automation, never the text itself.
+  PluginMessageWithParts? userMessage({
+    required String sessionId,
+    required String messageId,
+    required PluginMessageTime? time,
+    required Object? content,
+    required ClaudeMessageOriginKind originKind,
+    required String? promptId,
+  }) {
+    final isPeer = originKind == ClaudeMessageOriginKind.peer && promptId == null;
+    final parts = mapParts(
+      content: isPeer ? content : visibleUserContent(content: content),
+      sessionId: sessionId,
+      messageId: messageId,
+    );
+    if (!parts.any((part) => part.type.isVisible && (part is! PluginMessagePartText || part.text.isNotEmpty))) {
+      return null;
+    }
+    return PluginMessageWithParts(
+      info: isPeer
+          ? PluginMessage.assistant(
+              id: messageId,
+              sessionID: sessionId,
+              agent: null,
+              modelID: null,
+              providerID: null,
+              variant: null,
+              sender: PluginMessageSender.system,
+              time: time,
+            )
+          : PluginMessage.user(
+              id: messageId,
+              sessionID: sessionId,
+              agent: null,
+              time: time,
+              promptId: promptId,
+            ),
+      parts: parts,
+    );
   }
 
   /// The compaction row for the continuation summary [content] the CLI

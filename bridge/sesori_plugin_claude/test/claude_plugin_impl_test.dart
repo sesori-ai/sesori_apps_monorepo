@@ -145,6 +145,41 @@ void main() {
       await subscription.cancel();
     });
 
+    test("publishes injected peer messages as automation without changing human echoes", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      await harness.createSession();
+      final process = harness.processes.single;
+      final written = await waitForFrame(process, "user");
+      process.emit(_replayOf(written, uuid: "human-echo"));
+      process.emit({
+        "type": "user",
+        "session_id": testSessionId,
+        "uuid": "peer-report",
+        "origin": {"kind": "peer", "from": "unknown"},
+        "isSynthetic": true,
+        "message": {"role": "user", "content": "Synthetic plugin report"},
+      });
+      await pump();
+
+      final messages = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
+      expect(messages.firstWhere((info) => info.id == "human-echo"), isA<PluginMessageUser>());
+      final peer = messages.firstWhere((info) => info.id == "peer-report") as PluginMessageAssistant;
+      expect(peer.sender, PluginMessageSender.system);
+      expect(peer.agent, isNull);
+      expect(peer.modelID, isNull);
+      expect(peer.providerID, isNull);
+      expect(
+        events
+            .whereType<BridgeSseMessagePartUpdated>()
+            .singleWhere((event) => event.part.messageID == peer.id)
+            .part
+            .text,
+        "Synthetic plugin report",
+      );
+      await subscription.cancel();
+    });
+
     test("fails closed when init violates the pre-bound session identity", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);
@@ -446,6 +481,20 @@ void main() {
       await _waitForUserText(first, "steer it");
       final written = first.written.lastWhere((frame) => frame["type"] == "user");
       expect(written["priority"], "next");
+      first.emit({
+        "type": "user",
+        "session_id": testSessionId,
+        "uuid": "peer-before-echo",
+        "origin": {"kind": "peer"},
+        "isSynthetic": true,
+        "message": {"role": "user", "content": "Synthetic plugin report"},
+      });
+      await pump();
+      final peer = events.whereType<BridgeSseMessageUpdated>().singleWhere(
+        (event) => event.info.id == "peer-before-echo",
+      );
+      expect((peer.info as PluginMessageAssistant).sender, PluginMessageSender.system);
+      expect((await harness.plugin.getQueuedPrompts(sessionId: testSessionId)).single.id, "prm_steer");
       first.emit(_replayOf(written, uuid: "replay-steer"));
       await pump();
       await pump();

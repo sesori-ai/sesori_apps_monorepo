@@ -26,6 +26,7 @@ export "src/claude_plugin_impl.dart";
 export "src/foundation/claude_login_environment.dart";
 export "src/models/claude_agent_selection.dart";
 export "src/models/claude_effort_level.dart";
+export "src/models/claude_message_origin_kind.dart";
 export "src/models/claude_pasted_code.dart";
 export "src/models/claude_permission_mode.dart";
 export "src/models/claude_subagent_session_id.dart";
