@@ -353,9 +353,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The finished sub-agent folds into its group's summary.
-    await tester.tap(find.text("1 sub-agent"));
-    await tester.pumpAndSettle();
+    // A lone finished sub-agent keeps its own row.
     await tester.tap(find.text("Child session"));
     expect(
       openedSession,

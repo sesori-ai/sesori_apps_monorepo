@@ -20,6 +20,9 @@ import "transcript_rolling_line.dart";
 /// Tapping the summary opens the finished steps outside the transcript, so a
 /// long group never pushes the conversation around: an anchored popover under
 /// a pointer, a sheet under touch.
+///
+/// A lone finished step needs no summary: it keeps its own row, in step order,
+/// and folds into the summary once a second step finishes.
 class const TranscriptGroupWidget({
   super.key,
   required final String? projectId,
@@ -32,10 +35,15 @@ class const TranscriptGroupWidget({
 
   @override
   Widget build(BuildContext context) {
+    final finishedSteps = group.finishedSteps;
     return TranscriptPresenceColumn(
       children: [
-        if (group.finishedSteps.isNotEmpty) _summary(context: context),
-        for (final step in group.runningSteps) _step(step: step),
+        if (finishedSteps.length == 1)
+          for (final step in group.steps) _step(step: step)
+        else ...[
+          if (finishedSteps.isNotEmpty) _summary(context: context),
+          for (final step in group.runningSteps) _step(step: step),
+        ],
       ],
     );
   }
