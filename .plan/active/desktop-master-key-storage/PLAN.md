@@ -370,10 +370,9 @@ implementation change; consent restoration must precede existing analytics.
 
 Keep this worktree only, one open PR and at most one local successor. The stable
 slug remains `desktop-master-key-storage`; the approved scope is now all native
-clients. Current total: **10 PRs**. #1717 remains draft with its monitor stopped
-and will be closed as superseded before the replacement foundation PR opens.
+clients. Current total: **10 PRs**. #1717 is closed as superseded, not merged.
 Its published branch/review evidence stays intact; never force-push it to fake a
-smaller history. Carry applicable feedback forward.
+smaller history. Carry applicable feedback forward into shared-backend PR 5.
 
 | Milestone | Exact PR title | Scope / expected result | Estimate |
 |---|---|---|---|
@@ -392,7 +391,7 @@ Dependencies follow row order. Generated schema stays with source. No temporary
 schemas, compatibility adapters or incomplete mobile cutover to manufacture a
 split. Reassess the ~1,500 changed-line soft cap against the merge base before
 each push; report authored/generated churn and explain generated-heavy overages.
-Synchronize series titles/totals after the revised plan review. The final
+Published series titles/totals are synchronized. The final
 consumer switch is intentionally coherent so no released mobile data is read
 from the new empty store before import is available.
 
@@ -453,3 +452,6 @@ or successful build is not native authorization, migration or distribution proof
   deprecated layers, and cutover guidance. Applied those findings directly.
   No repeat approval is requested or claimed; the review otherwise accepted the
   shared ownership, key cache, namespace separation and migration ordering.
+- Shared-foundation implementation review `4d74e149-75fb-486c-919e-e5124b39a3a8`
+  approved exact range `66db48e..f38a2f7` (all 24 paths) without findings. This is
+  approval of the unwired shared foundation, not the future backend or migration.

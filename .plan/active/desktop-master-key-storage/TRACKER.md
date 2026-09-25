@@ -3,19 +3,18 @@
 ## Execution
 
 - Status: shared-client plan findings applied without another approval round.
-  Shared foundations verified; implementation review pending for replacement PR 4.
+  Shared foundations verified and architecture-approved for replacement PR 4.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
   with a retirement condition and deletion checklist.
 - Current branch: `sesori/desktop-master-key-storage-shared-foundation`, based on
   main in the supplied worktree. No additional worktree is allowed.
-- #1717 remains draft, monitor stopped and no readiness label. Its published
-  backend checkpoint is preserved at `4a27888` on
-  `sesori/desktop-master-key-storage-drift`. Close it as superseded before opening
-  the replacement foundation PR; do not rewrite its published history.
+- #1717 is closed as superseded, not merged. Its published backend checkpoint is
+  preserved at `4a27888` on `sesori/desktop-master-key-storage-drift`; carry that
+  implementation into shared-backend PR 5 without rewriting published history.
 - One open PR and at most one local successor. Current total: **10 PRs**;
-  synchronize published series titles before the replacement PR opens.
+  published series titles are synchronized.
 - Source of truth: [PLAN.md](PLAN.md). Original directory slug stays stable.
 
 | Milestone | State | PR / evidence |
@@ -23,8 +22,8 @@
 | 1 — Initial reviewed plan | Merged | #1698; original scope now revised by user direction. |
 | 2 — Typed persistence contracts | Merged | #1708; 10 tests, architecture approval, 27 passing CI checks. |
 | 3.a — Initial cipher foundation | Merged | #1715; 15 tests, architecture approval, 15 passing CI checks. |
-| 3.b — Shared storage foundations | Verified locally | 26 shared tests, one Android options test, four clean package analyses; review pending. |
-| 3.c — Shared encrypted Drift backend | Checkpoint preserved | Replacement PR 5; reuse tested backend, fold primitive delegation and remove obsolete secure interface. |
+| 3.b — Shared storage foundations | Architecture approved | Replacement PR 4; 26 shared tests, one Android options test, four clean package analyses. |
+| 3.c — Shared encrypted Drift backend | Checkpoint preserved | Replacement PR 5; reuse tested backend and fold primitive delegation. Unused secure interface removed in PR 4. |
 | 4.a — Deprecated mobile import | Not started | PR 6; isolated module, explicit deprecation, domain keys and recovery tests. |
 | 4.b — Native capabilities and backup | Not started | PR 7; narrow platform adapters and actual mobile backup boundary. |
 | 4.c — Both-client cutover | Not started | PR 8; lockstep consumers, migration/failure startup gate and runtime adapter removal. |
@@ -100,6 +99,9 @@
   formatting passed; 26 shared tests plus one mobile native-options test passed.
   Analysis is clean in persistence, desktop-core, mobile app and desktop shell.
   Native calls were not exercised; no database or app binding was switched.
-- None of the earlier implementation evidence approves the new shared/mobile code or
-  establishes released-mobile migration, mobile backup/restore, real credential
-  behavior, packaged replacement or actual prompt counts. Those gates remain.
+- Shared-foundation review `4d74e149-75fb-486c-919e-e5124b39a3a8` approved exact
+  range `66db48e..f38a2f7`, all 24 changed paths, without findings. No future
+  migration/cutover implementation or unrelated architecture was reviewed.
+- None of this evidence establishes released-mobile migration, mobile
+  backup/restore, real credential behavior, packaged replacement or actual
+  prompt counts. Those gates remain.
