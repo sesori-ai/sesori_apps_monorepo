@@ -34,6 +34,8 @@ client/desktop ───────────→ module_app_ui ───┤
      │                         │
      │                         └→ sesori_shared
      └→ module_prego
+
+module_core ──────────→ module_persistence ←────────── module_auth
 ```
 
 `module_persistence` is lower-level pure-Dart infrastructure for the shared
@@ -43,6 +45,8 @@ auth, core, desktop-core or Flutter. Domain keys/serialization stay in auth/core
 shells supply native master-key access, storage scope and a persistent directory
 with the appropriate backup policy. Temporary public-mobile data migration stays
 isolated and explicitly deprecated in core, never inside normal repositories.
+Auth/core now depend on persistence for domain key contracts and the isolated
+mobile importer. Its registrations are lazy and it is not invoked yet.
 Consumer/bootstrap integration follows the active `desktop-master-key-storage`
 plan; the existing DI sequence below is unchanged until that integration lands.
 

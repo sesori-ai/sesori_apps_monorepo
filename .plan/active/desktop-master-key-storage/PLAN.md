@@ -31,10 +31,10 @@ its password UX, CBC fallback and unrelated application models are not adopted.
 - Auth owns token/user/OAuth serialization and mutation/logout fencing. Core owns
   relay keys, theme/input preferences, bridge/plugin preferences, device identity
   and account-scoped analytics preferences.
-- Shared contracts/cipher/SQL foundations merged in #1708/#1715/#1726/#1729 and
-  live in `module_persistence`, still unwired in apps. The old desktop checkpoint
-  `4a27888` remains in closed/superseded #1717. PR 6 reconciles the cached-secret
-  port from `de38951` with merged SQL, with 46 shared tests passing.
+- Shared contracts/cipher/SQL/secrets merged in #1708/#1715/#1726/#1729/#1734
+  and live in `module_persistence`, still unwired in apps. The old desktop
+  checkpoint `4a27888` remains in closed/superseded #1717. The shared backend
+  passes 46 tests; the isolated deprecated importer now passes 11 recovery tests.
   No app database/native credential cutover has occurred.
 - Public mobile production releases create a real migration obligation: preserve
   credentials, room keys, preferences and pending analytics opt-out, not merely
@@ -378,8 +378,8 @@ smaller history. Carry applicable feedback into shared-backend PRs 5/6.
 The combined shared port measured 1,611 changed lines before final tracking.
 Split at the existing ownership boundary: schema/direct primitives first,
 cached secret repository second. Both compile independently without a temporary
-adapter, schema, migration or app backend. SQL #1729 merged; the cached-secret
-branch now reconciles the full checkpoint with it in the same worktree.
+adapter, schema, migration or app backend. SQL #1729 and cached secrets #1734
+merged. The next isolated importer is based on fixed main `f1f00ee`.
 
 | Milestone | Exact PR title | Scope / expected result | Estimate |
 |---|---|---|---|
@@ -388,7 +388,7 @@ branch now reconciles the full checkpoint with it in the same worktree.
 | 3.a | ⚙️ [desktop-master-key-storage] Add scoped desktop secret encryption [step 3/11] | #1715 merged; unwired cipher foundation. | Completed |
 | 3.b | ⚙️ [desktop-master-key-storage] Share client storage foundations [step 4/11] | #1726 merged; shared cipher/capabilities and Android reset safety; no database cutover. | Completed: 1,260 lines including 13 generated |
 | 3.c | ⚙️ [desktop-master-key-storage] Add shared Drift persistence [step 5/11] | #1729 merged; schema/direct primitives, lazy lifecycle and tests; no shell cutover. | Completed: 1,194 lines (517 authored, 621 generated, 56 lockfile) |
-| 3.d | 🚧 [desktop-master-key-storage] Add cached shared secret storage [step 6/11] | Raw ciphertext/native API, concrete cached-key repository, encryption/recovery/concurrency tests and docs; no shell cutover. | About 500–700 authored plus small generated DI |
+| 3.d | 🚧 [desktop-master-key-storage] Add cached shared secret storage [step 6/11] | #1734 merged; cached-key repository, encryption/recovery/concurrency tests and docs; no shell cutover. | Completed: 672 lines (655 authored, 17 generated) |
 | 4.a | 🚧 [desktop-master-key-storage] Prepare deprecated mobile storage migration [step 7/11] | Domain keys and isolated/deprecated importer, completion semantics and failure tests; not invoked yet. | 600–1,000 authored plus generated models/DI |
 | 4.b | 🚧 [desktop-master-key-storage] Provide native client persistence capabilities [step 8/11] | Master-item/directory adapters, unused DB-directory backup exclusion, isolated legacy-source adapter and native capability tests. Existing native-value backup eligibility remains until cutover. | 450–900 authored plus generated DI |
 | 4.c | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 9/11] | All consumers/exports/bootstrap and guidance in lockstep, mobile import/failure gate, old native-preference backup exclusions, runtime adapter removal and native fixtures. Both apps use the same store. | 1,000–1,450 authored plus DI; split further if a clean boundary appears |
@@ -469,3 +469,6 @@ or successful build is not native authorization, migration or distribution proof
 - Cached-secret implementation review `51bf34aa-9408-4082-ae7e-7ba5a3a55c39`
   approved exact range `0818f4b..bae788a` (all 13 paths) without findings. This
   does not approve native shell adapters, migration or future app cutover.
+- Deprecated-importer implementation review `d885b123-0d8a-49db-982e-be35c37e0413`
+  approved exact range `f1f00ee..3b8ac72` (all 25 paths) without findings. Native
+  adapters and future consumer/bootstrap cutover remain outside that approval.

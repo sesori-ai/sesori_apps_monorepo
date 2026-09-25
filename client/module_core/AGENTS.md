@@ -19,6 +19,7 @@ lib/src/
 ├── di/               @InjectableInit for core DI registration
 ├── foundation/       Platform interfaces and shared models (analytics, composer)
 ├── logging/          logd/logw/loge with configurable LogLevel
+├── migrations/       Isolated deprecated upgrade compatibility; never a runtime storage backend
 ├── platform/         Abstract interfaces (UrlLauncher, DeepLinkSource, LifecycleSource,
 │                  RouteSource, NotificationCanceller, …); Flutter adapters live in
 │                  the product shell, mostly under app/lib/core/platform/
@@ -57,6 +58,16 @@ configureCoreDependencies(getIt);  // from sesori_dart_core
 ```
 
 Platform must register implementations of `SecureStorage`, `UrlLauncher`, `DeepLinkSource`, and `LifecycleSource` before calling auth/core init. Auth DI must run before core DI (core depends on auth interfaces).
+
+## Temporary Mobile Storage Import
+
+`migrations/deprecated_native_storage_v1/` contains the explicitly deprecated,
+layered importer and its removal checklist. Core DI registers it lazily; it is
+not invoked by either app yet. The future production-mobile startup gate must
+run it before consumers, while development and desktop never resolve it.
+Shared storage remains below core in `module_persistence`; permanent domain
+keys live in `foundation/persistence/`. Existing runtime adapters/DI phases
+above remain until the coherent both-client cutover.
 
 ## Logging
 

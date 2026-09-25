@@ -2,17 +2,16 @@
 
 ## Execution
 
-- Status: #1729 merged with 25 passing checks. Cached shared secrets (PR 6)
-  are reconciled with that SQL layer and pass focused verification and
+- Status: #1734 merged with 24 passing checks. The isolated deprecated importer
+  (PR 7) passes 11 real-SQL recovery tests, core/auth/mobile analysis and
   architecture review.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
   with a retirement condition and deletion checklist.
-- Current branch: `sesori/desktop-master-key-storage-shared-secrets`. The saved
-  `de38951` checkpoint is reconciled with fixed main `0818f4b` in the supplied
-  worktree, preserving the SQL slice's tests/docs and regenerating DI.
-  No additional worktree is allowed; no subsequent migration branch has started.
+- Current branch: `sesori/desktop-master-key-storage-legacy-import`, from fixed
+  main `f1f00ee` in the supplied worktree. No additional worktree is allowed;
+  no native-capability successor has started.
 - #1717 is closed as superseded, not merged. Its published desktop checkpoint
   `4a27888` and the full shared checkpoint `de38951` remain in history.
 - One open PR and at most one local successor. Current total: **11 PRs** after
@@ -27,8 +26,8 @@
 | 3.a — Initial cipher foundation | Merged | #1715; 15 tests, architecture approval, 15 passing CI checks. |
 | 3.b — Shared storage foundations | Merged | #1726; 26 shared tests, one Android options test, architecture approval, four clean analyses; 23 checks passed at readiness. |
 | 3.c — Shared Drift/primitive persistence | Merged | #1729; 29 tests, architecture approval, clean analysis/generation and 25 passing CI checks. |
-| 3.d — Cached shared secrets | Architecture approved | PR 6; 46 shared tests, clean owning analysis/generation; no app cutover. |
-| 4.a — Deprecated mobile import | Not started | PR 7; isolated module, explicit deprecation, domain keys and recovery tests. |
+| 3.d — Cached shared secrets | Merged | #1734; 46 shared tests, architecture approval, clean analysis/generation and 24 passing CI checks. |
+| 4.a — Deprecated mobile import | Architecture approved | PR 7; deprecated layered importer, domain keys and 11 recovery tests; three clean analyses; unwired. |
 | 4.b — Native capabilities and backup | Not started | PR 8; narrow platform adapters and actual mobile backup boundary. |
 | 4.c — Both-client cutover | Not started | PR 9; lockstep consumers, migration/failure startup gate and runtime adapter removal. |
 | 5 — Regression reconciliation | Not started | PR 10; behavior docs also accompany their implementation. |
@@ -130,6 +129,18 @@
 - Cached-secret review `51bf34aa-9408-4082-ae7e-7ba5a3a55c39` approved exact
   range `0818f4b..bae788a`, all 13 paths, without findings. Native shell adapters,
   migration and consumer cutover were excluded.
+- #1734 merged with current-head Codex complete and no findings; its terminal
+  monitor report recorded 24 passing checks.
+- Deprecated importer: 11 tests pass through real shared DI/SQLite/crypto and
+  fake native source/master stores. They cover the full known inventory,
+  unknown retention, absent/empty/false values, scoped identities and opaque
+  pending-disable JSON, completion skip, read/parse/key-save/copy/cleanup/marker
+  failures, and cold-reopen recovery without replacing committed rows.
+  Core/auth/mobile analysis, resolution, generation and formatting passed.
+  No native source adapter or startup invocation is present yet.
+- Importer review `d885b123-0d8a-49db-982e-be35c37e0413` approved exact range
+  `f1f00ee..3b8ac72`, all 25 paths, without findings. Native adapters and the
+  future consumer/bootstrap cutover were explicitly outside that scope.
 - None of this evidence establishes released-mobile migration, mobile
   backup/restore, real credential behavior, packaged replacement or actual
   prompt counts. Those gates remain.
