@@ -26,7 +26,7 @@ _ClaudeTranscriptRecordDto _$ClaudeTranscriptRecordDtoFromJson(Map json) =>
       effort: _stringOrNull(json['effort']),
       message: _messageOrNull(json['message']),
       toolUseResult: ClaudeToolUseResult.parse(json['toolUseResult']),
-      originKind: _originKindOrNull(json['origin']),
+      originKind: _originKind(json['origin']),
     );
 
 _ClaudeTranscriptMessageDto _$ClaudeTranscriptMessageDtoFromJson(Map json) =>

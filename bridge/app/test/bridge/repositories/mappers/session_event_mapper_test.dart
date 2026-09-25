@@ -329,6 +329,7 @@ PluginMessagePart _subtaskPart({required String? childSessionID}) {
 
 Map<String, dynamic> _sessionInfo({required String sessionId, required String? parentId}) {
   return Session(
+    approvalOverride: null,
     autoContinuation: null,
     id: sessionId,
     pluginId: "plugin",

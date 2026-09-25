@@ -501,6 +501,7 @@ void main() {
       final event = SseEvent(
         data: const SesoriSessionCreated(
           info: Session(
+            approvalOverride: null,
             autoContinuation: null,
             branchName: null,
             id: "s1",

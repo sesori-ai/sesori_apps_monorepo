@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_tool_use_result.dart";
 
 part "claude_transcript_record_dto.freezed.dart";
@@ -42,9 +43,9 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
     /// The typed result persisted beside a `user` record's tool result.
     @JsonKey(fromJson: ClaudeToolUseResult.parse) required ClaudeToolUseResult toolUseResult,
 
-    /// `origin.kind`: how the CLI injected a `user` record that the user did
-    /// not author, e.g. `task-notification`.
-    @JsonKey(name: "origin", fromJson: _originKindOrNull) required String? originKind,
+    /// Host-stamped provenance, independent of the record's `user` role.
+    /// Unknown provenance never promotes ordinary user input to automation.
+    @JsonKey(name: "origin", fromJson: _originKind) required ClaudeMessageOriginKind originKind,
   }) = _ClaudeTranscriptRecordDto;
 
   factory fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptRecordDtoFromJson(json);
@@ -68,7 +69,8 @@ bool? _boolOrNull(Object? value) => value is bool ? value : null;
 
 int? _intOrNull(Object? value) => value is num ? value.toInt() : null;
 
-String? _originKindOrNull(Object? value) => value is Map ? _stringOrNull(value["kind"]) : null;
+ClaudeMessageOriginKind _originKind(Object? value) =>
+    ClaudeMessageOriginKind.parse(kind: value is Map ? value["kind"] : null);
 
 ClaudeTranscriptMessageDto? _messageOrNull(Object? value) =>
     value is Map ? ClaudeTranscriptMessageDto.fromJson(value.cast<String, dynamic>()) : null;

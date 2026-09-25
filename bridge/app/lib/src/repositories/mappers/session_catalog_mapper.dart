@@ -28,6 +28,7 @@ class const SessionCatalogMapper() {
       unseen: unseen,
       lastUserActivityAt: row.lastUserMessageAt,
       autoContinuation: null,
+      approvalOverride: row.approvalOverride,
     );
   }
 

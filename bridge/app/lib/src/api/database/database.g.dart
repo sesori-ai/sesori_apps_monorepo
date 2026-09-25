@@ -479,6 +479,10 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   /// catalog title for every plugin. Null means the catalog title is rendered.
   String? get title;
   String? get catalogTitle;
+
+  /// How this session answers permission requests when it differs from the
+  /// bridge-wide YOLO setting. Null follows that setting.
+  SessionApprovalMode? get approvalOverride;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -540,6 +544,11 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
     }
     if (!nullToAbsent || catalogTitle != null) {
       map['catalog_title'] = Variable<String>(catalogTitle);
+    }
+    if (!nullToAbsent || approvalOverride != null) {
+      map['approval_override'] = Variable<String>(
+        $SessionTableTable.$converterapprovalOverriden.toSql(approvalOverride),
+      );
     }
     return map;
   }
@@ -836,6 +845,18 @@ class $SessionTableTable extends SessionTable
     requiredDuringInsert: false,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<SessionApprovalMode?, String>
+  approvalOverride =
+      GeneratedColumn<String>(
+        'approval_override',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<SessionApprovalMode?>(
+        $SessionTableTable.$converterapprovalOverriden,
+      );
+  @override
   List<GeneratedColumn> get $columns => [
     sessionId,
     backendSessionId,
@@ -862,6 +883,7 @@ class $SessionTableTable extends SessionTable
     pluginId,
     title,
     catalogTitle,
+    approvalOverride,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1181,6 +1203,12 @@ class $SessionTableTable extends SessionTable
         DriftSqlType.string,
         data['${effectivePrefix}catalog_title'],
       ),
+      approvalOverride: $SessionTableTable.$converterapprovalOverriden.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}approval_override'],
+        ),
+      ),
     );
   }
 
@@ -1193,6 +1221,14 @@ class $SessionTableTable extends SessionTable
       const AgentModelConverter();
   static TypeConverter<AgentModel?, String?> $converterlastAgentModeln =
       NullAwareTypeConverter.wrap($converterlastAgentModel);
+  static JsonTypeConverter2<SessionApprovalMode, String, String>
+  $converterapprovalOverride = const EnumNameConverter<SessionApprovalMode>(
+    SessionApprovalMode.values,
+  );
+  static JsonTypeConverter2<SessionApprovalMode?, String?, String?>
+  $converterapprovalOverriden = JsonTypeConverter2.asNullable(
+    $converterapprovalOverride,
+  );
   @override
   bool get withoutRowId => true;
 }
@@ -1223,6 +1259,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String> pluginId;
   final Value<String?> title;
   final Value<String?> catalogTitle;
+  final Value<SessionApprovalMode?> approvalOverride;
   const SessionTableCompanion({
     this.sessionId = const Value.absent(),
     this.backendSessionId = const Value.absent(),
@@ -1249,6 +1286,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.pluginId = const Value.absent(),
     this.title = const Value.absent(),
     this.catalogTitle = const Value.absent(),
+    this.approvalOverride = const Value.absent(),
   });
   SessionTableCompanion.insert({
     required String sessionId,
@@ -1276,6 +1314,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     required String pluginId,
     this.title = const Value.absent(),
     this.catalogTitle = const Value.absent(),
+    this.approvalOverride = const Value.absent(),
   }) : sessionId = Value(sessionId),
        backendSessionId = Value(backendSessionId),
        projectId = Value(projectId),
@@ -1311,6 +1350,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<String>? pluginId,
     Expression<String>? title,
     Expression<String>? catalogTitle,
+    Expression<String>? approvalOverride,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -1340,6 +1380,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (pluginId != null) 'plugin_id': pluginId,
       if (title != null) 'title': title,
       if (catalogTitle != null) 'catalog_title': catalogTitle,
+      if (approvalOverride != null) 'approval_override': approvalOverride,
     });
   }
 
@@ -1369,6 +1410,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<String>? pluginId,
     Value<String?>? title,
     Value<String?>? catalogTitle,
+    Value<SessionApprovalMode?>? approvalOverride,
   }) {
     return SessionTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -1398,6 +1440,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       pluginId: pluginId ?? this.pluginId,
       title: title ?? this.title,
       catalogTitle: catalogTitle ?? this.catalogTitle,
+      approvalOverride: approvalOverride ?? this.approvalOverride,
     );
   }
 
@@ -1485,6 +1528,13 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     if (catalogTitle.present) {
       map['catalog_title'] = Variable<String>(catalogTitle.value);
     }
+    if (approvalOverride.present) {
+      map['approval_override'] = Variable<String>(
+        $SessionTableTable.$converterapprovalOverriden.toSql(
+          approvalOverride.value,
+        ),
+      );
+    }
     return map;
   }
 
@@ -1517,7 +1567,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('lastUserMessageAt: $lastUserMessageAt, ')
           ..write('pluginId: $pluginId, ')
           ..write('title: $title, ')
-          ..write('catalogTitle: $catalogTitle')
+          ..write('catalogTitle: $catalogTitle, ')
+          ..write('approvalOverride: $approvalOverride')
           ..write(')'))
         .toString();
   }
@@ -4791,6 +4842,7 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       required String pluginId,
       Value<String?> title,
       Value<String?> catalogTitle,
+      Value<SessionApprovalMode?> approvalOverride,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
     SessionTableCompanion Function({
@@ -4819,6 +4871,7 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<String> pluginId,
       Value<String?> title,
       Value<String?> catalogTitle,
+      Value<SessionApprovalMode?> approvalOverride,
     });
 
 final class $$SessionTableTableReferences
@@ -5020,6 +5073,16 @@ class $$SessionTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnWithTypeConverterFilters<
+    SessionApprovalMode?,
+    SessionApprovalMode,
+    String
+  >
+  get approvalOverride => $composableBuilder(
+    column: $table.approvalOverride,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
   $$ProjectsTableTableFilterComposer get projectId {
     final $$ProjectsTableTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -5219,6 +5282,11 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get approvalOverride => $composableBuilder(
+    column: $table.approvalOverride,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ProjectsTableTableOrderingComposer get projectId {
     final $$ProjectsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -5376,6 +5444,12 @@ class $$SessionTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<SessionApprovalMode?, String>
+  get approvalOverride => $composableBuilder(
+    column: $table.approvalOverride,
+    builder: (column) => column,
+  );
+
   $$ProjectsTableTableAnnotationComposer get projectId {
     final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -5508,6 +5582,8 @@ class $$SessionTableTableTableManager
                 Value<String> pluginId = const Value.absent(),
                 Value<String?> title = const Value.absent(),
                 Value<String?> catalogTitle = const Value.absent(),
+                Value<SessionApprovalMode?> approvalOverride =
+                    const Value.absent(),
               }) => SessionTableCompanion(
                 sessionId: sessionId,
                 backendSessionId: backendSessionId,
@@ -5535,6 +5611,7 @@ class $$SessionTableTableTableManager
                 pluginId: pluginId,
                 title: title,
                 catalogTitle: catalogTitle,
+                approvalOverride: approvalOverride,
               ),
           createCompanionCallback:
               ({
@@ -5564,6 +5641,8 @@ class $$SessionTableTableTableManager
                 required String pluginId,
                 Value<String?> title = const Value.absent(),
                 Value<String?> catalogTitle = const Value.absent(),
+                Value<SessionApprovalMode?> approvalOverride =
+                    const Value.absent(),
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
                 backendSessionId: backendSessionId,
@@ -5591,6 +5670,7 @@ class $$SessionTableTableTableManager
                 pluginId: pluginId,
                 title: title,
                 catalogTitle: catalogTitle,
+                approvalOverride: approvalOverride,
               ),
           withReferenceMapper: (p0) => p0
               .map(

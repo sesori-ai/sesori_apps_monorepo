@@ -181,6 +181,7 @@ class FakeSessionDao() {
       pluginId: pluginId,
       title: null,
       catalogTitle: null,
+      approvalOverride: null,
     );
   }
 
@@ -312,6 +313,7 @@ DeletedSessionSubtree _deletedSession(String sessionId) =>
     (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId]);
 
 Session _deletedSessionInfo(String sessionId) => Session(
+  approvalOverride: null,
   autoContinuation: null,
   branchName: null,
   id: sessionId,
@@ -406,6 +408,18 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
 
   @override
+  Future<Session?> setApprovalOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) async => null;
+
+  @override
+  Future<SessionApprovalMode?> resolveApprovalOverride({required String sessionId}) async => null;
+
+  @override
+  Future<bool> hasYoloApprovalOverride() async => false;
+
+  @override
   Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async => null;
 
   @override
@@ -462,6 +476,7 @@ class _NoopSessionRepository() implements SessionRepository {
     required String? lastAgent,
     required AgentModel? lastAgentModel,
   }) async => const Session(
+    approvalOverride: null,
     autoContinuation: null,
     branchName: null,
     id: "",
@@ -653,6 +668,7 @@ class _NoopSessionRepository() implements SessionRepository {
 
 Session _sharedSessionFromPlugin(PluginSession session, String pluginId) {
   return Session(
+    approvalOverride: null,
     autoContinuation: null,
     branchName: null,
     id: session.id,
@@ -746,10 +762,23 @@ class FakeSessionRepository({
   }
 
   @override
+  Future<Session?> setApprovalOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) async => null;
+
+  @override
+  Future<SessionApprovalMode?> resolveApprovalOverride({required String sessionId}) async => null;
+
+  @override
+  Future<bool> hasYoloApprovalOverride() async => false;
+
+  @override
   Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async {
     final stored = await _sessionDao.getSession(sessionId: sessionId);
     if (stored == null || stored.title != null) return null;
     return Session(
+      approvalOverride: null,
       autoContinuation: null,
       branchName: stored.branchName,
       id: stored.sessionId,
@@ -827,6 +856,7 @@ class FakeSessionRepository({
     required String? lastAgent,
     required AgentModel? lastAgentModel,
   }) async => const Session(
+    approvalOverride: null,
     autoContinuation: null,
     branchName: null,
     id: "",

@@ -4,6 +4,7 @@ import "agent_info.dart";
 import "message_part.dart";
 import "plugin_identity.dart";
 import "pull_request_info.dart";
+import "session_approval_override.dart";
 import "session_auto_continuation.dart";
 
 part "session.freezed.dart";
@@ -62,6 +63,11 @@ sealed class Session with _$Session {
     required int? lastUserActivityAt,
     // COMPATIBILITY 2026-09-24 (v1.9.0): Older bridges omit the continuation view. Retire null when the minimum supported bridge reports feature availability.
     required SessionAutoContinuationView? autoContinuation,
+    // How this session answers permission requests when it differs from the
+    // bridge-wide YOLO setting. Null follows that setting. An unknown mode
+    // from a newer bridge also reads as null.
+    // COMPATIBILITY 2026-09-25 (v1.9.1): Bridges before per-session approval omit approvalOverride, which reads as null because their sessions always follow the bridge setting. Remove this comment once the minimum supported bridge always reports YoloSettingsResponse.supportsSessionOverride.
+    @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) required SessionApprovalMode? approvalOverride,
   }) = _Session;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);

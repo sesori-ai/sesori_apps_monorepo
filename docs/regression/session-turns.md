@@ -333,6 +333,20 @@ defaults and queued client sends coherent.
   window instead of being discarded or reaped mid-turn. An older bridge's
   omitted sender decodes as agent, while an older client ignores the additive
   sender field and retains its prior assistant styling.
+- Claude user-role messages with native `origin.kind: peer` render as system
+  automation live and after transcript replay, including peer records marked
+  `isMeta`. Attribution is independent of plugin name, message text and sender
+  PID. UUIDs, part IDs and content remain intact; automation carries no
+  agent/model/provider defaults. Missing or unmodelled origins remain user
+  input, including human-forwarding channels. Ordinary internal metadata,
+  transcript-only/sidechain records, task outcomes and tool results retain their
+  existing handling. A synthetic peer message cannot consume a pending
+  compaction summary. Peer provenance also prevents replay metadata and matching
+  content from acknowledging a queued human prompt; the later human echo retains
+  its user prompt ID and consumes the queue entry.
+  Native Claude Code 2.1.281 was verified with an isolated socket sender and
+  loopback model fixture: idle wake-up, peer-origin stdout and persisted history.
+  This is not authenticated-provider or full app-to-relay verification.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. The bridge-synthesized
@@ -705,9 +719,12 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   command, or bare `/compact` leaves both its local bubble and backend echo in
   the transcript.
 - Internal backend command records or synthetic model attribution appear in
-  the conversation or replayed history. A visible Pi custom message renders as
-  agent output, loses its automation attribution between live and replay,
-  changes agent/model defaults, or becomes completion-notification text.
+  the conversation or replayed history. A visible Pi custom message or Claude
+  peer-origin message renders as user/agent output, loses its automation
+  attribution between live and replay, changes agent/model defaults, or becomes
+  completion-notification text. A Claude peer report disappears on history load
+  solely because it carries `isMeta`, or ordinary user text is reclassified by
+  matching an automation-looking prefix.
 - Prompt defaults regress, an approved plan exit does not restore Agent
   across clients and restart, or a defaults-write failure fails the send.
 - Reopening or importing a session silently switches its latest transcript

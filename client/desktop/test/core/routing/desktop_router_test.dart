@@ -388,6 +388,7 @@ AppRoute _detail({required bool readOnly}) => AppRoute.sessionDetail(
   readOnly: readOnly,
 );
 const _session = Session(
+  approvalOverride: null,
   autoContinuation: null,
   id: "s",
   title: "A session",

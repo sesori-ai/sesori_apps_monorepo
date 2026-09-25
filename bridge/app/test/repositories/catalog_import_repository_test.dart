@@ -1450,6 +1450,7 @@ SessionDto _sessionRow({
     pluginId: pluginId,
     title: title,
     catalogTitle: catalogTitle,
+    approvalOverride: null,
   );
 }
 

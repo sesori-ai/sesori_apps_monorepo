@@ -16,7 +16,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$YoloSettingsResponse {
 
- bool get enabled;
+/// The bridge-wide default. A session's `approvalOverride` wins over it.
+ bool get enabled;/// Whether the bridge stores a per-session approval override and accepts
+/// `PATCH /session/approval-override`.
+ bool get supportsSessionOverride;
 /// Create a copy of YoloSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +33,20 @@ $YoloSettingsResponseCopyWith<YoloSettingsResponse> get copyWith => _$YoloSettin
 @override
 bool operator ==(Object other) {
   final _this = this as YoloSettingsResponse;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is YoloSettingsResponse&&(identical(other.enabled, _this.enabled) || other.enabled == _this.enabled));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is YoloSettingsResponse&&(identical(other.enabled, _this.enabled) || other.enabled == _this.enabled)&&(identical(other.supportsSessionOverride, _this.supportsSessionOverride) || other.supportsSessionOverride == _this.supportsSessionOverride));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as YoloSettingsResponse;
-  return Object.hash(runtimeType,_this.enabled);
+  return Object.hash(runtimeType,_this.enabled,_this.supportsSessionOverride);
 }
 
 @override
 String toString() {
   final _this = this as YoloSettingsResponse;
-  return 'YoloSettingsResponse(enabled: ${_this.enabled})';
+  return 'YoloSettingsResponse(enabled: ${_this.enabled}, supportsSessionOverride: ${_this.supportsSessionOverride})';
 }
 
 
@@ -54,7 +57,7 @@ abstract mixin class $YoloSettingsResponseCopyWith<$Res>  {
   factory $YoloSettingsResponseCopyWith(YoloSettingsResponse value, $Res Function(YoloSettingsResponse) _then) = _$YoloSettingsResponseCopyWithImpl;
 @useResult
 $Res call({
- bool enabled
+ bool enabled, bool supportsSessionOverride
 });
 
 
@@ -71,9 +74,10 @@ class _$YoloSettingsResponseCopyWithImpl<$Res>
 
 /// Create a copy of YoloSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? enabled = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? enabled = null,Object? supportsSessionOverride = null,}) {
   return _then(YoloSettingsResponse(
 enabled: null == enabled ? _self.enabled : enabled // ignore: cast_nullable_to_non_nullable
+as bool,supportsSessionOverride: null == supportsSessionOverride ? _self.supportsSessionOverride : supportsSessionOverride // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -86,10 +90,14 @@ as bool,
 @JsonSerializable()
 
 class _YoloSettingsResponse implements YoloSettingsResponse {
-  const _YoloSettingsResponse({required this.enabled});
+  const _YoloSettingsResponse({required this.enabled, this.supportsSessionOverride = false});
   factory _YoloSettingsResponse.fromJson(Map<String, dynamic> json) => _$YoloSettingsResponseFromJson(json);
 
+/// The bridge-wide default. A session's `approvalOverride` wins over it.
 @override final  bool enabled;
+/// Whether the bridge stores a per-session approval override and accepts
+/// `PATCH /session/approval-override`.
+@override@JsonKey() final  bool supportsSessionOverride;
 
 /// Create a copy of YoloSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -104,18 +112,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _YoloSettingsResponse&&(identical(other.enabled, enabled) || other.enabled == enabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _YoloSettingsResponse&&(identical(other.enabled, enabled) || other.enabled == enabled)&&(identical(other.supportsSessionOverride, supportsSessionOverride) || other.supportsSessionOverride == supportsSessionOverride));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,enabled);
+    return Object.hash(runtimeType,enabled,supportsSessionOverride);
 }
 
 @override
 String toString() {
-    return 'YoloSettingsResponse(enabled: $enabled)';
+    return 'YoloSettingsResponse(enabled: $enabled, supportsSessionOverride: $supportsSessionOverride)';
 }
 
 
@@ -126,7 +134,7 @@ abstract mixin class _$YoloSettingsResponseCopyWith<$Res> implements $YoloSettin
   factory _$YoloSettingsResponseCopyWith(_YoloSettingsResponse value, $Res Function(_YoloSettingsResponse) _then) = __$YoloSettingsResponseCopyWithImpl;
 @override @useResult
 $Res call({
- bool enabled
+ bool enabled, bool supportsSessionOverride
 });
 
 
@@ -143,9 +151,10 @@ class __$YoloSettingsResponseCopyWithImpl<$Res>
 
 /// Create a copy of YoloSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? enabled = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? enabled = null,Object? supportsSessionOverride = null,}) {
   return _then(_YoloSettingsResponse(
 enabled: null == enabled ? _self.enabled : enabled // ignore: cast_nullable_to_non_nullable
+as bool,supportsSessionOverride: null == supportsSessionOverride ? _self.supportsSessionOverride : supportsSessionOverride // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

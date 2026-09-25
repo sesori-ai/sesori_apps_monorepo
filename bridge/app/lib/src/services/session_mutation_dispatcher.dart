@@ -25,6 +25,8 @@ final class const SessionDeleted({required super.session}) extends LocalSessionM
 
 final class const SessionContinuationUpdated({required super.session}) extends LocalSessionMutation;
 
+final class const SessionApprovalOverrideUpdated({required super.session}) extends LocalSessionMutation;
+
 /// Owns bridge-persisted session mutations and their backend propagation.
 class SessionMutationDispatcher({
   required final SessionRepository _sessionRepository,
@@ -53,6 +55,33 @@ class SessionMutationDispatcher({
       sessionId: sessionId,
       operation: SessionOperation.renameSession,
       body: () => _renameSessionAlreadyReserved(sessionId: sessionId, title: title),
+    );
+  }
+
+  /// Stores the session's approval override (null follows the bridge YOLO
+  /// setting) and announces the updated session to every client.
+  Future<Session> setApprovalOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) {
+    if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
+    return _sessionOperationDispatcher.dispatch(
+      sessionId: sessionId,
+      operation: SessionOperation.setApprovalOverride,
+      body: () async {
+        final updated = await _sessionRepository.setApprovalOverride(
+          sessionId: sessionId,
+          approvalOverride: approvalOverride,
+        );
+        if (updated == null) {
+          throw PluginOperationException.notFound(
+            SessionOperation.setApprovalOverride.name,
+            message: "session $sessionId was not found",
+          );
+        }
+        _mutationsController.add(SessionApprovalOverrideUpdated(session: updated));
+        return updated;
+      },
     );
   }
 

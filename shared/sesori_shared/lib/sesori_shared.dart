@@ -77,6 +77,7 @@ export "src/models/sesori/send_prompt_error_response.dart";
 export "src/models/sesori/send_prompt_request.dart";
 export "src/models/sesori/sesori_sse_event.dart";
 export "src/models/sesori/session.dart";
+export "src/models/sesori/session_approval_override.dart";
 export "src/models/sesori/session_archived_rejection.dart";
 export "src/models/sesori/session_attachment.dart";
 export "src/models/sesori/session_auto_continuation.dart";

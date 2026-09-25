@@ -70,6 +70,11 @@ _Session _$SessionFromJson(Map json) => _Session(
       : SessionAutoContinuationView.fromJson(
           Map<String, dynamic>.from(json['autoContinuation'] as Map),
         ),
+  approvalOverride: $enumDecodeNullable(
+    _$SessionApprovalModeEnumMap,
+    json['approvalOverride'],
+    unknownValue: JsonKey.nullForUndefinedEnumValue,
+  ),
 );
 
 Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
@@ -90,6 +95,12 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'unseen': instance.unseen,
   'lastUserActivityAt': ?instance.lastUserActivityAt,
   'autoContinuation': ?instance.autoContinuation?.toJson(),
+  'approvalOverride': ?_$SessionApprovalModeEnumMap[instance.approvalOverride],
+};
+
+const _$SessionApprovalModeEnumMap = {
+  SessionApprovalMode.ask: 'ask',
+  SessionApprovalMode.yolo: 'yolo',
 };
 
 _SessionPromptDefaults _$SessionPromptDefaultsFromJson(Map json) =>

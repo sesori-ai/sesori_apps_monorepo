@@ -144,6 +144,7 @@ import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
+import "routing/set_session_approval_override_handler.dart";
 import "routing/set_session_auto_continuation_handler.dart";
 import "routing/start_catalog_import_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
@@ -626,6 +627,7 @@ class Orchestrator({
     final yoloSettingsService = YoloSettingsService(
       bridgeSettingsRepository: _bridgeSettingsRepository,
       permissionAutoApprovalService: permissionAutoApprovalService,
+      sessionMutationDispatcher: sessionMutationDispatcher,
     );
     final pluginEventListener = PluginEventListener(
       source: _pluginRuntime.backendEvents,
@@ -697,6 +699,7 @@ class Orchestrator({
         CreateSessionHandler(sessionCreationService: sessionCreationService, sessionViews: sessionViews),
         RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
         SetSessionAutoContinuationHandler(service: sessionContinuationService),
+        SetSessionApprovalOverrideHandler(yoloSettingsService: yoloSettingsService, sessionViews: sessionViews),
         MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
         UpdateSessionArchiveStatusHandler(
           sessionViews: sessionViews,
@@ -789,7 +792,6 @@ class Orchestrator({
       projectViewTracker: projectViewTracker,
       projectActivityService: projectActivityService,
       permissionAutoApprovalService: permissionAutoApprovalService,
-      yoloSettingsService: yoloSettingsService,
       pendingInteractionService: pendingInteractionService,
       sessionAbortService: sessionAbortService,
       sessionOperationDispatcher: sessionOperationDispatcher,
@@ -837,7 +839,8 @@ class Orchestrator({
       event: switch (mutation) {
         SessionTitleUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true),
         SessionBranchUpdated() ||
-        SessionContinuationUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
+        SessionContinuationUpdated() ||
+        SessionApprovalOverrideUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
         SessionDeleted() => BridgeSseSessionDeleted(info: session.toJson()),
       },
     );
@@ -908,7 +911,6 @@ class OrchestratorSession._({
   required final ProjectViewTracker _projectViewTracker,
   required final ProjectActivityService _projectActivityService,
   required final PermissionAutoApprovalService _permissionAutoApprovalService,
-  required final YoloSettingsService _yoloSettingsService,
   required final PendingInteractionService _pendingInteractionService,
   required final SessionAbortService _sessionAbortService,
   required final SessionOperationDispatcher _sessionOperationDispatcher,
@@ -1166,7 +1168,7 @@ class OrchestratorSession._({
         })
         .addTo(_subscriptions);
 
-    if (_yoloSettingsService.currentSettings.enabled) await _permissionAutoApprovalService.approvePending();
+    await _permissionAutoApprovalService.approvePending();
     final startupSummary = await _buildProjectsSummary();
     if (startupSummary != null) {
       _completionListener.handleSseEvent(startupSummary);
@@ -1646,7 +1648,8 @@ class OrchestratorSession._({
         if (wasAutoApproved) return;
       }
 
-      if (_yoloSettingsService.currentSettings.enabled && event is BridgeSsePermissionAsked) {
+      if (event is BridgeSsePermissionAsked &&
+          await _permissionAutoApprovalService.isYolo(sessionId: event.sessionID)) {
         if (_cancelled) return;
         await _permissionAutoApprovalService.approve(
           requestId: event.requestID,
@@ -1659,10 +1662,10 @@ class OrchestratorSession._({
         await _projectActivityService.reconcile(pluginId: pluginId).catchError((Object e, StackTrace st) {
           Log.w("ProjectActivityService: server-connected reconciliation failed", e, st);
         });
-        if (_yoloSettingsService.currentSettings.enabled) await _permissionAutoApprovalService.approvePending();
+        await _permissionAutoApprovalService.approvePending();
       }
 
-      if (_yoloSettingsService.currentSettings.enabled && event is BridgeSseProjectUpdated && !terminalHandoff) {
+      if (event is BridgeSseProjectUpdated && !terminalHandoff) {
         await _permissionAutoApprovalService.approvePending();
       }
 

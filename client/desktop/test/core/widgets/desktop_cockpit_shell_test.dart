@@ -1960,6 +1960,7 @@ BridgeControlState _state({
 );
 
 Session _session({required String id}) => Session(
+  approvalOverride: null,
   autoContinuation: null,
   id: id,
   title: id,

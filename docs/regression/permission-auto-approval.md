@@ -24,6 +24,18 @@ user present. It is a bridge policy, not a client feature.
 - Questions are never auto-answered.
 - Disabling restores user-answered behavior for later requests without changing
   already-approved ones.
+- A session can override the bridge setting with its own choice, "ask" or
+  "YOLO"; clearing the override makes it follow the bridge setting again. The
+  bridge persists the override with the session and reports it on the session.
+  A child session follows its nearest ancestor's override. Only sessions whose
+  effective mode is YOLO are auto-approved: an asking session keeps its
+  requests answerable while the bridge setting is on, and a YOLO session is
+  auto-approved while the bridge setting is off.
+- Switching a session to YOLO resolves its already-pending permissions at once.
+  Other surfaces learn about the change through the normal session update.
+- Setting an override on a session the bridge does not know fails with a
+  structured "session not found" error. A bridge that predates overrides
+  reports that it does not support them, so clients never offer the choice.
 - A current client paired with a bridge that predates the setting still works and
   shows the capability as unsupported rather than pretending to control it.
 - The client settings surface describes the setting in one plain sentence
@@ -39,8 +51,8 @@ user present. It is a bridge policy, not a client feature.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Headless bridge, no plugin: the setting round-trips through bridge configuration and is reported from the committed value. |
-| L2 Routine | Live plugin, one representative plugin: with the setting enabled, a real permission-raising turn completes with no user answer and nothing answerable delivered. |
+| L1 Smoke | Headless bridge, no plugin: the setting round-trips through bridge configuration and is reported from the committed value; a session override can be set, read back on the session, and cleared, and survives a bridge restart. |
+| L2 Routine | Live plugin, one representative plugin: with the setting enabled, a real permission-raising turn completes with no user answer and nothing answerable delivered; a session overridden to "ask" still asks, and a session overridden to YOLO with the setting off does not. |
 | L3 Release | Live plugin, headless with no simulator or device, every permission-capable production plugin: live approval, the enable-time sweep of already-pending requests, child-session requests, and confirmation that questions still require an answer. |
 | L4 Extended | Relay integration, every permission-capable production plugin: enabling with several requests outstanding across plugins, event-stream reconnect and plugin-restart sweeps, toggling during an active turn, approval failure and retry, and a second logical client seeing nothing answerable. |
 | L5 Full | Client end to end on the release-target client platform, representative plugin: the client settings surface including in-progress, failed, and uncertain outcomes; an older bridge reported unsupported; persistence across a bridge restart; the session-page YOLO chip appearing and disappearing with the setting, and its explanation opening Settings on phone and desktop. |
@@ -63,6 +75,11 @@ in the same run.
 - The reported setting differs from the persisted value, or a failed write is
   reported as success.
 - Turning the setting off does not restore user answering.
+- A session overridden to "ask" is auto-approved, a session overridden to YOLO
+  is not, or a child session ignores its parent's override.
+- Switching a session to YOLO leaves its pending requests waiting.
+- A session override is lost on bridge restart or catalog import, or another
+  surface keeps showing the old value.
 - The session page shows no YOLO chip after a connect while the setting is on,
   or keeps showing it after this client turned the setting off.
 
@@ -82,6 +99,7 @@ in the same run.
 ## Sources
 
 - Bridge permission auto-approval and settings services, settings repository and
-  route, orchestrator permission handling, bridge config command.
-- Shared settings model; client bridge-settings surface, bridge-settings
+  route, orchestrator permission handling, bridge config command, session
+  approval-override route, session table and mutation dispatcher.
+- Shared settings and session approval-override models; client bridge-settings surface, bridge-settings
   service, session-page YOLO chip, and their owning tests.

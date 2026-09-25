@@ -332,6 +332,7 @@ void main() {
           lastUserMessageAt: null,
           title: null,
           catalogTitle: null,
+          approvalOverride: null,
         ),
       );
 
@@ -408,6 +409,7 @@ void main() {
           lastUserMessageAt: null,
           title: null,
           catalogTitle: null,
+          approvalOverride: null,
         ),
       );
 
@@ -477,6 +479,7 @@ void main() {
           lastUserMessageAt: null,
           title: null,
           catalogTitle: null,
+          approvalOverride: null,
         ),
       );
       sessionDao.setSession(
@@ -506,6 +509,7 @@ void main() {
           lastUserMessageAt: null,
           title: null,
           catalogTitle: null,
+          approvalOverride: null,
         ),
       );
 
@@ -559,6 +563,7 @@ void main() {
           lastUserMessageAt: null,
           title: null,
           catalogTitle: null,
+          approvalOverride: null,
         ),
       );
 
@@ -609,6 +614,7 @@ void main() {
           lastUserMessageAt: null,
           title: null,
           catalogTitle: null,
+          approvalOverride: null,
         ),
       );
 
@@ -1416,6 +1422,7 @@ SessionDto _storedSession({required String currentBranchName}) {
     lastUserMessageAt: null,
     title: null,
     catalogTitle: null,
+    approvalOverride: null,
   );
 }
 

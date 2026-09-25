@@ -289,6 +289,7 @@ Session _session({
   String? title,
 }) {
   return Session(
+    approvalOverride: null,
     autoContinuation: null,
     branchName: null,
     id: id,

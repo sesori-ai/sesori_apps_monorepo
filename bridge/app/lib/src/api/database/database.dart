@@ -46,7 +46,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -308,6 +308,11 @@ class AppDatabase(super.e) extends _$AppDatabase {
       },
       from17To18: (m, schema) async {
         await m.createTable(schema.sessionContinuations);
+      },
+      from18To19: (m, schema) async {
+        // No session had an override before v19; null follows the bridge
+        // YOLO setting, which is what every session did.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.approvalOverride);
       },
     ),
     beforeOpen: (details) async {

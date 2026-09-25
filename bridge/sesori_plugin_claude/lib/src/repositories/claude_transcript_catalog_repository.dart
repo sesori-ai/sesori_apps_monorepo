@@ -321,7 +321,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
         isVisibleInTranscriptOnly: dto.isVisibleInTranscriptOnly ?? false,
         isCompactSummary: dto.isCompactSummary ?? false,
         toolUseResult: dto.toolUseResult,
-        isTaskNotification: dto.originKind == "task-notification",
+        originKind: dto.originKind,
         cwd: dto.cwd,
         timestamp: dto.timestamp,
         isSidechain: dto.isSidechain,

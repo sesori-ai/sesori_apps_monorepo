@@ -372,6 +372,7 @@ SessionActivityInfo _activity({required bool awaitingInput}) => SessionActivityI
 );
 
 Session _session({required String id, required String projectId, required int updated}) => Session(
+  approvalOverride: null,
   autoContinuation: null,
   id: id,
   title: id,
