@@ -453,6 +453,12 @@ envelopes preserve frame identity/location; unknown or malformed events are logg
 and dropped without terminating later decoding. These tests do not claim an active
 v2 adapter or authenticated native-session parity.
 
+Inactive v2 mapper coverage adds sanitized native 2.0.16 catalog/session responses,
+backend IDs distinct from labels, plugin-neutral session JSON, deterministic transcript
+part IDs, tool/compaction/shell outcomes, form field ordering and image byte/count
+budgets. Local file URLs and credentialed URLs remain metadata-only. Transcript and
+form examples are source-derived; they do not prove native turn or form execution.
+
 ## Exploration Guidance
 
 Vary which harness runs first and which stays disabled, and the configuration: default

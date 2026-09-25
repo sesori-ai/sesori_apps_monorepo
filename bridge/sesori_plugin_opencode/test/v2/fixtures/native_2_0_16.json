@@ -1,0 +1,166 @@
+{
+  "version": "2.0.16",
+  "location": {
+    "directory": "/fixture/project",
+    "project": {
+      "id": "project-fixture",
+      "directory": "/fixture/project",
+      "canonical": "/fixture/project"
+    }
+  },
+  "project": {
+    "id": "project-fixture",
+    "canonical": "/fixture/project",
+    "time": {
+      "created": 1790347115488,
+      "updated": 1790347115488,
+      "active": 1790347115489
+    },
+    "sandboxes": []
+  },
+  "session": {
+    "id": "session-fixture",
+    "projectID": "project-fixture",
+    "model": {
+      "id": "model",
+      "providerID": "fixture",
+      "variant": "default"
+    },
+    "cost": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "reasoning": 0,
+      "cache": {
+        "read": 0,
+        "write": 0
+      }
+    },
+    "time": {
+      "created": 1790347115618,
+      "updated": 1790347115618
+    },
+    "title": "Fixture session",
+    "location": {
+      "directory": "/fixture/project"
+    }
+  },
+  "agent": {
+    "id": "build",
+    "name": "Build",
+    "request": {
+      "settings": {},
+      "headers": {},
+      "body": {}
+    },
+    "description": "The default agent. Executes tools based on configured permissions.",
+    "mode": "primary",
+    "hidden": false,
+    "permissions": [
+      {
+        "action": "*",
+        "resource": "*",
+        "effect": "allow"
+      },
+      {
+        "action": "external_directory",
+        "resource": "*",
+        "effect": "ask"
+      },
+      {
+        "action": "read",
+        "resource": "*.env",
+        "effect": "ask"
+      },
+      {
+        "action": "read",
+        "resource": "*.env.*",
+        "effect": "ask"
+      },
+      {
+        "action": "read",
+        "resource": "*.env.example",
+        "effect": "allow"
+      },
+      {
+        "action": "external_directory",
+        "resource": "/fixture/home/data/opencode/shell/*/*",
+        "effect": "allow"
+      },
+      {
+        "action": "external_directory",
+        "resource": "/fixture/home/data/opencode/tool-output/*",
+        "effect": "allow"
+      },
+      {
+        "action": "external_directory",
+        "resource": "/fixture/tmp/opencode/*",
+        "effect": "allow"
+      },
+      {
+        "action": "external_directory",
+        "resource": "/fixture/home/config/opencode/*",
+        "effect": "allow"
+      },
+      {
+        "action": "question",
+        "resource": "*",
+        "effect": "allow"
+      }
+    ]
+  },
+  "provider": {
+    "id": "opencode",
+    "integrationID": "opencode",
+    "name": "OpenCode Zen",
+    "activation": "enabled",
+    "package": "@opencode/ai/providers/openai-compatible",
+    "settings": {
+      "apiKey": "public",
+      "baseURL": "https://opencode.ai/zen/v1"
+    }
+  },
+  "model": {
+    "id": "mimo-v2.6-flash-free",
+    "modelID": "mimo-v2.6-flash-free",
+    "providerID": "opencode",
+    "family": "mimo",
+    "name": "MiMo-V2.6-Flash Free",
+    "compatibility": {
+      "reasoningField": "reasoning_content"
+    },
+    "package": "@opencode/ai/providers/openai-compatible",
+    "capabilities": {
+      "tools": true,
+      "input": [
+        "text",
+        "image",
+        "audio",
+        "video"
+      ],
+      "output": [
+        "text"
+      ]
+    },
+    "variants": [],
+    "time": {
+      "released": 1790035200000
+    },
+    "cost": [
+      {
+        "input": 0,
+        "output": 0,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      }
+    ],
+    "status": "active",
+    "enabled": true,
+    "limit": {
+      "context": 200000,
+      "output": 32000
+    }
+  }
+}

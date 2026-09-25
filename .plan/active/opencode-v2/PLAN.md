@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-v2`
-- **Status:** Active; Steps 1–3 merged, Step 4 API and event transport implemented for review.
+- **Status:** Active; Steps 1–4 merged, Step 5.a model mapping in progress (PR 5/11).
 - **Plan date:** 2026-09-25
 - **Implementation base:** `main` at `fed841c2f9`
 - **Trigger:** issue #1677 — OpenCode 2.0.11 on PATH fails cold start with `FormatException ... <!doctype html>`.
@@ -122,6 +122,7 @@ All v2 code lives under `bridge/sesori_plugin_opencode/lib/src/v2/`, one directo
 | `repositories/opencode_v2_repository.dart` | `OpenCodeV2Repository` | 2 |
 | `repositories/opencode_v2_activity_tracker.dart` | `OpenCodeV2ActivityTracker` | 2 (standalone state) |
 | `repositories/v2_model_mapper.dart` | `V2ModelMapper` | 2 (pure) |
+| `repositories/v2_message_mapper.dart` | `V2MessageMapper` | 2 (pure transcript projection, reused for event parity) |
 | `sse/v2_event_mapper.dart` | `V2EventMapper` | pure, stateless |
 | `mappers/v2_form_answer_mapper.dart` | `V2FormAnswerMapper` | pure |
 | `mappers/v2_form_answer_validator.dart` | `V2FormAnswerValidator` | pure |
@@ -130,7 +131,13 @@ All v2 code lives under `bridge/sesori_plugin_opencode/lib/src/v2/`, one directo
 
 ## Steps
 
-Series titles: `<emoji> [opencode-v2] <description> [step x/10]`.
+Series titles: `<emoji> [opencode-v2] <description> [step x/11]`.
+
+Step 5 is split into 5.a model mapping (PR 5) and 5.b repository integration (PR 6).
+Durable Steps 6–10 then correspond to PRs 7–11. Earlier PRs retain ordinals 1–4.
+The split keeps transcript/form/catalog transformations separate from API-backed repository flows;
+no compatibility shim or additional mutable state is needed. Both slices target around 1,500 total changed lines,
+including generated output; report authored and generated churn separately.
 
 1. **🌱 Raise plan.** Adds `PLAN.md` and `TRACKER.md` only.
 2. **🌿 Detect v2 and refuse it honestly.**
@@ -160,13 +167,16 @@ Series titles: `<emoji> [opencode-v2] <description> [step x/10]`.
    - `SseConnection` takes its event path as a parameter.
    - `V2EventParser` decodes the envelope; unknown types are logged and dropped.
    - Tests: `MockClient` HTTP tests and parser tests.
-5. **🚧 v2 read mapping and repository.**
+5.a. **🚧 v2 model mapping (PR 5/11).**
    - `V2ModelMapper`: project and session (`location.directory`, `time`, `parentID`) → plugin models and
-     `shared.Session`.
-   - Messages: flat v2 messages → existing plugin message/part models. Text/reasoning parts get the deterministic id
+     `shared.Session`; agents, providers/models/variants, commands and form/permission presentation.
+   - `V2MessageMapper`: flat v2 messages → existing plugin message/part models. Text/reasoning parts get the deterministic id
      `<messageID>:<ordinal>`; tool parts use the tool `id`.
    - Tool state: `streaming` → pending, `running`, `completed`, `error`. User/synthetic/compaction/shell messages map to
      their closest v1 equivalents.
+   - Tests: native 2.0.16 catalog/session fixtures plus source-derived transcript/form edge fixtures.
+     Two immutable mappers; no caches, timers, persistence or lifecycle owners.
+5.b. **🚧 v2 repository integration (PR 6/11).**
    - `OpenCodeV2Repository` (Api → mapped plugin models) reads projects, sessions, children, messages, agents, models
      with variants and commands. It also exposes, per directory, active sessions, pending permission requests and
      pending forms, and every write Step 7 needs:
@@ -174,7 +184,7 @@ Series titles: `<emoji> [opencode-v2] <description> [step x/10]`.
      - rename, delete, worktree delete;
      - compact, synthetic message;
      - permission reply, form reply/cancel.
-   - Tests: mapper fixtures captured from a live 2.0.16 server, and repository tests over a fake `OpenCodeV2Api`.
+   - Tests: repository tests over a fake `OpenCodeV2Api`, using the preceding mapper fixtures.
 6. **🚧 v2 live events, activity and service.**
    - `V2EventMapper` is stateless:
      - session created/renamed/deleted → `BridgeSseSession*`;
@@ -256,8 +266,9 @@ requires the user's explicit acceptance recorded here.
 - **Flat-content → part mapping fidelity** for tool metadata and diffs. Accepted: tool output and state are mapped;
   rare metadata-only fields may not render.
 - **Managed users migrate one-way** to a v2 database (D9, user-accepted).
-- **Evidence level:** the protocol facts come from source plus a live sandbox probe. Streaming event order is from
-  source only and is confirmed in Step 5/6 fixture capture.
+- **Evidence level:** protocol facts include a live sandbox probe and Step 5 native catalog/session REST fixtures.
+  Transcript/form examples and streaming event order remain source-derived; native turn/event parity still requires
+  the later native-fixture and L3 gates.
 
 ## Cleanup Assessment
 
