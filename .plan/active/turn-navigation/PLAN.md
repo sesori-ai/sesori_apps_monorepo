@@ -325,10 +325,16 @@ helper stay private to the list state.
 
   The two segment variants carry no duration.
 - The rule is D11.
-  - The "ends in" test uses the last content part of the latest agent message:
-    non-empty text or reasoning, a tool, a sub-agent or a file.
+  - The "ends in" test uses the last content part of the latest agent message
+    that has one: non-empty text or reasoning, a tool, a sub-agent or a file.
+  - A file, or a step whose status the client does not know, ends in an
+    answer. A sub-agent without its own status counts as a step in progress.
   - It reads `ToolStatus` directly, because `TranscriptStepStatus` folds
     cancelled into finished.
+  - "No agent output yet" keeps a follow-up only in a turn that has an opener.
+    Before the first opener, a user message opens a turn unless the leading
+    segment's agent output ends mid-step, so automation first never absorbs
+    the first prompt.
 - `TranscriptTurnSummary`, shared by every variant, holds:
   - `steps`: every step in the turn's step groups, running steps included.
   - `failedSteps`: the sum of the groups' `failedCount`.
