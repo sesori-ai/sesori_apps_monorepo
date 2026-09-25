@@ -64,7 +64,7 @@ class const TranscriptGroupWidget({
         contentScrolls: false,
         onClosed: null,
         triggerBuilder: (_, open) => button(onPressed: open),
-        contentBuilder: (_, _) => _panel(from: context, padding: EdgeInsets.all(prego.spacing.lg)),
+        contentBuilder: (_, close) => _panel(from: context, close: close, padding: EdgeInsets.all(prego.spacing.lg)),
       ),
       PregoInteractionMode.touch => KeyedSubtree(
         key: key,
@@ -72,7 +72,12 @@ class const TranscriptGroupWidget({
           onPressed: () => showPregoModal<void>(
             context: context,
             title: _SummaryRow.label(loc: context.loc, summary: group.summary),
-            builder: (_) => _panel(from: context, padding: EdgeInsets.zero),
+            builder: (sheetContext) => _panel(
+              from: context,
+              // ignore: no_slop_linter/avoid_navigator_of, closes the transient sheet route this panel lives in
+              close: () => Navigator.of(sheetContext).pop(),
+              padding: EdgeInsets.zero,
+            ),
           ),
         ),
       ),
@@ -80,17 +85,26 @@ class const TranscriptGroupWidget({
   }
 
   /// The finished steps, as they were when the group opened. The panel is a
-  /// route of its own, so it takes the session page's scope and cubit along.
-  Widget _panel({required BuildContext from, required EdgeInsetsGeometry padding}) {
-    return SessionDetailPresentationScope.read(from).around(
+  /// route of its own, so it takes the session page's scope and cubit along,
+  /// and its own selection area. Opening a sub-agent leaves the session, so
+  /// the panel [close]s first rather than waiting under the next page.
+  Widget _panel({required BuildContext from, required VoidCallback close, required EdgeInsetsGeometry padding}) {
+    final scope = SessionDetailPresentationScope.read(from);
+    return scope.around(
+      openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {
+        close();
+        scope.openSession(projectId: projectId, sessionId: sessionId, sessionTitle: sessionTitle, readOnly: readOnly);
+      },
       child: BlocProvider.value(
         value: from.read<SessionDetailCubit>(),
-        child: Padding(
-          padding: padding,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [for (final step in group.finishedSteps) _step(step: step)],
+        child: PregoReadableSelectionArea(
+          child: Padding(
+            padding: padding,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [for (final step in group.finishedSteps) _step(step: step)],
+            ),
           ),
         ),
       ),

@@ -27,13 +27,13 @@ MessagePart _tool({
 MessagePart _thought({required String id, required String text}) =>
     MessagePart.reasoning(id: id, sessionID: "s", messageID: "m", text: text);
 
-MessagePart _subAgent({required String id, required ToolStatus status}) => MessagePart.subtask(
+MessagePart _subAgent({required String id, required ToolStatus status, String? childSessionID}) => MessagePart.subtask(
   id: id,
   sessionID: "s",
   messageID: "m",
   description: "Explore the repo",
   taskState: ToolState(status: status, title: null, shellCommand: null, output: null, error: null),
-  childSessionID: null,
+  childSessionID: childSessionID,
 );
 
 TranscriptGroupBlock _group({required List<MessagePart> parts, Map<String, String> streamingText = const {}}) {
@@ -65,6 +65,8 @@ Widget _app({
   bool disableAnimations = false,
   double width = 400,
   PregoInteractionMode mode = PregoInteractionMode.touch,
+  String? projectId,
+  SessionDetailSessionOpener? openSession,
 }) => PregoInteractionScope(
   mode: mode,
   child: MaterialApp(
@@ -78,7 +80,8 @@ Widget _app({
       imageSharer: () => throw UnimplementedError(),
       canShareImages: false,
       openExternalLink: ({required url, required mode}) async => false,
-      openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+      openSession:
+          openSession ?? ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
       openHarnessSettings: () {},
       openBridgeSettings: () {},
       child: BlocProvider<SessionDetailCubit>.value(
@@ -90,7 +93,7 @@ Widget _app({
               alignment: Alignment.topLeft,
               child: SizedBox(
                 width: width,
-                child: TranscriptGroupWidget(key: ValueKey(group.id), projectId: null, group: group),
+                child: TranscriptGroupWidget(key: ValueKey(group.id), projectId: projectId, group: group),
               ),
             ),
           ),
@@ -169,6 +172,62 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("read"), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  for (final mode in PregoInteractionMode.values) {
+    testWidgets("opening a sub-agent from the ${mode.name} panel closes the panel first", (tester) async {
+      final opened = <String>[];
+      await tester.pumpWidget(
+        _app(
+          group: _group(
+            parts: [_subAgent(id: "k1", status: ToolStatus.completed, childSessionID: "child")],
+          ),
+          mode: mode,
+          projectId: "p",
+          openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
+              opened.add(sessionId),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.k1")));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text("Explore the repo"));
+      await tester.pumpAndSettle();
+      expect(opened, ["child"]);
+      expect(find.text("Explore the repo"), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets("the panel's steps are selectable", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        group: _group(parts: _finishedParts),
+        mode: PregoInteractionMode.pointer,
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.r1")));
+    await tester.pumpAndSettle();
+    expect(find.ancestor(of: find.text("read"), matching: find.byType(PregoReadableSelectionArea)), findsOneWidget);
+  });
+
+  testWidgets("reduced motion opens a group's popover at once", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        group: _group(parts: _finishedParts),
+        mode: PregoInteractionMode.pointer,
+        disableAnimations: true,
+      ),
+    );
+    final collapsed = _height(tester);
+
+    await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.r1")));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.text("read"), findsOneWidget);
+    final fades = tester.widgetList<Opacity>(find.ancestor(of: find.text("read"), matching: find.byType(Opacity)));
+    expect(fades.every((fade) => fade.opacity == 1), isTrue);
+    expect(_height(tester), collapsed);
   });
 
   testWidgets("a large group's popover scrolls within its cap and never grows the transcript", (tester) async {

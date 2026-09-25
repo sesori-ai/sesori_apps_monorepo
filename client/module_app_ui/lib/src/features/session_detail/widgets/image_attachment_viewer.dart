@@ -91,7 +91,7 @@ Future<void> showImageAttachmentViewer({
         ),
       };
       if (presentation == null) return viewer;
-      return presentation.around(child: viewer);
+      return presentation.around(openSession: presentation.openSession, child: viewer);
     },
     transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
   );
