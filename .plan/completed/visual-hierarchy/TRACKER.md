@@ -1,6 +1,7 @@
 # Visual Hierarchy — Tracker
 
-Status values: `pending` / `in-progress` / `done` / `blocked` / `dropped`.
+Status values: `pending` / `in-progress` / `done` / `blocked` / `dropped` /
+`carried out of the plan`.
 Evidence for a finished step lives in `steps/step-NN.md` (created when the step
 executes); this table records state only and never mirrors PR review status.
 Step 1 is the plan itself, so it has no evidence file.
@@ -63,8 +64,8 @@ plans; they do not block step 49.
 | [x] | 34 | `visual-hierarchy/changes-count` | [34/41](#pr-titles) | ≤ 800 | done |
 | [x] | 35 | `visual-hierarchy/modal-lint` | [35/41](#pr-titles) | ≤ 600 | done |
 | [x] | 36 | `visual-hierarchy/compaction-row` | [36/41](#pr-titles) | ≤ 900 | done |
-| [ ] | 37 | `visual-hierarchy/turn-navigation` | [37/41](#pr-titles) | later | blocked on discussion |
-| [ ] | 38 | `desktop-sign-in/plan` | [38/41](#pr-titles) | ≤ 600 | blocked on scoping |
+| [ ] | 37 | `visual-hierarchy/turn-navigation` | [37/41](#pr-titles) | — | carried out of the plan |
+| [ ] | 38 | `desktop-sign-in/plan` | [38/41](#pr-titles) | — | carried out of the plan |
 | [ ] | 39 | `visual-hierarchy/header-backdrop` | [39/41](#pr-titles) | — | dropped |
 | [x] | 40 | `visual-hierarchy/folder-up-size` | [40/49](#pr-titles) | ≤ 150 | done |
 | [x] | 41 | `visual-hierarchy/recovery-card` | [41/49](#pr-titles) | ≤ 300 | done |
@@ -76,7 +77,12 @@ plans; they do not block step 49.
 | [x] | 47 | `visual-hierarchy/group-popover` | [47/50](#pr-titles) | ≤ 800 | done |
 | [x] | 50 | `visual-hierarchy/auto-resume-indicator` | [50/50](#pr-titles) | ≤ 400 | done |
 | [x] | 48 | `visual-hierarchy/regression-docs` | [48/50](#pr-titles) | ≤ 600 | done |
-| [ ] | 49 | `visual-hierarchy/retire` | [49/50](#pr-titles) | ≤ 300 | pending |
+| [x] | 49 | `visual-hierarchy/retire` | [49/50](#pr-titles) | ≤ 300 | done |
+
+Step 49 is done through the acceptance of its unexecuted matrix cells, not a
+claim that every cell passed. Steps 37 and 38 are not done: they left the
+series undelivered and become their own plans once the user picks a
+direction (see `steps/step-49.md`).
 
 ## Round 2 Answers
 
@@ -167,6 +173,6 @@ Answered 2026-09-23; every answer took the recommended option.
 46. `🚧 [visual-hierarchy] Animate steps folding into their group [step 46/50]`
 47. `⚙️ [visual-hierarchy] Open expanded step groups in an anchored panel [step 47/50]`
 48. `🌱 [visual-hierarchy] Cover the September 25 additions in regression docs [step 48/50]`
-49. `🌱 [visual-hierarchy] Record the final matrix and retire the plan [step 49/50]`
+49. `🌱 [visual-hierarchy] Retire the visual hierarchy plan [step 49/50]`
 50. `⚙️ [visual-hierarchy] Show scheduled auto-resume in session lists [step 50/50]`
    (lands before 48–49)
