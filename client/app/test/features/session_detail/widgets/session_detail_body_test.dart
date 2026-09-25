@@ -800,9 +800,16 @@ void main() {
     when(() => cubit.state).thenReturn(idle);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: idle);
     when(() => cubit.setAutoContinuation(enabled: false)).thenAnswer((_) async {});
+    // The narrowest supported phone row still fits both glyph chips beside the pickers.
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
-    expect(find.text("YOLO"), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    expect(find.text("YOLO"), findsNothing);
+    expect(find.bySemanticsLabel("YOLO"), findsOneWidget);
+    expect(find.bySemanticsLabel("Auto-continue"), findsOneWidget);
     expect(find.text("Auto continuation on"), findsNothing);
 
     await tester.tap(find.byKey(const Key("session-auto-continuation-chip")));
@@ -817,6 +824,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key("session-auto-continuation-chip")), findsNothing);
+    expect(find.text("YOLO"), findsOneWidget);
     expect(find.text("Auto continuation on"), findsOneWidget);
     expect(find.textContaining("Continues at"), findsOneWidget);
   });

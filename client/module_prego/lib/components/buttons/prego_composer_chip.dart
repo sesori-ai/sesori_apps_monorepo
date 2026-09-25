@@ -1,11 +1,13 @@
 import "package:material_ui/material_ui.dart";
-import "package:theme_prego/module_prego.dart";
+
+import "../../theme/prego_theme.dart";
+import "../surfaces/prego_surfaces.dart";
 
 /// Quiet pill in the composer's model row: a glyph and a short label on the
 /// composer surface, for session states the user may want to inspect. Without
 /// [showLabel] it is a square glyph button that keeps [label] as its tooltip
 /// and accessible name, for rows too narrow to spare the text.
-class const ComposerRowChip({
+class const PregoComposerChip({
   super.key,
   required final IconData icon,
   required final String label,

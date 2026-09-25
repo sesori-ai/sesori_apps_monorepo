@@ -151,14 +151,20 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     required PregoComposerSurfaceStyle surfaceStyle,
     required bool pointer,
   }) {
-    final continuation = state.session.autoContinuation;
+    final view = state.session.autoContinuation;
+    // Enabled with nothing due: the chip stands in for the hidden card.
+    final continuation = view != null && view.enabled && !sessionAutoContinuationNoticeVisible(view: view)
+        ? view
+        : null;
     final chips = [
       if (state.yoloEnabled)
         YoloChip(
           surfaceStyle: surfaceStyle,
+          // A touch row cannot fit both labels beside the expanded pickers.
+          showLabel: pointer || continuation == null,
           onOpenSettings: () => SessionDetailPresentationScope.read(context).openBridgeSettings(),
         ),
-      if (continuation != null && continuation.enabled && !sessionAutoContinuationNoticeVisible(view: continuation))
+      if (continuation != null)
         SessionAutoContinuationChip(
           surfaceStyle: surfaceStyle,
           view: continuation,

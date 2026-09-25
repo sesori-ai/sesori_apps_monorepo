@@ -89,9 +89,12 @@ provider and platform verification remains in the
   or schedule), and, while enabled, for paused, unconfirmed, failed and unknown
   statuses. An enabled idle or already-submitted continuation shows no card:
   a quiet "Auto-continue" chip joins the composer's model row beside YOLO, with
-  its label on pointer and only the clock on touch, and its anchored menu
-  offers Disable (with the send time after a submission). Exactly one of the
-  card and the chip is visible for an enabled preference.
+  its label on pointer and only the clock on touch (where YOLO then also shows
+  only its glyph), and its anchored menu offers Disable (with the send time
+  after a submission). In an interactive chat with a composer, exactly one of
+  the card and the chip is visible for an enabled preference. Without a
+  composer (blocked harness), an enabled idle or submitted preference shows
+  neither, and the top-right menu remains the way to disable it.
 - Unknown reset, paused, submitted, unconfirmed and failed attempts have distinct
   explanations. Unavailable harnesses cannot enable, but can disable an existing
   preference. An already-submitted prompt cannot be retracted by disabling.
@@ -172,7 +175,8 @@ reported as a client end-to-end or live-provider pass.
 - A date is displayed in the wrong local day, pending input is shown as a ready
   schedule, or an unconfirmed/failed attempt is presented as a successful send.
 - The card floats while nothing is due, a due/paused/failed state hides it, or
-  an enabled preference shows neither the card nor the chip.
+  an enabled preference in an interactive chat with a composer shows neither
+  the card nor the chip.
 - The checked menu state cannot be disabled after support becomes unavailable,
   or archived/route-read-only chat surfaces expose mutation controls. An
   unavailable-harness chat must still allow disabling an existing preference.

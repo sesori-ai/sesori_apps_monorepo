@@ -3,7 +3,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "composer_row_chip.dart";
 import "session_auto_continuation_notice.dart";
 
 /// Quiet "Auto-continue" chip in the session's model row while
@@ -27,7 +26,7 @@ class const SessionAutoContinuationChip({
       flat: true,
       acquireOpenLease: null,
       menuMaxHeight: null,
-      triggerBuilder: (context, toggle) => ComposerRowChip(
+      triggerBuilder: (context, toggle) => PregoComposerChip(
         key: const Key("session-auto-continuation-chip"),
         icon: TablerRegular.clock,
         label: loc.sessionAutoContinuationChip,

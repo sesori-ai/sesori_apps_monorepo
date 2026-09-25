@@ -6,7 +6,6 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "composer_row_chip.dart";
 
 /// Neutral "⚡ YOLO" chip in the session's model row while the connected
 /// bridge approves every permission request. A tap explains YOLO and offers
@@ -14,13 +13,16 @@ import "composer_row_chip.dart";
 class const YoloChip({
   super.key,
   required final PregoComposerSurfaceStyle surfaceStyle,
+
+  /// A crowded touch row shows only the glyph, keeping the pickers readable.
+  required final bool showLabel,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => ComposerRowChip(
+  Widget build(BuildContext context) => PregoComposerChip(
     icon: TablerRegular.bolt,
     label: context.loc.sessionDetailYoloChip,
-    showLabel: true,
+    showLabel: showLabel,
     surfaceStyle: surfaceStyle,
     onPressed: () => unawaited(_explain(context)),
   );
