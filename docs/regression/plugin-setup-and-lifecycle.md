@@ -461,7 +461,7 @@ source-derived; this coverage does not prove native turn or form execution.
 Inactive v2 transcript coverage retains ordinal text/reasoning IDs, native tool IDs,
 stable retry IDs, agent-switch notices and display-ready attribution. It verifies
 terminal tool/compaction/shell states, shell-only command projection, preserved error
-text, inline-image byte limits and combined inline/remote candidate limits. Local and
+text, inline-image byte limits and combined inline/remote candidate limits. File and
 credentialed URLs remain metadata-only. These cases are source-derived, not native turns.
 
 ## Exploration Guidance
