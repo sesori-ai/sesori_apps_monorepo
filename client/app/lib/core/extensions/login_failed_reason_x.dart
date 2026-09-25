@@ -6,7 +6,7 @@ extension LoginFailedReasonLocalization on LoginFailedReason {
   /// Shared by the login screen's error banner and the email sign-in sheet's
   /// inline alert so the `reason → string` mapping lives in one place.
   String localizedMessage(AppLocalizations loc) => switch (this) {
-    LoginFailedReason.browserOpenFailed => loc.loginBrowserOpenFailed,
+    LoginFailedReason.declined => loc.loginDeclined,
     LoginFailedReason.appleIdTokenMissing => loc.appleIdTokenMissing,
     LoginFailedReason.emailRequired => loc.emailRequired,
     LoginFailedReason.passwordRequired => loc.passwordRequired,

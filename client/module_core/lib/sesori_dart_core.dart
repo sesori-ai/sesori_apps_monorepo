@@ -16,6 +16,7 @@ export "package:sesori_auth/sesori_auth.dart"
         OAuthDeviceDescriptor,
         OAuthDeviceDescriptorProvider,
         OAuthFlowProvider,
+        OAuthHandoff,
         SecureStorage;
 export "package:sesori_auth/sesori_auth.dart"
     show
@@ -72,6 +73,7 @@ export "src/cubits/legal/legal_document_cubit.dart";
 export "src/cubits/legal/legal_document_state.dart";
 export "src/cubits/login/login_cubit.dart";
 export "src/cubits/login/login_failed_reason.dart";
+export "src/cubits/login/login_handoff.dart";
 export "src/cubits/login/login_state.dart";
 export "src/cubits/message_image/message_image_cubit.dart";
 export "src/cubits/message_image/message_image_state.dart";

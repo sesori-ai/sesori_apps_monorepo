@@ -343,23 +343,16 @@ void main() {
   });
 
   group("OAuthStorageService", () {
-    test("saveAuthProviderAndPkceVerifier writes provider and verifier", () async {
+    test("saveAuthProvider writes the provider key", () async {
       // given
-      when(() => mockStorage.write(key: "pkce_verifier", value: "test_pkce_verifier")).thenAnswer((_) async {
-        return;
-      });
       when(() => mockStorage.write(key: "oauth_provider", value: "github")).thenAnswer((_) async {
         return;
       });
 
       // when
-      await oauthStorageService.saveAuthProviderAndPkceVerifier(
-        codeVerifier: "test_pkce_verifier",
-        provider: AuthProvider.github,
-      );
+      await oauthStorageService.saveAuthProvider(provider: AuthProvider.github);
 
       // then
-      verify(() => mockStorage.write(key: "pkce_verifier", value: "test_pkce_verifier")).called(1);
       verify(() => mockStorage.write(key: "oauth_provider", value: "github")).called(1);
     });
 

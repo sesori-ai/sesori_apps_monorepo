@@ -151,7 +151,7 @@ void main() {
   testWidgets("clears a stale provider failure when the sheet opens", (tester) async {
     // A provider sign-in failed and the user opened the email sheet without
     // dismissing the banner, so the shared cubit is still in LoginFailed.
-    _stubState(cubit, const LoginState.failed(reason: LoginFailedReason.browserOpenFailed));
+    _stubState(cubit, const LoginState.failed(reason: LoginFailedReason.declined));
 
     await tester.pumpWidget(_buildPresenter(cubit));
     await tester.tap(find.text("Open"));

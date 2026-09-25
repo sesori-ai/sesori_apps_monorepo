@@ -13,13 +13,12 @@ class OAuthStorageService(final SecureStorage _storage) {
   static const _oauthSessionTokenKey = "oauth_session_token";
   static const _oauthSessionExpiryKey = "oauth_session_expiry";
 
-  Future<void> saveAuthProviderAndPkceVerifier({required String codeVerifier, required AuthProvider provider}) async {
+  Future<void> saveAuthProvider({required AuthProvider provider}) async {
     try {
-      await _storage.write(key: _pkceVerifierKey, value: codeVerifier);
       await _storage.write(key: _oauthProviderKey, value: provider.key);
     } catch (error, stackTrace) {
       developer.log(
-        "Failed to persist OAuth provider or PKCE verifier",
+        "Failed to persist OAuth provider",
         error: error,
         stackTrace: stackTrace,
         name: "sesori_auth",

@@ -3157,6 +3157,18 @@ abstract class AppLocalizations {
   /// **'Could not open browser'**
   String get loginBrowserOpenFailed;
 
+  /// Shown when the user declined a browser sign-in on the confirmation page or at the provider.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in was declined. The browser page did not confirm this sign-in.'**
+  String get loginDeclined;
+
+  /// Link that abandons a browser sign-in that is waiting for the user.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get loginCancel;
+
   /// Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle
   ///
   /// In en, this message translates to:

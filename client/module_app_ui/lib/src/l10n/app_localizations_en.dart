@@ -1760,6 +1760,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginBrowserOpenFailed => 'Could not open browser';
 
   @override
+  String get loginDeclined => 'Sign-in was declined. The browser page did not confirm this sign-in.';
+
+  @override
+  String get loginCancel => 'Cancel';
+
+  @override
   String get sessionListRunning => 'Running';
 
   @override

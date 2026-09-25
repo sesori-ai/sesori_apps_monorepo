@@ -8,6 +8,18 @@ import "package:sesori_desktop/features/login/login_screen.dart";
 
 class _MockLoginCubit() extends MockCubit<LoginState> implements LoginCubit;
 
+LoginState _polling({required LoginBrowserLaunch browser}) => LoginState.polling(
+  handoff: LoginHandoff(
+    provider: AuthProvider.github,
+    oauth: OAuthHandoff(
+      authUrl: Uri.parse("https://auth.example.com/github"),
+      expiresAt: DateTime(2026, 9, 25, 12, 5),
+      deviceName: "Test Mac",
+    ),
+    browser: browser,
+  ),
+);
+
 void main() {
   late _MockLoginCubit cubit;
 
@@ -46,11 +58,20 @@ void main() {
   });
 
   testWidgets("polling disables the buttons and shows the browser hint", (WidgetTester tester) async {
-    await pumpLogin(tester, state: const LoginState.polling());
+    await pumpLogin(tester, state: _polling(browser: LoginBrowserLaunch.opened));
 
     final FilledButton github = tester.widget(find.widgetWithText(FilledButton, "Continue with GitHub"));
     expect(github.onPressed, isNull);
     expect(find.textContaining("browser"), findsOneWidget);
+  });
+
+  testWidgets("Cancel while waiting cancels the browser sign-in", (WidgetTester tester) async {
+    when(() => cubit.cancel()).thenAnswer((_) async {});
+    await pumpLogin(tester, state: _polling(browser: LoginBrowserLaunch.opened));
+
+    await tester.tap(find.text("Cancel"));
+
+    verify(() => cubit.cancel()).called(1);
   });
 
   testWidgets("success keeps the buttons disabled until the gate flips", (WidgetTester tester) async {
@@ -66,9 +87,16 @@ void main() {
     expect(find.textContaining("timed out"), findsOneWidget);
   });
 
-  testWidgets("browser-open failure renders its dedicated message", (WidgetTester tester) async {
-    await pumpLogin(tester, state: const LoginState.failed(reason: LoginFailedReason.browserOpenFailed));
+  testWidgets("browser-open failure keeps waiting with its dedicated message", (WidgetTester tester) async {
+    await pumpLogin(tester, state: _polling(browser: LoginBrowserLaunch.failed));
 
-    expect(find.textContaining("browser"), findsOneWidget);
+    expect(find.text("Couldn't open your browser."), findsOneWidget);
+    expect(find.text("Cancel"), findsOneWidget);
+  });
+
+  testWidgets("a declined sign-in renders its dedicated message", (WidgetTester tester) async {
+    await pumpLogin(tester, state: const LoginState.failed(reason: LoginFailedReason.declined));
+
+    expect(find.textContaining("declined"), findsOneWidget);
   });
 }

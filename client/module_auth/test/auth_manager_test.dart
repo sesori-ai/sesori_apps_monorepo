@@ -7,6 +7,7 @@ import "package:sesori_auth/src/auth_config.dart";
 import "package:sesori_auth/src/auth_manager.dart";
 import "package:sesori_auth/src/models/auth_login_result.dart";
 import "package:sesori_auth/src/models/auth_state.dart";
+import "package:sesori_auth/src/models/oauth_flow_errors.dart";
 import "package:sesori_auth/src/platform/oauth_device_descriptor_provider.dart";
 import "package:sesori_auth/src/platform/secure_storage.dart";
 import "package:sesori_auth/src/storage/oauth_storage_service.dart";
@@ -61,6 +62,7 @@ void main() {
         expiresAt: any(named: "expiresAt"),
       ),
     ).thenAnswer((_) async {});
+    when(() => mockOAuthStorage.saveAuthProvider(provider: any(named: "provider"))).thenAnswer((_) async {});
     when(() => mockOAuthStorage.getOAuthSession()).thenAnswer(
       (_) async => (sessionToken: null, expiresAt: null),
     );
@@ -767,9 +769,12 @@ void main() {
 
       final result = await authManager.startOAuthFlow(provider: AuthProvider.github);
 
-      expect(result.authUrl, authUrl);
-      expect(result.state, "state-1");
-      expect(result.expiresIn, 300);
+      expect(result.authUrl, Uri.parse(authUrl));
+      expect(result.deviceName, "Test iPhone");
+      expect(
+        result.expiresAt.difference(DateTime.now()).inSeconds,
+        inInclusiveRange(298, 300),
+      );
 
       final capturedPostCall = verify(
         () => mockHttpClient.post(
@@ -788,12 +793,7 @@ void main() {
         "device": {"name": "Test iPhone", "osVersion": "iOS 17.5", "appVersion": "1.2.0"},
       });
       expect(body.values, isNot(contains(sessionToken)));
-      verifyNever(
-        () => mockOAuthStorage.saveAuthProviderAndPkceVerifier(
-          codeVerifier: any(named: "codeVerifier"),
-          provider: any(named: "provider"),
-        ),
-      );
+      verify(() => mockOAuthStorage.saveAuthProvider(provider: AuthProvider.github)).called(1);
     });
 
     test("pollForResult retries pending then stores complete tokens and emits authenticated", () async {
@@ -1183,7 +1183,7 @@ void main() {
       ).thenAnswer((_) async => http.Response(jsonEncode({"status": "denied"}), 200));
 
       await authManager.startOAuthFlow(provider: AuthProvider.github);
-      await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
+      await expectLater(authManager.pollForResult(), throwsA(isA<OAuthFlowDenied>()));
 
       final initCall = verify(
         () => mockHttpClient.post(
@@ -1319,6 +1319,7 @@ void main() {
             expiresAt: any(named: "expiresAt"),
           ),
         ).thenAnswer((_) async {});
+        when(() => mockOAuthStorage.saveAuthProvider(provider: any(named: "provider"))).thenAnswer((_) async {});
         when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
         when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
         when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
@@ -1328,10 +1329,10 @@ void main() {
         await authManager.startOAuthFlow(provider: AuthProvider.github);
       }
 
-      for (final statusResponse in [
-        http.Response(jsonEncode({"status": "denied"}), 200),
-        http.Response(jsonEncode({"status": "expired"}), 410),
-        http.Response(jsonEncode({"status": "error", "message": "provider failed"}), 200),
+      for (final (statusResponse, expectedError) in [
+        (http.Response(jsonEncode({"status": "denied"}), 200), isA<OAuthFlowDenied>()),
+        (http.Response(jsonEncode({"status": "expired"}), 410), isA<OAuthFlowExpired>()),
+        (http.Response(jsonEncode({"status": "error", "message": "provider failed"}), 200), isA<StateError>()),
       ]) {
         mockHttpClient = MockHttpClient();
         mockTokenStorage = MockTokenStorageService();
@@ -1344,7 +1345,7 @@ void main() {
         );
         await arrangeStartedFlow(statusResponse: statusResponse);
 
-        await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
+        await expectLater(authManager.pollForResult(), throwsA(expectedError));
         await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
       }
 
@@ -1364,6 +1365,192 @@ void main() {
 
       await expectLater(authManager.pollForResult(), throwsA(isA<TimeoutException>()));
       await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
+    });
+  });
+
+  group("cancelOAuthFlow", () {
+    final completeBody = jsonEncode({
+      "status": "complete",
+      "accessToken": "cancel-access-token",
+      "refreshToken": "cancel-refresh-token",
+      "accountStatus": "existing",
+      "user": {
+        "id": user.id,
+        "provider": user.provider.key,
+        "providerUserId": user.providerUserId,
+        "providerUsername": user.providerUsername,
+      },
+    });
+    late List<Completer<http.Response>> statusResponses;
+    String? storedSessionToken;
+
+    setUp(() {
+      storedSessionToken = null;
+      when(
+        () => mockOAuthStorage.saveOAuthSession(
+          sessionToken: any(named: "sessionToken"),
+          expiresAt: any(named: "expiresAt"),
+        ),
+      ).thenAnswer((invocation) async {
+        storedSessionToken = invocation.namedArguments[#sessionToken] as String;
+      });
+      when(() => mockOAuthStorage.getOAuthSession()).thenAnswer(
+        (_) async => (
+          sessionToken: storedSessionToken,
+          expiresAt: storedSessionToken == null ? null : DateTime.now().add(const Duration(minutes: 5)),
+        ),
+      );
+      when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {
+        storedSessionToken = null;
+      });
+      when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
+      authManager = AuthManager(
+        mockHttpClient,
+        mockTokenStorage,
+        mockOAuthStorage,
+        FakeOAuthDeviceDescriptorProvider(),
+        pollInterval: Duration.zero,
+        delay: (_) async {},
+      );
+      for (final provider in [AuthProvider.github, AuthProvider.google]) {
+        when(
+          () => mockHttpClient.post(
+            Uri.parse("$authBaseUrl/auth/${provider.key}/init"),
+            headers: any(named: "headers"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({"authUrl": "https://auth.example.com/${provider.key}", "state": "s", "expiresIn": 300}),
+            200,
+          ),
+        );
+      }
+      statusResponses = [];
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer((_) {
+        final response = Completer<http.Response>();
+        statusResponses.add(response);
+        return response.future;
+      });
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: any(named: "accessToken"),
+          refreshToken: any(named: "refreshToken"),
+        ),
+      ).thenAnswer((_) async {});
+    });
+
+    test("ends a pending poll and clears the pending session", () async {
+      await authManager.startOAuthFlow(provider: AuthProvider.github);
+      final Future<AuthLoginResult> poll = authManager.pollForResult();
+      await pumpEventQueue();
+
+      await authManager.cancelOAuthFlow();
+      statusResponses.single.complete(http.Response(jsonEncode({"status": "pending"}), 200));
+
+      await expectLater(poll, throwsA(isA<Exception>()));
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
+      verify(mockOAuthStorage.clearAuthProvider).called(1);
+      expect(statusResponses, hasLength(1));
+    });
+
+    test("a complete response arriving after cancel saves nothing", () async {
+      await authManager.startOAuthFlow(provider: AuthProvider.github);
+      final Future<AuthLoginResult> poll = authManager.pollForResult();
+      await pumpEventQueue();
+
+      await authManager.cancelOAuthFlow();
+      statusResponses.single.complete(http.Response(completeBody, 200));
+
+      await expectLater(poll, throwsA(isA<Exception>()));
+      verifyNever(
+        () => mockTokenStorage.saveTokens(
+          accessToken: any(named: "accessToken"),
+          refreshToken: any(named: "refreshToken"),
+        ),
+      );
+      expect(authManager.currentState, const AuthState.initial());
+    });
+
+    test("a flow started right after cancel is kept", () async {
+      await authManager.startOAuthFlow(provider: AuthProvider.github);
+
+      final Future<void> cancel = authManager.cancelOAuthFlow();
+      final Future<void> restart = authManager.startOAuthFlow(provider: AuthProvider.google);
+      await cancel;
+      await restart;
+
+      verifyNever(mockOAuthStorage.clearOAuthSession);
+      final Future<AuthLoginResult> poll = authManager.pollForResult();
+      await pumpEventQueue();
+      statusResponses.single.complete(http.Response(completeBody, 200));
+
+      expect((await poll).user, user);
+      expect(authManager.currentState, const AuthState.authenticated(user: user));
+    });
+
+    test("a completion already persisting when Cancel runs saves nothing", () async {
+      final Completer<void> saveTokens = Completer<void>();
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: any(named: "accessToken"),
+          refreshToken: any(named: "refreshToken"),
+        ),
+      ).thenAnswer((_) => saveTokens.future);
+      await authManager.startOAuthFlow(provider: AuthProvider.github);
+      final Future<AuthLoginResult> poll = authManager.pollForResult();
+      await pumpEventQueue();
+      statusResponses.single.complete(http.Response(completeBody, 200));
+      await pumpEventQueue();
+      verify(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "cancel-access-token",
+          refreshToken: "cancel-refresh-token",
+        ),
+      ).called(1);
+
+      final Future<void> cancel = authManager.cancelOAuthFlow();
+      saveTokens.complete();
+
+      await expectLater(poll, throwsA(isA<Exception>()));
+      await cancel;
+      verify(mockTokenStorage.clearTokens).called(1);
+      verifyNever(() => mockTokenStorage.saveUser(any()));
+      expect(authManager.currentState, const AuthState.initial());
+      expect(storedSessionToken, isNull);
+    });
+
+    test("the recorded provider survives an interrupted-poll resume", () async {
+      await authManager.startOAuthFlow(provider: AuthProvider.github);
+      verifyInOrder([
+        () => mockOAuthStorage.saveOAuthSession(
+          sessionToken: any(named: "sessionToken"),
+          expiresAt: any(named: "expiresAt"),
+        ),
+        () => mockOAuthStorage.saveAuthProvider(provider: AuthProvider.github),
+      ]);
+
+      // The phone's socket is torn down while the browser is in front; the
+      // interrupted poll releases in-memory ownership and the resume reads
+      // the stored session.
+      final Future<AuthLoginResult> interrupted = authManager.pollForResult();
+      await pumpEventQueue();
+      statusResponses.single.completeError(http.ClientException("connection aborted"));
+      await expectLater(interrupted, throwsA(isA<http.ClientException>()));
+
+      final Future<AuthLoginResult> resumed = authManager.resumeOAuthFlow();
+      await pumpEventQueue();
+      statusResponses.last.completeError(http.ClientException("connection aborted"));
+      await expectLater(resumed, throwsA(isA<http.ClientException>()));
+
+      expect(statusResponses, hasLength(2));
+      verifyNever(mockOAuthStorage.clearAuthProvider);
+      verifyNever(() => mockOAuthStorage.saveAuthProvider(provider: any(named: "provider")));
     });
   });
 

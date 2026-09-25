@@ -19,5 +19,7 @@ export "src/interfaces/oauth_flow_provider.dart";
 export "src/models/auth_login_result.dart";
 export "src/models/auth_secret_key.dart";
 export "src/models/auth_state.dart";
+export "src/models/oauth_flow_errors.dart";
+export "src/models/oauth_handoff.dart";
 export "src/platform/oauth_device_descriptor_provider.dart";
 export "src/platform/secure_storage.dart";
