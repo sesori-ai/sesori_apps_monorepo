@@ -5,7 +5,8 @@
 `PregoActivityIndicator` renders the shared busy spinner and `PregoAiLoader`
 the AI-activity sparkle shown on active and unread session and project rows,
 on the transcript's live and "Working…" rows, and before a running session's
-desktop title.
+desktop title; while that session awaits input, the amber waiting glyph takes
+the sparkle's place.
 On iOS and macOS both render through `theme_prego` platform views animated by
 Core Animation outside Flutter's frame pipeline, so an otherwise-static screen
 schedules no Flutter frames. Android is deliberately all-Flutter for both
