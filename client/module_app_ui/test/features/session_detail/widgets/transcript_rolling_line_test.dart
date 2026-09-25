@@ -56,6 +56,18 @@ void main() {
     expect(midway, inExclusiveRange(before, _width(tester)));
   });
 
+  testWidgets("a rolling line reads as the line it is heading to", (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(_line(segments: [(key: TranscriptStepKind.read, text: "read 2 files")]));
+    await tester.pumpWidget(_line(segments: [(key: TranscriptStepKind.read, text: "read 3 files")]));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text("2"), findsOneWidget);
+    expect(find.bySemanticsLabel("read 3 files"), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("2")), findsNothing);
+    semantics.dispose();
+  });
+
   testWidgets("reduced motion changes the line at once", (tester) async {
     await tester.pumpWidget(
       _line(segments: [(key: TranscriptStepKind.read, text: "read 2 files")], disableAnimations: true),

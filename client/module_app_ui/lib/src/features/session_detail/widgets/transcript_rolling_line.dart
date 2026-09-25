@@ -70,32 +70,34 @@ class _TranscriptRollingLineState() extends State<TranscriptRollingLine> with Si
 
   @override
   Widget build(BuildContext context) {
+    final line = widget.segments.map((segment) => segment.text).join();
     final curve = _curve;
     if (curve == null || !curve.parent.isAnimating) {
-      return Text(
-        widget.segments.map((segment) => segment.text).join(),
-        style: widget.style,
-        maxLines: 1,
-        overflow: widget.overflow,
-      );
+      return Text(line, style: widget.style, maxLines: 1, overflow: widget.overflow);
     }
     final t = curve.value;
     final style = DefaultTextStyle.of(context).style.merge(widget.style);
-    return UnconstrainedBox(
-      constrainedAxis: Axis.vertical,
-      alignment: AlignmentDirectional.centerStart,
-      clipBehavior: Clip.hardEdge,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final segment in widget.segments)
-            ..._segment(
-              from: _from.where((candidate) => candidate.key == segment.key).firstOrNull?.text,
-              to: segment.text,
-              style: style,
-              t: t,
-            ),
-        ],
+    // Screen readers hear the line it is heading to, not the rolling pieces.
+    return Semantics(
+      label: line,
+      child: ExcludeSemantics(
+        child: UnconstrainedBox(
+          constrainedAxis: Axis.vertical,
+          alignment: AlignmentDirectional.centerStart,
+          clipBehavior: Clip.hardEdge,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final segment in widget.segments)
+                ..._segment(
+                  from: _from.where((candidate) => candidate.key == segment.key).firstOrNull?.text,
+                  to: segment.text,
+                  style: style,
+                  t: t,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
