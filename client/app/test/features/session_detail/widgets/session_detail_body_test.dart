@@ -769,6 +769,7 @@ void main() {
     var bridgeSettingsOpened = 0;
     await tester.pumpWidget(_buildApp(cubit: cubit, onOpenBridgeSettings: () => bridgeSettingsOpened++));
     await tester.pumpAndSettle();
+    expect(find.byIcon(TablerRegular.shield_x), findsOneWidget);
 
     await tester.tap(find.text("YOLO"));
     await tester.pumpAndSettle();
@@ -809,6 +810,8 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text("YOLO"), findsNothing);
     expect(find.bySemanticsLabel("YOLO"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.shield_x), findsOneWidget);
+    expect(find.byIcon(TablerRegular.bolt), findsNothing);
     expect(find.bySemanticsLabel("Auto-continue"), findsOneWidget);
     expect(find.text("Auto continuation on"), findsNothing);
 
