@@ -29,7 +29,7 @@ step 38 for the plan PR). Evidence for a finished step lives in
 | Step | Branch | Title | Target (changed lines) | Needs |
 |---|---|---|---|---|
 | 1 | `desktop-sign-in/plan` | [1](#fixed-pr-titles) | ≤ 600 | — |
-| 2 | `desktop-sign-in/handoff-state` | [2](#fixed-pr-titles) | ≤ 900 | 1 |
+| 2 | `desktop-sign-in/cancellable-browser-login` | [2](#fixed-pr-titles) | ≤ 900 | 1 |
 | 3 | `desktop-sign-in/email-form` | [3](#fixed-pr-titles) | ≤ 600 | 2 |
 | 4 | `desktop-sign-in/layout` | [4](#fixed-pr-titles) | ≤ 1,000 | 2, 3 |
 | 5 | `desktop-sign-in/handoff-card` | [5](#fixed-pr-titles) | ≤ 800 | 4 |

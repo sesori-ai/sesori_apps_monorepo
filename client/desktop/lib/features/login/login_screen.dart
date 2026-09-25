@@ -87,7 +87,9 @@ class const _LoginStatus({required final LoginState state}) extends StatelessWid
   static const String _authenticating = "Contacting Sesori…";
   static const String _polling = "Finish signing in using your browser…";
   static const String _timeout = "Sign-in timed out. Please try again.";
-  static const String _browserOpenFailed = "Couldn't open your browser. Open it manually and try again.";
+  static const String _browserOpenFailed = "Couldn't open your browser.";
+  static const String _cancel = "Cancel";
+  static const String _declined = "Sign-in was declined. The browser page did not confirm this sign-in.";
   static const String _genericFailure = "Sign-in failed. Please try again.";
 
   @override
@@ -96,7 +98,15 @@ class const _LoginStatus({required final LoginState state}) extends StatelessWid
     return switch (state) {
       LoginIdle() || LoginSuccess() => const SizedBox.shrink(),
       LoginAuthenticating() => const _StatusRow(message: _authenticating),
-      LoginPolling() => const _StatusRow(message: _polling),
+      LoginPolling(:final handoff) => Column(
+        children: [
+          _StatusRow(message: handoff.browser == LoginBrowserLaunch.failed ? _browserOpenFailed : _polling),
+          TextButton(
+            onPressed: () => unawaited(context.read<LoginCubit>().cancel()),
+            child: const Text(_cancel),
+          ),
+        ],
+      ),
       LoginTimeout() => Text(
         _timeout,
         textAlign: TextAlign.center,
@@ -104,7 +114,7 @@ class const _LoginStatus({required final LoginState state}) extends StatelessWid
       ),
       LoginFailed(:final reason) => Text(
         switch (reason) {
-          LoginFailedReason.browserOpenFailed => _browserOpenFailed,
+          LoginFailedReason.declined => _declined,
           LoginFailedReason.emailRequired ||
           LoginFailedReason.passwordRequired ||
           LoginFailedReason.appleIdTokenMissing ||

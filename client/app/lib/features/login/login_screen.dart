@@ -22,6 +22,7 @@ import "../../core/widgets/sesori_background_widget.dart";
 import "../../core/widgets/sesori_logo.dart";
 import "email_login_sheet.dart";
 import "login_provider_buttons.dart";
+import "login_waiting_line.dart";
 
 class const LoginScreen({super.key}) extends StatelessWidget {
   @override
@@ -235,16 +236,7 @@ class _LoginScreenBodyState() extends State<_LoginScreenBody> {
                                       textAlign: TextAlign.center,
                                     ),
                                   ),
-                                  LoginPolling() => Padding(
-                                    padding: const EdgeInsetsDirectional.only(top: 16),
-                                    child: Text(
-                                      loc.loginPolling,
-                                      style: prego.textTheme.textSm.regular.copyWith(
-                                        color: prego.colors.textSecondary,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
+                                  LoginPolling(:final handoff) => LoginWaitingLine(browser: handoff.browser),
                                   LoginTimeout() => Padding(
                                     padding: const EdgeInsetsDirectional.only(top: 16),
                                     child: Text(

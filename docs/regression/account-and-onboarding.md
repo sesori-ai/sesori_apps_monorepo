@@ -11,6 +11,12 @@ participates.
 
 - Every sign-in option the build offers reaches an authenticated session; failure
   gives a typed recoverable reason, and leaving the app mid sign-in is not terminal.
+- A browser sign-in waiting for the user can always be cancelled, on the phone
+  and the desktop. Cancel returns to idle at once, and a later confirmation of
+  that browser page can never save tokens here; a sign-in started right after
+  Cancel is unaffected. A browser that fails to open keeps the attempt waiting
+  and says so instead of failing. A declined page fails as declined and a
+  server-expired session ends as timed out.
 - Startup routing uses local session state only, with no network work at splash.
 - Tokens live in secure storage with one writer, refresh before expiry, and are
   cleared on logout; the connection follows logout. Startup reads stored tokens
@@ -74,6 +80,8 @@ the prompt and a reused one when testing suppression.
 
 - Splash doing network work, or routing a valid session to sign-in.
 - A recoverable interruption surfacing as terminal, or a real failure as silent.
+- A waiting browser sign-in without Cancel, a cancelled attempt later signing in,
+  or Cancel clearing a sign-in started after it.
 - Tokens surviving logout, an in-flight login/refresh/restore re-saving tokens or
   emitting authenticated after logout, a malformed or non-2xx login response
   persisting tokens, a rejected refresh leaving credentials

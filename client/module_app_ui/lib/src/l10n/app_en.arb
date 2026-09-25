@@ -1068,6 +1068,14 @@
   "loginPolling": "Confirm the sign-in in your browser to continue.",
   "loginTimeout": "Authorization timed out. Please try again.",
   "loginBrowserOpenFailed": "Could not open browser",
+  "loginDeclined": "Sign-in was declined. The browser page did not confirm this sign-in.",
+  "@loginDeclined": {
+    "description": "Shown when the user declined a browser sign-in on the confirmation page or at the provider."
+  },
+  "loginCancel": "Cancel",
+  "@loginCancel": {
+    "description": "Link that abandons a browser sign-in that is waiting for the user."
+  },
   "sessionListRunning": "Running",
   "@sessionListRunning": {
     "description": "Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle"

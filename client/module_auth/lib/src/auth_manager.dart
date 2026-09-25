@@ -15,6 +15,8 @@ import "interfaces/auth_token_provider.dart";
 import "interfaces/oauth_flow_provider.dart";
 import "models/auth_login_result.dart";
 import "models/auth_state.dart";
+import "models/oauth_flow_errors.dart";
+import "models/oauth_handoff.dart";
 import "platform/oauth_device_descriptor_provider.dart";
 import "storage/oauth_storage_service.dart";
 import "storage/token_storage_service.dart";
@@ -133,7 +135,7 @@ class AuthManager(
   }
 
   @override
-  Future<AuthInitResponse> startOAuthFlow({required OAuthProvider provider}) async {
+  Future<OAuthHandoff> startOAuthFlow({required OAuthProvider provider}) async {
     final int generation = _beginInteractiveLogin();
     final String sessionToken = _generateSessionToken();
     _oAuthSessionToken = sessionToken;
@@ -150,7 +152,11 @@ class AuthManager(
       _ensureSuccess(response, context: "Failed to start ${provider.label} auth flow");
 
       final initResponse = AuthInitResponse.fromJson(jsonDecodeMap(response.body));
-      final expiresAt = DateTime.now().add(Duration(seconds: initResponse.expiresIn));
+      final handoff = OAuthHandoff(
+        authUrl: Uri.parse(initResponse.authUrl),
+        expiresAt: DateTime.now().add(Duration(seconds: initResponse.expiresIn)),
+        deviceName: descriptor.device.name,
+      );
       await _mutationLock.run(
         action: () async {
           _throwIfGenerationSuperseded(generation: generation);
@@ -159,7 +165,7 @@ class AuthManager(
           }
           await _oAuthStorage.saveOAuthSession(
             sessionToken: sessionToken,
-            expiresAt: expiresAt,
+            expiresAt: handoff.expiresAt,
           );
           _throwIfGenerationSuperseded(generation: generation);
           if (!_ownsOAuthSession(generation: generation, sessionToken: sessionToken)) {
@@ -171,7 +177,7 @@ class AuthManager(
       if (!_ownsOAuthSession(generation: generation, sessionToken: sessionToken)) {
         throw const _AuthFlowSuperseded();
       }
-      return initResponse;
+      return handoff;
     } on Object catch (error, stackTrace) {
       try {
         await _clearOAuthStateIfOwned(generation: generation, sessionToken: sessionToken);
@@ -288,10 +294,10 @@ class AuthManager(
             return AuthLoginResult(user: user, accountStatus: accountStatus);
           case AuthSessionStatusResponseDenied():
             await _clearOAuthStateIfOwned(generation: generation, sessionToken: sessionToken);
-            throw StateError("OAuth authorization was denied");
+            throw const OAuthFlowDenied();
           case AuthSessionStatusResponseExpired():
             await _clearOAuthStateIfOwned(generation: generation, sessionToken: sessionToken);
-            throw StateError("OAuth authorization expired");
+            throw const OAuthFlowExpired();
           case AuthSessionStatusResponseError(:final message):
             await _clearOAuthStateIfOwned(generation: generation, sessionToken: sessionToken);
             throw StateError("OAuth authorization failed: $message");
@@ -556,6 +562,27 @@ class AuthManager(
     final expiresAt = session.expiresAt;
     if (expiresAt == null) return false;
     return DateTime.now().isBefore(expiresAt);
+  }
+
+  @override
+  Future<void> cancelOAuthFlow() async {
+    final String? sessionToken = _oAuthSessionToken;
+    final int? generation = _oAuthSessionGeneration;
+    if (sessionToken == null || generation == null) return;
+    // Release ownership before any await: a poll or a completion that is
+    // already persisting fails its next ownership check and saves nothing.
+    _oAuthSessionToken = null;
+    _oAuthSessionGeneration = null;
+    await _mutationLock.run(
+      action: () async {
+        // A flow started after Cancel owns the manager, or the stored session
+        // is no longer the cancelled one; leave both alone.
+        if (_oAuthSessionToken != null) return;
+        final stored = await _oAuthStorage.getOAuthSession();
+        if (_oAuthSessionToken != null || stored.sessionToken != sessionToken) return;
+        await _clearOAuthStateInMutation(generation: generation, sessionToken: null, requireOwnership: false);
+      },
+    );
   }
 
   @override
