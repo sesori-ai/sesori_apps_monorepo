@@ -156,6 +156,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      pull-requests: read
     uses: ./.github/workflows/desktop-qualification.yml
     with:
       source_sha: ${{ github.sha }}
