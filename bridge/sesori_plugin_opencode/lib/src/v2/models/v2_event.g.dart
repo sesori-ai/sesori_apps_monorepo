@@ -1426,3 +1426,23 @@ class V2ProjectUpdated extends V2EventData {
     );
   }
 }
+class V2EventEnvelope {
+  const V2EventEnvelope({
+    required this.id,
+    required this.created,
+    required this.location,
+    required this.data,
+  });
+  final String id;
+  final double created;
+  final LocationPublicRef? location;
+  final V2EventData data;
+  factory V2EventEnvelope.fromJson(Map<String, dynamic> json) {
+    return V2EventEnvelope(
+      id: json["id"] as String,
+      created: (json["created"] as num).toDouble(),
+      location: json["location"] == null ? null : LocationPublicRef.fromJson(json["location"] as Map<String, dynamic>),
+      data: V2EventData.fromJson({...json["data"] as Map<String, dynamic>, "type": json["type"]}),
+    );
+  }
+}

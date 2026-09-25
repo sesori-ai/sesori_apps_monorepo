@@ -7,17 +7,18 @@
 - **Plan date:** 2026-09-23
 - **Repository:** `sesori-ai/sesori_apps_monorepo`, implementation base `main`
   at `a845f1434c`.
-- **Delivery:** 49-step PR series titled
-  `<emoji> [visual-hierarchy] <description> [step <x>/49]`. Steps 1–3 merged
-  as `/38` and steps 4–36 as `/41`; three steps were added on 2026-09-23
-  (35–37) and eight on 2026-09-25 (40–47). Exact titles and branches are in
+- **Delivery:** 50-step PR series titled
+  `<emoji> [visual-hierarchy] <description> [step <x>/50]`. Steps 1–3 merged
+  as `/38`, steps 4–36 as `/41` and steps 40–45.a as `/49`; three steps were
+  added on 2026-09-23 (35–37), eight on 2026-09-25 (40–47) and one more later
+  that day (50). Exact titles and branches are in
   [TRACKER](TRACKER.md#pr-titles).
 - **Order:** steps 2–36 need no further input from the user and run first.
   Step 37 is a discussion with the user backed by prototypes. Step 38 waits
   for the user to scope the sign-in rebuild, and step 39 for their approval of
   screenshots (D16). Steps 40–47 come from the user's feedback of 2026-09-25
   and need no input except step 41, which applies the variant the user picks.
-  Steps 48–49 close the series.
+  Step 50 needs no input and lands before steps 48–49, which close the series.
 - **Sources:** the user's verdicts on the round 1 UI review and on the motion
   review, their answers to the follow-up questions, and their round 2 answers
   of 2026-09-23 (D19–D23; [TRACKER](TRACKER.md#round-2-answers)). The review
@@ -198,7 +199,8 @@ Data paths:
 - **D2 Order.** Steps that need no input first (2–36), then the turn
   navigation discussion (37), then the sign-in plan (38), then H6 (39), which
   the user asked to be last among the original steps; the 2026-09-25
-  additions (40–47) run as soon as they are unblocked. Foundations come before
+  additions (40–47 and 50) run as soon as they are unblocked, and step 50
+  lands before 48–49. Foundations come before
   the screens that use them, and the transcript (31–32) builds on the restyled
   tokens, rows and session page.
 - **D3 The sparkle stays.** It is the running and unread signal everywhere and
@@ -738,6 +740,45 @@ its details there. On the phone the same content opens as a sheet through
 `showPregoModal`. The transcript layout no longer changes when a group opens.
 Architecture implementation review: new shared surface.
 
+### Added from the user's feedback of 2026-09-25, later (50)
+
+Step 50 lands before steps 48–49, which stay last.
+
+**Step 50 — scheduled auto-resume on session rows.** A session waiting out a
+quota limit with auto-continuation on says "Continues at 6:22 PM" only inside
+the session (step 43). The desktop sidebar and the project session list, on
+the phone and the desktop, show only the running state and the relative time,
+so a parked session looks idle.
+- **Data:** no wire change. Every list route already enriches each `Session`
+  with its `autoContinuation` view through the bridge's `SessionViewService`
+  (`GET /sessions`, child sessions, and the `session.updated` event sent when
+  a continuation changes), and the list services already replace the row's
+  session on that event. An older bridge sends `null`, and the row stays as it
+  is today.
+- **Rule:** a row counts as scheduled when the view is enabled, its
+  availability is not `unavailable`, and its status is `resetKnown`. The
+  `continueAt` of that status is the time shown. Paused, unknown-reset and
+  failed states stay inside the session, where the step 43 card explains
+  them. No timer: once the continuation fires, the bridge moves the status on
+  and sends `session.updated`.
+- **UI:** in place of the relative time, a small clock glyph and
+  "Resumes 6:22 PM" in the same `textXs` secondary style, formatted by the
+  helper the notice already uses. Awaiting input and running keep their
+  precedence, so a running row still hides its time. The row's assistive
+  label says "Resumes at 6:22 PM" in full. Applies to the shared
+  `SessionTile` (phone and desktop project pages) and both desktop sidebar
+  rows (session and Activity).
+- **Harnesses:** the view is harness-neutral and its availability already
+  comes from each plugin's quota reporting, so every harness with
+  auto-continuation gets the indicator and the others never show it. No
+  plugin change and no `docs/HARNESS_CAPABILITIES.md` change.
+- **Docs:** `docs/regression/quota-auto-continuation.md` gains the row
+  indicator.
+
+Verification: widget tests for `SessionTile` and the sidebar session row
+(scheduled, running wins, `null` view), and before and after screenshots of
+both surfaces in the PR.
+
 ## Compatibility
 
 - Only steps 25, 27, 32, 34 and 36 touch the client-bridge contract. Each adds an
@@ -750,6 +791,8 @@ Architecture implementation review: new shared surface.
   default, and a new set request. An older bridge omits the field, so the
   client hides the per-session menu. An older app ignores it, and the bridge
   default still governs sessions without an override.
+- Step 50 reads the existing `Session.autoContinuation` view and changes no
+  contract; an older bridge's `null` view leaves rows as they are today.
 - Apart from step 45, there is no database, migration or persisted-format
   change. The desktop layout file is unchanged.
 - Plugin and module APIs change in lockstep inside the repository.
@@ -818,8 +861,8 @@ time.
 
 ## Delivery Plan
 
-49 steps; step 4 landed as three PRs (4.a–4.c) and step 45 may land as two
-(45.a bridge, 45.b clients). Exact titles and branches are in
+50 steps; step 4 landed as three PRs (4.a–4.c) and step 45 as two
+(45.a bridge, 45.b clients). Step 50 lands before steps 48–49. Exact titles and branches are in
 [TRACKER](TRACKER.md#pr-titles). Targets count additions plus deletions
 across every path.
 
@@ -869,11 +912,12 @@ across every path.
 | 42 | ≤ 700 | ⚙️ | — |
 | 43 | ≤ 500 | ⚙️ | — |
 | 44 | ≤ 150 | 🌱 | — |
-| 45 | ≤ 1,200, or 45.a + 45.b | 🚧 | yes |
+| 45 | ≤ 1,200 across 45.a + 45.b | ⚙️ | yes |
 | 46 | ≤ 900 | 🚧 | — |
 | 47 | ≤ 800 | ⚙️ | yes |
 | 48 | ≤ 600 | 🌱 | — |
 | 49 | ≤ 300 | 🌱 | — |
+| 50 | ≤ 400 | ⚙️ | — |
 
 Evidence for a finished step goes in `steps/step-NN.md`, written by that
 step's own PR. Step 48 reconciles `docs/regression/`. Step 49 runs the final
@@ -907,6 +951,7 @@ Affected feature documents:
 - `popup-alerts.md` and `session-archiving-and-deletion.md` — the held
   failure alert (29).
 - `permission-auto-approval.md` — YOLO visibility (33).
+- `quota-auto-continuation.md` — the scheduled auto-resume row indicator (50).
 - `docs/HARNESS_CAPABILITIES.md` — tool kinds (32).
 
 Highest coverage level: **L3, client end to end**, on both release-target

@@ -307,7 +307,14 @@ class const _FastModeButton({
     final label = context.loc.sessionDetailFastMode;
     final borderRadius = BorderRadius.circular(PregoRadius.full);
     final (icon, color) = switch (control) {
-      FastModeControl.on => (TablerRegular.bolt, prego.colors.fgBrandPrimary),
+      // The yellowest warning step per theme; dark utility scales run in reverse.
+      FastModeControl.on => (
+        TablerRegular.bolt,
+        switch (prego.colors.brightness) {
+          Brightness.dark => prego.colors.utilityWarning700,
+          Brightness.light => prego.colors.utilityWarning500,
+        },
+      ),
       FastModeControl.off => (TablerRegular.bolt, prego.colors.textSecondary),
       FastModeControl.unavailable || FastModeControl.hidden => (TablerRegular.bolt_off, prego.colors.fgDisabled),
     };

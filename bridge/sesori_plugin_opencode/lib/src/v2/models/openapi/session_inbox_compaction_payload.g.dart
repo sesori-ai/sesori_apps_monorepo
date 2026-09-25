@@ -53,7 +53,7 @@ class SessionInboxCompactionPayload00Inline implements SessionInboxCompactionPay
 class SessionInboxCompactionPayload01Inline implements SessionInboxCompactionPayload {
   const SessionInboxCompactionPayload01Inline({required this.items});
   factory SessionInboxCompactionPayload01Inline.fromJson(List<dynamic> json) {
-    return SessionInboxCompactionPayload01Inline(items: json.cast<Object>());
+    return SessionInboxCompactionPayload01Inline(items: json.cast<Object?>());
   }
   @override
   Object? toJson() => items;
@@ -67,7 +67,7 @@ class SessionInboxCompactionPayload01Inline implements SessionInboxCompactionPay
   @override
   int get hashCode => const DeepCollectionEquality().hash(items);
 
-  final List<Object> items;
+  final List<Object?> items;
 }
 
 

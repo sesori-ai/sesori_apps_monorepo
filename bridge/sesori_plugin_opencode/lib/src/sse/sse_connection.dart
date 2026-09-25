@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 class SseConnection({
   required final String _targetUrl,
+  required final String _eventPath,
   required final String? _password,
   required final void Function(String rawData) _onEvent,
   final Future<void> Function()? _onReconnect,
@@ -52,7 +53,7 @@ class SseConnection({
       try {
         final request = http.Request(
           "GET",
-          Uri.parse("$_targetUrl/global/event"),
+          Uri.parse("$_targetUrl$_eventPath"),
         );
         request.headers["Accept"] = "text/event-stream";
         request.headers["Cache-Control"] = "no-cache";

@@ -444,6 +444,15 @@ Descriptor fixtures cover owned versus attached v2 refusal and cancellation
 while protocol detection is in flight. These checks do not prove live v2 session
 support or native process teardown.
 
+The inactive OpenCode v2 transport also has fixture coverage for authenticated
+REST requests, typed data envelopes and request bodies, location scoping,
+session/message cursor paging, active-session maps, and malformed response causes.
+Both `/global/event` and `/api/event` SSE paths are exercised against a loopback
+server, including authentication, heartbeat comments and multiline data. V2 event
+envelopes preserve frame identity/location; unknown or malformed events are logged
+and dropped without terminating later decoding. These tests do not claim an active
+v2 adapter or authenticated native-session parity.
+
 ## Exploration Guidance
 
 Vary which harness runs first and which stays disabled, and the configuration: default

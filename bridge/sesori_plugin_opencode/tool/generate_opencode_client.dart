@@ -1930,7 +1930,7 @@ class ModelWriter({
           innerDart = _dartTypeForInline(items, context: '${className}Item');
         }
       } else {
-        innerDart = 'Object';
+        innerDart = 'Object?';
       }
       _usesImmutable = true;
       _usesDeepEquality = true;

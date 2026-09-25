@@ -107,6 +107,7 @@ class OpenCodePlugin._({
   this : _parser = SseEventParser(), _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
     _sseConnection = SseConnection(
       targetUrl: serverUrl,
+      eventPath: "/global/event",
       password: password,
       onEvent: _handleRawSseEvent,
       onReconnect: () async {

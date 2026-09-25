@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/claude_stream_message.dart";
 import "models/claude_agent_selection.dart";
+import "models/claude_message_origin_kind.dart";
 import "models/claude_task_notification.dart";
 import "models/claude_tool_use_result.dart";
 import "repositories/mappers/claude_api_error_mapper.dart";
@@ -450,7 +451,9 @@ final class ClaudeEventDispatcher({
   }) {
     // The summary frame's uuid is the transcript record's id, so live and
     // replayed rows share one message id.
-    if (_awaitingCompactionSummary.remove(sessionId) && message.isSynthetic) {
+    if (message.originKind != ClaudeMessageOriginKind.peer &&
+        _awaitingCompactionSummary.remove(sessionId) &&
+        message.isSynthetic) {
       if (_nonEmptyString(message.uuid) case final messageId?) {
         final compaction = _content.compactionMessage(
           sessionId: sessionId,
@@ -495,28 +498,19 @@ final class ClaudeEventDispatcher({
 
     final messageId = _nonEmptyString(message.uuid);
     if (messageId == null) return const [];
-    // Replayed stdin turns echo the exact execution payload, so the
-    // bridge-owned worktree context is stripped the same way the transcript
-    // history path strips it.
-    final parts = _content.mapParts(
-      content: _content.visibleUserContent(content: message.message["content"]),
+    final user = _content.userMessage(
+      content: message.message["content"],
       sessionId: sessionId,
       messageId: messageId,
+      time: _messageTime(message.timestamp),
+      originKind: message.originKind,
+      promptId: promptId,
     );
-    if (!parts.any((part) => part.type.isVisible)) return const [];
-    final events = [
-      BridgeSseMessageUpdated(
-        info: PluginMessage.user(
-          id: messageId,
-          sessionID: sessionId,
-          agent: null,
-          time: _messageTime(message.timestamp),
-          promptId: promptId,
-        ),
-      ),
-      for (final part in parts) BridgeSseMessagePartUpdated(part: part),
+    if (user == null) return const [];
+    return [
+      BridgeSseMessageUpdated(info: user.info),
+      for (final part in user.parts) BridgeSseMessagePartUpdated(part: part),
     ];
-    return events;
   }
 
   List<BridgeSseEvent> _mapTaskStarted({

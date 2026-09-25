@@ -8,6 +8,7 @@ import "../api/claude_process_factory.dart";
 import "../api/claude_stream_client.dart";
 import "../api/models/claude_stream_message.dart";
 import "../models/claude_effort_level.dart";
+import "../models/claude_message_origin_kind.dart";
 import "../models/claude_permission_mode.dart";
 
 sealed class const ClaudeTurnOutcome();
@@ -430,7 +431,7 @@ final class ClaudeSessionProcessRepository({
       process.interruptSettled = false;
     }
     switch (message) {
-      case ClaudeUserMessage(parentToolUseId: null):
+      case ClaudeUserMessage(parentToolUseId: null) when message.originKind != ClaudeMessageOriginKind.peer:
         // Claude normally marks stdin echoes with `isReplay`, but attachment
         // echoes can omit it. Only the bridge writes image turns to stdin, so
         // an unmarked image echo still identifies them; unmarked text stays

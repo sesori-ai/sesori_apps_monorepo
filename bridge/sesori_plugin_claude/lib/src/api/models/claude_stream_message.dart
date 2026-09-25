@@ -1,3 +1,4 @@
+import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_permission_mode.dart";
 import "../../models/claude_task_notification.dart";
 import "../../models/claude_task_status.dart";
@@ -112,6 +113,7 @@ sealed class const ClaudeStreamMessage({
           // from spells it camelCase, and replayed frames have carried both.
           toolUseResult: ClaudeToolUseResult.parse(json["tool_use_result"] ?? json["toolUseResult"]),
           taskNotifications: _taskNotifications(message["content"]),
+          originKind: ClaudeMessageOriginKind.parse(kind: _mapOrEmpty(json["origin"])["kind"]),
           isSynthetic: json["isSynthetic"] == true,
           timestamp: _dateTimeOrNull(json["timestamp"]),
           sessionId: sessionId,
@@ -498,6 +500,9 @@ final class const ClaudeUserMessage({
   /// `<task-notification>` text, parsed here so lifecycle consumers never read
   /// the wire content shape.
   required final List<ClaudeTaskNotification> taskNotifications,
+
+  /// Host-stamped provenance, independent of this frame's `user` role.
+  required final ClaudeMessageOriginKind originKind,
 
   /// The CLI generated this frame rather than the user typing it, such as the
   /// summary that follows a `compact_boundary`.
