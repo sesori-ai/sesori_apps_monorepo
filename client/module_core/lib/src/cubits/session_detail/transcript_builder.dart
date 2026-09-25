@@ -108,6 +108,10 @@ final class const Transcript({
   /// Blocks for each assistant message row. A group that spans messages sits
   /// in the row of the message it started in, so later rows may be empty.
   required final Map<String, List<TranscriptBlock>> blocksByMessageId,
+
+  /// The newest running step, which the jump button names while the reader
+  /// is scrolled away from it; null when nothing runs.
+  required final TranscriptStep? liveStep,
 }) {
   List<TranscriptBlock> blocksFor({required String messageId}) => blocksByMessageId[messageId] ?? const [];
 }
@@ -124,6 +128,7 @@ class const TranscriptBuilder() {
   }) {
     final pendingByMessageId = <String, List<_PendingBlock>>{};
     _OpenGroup? group;
+    TranscriptStep? liveStep;
 
     for (final message in messages) {
       final info = message.info;
@@ -151,6 +156,7 @@ class const TranscriptBuilder() {
             blocks.add(open);
           }
           open.steps.add(step);
+          if (step.status == TranscriptStepStatus.running) liveStep = step;
           continue;
         }
         if (_isHidden(part: part, streamingText: streamingText)) {
@@ -171,6 +177,7 @@ class const TranscriptBuilder() {
     }
 
     return Transcript(
+      liveStep: liveStep,
       blocksByMessageId: {
         for (final MapEntry(:key, :value) in pendingByMessageId.entries)
           key: [

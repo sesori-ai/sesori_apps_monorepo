@@ -73,58 +73,52 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
       final rowStyle = status == ToolStatus.error ? style.copyWith(color: prego.colors.textErrorPrimary) : style;
       return Row(
         children: [
-          if (status == ToolStatus.pending || status == ToolStatus.running)
-            _statusIcon(status: status, prego: prego)
-          else
-            Icon(TablerRegular.terminal_2, size: PregoIconSize.sm, color: rowStyle.color),
+          Icon(TablerRegular.terminal_2, size: PregoIconSize.sm, color: rowStyle.color),
           SizedBox(width: prego.spacing.md),
           Expanded(
-            child: Text.rich(
-              TextSpan(
-                text: "$verb ",
-                children: [
-                  TextSpan(
-                    text: "\$ $command",
-                    style: rowStyle.copyWith(decoration: TextDecoration.underline),
-                  ),
-                ],
+            child: _LiveLabel(
+              live: _isLive(status: status),
+              label: Text.rich(
+                TextSpan(
+                  text: "$verb ",
+                  children: [
+                    TextSpan(
+                      text: "\$ $command",
+                      style: rowStyle.copyWith(decoration: TextDecoration.underline),
+                    ),
+                  ],
+                ),
+                style: rowStyle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              style: rowStyle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              semanticLabel: "$verb \$ $command",
             ),
           ),
         ],
       );
     }
 
-    final detail = state.title;
+    final label = [ToolPartWidget._toolName(loc: loc, part: part), ?state.title].join(" ");
     return Row(
       children: [
         _statusIcon(status: status, prego: prego),
         SizedBox(width: prego.spacing.md),
         Expanded(
-          child: Text.rich(
-            TextSpan(
-              text: ToolPartWidget._toolName(loc: loc, part: part),
-              children: [if (detail != null) TextSpan(text: " $detail")],
-            ),
-            style: style,
-            maxLines: 1,
-            overflow: .ellipsis,
+          child: _LiveLabel(
+            live: _isLive(status: status),
+            label: Text(label, style: style, maxLines: 1, overflow: .ellipsis),
+            semanticLabel: label,
           ),
         ),
       ],
     );
   }
 
+  static bool _isLive({required ToolStatus status}) => status == ToolStatus.pending || status == ToolStatus.running;
+
   static Widget _statusIcon({required ToolStatus status, required PregoDesignSystem prego}) => switch (status) {
-    ToolStatus.pending || ToolStatus.running => const SizedBox(
-      width: 16,
-      height: 16,
-      child: PregoActivityIndicator(color: null),
-    ),
-    ToolStatus.completed => Icon(
+    ToolStatus.pending || ToolStatus.running || ToolStatus.completed => Icon(
       TablerRegular.tool,
       size: PregoIconSize.sm,
       color: prego.colors.textTertiary,
@@ -281,6 +275,20 @@ class _ToolPanelState() extends State<_ToolPanel> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A running step's label shimmers in place of a spinner; reduced motion keeps
+/// it still.
+class const _LiveLabel({required final bool live, required final Widget label, required final String semanticLabel})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    if (!live) return label;
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: PregoShimmer(appearDelay: Duration.zero, semanticLabel: semanticLabel, child: label),
     );
   }
 }

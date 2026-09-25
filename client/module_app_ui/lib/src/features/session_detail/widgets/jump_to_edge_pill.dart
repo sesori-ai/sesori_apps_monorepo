@@ -15,6 +15,9 @@ class const JumpToEdgePill({
   super.key,
   required final Key? tapTargetKey,
   required final String label,
+
+  /// Whether [label] names live work, which shimmers until it finishes.
+  required final bool live,
   required final VoidCallback onTap,
 
   /// Extra distance lifted above the bottom edge so the pill clears a floating
@@ -25,10 +28,16 @@ class const JumpToEdgePill({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final text = Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textPrimary),
+    );
     return Positioned(
       bottom: 12 + bottomInset,
-      left: 0,
-      right: 0,
+      left: 16,
+      right: 16,
       child: Center(
         child: Material(
           elevation: 4,
@@ -46,11 +55,8 @@ class const JumpToEdgePill({
                 children: [
                   Icon(TablerRegular.arrow_down, size: PregoIconSize.sm, color: prego.colors.textPrimary),
                   const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: prego.textTheme.textSm.bold.copyWith(
-                      color: prego.colors.textPrimary,
-                    ),
+                  Flexible(
+                    child: live ? PregoShimmer(appearDelay: Duration.zero, semanticLabel: label, child: text) : text,
                   ),
                 ],
               ),
