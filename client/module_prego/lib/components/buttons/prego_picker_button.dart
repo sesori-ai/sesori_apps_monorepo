@@ -20,6 +20,7 @@ import "../surfaces/prego_surfaces.dart";
 ///   label: selectedAgent,
 ///   surfaceStyle: PregoComposerSurfaceStyle.subtle,
 ///   onPressed: toggle,
+///   showLabel: true,
 /// )
 /// ```
 class const PregoPickerButton({
@@ -36,13 +37,18 @@ class const PregoPickerButton({
 
   /// Called when the pill is tapped. Wire this to the menu's open callback.
   required final VoidCallback onPressed,
+
+  /// Whether the label and caret show. Without them the pill is only its
+  /// glyph, keeping [label] as its tooltip and accessible name, for rows too
+  /// narrow to show a readable label.
+  required final bool showLabel,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final foreground = prego.colors.textSecondary;
     final borderRadius = BorderRadius.circular(PregoRadius.full);
-    return SizedBox(
+    final pill = SizedBox(
       width: double.infinity,
       height: 36,
       child: DecoratedBox(
@@ -61,28 +67,38 @@ class const PregoPickerButton({
               mouseCursor: WidgetStateMouseCursor.clickable,
               onTap: onPressed,
               borderRadius: borderRadius,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: PregoEllipsisText(
-                        text: label,
-                        ellipsis: PregoEllipsis.start,
-                        style: prego.textTheme.textXs.medium.copyWith(color: foreground),
+              child: !showLabel
+                  ? Center(
+                      child: Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: PregoEllipsisText(
+                              text: label,
+                              ellipsis: PregoEllipsis.start,
+                              style: prego.textTheme.textXs.medium.copyWith(color: foreground),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(TablerRegular.selector, size: PregoIconSize.sm, color: foreground),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Icon(TablerRegular.selector, size: PregoIconSize.sm, color: foreground),
-                  ],
-                ),
-              ),
             ),
           ),
         ),
       ),
+    );
+    if (showLabel) return pill;
+    return Tooltip(
+      message: label,
+      excludeFromSemantics: true,
+      child: Semantics(button: true, label: label, child: pill),
     );
   }
 }

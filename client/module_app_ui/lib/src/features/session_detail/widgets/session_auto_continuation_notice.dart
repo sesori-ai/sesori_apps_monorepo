@@ -7,6 +7,26 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
 
+/// Whether the session needs the auto-continuation card above the composer:
+/// a quota reset to offer or explain, a continuation waiting to send, or an
+/// attempt the user should know about. An enabled preference with nothing due
+/// shows only the quiet model-row chip instead.
+bool sessionAutoContinuationNoticeVisible({required SessionAutoContinuationView? view}) {
+  if (view == null) return false;
+  return switch (view.status) {
+    // Disabled, the card offers the reset; enabled, it counts down or explains
+    // why nothing can be scheduled.
+    SessionAutoContinuationResetKnown() || SessionAutoContinuationResetUnknown() => true,
+    SessionAutoContinuationPaused() ||
+    SessionAutoContinuationAttemptUnconfirmed() ||
+    SessionAutoContinuationSubmissionFailed() ||
+    SessionAutoContinuationUnknown() => view.enabled,
+    // Nothing is due: no interruption yet, or the continuation was already
+    // sent and shows in the transcript.
+    SessionAutoContinuationIdle() || SessionAutoContinuationSubmitted() => false,
+  };
+}
+
 /// Presents the bridge's state; it never calculates a deadline or runs a timer.
 class const SessionAutoContinuationNotice({
   super.key,
@@ -18,13 +38,8 @@ class const SessionAutoContinuationNotice({
   @override
   Widget build(BuildContext context) {
     final current = view;
-    if (current == null) return const SizedBox.shrink();
+    if (current == null || !sessionAutoContinuationNoticeVisible(view: current)) return const SizedBox.shrink();
     final status = current.status;
-    if (!current.enabled &&
-        status is! SessionAutoContinuationResetKnown &&
-        status is! SessionAutoContinuationResetUnknown) {
-      return const SizedBox.shrink();
-    }
     final loc = context.loc;
     final prego = context.prego;
     final available = current.availability == AutoContinuationAvailability.conditional && canInteract;
@@ -96,11 +111,12 @@ class const SessionAutoContinuationNotice({
     required SessionAutoContinuationStatus status,
     required bool enabled,
   }) => switch (status) {
-    SessionAutoContinuationIdle() => null,
+    // The card is hidden for these; the model-row chip explains them.
+    SessionAutoContinuationIdle() || SessionAutoContinuationSubmitted() => null,
     SessionAutoContinuationResetKnown(:final continueAt) =>
       enabled
-          ? loc.sessionAutoContinuationScheduled(_localTime(loc: loc, milliseconds: continueAt))
-          : loc.sessionAutoContinuationOffer(_localTime(loc: loc, milliseconds: continueAt)),
+          ? loc.sessionAutoContinuationScheduled(sessionAutoContinuationLocalTime(loc: loc, milliseconds: continueAt))
+          : loc.sessionAutoContinuationOffer(sessionAutoContinuationLocalTime(loc: loc, milliseconds: continueAt)),
     SessionAutoContinuationResetUnknown() => loc.sessionAutoContinuationResetUnknown,
     SessionAutoContinuationPaused(:final reason) => switch (reason) {
       AutoContinuationPauseReason.busy ||
@@ -112,13 +128,11 @@ class const SessionAutoContinuationNotice({
       AutoContinuationPauseReason.unknown => loc.sessionAutoContinuationPausedUnknown,
     },
     SessionAutoContinuationAttemptUnconfirmed() => loc.sessionAutoContinuationUnconfirmed,
-    SessionAutoContinuationSubmitted(:final acceptedAt) => loc.sessionAutoContinuationSubmitted(
-      _localTime(loc: loc, milliseconds: acceptedAt),
-    ),
     SessionAutoContinuationSubmissionFailed() => loc.sessionAutoContinuationFailed,
     SessionAutoContinuationUnknown() => loc.sessionAutoContinuationStatusUnknown,
   };
-
-  String _localTime({required AppLocalizations loc, required int milliseconds}) =>
-      DateFormat.yMMMd(loc.localeName).add_jm().format(DateTime.fromMillisecondsSinceEpoch(milliseconds).toLocal());
 }
+
+/// The bridge's UTC instant as a date and time in the viewer's zone.
+String sessionAutoContinuationLocalTime({required AppLocalizations loc, required int milliseconds}) =>
+    DateFormat.yMMMd(loc.localeName).add_jm().format(DateTime.fromMillisecondsSinceEpoch(milliseconds).toLocal());
