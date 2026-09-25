@@ -23,6 +23,8 @@ class const PregoButtonTrailing({super.key, required final double gap, required 
         sizeFactor: animation,
         axis: Axis.horizontal,
         alignment: AlignmentDirectional.centerStart,
+        // Keep the content's own height; unset, it fills the available height.
+        fixedCrossAxisSizeFactor: 1,
         child: FadeTransition(opacity: animation, child: content),
       ),
       child: switch (child) {

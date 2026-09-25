@@ -33,10 +33,14 @@ void main() {
   for (final MapEntry(key: name, value: (build, type)) in buttons.entries) {
     group(name, () {
       double width(WidgetTester tester) => tester.getSize(find.byType(type)).width;
+      double height(WidgetTester tester) => tester.getSize(find.byType(type)).height;
 
       testWidgets("grows and shrinks smoothly as trailing content arrives and leaves", (tester) async {
         await tester.pumpWidget(_harness(child: build(trailing: null), reducedMotion: false));
         final plain = width(tester);
+        final restingHeight = height(tester);
+        // The slot never stretches the button to the height on offer.
+        expect(restingHeight, lessThan(60));
 
         await tester.pumpWidget(_harness(child: build(trailing: _counts), reducedMotion: false));
         await tester.pumpAndSettle();
@@ -52,8 +56,10 @@ void main() {
         await tester.pumpWidget(_harness(child: build(trailing: _counts), reducedMotion: false));
         await tester.pump(const Duration(milliseconds: 100));
         expect(width(tester), allOf(greaterThan(plain), lessThan(full)));
+        expect(height(tester), restingHeight);
         await tester.pumpAndSettle();
         expect(width(tester), full);
+        expect(height(tester), restingHeight);
       });
 
       testWidgets("applies each change at once under reduced motion", (tester) async {
