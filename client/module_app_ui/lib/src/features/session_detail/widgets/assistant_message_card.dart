@@ -1,33 +1,39 @@
 import "package:material_ui/material_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "agent_part_widget.dart";
 import "attachment_collection_widget.dart";
-import "reasoning_part_card.dart";
 import "retry_part_widget.dart";
-import "subtask_part_widget.dart";
 import "text_part_widget.dart";
-import "tool_part_widget.dart";
+import "transcript_group_widget.dart";
 
+/// An assistant message's row, rendering the blocks [TranscriptBuilder] made
+/// for it. A row whose steps joined an earlier message's group is empty.
 class const AssistantMessageCard({
   super.key,
   required final String? projectId,
-  required final MessageWithParts message,
+  required final List<TranscriptBlock> blocks,
   required final Map<String, String> streamingText,
-  required final List<Session> children,
-  required final Map<String, SessionStatus> childStatuses,
   required final EdgeInsetsGeometry contentPadding,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    if (blocks.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: contentPadding,
       child: PregoReadableSelectionArea(
         child: Column(
           crossAxisAlignment: .start,
           children: [
-            ..._buildParts(context: context, parts: message.parts),
+            for (final block in blocks)
+              ...switch (block) {
+                TranscriptPartsBlock(:final parts) => _buildParts(context: context, parts: parts),
+                TranscriptGroupBlock() => [
+                  TranscriptGroupWidget(key: ValueKey(block.id), projectId: projectId, group: block),
+                ],
+              },
           ],
         ),
       ),
@@ -67,16 +73,15 @@ class const AssistantMessageCard({
   }
 
   bool _isVisible(MessagePart part) => switch (part) {
-    MessagePartText() ||
+    MessagePartText() || MessagePartAgent() || MessagePartRetry() || MessagePartFile() => true,
     MessagePartReasoning() ||
     MessagePartTool() ||
     MessagePartSubtask() ||
     MessagePartStepStart() ||
     MessagePartStepFinish() ||
-    MessagePartAgent() ||
-    MessagePartRetry() ||
-    MessagePartFile() => true,
-    MessagePartSnapshot() || MessagePartPatch() || MessagePartCompaction() => false,
+    MessagePartSnapshot() ||
+    MessagePartPatch() ||
+    MessagePartCompaction() => false,
   };
 
   Widget _buildPart({required BuildContext context, required MessagePart part}) {
@@ -88,21 +93,6 @@ class const AssistantMessageCard({
         text: streaming ?? text,
         isStreaming: streaming != null,
       ),
-      MessagePartReasoning(:final text) => ReasoningPartCard(
-        key: ValueKey(part.id),
-        text: streaming ?? text,
-        isStreaming: streaming != null,
-        partId: part.id,
-        messageId: message.info.id,
-      ),
-      MessagePartTool() => ToolPartWidget(key: ValueKey(part.id), part: part),
-      MessagePartSubtask() => SubtaskPartWidget(
-        key: ValueKey(part.id),
-        projectId: projectId,
-        part: part,
-        children: children,
-        childStatuses: childStatuses,
-      ),
       MessagePartAgent(:final agentName) => AgentPartWidget(
         key: ValueKey(part.id),
         agentName: agentName,
@@ -112,6 +102,10 @@ class const AssistantMessageCard({
         attempt: attempt,
         retryError: retryError,
       ),
+      // Steps render in their group; the builder never puts them here.
+      MessagePartReasoning() ||
+      MessagePartTool() ||
+      MessagePartSubtask() ||
       MessagePartStepStart() ||
       MessagePartStepFinish() ||
       MessagePartFile() ||

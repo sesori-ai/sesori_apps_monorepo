@@ -216,8 +216,8 @@ state.
   the bar shortens in the middle, keeping owner and repository ends, and a long press or hover shows it whole.
 - A session page has no subtitle; the composer's model pill already names the model.
 - Blue means selected, on or actionable (toggles, picker checks, the selected sidebar row, links, focus rings).
-  Primary buttons are the inverse pill on both apps; the desktop Archived toggle turns blue while on. The tool
-  output "Show more" and the "Jump to latest" pill are neutral. Text fields show no required-field asterisk,
+  Primary buttons are the inverse pill on both apps; the desktop Archived toggle turns blue while on. The
+  "Jump to latest" pill is neutral. Text fields show no required-field asterisk,
   and their placeholders are tertiary.
 - The phone's open root session page offers the row's actions from a menu in its glass bar: Rename, Mark as
   unread, Archive, Archive keeping the worktree when the session has one, and Delete, from the shared

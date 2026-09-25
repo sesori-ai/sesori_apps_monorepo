@@ -364,6 +364,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final retryErrorMessage = snap?.retryErrorMessage ?? widget.retryErrorMessage;
 
     final indexById = _indexByIdFor(messages: messages);
+    final transcript = const TranscriptBuilder().build(
+      messages: messages,
+      streamingText: streamingText,
+      children: children,
+      childStatuses: childStatuses,
+    );
     final transientSubmissions = <String, _TransientSubmission>{
       for (final submission in widget.awaitingBridgeSubmissions)
         "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: _TransientStage.awaitingBridge),
@@ -453,9 +459,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                   messages: messages,
                   indexById: indexById,
                   transientSubmissions: transientSubmissions,
+                  transcript: transcript,
                   streamingText: streamingText,
-                  children: children,
-                  childStatuses: childStatuses,
                   retryErrorMessage: retryErrorMessage,
                 ),
               );
@@ -471,9 +476,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<MessageWithParts> messages,
     required Map<String, int> indexById,
     required Map<String, _TransientSubmission> transientSubmissions,
+    required Transcript transcript,
     required Map<String, String> streamingText,
-    required List<Session> children,
-    required Map<String, SessionStatus> childStatuses,
     required String? retryErrorMessage,
   }) {
     if (entryId == _kRetryErrorRowId) {
@@ -567,20 +571,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     }
     final card = switch (message.info) {
       MessageUser() => UserMessageCard(message: message),
-      MessageAssistant(sender: MessageSender.agent) => AssistantMessageCard(
+      MessageAssistant(sender: MessageSender.agent, :final id) => AssistantMessageCard(
         projectId: widget.projectId,
-        message: message,
+        blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
-        children: children,
-        childStatuses: childStatuses,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
-      MessageAssistant() => SystemMessageCard(
+      MessageAssistant(:final id) => SystemMessageCard(
         projectId: widget.projectId,
-        message: message,
+        blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
-        children: children,
-        childStatuses: childStatuses,
       ),
       final MessageError messageError => ErrorMessageCard(message: messageError),
     };
