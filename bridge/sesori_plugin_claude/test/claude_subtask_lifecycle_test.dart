@@ -481,14 +481,14 @@ ClaudeTranscriptUserRecord _notificationRecord({required String text}) => _userR
   id: "notify-1",
   content: text,
   toolUseResult: const ClaudeToolUseResultAbsent(),
-  isTaskNotification: true,
+  originKind: ClaudeMessageOriginKind.taskNotification,
 );
 
 ClaudeTranscriptUserRecord _userRecord({
   required String id,
   required Object? content,
   required ClaudeToolUseResult toolUseResult,
-  bool isTaskNotification = false,
+  ClaudeMessageOriginKind originKind = ClaudeMessageOriginKind.unknown,
 }) => ClaudeTranscriptUserRecord(
   id: id,
   content: content,
@@ -496,7 +496,7 @@ ClaudeTranscriptUserRecord _userRecord({
   isVisibleInTranscriptOnly: false,
   isCompactSummary: false,
   toolUseResult: toolUseResult,
-  isTaskNotification: isTaskNotification,
+  originKind: originKind,
   cwd: "/tmp/project",
   timestamp: null,
   isSidechain: false,

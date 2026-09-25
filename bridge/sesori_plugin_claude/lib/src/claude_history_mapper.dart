@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "models/claude_agent_selection.dart";
+import "models/claude_message_origin_kind.dart";
 import "models/claude_tool_use_result.dart";
 import "repositories/mappers/claude_api_error_mapper.dart";
 import "repositories/mappers/claude_content_mapper.dart";
@@ -105,7 +106,9 @@ final class const ClaudeHistoryMapper({
             ),
           );
         case ClaudeTranscriptUserRecord():
-          if (skip(record) || record.isMeta || record.isVisibleInTranscriptOnly) {
+          if (skip(record) ||
+              (record.isMeta && record.originKind != ClaudeMessageOriginKind.peer) ||
+              record.isVisibleInTranscriptOnly) {
             continue;
           }
           final blocks = _content.map(content: record.content);
@@ -150,28 +153,17 @@ final class const ClaudeHistoryMapper({
           }
           // The CLI's own delivery of a task outcome to the model, never a
           // user-authored message, even when its envelope names no task here.
-          if (record.isTaskNotification) continue;
+          if (record.originKind == ClaudeMessageOriginKind.taskNotification) continue;
 
-          final parts = _content.mapParts(
-            content: _content.visibleUserContent(content: record.content),
+          final user = _content.userMessage(
+            content: record.content,
             sessionId: sessionId,
             messageId: record.id,
+            time: _messageTime(record.timestamp),
+            originKind: record.originKind,
+            promptId: null,
           );
-          if (!parts.any((part) => part.type.isVisible)) continue;
-          entries.add(
-            _MappedHistoryMessage(
-              message: PluginMessageWithParts(
-                info: PluginMessage.user(
-                  id: record.id,
-                  sessionID: sessionId,
-                  agent: null,
-                  time: _messageTime(record.timestamp),
-                  promptId: null,
-                ),
-                parts: parts,
-              ),
-            ),
-          );
+          if (user != null) entries.add(_MappedHistoryMessage(message: user));
         case ClaudeTranscriptContextRecord() ||
             ClaudeTranscriptUnreplayableMessageRecord() ||
             ClaudeTranscriptTitleRecord() ||
