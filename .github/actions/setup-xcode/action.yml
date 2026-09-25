@@ -1,0 +1,24 @@
+name: Setup native Xcode
+description: Select the pinned Xcode for the macOS runner architecture
+
+outputs:
+  version:
+    description: Selected Xcode version
+    value: ${{ steps.version.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve native Xcode version
+      id: version
+      shell: bash
+      env:
+        # Xcode 27 runs only on Apple silicon hosts; native Intel jobs retain 26.6.
+        # ARM64 consumers use the xcode-27 image, not the macos-latest alias.
+        XCODE_VERSION: ${{ runner.arch == 'ARM64' && '27.0' || '26.6' }}
+      run: echo "version=$XCODE_VERSION" >> "$GITHUB_OUTPUT"
+
+    - name: Select Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ steps.version.outputs.version }}
