@@ -8,6 +8,7 @@ import "../../../extensions/build_context_x.dart";
 import "../session_detail_presentation_scope.dart";
 import "reasoning_modal.dart";
 import "transcript_live_row.dart";
+import "transcript_motion.dart";
 
 class const ReasoningPartCard({
   super.key,
@@ -121,15 +122,21 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
                         ],
                       ),
                     ),
-                    if (widget.isStreaming && widget.text.isNotEmpty)
-                      Padding(
-                        // Lines up under the label, past the 20 px sparkle.
-                        padding: EdgeInsetsDirectional.only(start: 20 + prego.spacing.md, bottom: 8),
-                        child: _LatestWords(
-                          text: ReasoningPartCard.latestWords(text: widget.text),
-                          style: style,
-                        ),
-                      ),
+                    // The tail eases in with the first streamed words.
+                    TranscriptPresenceColumn(
+                      children: [
+                        if (widget.isStreaming && widget.text.isNotEmpty)
+                          Padding(
+                            key: const ValueKey("reasoning.latestWords"),
+                            // Lines up under the label, past the 20 px sparkle.
+                            padding: EdgeInsetsDirectional.only(start: 20 + prego.spacing.md, bottom: 8),
+                            child: _LatestWords(
+                              text: ReasoningPartCard.latestWords(text: widget.text),
+                              style: style,
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),

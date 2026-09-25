@@ -153,7 +153,10 @@ Future<void> bootstrapSesoriApp({
       brightnessResolver: Theme.maybeBrightnessOf,
       adaptiveQuality: true,
       adaptiveConfig: GlassAdaptiveScopeConfig(
-        targetFrameMs: 8,
+        // Degrades once P95 raster time exceeds 1.5x this target (24 ms). The
+        // former 8 ms (120 Hz) target lowered glass quality at 12 ms, while
+        // frames still met 60 fps.
+        targetFrameMs: 16,
         minQuality: .minimal,
         initialQuality: .standard,
         maxQuality: .standard,

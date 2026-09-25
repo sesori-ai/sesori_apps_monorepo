@@ -1,44 +1,121 @@
+import "package:flutter_bloc/flutter_bloc.dart";
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
+import "../session_detail_presentation_scope.dart";
 import "reasoning_part_card.dart";
 import "subtask_part_widget.dart";
 import "tool_part_widget.dart";
-import "transcript_disclosure.dart";
+import "transcript_motion.dart";
+import "transcript_rolling_line.dart";
 
-/// A run of tool, thinking and sub-agent steps: one summary row that eases its
-/// finished steps open, with each running step below it as a live row until it
-/// finishes and folds into the summary.
+/// A run of tool, thinking and sub-agent steps: one summary row, with each
+/// running step below it as a live row until it finishes and folds into the
+/// summary, whose count rolls to take it in.
+///
+/// Tapping the summary opens the finished steps outside the transcript, so a
+/// long group never pushes the conversation around: an anchored popover under
+/// a pointer, a sheet under touch.
+///
+/// A lone finished step needs no summary: it keeps its own row, in step order,
+/// and folds into the summary once a second step finishes.
 class const TranscriptGroupWidget({
   super.key,
   required final String? projectId,
   required final TranscriptGroupBlock group,
 }) extends StatelessWidget {
+  /// The popover's size: wide enough for a command, short enough to stay a
+  /// glance; past the height its steps scroll.
+  static const double panelWidth = 560;
+  static const double panelMaxHeight = 480;
+
   @override
   Widget build(BuildContext context) {
-    final finished = group.finishedSteps;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final finishedSteps = group.finishedSteps;
+    return TranscriptPresenceColumn(
       children: [
-        if (finished.isNotEmpty)
-          TranscriptDisclosure(
-            key: const ValueKey("transcriptGroup.summary"),
-            toggleKey: ValueKey("transcriptGroup.toggle.${group.id}"),
-            headerBuilder: ({required expanded}) => _SummaryRow(summary: group.summary, expanded: expanded),
-            panel: Padding(
-              padding: EdgeInsetsDirectional.only(start: context.prego.spacing.xl),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [for (final step in finished) _step(step: step)],
-              ),
+        if (finishedSteps.length == 1)
+          for (final step in group.steps) _step(step: step)
+        else ...[
+          if (finishedSteps.isNotEmpty) _summary(context: context),
+          for (final step in group.runningSteps) _step(step: step),
+        ],
+      ],
+    );
+  }
+
+  Widget _summary({required BuildContext context}) {
+    final prego = context.prego;
+    Widget button({required VoidCallback onPressed}) => TextButton(
+      key: ValueKey("transcriptGroup.toggle.${group.id}"),
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: prego.colors.textSecondary,
+        padding: EdgeInsets.zero,
+        minimumSize: const Size(44, 44),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        alignment: AlignmentDirectional.centerStart,
+        // The default stadium hover reads as a pill across the whole row.
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xs)),
+      ),
+      child: _SummaryRow(summary: group.summary),
+    );
+    const key = ValueKey("transcriptGroup.summary");
+    return switch (PregoInteractionScope.of(context)) {
+      PregoInteractionMode.pointer => PregoPopover(
+        key: key,
+        popoverWidth: panelWidth,
+        popoverMaxHeight: panelMaxHeight,
+        contentScrolls: false,
+        onClosed: null,
+        triggerBuilder: (_, open) => button(onPressed: open),
+        contentBuilder: (_, close) => _panel(from: context, close: close, padding: EdgeInsets.all(prego.spacing.lg)),
+      ),
+      PregoInteractionMode.touch => KeyedSubtree(
+        key: key,
+        child: button(
+          onPressed: () => showPregoModal<void>(
+            context: context,
+            title: _SummaryRow.label(loc: context.loc, summary: group.summary),
+            builder: (sheetContext) => _panel(
+              from: context,
+              close: () => sheetContext.pop(),
+              padding: EdgeInsets.zero,
             ),
           ),
-        for (final step in group.runningSteps) _step(step: step),
-      ],
+        ),
+      ),
+    };
+  }
+
+  /// The finished steps, as they were when the group opened. The panel is a
+  /// route of its own, so it takes the session page's scope and cubit along,
+  /// and its own selection area. Opening a sub-agent leaves the session, so
+  /// the panel [close]s first rather than waiting under the next page.
+  Widget _panel({required BuildContext from, required VoidCallback close, required EdgeInsetsGeometry padding}) {
+    final scope = SessionDetailPresentationScope.read(from);
+    return scope.around(
+      openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {
+        close();
+        scope.openSession(projectId: projectId, sessionId: sessionId, sessionTitle: sessionTitle, readOnly: readOnly);
+      },
+      child: BlocProvider.value(
+        value: from.read<SessionDetailCubit>(),
+        child: PregoReadableSelectionArea(
+          child: Padding(
+            padding: padding,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [for (final step in group.finishedSteps) _step(step: step)],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -61,40 +138,52 @@ class const TranscriptGroupWidget({
   };
 }
 
-class const _SummaryRow({required final TranscriptSummary summary, required final bool expanded})
-    extends StatelessWidget {
+class const _SummaryRow({required final TranscriptSummary summary}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
     final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
-    final failedCount = summary.failedCount;
+    // Hugs its text, so the popover centres under the summary, not the row.
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          expanded ? TablerRegular.chevron_down : TablerRegular.chevron_right,
-          size: PregoIconSize.sm,
-          color: style.color,
-        ),
+        Icon(TablerRegular.chevron_right, size: PregoIconSize.sm, color: style.color),
         SizedBox(width: prego.spacing.md),
         // The counts ellipsize on a narrow screen; the failure count never does.
         Flexible(
-          child: Text(
-            [for (final count in summary.counts) _countLabel(loc: loc, count: count)].join(" · "),
+          child: TranscriptRollingLine(
+            segments: _counts(loc: loc, summary: summary),
             style: style,
-            maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        if (failedCount > 0)
-          Text(
-            " · ${loc.transcriptSummaryFailed(failedCount)}",
-            style: style.copyWith(color: prego.colors.textErrorPrimary),
-            maxLines: 1,
-          ),
+        // Built with no segment while nothing failed, so the first failure
+        // wipes in rather than appearing.
+        TranscriptRollingLine(
+          segments: _failed(loc: loc, summary: summary),
+          style: style.copyWith(color: prego.colors.textErrorPrimary),
+          overflow: TextOverflow.clip,
+        ),
       ],
     );
   }
+
+  /// The whole summary as one line, such as a sheet's title.
+  static String label({required AppLocalizations loc, required TranscriptSummary summary}) => [
+    ..._counts(loc: loc, summary: summary),
+    ..._failed(loc: loc, summary: summary),
+  ].map((segment) => segment.text).join();
+
+  static List<TranscriptLineSegment> _counts({required AppLocalizations loc, required TranscriptSummary summary}) => [
+    for (final (index, count) in summary.counts.indexed)
+      (key: count.kind, text: "${index > 0 ? " · " : ""}${_countLabel(loc: loc, count: count)}"),
+  ];
+
+  static List<TranscriptLineSegment> _failed({required AppLocalizations loc, required TranscriptSummary summary}) => [
+    if (summary.failedCount > 0)
+      (key: TranscriptStepStatus.failed, text: " · ${loc.transcriptSummaryFailed(summary.failedCount)}"),
+  ];
 
   static String _countLabel({required AppLocalizations loc, required TranscriptKindCount count}) =>
       switch (count.kind) {

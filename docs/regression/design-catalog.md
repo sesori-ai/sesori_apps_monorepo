@@ -28,7 +28,8 @@ a static Flutter Web application.
   the playground must explain invalid combinations instead of constructing a
   production-invalid widget.
 - Exercise hover, press, focus, enabled, disabled, loading, icon-only, and
-  full-width behavior in both Prego themes.
+  full-width behavior in both Prego themes, at every solid-button size down to
+  the 30 px `xs` (an icon-only `xs` button is a 30 px square).
 - Resize freely and use at least one iOS and one Android viewport.
 - Compare an individual scenario with the same card in the all-states matrix.
 - Confirm `web/catalog_manifest.json` changes only after the typed registry is

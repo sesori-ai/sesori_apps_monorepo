@@ -277,7 +277,7 @@ void main() {
       expect(dispatcher.residentTaskToolUseIds(sessionId: _session), isEmpty);
     });
 
-    test("hides a task-notification text for a known task and keeps an unknown one visible", () {
+    test("hides a task-notification text for a known task and shows an unknown one as automation", () {
       _map(dispatcher, _agentAssistantFrame());
       _map(dispatcher, _launchResultFrame());
       dispatcher.completeTurn(sessionId: _session);
@@ -291,8 +291,9 @@ void main() {
         dispatcher,
         _userTextFrame(uuid: "notify-2", text: _notificationText.replaceAll(_toolUseId, "toolu-elsewhere")),
       );
-      expect(foreign.whereType<BridgeSseMessageUpdated>(), hasLength(1));
-      expect(foreign.whereType<BridgeSseMessagePartUpdated>().single.part, isA<PluginMessagePartText>());
+      final info = foreign.whereType<BridgeSseMessageUpdated>().single.info as PluginMessageAssistant;
+      expect(info.sender, PluginMessageSender.system);
+      expect(foreign.whereType<BridgeSseMessagePartUpdated>().single.part, isA<PluginMessagePartTool>());
     });
 
     test("cancelTasks marks a launched task cancelled after its turn ended", () {
@@ -370,7 +371,7 @@ void main() {
       expect(part.taskState?.output, isNull);
     });
 
-    test("a foreground result finalizes without a notification and injected records never render", () {
+    test("a foreground result finalizes without a notification and injected records render as automation", () {
       final messages = mapper.map(
         sessionId: _session,
         agentId: null,
@@ -389,11 +390,13 @@ void main() {
         catalogModelId: null,
       );
 
-      expect(messages, hasLength(1));
-      final part = messages.single.parts.single as PluginMessagePartSubtask;
+      expect(messages, hasLength(2));
+      final part = messages.first.parts.single as PluginMessagePartSubtask;
       expect(part.taskState?.status, PluginToolStatus.completed);
       expect(part.taskState?.output, "final report");
       expect(part.childSessionID, "agent-$_agentId");
+      expect((messages.last.info as PluginMessageAssistant).sender, PluginMessageSender.system);
+      expect(messages.last.parts.single.text, "<task-notification>malformed");
     });
   });
 }

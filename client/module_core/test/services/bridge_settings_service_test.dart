@@ -34,12 +34,12 @@ void main() {
   test("loads the YOLO flag when the bridge connects", () async {
     when(repository.load).thenAnswer((_) async => _loaded(yoloEnabled: true));
     final service = buildService();
-    expect(service.yoloEnabled.value, isFalse);
+    expect(service.yoloSettings.value.enabled, isFalse);
     verifyNever(repository.load);
 
     statuses.add(_connected);
 
-    await expectLater(service.yoloEnabled, emitsThrough(isTrue));
+    await expectLater(service.yoloSettings, emitsThrough(const YoloSettingsResponse(enabled: true)));
     verify(repository.load).called(1);
   });
 
@@ -51,7 +51,7 @@ void main() {
     when(repository.load).thenAnswer((_) async => BridgeSettingsLoadFailure(error: ApiError.generic()));
     await service.load();
 
-    expect(service.yoloEnabled.value, isTrue);
+    expect(service.yoloSettings.value.enabled, isTrue);
   });
 
   test("an older bridge without the setting reads as off", () async {
@@ -62,7 +62,7 @@ void main() {
     when(repository.load).thenAnswer((_) async => const BridgeSettingsLoadUnsupported());
     await service.load();
 
-    expect(service.yoloEnabled.value, isFalse);
+    expect(service.yoloSettings.value.enabled, isFalse);
   });
 
   test("a committed YOLO save updates the stream", () async {
@@ -74,7 +74,28 @@ void main() {
     final result = await service.updateYolo(enabled: true);
 
     expect(result, isA<YoloSettingsMutationCommitted>());
-    expect(service.yoloEnabled.value, isTrue);
+    expect(service.yoloSettings.value.enabled, isTrue);
+  });
+
+  test("a committed YOLO save keeps the loaded per-session support", () async {
+    when(repository.load).thenAnswer(
+      (_) async => const BridgeSettingsLoadSupported(
+        response: BridgeSettingsResponse(
+          pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 60),
+          yolo: YoloSettingsResponse(enabled: false, supportsSessionOverride: true),
+          warmUpPluginsOnSessionOpen: true,
+        ),
+      ),
+    );
+    when(() => repository.updateYolo(enabled: true)).thenAnswer(
+      (_) async => const YoloSettingsMutationCommitted(response: YoloSettingsResponse(enabled: true)),
+    );
+    final service = buildService();
+    await service.load();
+
+    await service.updateYolo(enabled: true);
+
+    expect(service.yoloSettings.value, const YoloSettingsResponse(enabled: true, supportsSessionOverride: true));
   });
 
   test("a failed YOLO save leaves the stream unchanged", () async {
@@ -85,7 +106,7 @@ void main() {
 
     await service.updateYolo(enabled: true);
 
-    expect(service.yoloEnabled.value, isFalse);
+    expect(service.yoloSettings.value.enabled, isFalse);
   });
 }
 

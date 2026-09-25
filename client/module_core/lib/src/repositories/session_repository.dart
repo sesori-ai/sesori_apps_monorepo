@@ -46,6 +46,13 @@ class SessionRepository({
     return _api.setAutoContinuation(sessionId: sessionId, enabled: enabled);
   }
 
+  Future<ApiResponse<Session>> setApprovalOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) {
+    return _api.setApprovalOverride(sessionId: sessionId, approvalOverride: approvalOverride);
+  }
+
   Future<ApiResponse<void>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,

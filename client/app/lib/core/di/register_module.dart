@@ -41,6 +41,7 @@ abstract class RegisterModule() {
 
   @lazySingleton
   FlutterSecureStorage get secureStorage => const FlutterSecureStorage(
+    aOptions: AndroidOptions(resetOnError: false),
     mOptions: MacOsOptions(
       accountName: "Sesori",
     ),

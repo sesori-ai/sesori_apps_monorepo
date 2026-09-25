@@ -75,7 +75,7 @@ void main() {
       expect(scope.initialQuality, GlassQuality.standard);
       expect(scope.maxQuality, GlassQuality.standard);
       expect(scope.allowStepUp, isTrue);
-      expect(scope.targetFrameMs, 8);
+      expect(scope.targetFrameMs, 16);
       expect(scope.onQualityChanged, isNotNull);
     }
 

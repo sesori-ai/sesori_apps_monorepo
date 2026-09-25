@@ -1,36 +1,17 @@
-import "package:get_it/get_it.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
+import "package:sesori_persistence/src/api/persister_api.dart";
 import "package:test/test.dart";
 
 void main() {
-  late GetIt getIt;
-  late _MemoryPrimitiveStorage storage;
-  late int platformResolutions;
+  late _MemoryPersisterApi storage;
 
-  PersisterRepository repository() => getIt<PersisterRepository>();
+  PersisterRepository repository() => PersisterRepository(persisterApi: storage);
 
-  setUp(() {
-    getIt = GetIt.asNewInstance();
-    storage = _MemoryPrimitiveStorage();
-    platformResolutions = 0;
-    getIt.registerLazySingleton<PrimitiveStorage>(() {
-      platformResolutions++;
-      return storage;
-    });
-    configurePersistenceDependencies(getIt: getIt);
-  });
+  setUp(() => storage = _MemoryPersisterApi());
 
-  tearDown(() => getIt.reset());
-
-  test("DI registration and repository resolution perform no storage I/O", () {
-    expect(platformResolutions, 0);
+  test("repository construction performs no API I/O", () {
+    repository();
     expect(storage.operationCount, 0);
-
-    final first = repository();
-    expect(repository(), same(first));
-    expect(platformResolutions, 1);
-    expect(storage.operationCount, 0);
-    expect(getIt.isRegistered<SecureStorage>(), isFalse);
   });
 
   test("missing strings stay absent; defaults do not persist a value", () async {
@@ -161,7 +142,7 @@ final class const _ScopedStringKey({required final String identity}) implements 
   String get storageKey => "fixture.scope:$identity";
 }
 
-class _MemoryPrimitiveStorage() implements PrimitiveStorage {
+class _MemoryPersisterApi() implements PersisterApi {
   final strings = <String, String>{};
   final bools = <String, bool>{};
   int operationCount = 0;

@@ -20,7 +20,7 @@ class PrepareDesktopReleaseTest(unittest.TestCase):
         self.output = self.root / "prepared"
         self.save(self.root / "run.json", {"id": 42, "repository": {"full_name": REPO},
                   "path": ".github/workflows/desktop-qualification.yml", "event": "workflow_dispatch",
-                  "conclusion": "success", "head_sha": SOURCE})
+                  "conclusion": "success", "head_sha": SOURCE, "head_branch": "main", "status": "completed"})
         for arch in ("arm64", "x64"):
             packages = self.root / f"desktop-macos-packages-{arch}"
             packages.mkdir()
@@ -53,15 +53,16 @@ class PrepareDesktopReleaseTest(unittest.TestCase):
 
     def run_prepare(self, **overrides):
         args = dict(root=self.root, output=self.output, source_sha=SOURCE, tooling_sha=TOOLING,
-                    channel="stable", repository=REPO, run_id=42)
+                    channel="stable", repository=REPO, run_id=42, current_run_id=None)
         prepare(**(args | overrides))
 
     def test_deterministic_complete_private_metadata(self):
         self.run_prepare()
         self.run_prepare(output=self.root / "second")
         result = json.loads((self.output / "desktop-release.json").read_text())
-        self.assertEqual(result["proposedTag"], "desktop-v1.8.4")
-        self.assertFalse(result["githubLatest"])
+        self.assertEqual(result["tag"], "v1.8.4")
+        self.assertEqual(result["producerWorkflowSha"], SOURCE)
+        self.assertNotIn("githubLatest", result)  # The shared finalizer owns Latest.
         self.assertEqual(result["sourceSha"], SOURCE)
         self.assertEqual(result["preparationSourceSha"], TOOLING)
         self.assertEqual(len(result["artifacts"]), 4)
@@ -78,14 +79,14 @@ class PrepareDesktopReleaseTest(unittest.TestCase):
         for path in self.root.glob("*/desktop-bundle/dart-defines.env"):
             path.write_text(path.read_text().replace("CHANNEL=stable", "CHANNEL=internal"))
         self.run_prepare(channel="internal")
-        self.assertEqual(json.loads((self.output / "desktop-release.json").read_text())["proposedTag"],
-                         "desktop-v1.8.4-internal.24")
+        self.assertEqual(json.loads((self.output / "desktop-release.json").read_text())["tag"],
+                         "v1.8.4-internal.24")
 
     def test_run_provenance_rejections(self):
         path = self.root / "run.json"
         original = json.loads(path.read_text())
-        for field, value in (("id", 43), ("head_sha", TOOLING), ("event", "pull_request"),
-                             ("conclusion", "failure"), ("path", "other.yml"),
+        for field, value in (("id", 43), ("head_sha", "not-a-sha"), ("event", "pull_request"),
+                             ("conclusion", "failure"), ("path", "other.yml"), ("head_branch", "feature"),
                              ("repository", {"full_name": "someone/fork"})):
             with self.subTest(field=field):
                 self.save(path, original | {field: value})
@@ -93,6 +94,48 @@ class PrepareDesktopReleaseTest(unittest.TestCase):
                     self.run_prepare()
                 self.assertFalse(self.output.exists())
         self.save(path, original)
+
+    def test_shared_finalizer_accepts_only_its_own_in_progress_run(self):
+        path = self.root / "run.json"
+        original = json.loads(path.read_text())
+        self.save(path, original | {"path": ".github/workflows/release-all-platforms.yml",
+                                  "status": "in_progress", "conclusion": None})
+        for current_run_id, tooling_sha in ((None, SOURCE), (43, SOURCE), (42, TOOLING)):
+            with self.subTest(current_run_id=current_run_id, tooling_sha=tooling_sha):
+                with self.assertRaisesRegex(ValueError, "successful producer"):
+                    self.run_prepare(current_run_id=current_run_id, tooling_sha=tooling_sha)
+        self.run_prepare(current_run_id=42, tooling_sha=SOURCE)
+
+    def test_completed_production_run_preserves_product_and_workflow_sources(self):
+        path = self.root / "run.json"
+        self.save(path, json.loads(path.read_text()) | {
+            "path": ".github/workflows/submit-release.yml", "head_sha": TOOLING})
+        self.run_prepare()
+        result = json.loads((self.output / "desktop-release.json").read_text())
+        self.assertEqual(result["sourceSha"], SOURCE)
+        self.assertEqual(result["producerWorkflowSha"], TOOLING)
+
+    def test_private_qualification_can_rebuild_the_selected_product_source(self):
+        path = self.root / "run.json"
+        self.save(path, json.loads(path.read_text()) | {"head_sha": TOOLING})
+        self.run_prepare()
+        result = json.loads((self.output / "desktop-release.json").read_text())
+        self.assertEqual(result["sourceSha"], SOURCE)
+        self.assertEqual(result["producerWorkflowSha"], TOOLING)
+
+    def test_internal_cycle_requires_its_own_product_source(self):
+        path = self.root / "run.json"
+        self.save(path, json.loads(path.read_text()) | {
+            "path": ".github/workflows/release-all-platforms.yml", "head_sha": TOOLING})
+        with self.assertRaisesRegex(ValueError, "Run source differs"):
+            self.run_prepare()
+
+    def test_current_failed_run_is_not_admitted(self):
+        path = self.root / "run.json"
+        self.save(path, json.loads(path.read_text()) | {
+            "path": ".github/workflows/submit-release.yml", "conclusion": "failure"})
+        with self.assertRaisesRegex(ValueError, "successful producer"):
+            self.run_prepare(current_run_id=42, tooling_sha=SOURCE)
 
     def test_rejects_altered_evidence_and_payloads(self):
         prefix = "desktop-macos-evidence-x64/"
@@ -160,7 +203,8 @@ class PrepareDesktopReleaseTest(unittest.TestCase):
         self.assertIn("permissions:\n  contents: read\n  actions: read\n\njobs:", workflow)
         self.assertIn("persist-credentials: false", workflow)
         producer = (repo / ".github/workflows/desktop-qualification.yml").read_text()
-        self.assertIn("--channel '${{ inputs.channel }}'", producer)
+        self.assertIn('--channel "$CHANNEL"', producer)
+        self.assertIn("CHANNEL: ${{ inputs.channel }}", producer)
         self.assertIn("build/desktop-bundle/dart-defines.env", producer)
 
 

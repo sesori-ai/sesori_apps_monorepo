@@ -89,12 +89,12 @@ MockPluginManagementService stubbedPluginManagementService() {
 
 class MockBridgeSettingsService() extends Mock implements BridgeSettingsService;
 
-/// A [MockBridgeSettingsService] whose YOLO flag stays off, for session tests
-/// that do not exercise it.
+/// A [MockBridgeSettingsService] whose YOLO setting stays off, for session
+/// tests that do not exercise it.
 MockBridgeSettingsService stubbedBridgeSettingsService() {
   final mock = MockBridgeSettingsService();
-  final yoloEnabled = BehaviorSubject.seeded(false);
-  when(() => mock.yoloEnabled).thenAnswer((_) => yoloEnabled.stream);
+  final yoloSettings = BehaviorSubject.seeded(const YoloSettingsResponse(enabled: false));
+  when(() => mock.yoloSettings).thenAnswer((_) => yoloSettings.stream);
   return mock;
 }
 

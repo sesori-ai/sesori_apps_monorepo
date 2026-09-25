@@ -248,6 +248,7 @@ Future<T?> showPregoBottomSheet<T>({
     // Keep swipe-down consistent with the scrim: a non-dismissible sheet must
     // not be drag-dismissable either (enableDrag defaults to true otherwise).
     enableDrag: isDismissible,
+    sheetAnimationStyle: prefersReducedMotion(context) ? AnimationStyle.noAnimation : null,
     builder: (sheetContext) {
       Widget body = builder(sheetContext);
       if (bodySize != PregoBottomSheetBodySize.natural) {

@@ -59,12 +59,17 @@ class const PregoMenuItem({
   /// paths. Reach for it sparingly — a menu where several rows shout stops any
   /// of them being heard.
   final bool isDestructive = false,
+
+  /// Marks a choice that trades safety for speed (approve everything). Tints
+  /// the title and glyph with the warning colour on both paths.
+  final bool isWarning = false,
 }) extends PregoMenuEntry {
   this
     : assert(
         leadingIcon == null || leading == null,
         "A row leads with either a glyph or a custom widget, not both.",
-      );
+      ),
+      assert(!(isDestructive && isWarning), "A row is either destructive or a warning, not both.");
 }
 
 /// A thin separator line between entries.
@@ -289,6 +294,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         :final leading,
         :final isEnabled,
         :final isDestructive,
+        :final isWarning,
       ):
         return GlassMenuItem(
           key: key,
@@ -308,9 +314,9 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
                   : Icon(
                       leadingIcon,
                       size: PregoIconSize.md,
-                      color: _iconColor(prego, isDestructive: isDestructive),
+                      color: _iconColor(prego, isDestructive: isDestructive, isWarning: isWarning),
                     )),
-          titleStyle: _titleStyle(prego, isDestructive: isDestructive),
+          titleStyle: _titleStyle(prego, isDestructive: isDestructive, isWarning: isWarning),
           subtitleStyle: _subtitleStyle(prego),
           trailing: isSelected ? _selectedCheck(prego) : null,
           onTap: onTap,
@@ -448,6 +454,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         :final leading,
         :final isEnabled,
         :final isDestructive,
+        :final isWarning,
       ):
         return _FlatMenuTile(
           key: key,
@@ -460,6 +467,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           leading: leading,
           isEnabled: isEnabled,
           isDestructive: isDestructive,
+          isWarning: isWarning,
           onTap: () {
             close();
             onTap();
@@ -500,6 +508,7 @@ class const _FlatMenuTile({
   required final VoidCallback onTap,
   required final bool isEnabled,
   required final bool isDestructive,
+  required final bool isWarning,
   final IconData? leadingIcon,
   final Widget? leading,
 }) extends StatelessWidget {
@@ -539,7 +548,7 @@ class const _FlatMenuTile({
                   Icon(
                     leadingIcon,
                     size: compact ? 16 : 20,
-                    color: _iconColor(prego, isDestructive: isDestructive),
+                    color: _iconColor(prego, isDestructive: isDestructive, isWarning: isWarning),
                   ),
                   SizedBox(width: compact ? 8 : 12),
                 ],
@@ -552,7 +561,7 @@ class const _FlatMenuTile({
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: _titleStyle(prego, isDestructive: isDestructive),
+                        style: _titleStyle(prego, isDestructive: isDestructive, isWarning: isWarning),
                       ),
                       if (subtitle != null && subtitle.isNotEmpty)
                         Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: _subtitleStyle(prego)),
@@ -605,7 +614,7 @@ class const _FlatMenuTile({
 double _glassItemHeight(BuildContext context, {required bool hasSubtitle}) {
   const verticalPadding = 16.0;
   final prego = context.prego;
-  var text = _lineHeight(context, style: _titleStyle(prego, isDestructive: false));
+  var text = _lineHeight(context, style: _titleStyle(prego, isDestructive: false, isWarning: false));
   if (hasSubtitle) text += _lineHeight(context, style: _subtitleStyle(prego));
   // Never below the 44px touch target GlassMenuItem floors its rows at.
   return math.max(44, verticalPadding + text);
@@ -653,12 +662,20 @@ double _lineHeight(BuildContext context, {required TextStyle style}) {
 TextStyle _labelStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8);
 
-TextStyle _titleStyle(PregoDesignSystem prego, {required bool isDestructive}) => prego.textTheme.textSm.medium.copyWith(
-  color: isDestructive ? prego.colors.fgErrorPrimary : prego.colors.textPrimary,
-);
+TextStyle _titleStyle(PregoDesignSystem prego, {required bool isDestructive, required bool isWarning}) =>
+    prego.textTheme.textSm.medium.copyWith(
+      color: isDestructive
+          ? prego.colors.fgErrorPrimary
+          : isWarning
+          ? prego.colors.textWarningPrimary
+          : prego.colors.textPrimary,
+    );
 
-Color _iconColor(PregoDesignSystem prego, {required bool isDestructive}) =>
-    isDestructive ? prego.colors.fgErrorPrimary : prego.colors.textSecondary;
+Color _iconColor(PregoDesignSystem prego, {required bool isDestructive, required bool isWarning}) => isDestructive
+    ? prego.colors.fgErrorPrimary
+    : isWarning
+    ? prego.colors.fgWarningPrimary
+    : prego.colors.textSecondary;
 
 TextStyle _subtitleStyle(PregoDesignSystem prego) =>
     prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary);

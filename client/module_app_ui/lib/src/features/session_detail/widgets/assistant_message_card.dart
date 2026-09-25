@@ -9,9 +9,12 @@ import "compaction_part_widget.dart";
 import "retry_part_widget.dart";
 import "text_part_widget.dart";
 import "transcript_group_widget.dart";
+import "transcript_motion.dart";
 
 /// An assistant message's row, rendering the blocks [TranscriptBuilder] made
-/// for it. A row whose steps joined an earlier message's group is empty.
+/// for it. A row whose steps joined an earlier message's group is empty. A
+/// group or part that joins the row later eases in, including the first one
+/// of a streamed message whose envelope arrived before its parts.
 class const AssistantMessageCard({
   super.key,
   required final String? projectId,
@@ -21,12 +24,12 @@ class const AssistantMessageCard({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    if (blocks.isEmpty) return const SizedBox.shrink();
+    // The column stays mounted while empty, so the first block counts as
+    // joining; the padding waits for it, so an empty row has no height.
     return Padding(
-      padding: contentPadding,
+      padding: blocks.isEmpty ? EdgeInsets.zero : contentPadding,
       child: PregoReadableSelectionArea(
-        child: Column(
-          crossAxisAlignment: .start,
+        child: TranscriptPresenceColumn(
           children: [
             for (final block in blocks)
               ...switch (block) {

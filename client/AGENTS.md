@@ -34,15 +34,21 @@ client/desktop ───────────→ module_app_ui ───┤
      │                         │
      │                         └→ sesori_shared
      └→ module_prego
+
+module_core ──────────→ module_persistence ←────────── module_auth
 ```
 
-`module_persistence` is lower-level pure-Dart persistence infrastructure. It owns
-separate string/bool/secret key contracts and primitive API/repository access,
-not domain keys, native storage, encryption policy or application state. It must
-not depend on auth, core, desktop-core or Flutter. Its platform capabilities are
-provided by the shell. Consumer/bootstrap integration follows the active
-`desktop-master-key-storage` plan; the existing DI sequence below is unchanged
-until that integration lands.
+`module_persistence` is lower-level pure-Dart infrastructure for the shared
+mobile/desktop persistence implementation: typed key contracts, Drift schema and
+APIs, cryptography and the key-owning secure repository. It must not depend on
+auth, core, desktop-core or Flutter. Domain keys/serialization stay in auth/core;
+shells supply native master-key access, storage scope and a persistent directory
+with the appropriate backup policy. Temporary public-mobile data migration stays
+isolated and explicitly deprecated in core, never inside normal repositories.
+Auth/core now depend on persistence for domain key contracts and the isolated
+mobile importer. Its registrations are lazy and it is not invoked yet.
+Consumer/bootstrap integration follows the active `desktop-master-key-storage`
+plan; the existing DI sequence below is unchanged until that integration lands.
 
 `module_app_ui` owns shared Flutter localization, context, route-presentation,
 settings/harness-management screens, and adaptive-screen foundations above

@@ -491,12 +491,39 @@ final class ClaudeEventDispatcher({
       }
       return events;
     }
-    if (mapped.whereType<ClaudeMappedTaskNotificationContentBlock>().firstOrNull case final block?) {
-      final events = _applyTaskNotification(sessionId: sessionId, notification: block.notification);
-      if (events != null) return events;
+    final messageId = _nonEmptyString(message.uuid);
+    if (_content.isTaskNotification(blocks: mapped, originKind: message.originKind)) {
+      final notifications = [
+        for (final block in mapped)
+          if (block is ClaudeMappedTaskNotificationContentBlock) block.notification,
+      ];
+      final events = <BridgeSseEvent>[];
+      final unclaimed = <ClaudeTaskNotification>[];
+      for (final notification in notifications) {
+        // A known task absorbs its envelope into its tile, hiding the text.
+        final tool = _tools.envelopeNotified(notification: notification);
+        if (tool == null) {
+          unclaimed.add(notification);
+        } else {
+          events.addAll(_partEvents(tool: tool));
+        }
+      }
+      if ((notifications.isNotEmpty && unclaimed.isEmpty) || messageId == null) return events;
+      final automation = _content.taskNotificationMessage(
+        sessionId: sessionId,
+        messageId: messageId,
+        time: _messageTime(message.timestamp),
+        content: message.message["content"],
+        notifications: unclaimed,
+      );
+      if (automation == null) return events;
+      return [
+        ...events,
+        BridgeSseMessageUpdated(info: automation.info),
+        for (final part in automation.parts) BridgeSseMessagePartUpdated(part: part),
+      ];
     }
 
-    final messageId = _nonEmptyString(message.uuid);
     if (messageId == null) return const [];
     final user = _content.userMessage(
       content: message.message["content"],
@@ -539,23 +566,6 @@ final class ClaudeEventDispatcher({
         result: null,
       ),
     );
-  }
-
-  /// Finalizes the task a `<task-notification>` user text names, hiding the
-  /// text; null when it names no task this session knows, so the caller
-  /// renders it as ordinary user text.
-  List<BridgeSseEvent>? _applyTaskNotification({
-    required String sessionId,
-    required ClaudeTaskNotification notification,
-  }) {
-    final tool = _tools.taskNotified(
-      toolUseId: notification.toolUseId,
-      taskId: notification.taskId,
-      status: notification.status,
-      summary: notification.summary,
-      result: notification.result,
-    );
-    return tool == null ? null : _partEvents(tool: tool);
   }
 
   List<BridgeSseEvent> _mapRetry({

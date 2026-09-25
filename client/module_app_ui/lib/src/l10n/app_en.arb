@@ -968,7 +968,18 @@
   "sessionDetailPickerVariant": "Variant",
   "sessionDetailFastMode": "Fast mode",
   "sessionDetailYoloChip": "YOLO",
-  "@sessionDetailYoloChip": {"description": "Label of the chip beside the session's model picker while the bridge's YOLO mode is on. Keep the product term YOLO."},
+  "@sessionDetailYoloChip": {"description": "Label of the chip beside the session's model picker while YOLO mode is on for the session. Keep the product term YOLO."},
+  "sessionApprovalAsk": "Ask for approval",
+  "@sessionApprovalAsk": {"description": "Session approval menu option, and the tooltip of the composer's approval chip, for a session where every permission request waits for the user."},
+  "sessionApprovalYolo": "Approve everything (YOLO)",
+  "@sessionApprovalYolo": {"description": "Session approval menu option that makes Sesori approve every permission request for this session. Keep the product term YOLO."},
+  "sessionApprovalDefaultOption": "{option} (default)",
+  "@sessionApprovalDefaultOption": {
+    "description": "Marks the session approval menu option that matches the bridge-wide setting, which sessions follow unless changed.",
+    "placeholders": {"option": {"type": "String"}}
+  },
+  "sessionApprovalUpdateFailed": "Could not change approval for this session. Try again.",
+  "@sessionApprovalUpdateFailed": {"description": "Error alert when the bridge did not acknowledge a change to the session's approval mode."},
   "sessionDetailYoloTitle": "YOLO mode is on",
   "@sessionDetailYoloTitle": {"description": "Title of the sheet or dialog opened by tapping the YOLO chip on the session page."},
   "sessionDetailYoloOpenSettings": "Open Settings",
@@ -1060,6 +1071,24 @@
   "sessionListRunning": "Running",
   "@sessionListRunning": {
     "description": "Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle"
+  },
+  "sessionListResumes": "Resumes {time}",
+  "@sessionListResumes": {
+    "description": "Shown on a session row, in place of its last-activity time, while the bridge has scheduled an automatic continuation after a quota reset. The time is local, with the date only when it is not today.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionListResumesAtDescription": "Resumes at {time}",
+  "@sessionListResumesAtDescription": {
+    "description": "Screen-reader and tooltip wording for a session row whose automatic continuation is scheduled; the time includes the date.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
   },
   "sessionListNewActivity": "New activity",
   "@sessionListNewActivity": {

@@ -87,6 +87,13 @@ extension BuildContextLocalization on BuildContext {
     return pattern.format(date);
   }
 
+  /// A date and time with the year, in the viewer's zone and date patterns:
+  /// "Sep 25, 2026 6:22 PM".
+  String formatDateTime({required int ms}) {
+    final date = DateTime.fromMillisecondsSinceEpoch(ms);
+    return "${_dateFormat("yMMMd").format(date)} ${_dateFormat("jm").format(date)}";
+  }
+
   /// Compact, glanceable timestamp for an individual chat message
   /// (revealed by swiping the transcript). Shows the localized
   /// time-of-day (e.g. "9:41 AM") for messages from today, prefixes the

@@ -12,6 +12,7 @@ import "background_tasks_bar.dart";
 import "composer_surface_style.dart";
 import "prompt_input.dart";
 import "session_abort_scope_dialog.dart";
+import "session_approval_chip.dart";
 import "session_auto_continuation_chip.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
@@ -144,8 +145,8 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     );
   }
 
-  /// Quiet session states beside the pickers: YOLO while the bridge approves
-  /// everything, and auto-continuation while it is enabled but not due.
+  /// Quiet session states beside the pickers: the session's approval mode, and
+  /// auto-continuation while it is enabled but not due.
   List<Widget> _statusChips({
     required SessionDetailLoaded state,
     required PregoComposerSurfaceStyle surfaceStyle,
@@ -157,13 +158,22 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         ? view
         : null;
     return [
-      if (state.yoloEnabled)
-        YoloChip(
+      // Touch status chips stay glyphs so the shared-width pickers keep their labels.
+      ?switch (state.approvalControl) {
+        SessionApprovalHidden() => null,
+        SessionApprovalBridgeWideYolo() => YoloChip(
           surfaceStyle: surfaceStyle,
-          // Touch status chips stay glyphs so the shared-width pickers keep their labels.
           showLabel: pointer,
           onOpenSettings: () => SessionDetailPresentationScope.read(context).openBridgeSettings(),
         ),
+        final SessionApprovalPerSession control => SessionApprovalChip(
+          surfaceStyle: surfaceStyle,
+          control: control,
+          showLabel: pointer,
+          updating: state.isUpdatingApproval,
+          onSelect: (mode) => unawaited(context.read<SessionDetailCubit>().setApprovalMode(mode: mode)),
+        ),
+      },
       if (continuation != null)
         SessionAutoContinuationChip(
           surfaceStyle: surfaceStyle,

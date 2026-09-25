@@ -13,6 +13,7 @@ import "../../api/models/claude_content_block_dto.dart";
 import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_task_notification.dart";
 import "claude_shell_command_mapper.dart";
+import "claude_task_status_mapping.dart";
 import "claude_tool_kind_mapper.dart";
 import "claude_tool_title_mapper.dart";
 
@@ -23,8 +24,9 @@ final class const ClaudeMappedTextContentBlock({required final String text}) ext
 /// A text block that is a complete `<task-notification>` envelope.
 ///
 /// Consumers finalize the named task and hide the block only when its tool-use
-/// id is a task they know; otherwise [text] renders as ordinary user text, so a
-/// prompt that discusses the protocol can neither vanish nor finalize a subtask.
+/// id is a task they know; otherwise it renders as an Automation step. A prompt
+/// that merely discusses the protocol is not a whole envelope, so it can
+/// neither vanish nor finalize a subtask.
 final class const ClaudeMappedTaskNotificationContentBlock({
   required final ClaudeTaskNotification notification,
   required final String text,
@@ -146,21 +148,10 @@ final class const ClaudeContentMapper() {
       sessionId: sessionId,
       messageId: messageId,
     );
-    if (!parts.any((part) => part.type.isVisible && (part is! PluginMessagePartText || part.text.isNotEmpty))) {
-      return null;
-    }
+    if (!_hasVisibleContent(parts: parts)) return null;
     return PluginMessageWithParts(
       info: isPeer
-          ? PluginMessage.assistant(
-              id: messageId,
-              sessionID: sessionId,
-              agent: null,
-              modelID: null,
-              providerID: null,
-              variant: null,
-              sender: PluginMessageSender.system,
-              time: time,
-            )
+          ? _automationInfo(sessionId: sessionId, messageId: messageId, time: time)
           : PluginMessage.user(
               id: messageId,
               sessionID: sessionId,
@@ -171,6 +162,94 @@ final class const ClaudeContentMapper() {
       parts: parts,
     );
   }
+
+  /// Whether a user turn is the CLI's delivery of a background-task outcome:
+  /// its provenance says so or, on CLIs that record no origin, one of its
+  /// [blocks] is a whole `<task-notification>` envelope.
+  bool isTaskNotification({
+    required List<ClaudeMappedContentBlock> blocks,
+    required ClaudeMessageOriginKind originKind,
+  }) =>
+      originKind == ClaudeMessageOriginKind.taskNotification ||
+      blocks.any(
+        (block) => switch (block) {
+          ClaudeMappedTaskNotificationContentBlock() => true,
+          ClaudeMappedTextContentBlock(:final text) => ClaudeTaskNotification.isEnvelope(text),
+          _ => false,
+        },
+      );
+
+  /// The Automation row for a task-notification turn, never a user bubble.
+  ///
+  /// [notifications] are the parsed envelopes no known task absorbed; each
+  /// becomes one finished step labelled by its summary. With none, the turn's
+  /// raw text is shown as-is. Null when nothing is visible.
+  PluginMessageWithParts? taskNotificationMessage({
+    required String sessionId,
+    required String messageId,
+    required PluginMessageTime? time,
+    required Object? content,
+    required List<ClaudeTaskNotification> notifications,
+  }) {
+    final parts = notifications.isEmpty
+        ? mapParts(content: content, sessionId: sessionId, messageId: messageId)
+        : [
+            for (final (index, notification) in notifications.indexed)
+              _taskNotificationPart(
+                notification: notification,
+                id: "$messageId-task-$index",
+                sessionId: sessionId,
+                messageId: messageId,
+              ),
+          ];
+    if (!_hasVisibleContent(parts: parts)) return null;
+    return PluginMessageWithParts(
+      info: _automationInfo(sessionId: sessionId, messageId: messageId, time: time),
+      parts: parts,
+    );
+  }
+
+  PluginMessagePart _taskNotificationPart({
+    required ClaudeTaskNotification notification,
+    required String id,
+    required String sessionId,
+    required String messageId,
+  }) {
+    final status = notification.status.toPluginToolStatus();
+    return PluginMessagePart.tool(
+      id: id,
+      sessionID: sessionId,
+      messageID: messageId,
+      tool: notification.summary,
+      kind: PluginToolKind.other,
+      state: PluginToolState(
+        status: status,
+        title: null,
+        shellCommand: null,
+        output: _boundedToolOutput(notification.result ?? ""),
+        error: status == PluginToolStatus.error ? notification.summary : null,
+        attachments: const [],
+      ),
+    );
+  }
+
+  bool _hasVisibleContent({required List<PluginMessagePart> parts}) =>
+      parts.any((part) => part.type.isVisible && (part is! PluginMessagePartText || part.text.isNotEmpty));
+
+  PluginMessage _automationInfo({
+    required String sessionId,
+    required String messageId,
+    required PluginMessageTime? time,
+  }) => PluginMessage.assistant(
+    id: messageId,
+    sessionID: sessionId,
+    agent: null,
+    modelID: null,
+    providerID: null,
+    variant: null,
+    sender: PluginMessageSender.system,
+    time: time,
+  );
 
   /// The compaction row for the continuation summary [content] the CLI
   /// injects as a user turn right after compacting.

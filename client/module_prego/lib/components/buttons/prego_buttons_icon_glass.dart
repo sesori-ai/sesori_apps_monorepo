@@ -2,6 +2,7 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 
 import "../../theme/prego_theme.dart";
+import "prego_button_trailing.dart";
 
 /// Size variants for [PregoButtonsIconGlass].
 enum PregoButtonsIconGlassSize() {
@@ -42,24 +43,31 @@ extension PregoButtonsIconGlassSizeDiameter on PregoButtonsIconGlassSize {
 /// )
 /// ```
 class const PregoButtonsIconGlass({
-    super.key,
-    /// The glyph rendered at the centre of the button.
+  super.key,
+
+  /// The glyph rendered at the centre of the button.
   required final IconData icon,
-    /// Called when the button is tapped. Pass `null` to render in disabled state.
+
+  /// Called when the button is tapped. Pass `null` to render in disabled state.
   required final VoidCallback? onPressed,
-    /// Governs the button diameter (and the default icon size).
+
+  /// Governs the button diameter (and the default icon size).
   final PregoButtonsIconGlassSize size = PregoButtonsIconGlassSize.lg,
-    /// Overrides the default icon size for the chosen [size].
+
+  /// Overrides the default icon size for the chosen [size].
   final double? iconSize,
-    /// Overrides the icon colour. Defaults to `text-primary` when enabled and
+
+  /// Overrides the icon colour. Defaults to `text-primary` when enabled and
   /// `text-disabled` when [onPressed] is `null`.
   final Color? iconColor,
-    /// Optional semantics label describing the action for screen readers.
+
+  /// Optional semantics label describing the action for screen readers.
   final String? semanticLabel,
-    /// Optional content after the icon, such as counts; the circle widens
-  /// into a pill of the same height to hold it.
+
+  /// Optional content after the icon, such as counts; the circle widens
+  /// into a pill of the same height to hold it, and back, smoothly.
   final Widget? trailing,
-  }) extends StatelessWidget {
+}) extends StatelessWidget {
   double get _defaultIconSize => switch (size) {
     PregoButtonsIconGlassSize.xs => 20.0,
     PregoButtonsIconGlassSize.sm => 20.0,
@@ -75,40 +83,26 @@ class const PregoButtonsIconGlass({
     final resolvedIconColor = iconColor ?? (isDisabled ? colors.textDisabled : colors.textPrimary);
     final resolvedIconSize = iconSize ?? _defaultIconSize;
 
-    if (trailing case final trailing?) {
-      return GlassButton.custom(
-        onTap: onPressed ?? () {},
-        enabled: !isDisabled,
-        height: size.diameter,
-        shape: LiquidRoundedSuperellipse(borderRadius: size.diameter / 2),
-        settings: LiquidGlassSettings(glassColor: colors.buttonGlassPrimaryBackground),
-        label: semanticLabel ?? "",
-        child: Padding(
-          padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.lg),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            spacing: PregoSpacing.sm,
-            children: [
-              Icon(icon, size: resolvedIconSize, color: resolvedIconColor),
-              trailing,
-            ],
-          ),
+    // One glass shape with or without [trailing]: a fully rounded rectangle is
+    // the circle while the trailing slot is empty and stretches into the pill
+    // as it grows, so the switch between them animates instead of popping.
+    return GlassButton.custom(
+      onTap: onPressed ?? () {},
+      enabled: !isDisabled,
+      height: size.diameter,
+      shape: LiquidRoundedRectangle(borderRadius: size.diameter / 2),
+      settings: LiquidGlassSettings(glassColor: colors.buttonGlassPrimaryBackground),
+      // No button `label`: as in the old circle, the icon carries the
+      // semantics label and the button announces its content.
+      child: Padding(
+        padding: EdgeInsetsDirectional.symmetric(horizontal: (size.diameter - resolvedIconSize) / 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: resolvedIconSize, color: resolvedIconColor, semanticLabel: semanticLabel),
+            PregoButtonTrailing(gap: PregoSpacing.sm, child: trailing),
+          ],
         ),
-      );
-    }
-
-    return GlassIconButton(
-      onPressed: onPressed,
-      size: size.diameter,
-      iconSize: resolvedIconSize,
-      settings: LiquidGlassSettings(
-        glassColor: colors.buttonGlassPrimaryBackground,
-      ),
-      icon: Icon(
-        icon,
-        size: resolvedIconSize,
-        color: resolvedIconColor,
-        semanticLabel: semanticLabel,
       ),
     );
   }

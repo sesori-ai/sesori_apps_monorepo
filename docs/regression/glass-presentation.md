@@ -10,8 +10,9 @@ mobile and desktop shells without turning solid content or product menus into gl
 - Both shells initialize standard shaders before their UI starts, skipping unused
   premium preload. Desktop does so only after the primary-launch gate succeeds.
 - Adaptive quality starts at standard, stays between minimal and standard, and
-  can recover to standard. Mobile retains its 8 ms runtime target; desktop uses
-  the package's default 16 ms target. These are policies, not measured GPU results.
+  can recover to standard. Both shells use a 16 ms target, so quality steps
+  down only when P95 raster time exceeds 24 ms and frames miss 60 fps. These are
+  policies, not measured GPU results.
 - Glass follows the app's Material appearance even when it differs from the OS.
   Package accessibility defaults remain enabled. The package's high-contrast
   fallback must not be described as actual iOS Reduce Transparency detection.

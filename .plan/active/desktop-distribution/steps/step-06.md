@@ -1,14 +1,16 @@
-# Step 6 — Private release preparation and publication gate
+# Step 6 — Shared release cycle and desktop publication gate
 
-Ordinal 8/14. Builds on merged step 5 (#1506). Public publication remains blocked;
-this implementation prepares evidence without tags, releases, signing, website
-writes, new credentials, or changes to CLI/mobile finalizers.
+Ordinal 8/14. Builds on merged step 5 (#1506). Private preparation is already merged.
+The user selected the shared bridge/mobile release cycle on 2026-09-25. Continuation
+`8.j/14` merged as #1724, wiring native macOS builds and gated asset attachment without
+changing bridge/mobile finalizers or publishing a desktop release. Follow-up `8.k/14`
+corrects the reusable callers' read-only PR-provenance permission.
 
 ## Code-informed implementation boundary
 
-- `.github/workflows/desktop-release.yml` is manual and read-only. It downloads
-  both CPUs' private packages/evidence from one successful qualification run.
-  Source SHA, run ID and channel are explicit inputs; this workflow is macOS-only.
+- `.github/workflows/desktop-release.yml` remains manual and read-only. It downloads
+  both CPUs' packages/evidence from one successful qualification/shared release run.
+  Source SHA, run ID and channel are explicit inputs; this QA aid is macOS-only.
   Checkout is
   the workflow's tooling revision; it is not mislabeled as the package source.
 - `.github/scripts/prepare_desktop_release.py` checks the producer run, both bundle
@@ -31,29 +33,109 @@ artifacts stay in the producer run with their existing retention. No storage
 service, persistent state, new application lifecycle owner or updater is introduced.
 Transient Python values only; no architecture-bearing application code changes.
 
-## Release isolation and blockers
+## Shared-cycle continuation and blockers
 
-Proposed tags use `desktop-vX.Y.Z` or `desktop-vX.Y.Z-internal.N`. Explicit bridge
-selectors require a `v` prefix, so desktop tags do not qualify. Generic GitHub
-Latest is repository-wide: eventual publication must use `--latest=false` for
-both desktop channels. This step generates a proposed tag but never creates it.
-It neither consumes mobile/CLI versions nor moves `internal-release-attempt`.
+`release-all-platforms.yml` reuses the private macOS producer with its resolved
+build number/source and internal channel. Desktop-only changes now enter the same
+product cycle. `submit-release.yml` uses the resolved source/build with the stable
+channel for admitted macOS releases; beta and `bridge-only` keep their existing scope.
+Core mobile/bridge success conditions, tags, attempt recording and finalizers remain
+unchanged. A desktop build failure stays visible without rolling back other products.
+
+`_reusable-desktop-publish.yml` runs only after native desktop success and the shared
+release job. Production therefore already passed `store-production`; no second
+approval is added. `DESKTOP_MACOS_PUBLICATION_ENABLED` defaults off and is not enabled
+by this change. Internal packages stay in Actions artifacts until the owner admits
+macOS publication. Windows/Linux publishing is not enabled.
+
+The publisher checks both native payload sets against producer evidence, binds them
+to the shared version/build/source, and adds only four macOS installers plus
+`desktop-checksums.txt` and `desktop-release.json`. It never changes bridge checksums,
+creates/promotes releases, moves tags or changes Latest. It anonymously retrieves and
+hashes each asset, refuses replacement on retries, and uploads the manifest last.
+Private evidence, logs and screenshots are never attached to the public release.
+
+Production's workflow commit is not its older resolved product source; both are
+recorded. Own-run finalization admits an in-progress producer only for that exact run
+and workflow SHA, after its native job dependency succeeds. Other selected runs must
+be completed successfully. Upgrade probes also accept the shared producers while
+retaining package-source main ancestry and the exact historical baseline exception.
 
 Do not claim step 6 shipped from preparation. The owner-approved signing migration
 is complete: all five values live only in `macos-signing`, shared CLI and direct
 desktop native proof passed on both CPUs after repository-copy removal, and the
 migration plan retired in #1534. Remaining gates:
 
-- Full native macOS manual upgrade/data-preservation gates and parent desktop-app
-  prerequisites; existing private package probes do not establish these.
+- Remaining native/macOS and parent desktop-app checks. Authenticated/helper-Off
+  replacement already passed for build 122 on both CPUs. Existing shutdown tests
+  passed 82 cases; that is not packaged fault injection. The user reports desktop
+  checklist success on M4 Pro/macOS 27.0 (26A428), with app build unspecified.
+  The configured deployment minimum is macOS 12.0; execution on that minimum,
+  remaining cross-device cases and fresh candidate attribution are still unproven.
 - Verified public download links on `https://sesori.com/desktop/`. The page itself went
   live on 2026-09-18 (sesori-ai/landingpage#107) with all eight build anchors and
   `linux-package-managers`; every row is still an unshipped placeholder.
-- Actual immutable publication and public retrieval/signature checks, then channel
-  metadata last. No publication credentials or hosted resources are provisioned here.
+- Owner admission before enabling `DESKTOP_MACOS_PUBLICATION_ENABLED`, then actual
+  immutable publication/public retrieval/trust checks before exposing website links.
+  No publication credentials or hosted resources are provisioned here.
 
 No automatic updater layers remain to clean up. The private producer stays separate
 from public release authority. Windows/Linux publication remains disabled.
+
+## Shared-cycle native evidence (2026-09-25)
+
+Private package run
+[36168531963](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36168531963)
+passed at workflow source `af23da2078a53f6515c75303f37b673e65983ec4`. Product source
+`9ff459e6316ed91b285d573a03f15e0c598b24c3` is the main-ancestor target of existing
+`v1.9.1-internal.981`; both new packages compile **stable `1.9.1+981`**. This tests an
+older product source/shared build number without relabeling existing binaries.
+
+Tooling job `108182131099`, arm64 `108182190901` (`xcode-27`) and x64
+`108182190956` (`macos-26-intel`) passed. Each native job staged clean source,
+signed/notarized packages, exercised the extracted helper with isolated fakes and
+probed the installed GUI/separate platform fixture. Both ZIP/DMG inventories contain
+the same eight native binaries; both app and DMG receipts report `Accepted`.
+
+| CPU | Private packages artifact | Evidence artifact / verified archive SHA256 |
+|---|---|---|
+| arm64 | `10879113046` | `10879322858` / `0d605543f6466fbbe575e6f67c4c0f8c2a6c9d5353a9aa9da58c8f1b1a3fcb2a` |
+| x64 | `10881365014` | `10880830350` / `b080fee29a4520460278d89529283ec57edd7b137b1a54a247b70608a116321b` |
+
+Read-only preparation
+[36171714173](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36171714173)
+passed job `108192600638` at tooling `9e2adab90b47c1f3607a02414c978bd9abe6f050`.
+It downloaded and hashed all four payloads; independently inspected evidence archives
+and preparation metadata agree on identities, stable channel, clean patches, receipts,
+inventories and these payload SHA256 values:
+
+- arm64 DMG: `3664b979dd9418696c2fef6cef4dd409a07642b1f4f45dcf206894044aaaf9d7`
+- arm64 ZIP: `6562da55ebc412e4a562c8fa0da9f0d4fa5492594f2dfdd74d3fbcd15ee8bbd3`
+- x64 DMG: `695a5b3d6f0a8dee2787bab151f75a88d1c3afc0329df0dc8f0eaeddd9d66dc3`
+- x64 ZIP: `b3a8949f9b6fd49e613a0c263ab3944b53756c8b3099a766b66033cf4c8117cc`
+
+Preparation artifact `10880996051` has verified archive SHA256
+`e4f642973fcb4073600cf45a246691a392658d66522e51b9383e006023336325`.
+It proposes shared tag `v1.9.1` but does not publish it. These runs do not establish
+new authenticated replacement, minimum-OS/interactive acceptance or public trust.
+The local installed app/bridge was untouched.
+
+Scheduled shared run
+[36169071807](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36169071807)
+was rejected at startup: the nested `macos-upgrade` and `macos-authenticated-upgrade`
+jobs request `pull-requests: read`, even though packaging would skip them. No job,
+release-attempt write, store query or upload ran. The `8.k/14` fix grants that read-only
+scope to the internal and production native-desktop callers; it does not broaden
+publication authority. Private package acceptance above does not accept this failed
+shared run. Real shared-cycle execution remains pending the corrected workflow.
+
+At correction commit `99c95999e101d6524ea8b7b3f248876088ac9f95`, branch-only validation
+[36172912862](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36172912862)
+passed GitHub's workflow admission, then intentionally failed the existing main-only
+guard. Only preflight job `108196547789` ran; checkout, attempt recording, version
+validation and all seven other jobs were skipped. Watch exit 1 is expected here,
+not a successful release. Both caller-contract subcases failed before the permission
+fix; all 12 publisher/workflow tests and actionlint passed afterward.
 
 ## Post-migration continuation
 

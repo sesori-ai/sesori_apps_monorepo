@@ -2,16 +2,29 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
-import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:test/test.dart";
 
 void main() {
-  late DesktopStorageCipher cipher;
+  late StorageCipher cipher;
   late SecretKey masterKey;
 
   setUp(() async {
-    cipher = DesktopStorageCipher(scope: DesktopStorageScope.development);
+    cipher = StorageCipher(scope: PersistenceScope.development);
     masterKey = await cipher.generateMasterKey();
+  });
+
+  test("stable client namespaces separate scopes and the legacy native store", () {
+    expect(PersistenceScope.masterKeyNamespace, "com.sesori.client.persistence");
+    expect(PersistenceScope.values.map((scope) => scope.storageId), ["development", "production"]);
+    expect(PersistenceScope.values.map((scope) => scope.databaseFileName), [
+      "client-persistence-development.sqlite",
+      "client-persistence-production.sqlite",
+    ]);
+    expect(PersistenceScope.values.map((scope) => scope.masterKeyStorageKey), [
+      "client-master-key-v1-development",
+      "client-master-key-v1-production",
+    ]);
   });
 
   test("master keys are 256 bits and preserve native base64 encoding", () async {
@@ -41,12 +54,12 @@ void main() {
     final envelope = await cipher.encrypt(key: "fixture.first", value: "protected value", masterKey: masterKey);
     await expectLater(
       cipher.decrypt(key: "fixture.second", envelope: envelope, masterKey: masterKey),
-      throwsA(isA<DesktopStorageException>()),
+      throwsA(isA<StorageException>()),
     );
-    final production = DesktopStorageCipher(scope: DesktopStorageScope.production);
+    final production = StorageCipher(scope: PersistenceScope.production);
     await expectLater(
       production.decrypt(key: "fixture.first", envelope: envelope, masterKey: masterKey),
-      throwsA(isA<DesktopStorageException>()),
+      throwsA(isA<StorageException>()),
     );
   });
 
@@ -54,7 +67,7 @@ void main() {
     final envelope = await cipher.encrypt(key: "fixture.key", value: "protected value", masterKey: masterKey);
     await expectLater(
       cipher.decrypt(key: "fixture.key", envelope: envelope, masterKey: await cipher.generateMasterKey()),
-      throwsA(isA<DesktopStorageException>()),
+      throwsA(isA<StorageException>()),
     );
   });
 
@@ -77,8 +90,8 @@ void main() {
       await expectLater(
         cipher.decrypt(key: "fixture.key", envelope: envelope, masterKey: masterKey),
         throwsA(
-          isA<DesktopStorageException>()
-              .having((e) => e.operation, "operation", DesktopStorageOperation.decryptValue)
+          isA<StorageException>()
+              .having((e) => e.operation, "operation", StorageOperation.decryptValue)
               .having((e) => e.toString(), "presentation", isNot(contains(value))),
         ),
       );
@@ -89,7 +102,7 @@ void main() {
     test("rejects a ${bytes.length}-byte native key", () {
       expect(
         () => cipher.decodeMasterKey(encoded: base64Encode(bytes)),
-        throwsA(isA<DesktopStorageException>().having((e) => e.innerError, "cause", isA<FormatException>())),
+        throwsA(isA<StorageException>().having((e) => e.innerError, "cause", isA<FormatException>())),
       );
     });
   }
@@ -99,7 +112,7 @@ void main() {
     expect(
       () => cipher.decodeMasterKey(encoded: encoded),
       throwsA(
-        isA<DesktopStorageException>()
+        isA<StorageException>()
             .having((e) => e.innerError, "cause", isA<FormatException>().having((e) => e.source, "source", encoded))
             .having((e) => e.toString(), "presentation", isNot(contains(encoded))),
       ),

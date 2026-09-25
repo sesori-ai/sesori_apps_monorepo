@@ -1546,6 +1546,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailYoloChip => 'YOLO';
 
   @override
+  String get sessionApprovalAsk => 'Ask for approval';
+
+  @override
+  String get sessionApprovalYolo => 'Approve everything (YOLO)';
+
+  @override
+  String sessionApprovalDefaultOption(String option) {
+    return '$option (default)';
+  }
+
+  @override
+  String get sessionApprovalUpdateFailed => 'Could not change approval for this session. Try again.';
+
+  @override
   String get sessionDetailYoloTitle => 'YOLO mode is on';
 
   @override
@@ -1747,6 +1761,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListRunning => 'Running';
+
+  @override
+  String sessionListResumes(String time) {
+    return 'Resumes $time';
+  }
+
+  @override
+  String sessionListResumesAtDescription(String time) {
+    return 'Resumes at $time';
+  }
 
   @override
   String get sessionListNewActivity => 'New activity';

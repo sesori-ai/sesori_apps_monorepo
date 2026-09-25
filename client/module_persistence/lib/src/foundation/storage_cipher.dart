@@ -4,18 +4,18 @@ import "dart:typed_data";
 import "package:cryptography/cryptography.dart";
 import "package:injectable/injectable.dart";
 
-import "desktop_storage_exception.dart";
-import "desktop_storage_scope.dart";
+import "persistence_scope.dart";
+import "storage_exception.dart";
 
 /// AES-256-GCM for individual rows, independent of relay encryption/framing.
 @lazySingleton
-class DesktopStorageCipher({required DesktopStorageScope scope}) {
+class StorageCipher({required PersistenceScope scope}) {
   static const _version = 1;
   static const _keyLength = 32;
   static const _nonceLength = 12;
   static const _macLength = 16;
 
-  final DesktopStorageScope _scope = scope;
+  final PersistenceScope _scope = scope;
   final AesGcm _algorithm = AesGcm.with256bits(nonceLength: _nonceLength);
 
   Future<SecretKey> generateMasterKey() => _algorithm.newSecretKey();
@@ -26,12 +26,12 @@ class DesktopStorageCipher({required DesktopStorageScope scope}) {
     try {
       final bytes = base64Decode(encoded);
       if (bytes.length != _keyLength) {
-        throw const FormatException("The desktop master key must contain 32 bytes");
+        throw const FormatException("The client master key must contain 32 bytes");
       }
       return SecretKeyData(bytes);
     } catch (error, stackTrace) {
       Error.throwWithStackTrace(
-        DesktopStorageException(operation: DesktopStorageOperation.decodeMasterKey, innerError: error),
+        StorageException(operation: StorageOperation.decodeMasterKey, innerError: error),
         stackTrace,
       );
     }
@@ -48,7 +48,7 @@ class DesktopStorageCipher({required DesktopStorageScope scope}) {
       return Uint8List.fromList([_version, ...box.concatenation()]);
     } catch (error, stackTrace) {
       Error.throwWithStackTrace(
-        DesktopStorageException(operation: DesktopStorageOperation.encryptValue, innerError: error),
+        StorageException(operation: StorageOperation.encryptValue, innerError: error),
         stackTrace,
       );
     }
@@ -57,10 +57,10 @@ class DesktopStorageCipher({required DesktopStorageScope scope}) {
   Future<String> decrypt({required String key, required Uint8List envelope, required SecretKey masterKey}) async {
     try {
       if (envelope.length < 1 + _nonceLength + _macLength) {
-        throw const FormatException("Truncated desktop secret envelope");
+        throw const FormatException("Truncated client secret envelope");
       }
       if (envelope.first != _version) {
-        throw FormatException("Unsupported desktop secret envelope version ${envelope.first}");
+        throw FormatException("Unsupported client secret envelope version ${envelope.first}");
       }
       final box = SecretBox.fromConcatenation(
         envelope.sublist(1),
@@ -76,7 +76,7 @@ class DesktopStorageCipher({required DesktopStorageScope scope}) {
       );
     } catch (error, stackTrace) {
       Error.throwWithStackTrace(
-        DesktopStorageException(operation: DesktopStorageOperation.decryptValue, innerError: error),
+        StorageException(operation: StorageOperation.decryptValue, innerError: error),
         stackTrace,
       );
     }
@@ -85,5 +85,5 @@ class DesktopStorageCipher({required DesktopStorageScope scope}) {
   // Scope is a closed enum with explicit stable spellings. The final key is
   // opaque and may contain separators without changing the preceding fields.
   List<int> _associatedData({required String key}) =>
-      utf8.encode("sesori-desktop-storage\u0000$_version\u0000${_scope.storageId}\u0000$key");
+      utf8.encode("sesori-client-storage\u0000$_version\u0000${_scope.storageId}\u0000$key");
 }

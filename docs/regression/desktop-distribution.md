@@ -72,24 +72,56 @@ They never launch the GUI or helper. Same-version reinstall is not N→N+1 proof
 Unsigned private containers do not establish desktop-session behavior, account
 restoration, Secret Service/tray behavior, signing, repository trust or publication.
 
-## Private release preparation
+## Shared release cycle and private preparation
+
+Private `macos-packaging` accepts optional immutable `source_sha` and `build_number`
+overrides, validating main ancestry before building. This qualifies the exact selected
+production source/build without enabling publication or submitting anything to stores.
+The workflow's toolchain-selector action stays at its own revision; product SDK and
+packaging scripts come from the selected source. Its helper checkout is excluded only
+from CI's Git untracked-file check, not by weakening source cleanliness validation.
+
+Internal macOS desktop builds participate in the existing bridge/mobile release cycle
+with the same source commit and resolved build number. Desktop-only product changes
+now qualify for that cycle. Native x64 and arm64 signing, notarization, extracted-helper
+and GUI-fixture checks remain required. Stable submissions rebuild the selected source
+with the stable channel rather than relabeling an internal binary. Beta and explicit
+`bridge-only` submissions retain their scope. Both reusable native-desktop callers
+must grant `contents: read`, `actions: read` and `pull-requests: read`: GitHub validates
+the nested upgrade jobs' PR-provenance permission even when those jobs are skipped.
+A missing scope rejects the entire caller before its release gate can execute.
+
+Desktop attachment follows the existing shared release finalizer; production already
+passed `store-production`. Desktop failure does not change bridge/mobile finalization.
+`DESKTOP_MACOS_PUBLICATION_ENABLED` is default-off until the owner accepts platform
+ship gates. While disabled, internal desktop outputs stay in Actions artifacts. This
+implementation does not enable publication or expose Windows/Linux downloads.
+
+Admitted publication attaches four installers, `desktop-checksums.txt` and
+`desktop-release.json` to existing product tags. It never creates/promotes a release,
+changes Latest, or replaces bridge assets/checksums. Each asset is retrieved without
+authentication and hash-verified. Retries reuse identical assets and refuse conflicting
+bytes; metadata is last, and website links wait for public retrieval/trust acceptance.
+Private evidence/logs/screenshots are never release assets.
 
 The manual Desktop Release Preparation workflow consumes both native macOS package
-artifacts from one successful qualification run. It checks source/version/build,
+artifacts from one successful qualification/shared release run. It checks source/version/build,
 compiled channel, clean-source evidence, accepted notarization receipts, inventory
 agreement and payload hashes before producing private metadata and checksums.
-Preparation source and package source are recorded separately. Old producer runs
-without channel evidence are rejected rather than assigned a guessed channel.
+Preparation, producer workflow and package sources are recorded separately. A shared
+finalizer can validate its own in-progress run only after the native build dependency
+succeeds; another selected run must be successful. Old producer runs without channel
+evidence are rejected rather than assigned a guessed channel.
 
 Preparation has read-only repository/Actions permissions and never signs, executes
 packages, creates tags/releases, edits website links, or triggers CLI/mobile release
 work. These are evidence-consistency checks, not independent signature verification
-or permission to ship. Public release and full native upgrade gates remain outstanding.
+or permission to ship. Public release and remaining native/interactive gates remain outstanding.
 
 ## Private macOS manual-replacement qualification
 
 Manual `macos-upgrade-probe` qualification is credential-free and consumes two
-retained successful macOS packaging runs on each package's native CPU. It runs only
+retained successful macOS qualification/shared release runs on each package's native CPU. It runs only
 from `main` and accepts a source only from `origin/main` or the exact pinned retained
 1.8.4 run/source/tree. It verifies that baseline's merged-PR provenance, exact DMG
 hashes, clean producers, sealed identities, accepted notarization, Developer ID

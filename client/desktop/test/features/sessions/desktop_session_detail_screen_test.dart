@@ -311,37 +311,41 @@ void main() {
     await tester.pumpWidget(
       BlocProvider<SessionDetailCubit>.value(
         value: cubit,
-        child: MaterialApp(
-          theme: ThemeData(extensions: [PregoDesignSystem.light]),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: _composerScope(
-            imageClipboard: _MockImageClipboard.new,
-            child: DesktopSessionDetailView(
-              onOpenHarnessSettings: () {},
-              onOpenBridgeSettings: () {},
-              projectId: "project-1",
-              sessionId: "session-1",
-              sessionTitle: "Desktop session",
-              sessionActions: _actions,
-              onMarkedUnread: () {},
-              readOnly: false,
-              projectName: "UI / Core",
-              onOpenProject: () {},
-              onOpenParentSession: ({required parentSessionId}) {},
-              onShowDiffs: () {},
-              onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
-                  openedSession = (
-                    projectId: projectId,
-                    sessionId: sessionId,
-                    sessionTitle: sessionTitle,
-                    readOnly: readOnly,
-                  ),
-              messageImageRepository: _MockMessageImageRepository.new,
-              imageSaver: _MockImageSaver.new,
+        // The desktop shell always runs under a pointer scope.
+        child: PregoInteractionScope(
+          mode: PregoInteractionMode.pointer,
+          child: MaterialApp(
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: _composerScope(
               imageClipboard: _MockImageClipboard.new,
-              imageSharer: _MockImageSharer.new,
-              canShareImages: true,
+              child: DesktopSessionDetailView(
+                onOpenHarnessSettings: () {},
+                onOpenBridgeSettings: () {},
+                projectId: "project-1",
+                sessionId: "session-1",
+                sessionTitle: "Desktop session",
+                sessionActions: _actions,
+                onMarkedUnread: () {},
+                readOnly: false,
+                projectName: "UI / Core",
+                onOpenProject: () {},
+                onOpenParentSession: ({required parentSessionId}) {},
+                onShowDiffs: () {},
+                onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
+                    openedSession = (
+                      projectId: projectId,
+                      sessionId: sessionId,
+                      sessionTitle: sessionTitle,
+                      readOnly: readOnly,
+                    ),
+                messageImageRepository: _MockMessageImageRepository.new,
+                imageSaver: _MockImageSaver.new,
+                imageClipboard: _MockImageClipboard.new,
+                imageSharer: _MockImageSharer.new,
+                canShareImages: true,
+              ),
             ),
           ),
         ),
@@ -349,9 +353,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The finished sub-agent folds into its group's summary.
-    await tester.tap(find.text("1 sub-agent"));
-    await tester.pumpAndSettle();
+    // A lone finished sub-agent keeps its own row.
     await tester.tap(find.text("Child session"));
     expect(
       openedSession,

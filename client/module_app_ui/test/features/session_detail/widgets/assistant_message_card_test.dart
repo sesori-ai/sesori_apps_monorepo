@@ -1,6 +1,8 @@
 import "dart:typed_data";
 import "dart:ui" show SemanticsAction;
 
+import "package:bloc_test/bloc_test.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:http/http.dart" as http;
@@ -23,6 +25,8 @@ class _MockImageSaver() extends Mock implements ImageSaver;
 class _MockImageClipboard() extends Mock implements ImageClipboard;
 
 class _MockImageSharer() extends Mock implements ImageSharer;
+
+class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
 late MessageImageRepository _messageImageRepository;
 
@@ -65,19 +69,22 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
         canShareImages: true,
         openExternalLink: ({required url, required mode}) async => false,
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-        child: Scaffold(
-          body: AssistantMessageCard(
-            projectId: null,
-            blocks: const TranscriptBuilder()
-                .build(
-                  messages: [widget.message],
-                  streamingText: _streamingText,
-                  children: const [],
-                  childStatuses: const {},
-                )
-                .blocksFor(messageId: widget.message.info.id),
-            streamingText: _streamingText,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: BlocProvider<SessionDetailCubit>.value(
+          value: _MockSessionDetailCubit(),
+          child: Scaffold(
+            body: AssistantMessageCard(
+              projectId: null,
+              blocks: const TranscriptBuilder()
+                  .build(
+                    messages: [widget.message],
+                    streamingText: _streamingText,
+                    children: const [],
+                    childStatuses: const {},
+                  )
+                  .blocksFor(messageId: widget.message.info.id),
+              streamingText: _streamingText,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            ),
           ),
         ),
       ),
@@ -193,6 +200,33 @@ void main() {
     }
   });
 
+  testWidgets("an empty row takes no height and its first part eases in", (tester) async {
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(parts: const []),
+        streamingText: const {},
+      ),
+    );
+    expect(tester.getSize(find.byType(AssistantMessageCard)).height, 0);
+
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(
+          parts: [_textPart(id: "part-1", text: "First paragraph")],
+        ),
+        streamingText: const {},
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    final opacities = tester.widgetList<Opacity>(
+      find.ancestor(of: find.byType(MarkdownBody), matching: find.byType(Opacity)),
+    );
+    expect(opacities.any((opacity) => opacity.opacity > 0 && opacity.opacity < 1), isTrue);
+
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.byType(MarkdownBody), findsOneWidget);
+  });
+
   testWidgets("preserves mixed text-tool-text rendering inside one SelectionArea", (tester) async {
     await tester.pumpWidget(
       _AssistantMessageCardHarness(
@@ -237,18 +271,12 @@ void main() {
     );
 
     // The pending tool is a live row; the sub-agent without a lifecycle has
-    // finished and folds into the summary.
+    // finished and, alone, keeps its own row.
     expect(find.text("Tool"), findsOneWidget);
-    expect(find.text("1 sub-agent"), findsOneWidget);
-    expect(find.text("Background task"), findsNothing);
+    expect(find.text("1 sub-agent"), findsNothing);
+    expect(find.text("Background task"), findsOneWidget);
     expect(find.text("Agent"), findsOneWidget);
     expect(find.text("Retry"), findsOneWidget);
-
-    // The pending tool's label shimmers forever, so pump past the easing.
-    await tester.tap(find.text("1 sub-agent"));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text("Background task"), findsOneWidget);
   });
 
   testWidgets("renders an active compaction tool as running", (tester) async {

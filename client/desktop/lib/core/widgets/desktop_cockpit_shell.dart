@@ -14,6 +14,7 @@ import "package:theme_prego/module_prego.dart";
 import "../di/injection.dart";
 import "desktop_command_palette.dart";
 import "desktop_connection_pill.dart";
+import "desktop_page_toolbar.dart";
 import "desktop_sidebar.dart";
 import "desktop_sidebar_expansion.dart";
 import "desktop_window_drag_area.dart";
@@ -84,9 +85,10 @@ class const DesktopCockpitShell({
   static const double autoCollapseBreakpoint = 760;
   static const double _panelRadius = 14;
 
-  /// Where the panel starts as a rail on macOS: below the traffic lights, which
-  /// are wider than it. Expanded, the panel runs to the top and carries them.
-  static const double railTopUnderTrafficLights = 42;
+  /// Where the panel starts as a rail on macOS: level with the page toolbar's
+  /// separator, below the traffic lights, which are wider than it. Expanded,
+  /// the panel runs to the top and carries them.
+  static const double _railTop = DesktopPageToolbar.height;
 
   @override
   Widget build(BuildContext context) {
@@ -329,8 +331,7 @@ class const _TitleBarStrip({
     const margin = DesktopSidebar.panelMargin;
     final top = windowHost == null
         ? margin
-        : DesktopCockpitShell.railTopUnderTrafficLights +
-              (margin - DesktopCockpitShell.railTopUnderTrafficLights) * expansion;
+        : DesktopCockpitShell._railTop + (margin - DesktopCockpitShell._railTop) * expansion;
     final panel = Padding(
       padding: EdgeInsetsDirectional.fromSTEB(margin, top, 0, margin),
       child: child,
