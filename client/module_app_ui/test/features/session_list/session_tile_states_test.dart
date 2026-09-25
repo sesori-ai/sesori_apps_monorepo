@@ -523,6 +523,25 @@ void main() {
       semantics.dispose();
     });
 
+    testWidgets("a 320-point row with large text shares its width without overflowing", (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpTile(
+        tester,
+        tile(
+          session: scheduled().copyWith(title: "A session title long enough to need the whole row"),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      final resume = tester.getSize(find.byType(SessionScheduledResume));
+      expect(resume.width, lessThanOrEqualTo(160));
+      expect(tester.getSize(find.textContaining("A session title")).width, greaterThan(0));
+    });
+
     for (final (name, running, awaiting) in [("running", true, false), ("waiting", false, true)]) {
       testWidgets("a $name row keeps its time", (tester) async {
         await pumpTile(tester, tile(session: scheduled(), isRunning: running, awaitingInput: awaiting));

@@ -3,7 +3,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "../../../utils/auto_continuation_time.dart";
 import "session_auto_continuation_notice.dart";
 
 /// Quiet "Auto-continue" chip in the session's model row while
@@ -53,7 +52,7 @@ class const SessionAutoContinuationChip({
   String _subtitle(BuildContext context) {
     final loc = context.loc;
     if (view.status case SessionAutoContinuationSubmitted(:final acceptedAt)) {
-      return loc.sessionAutoContinuationSubmitted(sessionAutoContinuationLocalTime(loc: loc, milliseconds: acceptedAt));
+      return loc.sessionAutoContinuationSubmitted(context.formatDateTime(ms: acceptedAt));
     }
     return view.availability == AutoContinuationAvailability.conditional
         ? loc.sessionAutoContinuationAfterQuotaResets

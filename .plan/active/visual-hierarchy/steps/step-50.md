@@ -10,8 +10,13 @@ Branch `visual-hierarchy/auto-resume-indicator`.
   `unknown` and does not count, matching the notice and menu. It returns that status's `continueAt`.
 - `SessionScheduledResume` draws a clock and the local time in the row's
   `textXs` secondary style. `sessionScheduledResumeDescription` gives the full
-  "Resumes at <date and time>" label, formatted by the notice's
-  `sessionAutoContinuationLocalTime`.
+  "Resumes at <date and time>" label.
+- The notice's `sessionAutoContinuationLocalTime` became
+  `BuildContext.formatDateTime`, which uses the device's date patterns like the
+  other list timestamps. Before, it used the app's language and gave US
+  12-hour times on en_GB or 24-hour devices. The notice, the chip and the row
+  labels all use it. A `SessionTile` caps the resume time at half the row, so
+  a 320-point row with large text no longer overflows.
 - The shared `SessionTile` (phone and desktop project pages) and both desktop
   sidebar rows (session and Activity) show it in place of the relative time.
   Awaiting input and running keep their precedence. The sidebar's two rows now
@@ -23,8 +28,9 @@ Branch `visual-hierarchy/auto-resume-indicator`.
 ## Deviations from the plan
 
 - The visible time is compact: "6:22 PM" today, "Sep 26, 6:22 PM" on a later
-  day. The notice's helper always writes the full date and year, which does
-  not fit a row. The assistive label and sidebar tooltip use that helper.
+  day, formatted like a message timestamp (`formatMessageTimestamp`). The full
+  date and year do not fit a row, so only the assistive label and sidebar
+  tooltip use `formatDateTime`.
 - The sidebar row drops the word "Resumes" and shows only the clock and time.
   With the word, the default-width sidebar cut both the title and the time to a
   few characters. The trailing mark is also capped at half the row, so the

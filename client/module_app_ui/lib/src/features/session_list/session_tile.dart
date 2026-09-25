@@ -226,25 +226,32 @@ class const SessionTile({
 
   Widget _titleRow({required BuildContext context, required bool pointer, required bool revealActions}) {
     final lineHeight = pointer ? _pointerTitleLineHeight : _titleLineHeight;
-    return Row(
-      spacing: PregoSpacing.xs,
-      children: [
-        // Reserved when quiet, so titles line up down the list.
-        SizedBox(
-          width: _statusSlotSize,
-          height: lineHeight,
-          child: switch (_state(context: context)) {
-            final state? => Center(
-              child: Semantics(label: state.label, child: state.mark),
-            ),
-            null => null,
-          },
-        ),
-        Expanded(
-          child: _title(context: context, pointer: pointer),
-        ),
-        if (revealActions) _hoverActions(context: context) else ?_time(context: context),
-      ],
+    // The row's width caps a resume time, which a narrow row with large text
+    // could not otherwise fit beside the title.
+    return LayoutBuilder(
+      builder: (context, constraints) => Row(
+        spacing: PregoSpacing.xs,
+        children: [
+          // Reserved when quiet, so titles line up down the list.
+          SizedBox(
+            width: _statusSlotSize,
+            height: lineHeight,
+            child: switch (_state(context: context)) {
+              final state? => Center(
+                child: Semantics(label: state.label, child: state.mark),
+              ),
+              null => null,
+            },
+          ),
+          Expanded(
+            child: _title(context: context, pointer: pointer),
+          ),
+          if (revealActions)
+            _hoverActions(context: context)
+          else
+            ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2),
+        ],
+      ),
     );
   }
 
@@ -278,12 +285,16 @@ class const SessionTile({
   /// When the session last changed, at the end of the title line, or when a
   /// quiet session will continue on its own. Waiting and running outrank a
   /// scheduled continuation.
-  Widget? _time({required BuildContext context}) {
+  Widget? _time({required BuildContext context, required double resumeMaxWidth}) {
     if (!awaitingInput && !isRunning) {
       if (sessionScheduledResumeAt(view: session.autoContinuation) case final continueAt?) {
-        return Padding(
-          padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-          child: SessionScheduledResume(continueAt: continueAt, labelled: true),
+        // Half the row at most: the title keeps the other half, and both ellipsize.
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: resumeMaxWidth),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+            child: SessionScheduledResume(continueAt: continueAt, labelled: true),
+          ),
         );
       }
     }

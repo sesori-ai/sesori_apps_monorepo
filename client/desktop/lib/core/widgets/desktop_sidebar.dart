@@ -1001,7 +1001,7 @@ class const _SidebarActivitySessionRow({
       identity,
       ...statuses,
       if (resumeAt != null)
-        sessionScheduledResumeDescription(loc: context.loc, continueAt: resumeAt)
+        sessionScheduledResumeDescription(context: context, continueAt: resumeAt)
       else if (updatedAt != null)
         context.formatTimestamp(updatedAt),
     ].join(", ");
@@ -1162,7 +1162,7 @@ class const _SidebarSessionRow({
       if (unseen) context.loc.projectListNewActivity,
       // The row's "3h" is a glance mark; the label says it in full.
       if (resumeAt != null)
-        sessionScheduledResumeDescription(loc: context.loc, continueAt: resumeAt)
+        sessionScheduledResumeDescription(context: context, continueAt: resumeAt)
       else if (updatedAt != null)
         context.formatTimestamp(updatedAt),
     ].join(", ");
