@@ -56,7 +56,16 @@ class const JumpToEdgePill({
                   Icon(TablerRegular.arrow_down, size: PregoIconSize.sm, color: prego.colors.textPrimary),
                   const SizedBox(width: 6),
                   Flexible(
-                    child: live ? PregoShimmer(appearDelay: Duration.zero, semanticLabel: label, child: text) : text,
+                    // The live row's band, without its full-width alignment.
+                    child: live
+                        ? PregoShimmer(
+                            appearDelay: Duration.zero,
+                            baseColor: prego.colors.textTertiary,
+                            highlightColor: prego.colors.textPrimary,
+                            semanticLabel: label,
+                            child: text,
+                          )
+                        : text,
                   ),
                 ],
               ),

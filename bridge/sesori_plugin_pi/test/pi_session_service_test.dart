@@ -2354,8 +2354,7 @@ void main() {
     expect(events.whereType<BridgeSseMessageUpdated>().last.info.id, runningMessage.info.id);
     final completedPart = events.whereType<BridgeSseMessagePartUpdated>().last.part;
     expect(completedPart.id, runningPart.id);
-    expect(completedPart.state.status, PluginToolStatus.completed);
-    expect(completedPart.state.title, isNull);
+    expect(completedPart, isA<PluginMessagePartCompaction>());
 
     process.emit(frame: {"type": "agent_start"});
     process.emitResponse(id: prompt["id"]! as String, command: "prompt");

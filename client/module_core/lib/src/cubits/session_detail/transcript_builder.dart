@@ -291,9 +291,13 @@ class const TranscriptBuilder() {
     MessagePartStepStart() ||
     MessagePartStepFinish() ||
     MessagePartSnapshot() ||
-    MessagePartPatch() ||
-    MessagePartCompaction() => true,
-    MessagePartFile() || MessagePartAgent() || MessagePartRetry() || MessagePartTool() || MessagePartSubtask() => false,
+    MessagePartPatch() => true,
+    MessagePartFile() ||
+    MessagePartAgent() ||
+    MessagePartRetry() ||
+    MessagePartCompaction() ||
+    MessagePartTool() ||
+    MessagePartSubtask() => false,
   };
 
   static TranscriptStepStatus _toolStatus({required ToolStatus status}) => switch (status) {

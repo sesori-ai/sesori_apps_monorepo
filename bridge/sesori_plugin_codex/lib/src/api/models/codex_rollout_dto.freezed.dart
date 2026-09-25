@@ -677,10 +677,13 @@ $CodexRolloutInterAgentCommunicationMetadataDtoCopyWith<$Res> get payload {
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutCompactedLineDto implements CodexRolloutLineDto {
-  const CodexRolloutCompactedLineDto({required this.timestamp,  String? $type}): $type = $type ?? 'compacted';
+  const CodexRolloutCompactedLineDto({required this.timestamp, @JsonKey(name: "payload", fromJson: _compactedSummaryOrNull) required this.summary,  String? $type}): $type = $type ?? 'compacted';
   factory CodexRolloutCompactedLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCompactedLineDtoFromJson(json);
 
 @override final  String? timestamp;
+/// `payload.message`: the continuation summary. Empty when the provider
+/// compacted remotely and kept the summary encrypted.
+@JsonKey(name: "payload", fromJson: _compactedSummaryOrNull) final  String? summary;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -696,18 +699,18 @@ $CodexRolloutCompactedLineDtoCopyWith<CodexRolloutCompactedLineDto> get copyWith
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompactedLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompactedLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.summary, summary) || other.summary == summary));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,timestamp);
+    return Object.hash(runtimeType,timestamp,summary);
 }
 
 @override
 String toString() {
-    return 'CodexRolloutLineDto.compacted(timestamp: $timestamp)';
+    return 'CodexRolloutLineDto.compacted(timestamp: $timestamp, summary: $summary)';
 }
 
 
@@ -718,7 +721,7 @@ abstract mixin class $CodexRolloutCompactedLineDtoCopyWith<$Res> implements $Cod
   factory $CodexRolloutCompactedLineDtoCopyWith(CodexRolloutCompactedLineDto value, $Res Function(CodexRolloutCompactedLineDto) _then) = _$CodexRolloutCompactedLineDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? timestamp
+ String? timestamp,@JsonKey(name: "payload", fromJson: _compactedSummaryOrNull) String? summary
 });
 
 
@@ -735,9 +738,10 @@ class _$CodexRolloutCompactedLineDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutLineDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? timestamp = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? timestamp = freezed,Object? summary = freezed,}) {
   return _then(CodexRolloutCompactedLineDto(
 timestamp: freezed == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
+as String?,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

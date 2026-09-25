@@ -262,23 +262,7 @@ final class PiHistoryMapper({
     }
   }
 
-  PluginMessageWithParts mapRunningCompaction({required String sessionId, required String messageId}) => _mapCompaction(
-    sessionId: sessionId,
-    messageId: messageId,
-    status: PluginToolStatus.running,
-  );
-
-  PluginMessageWithParts mapCompaction({required String sessionId, required String messageId}) => _mapCompaction(
-    sessionId: sessionId,
-    messageId: messageId,
-    status: PluginToolStatus.completed,
-  );
-
-  PluginMessageWithParts _mapCompaction({
-    required String sessionId,
-    required String messageId,
-    required PluginToolStatus status,
-  }) {
+  PluginMessageWithParts mapRunningCompaction({required String sessionId, required String messageId}) {
     final draft = _toolMessage(
       sessionId: sessionId,
       messageId: messageId,
@@ -289,9 +273,30 @@ final class PiHistoryMapper({
       shellCommand: null,
       output: null,
       error: null,
-      status: status,
+      status: PluginToolStatus.running,
     );
     return PluginMessageWithParts(info: draft.info, parts: draft.parts);
+  }
+
+  /// A finished compaction. The part keeps the running card's id, so it
+  /// replaces that card in place.
+  PluginMessageWithParts mapCompaction({
+    required String sessionId,
+    required String messageId,
+    required String? summary,
+  }) {
+    final running = mapRunningCompaction(sessionId: sessionId, messageId: messageId);
+    return PluginMessageWithParts(
+      info: running.info,
+      parts: [
+        PluginMessagePart.compaction(
+          id: _toolPartId(messageId: messageId),
+          sessionID: sessionId,
+          messageID: messageId,
+          summary: summary,
+        ),
+      ],
+    );
   }
 
   PluginMessageWithParts mapBashExecution({
@@ -443,9 +448,9 @@ final class PiHistoryMapper({
             case PiUnknownMessageDto():
               _warnOnce(reason: _PiHistoryWarning.unknownMessage, warnings: warnings);
           }
-        case PiCompactionEntryDto():
+        case PiCompactionEntryDto(:final summary):
           final messageId = identities.nextCompaction();
-          final mapped = mapCompaction(sessionId: sessionId, messageId: messageId);
+          final mapped = mapCompaction(sessionId: sessionId, messageId: messageId, summary: summary);
           messages.add(_MessageDraft(info: mapped.info, parts: mapped.parts.toList()));
         case PiCustomMessageEntryDto(:final content, :final display):
           final messageId = identities.nextTopLevelCustomMessage();
@@ -754,7 +759,7 @@ final class PiHistoryMapper({
       ),
       parts: [
         PluginMessagePart.tool(
-          id: "$messageId-tool",
+          id: _toolPartId(messageId: messageId),
           sessionID: sessionId,
           messageID: messageId,
           tool: tool,
@@ -771,6 +776,8 @@ final class PiHistoryMapper({
       ],
     );
   }
+
+  String _toolPartId({required String messageId}) => "$messageId-tool";
 
   PluginMessageTime? _time(int? timestamp) => timestamp == null
       ? null

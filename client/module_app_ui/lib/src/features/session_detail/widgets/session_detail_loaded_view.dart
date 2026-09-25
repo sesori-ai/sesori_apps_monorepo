@@ -92,7 +92,13 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
   Widget _buildContent({required BuildContext context, required double horizontalInset}) {
     final loc = context.loc;
     final state = widget.state;
+    // A session waiting on the user is not working; its card says so.
+    final isBusy =
+        hasActiveWork(sessionStatus: state.sessionStatus, childStatuses: state.childStatuses) &&
+        state.pendingQuestions.isEmpty &&
+        state.pendingPermissions.isEmpty;
     final showEmptyState =
+        !isBusy &&
         !state.hasRenderableMessages &&
         state.retryErrorMessage == null &&
         state.olderMessagesCursor == null &&
@@ -174,11 +180,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           streamingText: state.streamingText,
                           children: state.children,
                           childStatuses: state.childStatuses,
-                          // A session waiting on the user is not working; its card says so.
-                          isBusy:
-                              hasActiveWork(sessionStatus: state.sessionStatus, childStatuses: state.childStatuses) &&
-                              state.pendingQuestions.isEmpty &&
-                              state.pendingPermissions.isEmpty,
+                          isBusy: isBusy,
                           // Null once the start of the transcript is loaded,
                           // so the list stops asking for more.
                           onLoadOlderMessages: state.olderMessagesCursor == null

@@ -1432,7 +1432,7 @@ void main() {
             const MessagePart.snapshot(id: "snapshot", sessionID: "ses_a", messageID: "live"),
             _part(id: "text", messageId: "live", text: "visible"),
             const MessagePart.patch(id: "patch", sessionID: "ses_a", messageID: "live"),
-            const MessagePart.compaction(id: "compaction", sessionID: "ses_a", messageID: "live"),
+            const MessagePart.compaction(id: "compaction", sessionID: "ses_a", messageID: "live", summary: null),
           ],
         ),
       );

@@ -70,6 +70,9 @@ final class const ClaudeTranscriptUserRecord({
   required final bool isMeta,
   required final bool isVisibleInTranscriptOnly,
 
+  /// True for the continuation summary the CLI writes after compacting.
+  required final bool isCompactSummary,
+
   /// The typed result of the tool call this record's `tool_result` completes.
   required final ClaudeToolUseResult toolUseResult,
 

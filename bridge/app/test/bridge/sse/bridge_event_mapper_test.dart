@@ -262,14 +262,21 @@ void main() {
       expect(result, isNull);
     });
 
-    test("filters compaction message part updates", () async {
+    test("passes compaction message part updates with their summary", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart.compaction(id: "p1", sessionID: "s1", messageID: "m1"),
+          part: PluginMessagePart.compaction(id: "p1", sessionID: "s1", messageID: "m1", summary: "## Goal"),
         ),
       );
 
-      expect(result, isNull);
+      expect(
+        result,
+        equals(
+          const SesoriMessagePartUpdated(
+            part: MessagePart.compaction(id: "p1", sessionID: "s1", messageID: "m1", summary: "## Goal"),
+          ),
+        ),
+      );
     });
 
     test("passes agent message part updates", () async {

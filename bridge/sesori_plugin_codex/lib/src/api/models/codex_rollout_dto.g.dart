@@ -66,6 +66,7 @@ _$CodexRolloutInterAgentCommunicationMetadataLineDtoFromJson(Map json) =>
 CodexRolloutCompactedLineDto _$CodexRolloutCompactedLineDtoFromJson(Map json) =>
     CodexRolloutCompactedLineDto(
       timestamp: json['timestamp'] as String?,
+      summary: _compactedSummaryOrNull(json['payload']),
       $type: json['type'] as String?,
     );
 

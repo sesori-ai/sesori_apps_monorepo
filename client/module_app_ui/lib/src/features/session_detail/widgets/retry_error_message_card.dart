@@ -2,6 +2,7 @@ import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "transcript_live_row.dart";
 
 /// Ongoing provider retry activity, distinct from a terminal error.
 ///
@@ -25,13 +26,12 @@ class const RetryErrorMessageCard({
         children: [
           Row(
             children: [
-              PregoAiLoader(fillMode: .outline, color: prego.colors.textSecondary),
+              const TranscriptLiveSparkle(),
               const SizedBox(width: 4),
               Expanded(
-                child: PregoShimmer(
-                  appearDelay: Duration.zero,
+                child: TranscriptLiveLabel(
+                  label: Text(label, style: style),
                   semanticLabel: label,
-                  child: Text(label, style: style),
                 ),
               ),
             ],
