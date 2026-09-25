@@ -52,7 +52,7 @@ class const SessionAutoContinuationChip({
   String _subtitle(BuildContext context) {
     final loc = context.loc;
     if (view.status case SessionAutoContinuationSubmitted(:final acceptedAt)) {
-      return loc.sessionAutoContinuationSubmitted(sessionAutoContinuationLocalTime(loc: loc, milliseconds: acceptedAt));
+      return loc.sessionAutoContinuationSubmitted(context.formatDateTime(ms: acceptedAt));
     }
     return view.availability == AutoContinuationAvailability.conditional
         ? loc.sessionAutoContinuationAfterQuotaResets

@@ -500,4 +500,69 @@ void main() {
       expect(find.byKey(const Key("session-tile-hover-archive")), findsNothing);
     });
   });
+
+  group("scheduled auto-continuation", () {
+    final continueAt = DateTime.now().add(const Duration(minutes: 1)).millisecondsSinceEpoch;
+    Session scheduled({bool enabled = true, AutoContinuationAvailability availability = .conditional}) =>
+        testSession(title: "My Session", updatedAt: now).copyWith(
+          autoContinuation: SessionAutoContinuationView(
+            enabled: enabled,
+            availability: availability,
+            status: SessionAutoContinuationStatus.resetKnown(resetAt: continueAt, continueAt: continueAt),
+          ),
+        );
+
+    testWidgets("a quiet row shows when it resumes in place of its time", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpTile(tester, tile(session: scheduled()));
+
+      expect(find.byIcon(TablerRegular.clock), findsOneWidget);
+      expect(find.textContaining("Resumes "), findsOneWidget);
+      expect(find.text("now"), findsNothing);
+      expect(find.bySemanticsLabel(RegExp("Resumes at ")), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets("a 320-point row with large text shares its width without overflowing", (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpTile(
+        tester,
+        tile(
+          session: scheduled().copyWith(title: "A session title long enough to need the whole row"),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      final resume = tester.getSize(find.byType(SessionScheduledResume));
+      expect(resume.width, lessThanOrEqualTo(160));
+      expect(tester.getSize(find.textContaining("A session title")).width, greaterThan(0));
+    });
+
+    for (final (name, running, awaiting) in [("running", true, false), ("waiting", false, true)]) {
+      testWidgets("a $name row keeps its time", (tester) async {
+        await pumpTile(tester, tile(session: scheduled(), isRunning: running, awaitingInput: awaiting));
+
+        expect(find.textContaining("Resumes"), findsNothing);
+        expect(find.text("now"), findsOneWidget);
+      });
+    }
+
+    testWidgets("a disabled, unavailable or unknown preference and an older bridge keep the time", (tester) async {
+      for (final session in [
+        scheduled(enabled: false),
+        scheduled(availability: .unavailable),
+        scheduled(availability: .unknown),
+        testSession(title: "My Session", updatedAt: now),
+      ]) {
+        await pumpTile(tester, tile(session: session));
+
+        expect(find.textContaining("Resumes"), findsNothing);
+        expect(find.text("now"), findsOneWidget);
+      }
+    });
+  });
 }

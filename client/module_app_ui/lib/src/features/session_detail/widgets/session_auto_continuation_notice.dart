@@ -1,4 +1,3 @@
-import "package:intl/intl.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -44,7 +43,7 @@ class const SessionAutoContinuationNotice({
     final prego = context.prego;
     final available = current.availability == AutoContinuationAvailability.conditional && canInteract;
     final message = available
-        ? _statusText(loc: loc, status: status, enabled: current.enabled)
+        ? _statusText(context: context, loc: loc, status: status, enabled: current.enabled)
         : loc.sessionAutoContinuationUnavailable;
     final canEnable = !current.enabled && available && status is SessionAutoContinuationResetKnown;
     final action = current.enabled ? loc.sessionAutoContinuationDisable : loc.sessionAutoContinuationEnable;
@@ -107,6 +106,7 @@ class const SessionAutoContinuationNotice({
   }
 
   String? _statusText({
+    required BuildContext context,
     required AppLocalizations loc,
     required SessionAutoContinuationStatus status,
     required bool enabled,
@@ -115,8 +115,8 @@ class const SessionAutoContinuationNotice({
     SessionAutoContinuationIdle() || SessionAutoContinuationSubmitted() => null,
     SessionAutoContinuationResetKnown(:final continueAt) =>
       enabled
-          ? loc.sessionAutoContinuationScheduled(sessionAutoContinuationLocalTime(loc: loc, milliseconds: continueAt))
-          : loc.sessionAutoContinuationOffer(sessionAutoContinuationLocalTime(loc: loc, milliseconds: continueAt)),
+          ? loc.sessionAutoContinuationScheduled(context.formatDateTime(ms: continueAt))
+          : loc.sessionAutoContinuationOffer(context.formatDateTime(ms: continueAt)),
     SessionAutoContinuationResetUnknown() => loc.sessionAutoContinuationResetUnknown,
     SessionAutoContinuationPaused(:final reason) => switch (reason) {
       AutoContinuationPauseReason.busy ||
@@ -132,7 +132,3 @@ class const SessionAutoContinuationNotice({
     SessionAutoContinuationUnknown() => loc.sessionAutoContinuationStatusUnknown,
   };
 }
-
-/// The bridge's UTC instant as a date and time in the viewer's zone.
-String sessionAutoContinuationLocalTime({required AppLocalizations loc, required int milliseconds}) =>
-    DateFormat.yMMMd(loc.localeName).add_jm().format(DateTime.fromMillisecondsSinceEpoch(milliseconds).toLocal());

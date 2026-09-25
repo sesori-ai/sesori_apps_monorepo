@@ -1749,6 +1749,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListRunning => 'Running';
 
   @override
+  String sessionListResumes(String time) {
+    return 'Resumes $time';
+  }
+
+  @override
+  String sessionListResumesAtDescription(String time) {
+    return 'Resumes at $time';
+  }
+
+  @override
   String get sessionListNewActivity => 'New activity';
 
   @override
