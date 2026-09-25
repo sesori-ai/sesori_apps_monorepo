@@ -13,7 +13,9 @@
   B then committed when its window ended, and the user had no way to undo it.
 - The listener now reacts to every window change instead of only to a new
   open window. It offers Undo on an open window and shows a held failure on
-  idle. Archiving a third session inside B's window keeps the failure held.
+  idle. Archiving a third session inside B's window passes through idle on
+  the way to the next window. The idle branch reads the cubit's current window
+  and keeps the failure held while a window is open again.
 - The Undo button dismisses its alert before it calls `undo()`. The order is
   easier to read. The dismissal also targets the Undo alert whatever the
   listener's timing, never the failure that `undo()` releases.
@@ -31,9 +33,9 @@
 ## Verification
 
 - `module_app_ui` `test/widgets/pending_archive_alerts_test.dart` passes
-  (6 tests). The two new tests fail A while B's Undo shows. One test checks
-  the failure after B's window ends, and the other after Undo. Both fail
-  without the change, because the failure replaces "Session archived".
+  (7 tests). The three new tests fail A while B's Undo shows. They check the
+  failure after B's window ends, after Undo, and after a third archive's
+  window. Each fails without its part of the change.
 - The desktop `desktop_cockpit_shell_test` passes (64 tests).
 - `dart analyze --fatal-infos` is clean in module_app_ui.
 - No architecture review: the change is method logic inside one widget.

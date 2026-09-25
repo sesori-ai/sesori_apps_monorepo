@@ -184,5 +184,24 @@ void main() {
       expect(find.text("Failed to archive session"), findsOneWidget);
       await tester.pumpAndSettle(const Duration(seconds: 4));
     });
+
+    testWidgets("stays held when a third archive opens the next window", (tester) async {
+      await failFirstWhileSecondOffersUndo(tester);
+      final third = testSession(id: "s3", title: "Bump the version");
+      when(
+        () => repository.archiveSession(sessionId: "s3", deleteWorktree: true, force: false),
+      ).thenAnswer((_) async => ApiResponse.success(third));
+
+      cubit.archive(session: third, deleteWorktree: true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text("Session archived"), findsOneWidget);
+      expect(find.text("Failed to archive session"), findsNothing);
+
+      await tester.pump(PendingSessionArchiveCubit.undoWindow);
+      await tester.pump();
+      expect(find.text("Failed to archive session"), findsOneWidget);
+      await tester.pumpAndSettle(const Duration(seconds: 4));
+    });
   });
 }

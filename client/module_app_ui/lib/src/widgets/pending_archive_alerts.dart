@@ -82,7 +82,9 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
       case PendingArchiveOpen():
         _offerUndo();
       case PendingArchiveIdle():
-        if (!_failureHeld) return;
+        // Archiving inside a window passes through idle on its way to the next
+        // window; the failure stays held for that one.
+        if (!_failureHeld || context.read<PendingSessionArchiveCubit>().state.window is PendingArchiveOpen) return;
         _failureHeld = false;
         _showFailure();
     }
