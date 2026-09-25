@@ -29,8 +29,10 @@ Branch `visual-hierarchy/continuation-notice`.
 - On touch, the chip shows only the clock. "Auto-continue" is kept as its
   tooltip and accessible name. With YOLO, a model and a variant, the labelled
   chip squeezed the phone's Expanded pickers down to "..". Pointer rows show
-  the label. When both chips show on touch, YOLO also collapses to its glyph,
-  because a 320-point row otherwise overflowed (review of #1706).
+  the label. On touch, YOLO is always its glyph too, and each picker drops to
+  its glyph when its share of the row is under 96 points. A 320-point row with
+  two agents, a variant, fast mode and both chips otherwise overflowed, even
+  with glyph-only chips (review of #1706).
 - Without a working harness (`canInteract` false), the composer is replaced by
   the harness notice, so an enabled idle preference shows neither the card nor
   the chip there. The top-right menu can still disable it.

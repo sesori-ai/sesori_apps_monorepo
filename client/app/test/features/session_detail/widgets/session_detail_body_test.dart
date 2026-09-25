@@ -777,7 +777,7 @@ void main() {
   testWidgets("the model row shows the YOLO chip only while YOLO is on", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
-    expect(find.text("YOLO"), findsNothing);
+    expect(find.bySemanticsLabel("YOLO"), findsNothing);
 
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(yoloEnabled: true);
     when(() => cubit.state).thenReturn(state);
@@ -787,7 +787,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(TablerRegular.shield_x), findsOneWidget);
 
-    await tester.tap(find.text("YOLO"));
+    await tester.tap(find.byIcon(TablerRegular.shield_x));
     await tester.pumpAndSettle();
     expect(find.text("YOLO mode is on"), findsOneWidget);
     expect(
@@ -843,7 +843,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key("session-auto-continuation-chip")), findsNothing);
-    expect(find.text("YOLO"), findsOneWidget);
+    expect(find.bySemanticsLabel("YOLO"), findsOneWidget);
     expect(find.text("Auto continuation on"), findsOneWidget);
     expect(find.textContaining("Continues at"), findsOneWidget);
   });

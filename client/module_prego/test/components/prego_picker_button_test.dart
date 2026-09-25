@@ -19,6 +19,7 @@ void main() {
           label: "Agent",
           surfaceStyle: PregoComposerSurfaceStyle.subtle,
           onPressed: () => taps++,
+          showLabel: true,
         ),
       ),
     );
@@ -34,6 +35,29 @@ void main() {
     expect(taps, 1);
   });
 
+  testWidgets("without its label the pill keeps only the glyph and names itself", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        SizedBox(
+          width: 44,
+          child: PregoPickerButton(
+            leadingIcon: TablerRegular.robot,
+            label: "Agent",
+            surfaceStyle: PregoComposerSurfaceStyle.subtle,
+            onPressed: () {},
+            showLabel: false,
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text("Agent"), findsNothing);
+    expect(find.byIcon(TablerRegular.selector), findsNothing);
+    expect(find.byIcon(TablerRegular.robot), findsOneWidget);
+    expect(find.bySemanticsLabel("Agent"), findsOneWidget);
+  });
+
   testWidgets(
     "uses the composer surface and Material interaction on both platforms",
     (tester) async {
@@ -44,6 +68,7 @@ void main() {
             label: "Model",
             surfaceStyle: PregoComposerSurfaceStyle.subtle,
             onPressed: () {},
+            showLabel: true,
           ),
         ),
       );
@@ -87,6 +112,7 @@ void main() {
                 label: "An extremely long model name that cannot possibly fit in one pill" * 3,
                 surfaceStyle: PregoComposerSurfaceStyle.subtle,
                 onPressed: () {},
+                showLabel: true,
               ),
             ),
           ],

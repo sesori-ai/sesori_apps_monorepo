@@ -89,8 +89,9 @@ provider and platform verification remains in the
   or schedule), and, while enabled, for paused, unconfirmed, failed and unknown
   statuses. An enabled idle or already-submitted continuation shows no card:
   a quiet "Auto-continue" chip joins the composer's model row beside YOLO, with
-  its label on pointer and only the clock on touch (where YOLO then also shows
-  only its glyph), and its anchored menu offers Disable (with the send time
+  its label on pointer and only the clock on touch (where YOLO shows only its
+  glyph, and pickers too narrow for a label show only theirs, so a 320-point
+  row never overflows), and its anchored menu offers Disable (with the send time
   after a submission). In an interactive chat with a composer, exactly one of
   the card and the chip is visible for an enabled preference. Without a
   composer (blocked harness), an enabled idle or submitted preference shows

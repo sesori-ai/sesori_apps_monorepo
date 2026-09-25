@@ -14,7 +14,7 @@ class const YoloChip({
   super.key,
   required final PregoComposerSurfaceStyle surfaceStyle,
 
-  /// A crowded touch row shows only the glyph, keeping the pickers readable.
+  /// Touch rows show only the glyph, so the pickers keep their room.
   required final bool showLabel,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {

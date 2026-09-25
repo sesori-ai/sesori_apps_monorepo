@@ -146,7 +146,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
 
   /// Quiet session states beside the pickers: YOLO while the bridge approves
   /// everything, and auto-continuation while it is enabled but not due.
-  Widget? _statusChips({
+  List<Widget> _statusChips({
     required SessionDetailLoaded state,
     required PregoComposerSurfaceStyle surfaceStyle,
     required bool pointer,
@@ -156,12 +156,12 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     final continuation = view != null && view.enabled && !sessionAutoContinuationNoticeVisible(view: view)
         ? view
         : null;
-    final chips = [
+    return [
       if (state.yoloEnabled)
         YoloChip(
           surfaceStyle: surfaceStyle,
-          // A touch row cannot fit both labels beside the expanded pickers.
-          showLabel: pointer || continuation == null,
+          // Touch status chips stay glyphs so the shared-width pickers keep their labels.
+          showLabel: pointer,
           onOpenSettings: () => SessionDetailPresentationScope.read(context).openBridgeSettings(),
         ),
       if (continuation != null)
@@ -173,10 +173,5 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
           onDisable: () => unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: false)),
         ),
     ];
-    return switch (chips) {
-      [] => null,
-      [final chip] => chip,
-      _ => Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: chips),
-    };
   }
 }
