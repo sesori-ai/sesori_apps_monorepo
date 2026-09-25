@@ -14,7 +14,7 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 4.a | 5 | Package and notarize native macOS builds | done |
 | 4.b | 6 | Keep desktop startup independent of native notifications | done |
 | 5 | 7 | Offer manual macOS updates through official downloads | done |
-| 6 | 8 | Shared-cycle caller permission fix; macOS publication remains gated | in-progress |
+| 6 | 8 | Shared cycle and candidate 981 verified; macOS publication remains gated | blocked |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
 | 9 | 11 | Private native DEB/RPM packages merged; signing/publication gated | blocked |
@@ -41,13 +41,28 @@ both CPUs at stable `1.9.1+981`, rebuilding the existing internal candidate sour
 identities, channel, clean-source evidence, receipts and hashes were verified; see
 [step 6](steps/step-06.md#shared-cycle-native-evidence-2026-09-25).
 
-The first scheduled shared run `36169071807` was rejected before any job ran: skipped
-nested upgrade jobs still require `pull-requests: read`. Continuation
-`🌿 [desktop-distribution] Grant desktop callers read-only PR provenance [step 8.k/14]`
-grants that scope only to the two native-desktop callers and guards both contracts.
-Branch validation `36172912862` proved GitHub accepts the corrected call graph: its
-only running job rejected the non-main ref before checkout or release work, as intended.
-Successful shared-cycle execution remains unproven until the corrected workflow runs.
+The initial scheduled run `36169071807` failed workflow validation. PR #1730 corrected
+the callers' read-only PR-provenance scope and merged as
+`8d0680736389afe8cad6cc9008fbbd512f96b9d0`; 18 checks passed at acceptance and
+Codex completed with a thumbs-up. Branch probe `36172912862` had already confirmed
+workflow admission and intentional refusal before any release work.
+
+The next normal scheduled run `36175398399` succeeded end to end: mobile internal
+uploads, all six bridge targets, both private macOS targets and core finalization.
+It produced internal `1.9.1+983` from `f518cf28b465b16dd91baad74d45cbe16f647403`.
+Desktop attachment was skipped; the rolling prerelease contained only six bridge
+archives and bridge checksums. Read-only shared-producer preparation `36179427817`
+also passed. This is shared internal-cycle evidence, not desktop publication.
+
+Separately, unchanged stable candidate **`1.9.1+981`** passed authenticated replacement
+`36174286284` (15/15 checks per CPU) and credential-free Bridge-Off replacement
+`36175102660` (11/11 per CPU). Bounded records, archive digests, live helper/absence
+observations and cleanup were checked, not just job conclusions. These results do not
+qualify the different source/channel of build 983 for authenticated replacement.
+
+Continuation `🌱 [desktop-distribution] Record shared-cycle and candidate acceptance [step 8.l/14]`
+records this evidence without product or workflow changes. Remaining ship gates below
+keep step 6 blocked and the distribution plan active.
 
 Evidence reconciliation:
 

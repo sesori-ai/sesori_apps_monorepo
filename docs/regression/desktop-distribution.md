@@ -86,7 +86,12 @@ with the same source commit and resolved build number. Desktop-only product chan
 now qualify for that cycle. Native x64 and arm64 signing, notarization, extracted-helper
 and GUI-fixture checks remain required. Stable submissions rebuild the selected source
 with the stable channel rather than relabeling an internal binary. Beta and explicit
-`bridge-only` submissions retain their scope. Both reusable native-desktop callers
+`bridge-only` submissions retain their scope. Scheduled run `36175398399` exercised
+this internal flow end to end for `1.9.1+983`, with desktop publication skipped and
+read-only shared-producer preparation accepted separately. This does not establish
+stable production attachment or public desktop retrieval.
+
+Both reusable native-desktop callers
 must grant `contents: read`, `actions: read` and `pull-requests: read`: GitHub validates
 the nested upgrade jobs' PR-provenance permission even when those jobs are skipped.
 A missing scope rejects the entire caller before its release gate can execute.
@@ -145,8 +150,8 @@ then invokes `Quit Sesori` only inside the
 accepted menu. The probe rejects relaunch or
 orphan processes, replaces the complete app from the current DMG and repeats while
 preserving bounded desktop, shared CLI-data, attachment and valid login-registration
-sentinels. Cleanup removes only probe-owned paths. Main-only run `35575012582`
-accepted `1.8.4+24 → 1.9.0+122` on native x64 and arm64. Both prior/current helper
+sentinels. Cleanup removes only probe-owned paths. Main-only run `36175102660`
+accepted `1.8.4+24 → 1.9.1+981` on native x64 and arm64. Both prior/current helper
 observations on both CPUs record `NO_INSTALLED_HELPER`; all 11 report checks are true,
 including `helperAbsentBeforeQuit`. Exact artifacts, hashes and historical investigation
 remain in [the step evidence](../../.plan/active/desktop-distribution/steps/step-06.md).
@@ -185,9 +190,8 @@ packages derive it from checked-out immutable source; exact retained baseline
 merged `main`. `noMarker` means only "before the first
 supported marker"; it never upgrades a legacy package to pre-sink evidence. Fixed pre-sink
 markers distinguish entry into Dart main and primary-process admission for newly built
-packages; later stages reuse privacy-safe production log messages. Current package run
-`35501361734` (`1.9.0+122`) contains these markers. A package's marker support must not
-be inferred from the newer qualification tooling's source.
+packages; later stages reuse privacy-safe production log messages. A package's marker
+support must not be inferred from the newer qualification tooling's source.
 The auth gate emits
 privacy-safe outcome markers
 through the production log sink rather than relying on `dart:developer` output. The probe
@@ -200,14 +204,16 @@ and relay-serving readiness before each real tray Quit. It then verifies Keychai
 intent, bounded state and helper absence through replacement. Artifacts exclude raw auth
 responses, token values, bridge/app output and authenticated screenshots. The tooling
 alone is not accepted helper-On evidence; both CPUs must pass from merged `main`.
-Run `35573213361` accepts the same `1.8.4+24 → 1.9.0+122` pair on native x64 and arm64:
+Run `36174286284` accepts the same `1.8.4+24 → 1.9.1+981` pair on native x64 and arm64:
 all 15 checks are true, each prior/current launch has an exact live authenticated helper
 and relay readiness, and both final phase records confirm completion and cleanup.
 Artifact digests and bounded records were verified, not just job conclusions. This does
 not prove failed-stop refusal, interactive browser/login/TCC, minimum-OS support, arbitrary
 user-history preservation, public retrieval or release readiness. Read-only preparation
-`35575015316` separately regenerated build-122 metadata/checksums from package run
-`35501361734`; it is not publication or permission to ship.
+`36171714173` separately regenerated stable build-981 metadata/checksums from package
+run `36168531963`; it is not publication or permission to ship. Internal build 983's
+shared-cycle success is separate evidence, not authenticated replacement acceptance
+for that different source/channel.
 
 ## Current evidence boundary
 

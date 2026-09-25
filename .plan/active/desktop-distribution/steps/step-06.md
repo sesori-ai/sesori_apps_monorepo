@@ -4,7 +4,8 @@ Ordinal 8/14. Builds on merged step 5 (#1506). Private preparation is already me
 The user selected the shared bridge/mobile release cycle on 2026-09-25. Continuation
 `8.j/14` merged as #1724, wiring native macOS builds and gated asset attachment without
 changing bridge/mobile finalizers or publishing a desktop release. Follow-up `8.k/14`
-corrects the reusable callers' read-only PR-provenance permission.
+corrected the reusable callers' read-only PR-provenance permission in #1730. Acceptance
+record `8.l/14` records the successful shared cycle and fresh stable-candidate replacement.
 
 ## Code-informed implementation boundary
 
@@ -67,11 +68,12 @@ desktop native proof passed on both CPUs after repository-copy removal, and the
 migration plan retired in #1534. Remaining gates:
 
 - Remaining native/macOS and parent desktop-app checks. Authenticated/helper-Off
-  replacement already passed for build 122 on both CPUs. Existing shutdown tests
+  replacement passed for stable build 981 on both CPUs, separately from internal build
+  983's shared-cycle evidence. Existing shutdown tests
   passed 82 cases; that is not packaged fault injection. The user reports desktop
   checklist success on M4 Pro/macOS 27.0 (26A428), with app build unspecified.
-  The configured deployment minimum is macOS 12.0; execution on that minimum,
-  remaining cross-device cases and fresh candidate attribution are still unproven.
+  The configured deployment minimum is macOS 12.0; execution on that minimum and
+  remaining cross-device cases are still unproven.
 - Verified public download links on `https://sesori.com/desktop/`. The page itself went
   live on 2026-09-18 (sesori-ai/landingpage#107) with all eight build anchors and
   `linux-package-managers`; every row is still an unshipped placeholder.
@@ -116,9 +118,9 @@ inventories and these payload SHA256 values:
 
 Preparation artifact `10880996051` has verified archive SHA256
 `e4f642973fcb4073600cf45a246691a392658d66522e51b9383e006023336325`.
-It proposes shared tag `v1.9.1` but does not publish it. These runs do not establish
-new authenticated replacement, minimum-OS/interactive acceptance or public trust.
-The local installed app/bridge was untouched.
+It proposes shared tag `v1.9.1` but does not publish it. Subsequent authenticated and
+Bridge-Off acceptance for these same packages is recorded below; minimum-OS/interactive
+acceptance and public trust remain open. The local installed app/bridge was untouched.
 
 Scheduled shared run
 [36169071807](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36169071807)
@@ -127,7 +129,9 @@ jobs request `pull-requests: read`, even though packaging would skip them. No jo
 release-attempt write, store query or upload ran. The `8.k/14` fix grants that read-only
 scope to the internal and production native-desktop callers; it does not broaden
 publication authority. Private package acceptance above does not accept this failed
-shared run. Real shared-cycle execution remains pending the corrected workflow.
+shared run. PR #1730 merged the correction as `8d0680736389afe8cad6cc9008fbbd512f96b9d0`;
+18 checks passed at acceptance and Codex completed without findings. The merge report
+had an additional nineteenth check running; it is not included in that acceptance count.
 
 At correction commit `99c95999e101d6524ea8b7b3f248876088ac9f95`, branch-only validation
 [36172912862](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36172912862)
@@ -136,6 +140,84 @@ guard. Only preflight job `108196547789` ran; checkout, attempt recording, versi
 validation and all seven other jobs were skipped. Watch exit 1 is expected here,
 not a successful release. Both caller-contract subcases failed before the permission
 fix; all 12 publisher/workflow tests and actionlint passed afterward.
+
+## Candidate 981 replacement acceptance (2026-09-25)
+
+The unchanged stable pair `35042335424 → 36168531963` passed on both native CPUs:
+`1.8.4+24 → 1.9.1+981`, with current product source
+`9ff459e6316ed91b285d573a03f15e0c598b24c3` and the DMG hashes above.
+
+| Probe | Run | Tooling source | x64 job | arm64 job |
+|---|---|---|---|---|
+| Authenticated On | `36174286284` | `8d0680736389afe8cad6cc9008fbbd512f96b9d0` | `108201087316` | `108201087442` |
+| Credential-free Off | `36175102660` | `f518cf28b465b16dd91baad74d45cbe16f647403` | `108203736502` | `108203736443` |
+
+Authenticated reports have all **15/15 checks true** per CPU. All four prior/current
+launch observations contain exactly one live helper, observed during the wait, with
+fresh activity, authenticated profile and relay-serving readiness. Both final records
+are `complete` with cleanup started/completed. Real tray Quit stopped the observed
+helper without relaunch/orphan; Keychain, On intent and bounded preservation checks pass.
+
+Credential-free Off reports have **11/11 checks true** per CPU, including live
+`helperAbsentBeforeQuit`. All four inspected prior/current helper-off records are
+exactly `NO_INSTALLED_HELPER`. Both candidate identities/admission records and DMG hashes
+match the authenticated reports. This is not authenticated-Off or arbitrary-history
+coverage. Tooling jobs `108201016969` (On) and `108203675495` (Off) also passed.
+
+Verified evidence artifacts and archive SHA256 values:
+
+- Authenticated arm64 `10882280757`:
+  `afe95ee11a96ea5a427dd9e4e2d477ba6f955eb3886635948ac364d4517b0d19`
+- Authenticated x64 `10880254809`:
+  `46a23896d0f8ed0f3a9b104addb520524e44fbceee8710545c8c76afacc04dc7`
+- Off arm64 `10882555640`:
+  `2eb201a94a39c6592b8bf10b129e2b4bd5558e6a75a857df6ed34042320264d1`
+- Off x64 `10882356250`:
+  `f6a1cfc39dc3bbf3ac10deac4dd9279b15fcfcf770c9d19ce425c0ad6a3e7742`
+
+Only allowlisted bounded JSON and exact Off absence records were inspected; no raw
+credential/auth response, authenticated app/bridge output or screenshots were read.
+The local app/bridge was untouched. These runs do not close interactive login/TCC,
+physical-phone, minimum-OS, failed-stop injection or public-release gates.
+
+## Successful shared internal cycle (2026-09-25)
+
+Normal scheduled run
+[36175398399](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36175398399)
+passed from `f518cf28b465b16dd91baad74d45cbe16f647403` after the permission correction.
+This was the existing scheduler, not a manually dispatched product release. Preflight,
+aligned numbering, Android internal upload (`108205442335`), TestFlight upload
+(`108205442354`), all six bridge builds and core finalization (`108209549733`) succeeded.
+Both desktop jobs passed (`108205508675` x64, `108205508677` arm64; tooling
+`108205442972`) with **internal `1.9.1+983`**, the same source/build as the shared cycle.
+
+Desktop publisher `108216849107` was skipped. At verification, the rolling prerelease
+`v1.9.1-internal.983` resolved to that exact source and contained only six bridge
+archives plus `checksums.txt`, with no desktop assets. Desktop admission remains off.
+Native desktop evidence has empty source patches, matching compiled internal identity,
+equal ZIP/DMG inventories of eight native binaries and accepted app/DMG notarizations.
+
+- arm64 evidence `10882692646`, archive SHA256
+  `55a364b785c1fef80ee00ba777bff558e8e045e5760588b505fba048a71b2f85`
+- x64 evidence `10883178203`, archive SHA256
+  `795d64225dfe48adb10eea5435f19a29f19387fb52f93fedf2b6be3403122bc7`
+
+Read-only preparation
+[36179427817](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36179427817)
+passed at `fd2aa0fbb23ebfe578dcfc06704691082c7a82f6`, job `108217896893`.
+Its artifact `10884050786` has verified archive SHA256
+`d59684b6cf7f955b6e0872b616dcd5d66d5dbb97777077ae9a22b764e863ee12`.
+The real shared-run producer, source/build/channel, proposed internal tag and downloaded
+payload hashes passed the consumer, independently matching the inspected native records:
+
+- arm64 DMG: `cd3f3eb1a034929924b0bfab5a01c96e7acf154bbd6abb6a115602b71b59191e`
+- arm64 ZIP: `1fb47e248a0683b01b0dfa29e0c8f27523871f0774265fb7ff3c2222e8c18133`
+- x64 DMG: `8471a1d4dd06b72c269e0660fe228e4f67b1d91f3b638c9bb2e63a883ef16554`
+- x64 ZIP: `94721edbb8dd626345b7f159cc3386686ab7ba63ae8e2eba3e9240bb5d1c4ff6`
+
+This proves the shared internal build/finalization path with desktop publication off,
+not the disabled public publisher, stable production attachment or build-983 authenticated
+replacement. Build 981's stable acceptance above remains a separate source/build/channel.
 
 ## Post-migration continuation
 
