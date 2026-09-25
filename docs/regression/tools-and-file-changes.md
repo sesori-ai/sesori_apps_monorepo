@@ -31,8 +31,14 @@ sub-agent parts, plus the signal that a tool changed files.
   pending/running/failed/cancelled/unknown status. Tool-name strings never decide
   whether a shell panel is available.
 - Consecutive tool, thinking and sub-agent parts collapse into one summary row
-  (for example “Thought · 3 steps · 1 sub-agent · 1 failed”) that eases its
-  finished steps open below it. Visible text, a file, an agent or a retry part
+  (for example “Thought · 3 steps · 1 sub-agent · 1 failed”). Tapping or
+  keyboard-activating the summary opens its finished steps outside the
+  transcript, so the transcript's layout never changes: on desktop an anchored
+  popover below the summary, 560 px wide and capped at 480 px tall, whose steps
+  scroll past the cap and which closes on Esc or an outside click; on the phone
+  a sheet titled with the summary. The steps keep their transcript rows, and a
+  tool inside still opens its details there. The panel shows the steps finished
+  when it opened. Visible text, a file, an agent or a retry part
   ends a group, as does a user or error message; a group may span consecutive
   agent messages and renders in the first one's row, while an automation
   message groups only within itself. A running step stays below the summary as
@@ -231,7 +237,7 @@ sub-agent parts, plus the signal that a tool changed files.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, eased and reduced-motion disclosure, enlarged text and both themes; attachment visibility and title-only older-peer rendering; the sparkle leading a live row, and the “Working…” row showing while busy with no live step or streaming text and leaving when a step starts, text streams, the session idles or a retry row shows; a finished live row folding into its group while its count rolls, a new segment wiping in, instant changes under reduced motion, and a pinned reader staying pinned through the fold. Authoritative tool execution still requires a live turn. |
+| L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, eased and reduced-motion disclosure, enlarged text and both themes; attachment visibility and title-only older-peer rendering; the sparkle leading a live row, and the “Working…” row showing while busy with no live step or streaming text and leaving when a step starts, text streams, the session idles or a retry row shows; a finished live row folding into its group while its count rolls, a new segment wiping in, a group opening in a desktop popover (Esc and outside-click dismissal, capped height) or a phone sheet without changing the transcript height, instant changes under reduced motion, and a pinned reader staying pinned through the fold. Authoritative tool execution still requires a live turn. |
 | L2 Routine | Live plugin, representative: a file-editing tool produces a lightweight tool part with name and terminal status, while a shell tool preserves its command and bounded result. |
 | L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok target coverage: a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. Grok owned-phone coverage passed completed-tile rendering, exact read-only child navigation, and genuine permission Once. File diff/invalidation, mutating-tool permission linkage, failing-tool presentation, and permission denial remain unexecuted. |
 | L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity and status intact, shell commands retain their results, and non-shell snippets remain absent; a failing shell command surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. |
@@ -274,6 +280,10 @@ guarantee.
 - Steps separated by visible text merge into one group, a group swallows a text
   or file part, a summary counts a running step, a finished step stays outside
   its summary, or a finished tool or sub-agent shows a “Done” label.
+- Opening a group grows or moves the transcript, the desktop popover outgrows
+  its cap instead of scrolling, ignores Esc or an outside click, or a step
+  inside it cannot open its details, a thought its full text, or a sub-agent
+  its session.
 - A finished step, a new group, a new live row, the thinking tail or the
   “Working…” row appears or vanishes in one frame; the summary's count flickers,
   blanks or jumps instead of rolling, its width snaps, or it stops ellipsizing
