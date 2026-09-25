@@ -72,6 +72,7 @@ class const MessagePartMapper() {
       sessionID: raw.sessionID,
       messageID: raw.messageID,
       tool: raw.tool,
+      kind: _toolKind(tool: raw.tool),
       state: _mapToolState(tool: raw.tool, state: raw.state),
     ),
     SubtaskPart() => PluginMessagePart.subtask(
@@ -303,6 +304,15 @@ class const MessagePartMapper() {
       attachments: attachments,
     );
   }
+
+  /// Classifies OpenCode's built-in tool names; MCP and plugin tools are other.
+  PluginToolKind _toolKind({required String tool}) => switch (tool.toLowerCase()) {
+    "read" => PluginToolKind.read,
+    "edit" || "multiedit" || "write" || "patch" || "apply_patch" => PluginToolKind.edit,
+    "bash" => PluginToolKind.command,
+    "grep" || "glob" || "list" || "codesearch" || "websearch" => PluginToolKind.search,
+    _ => PluginToolKind.other,
+  };
 
   String? _shellCommand({required String tool, required ToolState state}) {
     if (tool.toLowerCase() != "bash") return null;

@@ -53,8 +53,8 @@ class const SessionDetailMessageList({
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
 
-  /// Whether the session works, by `hasActiveWork`. With no live step, a
-  /// "Working…" row closes the transcript.
+  /// Whether the session works, by `hasActiveWork`. With no live step and
+  /// no text streaming, a "Working…" row closes the transcript.
   required final bool isBusy,
 
   /// Requests the page of messages before the ones shown, or null when the
@@ -532,7 +532,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return _revealable(createdAtMs: null, child: RetryErrorMessageCard(message: retryErrorMessage));
     }
     if (entryId == _kWorkingRowId) {
-      return _revealable(createdAtMs: null, child: _workingRow(show: transcript.liveStep == null));
+      // Streaming text or a live step already shows progress; the row fills
+      // only the gaps: before the first token and between steps.
+      final show = transcript.liveStep == null && streamingText.isEmpty;
+      return _revealable(createdAtMs: null, child: _workingRow(show: show));
     }
     if (entryId.startsWith(_kPromptRowPrefix)) {
       // One row serves the prompt's whole lifecycle. Resolve the most settled

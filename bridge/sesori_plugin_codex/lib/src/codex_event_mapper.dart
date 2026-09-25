@@ -8,6 +8,7 @@ import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 import "repositories/mappers/codex_image_attachment_mapper.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
+import "repositories/mappers/codex_tool_kind_mapper.dart";
 import "repositories/mappers/codex_tool_part_mapper.dart";
 import "repositories/mappers/codex_user_content_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
@@ -603,6 +604,7 @@ class CodexEventMapper({
           sessionID: threadId,
           messageID: itemId,
           tool: tool,
+          kind: CodexToolKindMapper.map(tool: tool),
           state: PluginToolState(
             status: status,
             title: title,

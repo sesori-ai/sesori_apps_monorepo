@@ -80,6 +80,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     setState(() => _isBusy = isBusy);
   }
 
+  void clearStreamingText() {
+    setState(() => _streamingText = const {});
+  }
+
   void setRetryErrorMessage(String? message) {
     setState(() => _retryErrorMessage = message);
   }
@@ -1167,7 +1171,9 @@ void main() {
     expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsNothing);
   });
 
-  testWidgets("a busy session with no live step ends in a Working row that a live step replaces", (tester) async {
+  testWidgets("a busy session with no live step or streaming text ends in a Working row that a live step replaces", (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -1223,6 +1229,15 @@ void main() {
     harnessKey.currentState!
       ..removeMessage("assistant-1")
       ..appendNewestMessage(toolMessage(status: ToolStatus.completed));
+    await settle();
+    expect(find.text("Working…"), findsOneWidget);
+
+    // Streaming text already shows progress.
+    harnessKey.currentState!.updateStreamingText(partId: "assistant-1-text", text: "Reading the");
+    await settle();
+    expect(find.text("Working…"), findsNothing);
+
+    harnessKey.currentState!.clearStreamingText();
     await settle();
     expect(find.text("Working…"), findsOneWidget);
 

@@ -822,7 +822,43 @@
   },
   "transcriptSummarySteps": "{count, plural, =1{1 step} other{{count} steps}}",
   "@transcriptSummarySteps": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many tool calls the agent made, e.g. 'Thought · 3 steps'.",
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many other tool calls the agent made, e.g. 'Thought · read 1 file · 3 steps'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSummaryRead": "{count, plural, =1{read 1 file} other{read {count} files}}",
+  "@transcriptSummaryRead": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file reads the agent made, counted per call, e.g. 'Thought · read 2 files · ran 1 command'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSummaryEdited": "{count, plural, =1{edited 1 file} other{edited {count} files}}",
+  "@transcriptSummaryEdited": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file edits the agent made, counted per call, e.g. 'read 2 files · edited 1 file'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSummaryRan": "{count, plural, =1{ran 1 command} other{ran {count} commands}}",
+  "@transcriptSummaryRan": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many shell commands the agent ran, e.g. 'Thought · ran 3 commands'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSummarySearches": "{count, plural, =1{1 search} other{{count} searches}}",
+  "@transcriptSummarySearches": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file or web searches the agent made, e.g. 'Thought · 2 searches · read 1 file'.",
     "placeholders": {
       "count": {
         "type": "int"

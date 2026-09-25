@@ -1345,6 +1345,50 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String transcriptSummaryRead(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'read $count files',
+      one: 'read 1 file',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String transcriptSummaryEdited(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'edited $count files',
+      one: 'edited 1 file',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String transcriptSummaryRan(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'ran $count commands',
+      one: 'ran 1 command',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String transcriptSummarySearches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count searches',
+      one: '1 search',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String transcriptSummarySubAgents(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
