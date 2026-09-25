@@ -54,6 +54,7 @@ Future<void> showDesktopCommandPalette({
       (project: project, projectName: desktopProjectDisplayName(context: context, project: project), session: session),
   ];
   final authGate = context.read<AuthGateCubit>();
+  // ignore: no_slop_linter/avoid_raw_modal_presenters, a desktop-only Spotlight-style command palette overlay, not a sheet or dialog
   return showDialog<void>(
     context: context,
     animationStyle: prefersReducedMotion(context) ? AnimationStyle.noAnimation : null,

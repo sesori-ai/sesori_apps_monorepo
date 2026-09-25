@@ -14,65 +14,72 @@ Future<void> _showForceDialog({
 }) {
   final loc = context.loc;
 
-  return showDialog<void>(
+  return showPregoModal<void>(
     context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        title: Text(loc.sessionListForceDeleteTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(loc.sessionListForceMessage),
-            const SizedBox(height: 12),
-            for (final issue in rejection.issues)
-              Padding(
-                padding: const EdgeInsetsDirectional.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      TablerRegular.alert_triangle,
-                      size: PregoIconSize.md,
-                      color: context.prego.colors.fgErrorPrimary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(_describeCleanupIssue(loc: loc, issue: issue)),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => dialogContext.pop(),
-            child: Text(loc.sessionListDeleteConfirmCancel),
+    title: loc.sessionListForceDeleteTitle,
+    builder: (sheetContext) => Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            loc.sessionListForceMessage,
+            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
           ),
-          TextButton(
-            onPressed: () {
-              dialogContext.pop();
-              final release = cubit.retainActionScope();
-              unawaited(
-                _deleteSession(
-                  context: context,
-                  cubit: cubit,
-                  sessionId: sessionId,
-                  deleteWorktree: deleteWorktree,
-                  force: true,
-                  onSessionDeleted: onSessionDeleted,
-                ).whenComplete(release),
-              );
-            },
-            child: Text(
-              loc.sessionListForceDeleteAction,
-              style: TextStyle(color: context.prego.colors.fgErrorPrimary),
+          const SizedBox(height: 12),
+          for (final issue in rejection.issues)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    TablerRegular.alert_triangle,
+                    size: PregoIconSize.md,
+                    color: context.prego.colors.fgErrorPrimary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(_describeCleanupIssue(loc: loc, issue: issue)),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: PregoSpacing.x2l),
+          PregoSheetActions(
+            secondary: PregoButtonsSolid(
+              label: loc.sessionListDeleteConfirmCancel,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => sheetContext.pop(),
+            ),
+            primary: PregoButtonsSolid(
+              label: loc.sessionListForceDeleteAction,
+              hierarchy: PregoButtonsSolidHierarchy.primary,
+              type: PregoButtonsSolidType.destructive,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () {
+                sheetContext.pop();
+                final release = cubit.retainActionScope();
+                unawaited(
+                  _deleteSession(
+                    context: context,
+                    cubit: cubit,
+                    sessionId: sessionId,
+                    deleteWorktree: deleteWorktree,
+                    force: true,
+                    onSessionDeleted: onSessionDeleted,
+                  ).whenComplete(release),
+                );
+              },
             ),
           ),
         ],
-      );
-    },
+      ),
+    ),
   );
 }
 

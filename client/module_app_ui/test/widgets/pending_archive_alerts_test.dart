@@ -9,6 +9,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
@@ -110,8 +111,8 @@ void main() {
     await tester.pump(PendingSessionArchiveCubit.undoWindow);
     await tester.pumpAndSettle();
 
-    final keep = find.widgetWithText(FilledButton, "Archive, keep worktree");
-    expect(tester.widget<FilledButton>(keep).autofocus, isTrue);
+    final keep = find.widgetWithText(PregoButtonsSolid, "Archive, keep worktree");
+    expect(tester.widget<PregoButtonsSolid>(keep).hierarchy, PregoButtonsSolidHierarchy.primary);
     expect(find.text("Delete it anyway"), findsOneWidget);
     await tester.tap(keep);
     await tester.pumpAndSettle();
