@@ -1,4 +1,3 @@
-import "package:intl/intl.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -6,6 +5,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
+import "../../../utils/auto_continuation_time.dart";
 
 /// Whether the session needs the auto-continuation card above the composer:
 /// a quota reset to offer or explain, a continuation waiting to send, or an
@@ -132,7 +132,3 @@ class const SessionAutoContinuationNotice({
     SessionAutoContinuationUnknown() => loc.sessionAutoContinuationStatusUnknown,
   };
 }
-
-/// The bridge's UTC instant as a date and time in the viewer's zone.
-String sessionAutoContinuationLocalTime({required AppLocalizations loc, required int milliseconds}) =>
-    DateFormat.yMMMd(loc.localeName).add_jm().format(DateTime.fromMillisecondsSinceEpoch(milliseconds).toLocal());

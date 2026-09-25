@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../utils/auto_continuation_time.dart";
 import "session_auto_continuation_notice.dart";
 
 /// Quiet "Auto-continue" chip in the session's model row while

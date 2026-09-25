@@ -5,7 +5,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
-import "../session_detail/widgets/session_auto_continuation_notice.dart";
+import "../../utils/auto_continuation_time.dart";
 
 /// When the bridge will continue this session on its own, or null when no
 /// continuation is scheduled. Paused, unknown-reset and failed states are left
