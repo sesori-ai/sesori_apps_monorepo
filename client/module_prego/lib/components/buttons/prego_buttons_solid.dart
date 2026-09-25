@@ -215,10 +215,14 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final colors = prego.colors;
-    final button = Focus(
+    final onTap = widget.isLoading ? null : widget.onPressed;
+    // Enter and Space activate a focused button, as they do Material buttons.
+    final activate = CallbackAction<Intent>(onInvoke: (_) => onTap?.call());
+    final button = FocusableActionDetector(
       onFocusChange: (focused) => setState(() => _isFocused = focused),
+      actions: {ActivateIntent: activate, ButtonActivateIntent: activate},
       child: PregoTappable.stateAware(
-        onTap: widget.isLoading ? null : widget.onPressed,
+        onTap: onTap,
         borderRadius: BorderRadius.circular(PregoRadius.full),
         overlayColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.pressed)) return _resolvePressOverlayColor(colors: colors);

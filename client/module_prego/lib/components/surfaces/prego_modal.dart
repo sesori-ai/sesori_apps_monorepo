@@ -25,8 +25,8 @@ enum PregoModalWidth({required final double pixels}) {
 /// [PregoInteractionScope] picks: [showPregoBottomSheet] for touch, a centred
 /// dialog of [width] for pointer.
 ///
-/// Both frames close from their close button, and from a scrim tap when
-/// [isDismissible]. The dialog also closes on Esc when [isDismissible],
+/// When [isDismissible], both frames close from their close button and a
+/// scrim tap; otherwise they have no close button and only the content pops. The dialog also closes on Esc when [isDismissible],
 /// though the desktop shell's own Esc handling closes any dialog on top. A
 /// dialog opened from a dialog stacks on it, and Esc closes only the top one.
 /// [bodySize] sizes the sheet's body; in the dialog, a
@@ -57,7 +57,7 @@ Future<T?> showPregoModal<T>({
         subtitle: null,
         onBack: null,
         // ignore: no_slop_linter/avoid_navigator_of, design module has no go_router dep; pops the dialog this helper pushed
-        onClose: () => Navigator.of(dialogContext).pop(),
+        onClose: isDismissible ? () => Navigator.of(dialogContext).pop() : null,
         width: width,
         contentPadding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl),
         scrolls: bodySize == PregoBottomSheetBodySize.natural,
@@ -72,6 +72,7 @@ Future<T?> showPregoModal<T>({
 /// bottom sheet for touch and a dialog for pointer, as in [showPregoModal].
 Future<T?> showPregoModalRoute<T>({required BuildContext context, required WidgetBuilder builder}) {
   return switch (PregoInteractionScope.of(context)) {
+    // ignore: no_slop_linter/avoid_raw_modal_presenters, this is the adaptive presenter
     PregoInteractionMode.touch => showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
@@ -136,6 +137,7 @@ Future<T?> _showDialogFrame<T>({
   required bool isDismissible,
   required WidgetBuilder builder,
 }) {
+  // ignore: no_slop_linter/avoid_raw_modal_presenters, this is the adaptive presenter
   return showDialog<T>(
     context: context,
     barrierDismissible: isDismissible,
@@ -153,7 +155,7 @@ class const _PregoDialogFrame({
   required final String title,
   required final String? subtitle,
   required final VoidCallback? onBack,
-  required final VoidCallback onClose,
+  required final VoidCallback? onClose,
   required final PregoModalWidth width,
   required final EdgeInsetsGeometry contentPadding,
 
@@ -224,12 +226,13 @@ class const _PregoDialogFrame({
                       ],
                     ),
                   ),
-                  IconButton(
-                    tooltip: localizations.closeButtonTooltip,
-                    visualDensity: VisualDensity.compact,
-                    onPressed: onClose,
-                    icon: const Icon(TablerRegular.x, size: PregoIconSize.md),
-                  ),
+                  if (onClose case final onClose?)
+                    IconButton(
+                      tooltip: localizations.closeButtonTooltip,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: onClose,
+                      icon: const Icon(TablerRegular.x, size: PregoIconSize.md),
+                    ),
                 ],
               ),
             ),

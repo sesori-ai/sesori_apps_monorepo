@@ -5,6 +5,7 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
@@ -32,7 +33,7 @@ enum SessionDeleteConfirmation() {
   /// The phone: a bottom sheet.
   sheet,
 
-  /// A pointer surface: a compact centred alert.
+  /// A pointer surface: a centred dialog that asks before the delete starts.
   alert,
 }
 

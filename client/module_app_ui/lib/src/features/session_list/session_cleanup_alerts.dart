@@ -1,35 +1,42 @@
 part of "session_list_action_dispatcher.dart";
 
-// Compact centred alerts for a pointer surface, where a bottom sheet is out of
-// place. Escape and Return both cancel; the destructive button is never the
-// default.
-
-const double _compactAlertWidth = 372;
-
 String _sessionName({required AppLocalizations loc, required Session session}) =>
     session.title ?? loc.sessionDetailTitle;
 
 Future<bool> _confirmArchiveRunning({required BuildContext context, required Session session}) async {
   final loc = context.loc;
-  final confirmed = await showDialog<bool>(
+  final confirmed = await showPregoModal<bool>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(loc.sessionListArchiveRunningTitle),
-      content: SizedBox(
-        width: _compactAlertWidth,
-        child: Text(loc.sessionListArchiveRunningMessage(_sessionName(loc: loc, session: session))),
+    title: loc.sessionListArchiveRunningTitle,
+    builder: (sheetContext) => Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            loc.sessionListArchiveRunningMessage(_sessionName(loc: loc, session: session)),
+            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+          ),
+          const SizedBox(height: PregoSpacing.x2l),
+          PregoSheetActions(
+            secondary: PregoButtonsSolid(
+              label: loc.sessionListDeleteConfirmCancel,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => sheetContext.pop(false),
+            ),
+            primary: PregoButtonsSolid(
+              label: loc.sessionListArchiveConfirmAction,
+              hierarchy: PregoButtonsSolidHierarchy.primary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => sheetContext.pop(true),
+            ),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          autofocus: true,
-          onPressed: () => dialogContext.pop(false),
-          child: Text(loc.sessionListDeleteConfirmCancel),
-        ),
-        FilledButton(
-          onPressed: () => dialogContext.pop(true),
-          child: Text(loc.sessionListArchiveConfirmAction),
-        ),
-      ],
     ),
   );
   return confirmed ?? false;
@@ -37,58 +44,68 @@ Future<bool> _confirmArchiveRunning({required BuildContext context, required Ses
 
 /// Whether to delete the worktree too, or null when the user cancelled.
 Future<bool?> _confirmDelete({required BuildContext context, required Session session}) {
-  return showDialog<bool>(
+  final loc = context.loc;
+  return showPregoModal<bool>(
     context: context,
-    builder: (_) => _CompactDeleteAlert(session: session),
+    title: loc.sessionListDeleteNamedTitle(_sessionName(loc: loc, session: session)),
+    builder: (_) => _DeleteConfirmation(session: session),
   );
 }
 
-class const _CompactDeleteAlert({required final Session session}) extends StatefulWidget {
+/// The delete question's body: what deleting means, a worktree checkbox when
+/// the session has one, then Cancel and a destructive Delete.
+class const _DeleteConfirmation({required final Session session}) extends StatefulWidget {
   @override
-  State<_CompactDeleteAlert> createState() => _CompactDeleteAlertState();
+  State<_DeleteConfirmation> createState() => _DeleteConfirmationState();
 }
 
-class _CompactDeleteAlertState() extends State<_CompactDeleteAlert> {
+class _DeleteConfirmationState() extends State<_DeleteConfirmation> {
   bool _deleteWorktree = true;
 
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final hasWorktree = widget.session.hasWorktree;
-    return AlertDialog(
-      title: Text(loc.sessionListDeleteNamedTitle(_sessionName(loc: loc, session: widget.session))),
-      content: SizedBox(
-        width: _compactAlertWidth,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(loc.sessionListDeleteConfirmMessage),
-            if (hasWorktree)
-              CheckboxListTile(
-                value: _deleteWorktree,
-                onChanged: (value) => setState(() => _deleteWorktree = value ?? false),
-                title: Text(loc.sessionListDeleteWorktreeKeepsBranch),
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            loc.sessionListDeleteConfirmMessage,
+            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+          ),
+          if (hasWorktree)
+            CheckboxListTile(
+              value: _deleteWorktree,
+              onChanged: (value) => setState(() => _deleteWorktree = value ?? false),
+              title: Text(loc.sessionListDeleteWorktreeKeepsBranch),
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+            ),
+          const SizedBox(height: PregoSpacing.x2l),
+          PregoSheetActions(
+            secondary: PregoButtonsSolid(
+              label: loc.sessionListDeleteConfirmCancel,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => context.pop(),
+            ),
+            primary: PregoButtonsSolid(
+              key: const Key("session-delete-alert-confirm"),
+              label: loc.sessionListDeleteConfirmAction,
+              hierarchy: PregoButtonsSolidHierarchy.primary,
+              type: PregoButtonsSolidType.destructive,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => context.pop(hasWorktree && _deleteWorktree),
+            ),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          autofocus: true,
-          onPressed: () => context.pop(),
-          child: Text(loc.sessionListDeleteConfirmCancel),
-        ),
-        FilledButton(
-          key: const Key("session-delete-alert-confirm"),
-          style: FilledButton.styleFrom(backgroundColor: context.prego.colors.fgErrorPrimary),
-          onPressed: () => context.pop(hasWorktree && _deleteWorktree),
-          child: Text(loc.sessionListDeleteConfirmAction),
-        ),
-      ],
     );
   }
 }
@@ -106,38 +123,47 @@ Future<SessionArchiveRefusedChoice?> showSessionArchiveRefusedAlert({
   required SessionCleanupRejection rejection,
 }) {
   final loc = context.loc;
-  return showDialog<SessionArchiveRefusedChoice>(
+  return showPregoModal<SessionArchiveRefusedChoice>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(loc.sessionListArchiveRefusedTitle),
-      content: SizedBox(
-        width: _compactAlertWidth,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final issue in rejection.issues) Text(_describeCleanupIssue(loc: loc, issue: issue)),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => dialogContext.pop(),
-          child: Text(loc.sessionListDeleteConfirmCancel),
-        ),
-        TextButton(
-          onPressed: () => dialogContext.pop(SessionArchiveRefusedChoice.deleteAnyway),
-          child: Text(
-            loc.sessionListArchiveDeleteAnyway,
-            style: TextStyle(color: dialogContext.prego.colors.fgErrorPrimary),
+    title: loc.sessionListArchiveRefusedTitle,
+    builder: (sheetContext) => Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final issue in rejection.issues)
+            Text(
+              _describeCleanupIssue(loc: loc, issue: issue),
+              style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+            ),
+          const SizedBox(height: PregoSpacing.x2l),
+          PregoButtonsSolid(
+            label: loc.sessionListArchiveKeepWorktree,
+            hierarchy: PregoButtonsSolidHierarchy.primary,
+            size: PregoButtonsSolidSize.lg,
+            fullWidth: true,
+            onPressed: () => sheetContext.pop(SessionArchiveRefusedChoice.keepWorktree),
           ),
-        ),
-        FilledButton(
-          autofocus: true,
-          onPressed: () => dialogContext.pop(SessionArchiveRefusedChoice.keepWorktree),
-          child: Text(loc.sessionListArchiveKeepWorktree),
-        ),
-      ],
+          const SizedBox(height: PregoSpacing.md),
+          PregoButtonsSolid(
+            label: loc.sessionListArchiveDeleteAnyway,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            type: PregoButtonsSolidType.destructive,
+            size: PregoButtonsSolidSize.lg,
+            fullWidth: true,
+            onPressed: () => sheetContext.pop(SessionArchiveRefusedChoice.deleteAnyway),
+          ),
+          const SizedBox(height: PregoSpacing.md),
+          PregoButtonsSolid(
+            label: loc.sessionListDeleteConfirmCancel,
+            hierarchy: PregoButtonsSolidHierarchy.tertiary,
+            size: PregoButtonsSolidSize.lg,
+            fullWidth: true,
+            onPressed: () => sheetContext.pop(),
+          ),
+        ],
+      ),
     ),
   );
 }

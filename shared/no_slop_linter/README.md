@@ -11,6 +11,7 @@ A custom Dart linter to prevent sloppy code patterns. Built with `analysis_serve
 | `avoid_implicit_tostring`   | Prevents implicit `toString()` in string interpolation (except String, int, double, bool) | WARNING  |
 | `avoid_flutter_spinners` | Prevents direct Flutter spinner widgets; use `PregoActivityIndicator` | WARNING |
 | `avoid_material_icons` | Prevents Material `Icons` glyphs; use `TablerRegular` or `TablerSolid` | WARNING |
+| `avoid_raw_modal_presenters` | Prevents `showDialog`, `showModalBottomSheet` and other SDK modal presenters; use `showPregoModal` | WARNING |
 | `avoid_legacy_flutter_design_imports` | Prevents SDK Material and Cupertino imports; use the standalone UI packages | WARNING |
 
 > **Note:** All rules use WARNING severity to allow incremental cleanup. CI is configured to fail if any changed files contain warnings, encouraging cleanup of files you touch.
