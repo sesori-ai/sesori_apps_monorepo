@@ -66,8 +66,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
             // even before the first message lands in the list.
             hasMessages:
                 state.hasRenderableMessages ||
-                state.sendingSubmission != null ||
-                state.failedSubmission != null ||
+                state.localSend is! LocalSendIdle ||
                 state.queuedMessages.isNotEmpty ||
                 state.awaitingBridgeSubmissions.isNotEmpty ||
                 state.bridgeQueuedPrompts.isNotEmpty,

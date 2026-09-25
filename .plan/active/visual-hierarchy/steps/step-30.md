@@ -43,6 +43,15 @@
   "Sending to <harness>…" label wraps, so a long harness name fits a narrow
   pane at large text. Declined: making the bridge record acceptance before the
   plugin call returns is a bridge dedup change outside this step.
+- Fourth review round: the message list takes the sealed `LocalSendPhase`
+  directly, and the state's derived `sendingSubmission`/`failedSubmission`
+  getters are gone. The failure classification moved out of the cubit into
+  `SessionRepository.sendFailureFor`, beside the existing
+  `isStalePromptOptionsError`, and returns the repository-layer
+  `PromptSendFailure` (formerly the cubit's `LocalSendFailure`). Its table
+  test lives in `session_repository_test.dart`. `sendMessage` still returns
+  `ApiResponse`: changing it would rewrite about 150 test stubs for no
+  behaviour change. The duplicate-on-Retry-after-5xx point was declined again.
 - Both apps mount this list, so the change covers phone and desktop.
 
 ## Deviations

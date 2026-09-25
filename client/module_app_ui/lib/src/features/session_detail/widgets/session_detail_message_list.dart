@@ -28,10 +28,9 @@ class const SessionDetailMessageList({
   super.key,
   required final String? projectId,
   required final List<MessageWithParts> messages,
-  required final QueuedSessionSubmission? sendingSubmission,
 
-  /// The head submission whose send failed; [queuedMessages] wait behind it.
-  required final QueuedSessionSubmission? failedSubmission,
+  /// The head of the local send queue; [queuedMessages] wait behind it.
+  required final LocalSendPhase localSend,
   required final List<QueuedSessionSubmission> queuedMessages,
 
   /// The harness name a slow send names, or null until it is known.
@@ -270,8 +269,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   bool _transientSubmissionsMatch({required SessionDetailMessageList oldWidget}) {
-    if (!identical(oldWidget.sendingSubmission, widget.sendingSubmission)) return false;
-    if (!identical(oldWidget.failedSubmission, widget.failedSubmission)) return false;
+    if (oldWidget.localSend != widget.localSend) return false;
     if (oldWidget.queuedMessages.length != widget.queuedMessages.length) return false;
     for (var i = 0; i < widget.queuedMessages.length; i++) {
       if (!identical(oldWidget.queuedMessages[i], widget.queuedMessages[i])) return false;
@@ -289,16 +287,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   bool _hasNewTransientSubmission({required SessionDetailMessageList oldWidget}) {
     final previousPromptIds = <String>{
-      ?oldWidget.sendingSubmission?.promptId,
-      ?oldWidget.failedSubmission?.promptId,
+      ?_localSendRow(localSend: oldWidget.localSend)?.submission.promptId,
       for (final submission in oldWidget.queuedMessages) submission.promptId,
       // A fast acceptance can move a send straight to the parked surface
       // between two builds; it is still the reader's new submission.
       for (final submission in oldWidget.awaitingBridgeSubmissions) submission.promptId,
     };
     return [
-      ?widget.sendingSubmission,
-      ?widget.failedSubmission,
+      ?_localSendRow(localSend: widget.localSend)?.submission,
       ...widget.queuedMessages,
       ...widget.awaitingBridgeSubmissions,
     ].any((submission) => !previousPromptIds.contains(submission.promptId));
@@ -306,8 +302,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   List<String> _rowIdsFor({
     required List<MessageWithParts> messages,
-    required QueuedSessionSubmission? sendingSubmission,
-    required QueuedSessionSubmission? failedSubmission,
+    required QueuedSessionSubmission? localSendSubmission,
     required List<QueuedSessionSubmission> queuedMessages,
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
@@ -326,10 +321,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
       for (final submission in awaitingBridgeSubmissions)
         if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
-      if (sendingSubmission != null && !deliveredPromptIds.contains(sendingSubmission.promptId))
-        "$_kPromptRowPrefix${sendingSubmission.promptId}",
-      if (failedSubmission != null && !deliveredPromptIds.contains(failedSubmission.promptId))
-        "$_kPromptRowPrefix${failedSubmission.promptId}",
+      if (localSendSubmission != null && !deliveredPromptIds.contains(localSendSubmission.promptId))
+        "$_kPromptRowPrefix${localSendSubmission.promptId}",
       for (final submission in queuedMessages)
         if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
     ];
@@ -339,6 +332,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         if (seenIds.add(entry)) entry,
     ];
   }
+
+  static _TransientSubmission? _localSendRow({required LocalSendPhase localSend}) => switch (localSend) {
+    LocalSendIdle() => null,
+    LocalSendSending(:final submission) => (submission: submission, stage: _TransientStage.sending),
+    LocalSendFailed(:final submission) => (submission: submission, stage: _TransientStage.failed),
+  };
 
   String _entryIdForMessage({required Message info}) => switch (info) {
     MessageUser(promptId: final promptId?) => "$_kPromptRowPrefix$promptId",
@@ -357,8 +356,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final loc = context.loc;
     final snap = _snapshot;
     final messages = snap?.messages ?? widget.messages;
-    final sendingSubmission = widget.sendingSubmission;
-    final failedSubmission = widget.failedSubmission;
+    final localSendRow = _localSendRow(localSend: widget.localSend);
     final queuedMessages = widget.queuedMessages;
     final streamingText = snap?.streamingText ?? widget.streamingText;
     final children = snap?.children ?? widget.children;
@@ -369,21 +367,15 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final transientSubmissions = <String, _TransientSubmission>{
       for (final submission in widget.awaitingBridgeSubmissions)
         "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: _TransientStage.awaitingBridge),
-      if (sendingSubmission != null)
-        "$_kPromptRowPrefix${sendingSubmission.promptId}": (
-          submission: sendingSubmission,
-          stage: _TransientStage.sending,
-        ),
-      if (failedSubmission != null)
-        "$_kPromptRowPrefix${failedSubmission.promptId}": (submission: failedSubmission, stage: _TransientStage.failed),
+      if (localSendRow case (:final submission, :final stage))
+        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: stage),
       for (final submission in queuedMessages)
         "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: _TransientStage.pending),
     };
 
     final rowIds = _rowIdsFor(
       messages: messages,
-      sendingSubmission: sendingSubmission,
-      failedSubmission: failedSubmission,
+      localSendSubmission: localSendRow?.submission,
       queuedMessages: queuedMessages,
       bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
       awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,

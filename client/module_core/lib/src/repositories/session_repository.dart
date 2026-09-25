@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 import "../api/session_api.dart";
 import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
+import "models/prompt_send_failure.dart";
 import "models/session_abort_not_accepted_exception.dart";
 import "models/session_abort_rejected_exception.dart";
 import "models/session_cleanup_rejection.dart";
@@ -325,6 +326,18 @@ class SessionRepository({
     }
     return false;
   }
+
+  /// Only a client-error answer proves the prompt was not accepted. A 5xx (an
+  /// OpenCode 502 can still run the prompt), a transport error or a timeout
+  /// may have reached the harness anyway.
+  static PromptSendFailure sendFailureFor({required ApiError error}) => switch (error) {
+    NonSuccessCodeError(errorCode: >= 400 && < 500) || NotAuthenticatedError() => PromptSendFailure.rejected,
+    NonSuccessCodeError() ||
+    DartHttpClientError() ||
+    GenericError() ||
+    EmptyResponseError() ||
+    JsonParsingError() => PromptSendFailure.uncertain,
+  };
 
   Future<ApiResponse<QueuedPromptResponse>> getQueuedPrompts({required String sessionId}) {
     return _api.getQueuedPrompts(sessionId: sessionId);

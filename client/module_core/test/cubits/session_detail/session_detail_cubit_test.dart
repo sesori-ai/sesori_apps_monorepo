@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
@@ -22,6 +23,7 @@ import "package:sesori_dart_core/src/foundation/models/session_options/session_o
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
+import "package:sesori_dart_core/src/repositories/models/prompt_send_failure.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
@@ -561,7 +563,7 @@ void main() {
             inputMode: ComposerInputMode.typed,
             attachments: const [],
           );
-          expect((cubit.state as SessionDetailLoaded).failedSubmission, isNotNull);
+          expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNotNull);
           final savedMetadata = await mockSessionRepository.getSession(sessionId: sessionId);
           final metadata = Completer<ApiResponse<Session>>();
           when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
@@ -580,7 +582,7 @@ void main() {
           expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
           expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.busy());
           cubit.removeFailedSend();
-          expect((cubit.state as SessionDetailLoaded).failedSubmission, isNull);
+          expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNull);
           await cubit.cancelBridgeQueuedPrompt(promptId: "remote-prompt");
           verifyNever(() => mockSessionRepository.cancelQueuedPrompt(sessionId: sessionId, promptId: "remote-prompt"));
         }
@@ -2312,13 +2314,8 @@ void main() {
     );
 
     for (final (label, error, failure) in [
-      ("a bridge rejection", ApiError.nonSuccessCode(errorCode: 400, rawErrorString: null), LocalSendFailure.rejected),
-      (
-        "an upstream server error",
-        ApiError.nonSuccessCode(errorCode: 502, rawErrorString: null),
-        LocalSendFailure.uncertain,
-      ),
-      ("a lost response", ApiError.dartHttpClient(Exception("timed out")), LocalSendFailure.uncertain),
+      ("a bridge rejection", ApiError.nonSuccessCode(errorCode: 400, rawErrorString: null), PromptSendFailure.rejected),
+      ("a lost response", ApiError.dartHttpClient(Exception("timed out")), PromptSendFailure.uncertain),
     ]) {
       test("$label marks the failed send ${failure.name}", () async {
         when(
@@ -2378,20 +2375,20 @@ void main() {
       await cubit.sendMessage(attachments: const [], text: "second", command: null, inputMode: ComposerInputMode.typed);
 
       final failed = cubit.state as SessionDetailLoaded;
-      expect(failed.failedSubmission?.displayText, "first");
+      expect(_failedOf(state: failed)?.displayText, "first");
       expect(failed.queuedMessages.map((message) => message.displayText), ["second"]);
       expect(sentTexts, ["first"]);
 
       cubit.retryFailedSend();
       await awaitState(
         cubit: cubit,
-        predicate: (state) => state is SessionDetailLoaded && sentTexts.length == 3 && state.sendingSubmission == null,
+        predicate: (state) => state is SessionDetailLoaded && sentTexts.length == 3 && _sendingOf(state: state) == null,
         description: "retry and the waiting send accepted",
       );
 
       expect(sentTexts, ["first", "first", "second"]);
       expect(sentPromptIds[1], sentPromptIds[0]);
-      expect((cubit.state as SessionDetailLoaded).failedSubmission, isNull);
+      expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNull);
     });
 
     blocTest<SessionDetailCubit, SessionDetailState>(
@@ -3041,8 +3038,8 @@ void main() {
           cubit: cubit,
           predicate: (state) =>
               state is SessionDetailLoaded &&
-              state.failedSubmission?.displayText == "will fail" &&
-              state.sendingSubmission == null,
+              _failedOf(state: state)?.displayText == "will fail" &&
+              _sendingOf(state: state) == null,
           description: "failed queued message held",
         );
       },
@@ -3284,20 +3281,20 @@ Matcher _queuedSubmission(String text) => isA<SessionDetailLoaded>()
       "queuedMessages",
       [text],
     )
-    .having((state) => state.sendingSubmission, "sendingSubmission", isNull);
+    .having((state) => _sendingOf(state: state), "sendingSubmission", isNull);
 
 Matcher _sendingSubmission(String text) => isA<SessionDetailLoaded>()
     .having((state) => state.queuedMessages, "queuedMessages", isEmpty)
-    .having((state) => state.sendingSubmission?.displayText, "sendingSubmission", text);
+    .having((state) => _sendingOf(state: state)?.displayText, "sendingSubmission", text);
 
 Matcher _failedSubmission(String text) => isA<SessionDetailLoaded>()
     .having((state) => state.queuedMessages, "queuedMessages", isEmpty)
-    .having((state) => state.sendingSubmission, "sendingSubmission", isNull)
-    .having((state) => state.failedSubmission?.displayText, "failedSubmission", text);
+    .having((state) => _sendingOf(state: state), "sendingSubmission", isNull)
+    .having((state) => _failedOf(state: state)?.displayText, "failedSubmission", text);
 
 final Matcher _noPendingSubmission = isA<SessionDetailLoaded>()
     .having((state) => state.queuedMessages, "queuedMessages", isEmpty)
-    .having((state) => state.sendingSubmission, "sendingSubmission", isNull);
+    .having((state) => _sendingOf(state: state), "sendingSubmission", isNull);
 
 void _stubPromptAttachmentCapability({
   required MockPluginRepository repository,
@@ -3520,3 +3517,13 @@ void _stubAllDefaults(
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
 }
+
+QueuedSessionSubmission? _sendingOf({required SessionDetailLoaded state}) => switch (state.localSend) {
+  LocalSendSending(:final submission) => submission,
+  LocalSendIdle() || LocalSendFailed() => null,
+};
+
+QueuedSessionSubmission? _failedOf({required SessionDetailLoaded state}) => switch (state.localSend) {
+  LocalSendFailed(:final submission) => submission,
+  LocalSendIdle() || LocalSendSending() => null,
+};

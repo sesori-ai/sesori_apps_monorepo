@@ -22,6 +22,7 @@ import "../../platform/notification_canceller.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/models/plugin_management_result.dart";
+import "../../repositories/models/prompt_send_failure.dart";
 import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
@@ -2147,24 +2148,14 @@ class SessionDetailCubit(
         case ErrorResponse(:final error):
           sendSettledElsewhere = !_settleFailedSend(
             sendConnectionGeneration: sendConnectionGeneration,
-            // Only a client-error answer proves the prompt was not accepted.
-            // A 5xx (an OpenCode 502 can still run the prompt), a transport
-            // error or a timeout may have reached the harness anyway.
-            failure: switch (error) {
-              NonSuccessCodeError(errorCode: >= 400 && < 500) || NotAuthenticatedError() => LocalSendFailure.rejected,
-              NonSuccessCodeError() ||
-              DartHttpClientError() ||
-              GenericError() ||
-              EmptyResponseError() ||
-              JsonParsingError() => LocalSendFailure.uncertain,
-            },
+            failure: SessionRepository.sendFailureFor(error: error),
           );
           logw("Failed to send queued session submission", error);
       }
     } on Object catch (error, stackTrace) {
       sendSettledElsewhere = !_settleFailedSend(
         sendConnectionGeneration: sendConnectionGeneration,
-        failure: LocalSendFailure.uncertain,
+        failure: PromptSendFailure.uncertain,
       );
       logw("Failed to send queued session submission", error, stackTrace);
     }
@@ -2198,7 +2189,7 @@ class SessionDetailCubit(
   /// connection dropped is re-queued and re-sent automatically on reconnect.
   /// Returns whether the submission was kept (false when the bridge settled
   /// it while the send was in flight).
-  bool _settleFailedSend({required int sendConnectionGeneration, required LocalSendFailure failure}) =>
+  bool _settleFailedSend({required int sendConnectionGeneration, required PromptSendFailure failure}) =>
       sendConnectionGeneration == _connectionGeneration
       ? _promptQueue.holdFailedSend(failure: failure)
       : _promptQueue.failSend();

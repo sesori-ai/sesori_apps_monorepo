@@ -130,17 +130,5 @@ extension SessionDetailLoadedX on SessionDetailLoaded {
   bool get runsFastMode =>
       _selection.resolvedFastMode(providers: availableProviders, model: selectedAgentModel, requested: fastMode);
 
-  /// The submission awaiting bridge acceptance, if any.
-  QueuedSessionSubmission? get sendingSubmission => switch (localSend) {
-    LocalSendSending(:final submission) => submission,
-    LocalSendIdle() || LocalSendFailed() => null,
-  };
-
-  /// The failed head submission, if any.
-  QueuedSessionSubmission? get failedSubmission => switch (localSend) {
-    LocalSendFailed(:final submission) => submission,
-    LocalSendIdle() || LocalSendSending() => null,
-  };
-
   FastModeControl get fastModeControl => _fastModeToggle.control(support: fastModeSupport, fastMode: runsFastMode);
 }

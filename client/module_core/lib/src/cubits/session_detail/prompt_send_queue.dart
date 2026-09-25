@@ -1,6 +1,7 @@
 import "dart:collection";
 
 import "../../foundation/models/composer/composer_attachment.dart";
+import "../../repositories/models/prompt_send_failure.dart";
 import "local_send_phase.dart";
 import "queued_session_submission.dart";
 
@@ -154,7 +155,7 @@ class PromptSendQueue() {
   ///
   /// Returns whether it was held. Like [failSend], a submission the bridge
   /// already settled is discarded instead.
-  bool holdFailedSend({required LocalSendFailure failure}) {
+  bool holdFailedSend({required PromptSendFailure failure}) {
     final active = _active;
     if (active == null) return false;
     _active = null;

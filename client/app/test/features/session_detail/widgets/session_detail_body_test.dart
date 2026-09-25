@@ -3987,7 +3987,7 @@ void main() {
 
     Future<void> pumpFailed(
       WidgetTester tester, {
-      required LocalSendFailure failure,
+      required PromptSendFailure failure,
       required SessionInteractionState interaction,
     }) async {
       final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
@@ -4003,7 +4003,7 @@ void main() {
     testWidgets("a lost response offers Retry without Remove", (tester) async {
       await pumpFailed(
         tester,
-        failure: LocalSendFailure.uncertain,
+        failure: PromptSendFailure.uncertain,
         interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       );
 
@@ -4015,7 +4015,7 @@ void main() {
     testWidgets("a blocked harness hides Retry but keeps Remove", (tester) async {
       await pumpFailed(
         tester,
-        failure: LocalSendFailure.rejected,
+        failure: PromptSendFailure.rejected,
         interaction: const SessionInteractionState.blocked(
           reason: SessionInteractionBlockedReason.authenticationRequired,
           displayName: "Claude Code",

@@ -29,8 +29,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late Map<String, String> _streamingText;
   late List<QueuedSessionSubmission> _queuedMessages;
   late List<QueuedSessionPrompt> _bridgeQueuedPrompts;
-  QueuedSessionSubmission? _sendingSubmission;
-  QueuedSessionSubmission? _failedSubmission;
+  LocalSendPhase _localSend = const LocalSendPhase.idle();
   int retriedFailedSends = 0;
   List<QueuedSessionSubmission> _awaitingBridgeSubmissions = const [];
   Map<String, List<ComposerAttachment>> _bridgePromptAttachments = const {};
@@ -90,28 +89,29 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   }
 
   void sendDirectly(QueuedSessionSubmission submission) {
-    setState(() => _sendingSubmission = submission);
+    setState(() => _localSend = LocalSendPhase.sending(submission: submission));
   }
 
   void beginSending() {
     setState(() {
-      _sendingSubmission = _queuedMessages.first;
+      _localSend = LocalSendPhase.sending(submission: _queuedMessages.first);
       _queuedMessages = _queuedMessages.sublist(1);
     });
   }
 
   void failSending() {
-    setState(() {
-      _failedSubmission = _sendingSubmission;
-      _sendingSubmission = null;
-    });
+    if (_localSend case LocalSendSending(:final submission)) {
+      setState(() => _localSend = LocalSendPhase.failed(submission: submission, failure: PromptSendFailure.rejected));
+    }
   }
 
   void acceptSendingSubmission() {
-    setState(() {
-      _awaitingBridgeSubmissions = [..._awaitingBridgeSubmissions, _sendingSubmission!];
-      _sendingSubmission = null;
-    });
+    if (_localSend case LocalSendSending(:final submission)) {
+      setState(() {
+        _awaitingBridgeSubmissions = [..._awaitingBridgeSubmissions, submission];
+        _localSend = const LocalSendPhase.idle();
+      });
+    }
   }
 
   void updateBridgeQueue({
@@ -126,7 +126,9 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       _awaitingBridgeSubmissions = _awaitingBridgeSubmissions
           .where((submission) => !bridgeIds.contains(submission.promptId))
           .toList();
-      if (bridgeIds.contains(_sendingSubmission?.promptId)) _sendingSubmission = null;
+      if (_localSend case LocalSendSending(:final submission) when bridgeIds.contains(submission.promptId)) {
+        _localSend = const LocalSendPhase.idle();
+      }
     });
   }
 
@@ -171,15 +173,17 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           projectId: null,
           onLoadOlderMessages: widget.onLoadOlderMessages,
           messages: _messages,
-          sendingSubmission: _sendingSubmission,
-          failedSubmission: _failedSubmission,
+          localSend: _localSend,
           harnessName: "OpenCode",
-          onRetryFailedSend: () => setState(() {
-            retriedFailedSends++;
-            _sendingSubmission = _failedSubmission;
-            _failedSubmission = null;
-          }),
-          onRemoveFailedSend: () => setState(() => _failedSubmission = null),
+          onRetryFailedSend: () {
+            if (_localSend case LocalSendFailed(:final submission)) {
+              setState(() {
+                retriedFailedSends++;
+                _localSend = LocalSendPhase.sending(submission: submission);
+              });
+            }
+          },
+          onRemoveFailedSend: () => setState(() => _localSend = const LocalSendPhase.idle()),
           awaitingBridgeSubmissions: _awaitingBridgeSubmissions,
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,

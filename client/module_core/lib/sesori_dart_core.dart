@@ -169,6 +169,7 @@ export "src/repositories/models/analytics_release_cutoff.dart";
 export "src/repositories/models/bridge_settings_result.dart";
 export "src/repositories/models/installed_app_build.dart";
 export "src/repositories/models/plugin_management_result.dart";
+export "src/repositories/models/prompt_send_failure.dart";
 export "src/repositories/models/repo_provider.dart";
 export "src/repositories/models/session_abort_not_accepted_exception.dart";
 export "src/repositories/models/session_abort_rejected_exception.dart";

@@ -1,10 +1,10 @@
 import "dart:typed_data";
 
-import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/prompt_send_queue.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
+import "package:sesori_dart_core/src/repositories/models/prompt_send_failure.dart";
 import "package:test/test.dart";
 
 const _first = QueuedSessionSubmission.text(
@@ -283,7 +283,7 @@ void main() {
       queue.enqueue(_existing);
       queue.beginSend();
 
-      expect(queue.holdFailedSend(failure: LocalSendFailure.rejected), isTrue);
+      expect(queue.holdFailedSend(failure: PromptSendFailure.rejected), isTrue);
 
       expect(queue.active, isNull);
       expect(queue.failed?.submission.displayText, "retried");
@@ -295,7 +295,7 @@ void main() {
       queue.enqueue(_retried);
       queue.enqueue(_existing);
       final first = queue.beginSend();
-      queue.holdFailedSend(failure: LocalSendFailure.rejected);
+      queue.holdFailedSend(failure: PromptSendFailure.rejected);
 
       queue.retryFailedSend();
 
@@ -311,13 +311,13 @@ void main() {
       queue.enqueue(_retried);
       queue.enqueue(_existing);
       queue.beginSend();
-      queue.holdFailedSend(failure: LocalSendFailure.rejected);
+      queue.holdFailedSend(failure: PromptSendFailure.rejected);
 
       expect(queue.removeFailedSend()?.displayText, "retried");
       expect(queue.failed, isNull);
 
       queue.beginSend();
-      queue.holdFailedSend(failure: LocalSendFailure.rejected);
+      queue.holdFailedSend(failure: PromptSendFailure.rejected);
       queue.removeByPromptId(_existing.promptId);
       expect(queue.failed, isNull);
     });

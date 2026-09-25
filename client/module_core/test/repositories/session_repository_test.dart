@@ -4,6 +4,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/repositories/models/prompt_send_failure.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
@@ -40,6 +41,18 @@ void main() {
 
     expect(SessionRepository.isStalePromptOptionsError(error: error), isFalse);
   });
+
+  for (final (error, failure) in [
+    (ApiError.nonSuccessCode(errorCode: 400, rawErrorString: null), PromptSendFailure.rejected),
+    (ApiError.notAuthenticated(), PromptSendFailure.rejected),
+    (ApiError.nonSuccessCode(errorCode: 502, rawErrorString: null), PromptSendFailure.uncertain),
+    (ApiError.dartHttpClient(Exception("timed out")), PromptSendFailure.uncertain),
+    (ApiError.emptyResponse(), PromptSendFailure.uncertain),
+  ]) {
+    test("classifies a ${error.runtimeType} send failure as ${failure.name}", () {
+      expect(SessionRepository.sendFailureFor(error: error), failure);
+    });
+  }
 
   test("session detail flows route through session api and repository", () async {
     final api = MockSessionApi();

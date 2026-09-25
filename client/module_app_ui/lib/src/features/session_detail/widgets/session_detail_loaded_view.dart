@@ -106,7 +106,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
     final canRemoveFailedSend =
         !widget.readOnly &&
         switch (state.localSend) {
-          LocalSendFailed(:final failure) => failure == LocalSendFailure.rejected,
+          LocalSendFailed(:final failure) => failure == PromptSendFailure.rejected,
           LocalSendIdle() || LocalSendSending() => false,
         };
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);
@@ -153,8 +153,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                         builder: (context, bottomControlsHeight, _) => SessionDetailMessageList(
                           projectId: widget.projectId,
                           messages: state.messages,
-                          sendingSubmission: state.sendingSubmission,
-                          failedSubmission: state.failedSubmission,
+                          localSend: state.localSend,
                           queuedMessages: state.queuedMessages,
                           harnessName: state.interaction.harnessDisplayName,
                           onRetryFailedSend: widget.readOnly || !state.interaction.canInteract
