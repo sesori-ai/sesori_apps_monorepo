@@ -2,12 +2,16 @@ import "dart:async";
 import "dart:convert";
 import "dart:io" as io;
 import "dart:math";
+import "dart:typed_data";
 
+import "package:freezed_annotation/freezed_annotation.dart" show CheckedFromJsonException;
 import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show HostPortService, Log, PluginHost, SpawnedProcess;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
+import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "../models/open_code_probe_response.dart";
 import "open_code_ownership_record.dart";
 import "open_code_protocol.dart";
 
@@ -38,6 +42,10 @@ const Duration openCodeHealthDeadline = Duration(seconds: 30);
 /// How often the supervisor re-probes `/global/health` within
 /// [openCodeHealthDeadline].
 const Duration openCodeHealthPollInterval = Duration(milliseconds: 500);
+
+/// Health/info responses are tiny. Bound retained bytes when the configured
+/// endpoint instead serves a large web page or another service's stream.
+const int openCodeProbeMaxBodyBytes = 64 * 1024;
 
 /// Budget for the awaited cold-start in `descriptor.start()`: a service that
 /// passed the health probe but stalls a REST call must surface as degraded,
@@ -281,7 +289,7 @@ Future<OpenCodeProtocol> probeOpenCodeProtocol({
       password: password,
       timeout: timeout,
     );
-    if (response case (statusCode: 200, body: {"version": final String rawVersion})) {
+    if (response case (statusCode: 200, body: OpenCodeProbeResponse(version: final String rawVersion))) {
       final version = SemanticRuntimeVersion.tryParse(value: rawVersion);
       if (version != null && version.version.major >= 2) {
         return OpenCodeProtocolV2(version: version);
@@ -297,8 +305,8 @@ Future<OpenCodeProtocol> probeOpenCodeProtocol({
 }
 
 /// Sends an authenticated `GET [path]` and returns its status with the body
-/// decoded as a JSON object, or a null body when it is not one.
-Future<({int statusCode, Map<String, Object?>? body})> _getOpenCodeJson({
+/// decoded through the probe DTO, or a null body when invalid or oversized.
+Future<({int statusCode, OpenCodeProbeResponse? body})> _getOpenCodeJson({
   required http.Client client,
   required String host,
   required int port,
@@ -318,14 +326,23 @@ Future<({int statusCode, Map<String, Object?>? body})> _getOpenCodeJson({
   // must fail the attempt, not hang the supervisor under the startup mutex.
   return () async {
     final response = await client.send(request);
-    final text = await response.stream.bytesToString();
-    final Object? decoded;
+    final bytes = BytesBuilder(copy: false);
+    await for (final chunk in response.stream) {
+      if (bytes.length + chunk.length > openCodeProbeMaxBodyBytes) {
+        // Returning cancels this response stream. An oversized v1-route HTML
+        // page can still fall back to the small v2 /api/info response.
+        return (statusCode: response.statusCode, body: null);
+      }
+      bytes.add(chunk);
+    }
     try {
-      decoded = jsonDecode(text);
+      final body = OpenCodeProbeResponse.fromJson(jsonDecodeMap(utf8.decode(bytes.takeBytes())));
+      return (statusCode: response.statusCode, body: body);
     } on FormatException {
       return (statusCode: response.statusCode, body: null);
+    } on CheckedFromJsonException {
+      return (statusCode: response.statusCode, body: null);
     }
-    return (statusCode: response.statusCode, body: decoded is Map<String, Object?> ? decoded : null);
   }().timeout(timeout);
 }
 

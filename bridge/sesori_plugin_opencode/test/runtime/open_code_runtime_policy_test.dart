@@ -281,6 +281,69 @@ void main() {
       expect(probe.error, isA<StateError>());
     });
 
+    test("accepts a probe body exactly at the byte limit", () async {
+      const prefix = '{"version":"1.18.32","padding":"';
+      const suffix = '"}';
+      final body = "$prefix${"x" * (openCodeProbeMaxBodyBytes - prefix.length - suffix.length)}$suffix";
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: null,
+        host: "127.0.0.1",
+        clientFactory: () => MockClient((_) async => http.Response(body, 200)),
+      );
+
+      expect(utf8.encode(body), hasLength(openCodeProbeMaxBodyBytes));
+      expect(probe.healthy, isTrue);
+    });
+
+    test("cancels oversized streamed bodies without reading their tail", () async {
+      var chunksRead = 0;
+      var cancellations = 0;
+      Stream<List<int>> oversizedBody() async* {
+        try {
+          for (var i = 0; i < 3; i++) {
+            chunksRead++;
+            yield List<int>.filled(openCodeProbeMaxBodyBytes ~/ 2 + 1, 32);
+          }
+        } finally {
+          cancellations++;
+        }
+      }
+
+      final paths = <String>[];
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: null,
+        host: "10.0.0.5",
+        clientFactory: () => MockClient.streaming((request, _) async {
+          paths.add(request.url.path);
+          return http.StreamedResponse(oversizedBody(), 200);
+        }),
+      );
+
+      expect(probe.healthy, isFalse);
+      expect(probe.error, isA<StateError>());
+      expect(paths, ["/global/health", "/api/info"]);
+      expect(chunksRead, 4);
+      expect(cancellations, 2);
+    });
+
+    test("still discovers v2 behind an oversized web UI page", () async {
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: null,
+        host: "127.0.0.1",
+        clientFactory: () => MockClient((request) async {
+          return http.Response(
+            request.url.path == "/api/info" ? '{"version":"2.0.16"}' : "x" * (openCodeProbeMaxBodyBytes + 1),
+            200,
+          );
+        }),
+      );
+
+      expect(probe.healthy, isTrue);
+    });
+
     test("reports unhealthy while OpenCode 2.x /api/info is still booting", () async {
       final probe = await probeOpenCodeHealth(
         port: 51000,
@@ -342,6 +405,13 @@ void main() {
       expect(await probe((_) => http.Response("", 404)), isA<OpenCodeProtocolV1>());
       expect(await probe((_) => http.Response('{"version":"1.18.32"}', 200)), isA<OpenCodeProtocolV1>());
       expect(await probe((_) => http.Response('{"version":"next"}', 200)), isA<OpenCodeProtocolV1>());
+      expect(await probe((_) => http.Response('{"version":2}', 200)), isA<OpenCodeProtocolV1>());
+      expect(await probe((_) => http.Response('[]', 200)), isA<OpenCodeProtocolV1>());
+    });
+
+    test("does not decode an oversized info response", () async {
+      final body = '{"version":"2.0.16","padding":"${"x" * openCodeProbeMaxBodyBytes}"}';
+      expect(await probe((_) => http.Response(body, 200)), isA<OpenCodeProtocolV1>());
     });
 
     test("keeps OpenCode 1.x when the request fails", () async {

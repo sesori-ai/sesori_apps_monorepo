@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-v2`
-- **Status:** Active; Step 1 raises this plan.
+- **Status:** Active; Step 1 merged, Step 2 in review, Step 3 generated and awaiting its PR.
 - **Plan date:** 2026-09-25
 - **Implementation base:** `main` at `fed841c2f9`
 - **Trigger:** issue #1677 — OpenCode 2.0.11 on PATH fails cold start with `FormatException ... <!doctype html>`.
@@ -140,9 +140,11 @@ Series titles: `<emoji> [opencode-v2] <description> [step x/10]`.
      in `lib/src/runtime/open_code_protocol.dart`.
    - Descriptor `start`: on v2, stop the owned runtime and throw `PluginStartException` that names the version and
      says not to downgrade, because 2.x has already migrated the database in place.
-   - Catalog guard (D5): `OpenCodeCatalogDatabaseApi` reports whether the `session_v2` table exists as a field on
-     `OpenCodeCatalogDatabaseSnapshot`. `OpenCodeCatalogRepository.read` returns `PluginCatalogSnapshotUnavailable`
-     when it is set.
+   - Health/protocol probes share a minimal generated `OpenCodeProbeResponse` DTO. Response bodies are capped at
+     64 KiB before decoding; oversized v1-route HTML still permits the v2 info fallback.
+   - Catalog guard (D5): `OpenCodeCatalogDatabaseApi` returns the sealed `OpenCodeCatalogDatabaseReadResult`:
+     either `OpenCodeCatalogDatabaseSnapshot` with v1 rows or `OpenCodeCatalogDatabaseMigratedToV2` without rows.
+     `OpenCodeCatalogRepository.read` maps the migrated variant to `PluginCatalogSnapshotUnavailable`.
    - Tests: probe, policy and catalog.
 3. **⚙️ Generate v2 models.**
    - The generator gains a `--surface <file>` option; v1 keeps its default.

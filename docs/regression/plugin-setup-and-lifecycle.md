@@ -154,6 +154,19 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   local and out of band; setup never reads credentials or runs `copilot login`.
   An unexpected owned-process exit degrades only Copilot, and demand reconnects
   it without affecting another harness.
+- OpenCode health requires a JSON 200: `/global/health` for v1, or `/api/info`
+  when the v1 route returns HTML or another invalid body. Each response retains
+  at most 64 KiB; oversized bodies are rejected without consuming the remaining
+  stream. A large v2 web UI response still permits the `/api/info` fallback.
+  HTML-only endpoints and a booting `/api/info` 503 remain unhealthy.
+- Until the v2 adapter lands, a reachable OpenCode 2.x server is detected through
+  `/api/info` and startup fails with its version and a warning not to downgrade
+  its already-migrated database. An owned runtime is stopped before refusal;
+  an attached server is never stopped. Cancellation during the probe wins over
+  refusal and releases any owned runtime. Managed v1 remains pinned to `1.18.32`.
+  If attach mode starts without a server, its existing degraded recovery is
+  v1-only; connecting to a later-started v2 server requires restarting the bridge
+  to obtain the explicit refusal. This does not yet claim usable v2 sessions.
 - A managed harness whose first handshake stalls does not hang bridge startup.
   Codex and OpenCode wait a bounded 15 seconds for that cold start: succeeding
   within it reports connected, failing within it reports degraded, and exceeding
@@ -424,6 +437,13 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 | L4 Extended | Client end to end for an existing chat: Claude authentication-required then restored, one managed runtime missing then restored, and one supporting ACP harness disabled then enabled; another harness remains usable throughout, and an unrelated-harness management change leaves the open chat untouched. Repeat one unavailable-to-usable transition from a second surface and one reconnect against a different bridge identity. Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, a pasted-code submission whose response is lost then resubmitted, peer harness login rows disabled throughout a retained authentication operation, an owning row reopening a dismissed or `cancellingUncertain` challenge, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Copilot live coverage includes an unexpected owned-process exit followed by demand reconnect and a deliberate clean shutdown that is not reported as a crash. Grok live coverage includes the same failure isolation and demand reconnect with a supported user-installed release. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. Automated client service ordering coverage separately exercises reversed command completion, bridge mismatch after an intervening GET, and disconnect/reconnect, replacement, unsupported management or disposal during reconciliation; old responses stay fenced and uncertain results stay uncertain despite active/idle metadata. Cubit/widget automation also covers same-harness duplicates, global-timeout exclusion, retained auth/install exclusion, both completion orders, reset/retry fencing, and two safe conflicts with explicit Review and stale dialog callbacks. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Compatibility pairs prove an older client treats `copilot` and `grok` as unknown raw-id/generic-icon harnesses without decode failure, while an older bridge simply supplies no corresponding entry to a newer client. Live plugin and client end to end as each entry requires. |
 
+OpenCode probe and descriptor automation additionally covers v1 JSON, v2 info
+behind HTML (including an oversized web UI page), HTML-only endpoints, a booting
+503, the 64 KiB boundary, streamed overflow cancellation, and a stalled body.
+Descriptor fixtures cover owned versus attached v2 refusal and cancellation
+while protocol detection is in flight. These checks do not prove live v2 session
+support or native process teardown.
+
 ## Exploration Guidance
 
 Vary which harness runs first and which stays disabled, and the configuration: default
@@ -466,6 +486,10 @@ owned-process exit; and restart.
   in diagnostics, or interception preventing idle-process shutdown.
 - Setup inspection installing, logging in, starting a backend, or leaking secrets or raw
   output; resolution mutating runtime files; a disabled harness probed or started.
+- An HTML 200 passes OpenCode health, probe responses buffer beyond 64 KiB,
+  v2 startup reaches the v1 adapter after successful protocol detection, a refusal
+  recommends downgrading a migrated database, an owned v2 runtime survives refusal,
+  an attached runtime is signalled, or cancellation becomes an ordinary refusal.
 - A stalled first handshake holds bridge startup past the cold-start budget, a
   budget-exceeded harness reports connected instead of degraded, or its late
   cold-start failure surfaces as an unhandled error rather than a log line.

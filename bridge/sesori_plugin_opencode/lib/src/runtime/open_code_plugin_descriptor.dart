@@ -629,7 +629,9 @@ class const OpenCodePluginDescriptor({
       } on PluginStartException catch (error) {
         Log.w(
           "[opencode] cannot reach OpenCode at port $attachPort (auto-start disabled): ${error.message}. "
-          "Bridge will start anyway; start OpenCode manually to enable proxying.",
+          "Bridge will start anyway; start OpenCode 1.x manually to enable proxying. "
+          "For an existing OpenCode 2.x installation, restart the bridge after starting its server "
+          "to check protocol support; do not downgrade OpenCode.",
         );
         handle = null;
       }
