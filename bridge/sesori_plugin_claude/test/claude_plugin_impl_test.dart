@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 import "dart:io";
 
 import "package:claude_plugin/claude_plugin.dart";
@@ -715,6 +716,54 @@ void main() {
         PluginQuotaContinuationReadiness.unknown,
       );
       expect(harness.processes, isEmpty);
+    });
+
+    test("accepts a continuation that reuses the selection recorded on a quota error", () async {
+      final transcript = File("${harness.temporary.path}/projects/project/$testSessionId.jsonl");
+      transcript.parent.createSync(recursive: true);
+      Map<String, Object?> record({required String uuid, required String model, required bool isApiError}) => {
+        "type": "assistant",
+        "sessionId": testSessionId,
+        "cwd": "/tmp/project",
+        "uuid": uuid,
+        "timestamp": "2026-08-09T10:00:00Z",
+        if (isApiError) ...{"isApiErrorMessage": true, "apiErrorStatus": 429, "error": "rate_limit"},
+        "message": {
+          "id": "message-$uuid",
+          "model": model,
+          "content": [
+            {"type": "text", "text": isApiError ? "You've hit your session limit" : "answer"},
+          ],
+        },
+      };
+      transcript.writeAsStringSync(
+        [
+          record(uuid: "answer", model: "claude-opus-5", isApiError: false),
+          record(uuid: "quota", model: "<synthetic>", isApiError: true),
+        ].map(jsonEncode).join("\n"),
+      );
+
+      // The bridge continues with the agent, model, and effort of the latest
+      // agent-authored message, which is the quota error itself.
+      final last = (await harness.plugin.getSessionMessages(testSessionId)).last.info;
+      if (last case PluginMessageError(:final agent, :final providerID?, :final modelID?, :final variant)) {
+        await harness.plugin.sendPrompt(
+          fastMode: false,
+          promptId: "continuation",
+          sessionId: testSessionId,
+          parts: const [PluginPromptPart.text(text: "Continue.")],
+          variant: variant == null ? null : PluginSessionVariant(id: variant),
+          agent: agent,
+          model: (providerID: providerID, modelID: modelID),
+        );
+      } else {
+        fail("Expected a quota error with a model, got $last");
+      }
+
+      final user = await waitForFrame(harness.processes.last, "user");
+      expect((user["message"]! as Map)["content"], [
+        {"type": "text", "text": "Continue."},
+      ]);
     });
 
     test("preserves API retry status for snapshots and activity", () async {

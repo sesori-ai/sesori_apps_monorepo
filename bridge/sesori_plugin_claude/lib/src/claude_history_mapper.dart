@@ -1,5 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "models/claude_agent_selection.dart";
 import "models/claude_tool_use_result.dart";
 import "repositories/mappers/claude_api_error_mapper.dart";
 import "repositories/mappers/claude_content_mapper.dart";
@@ -202,7 +203,7 @@ final class const ClaudeHistoryMapper({
       info: PluginMessage.error(
         id: entry.id,
         sessionID: sessionId,
-        agent: "claude",
+        agent: ClaudeAgentSelection.messageAgent,
         modelID: modelId(entry.model),
         providerID: "anthropic",
         variant: null,
@@ -256,7 +257,7 @@ final class const ClaudeHistoryMapper({
       info: PluginMessage.assistant(
         id: entry.id,
         sessionID: sessionId,
-        agent: "claude",
+        agent: ClaudeAgentSelection.messageAgent,
         modelID: modelId(entry.model),
         providerID: "anthropic",
         variant: entry.variant,
