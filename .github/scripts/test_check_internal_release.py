@@ -171,6 +171,8 @@ class InternalReleaseGateTest(unittest.TestCase):
             ".github/workflows/_reusable-ios-testflight.yml",
             ".github/workflows/desktop-qualification.yml",
             ".github/scripts/package_desktop_macos.py",
+            ".github/scripts/prepare_desktop_release.py",
+            ".github/scripts/publish_desktop_release.py",
             ".github/actions/setup-flutter/action.yml",
             ".github/actions/resolve-flutter-dart-version/action.yml",
             ".github/scripts/check_internal_release.sh",

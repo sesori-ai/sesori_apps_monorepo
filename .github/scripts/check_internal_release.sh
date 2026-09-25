@@ -55,6 +55,7 @@ if [[ "$AUTOMATIC" == true ]]; then
       .github/actions/ .github/scripts/check_internal_release.sh .github/workflows/release-all-platforms.yml \
       .github/workflows/desktop-qualification.yml .github/scripts/qualify_desktop.py \
       .github/scripts/package_desktop_macos.py .github/scripts/macos_signing_ci.sh \
+      .github/scripts/prepare_desktop_release.py .github/scripts/publish_desktop_release.py \
       '.github/workflows/_reusable-*.yml'; then
       skip_release "No release-relevant changes since ${BASELINE}."
     else
