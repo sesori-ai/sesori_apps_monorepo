@@ -32,12 +32,12 @@ entirely along with its transcript and, optionally, its worktree.
   archive. Only a running session is confirmed first, and a session with a worktree also offers Archive,
   keep worktree. The phone's swipe pill, full swipe and row menu all archive this way.
 - When the bridge refuses the archive because its worktree is not safe to delete, the session
-  returns to the lists and a compact alert names the issues and offers Archive and keep the worktree, the
-  default, or Delete it anyway. That second choice archives at once with no further Undo. Any other failure
+  returns to the lists and a modal (a sheet on touch, a dialog on pointer) names the issues and offers Archive
+  and keep the worktree, the primary choice, or Delete it anyway. That second choice archives at once with no further Undo. Any other failure
   returns the session and shows an error alert. A failure that arrives while another archive's Undo alert is
   showing waits until that alert's window ends or Undo is pressed, so it never hides a pending Undo.
-- Desktop Delete asks in a compact centred alert that names the session; Cancel is the default button and
-  the destructive button never is. The phone keeps its delete sheet.
+- Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
+  default, so Return never deletes. The phone keeps its delete sheet.
 - Deletion removes the session record immediately and is destructive and not
   recoverable. History, spilled content, and the archive record are purged
   best-effort after row deletion; a logged failure leaves residue for startup
