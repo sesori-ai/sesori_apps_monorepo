@@ -16,6 +16,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
 import "package:sesori_desktop/core/widgets/desktop_connection_pill.dart";
+import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
 import "package:sesori_desktop/core/widgets/desktop_sidebar.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -358,13 +359,14 @@ void main() {
       await doubleClick(at: const Offset(140, 26));
       verify(windowHost.toggleZoom).called(1);
 
-      // The lights are wider than the rail, so it starts below them; the strip
-      // that opens above it drags and zooms too.
+      // The lights are wider than the rail, so it starts below them, level with
+      // the page toolbar's separator; the strip that opens above it drags and
+      // zooms too.
       await tester.tap(toggle);
       await tester.pumpAndSettle();
       expect(
         tester.getRect(rail),
-        const Rect.fromLTRB(margin, DesktopCockpitShell.railTopUnderTrafficLights, margin + 56, 600 - margin),
+        const Rect.fromLTRB(margin, DesktopPageToolbar.height, margin + 56, 600 - margin),
       );
       await drag(from: const Offset(30, 20));
       verify(windowHost.startDragging).called(1);
