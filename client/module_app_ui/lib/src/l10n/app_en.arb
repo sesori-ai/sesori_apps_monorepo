@@ -1757,6 +1757,8 @@
   "sessionAutoContinuationEnable": "Enable auto continuation",
   "sessionAutoContinuationDisable": "Disable",
   "sessionAutoContinuationOn": "Auto continuation on",
+  "sessionAutoContinuationChip": "Auto-continue",
+  "@sessionAutoContinuationChip": {"description": "Label of the quiet chip beside the session's model picker while auto continuation is enabled and nothing is due. Tapping it offers Disable."},
   "sessionAutoContinuationQuotaReached": "Quota reached",
   "sessionAutoContinuationOlderBridge": "Update your bridge to use auto continuation.",
   "sessionAutoContinuationUnavailable": "Auto continuation is unavailable for this harness or provider.",

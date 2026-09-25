@@ -13,6 +13,9 @@ import "../../../extensions/build_context_x.dart";
 class const YoloChip({
   super.key,
   required final PregoComposerSurfaceStyle surfaceStyle,
+
+  /// Touch rows show only the glyph, so the pickers keep their room.
+  required final bool showLabel,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
   /// The one icon that stands for YOLO wherever it appears: a shield with a
@@ -21,47 +24,13 @@ class const YoloChip({
   static const IconData icon = TablerRegular.shield_x;
 
   @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    final foreground = prego.colors.textSecondary;
-    final borderRadius = BorderRadius.circular(PregoRadius.full);
-    return Semantics(
-      button: true,
-      child: SizedBox(
-        height: 36,
-        child: DecoratedBox(
-          decoration: pregoComposerSurfaceDecoration(prego: prego, style: surfaceStyle, borderRadius: borderRadius),
-          child: Padding(
-            padding: const EdgeInsets.all(1),
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: borderRadius,
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                mouseCursor: WidgetStateMouseCursor.clickable,
-                onTap: () => unawaited(_explain(context)),
-                borderRadius: borderRadius,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    spacing: 4,
-                    children: [
-                      Icon(icon, size: PregoIconSize.sm, color: foreground),
-                      Text(
-                        context.loc.sessionDetailYoloChip,
-                        style: prego.textTheme.textXs.medium.copyWith(color: foreground),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => PregoComposerChip(
+    icon: icon,
+    label: context.loc.sessionDetailYoloChip,
+    showLabel: showLabel,
+    surfaceStyle: surfaceStyle,
+    onPressed: () => unawaited(_explain(context)),
+  );
 
   Future<void> _explain(BuildContext context) async {
     final loc = context.loc;

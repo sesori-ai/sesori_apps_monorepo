@@ -52,7 +52,7 @@ Widget _buildApp({required List<AgentInfo> agents, required void Function(String
             decideFastModeToggle: () => null,
             onFastModeChanged: (_) {},
             compact: false,
-            trailing: null,
+            trailing: const [],
           ),
         ],
       ),
@@ -93,7 +93,7 @@ Widget _buildVariantApp({required ValueChanged<SessionVariant> onVariantSelected
             decideFastModeToggle: () => null,
             onFastModeChanged: (_) {},
             compact: false,
-            trailing: null,
+            trailing: const [],
           ),
           // The prompt field sits below the picker row in the chat composer.
           const SizedBox(height: 120),
@@ -130,7 +130,7 @@ Widget _buildFastModeApp({
             decideFastModeToggle: () => decision,
             onFastModeChanged: onFastModeChanged,
             compact: false,
-            trailing: null,
+            trailing: const [],
           ),
         ],
       ),
@@ -370,7 +370,7 @@ void main() {
             decideFastModeToggle: () => null,
             onFastModeChanged: (_) {},
             compact: true,
-            trailing: null,
+            trailing: const [],
           ),
         ),
       ),
@@ -383,4 +383,57 @@ void main() {
     expect(width("high"), lessThan(width("build")));
     expect(width("build"), lessThan(240));
   });
+
+  for (final (width, chips, labels) in [(320.0, 2, false), (390.0, 0, true)]) {
+    testWidgets("a touch row at $width points with $chips status chips fits (labels: $labels)", (tester) async {
+      tester.view.physicalSize = Size(width, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      Widget square(String label) => PregoComposerChip(
+        icon: TablerRegular.clock,
+        label: label,
+        showLabel: false,
+        surfaceStyle: PregoComposerSurfaceStyle.subtle,
+        onPressed: () {},
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Padding(
+              // The composer's own inset on a phone.
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: AgentModelButtons(
+                surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                agents: [
+                  _agent(name: "build", description: "Build"),
+                  _agent(name: "plan", description: "Plan"),
+                ],
+                selectedAgent: "build",
+                onAgentSelected: (_) {},
+                providers: const [],
+                selectedAgentModel: const AgentModel(providerID: "example", modelID: "sonnet", variant: "high"),
+                onModelSelected: ({required providerID, required modelID}) {},
+                availableVariants: const [SessionVariant(id: "high")],
+                onVariantSelected: (_) {},
+                fastModeControl: FastModeControl.off,
+                decideFastModeToggle: () => null,
+                onFastModeChanged: (_) {},
+                compact: false,
+                trailing: [square("YOLO"), square("Auto-continue")].take(chips).toList(),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(PregoPickerButton), findsNWidgets(3));
+      // A crowded row keeps the pickers as glyphs; a roomy one keeps labels.
+      expect(find.text("build"), labels ? findsOneWidget : findsNothing);
+      expect(find.bySemanticsLabel("build"), findsOneWidget);
+    });
+  }
 }

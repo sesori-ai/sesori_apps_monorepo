@@ -43,6 +43,16 @@ const catalogScenarios = <CatalogScenario>[
     content: CatalogButtonLabelContent(fullWidth: false, leadingIcon: null, trailingIcon: null),
   ),
   CatalogScenario(
+    id: "primary-alt-xs-enabled",
+    name: "Primary Alt / Notice",
+    description: "Smallest action, for compact notices such as the desktop recovery card.",
+    size: .xs,
+    hierarchy: .primaryAlt,
+    tone: .regular,
+    state: .enabled,
+    content: CatalogButtonLabelContent(fullWidth: false, leadingIcon: null, trailingIcon: null),
+  ),
+  CatalogScenario(
     id: "link-md-enabled",
     name: "Link / Inline",
     description: "Inline action without container padding.",

@@ -777,7 +777,7 @@ void main() {
   testWidgets("the model row shows the YOLO chip only while YOLO is on", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
-    expect(find.text("YOLO"), findsNothing);
+    expect(find.bySemanticsLabel("YOLO"), findsNothing);
 
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(yoloEnabled: true);
     when(() => cubit.state).thenReturn(state);
@@ -787,7 +787,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(TablerRegular.shield_x), findsOneWidget);
 
-    await tester.tap(find.text("YOLO"));
+    await tester.tap(find.byIcon(TablerRegular.shield_x));
     await tester.pumpAndSettle();
     expect(find.text("YOLO mode is on"), findsOneWidget);
     expect(
@@ -799,6 +799,53 @@ void main() {
     await tester.pumpAndSettle();
     expect(bridgeSettingsOpened, 1);
     expect(find.text("YOLO mode is on"), findsNothing);
+  });
+
+  testWidgets("enabled auto continuation shows a model-row chip until a continuation is due", (tester) async {
+    SessionDetailLoaded withContinuation(SessionAutoContinuationStatus status) =>
+        _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+          yoloEnabled: true,
+          session: testConstSession.copyWith(
+            autoContinuation: SessionAutoContinuationView(
+              enabled: true,
+              availability: AutoContinuationAvailability.conditional,
+              status: status,
+            ),
+          ),
+        );
+    final idle = withContinuation(const SessionAutoContinuationStatus.idle());
+    when(() => cubit.state).thenReturn(idle);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: idle);
+    when(() => cubit.setAutoContinuation(enabled: false)).thenAnswer((_) async {});
+    // The narrowest supported phone row still fits both glyph chips beside the pickers.
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text("YOLO"), findsNothing);
+    expect(find.bySemanticsLabel("YOLO"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.shield_x), findsOneWidget);
+    expect(find.byIcon(TablerRegular.bolt), findsNothing);
+    expect(find.bySemanticsLabel("Auto-continue"), findsOneWidget);
+    expect(find.text("Auto continuation on"), findsNothing);
+
+    await tester.tap(find.byKey(const Key("session-auto-continuation-chip")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Disable"));
+    await tester.pumpAndSettle();
+    verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
+
+    final due = withContinuation(const SessionAutoContinuationStatus.resetKnown(resetAt: 100000, continueAt: 220000));
+    when(() => cubit.state).thenReturn(due);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: due);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("session-auto-continuation-chip")), findsNothing);
+    expect(find.bySemanticsLabel("YOLO"), findsOneWidget);
+    expect(find.text("Auto continuation on"), findsOneWidget);
+    expect(find.textContaining("Continues at"), findsOneWidget);
   });
 
   testWidgets("opens the variant picker and forwards the selection to the cubit", (tester) async {

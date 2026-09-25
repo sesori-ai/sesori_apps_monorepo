@@ -76,15 +76,54 @@ void main() {
     expect(find.byKey(const Key("session-auto-continuation-enable")), findsNothing);
   });
 
-  testWidgets("enabled idle stays visible and can be disabled", (tester) async {
+  testWidgets("an enabled continuation with nothing due leaves the card to the model-row chip", (tester) async {
+    for (final status in [
+      const SessionAutoContinuationStatus.idle(),
+      SessionAutoContinuationStatus.submitted(acceptedAt: continueAt),
+    ]) {
+      await pumpNotice(
+        tester,
+        view: view(enabled: true, status: status),
+        onChanged: (_) {},
+      );
+      expect(find.text("Auto continuation on"), findsNothing, reason: "$status");
+      expect(find.byKey(const Key("session-auto-continuation-disable")), findsNothing, reason: "$status");
+    }
+  });
+
+  test("the card shows only while a continuation is offered, due or needs explaining", () {
+    final paused = SessionAutoContinuationStatus.paused(
+      resetAt: resetAt,
+      continueAt: continueAt,
+      reason: AutoContinuationPauseReason.busy,
+    );
+    const failed = SessionAutoContinuationStatus.submissionFailed(reason: AutoContinuationFailureReason.unknown);
+    final cases = <(SessionAutoContinuationStatus, bool, bool)>[
+      // (status, visible while enabled, visible while disabled)
+      (const SessionAutoContinuationStatus.idle(), false, false),
+      (known, true, true),
+      (const SessionAutoContinuationStatus.resetUnknown(), true, true),
+      (paused, true, false),
+      (const SessionAutoContinuationStatus.attemptUnconfirmed(), true, false),
+      (SessionAutoContinuationStatus.submitted(acceptedAt: continueAt), false, false),
+      (failed, true, false),
+      (const SessionAutoContinuationStatus.unknown(), true, false),
+    ];
+    for (final (status, whenEnabled, whenDisabled) in cases) {
+      expect(sessionAutoContinuationNoticeVisible(view: view(enabled: true, status: status)), whenEnabled);
+      expect(sessionAutoContinuationNoticeVisible(view: view(enabled: false, status: status)), whenDisabled);
+    }
+    expect(sessionAutoContinuationNoticeVisible(view: null), isFalse);
+  });
+
+  testWidgets("a due continuation can be disabled from the card", (tester) async {
     bool? changed;
     await pumpNotice(
       tester,
-      view: view(enabled: true, status: const SessionAutoContinuationStatus.idle()),
+      view: view(enabled: true, status: known),
       onChanged: (value) => changed = value,
     );
     expect(find.text("Auto continuation on"), findsOneWidget);
-    expect(find.textContaining("Continues at"), findsNothing);
     await tester.tap(find.byKey(const Key("session-auto-continuation-disable")));
     expect(changed, isFalse);
   });
@@ -127,7 +166,6 @@ void main() {
       "Paused until you answer",
     ),
     (const SessionAutoContinuationStatus.attemptUnconfirmed(), "could not be confirmed"),
-    (SessionAutoContinuationStatus.submitted(acceptedAt: continueAt), "Continuation sent at"),
     (
       const SessionAutoContinuationStatus.submissionFailed(reason: AutoContinuationFailureReason.submissionRejected),
       "will not be retried automatically",

@@ -2,18 +2,22 @@
 
 ## Execution
 
-- Status: shared typed persistence verified and architecture-approved; publishing Step 2.
+- Status: scoped-cipher slice (3.a) verified and architecture-approved; publishing PR 3/7.
 - Plan PR: [#1698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1698), merged.
-- Branch: `sesori/desktop-master-key-storage-core`.
+- Branch: `sesori/desktop-master-key-storage-cipher`.
+- One local successor: `sesori/desktop-master-key-storage-drift` preserves the
+  combined tested backend checkpoint; sync it with 3.a before publication.
 - Use the supplied worktree only; one open PR and at most one local successor.
-- Current total: **6 PRs**, superseding the original five-step file plan.
+- Current total: **7 PRs**. Original Step 3 is split into 3.a (PR 3) and 3.b (PR 4);
+  integration/documentation/qualification retain milestone IDs 4/5/6 (PRs 5/6/7).
 - Source of truth: [PLAN.md](PLAN.md).
 
 | Step | State | PR / evidence |
 |---|---|---|
 | 1 — Reviewed Drift plan | Merged | #1698; both reviews' concrete findings applied without a third review. |
-| 2 — Shared typed persistence contracts | Ready for PR | 10 tests, clean analysis and architecture approval; still unwired. |
-| 3 — Encrypted Drift desktop boundary | Not started | Database, raw APIs, cipher and key-owning repository. |
+| 2 — Shared typed persistence contracts | Merged | #1708; 10 local tests, architecture approval and 27 passing CI checks. |
+| 3.a — Scoped secret encryption | Ready for PR | 15 tests, clean analysis and architecture approval; no storage I/O. |
+| 3.b — Encrypted Drift desktop boundary | Local successor | Database, raw APIs and key-owning repository; still unwired. |
 | 4 — Consumer and platform integration | Not started | Mobile native format preserved; desktop adopts Drift. |
 | 5 — Regression/distribution reconciliation | Not started | Behavior-specific docs also change with Step 4. |
 | 6 — Required qualification and retirement | Not started | Keep active until all recorded gates pass. |
@@ -64,6 +68,18 @@
 - Step 2 architecture review `240d3ac4-7970-4398-9917-2ee9b58e2a79` approved
   `origin/main..fc8b270` with no findings. The full final response was captured;
   no report recovery or repeat review was needed.
+- Independent 3.a slice: 15 cipher tests pass after extraction, owning-package
+  analysis is clean, and DI generation succeeds without any Drift/native backend
+  dependency. Architecture review `dd2c7b27-5c57-4ab7-b051-7b915aa39be3`
+  approved the exact `3ffe4a1..634f109` scope with no findings. This slice adds no
+  storage I/O; broader backend and integration gates remain pending.
+- Combined Step 3 checkpoint: 35 focused cipher, repository and real SQLite tests
+  passed, including file/WAL inspection, reopen, pending/failed key initialization,
+  independent writes/deletes, SQL rollback, scope isolation and GetIt disposal.
+  These are fixture checks, not packaged/native credential or prompt-count proof.
+- Measured the combined Step 3 diff at about 1,700 changed lines (667 generated).
+  Split the independent cipher/scope foundation before publication; the three
+  tables and their generated schema stay together in 3.b. No extra feature scope.
 - The new package is included in workspace discovery, local Makefile commands,
   shared mobile/client test coverage, and desktop change detection. Existing
   consumers and the original auth-owned interface remain in use until Step 4,

@@ -73,6 +73,11 @@ class const DesktopBridgeRecoveryCard({
         icon: Icon(notice.icon, color: foreground, size: PregoIconSize.md),
       );
     }
+    final messageStyle = context.prego.textTheme.textSm.regular.copyWith(color: colors.textPrimary);
+    final firstLineHeight = switch (messageStyle) {
+      TextStyle(:final fontSize?, :final height?) => fontSize * height,
+      _ => null,
+    };
     return Padding(
       padding: const EdgeInsets.all(PregoSpacing.md),
       child: DecoratedBox(
@@ -95,32 +100,33 @@ class const DesktopBridgeRecoveryCard({
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(notice.icon, size: PregoIconSize.md, color: foreground),
-                    const SizedBox(width: PregoSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        notice.message,
-                        style: context.prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
-                      ),
+                    // Centred on the first line, the 13px glyph's ink spans the
+                    // message's cap top to its baseline; a larger icon towers
+                    // over the text.
+                    SizedBox(
+                      height: firstLineHeight,
+                      child: Icon(notice.icon, size: 13, color: foreground),
                     ),
+                    const SizedBox(width: PregoSpacing.sm),
+                    Expanded(child: Text(notice.message, style: messageStyle)),
                   ],
                 ),
-                const SizedBox(height: PregoSpacing.md),
+                const SizedBox(height: PregoSpacing.lg),
                 Wrap(
-                  spacing: PregoSpacing.sm,
+                  spacing: PregoSpacing.xs,
                   runSpacing: PregoSpacing.sm,
                   children: [
                     PregoButtonsSolid(
                       label: notice.primary.label,
                       hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-                      size: PregoButtonsSolidSize.sm,
+                      size: PregoButtonsSolidSize.xs,
                       onPressed: onPrimary,
                     ),
                     if (notice.secondary case final action?)
                       PregoButtonsSolid(
                         label: action.label,
-                        hierarchy: PregoButtonsSolidHierarchy.secondary,
-                        size: PregoButtonsSolidSize.sm,
+                        hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                        size: PregoButtonsSolidSize.xs,
                         onPressed: action.onPressed,
                       ),
                   ],

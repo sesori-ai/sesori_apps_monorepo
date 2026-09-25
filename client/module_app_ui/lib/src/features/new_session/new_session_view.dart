@@ -183,7 +183,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
         decideFastModeToggle: cubit.fastModeToggleDecision,
         onFastModeChanged: cubit.setFastMode,
         compact: compact,
-        trailing: null,
+        trailing: const [],
       ),
     );
   }

@@ -27,6 +27,10 @@ import 'package:sesori_desktop_core/src/control/control_message_dispatcher.dart'
     as _i21;
 import 'package:sesori_desktop_core/src/foundation/control_channel_server.dart'
     as _i464;
+import 'package:sesori_desktop_core/src/foundation/desktop_storage_cipher.dart'
+    as _i479;
+import 'package:sesori_desktop_core/src/foundation/desktop_storage_scope.dart'
+    as _i126;
 import 'package:sesori_desktop_core/src/foundation/platform/bridge_executable_path_resolver.dart'
     as _i962;
 import 'package:sesori_desktop_core/src/foundation/platform/bridge_process_environment.dart'
@@ -156,6 +160,9 @@ extension GetItInjectableX on _i174.GetIt {
         controlChannelServer: gh<_i464.ControlChannelServer>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i479.DesktopStorageCipher>(
+      () => _i479.DesktopStorageCipher(scope: gh<_i126.DesktopStorageScope>()),
     );
     gh.lazySingleton<_i210.DesktopInstanceRepository>(
       () => _i210.DesktopInstanceRepository(
