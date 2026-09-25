@@ -73,7 +73,14 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
     );
   }
 
-  Future<List<SessionInfo>> listSessions({required String? directory, required String? parentId}) async {
+  Future<List<SessionInfo>> listSessions({required String? directory, required String? parentId}) =>
+      _sessionPages(filters: {"directory": ?directory, "parentID": ?parentId});
+
+  /// Native `parentID=null` selects roots; omitting that query includes children.
+  Future<List<SessionInfo>> listRootSessions({required String? projectId}) =>
+      _sessionPages(filters: {"project": ?projectId, "parentID": "null"});
+
+  Future<List<SessionInfo>> _sessionPages({required Map<String, String> filters}) async {
     const path = "/api/session";
     final sessions = <SessionInfo>[];
     String? cursor;
@@ -82,8 +89,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
         response: await _client.get(
           path: path,
           queryParameters: {
-            "directory": ?directory,
-            "parentID": ?parentId,
+            ...filters,
             "cursor": ?cursor,
             "order": V2PageOrder.asc.name,
             "limit": "100",
