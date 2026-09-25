@@ -313,6 +313,14 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<SessionDiffSummaryResponse>> getSessionDiffSummary({required String sessionId}) {
+    return _client.post(
+      "/session/diff-summary",
+      fromJson: SessionDiffSummaryResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
+    );
+  }
+
   Future<ApiResponse<SessionDiffsResponse>> getSessionDiffs({required String sessionId}) {
     return _client.post(
       "/session/diffs",

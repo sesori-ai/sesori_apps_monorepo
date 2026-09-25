@@ -24,11 +24,22 @@ sub-agent parts, plus the signal that a tool changed files.
   Skills that load through a file read of `SKILL.md` are visible by that path.
   Pi learns the title at `toolcall_end`, so a card announced by `toolcall_start`
   shows it from the running or terminal update onward, live and after replay.
-  Ordinary tools render as lightweight secondary-text rows with the tool name,
-  title and status. An explicit `shellCommand` instead renders an underlined
+  Ordinary tools render as lightweight secondary-text rows with a status icon,
+  the tool name and title; a finished tool says nothing more, and a failed one
+  keeps one signal, its red icon. An explicit `shellCommand` instead renders an underlined
   command disclosure: completed calls say “Ran”; other calls retain their
   pending/running/failed/cancelled/unknown status. Tool-name strings never decide
   whether a shell panel is available.
+- Consecutive tool, thinking and sub-agent parts collapse into one summary row
+  (for example “Thought · 3 steps · 1 sub-agent · 1 failed”) that eases its
+  finished steps open below it. Visible text, a file, an agent or a retry part
+  ends a group, as does a user or error message; a group may span consecutive
+  agent messages and renders in the first one's row, while an automation
+  message groups only within itself. A running step stays below the summary as
+  its own row and folds into the summary when it finishes; a group of only
+  running steps shows no summary. Finished sub-agents show a neutral icon and
+  failed ones a red one, without a status label; the grouping is computed by the
+  shared `TranscriptBuilder`, so phone and desktop match.
 - Tapping or keyboard-activating a command opens a Shell panel, on the same
   raised inset as other tool output and code blocks, with the
   full available command, output and error in a two-axis scroll viewport that
@@ -43,8 +54,8 @@ sub-agent parts, plus the signal that a tool changed files.
   the transcript. Screen safe-area insets do not displace its scrollbars.
   Reduced motion opens and closes it at once.
   Tool attachments remain visible when details are collapsed.
-  Older title-only payloads keep the ordinary row and existing output-copy and
-  expansion behavior; long output's Show more and Show less ease the same way.
+  A tool with output or an error but no shell command opens the same panel,
+  titled with the tool name, from its row; a tool with neither is a plain row.
   This presentation is shared by phone and desktop.
 - Plugin and shared message parts are sealed variants, so text, tool, subtask,
   file, agent, and retry data cannot be combined with unrelated part types. The
@@ -220,6 +231,9 @@ guarantee.
   there is room below the row, the panel opens behind the composer, or the
   transcript scrolls in a second step after the panel has opened or after a
   later resize of an open panel.
+- Steps separated by visible text merge into one group, a group swallows a text
+  or file part, a summary counts a running step, a finished step stays outside
+  its summary, or a finished tool or sub-agent shows a “Done” label.
 - Backend naming or payload shape reaches the client unnormalized, or a local
   path or unsafe URL crosses the attachment contract.
 - A part carries fields owned by another variant, or a released known-type

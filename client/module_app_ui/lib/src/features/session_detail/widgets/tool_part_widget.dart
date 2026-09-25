@@ -1,6 +1,3 @@
-import "dart:math";
-
-import "package:flutter/rendering.dart" show RenderSliverPadding;
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -10,78 +7,30 @@ import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
 import "../../../utils/copy_text_to_clipboard.dart";
 import "attachment_collection_widget.dart";
+import "transcript_disclosure.dart";
 
 class const ToolPartWidget({super.key, required final MessagePartTool part}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final loc = context.loc;
     final state = part.state;
-    final toolName = part.tool.isEmpty ? loc.sessionDetailToolUnknown : part.tool;
-    final detail = state.title;
-    final status = state.status;
-    final output = status == ToolStatus.completed ? state.output : null;
-    final errorText = status == ToolStatus.error ? state.error : null;
-    final command = state.shellCommand;
+    final hasDetails = state.shellCommand != null || state.output != null || state.error != null;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
         crossAxisAlignment: .start,
         children: [
-          if (command != null)
-            _ShellToolPreview(command: command, state: state)
+          if (hasDetails)
+            TranscriptDisclosure(
+              toggleKey: const ValueKey("shellTool.toggle"),
+              headerBuilder: ({required expanded}) => _ToolHeader(part: part),
+              panel: _ToolPanel(part: part),
+            )
           else
             Padding(
               padding: EdgeInsets.symmetric(vertical: prego.spacing.sm),
-              child: Row(
-                children: [
-                  _statusIcon(status: status, prego: prego),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        text: toolName,
-                        children: [
-                          if (detail != null)
-                            TextSpan(
-                              text: " $detail",
-                              style: prego.textTheme.textSm.regular.copyWith(
-                                color: prego.colors.textSecondary,
-                              ),
-                            ),
-                        ],
-                      ),
-                      style: prego.textTheme.textSm.regular.copyWith(
-                        color: prego.colors.textSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: .ellipsis,
-                    ),
-                  ),
-                  Text(
-                    _statusLabel(loc: loc, status: status),
-                    style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-          if (command == null && output != null)
-            Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
-              child: _ToolOutputBlock(output: output),
-            ),
-          if (command == null && errorText != null)
-            Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
-              child: Text(
-                errorText,
-                style: prego.textTheme.textXs.regular.copyWith(
-                  color: prego.colors.fgErrorPrimary,
-                ),
-                maxLines: 4,
-                overflow: .ellipsis,
-              ),
+              child: _ToolHeader(part: part),
             ),
           if (state.attachments.isNotEmpty)
             Padding(
@@ -93,6 +42,79 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
             ),
         ],
       ),
+    );
+  }
+
+  static String _toolName({required AppLocalizations loc, required MessagePartTool part}) =>
+      part.tool.isEmpty ? loc.sessionDetailToolUnknown : part.tool;
+}
+
+/// The tool's one line. A finished tool shows only what it did; a failure keeps
+/// one signal: its icon, or a shell's red line.
+class const _ToolHeader({required final MessagePartTool part}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+    final state = part.state;
+    final status = state.status;
+    final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
+    final command = state.shellCommand;
+
+    if (command != null) {
+      final verb = switch (status) {
+        ToolStatus.completed => loc.sessionDetailCommandRan,
+        ToolStatus.pending => loc.sessionDetailToolPending,
+        ToolStatus.running => loc.sessionDetailToolRunning,
+        ToolStatus.error => loc.sessionDetailToolError,
+        ToolStatus.cancelled => loc.sessionDetailToolCancelled,
+        ToolStatus.unknown => loc.sessionDetailToolUnknown,
+      };
+      final rowStyle = status == ToolStatus.error ? style.copyWith(color: prego.colors.textErrorPrimary) : style;
+      return Row(
+        children: [
+          if (status == ToolStatus.pending || status == ToolStatus.running)
+            _statusIcon(status: status, prego: prego)
+          else
+            Icon(TablerRegular.terminal_2, size: PregoIconSize.sm, color: rowStyle.color),
+          SizedBox(width: prego.spacing.md),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                text: "$verb ",
+                children: [
+                  TextSpan(
+                    text: "\$ $command",
+                    style: rowStyle.copyWith(decoration: TextDecoration.underline),
+                  ),
+                ],
+              ),
+              style: rowStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      );
+    }
+
+    final detail = state.title;
+    return Row(
+      children: [
+        _statusIcon(status: status, prego: prego),
+        SizedBox(width: prego.spacing.md),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              text: ToolPartWidget._toolName(loc: loc, part: part),
+              children: [if (detail != null) TextSpan(text: " $detail")],
+            ),
+            style: style,
+            maxLines: 1,
+            overflow: .ellipsis,
+          ),
+        ),
+      ],
     );
   }
 
@@ -119,458 +141,146 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
       color: prego.colors.borderPrimary,
     ),
   };
-
-  static String _statusLabel({required AppLocalizations loc, required ToolStatus status}) => switch (status) {
-    ToolStatus.pending => loc.sessionDetailToolPending,
-    ToolStatus.running => loc.sessionDetailToolRunning,
-    ToolStatus.completed => loc.sessionDetailToolCompleted,
-    ToolStatus.error => loc.sessionDetailToolError,
-    ToolStatus.cancelled => loc.sessionDetailToolCancelled,
-    ToolStatus.unknown => loc.sessionDetailToolUnknown,
-  };
 }
 
-/// A disclosure for an authoritative shell command, never inferred from a tool name.
-class const _ShellToolPreview({required final String command, required final ToolState state}) extends StatefulWidget {
+/// The tool's details: a shell's command, then the output and error, in one
+/// bounded viewport that scrolls on both axes.
+class const _ToolPanel({required final MessagePartTool part}) extends StatefulWidget {
   @override
-  State<_ShellToolPreview> createState() => _ShellToolPreviewState();
+  State<_ToolPanel> createState() => _ToolPanelState();
 }
 
-class _ShellToolPreviewState() extends State<_ShellToolPreview> with SingleTickerProviderStateMixin {
-  late final AnimationController _disclosure = AnimationController(vsync: this, duration: _disclosureDuration);
-  // Both directions decelerate: easeIn run backwards starts the close fast.
-  late final CurvedAnimation _panelSize = CurvedAnimation(
-    parent: _disclosure,
-    curve: Curves.easeOut,
-    reverseCurve: Curves.easeIn,
-  );
+class _ToolPanelState() extends State<_ToolPanel> {
   final _verticalController = ScrollController();
   final _horizontalController = ScrollController();
 
-  /// The user's choice. The panel itself stays mounted until it has closed.
-  bool get _expanded => _disclosure.isForwardOrCompleted;
-
-  final _panelKey = GlobalKey();
-
-  /// How much of the panel the transcript has already made room for.
-  double _shownFactor = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _panelSize.addListener(_keepHeaderInPlace);
-    _disclosure.addStatusListener(_onDisclosureStatus);
-  }
-
   @override
   void dispose() {
-    _panelSize.dispose();
-    _disclosure.dispose();
     _verticalController.dispose();
     _horizontalController.dispose();
     super.dispose();
   }
 
-  void _toggle() {
-    if (context.isReducedMotion) {
-      final opening = !_expanded;
-      _disclosure.value = opening ? 1 : 0;
-      // The panel is not laid out yet, so its height is known only after
-      // this frame.
-      if (opening) WidgetsBinding.instance.addPostFrameCallback((_) => _keepHeaderInPlace());
-    } else if (_expanded) {
-      _disclosure.reverse();
-    } else {
-      _disclosure.forward();
-    }
-    setState(() {});
-  }
-
-  void _onDisclosureStatus(AnimationStatus status) {
-    // Drops the closed panel, so its copy buttons do not stay reachable at
-    // zero height.
-    if (status.isDismissed) setState(() {});
-  }
-
-  /// Runs on every disclosure tick, before layout. A reversed transcript
-  /// grows a row upward, which would push the tapped header away (and behind
-  /// the floating navigation). Scrolling by the same amount in the same frame
-  /// keeps the header still and grows the panel downward, as long as there is
-  /// room below the row; past that, the row grows upward like new content.
-  void _keepHeaderInPlace() {
-    if (!mounted) return;
-    final panel = _panelKey.currentContext?.findRenderObject();
-    // Not laid out yet: the growth so far is applied once it is.
-    if (panel is! RenderBox || !panel.hasSize) return;
-    final growth = panel.size.height * (_panelSize.value - _shownFactor);
-    _shownFactor = _panelSize.value;
-    final scrollable = Scrollable.maybeOf(context);
-    final row = context.findRenderObject();
-    final viewport = scrollable?.context.findRenderObject();
-    if (scrollable == null ||
-        scrollable.axisDirection != AxisDirection.up ||
-        row is! RenderBox ||
-        viewport is! RenderBox ||
-        growth == 0) {
-      return;
-    }
-    final position = scrollable.position;
-    // A transcript shorter than its viewport cannot scroll; the row grows into
-    // the empty space above it instead of bouncing against the range.
-    if (position.maxScrollExtent <= position.minScrollExtent) return;
-    final double shift;
-    if (growth > 0) {
-      final rowBottom = row.localToGlobal(Offset(0, row.size.height)).dy;
-      // The list's bottom padding keeps the newest row clear of the floating
-      // composer, so that strip is no room.
-      final covered = context.findAncestorRenderObjectOfType<RenderSliverPadding>()?.resolvedPadding?.bottom ?? 0;
-      final viewportBottom = viewport.localToGlobal(Offset(0, viewport.size.height)).dy - covered;
-      shift = min(growth, max(0, viewportBottom - rowBottom));
-    } else {
-      shift = max(growth, position.minScrollExtent - position.pixels);
-    }
-    if (shift != 0) position.jumpTo(position.pixels + shift);
-  }
-
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final state = widget.state;
+    final state = widget.part.state;
+    final command = state.shellCommand;
     final output = state.output;
     final error = state.error;
-    final statusLabel = ToolPartWidget._statusLabel(loc: loc, status: state.status);
-    final rowLabel = state.status == ToolStatus.completed ? loc.sessionDetailCommandRan : statusLabel;
     final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
-    final rowStyle = state.status == ToolStatus.error ? style.copyWith(color: prego.colors.textErrorPrimary) : style;
-    final transcript = [
-      "\$ ${widget.command}",
-      ?output,
-      ?error,
-    ].join("\n\n");
+    final blocks = <TextSpan>[
+      if (command != null) TextSpan(text: "\$ $command"),
+      if (output != null) TextSpan(text: output),
+      if (error != null)
+        TextSpan(
+          text: error,
+          style: TextStyle(color: prego.colors.textErrorPrimary),
+        ),
+    ];
+    final transcript = blocks.map((block) => block.text).join("\n\n");
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Semantics(
-          expanded: _expanded,
-          child: TextButton(
-            key: const ValueKey("shellTool.toggle"),
-            onPressed: _toggle,
-            style: TextButton.styleFrom(
-              foregroundColor: prego.colors.textSecondary,
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(44, 44),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              alignment: AlignmentDirectional.centerStart,
-              // The default stadium hover reads as a pill across the whole row.
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xs)),
-            ),
-            child: Row(
+    // The whole panel scrolls the text sideways, not only the text, so a swipe
+    // anywhere on it never reaches the transcript's own swipe.
+    return GestureDetector(
+      supportedDevices: ScrollConfiguration.of(context).dragDevices,
+      onHorizontalDragUpdate: (details) {
+        if (!_horizontalController.hasClients) return;
+        final position = _horizontalController.position;
+        position.jumpTo(
+          (position.pixels - details.delta.dx).clamp(position.minScrollExtent, position.maxScrollExtent),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(prego.spacing.md),
+        decoration: BoxDecoration(
+          color: prego.colors.bgSurface4,
+          borderRadius: BorderRadius.circular(PregoRadius.xs),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                if (state.status == ToolStatus.pending || state.status == ToolStatus.running)
-                  ToolPartWidget._statusIcon(status: state.status, prego: prego)
-                else
-                  Icon(TablerRegular.terminal_2, size: PregoIconSize.sm, color: rowStyle.color),
-                SizedBox(width: prego.spacing.md),
                 Expanded(
-                  child: Text.rich(
-                    TextSpan(
-                      text: "$rowLabel ",
-                      children: [
-                        TextSpan(
-                          text: "\$ ${widget.command}",
-                          style: rowStyle.copyWith(decoration: TextDecoration.underline),
-                        ),
-                      ],
-                    ),
-                    style: rowStyle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: Text(
+                    command != null ? loc.sessionDetailShell : ToolPartWidget._toolName(loc: loc, part: widget.part),
+                    style: style,
                   ),
+                ),
+                PregoCopyIconButton(
+                  onCopy: () => copyTextToClipboard(
+                    text: transcript,
+                    operation: command != null ? "shell transcript" : "tool output",
+                  ),
+                  tooltip: loc.sessionDetailCopy,
                 ),
               ],
             ),
-          ),
-        ),
-        if (!_disclosure.isDismissed)
-          SizeTransition(
-            sizeFactor: _panelSize,
-            alignment: AlignmentDirectional.topStart,
-            // The whole panel scrolls the transcript sideways, not only the text,
-            // so a swipe anywhere on it never reaches the transcript's own swipe.
-            child: GestureDetector(
-              supportedDevices: ScrollConfiguration.of(context).dragDevices,
-              onHorizontalDragUpdate: (details) {
-                if (!_horizontalController.hasClients) return;
-                final position = _horizontalController.position;
-                position.jumpTo(
-                  (position.pixels - details.delta.dx).clamp(position.minScrollExtent, position.maxScrollExtent),
-                );
-              },
-              child: Container(
-                key: _panelKey,
-                width: double.infinity,
-                padding: EdgeInsets.all(prego.spacing.md),
-                decoration: BoxDecoration(
-                  color: prego.colors.bgSurface4,
-                  borderRadius: BorderRadius.circular(PregoRadius.xs),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text(loc.sessionDetailShell, style: style)),
-                        PregoCopyIconButton(
-                          onCopy: () => copyTextToClipboard(text: transcript, operation: "shell transcript"),
-                          tooltip: loc.sessionDetailCopy,
-                        ),
-                      ],
-                    ),
-                    // Fits a short transcript; a long one scrolls within this cap.
-                    ConstrainedBox(
-                      key: const ValueKey("shellTool.viewport"),
-                      constraints: const BoxConstraints(maxHeight: 144),
-                      child: ScrollConfiguration(
-                        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                        // System safe-area insets belong to the screen, not this
-                        // embedded terminal's scrollbar tracks.
-                        child: MediaQuery.removePadding(
-                          context: context,
-                          removeTop: true,
-                          removeBottom: true,
-                          removeLeft: true,
-                          removeRight: true,
-                          child: RawScrollbar(
-                            controller: _horizontalController,
-                            scrollbarOrientation: ScrollbarOrientation.bottom,
-                            thumbVisibility: true,
-                            interactive: true,
-                            thumbColor: prego.colors.borderPrimary,
-                            thickness: 5,
-                            radius: Radius.circular(prego.radius.full),
-                            notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
-                            child: RawScrollbar(
-                              controller: _verticalController,
-                              scrollbarOrientation: ScrollbarOrientation.right,
-                              thumbVisibility: true,
-                              interactive: true,
-                              thumbColor: prego.colors.borderPrimary,
-                              thickness: 5,
-                              radius: Radius.circular(prego.radius.full),
-                              notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
-                              child: SingleChildScrollView(
-                                controller: _verticalController,
-                                primary: false,
-                                child: SingleChildScrollView(
-                                  controller: _horizontalController,
-                                  scrollDirection: Axis.horizontal,
-                                  primary: false,
-                                  padding: EdgeInsetsDirectional.only(end: prego.spacing.lg, bottom: prego.spacing.lg),
-                                  child: Text.rich(
-                                    TextSpan(
-                                      text: "\$ ${widget.command}",
-                                      children: [
-                                        if (output != null) TextSpan(text: "\n\n$output"),
-                                        if (error != null)
-                                          TextSpan(
-                                            text: "\n\n$error",
-                                            style: TextStyle(color: prego.colors.textErrorPrimary),
-                                          ),
-                                      ],
-                                    ),
-                                    style: prego.textTheme.code.copyWith(color: style.color),
-                                    softWrap: false,
-                                  ),
-                                ),
-                              ),
+            // Fits a short transcript; a long one scrolls within this cap.
+            ConstrainedBox(
+              key: const ValueKey("shellTool.viewport"),
+              constraints: const BoxConstraints(maxHeight: 144),
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                // System safe-area insets belong to the screen, not this
+                // embedded viewport's scrollbar tracks.
+                child: MediaQuery.removePadding(
+                  context: context,
+                  removeTop: true,
+                  removeBottom: true,
+                  removeLeft: true,
+                  removeRight: true,
+                  child: RawScrollbar(
+                    controller: _horizontalController,
+                    scrollbarOrientation: ScrollbarOrientation.bottom,
+                    thumbVisibility: true,
+                    interactive: true,
+                    thumbColor: prego.colors.borderPrimary,
+                    thickness: 5,
+                    radius: Radius.circular(prego.radius.full),
+                    notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
+                    child: RawScrollbar(
+                      controller: _verticalController,
+                      scrollbarOrientation: ScrollbarOrientation.right,
+                      thumbVisibility: true,
+                      interactive: true,
+                      thumbColor: prego.colors.borderPrimary,
+                      thickness: 5,
+                      radius: Radius.circular(prego.radius.full),
+                      notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
+                      child: SingleChildScrollView(
+                        controller: _verticalController,
+                        primary: false,
+                        child: SingleChildScrollView(
+                          controller: _horizontalController,
+                          scrollDirection: Axis.horizontal,
+                          primary: false,
+                          padding: EdgeInsetsDirectional.only(end: prego.spacing.lg, bottom: prego.spacing.lg),
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                for (final (index, block) in blocks.indexed) ...[
+                                  if (index > 0) const TextSpan(text: "\n\n"),
+                                  block,
+                                ],
+                              ],
                             ),
+                            style: prego.textTheme.code.copyWith(color: style.color),
+                            softWrap: false,
                           ),
                         ),
                       ),
                     ),
-                    Align(
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (state.status == ToolStatus.completed)
-                            Icon(TablerRegular.check, size: PregoIconSize.sm, color: prego.colors.textSecondary)
-                          else
-                            ToolPartWidget._statusIcon(status: state.status, prego: prego),
-                          SizedBox(width: prego.spacing.xs),
-                          Flexible(child: Text(statusLabel, style: style)),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
-      ],
-    );
-  }
-}
-
-/// Tool output panel: collapsed to 8 lines by default with a one-tap copy
-/// button, expandable to the full (previously hard-capped at 500 chars)
-/// output. Kept collapsed by default so large outputs don't grow the list
-/// or jank while streaming.
-class const _ToolOutputBlock({required final String output}) extends StatefulWidget {
-  @override
-  State<_ToolOutputBlock> createState() => _ToolOutputBlockState();
-}
-
-class _ToolOutputBlockState() extends State<_ToolOutputBlock> {
-  /// Collapsed line budget; mirrors the previous fixed `maxLines: 8`.
-  static const _collapsedMaxLines = 8;
-
-  bool _expanded = false;
-
-  /// Horizontal space reserved at the text's trailing edge for the overlaid
-  /// copy button, so wrapped text never runs under it and overflow is measured
-  /// against the same width the text actually lays out in.
-  static const _copyButtonReserve = 32.0;
-
-  /// Inputs of the last overflow measurement. The parent list rebuilds every
-  /// visible row on each streaming flush, so without this cache every rebuild
-  /// would lay out a throwaway [TextPainter] per visible tool output.
-  String? _measuredOutput;
-  double? _measuredWidth;
-  TextScaler? _measuredScaler;
-  TextStyle? _measuredStyle;
-  TextDirection? _measuredDirection;
-  bool _isExpandable = false;
-
-  bool _measureIsExpandable({
-    required BuildContext context,
-    required String output,
-    required double textWidth,
-    required TextStyle monoStyle,
-  }) {
-    final textScaler = MediaQuery.textScalerOf(context);
-    final textDirection = Directionality.of(context);
-    if (output == _measuredOutput &&
-        textWidth == _measuredWidth &&
-        textScaler == _measuredScaler &&
-        monoStyle == _measuredStyle &&
-        textDirection == _measuredDirection) {
-      return _isExpandable;
-    }
-    final painter = TextPainter(
-      text: TextSpan(text: output, style: monoStyle),
-      maxLines: _collapsedMaxLines,
-      textDirection: textDirection,
-      textScaler: textScaler,
-    )..layout(maxWidth: textWidth);
-    _measuredOutput = output;
-    _measuredWidth = textWidth;
-    _measuredScaler = textScaler;
-    _measuredStyle = monoStyle;
-    _measuredDirection = textDirection;
-    _isExpandable = painter.didExceedMaxLines;
-    painter.dispose();
-    return _isExpandable;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    final loc = context.loc;
-    final output = widget.output;
-    final monoStyle = prego.textTheme.code;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: prego.colors.bgSurface4,
-        borderRadius: BorderRadius.circular(PregoRadius.xs),
+          ],
+        ),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Measure actual overflow against the collapsed budget at the real
-          // text width (accounts for soft-wrapped long lines, not just
-          // explicit newlines). maxLines bounds the layout cost.
-          final textWidth = constraints.maxWidth - _copyButtonReserve;
-          final isExpandable = _measureIsExpandable(
-            context: context,
-            output: output,
-            textWidth: textWidth,
-            monoStyle: monoStyle,
-          );
-
-          final block = Column(
-            crossAxisAlignment: .start,
-            children: [
-              Stack(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: Padding(
-                      // Reserve trailing room for the overlaid copy button.
-                      padding: const EdgeInsetsDirectional.only(end: _copyButtonReserve),
-                      child: Text(
-                        output,
-                        style: monoStyle,
-                        maxLines: _expanded ? null : _collapsedMaxLines,
-                        overflow: _expanded ? TextOverflow.clip : TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  PositionedDirectional(
-                    top: 0,
-                    end: 0,
-                    child: PregoCopyIconButton(
-                      onCopy: () => copyTextToClipboard(text: output, operation: "tool output"),
-                      tooltip: loc.sessionDetailCopy,
-                      iconSize: PregoIconSize.sm,
-                    ),
-                  ),
-                ],
-              ),
-              if (isExpandable)
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () => setState(() => _expanded = !_expanded),
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsetsDirectional.only(top: 4),
-                      child: Text(
-                        _expanded ? loc.sessionDetailShowLess : loc.sessionDetailShowMore,
-                        // Primary, not secondary: secondary falls under 4.5:1 on the dark recessed block.
-                        style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textPrimary),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          );
-          return _AnimatedDisclosure(child: block);
-        },
-      ),
-    );
-  }
-}
-
-const _disclosureDuration = Duration(milliseconds: 200);
-
-/// Eases long tool output open and shut behind Show more, growing down from its
-/// top edge.
-class const _AnimatedDisclosure({required final Widget child}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    // No wrapper at all under reduced motion: a zero-duration AnimatedSize
-    // re-dirties itself inside its own layout pass.
-    if (context.isReducedMotion) return child;
-    return AnimatedSize(
-      duration: _disclosureDuration,
-      curve: Curves.easeOut,
-      alignment: AlignmentDirectional.topStart,
-      child: child,
     );
   }
 }

@@ -50,6 +50,15 @@ class const DesktopSessionDetailScreen({
             projectId: projectId,
           ),
         ),
+        // Lazy, so only a page whose Changes button shows asks for totals.
+        BlocProvider<DiffSummaryCubit>(
+          create: (_) => DiffSummaryCubit(
+            sessionRepository: getIt<SessionRepository>(),
+            connectionService: getIt<ConnectionService>(),
+            sessionId: sessionId,
+            refreshInterval: const Duration(seconds: 2),
+          ),
+        ),
         // The toolbar's session actions run through the same dispatcher as a
         // row's menu, on a throwaway list that holds only this session.
         BlocProvider<SessionListCubit>(
@@ -206,13 +215,16 @@ class const DesktopSessionDetailView({
       subtitle: null,
       actions: [
         if (onShowDiffs != null)
-          PregoButtonsSolid(
-            key: const Key("desktop-session-page-changes"),
-            label: loc.desktopSessionPageChanges,
-            leadingIcon: TablerRegular.git_compare,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: onShowDiffs,
+          BlocBuilder<DiffSummaryCubit, DiffSummaryState>(
+            builder: (context, summary) => PregoButtonsSolid(
+              key: const Key("desktop-session-page-changes"),
+              label: loc.desktopSessionPageChanges,
+              leadingIcon: TablerRegular.git_compare,
+              labelTrailing: sessionChangesCounts(state: summary, style: context.prego.textTheme.textSm.medium),
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.sm,
+              onPressed: onShowDiffs,
+            ),
           ),
         PregoAnchorMenu(
           flat: true,

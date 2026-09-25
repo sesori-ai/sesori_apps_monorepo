@@ -720,6 +720,7 @@ void main() {
       harness.plugin.events.listen(events.add, onDone: () => closed = true);
       final process = await harness.nextSessionProcess();
       await waitForCommand(process: process, type: "prompt");
+      final asked = harness.plugin.events.firstWhere((event) => event is BridgeSseQuestionAsked);
       process.emit(
         frame: {
           "type": "extension_ui_request",
@@ -727,9 +728,7 @@ void main() {
           "method": "input",
         },
       );
-      for (var attempt = 0; attempt < 50 && events.whereType<BridgeSseQuestionAsked>().isEmpty; attempt++) {
-        await pump();
-      }
+      await asked;
 
       await harness.plugin.dispose();
       await harness.plugin.dispose();

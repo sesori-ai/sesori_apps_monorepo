@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../session_diffs/widgets/session_changes_counts.dart";
 import "../session_auto_continuation_menu.dart";
 import "../session_detail_presentation_scope.dart";
 import "permission_modal.dart";
@@ -179,10 +180,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
           onPressed: widget.onClose,
         ),
       if (canShowDiffs && onShowDiffs != null)
-        PregoButtonsIconGlass(
-          icon: TablerRegular.git_compare,
-          semanticLabel: loc.sessionDetailFileChangesTooltip,
-          onPressed: onShowDiffs,
+        BlocBuilder<DiffSummaryCubit, DiffSummaryState>(
+          builder: (context, summary) => PregoButtonsIconGlass(
+            icon: TablerRegular.git_compare,
+            semanticLabel: loc.sessionDetailFileChangesTooltip,
+            onPressed: onShowDiffs,
+            trailing: sessionChangesCounts(state: summary, style: context.prego.textTheme.textSm.medium),
+          ),
         ),
       // Root sessions only: the actions run on the project's session list,
       // which holds no sub-agent sessions and must not gain one.

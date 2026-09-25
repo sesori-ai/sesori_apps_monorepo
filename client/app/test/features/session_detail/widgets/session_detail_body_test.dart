@@ -56,6 +56,7 @@ Widget _buildApp({
   VoidCallback? onOpenBridgeSettings,
   VoidCallback? onClose,
   SessionDetailMenuEntriesBuilder? menuEntriesBuilder,
+  DiffSummaryState diffSummary = const DiffSummaryState.unknown(),
 }) {
   final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
@@ -120,6 +121,7 @@ Widget _buildApp({
       BlocProvider<ChatInputModeCubit>(
         create: (_) => chatInputModeCubit ?? StubChatInputModeCubit(initialState: chatInputMode),
       ),
+      BlocProvider<DiffSummaryCubit>(create: (_) => StubDiffSummaryCubit(initialState: diffSummary)),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -866,6 +868,17 @@ void main() {
     // The UI should now show the newly selected variant.
     expect(find.widgetWithText(PregoPickerButton, "low"), findsOneWidget);
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
+  });
+
+  testWidgets("diff button carries the session's line totals, leaving out a zero side", (tester) async {
+    when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
+    await tester.pumpWidget(
+      _buildApp(cubit: cubit, diffSummary: const DiffSummaryState.counts(additions: 12, deletions: 0)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("+12"), findsOneWidget);
+    expect(find.textContaining("−"), findsNothing);
   });
 
   testWidgets("diff button navigates to diffs with the typed route", (tester) async {

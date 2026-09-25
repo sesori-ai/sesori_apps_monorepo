@@ -1313,9 +1313,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailToolRunning => 'Running';
 
   @override
-  String get sessionDetailToolCompleted => 'Done';
-
-  @override
   String get sessionDetailToolError => 'Failed';
 
   @override
@@ -1329,6 +1326,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailFollowOutput => 'Follow';
+
+  @override
+  String get transcriptSummaryThought => 'Thought';
+
+  @override
+  String transcriptSummarySteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count steps',
+      one: '1 step',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String transcriptSummarySubAgents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sub-agents',
+      one: '1 sub-agent',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String transcriptSummaryFailed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count failed',
+      one: '1 failed',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get sessionDetailJumpToLatest => 'Jump to latest';
@@ -2204,12 +2237,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailCopy => 'Copy';
-
-  @override
-  String get sessionDetailShowMore => 'Show more';
-
-  @override
-  String get sessionDetailShowLess => 'Show less';
 
   @override
   String get emptySessionDetailTitle => 'Select a session';

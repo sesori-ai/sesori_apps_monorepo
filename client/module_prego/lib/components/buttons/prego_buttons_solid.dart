@@ -115,6 +115,7 @@ class PregoButtonsSolid extends StatefulWidget {
     required this.onPressed,
     this.leadingIcon,
     this.trailingIcon,
+    this.labelTrailing,
     this.isLoading = false,
     this.type = PregoButtonsSolidType.regular,
     this.fullWidth = false,
@@ -156,7 +157,8 @@ class PregoButtonsSolid extends StatefulWidget {
        iconOnly = true,
        fullWidth = false,
        label = null,
-       trailingIcon = null;
+       trailingIcon = null,
+       labelTrailing = null;
 
   /// Button label text. Required for the standard constructor; null for icon-only.
   final String? label;
@@ -176,6 +178,10 @@ class PregoButtonsSolid extends StatefulWidget {
 
   /// Optional icon placed after the label. Ignored when [iconOnly] is `true`.
   final IconData? trailingIcon;
+
+  /// Optional content right after the label, such as counts in their own
+  /// colours. Ignored when [iconOnly] is `true`.
+  final Widget? labelTrailing;
 
   /// When `true` the button shows a spinner and the button label instead of
   /// its normal content. The button is always non-interactive while loading,
@@ -346,6 +352,10 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
         children.add(SizedBox(width: gap));
       }
       children.add(labelWidget);
+      if (widget.labelTrailing case final labelTrailing?) {
+        children.add(SizedBox(width: gap));
+        children.add(labelTrailing);
+      }
       if (widget.trailingIcon != null) {
         children.add(SizedBox(width: gap));
         children.add(

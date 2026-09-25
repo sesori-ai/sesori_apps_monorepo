@@ -2437,12 +2437,6 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get sessionDetailToolRunning;
 
-  /// No description provided for @sessionDetailToolCompleted.
-  ///
-  /// In en, this message translates to:
-  /// **'Done'**
-  String get sessionDetailToolCompleted;
-
   /// No description provided for @sessionDetailToolError.
   ///
   /// In en, this message translates to:
@@ -2472,6 +2466,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Follow'**
   String get sessionDetailFollowOutput;
+
+  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript, present when the agent thought at least once, e.g. 'Thought · 3 steps'.
+  ///
+  /// In en, this message translates to:
+  /// **'Thought'**
+  String get transcriptSummaryThought;
+
+  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many tool calls the agent made, e.g. 'Thought · 3 steps'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 step} other{{count} steps}}'**
+  String transcriptSummarySteps(int count);
+
+  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many sub-agents the agent ran, e.g. '3 steps · 2 sub-agents'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 sub-agent} other{{count} sub-agents}}'**
+  String transcriptSummarySubAgents(int count);
+
+  /// Last part of the one-line summary of a collapsed group of agent steps in a session transcript: how many of the steps failed, e.g. '3 steps · 1 failed'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 failed} other{{count} failed}}'**
+  String transcriptSummaryFailed(int count);
 
   /// Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages.
   ///
@@ -4032,18 +4050,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy'**
   String get sessionDetailCopy;
-
-  /// No description provided for @sessionDetailShowMore.
-  ///
-  /// In en, this message translates to:
-  /// **'Show more'**
-  String get sessionDetailShowMore;
-
-  /// No description provided for @sessionDetailShowLess.
-  ///
-  /// In en, this message translates to:
-  /// **'Show less'**
-  String get sessionDetailShowLess;
 
   /// No description provided for @emptySessionDetailTitle.
   ///

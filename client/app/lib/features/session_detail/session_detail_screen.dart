@@ -35,6 +35,15 @@ class const SessionDetailScreen({
             projectId: projectId,
           ),
         ),
+        // Lazy, so only a page whose Changes button shows asks for totals.
+        BlocProvider<DiffSummaryCubit>(
+          create: (_) => DiffSummaryCubit(
+            sessionRepository: getIt<SessionRepository>(),
+            connectionService: getIt<ConnectionService>(),
+            sessionId: sessionId,
+            refreshInterval: const Duration(seconds: 2),
+          ),
+        ),
       ],
       child: SessionDetailActivityOwner(
         routeSource: getIt<RouteSource>(),
