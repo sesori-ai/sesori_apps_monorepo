@@ -207,8 +207,12 @@ void main() {
     );
 
     final scrollView = tester.widget<CustomScrollView>(find.byType(CustomScrollView));
-    scrollView.controller!.jumpTo(scrollView.controller!.position.maxScrollExtent);
-    await tester.pump();
+    // The lazy list estimates its extent from the rows built so far, and the
+    // short date heading skews that estimate; the second jump lands on the end.
+    for (var jump = 0; jump < 2; jump++) {
+      scrollView.controller!.jumpTo(scrollView.controller!.position.maxScrollExtent);
+      await tester.pump();
+    }
 
     final lastTile = find.ancestor(of: find.text("Task 11"), matching: find.byType(SessionTile));
     final loc = AppLocalizations.of(tester.element(find.byType(SessionListScaffold)))!;

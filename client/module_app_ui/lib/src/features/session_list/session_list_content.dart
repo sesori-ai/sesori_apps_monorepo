@@ -43,6 +43,51 @@ String _sessionListHeading({
   );
 }
 
+/// One entry of the animated list: a date heading or a session under it.
+///
+/// Headings are entries of their own, so archiving the first session of a
+/// group animates only that row; the heading leaves only with its last session.
+sealed class const _SessionListRow();
+
+final class const _SessionHeadingRow({
+  required final String heading,
+
+  /// How many earlier groups share [heading]. Only a running session placed
+  /// out of date order repeats a heading, and it must not repeat the key.
+  required final int occurrence,
+}) extends _SessionListRow;
+
+final class const _SessionRow({required final Session session}) extends _SessionListRow;
+
+final class const _SessionHeadingKey(super.value) extends ValueKey<(String, int)>;
+
+List<_SessionListRow> _sessionListRows({
+  required List<Session> sessions,
+  required SessionListLoaded loaded,
+  required DateTime now,
+  required AppLocalizations loc,
+}) {
+  final rows = <_SessionListRow>[];
+  final occurrences = <String, int>{};
+  String? previousHeading;
+  for (final session in sessions) {
+    final heading = _sessionListHeading(
+      session: session,
+      filter: loaded.filter,
+      isRunning: loaded.isSessionRunning(session: session),
+      now: now,
+      loc: loc,
+    );
+    if (heading != previousHeading) {
+      final occurrence = occurrences.update(heading, (count) => count + 1, ifAbsent: () => 0);
+      rows.add(_SessionHeadingRow(heading: heading, occurrence: occurrence));
+      previousHeading = heading;
+    }
+    rows.add(_SessionRow(session: session));
+  }
+  return rows;
+}
+
 /// Pull-to-refresh handler shared by [SessionListScaffold] and
 /// [SessionListPanel]: re-fetches the session list and reports the outcome via
 /// a popup alert. Both hosts own their own scroll view and refresh control, so the
@@ -97,6 +142,9 @@ class const SessionListContent({
                 },
               )
               .toList();
+    final rows = state is! SessionListLoaded
+        ? const <_SessionListRow>[]
+        : _sessionListRows(sessions: sessions, loaded: state, now: now, loc: loc);
 
     return switch (state) {
       SessionListLoading() => SliverToBoxAdapter(
@@ -106,51 +154,35 @@ class const SessionListContent({
         slivers: [
           // This sliver stays mounted when the list becomes empty, giving the
           // final removed row time to close before the empty state settles in.
-          PregoAnimatedSliverList<Session>(
-            items: sessions,
-            itemKey: (session) => ValueKey(session.id),
-            itemBuilder: (_, index, session) {
-              final isArchived = session.time?.archived != null;
-              final activityInfo = loaded.activeSessionIds[session.id];
-              final heading = _sessionListHeading(
-                session: session,
-                filter: loaded.filter,
-                isRunning: loaded.isSessionRunning(session: session),
-                now: now,
-                loc: loc,
-              );
-              final previousHeading = index > 0
-                  ? _sessionListHeading(
-                      session: sessions[index - 1],
-                      filter: loaded.filter,
-                      isRunning: loaded.isSessionRunning(session: sessions[index - 1]),
-                      now: now,
-                      loc: loc,
-                    )
-                  : null;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (heading != previousHeading)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 12),
-                      child: Text(
-                        heading,
-                        style: context.prego.textTheme.textSm.medium.copyWith(
-                          color: context.prego.colors.textTertiary,
-                        ),
+          PregoAnimatedSliverList<_SessionListRow>(
+            items: rows,
+            itemKey: (row) => switch (row) {
+              _SessionHeadingRow(:final heading, :final occurrence) => _SessionHeadingKey((heading, occurrence)),
+              _SessionRow(:final session) => ValueKey(session.id),
+            },
+            itemBuilder: (_, index, row) {
+              switch (row) {
+                case _SessionHeadingRow(:final heading):
+                  return Padding(
+                    // The first heading carries the list's top breathing room, so
+                    // archiving the row below it leaves the heading where it is.
+                    padding: EdgeInsetsDirectional.fromSTEB(16, 16, 16, index == 0 ? 20 : 12),
+                    child: Text(
+                      heading,
+                      style: context.prego.textTheme.textSm.medium.copyWith(
+                        color: context.prego.colors.textTertiary,
                       ),
                     ),
-                  Padding(
-                    // Keep the list's outer breathing room attached to its first
-                    // and last rows so that space collapses with the final item.
-                    padding: EdgeInsetsDirectional.only(
-                      top: index == 0 ? 8 : 0,
-                      bottom: index == sessions.length - 1 ? 8 : 0,
-                    ),
+                  );
+                case _SessionRow(:final session):
+                  final activityInfo = loaded.activeSessionIds[session.id];
+                  return Padding(
+                    // Keep the list's bottom breathing room attached to its last
+                    // row so that space collapses with the final item.
+                    padding: EdgeInsetsDirectional.only(bottom: index == rows.length - 1 ? 8 : 0),
                     child: SessionTile(
                       session: session,
-                      isArchived: isArchived,
+                      isArchived: session.time?.archived != null,
                       isRunning: loaded.isSessionRunning(session: session),
                       unseen: loaded.isSessionUnseen(session: session),
                       selected: selectedSessionId == session.id,
@@ -173,9 +205,8 @@ class const SessionListContent({
                         session: session,
                       ),
                     ),
-                  ),
-                ],
-              );
+                  );
+              }
             },
           ),
           if (loaded.sessions.isEmpty)
