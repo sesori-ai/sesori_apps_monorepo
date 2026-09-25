@@ -1,3 +1,4 @@
+import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
 import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
@@ -27,7 +28,7 @@ void main() {
       isArchived: false,
       queuedMessages: [],
       bridgePromptAttachments: {},
-      sendingSubmission: null,
+      localSend: LocalSendPhase.idle(),
       availableAgents: [],
       availableProviders: [],
       availableCommands: [],

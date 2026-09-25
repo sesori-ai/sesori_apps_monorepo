@@ -38,7 +38,7 @@ const _loaded = SessionDetailState.loaded(
   isArchived: false,
   queuedMessages: [],
   bridgePromptAttachments: {},
-  sendingSubmission: null,
+  localSend: LocalSendPhase.idle(),
   availableAgents: [],
   availableProviders: [],
   availableCommands: [],

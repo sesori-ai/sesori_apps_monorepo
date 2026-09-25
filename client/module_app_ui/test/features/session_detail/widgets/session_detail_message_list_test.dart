@@ -29,7 +29,8 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late Map<String, String> _streamingText;
   late List<QueuedSessionSubmission> _queuedMessages;
   late List<QueuedSessionPrompt> _bridgeQueuedPrompts;
-  QueuedSessionSubmission? _sendingSubmission;
+  LocalSendPhase _localSend = const LocalSendPhase.idle();
+  int retriedFailedSends = 0;
   List<QueuedSessionSubmission> _awaitingBridgeSubmissions = const [];
   Map<String, List<ComposerAttachment>> _bridgePromptAttachments = const {};
   final List<String> cancelledBridgePromptIds = [];
@@ -88,21 +89,29 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   }
 
   void sendDirectly(QueuedSessionSubmission submission) {
-    setState(() => _sendingSubmission = submission);
+    setState(() => _localSend = LocalSendPhase.sending(submission: submission));
   }
 
   void beginSending() {
     setState(() {
-      _sendingSubmission = _queuedMessages.first;
+      _localSend = LocalSendPhase.sending(submission: _queuedMessages.first);
       _queuedMessages = _queuedMessages.sublist(1);
     });
   }
 
+  void failSending() {
+    if (_localSend case LocalSendSending(:final submission)) {
+      setState(() => _localSend = LocalSendPhase.failed(submission: submission, failure: PromptSendFailure.rejected));
+    }
+  }
+
   void acceptSendingSubmission() {
-    setState(() {
-      _awaitingBridgeSubmissions = [..._awaitingBridgeSubmissions, _sendingSubmission!];
-      _sendingSubmission = null;
-    });
+    if (_localSend case LocalSendSending(:final submission)) {
+      setState(() {
+        _awaitingBridgeSubmissions = [..._awaitingBridgeSubmissions, submission];
+        _localSend = const LocalSendPhase.idle();
+      });
+    }
   }
 
   void updateBridgeQueue({
@@ -117,7 +126,9 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       _awaitingBridgeSubmissions = _awaitingBridgeSubmissions
           .where((submission) => !bridgeIds.contains(submission.promptId))
           .toList();
-      if (bridgeIds.contains(_sendingSubmission?.promptId)) _sendingSubmission = null;
+      if (_localSend case LocalSendSending(:final submission) when bridgeIds.contains(submission.promptId)) {
+        _localSend = const LocalSendPhase.idle();
+      }
     });
   }
 
@@ -162,7 +173,17 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           projectId: null,
           onLoadOlderMessages: widget.onLoadOlderMessages,
           messages: _messages,
-          sendingSubmission: _sendingSubmission,
+          localSend: _localSend,
+          harnessName: "OpenCode",
+          onRetryFailedSend: () {
+            if (_localSend case LocalSendFailed(:final submission)) {
+              setState(() {
+                retriedFailedSends++;
+                _localSend = LocalSendPhase.sending(submission: submission);
+              });
+            }
+          },
+          onRemoveFailedSend: () => setState(() => _localSend = const LocalSendPhase.idle()),
           awaitingBridgeSubmissions: _awaitingBridgeSubmissions,
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
@@ -549,6 +570,127 @@ void main() {
 
     expect(harnessKey.currentState?.lastCancelledQueuedMessageIndex, 0);
     expect(find.text("/review src"), findsNothing);
+  });
+
+  testWidgets("a failed send shows Couldn't send with Retry while later messages stay queued", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialQueuedMessages: [
+          _textSubmission(promptId: "prm_failed", text: "first"),
+          _textSubmission(promptId: "prm_later", text: "second"),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    harnessKey.currentState!.beginSending();
+    await tester.pump();
+    harnessKey.currentState!.failSending();
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn’t send"), findsOneWidget);
+    expect(find.text("Queued"), findsOneWidget);
+    expect(find.widgetWithText(TextButton, "Remove"), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, "Retry"));
+    await tester.pumpAndSettle();
+
+    expect(harnessKey.currentState!.retriedFailedSends, 1);
+    expect(find.text("Couldn’t send"), findsNothing);
+    expect(find.text("Sending"), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  group("in a narrow pane at large text", () {
+    Future<void> pumpNarrowBubble(
+      WidgetTester tester, {
+      required QueuedMessageBubblePresentation presentation,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topRight,
+              child: SizedBox(
+                width: 280,
+                child: QueuedMessageBubble(
+                  displayText: "first",
+                  isCommand: false,
+                  attachmentCount: 0,
+                  localAttachments: const [],
+                  presentation: presentation,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets("a failed send's actions wrap instead of overflowing", (tester) async {
+      var retries = 0;
+      var removals = 0;
+      await pumpNarrowBubble(
+        tester,
+        presentation: QueuedMessageBubblePresentation.failed(
+          onRetry: () => retries++,
+          onRemove: () => removals++,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.widgetWithText(TextButton, "Retry"));
+      await tester.tap(find.widgetWithText(TextButton, "Remove"));
+      expect(retries, 1);
+      expect(removals, 1);
+    });
+
+    testWidgets("a slow send's harness label wraps instead of overflowing", (tester) async {
+      const harnessName = "A Very Long Custom Harness Name";
+      await pumpNarrowBubble(
+        tester,
+        presentation: const QueuedMessageBubblePresentation.sending(harnessName: harnessName),
+      );
+      await tester.pump(const Duration(seconds: 3));
+
+      expect(tester.takeException(), isNull);
+      expect(find.text("Sending to $harnessName…"), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  });
+
+  testWidgets("a slow send names the harness after a short delay", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialQueuedMessages: [_textSubmission(promptId: "prm_slow", text: "slow")],
+      ),
+    );
+    await tester.pumpAndSettle();
+    harnessKey.currentState!.beginSending();
+    await tester.pump();
+
+    expect(find.text("Sending"), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1900));
+    expect(find.text("Sending to OpenCode…"), findsNothing);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text("Sending"), findsNothing);
+    expect(find.text("Sending to OpenCode…"), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets("a bridge-queued prompt transforms into its message without a blank frame", (tester) async {
@@ -1985,3 +2127,14 @@ void main() {
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
 }
+
+QueuedSessionSubmission _textSubmission({required String promptId, required String text}) =>
+    QueuedSessionSubmission.text(
+      promptId: promptId,
+      text: text,
+      inputMode: ComposerInputMode.typed,
+      attachments: const [],
+      agent: null,
+      agentModel: null,
+      fastMode: false,
+    );

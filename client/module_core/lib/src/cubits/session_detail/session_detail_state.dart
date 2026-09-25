@@ -6,6 +6,7 @@ import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/session_interaction_state.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/session_selection_calculator.dart";
+import "local_send_phase.dart";
 import "queued_session_submission.dart";
 
 part "session_detail_state.freezed.dart";
@@ -52,8 +53,9 @@ sealed class SessionDetailState with _$SessionDetailState {
     required bool isArchived,
     // Queued messages (waiting to be sent when connection is restored).
     required List<QueuedSessionSubmission> queuedMessages,
-    // Submission currently awaiting bridge acceptance.
-    required QueuedSessionSubmission? sendingSubmission,
+    // The head submission awaiting bridge acceptance, or failed; later
+    // [queuedMessages] wait behind a failed one until Retry or removal.
+    required LocalSendPhase localSend,
 
     // Prompts the bridge has accepted and retains until their user echo is visible,
     // owned by the bridge (snapshot + session.queued-prompts events). Distinct

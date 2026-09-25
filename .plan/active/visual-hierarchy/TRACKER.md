@@ -45,7 +45,7 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [x] | 27 | `visual-hierarchy/missing-folders` | [27/41](#pr-titles) | ≤ 400 | done |
 | [x] | 28 | `visual-hierarchy/filtered-rows` | [28/41](#pr-titles) | ≤ 300 | done |
 | [x] | 29 | `visual-hierarchy/archive-alert` | [29/41](#pr-titles) | ≤ 300 | done |
-| [ ] | 30 | `visual-hierarchy/failed-sends` | [30/41](#pr-titles) | ≤ 700 | pending |
+| [x] | 30 | `visual-hierarchy/failed-sends` | [30/41](#pr-titles) | ≤ 700 | done |
 | [ ] | 31 | `visual-hierarchy/live-transcript` | [31/41](#pr-titles) | ≤ 1,200 | pending |
 | [ ] | 32 | `visual-hierarchy/tool-kinds` | [32/41](#pr-titles) | ≤ 1,200 | pending |
 | [ ] | 33 | `visual-hierarchy/yolo` | [33/41](#pr-titles) | ≤ 500 | pending |

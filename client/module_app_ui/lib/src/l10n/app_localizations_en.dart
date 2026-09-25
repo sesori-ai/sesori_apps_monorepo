@@ -1425,6 +1425,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailSendingMessage => 'Sending';
 
   @override
+  String sessionDetailSendingToHarness(String harnessName) {
+    return 'Sending to $harnessName…';
+  }
+
+  @override
+  String get sessionDetailSendFailed => 'Couldn’t send';
+
+  @override
   String get sessionDetailPromptOptionsUpdated => 'Prompt options changed. Updated settings and retrying your message.';
 
   @override

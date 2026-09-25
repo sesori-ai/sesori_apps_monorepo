@@ -3,6 +3,7 @@ import "dart:async";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/src/consumers/analytics/session_activity_analytics_listener.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
@@ -65,7 +66,7 @@ const _emptyState = SessionDetailState.loaded(
   isRootSession: true,
   isArchived: false,
   queuedMessages: [],
-  sendingSubmission: null,
+  localSend: LocalSendPhase.idle(),
   availableAgents: [],
   availableProviders: [],
   availableCommands: [],
@@ -95,7 +96,7 @@ const _nonEmptyState = SessionDetailState.loaded(
   isRootSession: true,
   isArchived: false,
   queuedMessages: [],
-  sendingSubmission: null,
+  localSend: LocalSendPhase.idle(),
   availableAgents: [],
   availableProviders: [],
   availableCommands: [],

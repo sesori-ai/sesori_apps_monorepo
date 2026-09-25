@@ -130,7 +130,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
     isArchived: false,
     queuedMessages: const [],
     bridgePromptAttachments: const {},
-    sendingSubmission: null,
+    localSend: const LocalSendPhase.idle(),
     availableAgents: const [],
     availableProviders: const [],
     availableCommands: const [],

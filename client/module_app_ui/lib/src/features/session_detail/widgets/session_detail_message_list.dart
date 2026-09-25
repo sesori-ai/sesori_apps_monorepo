@@ -28,8 +28,17 @@ class const SessionDetailMessageList({
   super.key,
   required final String? projectId,
   required final List<MessageWithParts> messages,
-  required final QueuedSessionSubmission? sendingSubmission,
+
+  /// The head of the local send queue; [queuedMessages] wait behind it.
+  required final LocalSendPhase localSend,
   required final List<QueuedSessionSubmission> queuedMessages,
+
+  /// The harness name a slow send names, or null until it is known.
+  required final String? harnessName,
+
+  /// Null on a read-only surface, which shows the failure without actions.
+  required final VoidCallback? onRetryFailedSend,
+  required final VoidCallback? onRemoveFailedSend,
 
   /// Accepted sends the bridge has not listed yet — rendered as read-only
   /// queued bubbles so the prompt never blanks between its acceptance
@@ -81,7 +90,14 @@ typedef _DetachedSnapshot = ({
   String? retryErrorMessage,
 });
 
-typedef _TransientSubmission = ({QueuedSessionSubmission submission, bool isSending, bool awaitingBridge});
+enum _TransientStage() {
+  awaitingBridge,
+  sending,
+  failed,
+  pending,
+}
+
+typedef _TransientSubmission = ({QueuedSessionSubmission submission, _TransientStage stage});
 
 class _SessionDetailMessageListState() extends State<SessionDetailMessageList> with SingleTickerProviderStateMixin {
   static const _kListViewKey = Key("session-detail-message-list-view");
@@ -253,7 +269,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   bool _transientSubmissionsMatch({required SessionDetailMessageList oldWidget}) {
-    if (!identical(oldWidget.sendingSubmission, widget.sendingSubmission)) return false;
+    if (oldWidget.localSend != widget.localSend) return false;
     if (oldWidget.queuedMessages.length != widget.queuedMessages.length) return false;
     for (var i = 0; i < widget.queuedMessages.length; i++) {
       if (!identical(oldWidget.queuedMessages[i], widget.queuedMessages[i])) return false;
@@ -271,14 +287,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   bool _hasNewTransientSubmission({required SessionDetailMessageList oldWidget}) {
     final previousPromptIds = <String>{
-      ?oldWidget.sendingSubmission?.promptId,
+      ?_localSendRow(localSend: oldWidget.localSend)?.submission.promptId,
       for (final submission in oldWidget.queuedMessages) submission.promptId,
       // A fast acceptance can move a send straight to the parked surface
       // between two builds; it is still the reader's new submission.
       for (final submission in oldWidget.awaitingBridgeSubmissions) submission.promptId,
     };
     return [
-      ?widget.sendingSubmission,
+      ?_localSendRow(localSend: widget.localSend)?.submission,
       ...widget.queuedMessages,
       ...widget.awaitingBridgeSubmissions,
     ].any((submission) => !previousPromptIds.contains(submission.promptId));
@@ -286,7 +302,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   List<String> _rowIdsFor({
     required List<MessageWithParts> messages,
-    required QueuedSessionSubmission? sendingSubmission,
+    required QueuedSessionSubmission? localSendSubmission,
     required List<QueuedSessionSubmission> queuedMessages,
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
@@ -305,8 +321,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
       for (final submission in awaitingBridgeSubmissions)
         if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
-      if (sendingSubmission != null && !deliveredPromptIds.contains(sendingSubmission.promptId))
-        "$_kPromptRowPrefix${sendingSubmission.promptId}",
+      if (localSendSubmission != null && !deliveredPromptIds.contains(localSendSubmission.promptId))
+        "$_kPromptRowPrefix${localSendSubmission.promptId}",
       for (final submission in queuedMessages)
         if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
     ];
@@ -316,6 +332,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         if (seenIds.add(entry)) entry,
     ];
   }
+
+  static _TransientSubmission? _localSendRow({required LocalSendPhase localSend}) => switch (localSend) {
+    LocalSendIdle() => null,
+    LocalSendSending(:final submission) => (submission: submission, stage: _TransientStage.sending),
+    LocalSendFailed(:final submission) => (submission: submission, stage: _TransientStage.failed),
+  };
 
   String _entryIdForMessage({required Message info}) => switch (info) {
     MessageUser(promptId: final promptId?) => "$_kPromptRowPrefix$promptId",
@@ -334,7 +356,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final loc = context.loc;
     final snap = _snapshot;
     final messages = snap?.messages ?? widget.messages;
-    final sendingSubmission = widget.sendingSubmission;
+    final localSendRow = _localSendRow(localSend: widget.localSend);
     final queuedMessages = widget.queuedMessages;
     final streamingText = snap?.streamingText ?? widget.streamingText;
     final children = snap?.children ?? widget.children;
@@ -344,20 +366,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final indexById = _indexByIdFor(messages: messages);
     final transientSubmissions = <String, _TransientSubmission>{
       for (final submission in widget.awaitingBridgeSubmissions)
-        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, isSending: false, awaitingBridge: true),
-      if (sendingSubmission != null)
-        "$_kPromptRowPrefix${sendingSubmission.promptId}": (
-          submission: sendingSubmission,
-          isSending: true,
-          awaitingBridge: false,
-        ),
+        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: _TransientStage.awaitingBridge),
+      if (localSendRow case (:final submission, :final stage))
+        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: stage),
       for (final submission in queuedMessages)
-        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, isSending: false, awaitingBridge: false),
+        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: _TransientStage.pending),
     };
 
     final rowIds = _rowIdsFor(
       messages: messages,
-      sendingSubmission: sendingSubmission,
+      localSendSubmission: localSendRow?.submission,
       queuedMessages: queuedMessages,
       bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
       awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
@@ -491,7 +509,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               attachmentCount: prompt.attachmentCount,
               localAttachments: widget.bridgePromptAttachments[prompt.id] ?? const [],
               presentation: switch (prompt.dispatchState) {
-                QueuedPromptDispatchState.dispatched => const QueuedMessageBubblePresentation.sending(),
+                QueuedPromptDispatchState.dispatched => QueuedMessageBubblePresentation.sending(
+                  harnessName: widget.harnessName,
+                ),
                 QueuedPromptDispatchState.queued || QueuedPromptDispatchState.unknown =>
                   onCancel == null
                       ? const QueuedMessageBubblePresentation.pendingReadOnly()
@@ -515,19 +535,26 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             isCommand: submission.isCommand,
             attachmentCount: submission.attachments.length,
             localAttachments: submission.attachments,
-            presentation: transientSubmission.isSending
-                ? const QueuedMessageBubblePresentation.sending()
-                : submission is UnavailableQueuedCommandSubmission
-                ? QueuedMessageBubblePresentation.commandUnavailable(
-                    onRemove: onCancelQueuedMessage == null
-                        ? null
-                        : () => _cancelQueuedSubmission(submission: submission),
-                  )
-                : transientSubmission.awaitingBridge || onCancelQueuedMessage == null
-                ? const QueuedMessageBubblePresentation.pendingReadOnly()
-                : QueuedMessageBubblePresentation.pending(
-                    onCancel: () => _cancelQueuedSubmission(submission: submission),
-                  ),
+            presentation: switch (transientSubmission.stage) {
+              _TransientStage.sending => QueuedMessageBubblePresentation.sending(harnessName: widget.harnessName),
+              _TransientStage.failed => QueuedMessageBubblePresentation.failed(
+                onRetry: widget.onRetryFailedSend,
+                onRemove: widget.onRemoveFailedSend,
+              ),
+              _TransientStage.awaitingBridge => const QueuedMessageBubblePresentation.pendingReadOnly(),
+              _TransientStage.pending when submission is UnavailableQueuedCommandSubmission =>
+                QueuedMessageBubblePresentation.commandUnavailable(
+                  onRemove: onCancelQueuedMessage == null
+                      ? null
+                      : () => _cancelQueuedSubmission(submission: submission),
+                ),
+              _TransientStage.pending =>
+                onCancelQueuedMessage == null
+                    ? const QueuedMessageBubblePresentation.pendingReadOnly()
+                    : QueuedMessageBubblePresentation.pending(
+                        onCancel: () => _cancelQueuedSubmission(submission: submission),
+                      ),
+            },
           ),
         ),
       );

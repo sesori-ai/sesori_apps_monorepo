@@ -7,6 +7,8 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_resolvers.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
@@ -630,7 +632,7 @@ void main() {
         ],
       );
       expect(sendCalls, 1);
-      expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
+      expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNotNull);
 
       unawaited(cubit.reload());
       await _awaitCondition(() => refreshes.length == 1);
@@ -640,6 +642,8 @@ void main() {
         ),
       );
       await Future<void>.delayed(Duration.zero);
+      // Retry while offline stages the image again without sending it.
+      cubit.retryFailedSend();
       expect(cubit.state, isA<SessionDetailLoading>());
 
       connectionStatus.add(connectedStatus);
@@ -722,18 +726,18 @@ void main() {
       );
       await _awaitCondition(() {
         final state = cubit.state;
-        return state is SessionDetailLoaded && state.sendingSubmission?.displayText == "Cold-start prompt";
+        return state is SessionDetailLoaded && _sendingOf(state: state)?.displayText == "Cold-start prompt";
       });
 
       var state = cubit.state as SessionDetailLoaded;
       expect(state.queuedMessages, isEmpty);
-      expect(state.sendingSubmission?.displayText, "Cold-start prompt");
+      expect(_sendingOf(state: state)?.displayText, "Cold-start prompt");
 
       accepted.complete(ApiResponse.success(null));
       await send;
 
       state = cubit.state as SessionDetailLoaded;
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       expect(state.queuedMessages, isEmpty);
     });
 
@@ -934,6 +938,8 @@ void main() {
         ),
       );
       await Future<void>.delayed(Duration.zero);
+      // Retry while offline stages the image again without sending it.
+      cubit.retryFailedSend();
       connectionStatus.add(connectedStatus);
 
       refreshes.first.complete(
@@ -2215,3 +2221,13 @@ Future<void> _awaitStreamingText(SessionDetailCubit cubit, {required String part
     description: "streaming text '$text' for $partId",
   );
 }
+
+QueuedSessionSubmission? _sendingOf({required SessionDetailLoaded state}) => switch (state.localSend) {
+  LocalSendSending(:final submission) => submission,
+  LocalSendIdle() || LocalSendFailed() => null,
+};
+
+QueuedSessionSubmission? _failedOf({required SessionDetailLoaded state}) => switch (state.localSend) {
+  LocalSendFailed(:final submission) => submission,
+  LocalSendIdle() || LocalSendSending() => null,
+};

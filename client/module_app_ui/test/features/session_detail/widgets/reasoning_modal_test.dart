@@ -53,7 +53,7 @@ SessionDetailState _loadedState({
     isArchived: false,
     queuedMessages: const [],
     bridgePromptAttachments: const {},
-    sendingSubmission: null,
+    localSend: const LocalSendPhase.idle(),
     availableAgents: const [],
     availableProviders: const [],
     availableCommands: const [],
