@@ -56,6 +56,7 @@ export "src/features/session_detail/widgets/tool_part_widget.dart";
 export "src/features/session_detail/widgets/user_message_card.dart";
 export "src/features/session_detail/widgets/voice_cancel_button.dart";
 export "src/features/session_diffs/session_diffs_view.dart";
+export "src/features/session_diffs/widgets/session_changes_counts.dart";
 export "src/features/session_list/archived_sessions_view.dart";
 export "src/features/session_list/pr_status_row.dart";
 export "src/features/session_list/rename_session_dialog.dart";

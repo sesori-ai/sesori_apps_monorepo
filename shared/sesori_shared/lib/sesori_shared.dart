@@ -81,6 +81,7 @@ export "src/models/sesori/session_archived_rejection.dart";
 export "src/models/sesori/session_attachment.dart";
 export "src/models/sesori/session_auto_continuation.dart";
 export "src/models/sesori/session_cleanup_rejection.dart";
+export "src/models/sesori/session_diff_summary_response.dart";
 export "src/models/sesori/session_diffs_response.dart";
 export "src/models/sesori/session_options_error_response.dart";
 export "src/models/sesori/session_options_response.dart";

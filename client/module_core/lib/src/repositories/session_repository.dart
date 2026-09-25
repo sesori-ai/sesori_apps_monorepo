@@ -8,6 +8,7 @@ import "../foundation/models/session_options/session_options_request_mode.dart";
 import "models/session_abort_not_accepted_exception.dart";
 import "models/session_abort_rejected_exception.dart";
 import "models/session_cleanup_rejection.dart";
+import "models/session_diff_summary_result.dart";
 import "models/session_options_repository_result.dart";
 
 @lazySingleton
@@ -132,6 +133,35 @@ class SessionRepository({
 
   Future<ApiResponse<SessionDiffsResponse>> getSessionDiffs({required String sessionId}) {
     return _api.getSessionDiffs(sessionId: sessionId);
+  }
+
+  Future<SessionDiffSummaryResult> getSessionDiffSummary({required String sessionId}) async {
+    final response = await _api.getSessionDiffSummary(sessionId: sessionId);
+    return switch (response) {
+      SuccessResponse(:final data) => SessionDiffSummaryAvailable(
+        additions: data.additions,
+        deletions: data.deletions,
+      ),
+      // COMPATIBILITY 2026-09-25 (v1.9.1): a bridge before v1.9.1 has no
+      // /session/diff-summary route and answers with a bare 404, while this
+      // bridge gives its own 404 a SessionDiffSummaryErrorResponse body.
+      // Remove once no supported bridge predates the route.
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404, :final rawErrorString))
+          when !_isSessionDiffSummaryError(rawErrorString: rawErrorString) =>
+        const SessionDiffSummaryUnsupported(),
+      ErrorResponse(:final error) => SessionDiffSummaryFailure(error: error),
+    };
+  }
+
+  bool _isSessionDiffSummaryError({required String? rawErrorString}) {
+    if (rawErrorString == null) return false;
+    try {
+      SessionDiffSummaryErrorResponse.fromJson(jsonDecodeMap(rawErrorString));
+      return true;
+    } on Object {
+      // Not this route's body: the bridge that answered does not know the route.
+      return false;
+    }
   }
 
   Future<ApiResponse<Session>> getSession({required String sessionId}) {

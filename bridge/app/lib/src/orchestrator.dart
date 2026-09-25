@@ -115,6 +115,7 @@ import "routing/get_providers_handler.dart";
 import "routing/get_pull_request_refresh_settings_handler.dart";
 import "routing/get_queued_prompts_handler.dart";
 import "routing/get_session_attachment_handler.dart";
+import "routing/get_session_diff_summary_handler.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/get_session_handler.dart";
 import "routing/get_session_messages_handler.dart";
@@ -732,6 +733,7 @@ class Orchestrator({
         GetSessionDiffsHandler(
           sessionDiffService: sessionDiffService,
         ),
+        GetSessionDiffSummaryHandler(sessionDiffService: sessionDiffService),
       ],
     );
     final routedRequestDispatcher = RoutedRequestDispatcher(router: router);
