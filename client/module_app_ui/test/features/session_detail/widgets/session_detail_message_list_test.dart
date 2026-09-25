@@ -1196,7 +1196,12 @@ void main() {
         ),
       ],
     );
-    Future<void> settle() => tester.pump(const Duration(milliseconds: 300));
+    // The first frame starts the row's ease in or out; the second ends it.
+    Future<void> settle() async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
     // The sparkle leads its row's label.
     void expectSparkleLeads(Finder label) {
       final row = find.ancestor(of: label, matching: find.byType(Row)).first;
@@ -1251,6 +1256,66 @@ void main() {
       ..setRetryErrorMessage("Rate limited");
     await settle();
     expect(find.text("Working…"), findsNothing);
+  });
+
+  testWidgets("a reader pinned at the bottom stays pinned while a finished step folds into its group", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    MessagePart tool({required String id, required ToolStatus status}) => MessagePart.tool(
+      id: id,
+      sessionID: "session-1",
+      messageID: "assistant-1",
+      tool: "read",
+      state: ToolState(status: status, title: id, shellCommand: null, output: null, error: null),
+    );
+    MessageWithParts assistant({required ToolStatus last}) => MessageWithParts(
+      info: const Message.assistant(
+        id: "assistant-1",
+        sessionID: "session-1",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        time: null,
+      ),
+      parts: [
+        tool(id: "first", status: ToolStatus.completed),
+        tool(id: "second", status: last),
+      ],
+    );
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 10),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    harnessKey.currentState!
+      ..setBusy(true)
+      ..appendNewestMessage(assistant(last: ToolStatus.running));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("read second"), findsOneWidget);
+    expect(_position(tester).pixels, 0);
+
+    harnessKey.currentState!
+      ..removeMessage("assistant-1")
+      ..appendNewestMessage(assistant(last: ToolStatus.completed));
+    // Every frame of the fold, and of the Working row easing in, keeps the
+    // newest edge in view.
+    for (var frame = 0; frame < 10; frame++) {
+      await tester.pump(const Duration(milliseconds: 30));
+      expect(_position(tester).pixels, 0);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+    }
+    expect(find.text("read second"), findsNothing);
+    expect(find.text("2 steps"), findsOneWidget);
+    expect(find.text("Working…"), findsOneWidget);
   });
 
   testWidgets("following mode stays pinned to latest", (tester) async {

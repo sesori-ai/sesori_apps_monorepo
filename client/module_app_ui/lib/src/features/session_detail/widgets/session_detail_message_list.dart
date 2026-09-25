@@ -19,6 +19,7 @@ import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "system_message_card.dart";
 import "transcript_live_row.dart";
+import "transcript_motion.dart";
 import "user_message_card.dart";
 
 /// Chat-style message list for the session detail screen.
@@ -135,7 +136,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   static const _kRetryErrorRowId = "session-detail-retry-error-row";
 
   /// Synthetic id for the live row that closes the transcript while the
-  /// session works.
+  /// session works. The row stays in the list, empty while idle, so it eases
+  /// in and out as work starts and ends.
   static const _kWorkingRowId = "session-detail-working-row";
   static const _kPromptRowPrefix = "session-detail-prompt-";
 
@@ -178,6 +180,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// signature stable) still resolve fresh content from the live list.
   int? _indexSignature;
   Map<String, int> _indexById = const <String, int>{};
+
+  /// The rows of the last build, so a row that joins at the newest edge while
+  /// following eases in. Null until the first build and after reattaching, so
+  /// the rows already there, or caught up at once, do not animate.
+  Set<String>? _knownRowIds;
 
   @override
   void initState() {
@@ -268,6 +275,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     setState(() {
       if (_follow.following) {
         _snapshot = null;
+        _knownRowIds = null;
       } else {
         _snapshot ??= (
           messages: List<MessageWithParts>.unmodifiable(widget.messages),
@@ -320,7 +328,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
     required bool hasRetryError,
-    required bool isBusy,
   }) {
     final deliveredPromptIds = <String>{
       for (final message in messages)
@@ -331,8 +338,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       for (final message in messages)
         if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
       if (hasRetryError) _kRetryErrorRowId,
-      // The retry row already says the session is working.
-      if (isBusy && !hasRetryError) _kWorkingRowId,
+      _kWorkingRowId,
       for (final prompt in bridgeQueuedPrompts)
         if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
       for (final submission in awaitingBridgeSubmissions)
@@ -359,6 +365,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     MessageUser(promptId: final promptId?) => "$_kPromptRowPrefix$promptId",
     MessageUser() || MessageAssistant() || MessageError() => info.id,
   };
+
+  /// Whether [rowId] shows the user's side: a prompt or a user message.
+  static bool _isUserRow({
+    required String rowId,
+    required List<MessageWithParts> messages,
+    required Map<String, int> indexById,
+  }) {
+    if (rowId.startsWith(_kPromptRowPrefix)) return true;
+    final index = indexById[rowId];
+    return index != null && index < messages.length && messages[index].info is MessageUser;
+  }
 
   static String? _bridgePromptDisplayText(QueuedSessionPrompt prompt) {
     final command = prompt.command;
@@ -415,8 +432,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
       awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
       hasRetryError: retryErrorMessage != null,
-      isBusy: isBusy,
     );
+    final knownRowIds = _knownRowIds;
+    _knownRowIds = rowIds.toSet();
+    // Rows held still while scrolled away never animate, and a prompt shows
+    // at once: only the agent's side of the transcript eases in.
+    final enteringRowIds = knownRowIds == null || snap != null || context.isReducedMotion
+        ? const <String>{}
+        : {
+            for (final rowId in rowIds)
+              if (!knownRowIds.contains(rowId) && !_isUserRow(rowId: rowId, messages: messages, indexById: indexById))
+                rowId,
+          };
     // Coalesced post-frame pin-to-edge while following. The scheduler
     // collapses repeated calls within a frame and the jump is skipped
     // when `position.pixels` is already at the edge.
@@ -485,14 +512,20 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               final entryId = rowIds[rowIds.length - index - 1];
               return KeyedSubtree(
                 key: ValueKey(entryId),
-                child: _buildRow(
-                  entryId: entryId,
-                  messages: messages,
-                  indexById: indexById,
-                  transientSubmissions: transientSubmissions,
-                  transcript: transcript,
-                  streamingText: streamingText,
-                  retryErrorMessage: retryErrorMessage,
+                child: TranscriptPresence(
+                  entering: enteringRowIds.contains(entryId),
+                  exiting: false,
+                  onExited: null,
+                  child: _buildRow(
+                    entryId: entryId,
+                    messages: messages,
+                    indexById: indexById,
+                    transientSubmissions: transientSubmissions,
+                    transcript: transcript,
+                    streamingText: streamingText,
+                    retryErrorMessage: retryErrorMessage,
+                    isBusy: isBusy,
+                  ),
                 ),
               );
             },
@@ -525,6 +558,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required Transcript transcript,
     required Map<String, String> streamingText,
     required String? retryErrorMessage,
+    required bool isBusy,
   }) {
     if (entryId == _kRetryErrorRowId) {
       if (retryErrorMessage == null) return const SizedBox.shrink();
@@ -532,9 +566,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return _revealable(createdAtMs: null, child: RetryErrorMessageCard(message: retryErrorMessage));
     }
     if (entryId == _kWorkingRowId) {
-      // Streaming text or a live step already shows progress; the row fills
-      // only the gaps: before the first token and between steps.
-      final show = transcript.liveStep == null && streamingText.isEmpty;
+      // Streaming text, a live step or the retry row already shows progress;
+      // the row fills only the gaps: before the first token and between steps.
+      final show = isBusy && retryErrorMessage == null && transcript.liveStep == null && streamingText.isEmpty;
       return _revealable(createdAtMs: null, child: _workingRow(show: show));
     }
     if (entryId.startsWith(_kPromptRowPrefix)) {
@@ -662,19 +696,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     );
   }
 
-  /// While a step is live, the step is the live row; the working row eases
-  /// away as it starts and back when it ends.
-  Widget _workingRow({required bool show}) {
-    final row = show ? const TranscriptWorkingRow() : const SizedBox(width: double.infinity);
-    // No wrapper under reduced motion: see [_animatedPromptRow].
-    if (context.isReducedMotion) return row;
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 240),
-      curve: Curves.easeInOutCubic,
-      alignment: AlignmentDirectional.topStart,
-      child: AnimatedSwitcher(duration: const Duration(milliseconds: 240), child: row),
-    );
-  }
+  /// The working row eases in when work starts or a step ends, and away when
+  /// a step starts or work ends.
+  Widget _workingRow({required bool show}) => TranscriptPresenceColumn(
+    children: [if (show) const TranscriptWorkingRow(key: ValueKey("session-detail-working"))],
+  );
 
   /// Wraps a row so the shared horizontal drag reveals its timestamp.
   Widget _revealable({required int? createdAtMs, required Widget child}) {

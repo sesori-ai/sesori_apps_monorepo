@@ -154,6 +154,101 @@ void main() {
     expect(find.text("bash"), findsNothing);
   });
 
+  testWidgets("a finished live row folds into its group while the count rolls", (tester) async {
+    List<MessagePart> parts({required ToolStatus last}) => [
+      _tool(id: "t1", name: "Read", status: ToolStatus.completed, kind: ToolKind.read),
+      _tool(id: "t2", name: "Read", status: ToolStatus.completed, kind: ToolKind.read),
+      _tool(id: "t3", name: "notes", status: last, kind: ToolKind.read),
+    ];
+    await tester.pumpWidget(
+      _app(
+        group: _group(parts: parts(last: ToolStatus.running)),
+      ),
+    );
+    final live = _height(tester);
+    expect(find.text("read 2 files"), findsOneWidget);
+
+    await tester.pumpWidget(
+      _app(
+        group: _group(parts: parts(last: ToolStatus.completed)),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Midway the live row is still there, shorter and fading, and only the
+    // number rolls: the old one leaves as the new one arrives.
+    expect(find.text("notes"), findsOneWidget);
+    expect(_height(tester), lessThan(live));
+    final opacities = tester.widgetList<Opacity>(find.ancestor(of: find.text("notes"), matching: find.byType(Opacity)));
+    expect(opacities.any((opacity) => opacity.opacity > 0 && opacity.opacity < 1), isTrue);
+    expect(find.text("read "), findsOneWidget);
+    expect(find.text("2"), findsOneWidget);
+    expect(find.text("3"), findsOneWidget);
+    expect(find.text(" files"), findsOneWidget);
+    expect(tester.getTopLeft(find.text("3")).dy, greaterThan(tester.getTopLeft(find.text("2")).dy));
+
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.text("notes"), findsNothing);
+    expect(find.text("read 3 files"), findsOneWidget);
+    expect(_height(tester), lessThan(live));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("reduced motion folds a finished row and changes the count at once", (tester) async {
+    List<MessagePart> parts({required ToolStatus last}) => [
+      _tool(id: "t1", name: "read", status: ToolStatus.completed),
+      _tool(id: "t2", name: "bash", status: last),
+    ];
+    await tester.pumpWidget(
+      _app(
+        group: _group(parts: parts(last: ToolStatus.running)),
+        disableAnimations: true,
+      ),
+    );
+    await tester.pumpWidget(
+      _app(
+        group: _group(parts: parts(last: ToolStatus.completed)),
+        disableAnimations: true,
+      ),
+    );
+
+    expect(find.text("bash"), findsNothing);
+    expect(find.text("2 steps"), findsOneWidget);
+    expect(tester.hasRunningAnimations, isFalse);
+  });
+
+  testWidgets("a new live row and a group's first summary ease in", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        group: _group(
+          parts: [_tool(id: "t1", name: "read", status: ToolStatus.running)],
+        ),
+      ),
+    );
+    final oneRow = _height(tester);
+
+    await tester.pumpWidget(
+      _app(
+        group: _group(
+          parts: [
+            _tool(id: "t1", name: "read", status: ToolStatus.completed),
+            _tool(id: "t2", name: "bash", status: ToolStatus.running),
+          ],
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    // The finished row folds while the summary and the new row grow.
+    expect(find.text("1 step"), findsOneWidget);
+    expect(find.text("bash"), findsOneWidget);
+    final midway = _height(tester);
+
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.text("read"), findsNothing);
+    expect(_height(tester), greaterThan(oneRow));
+    expect(midway, lessThan(_height(tester)));
+  });
+
   testWidgets("the summary names tool calls by kind and keeps unknown kinds as steps", (tester) async {
     await tester.pumpWidget(
       _app(

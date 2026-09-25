@@ -64,7 +64,7 @@ gate: the user picks a variant from a local review page first.
 | [ ] | 43 | `visual-hierarchy/continuation-notice` | [43/49](#pr-titles) | ≤ 500 | pending |
 | [x] | 44 | `visual-hierarchy/yolo-icon` | [44/49](#pr-titles) | ≤ 150 | done |
 | [ ] | 45 | `visual-hierarchy/session-yolo{,-clients}` | [45/49](#pr-titles) | ≤ 1,200 | pending |
-| [ ] | 46 | `visual-hierarchy/group-motion` | [46/49](#pr-titles) | ≤ 900 | pending |
+| [x] | 46 | `visual-hierarchy/group-motion` | [46/49](#pr-titles) | ≤ 900 | done |
 | [ ] | 47 | `visual-hierarchy/group-popover` | [47/49](#pr-titles) | ≤ 800 | pending |
 | [ ] | 48 | `visual-hierarchy/regression-docs` | [48/49](#pr-titles) | ≤ 600 | pending |
 | [ ] | 49 | `visual-hierarchy/retire` | [49/49](#pr-titles) | ≤ 300 | pending |
