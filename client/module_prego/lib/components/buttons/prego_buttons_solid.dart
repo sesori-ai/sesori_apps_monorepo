@@ -12,8 +12,20 @@ const double _buttonHPaddingMd = 14.0;
 // Figma specifies 10px (between spacing-md=8 and spacing-lg=12).
 const double _buttonVPaddingMd = 10.0;
 
+// Horizontal padding for xs size — not a named spacing token. The compact size
+// has no Figma counterpart; 10px sits between spacing-md=8 and spacing-lg=12.
+const double _buttonHPaddingXs = 10.0;
+
+// Icon-only padding for xs size: 7px around the 16px icon keeps the square
+// button at the 30px text-button height.
+const double _buttonIconOnlyPaddingXs = 7.0;
+
 /// Size variants for [PregoButtonsSolid].
 enum PregoButtonsSolidSize() {
+  /// Height 30px — text-xs/medium, px=10, py=6, gap=4, 16px icon. For actions
+  /// inside compact notices, such as the desktop sidebar's recovery card.
+  xs,
+
   /// Height 36px — text-sm/medium, px=12, py=8, gap=4.
   sm,
 
@@ -674,8 +686,9 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   TextStyle _resolveTextStyle({required PregoDesignSystem prego, required Set<WidgetState> state}) {
     final colors = prego.colors;
     final textColor = _resolveTextColor(colors: colors, state: state);
-    // sm: Medium weight (w500) per Figma. md/lg/xl: Bold (w700).
+    // xs/sm: Medium weight (w500) per Figma. md/lg/xl: Bold (w700).
     final baseStyle = switch (widget.size) {
+      PregoButtonsSolidSize.xs => prego.textTheme.textXs.medium,
       PregoButtonsSolidSize.sm => prego.textTheme.textSm.medium,
       PregoButtonsSolidSize.md => prego.textTheme.textSm.bold,
       PregoButtonsSolidSize.lg || PregoButtonsSolidSize.xl => prego.textTheme.textMd.bold,
@@ -776,6 +789,10 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   }
 
   EdgeInsetsDirectional _resolvePadding() => switch (widget.size) {
+    PregoButtonsSolidSize.xs => const EdgeInsetsDirectional.symmetric(
+      horizontal: _buttonHPaddingXs,
+      vertical: PregoSpacing.sm,
+    ),
     // sm: 12px horizontal (spacing-lg) per Figma — differs from md's 14px.
     PregoButtonsSolidSize.sm => const EdgeInsetsDirectional.symmetric(
       horizontal: PregoSpacing.lg,
@@ -797,6 +814,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   };
 
   EdgeInsetsDirectional _resolveIconOnlyPadding() => switch (widget.size) {
+    PregoButtonsSolidSize.xs => const EdgeInsetsDirectional.all(_buttonIconOnlyPaddingXs),
     PregoButtonsSolidSize.sm => const EdgeInsetsDirectional.all(PregoSpacing.md),
     PregoButtonsSolidSize.md => const EdgeInsetsDirectional.all(_buttonVPaddingMd),
     PregoButtonsSolidSize.lg => const EdgeInsetsDirectional.all(PregoSpacing.lg),
@@ -804,11 +822,11 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   };
 
   double _resolveGap() => switch (widget.size) {
-    PregoButtonsSolidSize.sm || PregoButtonsSolidSize.md => PregoSpacing.xs,
+    PregoButtonsSolidSize.xs || PregoButtonsSolidSize.sm || PregoButtonsSolidSize.md => PregoSpacing.xs,
     PregoButtonsSolidSize.lg || PregoButtonsSolidSize.xl => PregoSpacing.sm,
   };
 
-  double _resolveIconSize() => 20.0;
+  double _resolveIconSize() => widget.size == PregoButtonsSolidSize.xs ? 16.0 : 20.0;
 }
 
 // ---------------------------------------------------------------------------
