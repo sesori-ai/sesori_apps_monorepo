@@ -399,7 +399,7 @@ Dependencies follow row order. Generated schema stays with source. No temporary
 schemas, compatibility adapters or incomplete mobile cutover to manufacture a
 split. Reassess the ~1,500 changed-line soft cap against the merge base before
 each push; report authored/generated churn and explain generated-heavy overages.
-Synchronize published series titles/totals before PR 5 opens. The final
+Published series titles/totals are synchronized. The final
 consumer switch is intentionally coherent so no released mobile data is read
 from the new empty store before import is available.
 
@@ -463,3 +463,6 @@ or successful build is not native authorization, migration or distribution proof
 - Shared-foundation implementation review `4d74e149-75fb-486c-919e-e5124b39a3a8`
   approved exact range `66db48e..f38a2f7` (all 24 paths) without findings. This is
   approval of the unwired shared foundation, not the future backend or migration.
+- SQL implementation review `7ee56961-ed06-48a5-aa30-2cff50d8bbd5` approved exact
+  range `af23da2..2e1309b` (all 20 paths) without findings. The cached-secret
+  successor, native capabilities and consumer/migration cutover were excluded.
