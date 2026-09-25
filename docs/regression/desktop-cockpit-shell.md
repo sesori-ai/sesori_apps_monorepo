@@ -118,7 +118,8 @@ The main pane hosts one full-width routed page.
   avatar and ends with a compact last-activity time; its tooltip and screen-reader label say that time in full.
   Activity rows add the project name under the title. A running session shows no time, and a row drops the time
   before its title as it narrows or as the system text size grows. A session waiting on a scheduled
-  auto-continuation shows its resume time in place of the last-activity time (see quota-auto-continuation.md).
+  auto-continuation shows its resume time in place of the last-activity time while it is neither running
+  nor waiting for the user; running and waiting keep the last-activity time (see quota-auto-continuation.md).
 - Cmd+N (Ctrl+N on Windows/Linux) and the sidebar's New session row open New Session for the open project, else the
   most recently active one; with no project yet they open the New project dialog. They do nothing until the project
   inventory has loaded, and never substitute another project for an open one that is missing from the inventory.
@@ -252,9 +253,10 @@ The main pane hosts one full-width routed page.
 - The This computer row always exposes its supervised status through a dot and an
   accessible description. Takeover, login, start failure and crash-give-up
   recovery lives in the sidebar footer. Long repair guidance scrolls within a
-  bounded card whose warning icon sits centred on the message's first line, with
-  extra-small Retry (primary alt) and Open logs (tertiary) buttons below; in dark
-  mode neither reads as disabled. Compact mode keeps the primary action and full tooltip. Open
+  bounded card whose icon sits centred on the message's first line, with its
+  extra-small buttons below: Take over for takeover, Start bridge for login,
+  Retry for a start failure, and for crash give-up only, Retry (primary alt)
+  beside Open logs (tertiary). In dark mode none reads as disabled. Compact mode keeps the primary action and full tooltip. Open
   Logs is also available in the This computer popover. Command locks still disable
   recovery mutations, and start failures do not offer nonexistent child logs.
 - The canonical `/projects` home receives startup via `/splash` redirect and

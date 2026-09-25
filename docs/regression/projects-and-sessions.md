@@ -286,7 +286,8 @@ state.
   a resting sparkle when unread, or nothing, so titles line up. The time sits
   at the right in secondary and shows whenever the session has an updated
   time, except that a scheduled auto-continuation shows "Resumes <time>" in
-  its place (see quota-auto-continuation.md). Under the title, one tertiary meta line holds any state that needs
+  its place while the session is neither running nor waiting for the user;
+  running and waiting keep the time (see quota-auto-continuation.md). Under the title, one tertiary meta line holds any state that needs
   words ("Waiting" in amber, retrying, background tasks), then the harness
   name, the branch shortened in the middle and the pull request. Screen
   readers hear the waiting state once, from the status slot. Every row names

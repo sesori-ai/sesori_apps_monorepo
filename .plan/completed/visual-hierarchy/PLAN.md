@@ -3,7 +3,10 @@
 ## Status
 
 - **Plan slug:** `visual-hierarchy`
-- **Status:** Active. Step 1 raises this plan.
+- **Status:** Completed 2026-09-25. Step 49 retired the plan with the
+  unexecuted final-matrix cells accepted; step 39 was dropped, and steps 37
+  and 38 left the series to become their own plans. See
+  [step 49](steps/step-49.md).
 - **Plan date:** 2026-09-23
 - **Repository:** `sesori-ai/sesori_apps_monorepo`, implementation base `main`
   at `a845f1434c`.
