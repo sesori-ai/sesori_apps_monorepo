@@ -558,6 +558,47 @@ void main() {
       expect(refreshed.streamingText, {"part-race": "delta-during-refresh"});
     });
 
+    test("a session update during a refresh outlives the metadata fetched before it", () async {
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      final fetched = (cubit.state as SessionDetailLoaded).session;
+      expect(fetched.approvalOverride, isNull);
+
+      final messagesCompleter = Completer<ApiResponse<MessageWithPartsResponse>>();
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      ).thenAnswer((_) => messagesCompleter.future);
+
+      mockConnectionService.emitDataMayBeStale();
+      await pumpEventQueue();
+
+      sessionEvents.add(SesoriSessionUpdated(info: fetched.copyWith(approvalOverride: SessionApprovalMode.yolo)));
+      await pumpEventQueue();
+
+      messagesCompleter.complete(
+        ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: [_messageWithParts(messageId: "msg-race")],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+          ),
+        ),
+      );
+      await pumpEventQueue();
+
+      final refreshed = cubit.state as SessionDetailLoaded;
+      expect(refreshed.isRefreshing, isFalse);
+      expect(refreshed.messages.first.info.id, "msg-race");
+      expect(refreshed.session.approvalOverride, SessionApprovalMode.yolo);
+    });
+
     test("option failure retains the prior snapshot while waiting for retry", () async {
       final cubit = buildCubit();
       addTearDown(cubit.close);

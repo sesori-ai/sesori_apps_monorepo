@@ -24,4 +24,8 @@ final class const SessionApprovalBridgeWideYolo() extends SessionApprovalControl
 final class const SessionApprovalPerSession({
   required final SessionApprovalMode effective,
   required final SessionApprovalMode bridgeDefault,
-}) extends SessionApprovalControl;
+}) extends SessionApprovalControl {
+  /// The override that picks [mode]: null for the bridge default, so the
+  /// session follows the bridge setting again when it changes.
+  SessionApprovalMode? overrideFor({required SessionApprovalMode mode}) => mode == bridgeDefault ? null : mode;
+}

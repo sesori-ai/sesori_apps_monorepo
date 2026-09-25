@@ -902,6 +902,10 @@ class SessionDetailCubit(
           final assistantAgentModel = _assistantAgentModel(messages: messages, agents: availableAgents);
           _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
 
+          // A live session update (such as an approval change) that landed
+          // while the fetch was in flight is newer than the fetched metadata.
+          final refreshedSession = identical(latest.session, current.session) ? session : latest.session;
+          _sessionMetadata = refreshedSession;
           final refreshedSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
           final queue = _queueView(bridgePrompts: snapshot.bridgeQueuedPrompts);
 
@@ -934,7 +938,7 @@ class SessionDetailCubit(
               availableCommands: availableCommands,
               supportsPromptAttachments: snapshot.supportsPromptAttachments,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
-              session: session,
+              session: refreshedSession,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
               stagedCommand: _selection.resolveStagedCommand(
@@ -1407,14 +1411,14 @@ class SessionDetailCubit(
     final current = state;
     if (current is! SessionDetailLoaded) return;
     final control = current.approvalControl;
-    if (control is! SessionApprovalPerSession || control.effective == mode) return;
+    if (control is! SessionApprovalPerSession) return;
+    // Compare stored overrides, not effective modes: an explicit override equal
+    // to the current default must still clear, or it outlives a default change.
+    final approvalOverride = control.overrideFor(mode: mode);
+    if (approvalOverride == current.session.approvalOverride) return;
     _setApprovalProgress(pending: true);
     try {
-      final updated = await _approvalService.choose(
-        sessionId: _sessionId,
-        mode: mode,
-        bridgeDefault: control.bridgeDefault,
-      );
+      final updated = await _approvalService.setOverride(sessionId: _sessionId, approvalOverride: approvalOverride);
       if (isClosed) return;
       _handleEvent(SesoriSessionUpdated(info: updated));
     } on Object catch (error, stackTrace) {
