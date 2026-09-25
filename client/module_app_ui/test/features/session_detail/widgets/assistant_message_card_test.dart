@@ -274,7 +274,7 @@ void main() {
     // finished and, alone, keeps its own row.
     expect(find.text("Tool"), findsOneWidget);
     expect(find.text("1 sub-agent"), findsNothing);
-    expect(find.text("Background task"), findsOneWidget);
+    expect(find.text("Agent Background task"), findsOneWidget);
     expect(find.text("Agent"), findsOneWidget);
     expect(find.text("Retry"), findsOneWidget);
   });
@@ -287,7 +287,7 @@ void main() {
       ),
     );
 
-    expect(find.text("compact"), findsOneWidget);
+    expect(find.text("Compact"), findsOneWidget);
     expect(find.byType(PregoShimmer), findsOneWidget);
   });
 

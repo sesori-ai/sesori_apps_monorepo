@@ -7,8 +7,8 @@ import "../../../extensions/build_context_x.dart";
 import "../session_detail_presentation_scope.dart";
 import "transcript_live_row.dart";
 
-/// A sub-agent's row. A finished one says nothing; a failed one keeps one
-/// signal, its icon.
+/// A sub-agent's row: the agent, then its task. A finished one says nothing
+/// more; a failed one keeps one signal, its icon.
 class const SubtaskPartWidget({
   super.key,
   required final String? projectId,
@@ -27,25 +27,17 @@ class const SubtaskPartWidget({
         : part.prompt.isNotEmpty
         ? part.prompt
         : loc.sessionDetailSubtaskUnnamed;
-    final agent = part.agent;
     final childSession = this.childSession;
     final targetSessionId = part.childSessionID ?? childSession?.id;
     final targetProjectId = projectId ?? childSession?.projectID;
-    final title = Text(
-      description,
-      style: prego.textTheme.textSm.regular.copyWith(fontWeight: FontWeight.w500),
-      maxLines: 2,
-      overflow: .ellipsis,
-    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Material(
-        color: prego.colors.bgSecondary,
-        borderRadius: BorderRadius.circular(PregoRadius.md),
+        type: MaterialType.transparency,
         child: InkWell(
           mouseCursor: WidgetStateMouseCursor.clickable,
-          borderRadius: BorderRadius.circular(PregoRadius.md),
+          borderRadius: BorderRadius.circular(PregoRadius.xs),
           onTap: targetSessionId != null && targetProjectId != null
               ? () => SessionDetailPresentationScope.read(context).openSession(
                   projectId: targetProjectId,
@@ -54,54 +46,37 @@ class const SubtaskPartWidget({
                   readOnly: true,
                 )
               : null,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(PregoRadius.md),
-              border: Border.all(color: prego.colors.borderSecondary),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                switch (status) {
-                  TranscriptStepStatus.running => const TranscriptLiveSparkle(),
-                  TranscriptStepStatus.finished => Icon(
-                    TablerRegular.robot,
-                    size: PregoIconSize.sm,
-                    color: prego.colors.textTertiary,
-                  ),
-                  TranscriptStepStatus.failed => Icon(
-                    TablerSolid.alert_circle,
-                    size: PregoIconSize.sm,
-                    color: prego.colors.fgErrorPrimary,
-                  ),
-                },
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: .start,
-                    children: [
-                      if (status == TranscriptStepStatus.running)
-                        TranscriptLiveLabel(label: title, semanticLabel: description)
-                      else
-                        title,
-                      if (agent.isNotEmpty)
-                        Text(
-                          agent,
-                          style: prego.textTheme.textXs.regular.copyWith(
-                            color: prego.colors.textSecondary,
-                          ),
-                        ),
-                    ],
-                  ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TranscriptStepRow(
+                  leading: switch (status) {
+                    TranscriptStepStatus.running => const TranscriptLiveSparkle(),
+                    TranscriptStepStatus.finished => Icon(
+                      TablerRegular.robot,
+                      size: PregoIconSize.sm,
+                      color: prego.colors.textTertiary,
+                    ),
+                    TranscriptStepStatus.failed => Icon(
+                      TablerSolid.alert_circle,
+                      size: PregoIconSize.sm,
+                      color: prego.colors.fgErrorPrimary,
+                    ),
+                  },
+                  label: part.agent.isNotEmpty ? part.agent : loc.sessionDetailAgentFallback,
+                  detail: TextSpan(text: description),
+                  live: status == TranscriptStepStatus.running,
+                  color: null,
+                  below: null,
                 ),
-                if (targetSessionId != null && targetProjectId != null)
-                  Icon(
-                    TablerRegular.chevron_right,
-                    size: PregoIconSize.md,
-                    color: prego.colors.textSecondary,
-                  ),
-              ],
-            ),
+              ),
+              if (targetSessionId != null && targetProjectId != null)
+                Icon(
+                  TablerRegular.chevron_right,
+                  size: PregoIconSize.md,
+                  color: prego.colors.textSecondary,
+                ),
+            ],
           ),
         ),
       ),

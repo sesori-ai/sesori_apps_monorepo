@@ -141,34 +141,34 @@ void main() {
 
     expect(find.text("Thought · 2 steps · 1 sub-agent"), findsOneWidget);
     expect(find.text(" · 1 failed"), findsOneWidget);
-    expect(find.text("read"), findsNothing);
+    expect(find.text("Read"), findsNothing);
     final collapsed = _height(tester);
 
     await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.r1")));
     await tester.pumpAndSettle();
     expect(find.byType(PregoPopover), findsOneWidget);
-    expect(find.text("Thought"), findsOneWidget);
-    expect(find.text("read"), findsOneWidget);
-    expect(find.text("grep"), findsOneWidget);
-    expect(find.text("Explore the repo"), findsOneWidget);
+    expect(find.text("Thought Plan the change"), findsOneWidget);
+    expect(find.text("Read"), findsOneWidget);
+    expect(find.text("Grep"), findsOneWidget);
+    expect(find.text("Agent Explore the repo"), findsOneWidget);
     // Finished rows say nothing; the failure keeps one signal.
     expect(find.text("Done"), findsNothing);
     expect(find.text("Failed"), findsNothing);
     expect(find.byIcon(TablerSolid.alert_circle), findsOneWidget);
     // The popover sits below the summary and leaves the transcript alone.
-    expect(tester.getTopLeft(find.text("read")).dy, greaterThan(tester.getBottomLeft(find.text(" · 1 failed")).dy));
+    expect(tester.getTopLeft(find.text("Read")).dy, greaterThan(tester.getBottomLeft(find.text(" · 1 failed")).dy));
     expect(_height(tester), collapsed);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
-    expect(find.text("read"), findsNothing);
+    expect(find.text("Read"), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.r1")));
     await tester.pumpAndSettle();
-    expect(find.text("read"), findsOneWidget);
+    expect(find.text("Read"), findsOneWidget);
     await tester.tapAt(const Offset(700, 580));
     await tester.pumpAndSettle();
-    expect(find.text("read"), findsNothing);
+    expect(find.text("Read"), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -180,13 +180,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(PregoBottomSheet), findsOneWidget);
     expect(find.text("Thought · 2 steps · 1 sub-agent · 1 failed"), findsOneWidget);
-    expect(find.text("read"), findsOneWidget);
-    expect(find.text("Explore the repo"), findsOneWidget);
+    expect(find.text("Read"), findsOneWidget);
+    expect(find.text("Agent Explore the repo"), findsOneWidget);
     expect(_height(tester), collapsed);
 
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
-    expect(find.text("read"), findsNothing);
+    expect(find.text("Read"), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -211,10 +211,10 @@ void main() {
       await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.k1")));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("Explore the repo"));
+      await tester.tap(find.text("Agent Explore the repo"));
       await tester.pumpAndSettle();
       expect(opened, ["child"]);
-      expect(find.text("Explore the repo"), findsNothing);
+      expect(find.text("Agent Explore the repo"), findsNothing);
       expect(tester.takeException(), isNull);
     });
   }
@@ -228,7 +228,7 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.r1")));
     await tester.pumpAndSettle();
-    expect(find.ancestor(of: find.text("read"), matching: find.byType(PregoReadableSelectionArea)), findsOneWidget);
+    expect(find.ancestor(of: find.text("Read"), matching: find.byType(PregoReadableSelectionArea)), findsOneWidget);
   });
 
   testWidgets("reduced motion opens a group's popover at once", (tester) async {
@@ -244,8 +244,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.r1")));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 16));
-    expect(find.text("read"), findsOneWidget);
-    final fades = tester.widgetList<Opacity>(find.ancestor(of: find.text("read"), matching: find.byType(Opacity)));
+    expect(find.text("Read"), findsOneWidget);
+    final fades = tester.widgetList<Opacity>(find.ancestor(of: find.text("Read"), matching: find.byType(Opacity)));
     expect(fades.every((fade) => fade.opacity == 1), isTrue);
     expect(_height(tester), collapsed);
   });
@@ -259,9 +259,9 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey("transcriptGroup.toggle.t0")));
     await tester.pumpAndSettle();
-    expect(find.text("tool 0"), findsOneWidget);
+    expect(find.text("Tool 0"), findsOneWidget);
     expect(_height(tester), collapsed);
-    final panel = find.ancestor(of: find.text("tool 0"), matching: find.byType(SingleChildScrollView));
+    final panel = find.ancestor(of: find.text("Tool 0"), matching: find.byType(SingleChildScrollView));
     expect(tester.getSize(panel).height, lessThanOrEqualTo(TranscriptGroupWidget.panelMaxHeight));
   });
 
@@ -274,7 +274,7 @@ void main() {
       ),
     );
 
-    expect(find.text("read"), findsOneWidget);
+    expect(find.text("Read"), findsOneWidget);
     expect(find.text("1 step"), findsNothing);
     expect(find.byKey(const ValueKey("transcriptGroup.summary")), findsNothing);
     expect(find.byType(ToolPartWidget), findsOneWidget);
@@ -295,7 +295,7 @@ void main() {
 
     // The finished step stays in step order, below the running one.
     expect(find.text("1 step"), findsNothing);
-    expect(tester.getTopLeft(find.text("read")).dy, greaterThan(tester.getTopLeft(find.text("bash")).dy));
+    expect(tester.getTopLeft(find.text("Read")).dy, greaterThan(tester.getTopLeft(find.text("Bash")).dy));
 
     await tester.pumpWidget(
       _app(
@@ -305,12 +305,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     // Both rows fold into the new summary above them rather than popping.
     expect(find.text("2 steps"), findsOneWidget);
-    expect(find.text("read"), findsOneWidget);
-    expect(tester.getTopLeft(find.text("2 steps")).dy, lessThan(tester.getTopLeft(find.text("bash")).dy));
+    expect(find.text("Read"), findsOneWidget);
+    expect(tester.getTopLeft(find.text("2 steps")).dy, lessThan(tester.getTopLeft(find.text("Bash")).dy));
 
     await tester.pumpAndSettle();
-    expect(find.text("bash"), findsNothing);
-    expect(find.text("read"), findsNothing);
+    expect(find.text("Bash"), findsNothing);
+    expect(find.text("Read"), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -337,9 +337,9 @@ void main() {
 
     // Midway the live row is still there, shorter and fading, and only the
     // number rolls: the old one leaves as the new one arrives.
-    expect(find.text("notes"), findsOneWidget);
+    expect(find.text("Notes"), findsOneWidget);
     expect(_height(tester), lessThan(live));
-    final opacities = tester.widgetList<Opacity>(find.ancestor(of: find.text("notes"), matching: find.byType(Opacity)));
+    final opacities = tester.widgetList<Opacity>(find.ancestor(of: find.text("Notes"), matching: find.byType(Opacity)));
     expect(opacities.any((opacity) => opacity.opacity > 0 && opacity.opacity < 1), isTrue);
     expect(find.text("read "), findsOneWidget);
     expect(find.text("2"), findsOneWidget);
@@ -348,7 +348,7 @@ void main() {
     expect(tester.getTopLeft(find.text("3")).dy, greaterThan(tester.getTopLeft(find.text("2")).dy));
 
     await tester.pump(const Duration(milliseconds: 150));
-    expect(find.text("notes"), findsNothing);
+    expect(find.text("Notes"), findsNothing);
     expect(find.text("read 3 files"), findsOneWidget);
     expect(_height(tester), lessThan(live));
     expect(tester.takeException(), isNull);
@@ -377,7 +377,7 @@ void main() {
     expect(tester.takeException(), isNull);
 
     await tester.pumpAndSettle();
-    expect(find.text("bash"), findsNothing);
+    expect(find.text("Bash"), findsNothing);
     expect(find.text("2 steps"), findsOneWidget);
   });
 
@@ -399,7 +399,7 @@ void main() {
       ),
     );
 
-    expect(find.text("bash"), findsNothing);
+    expect(find.text("Bash"), findsNothing);
     expect(find.text("2 steps"), findsOneWidget);
     expect(tester.hasRunningAnimations, isFalse);
   });
@@ -428,7 +428,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     // The finished row stays; only the new live row eased in below it.
     expect(find.text("1 step"), findsNothing);
-    expect(tester.getTopLeft(find.text("read")).dy, lessThan(tester.getTopLeft(find.text("bash")).dy));
+    expect(tester.getTopLeft(find.text("Read")).dy, lessThan(tester.getTopLeft(find.text("Bash")).dy));
     final twoRows = _height(tester);
     expect(twoRows, greaterThan(oneRow));
 
@@ -446,18 +446,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     // The finished rows fold while the summary and the new row grow.
     expect(find.text("2 steps"), findsOneWidget);
-    expect(find.text("grep"), findsOneWidget);
+    expect(find.text("Grep"), findsOneWidget);
     // The new summary already sits above the rows folding into it.
-    expect(tester.getTopLeft(find.text("2 steps")).dy, lessThan(tester.getTopLeft(find.text("read")).dy));
-    expect(tester.getTopLeft(find.text("bash")).dy, lessThan(tester.getTopLeft(find.text("grep")).dy));
+    expect(tester.getTopLeft(find.text("2 steps")).dy, lessThan(tester.getTopLeft(find.text("Read")).dy));
+    expect(tester.getTopLeft(find.text("Bash")).dy, lessThan(tester.getTopLeft(find.text("Grep")).dy));
     Iterable<String> presences() => tester.stateList(find.byType(TranscriptPresence)).map((state) => "$state");
     expect(presences().where((state) => state.contains("tracking 1 ticker")), isNotEmpty);
 
     await tester.pump(const Duration(milliseconds: 150));
     // Settled rows hold no controller or ticker.
     expect(presences().where((state) => state.contains("tracking 1 ticker")), isEmpty);
-    expect(find.text("read"), findsNothing);
-    expect(find.text("bash"), findsNothing);
+    expect(find.text("Read"), findsNothing);
+    expect(find.text("Bash"), findsNothing);
   });
 
   testWidgets("the summary names tool calls by kind and keeps unknown kinds as steps", (tester) async {
@@ -517,6 +517,6 @@ void main() {
 
     expect(find.byType(TranscriptDisclosure), findsNothing);
     expect(find.text("Thinking..."), findsOneWidget);
-    expect(find.text("Explore the repo"), findsOneWidget);
+    expect(find.text("Agent Explore the repo"), findsOneWidget);
   });
 }

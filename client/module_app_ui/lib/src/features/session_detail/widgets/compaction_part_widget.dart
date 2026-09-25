@@ -6,35 +6,36 @@ import "../../../extensions/build_context_x.dart";
 import "../../../widgets/markdown_styles.dart";
 import "../session_detail_presentation_scope.dart";
 import "text_part_widget.dart";
+import "transcript_live_row.dart";
 
 /// The quiet transcript row marking where the harness compacted its context.
 /// Tapping it opens the carried-forward [summary]; without one it is inert.
 class const CompactionPartWidget({super.key, required final String? summary}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final prego = context.prego;
     final summary = this.summary;
-    final color = prego.colors.textSecondary;
-    return TextButton(
-      onPressed: summary == null ? null : () => _showSummary(context: context, summary: summary),
-      style: TextButton.styleFrom(
-        foregroundColor: color,
-        disabledForegroundColor: color,
-        padding: EdgeInsets.zero,
-        minimumSize: const Size(44, 44),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        alignment: AlignmentDirectional.centerStart,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xs)),
-      ),
-      child: Row(
-        children: [
-          Icon(TablerRegular.fold, size: PregoIconSize.sm, color: color),
-          SizedBox(width: prego.spacing.md),
-          Text(
-            context.loc.sessionDetailContextCompacted,
-            style: prego.textTheme.textSm.regular.copyWith(color: color),
-          ),
-        ],
+    final color = context.prego.colors.textSecondary;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: TextButton(
+        onPressed: summary == null ? null : () => _showSummary(context: context, summary: summary),
+        style: TextButton.styleFrom(
+          foregroundColor: color,
+          disabledForegroundColor: color,
+          padding: EdgeInsets.zero,
+          minimumSize: const Size(44, 44),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          alignment: AlignmentDirectional.centerStart,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xs)),
+        ),
+        child: TranscriptStepRow(
+          leading: Icon(TablerRegular.fold, size: PregoIconSize.sm, color: color),
+          label: context.loc.sessionDetailContextCompacted,
+          detail: null,
+          live: false,
+          color: null,
+          below: null,
+        ),
       ),
     );
   }

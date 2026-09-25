@@ -34,6 +34,9 @@ void main() {
     );
   }
 
+  /// A finished thought reads as one line: its label, then its preview.
+  Finder finishedRow(String preview) => find.text("Thought $preview");
+
   group("empty state", () {
     testWidgets("returns SizedBox.shrink when text is empty and not streaming", (tester) async {
       await tester.pumpWidget(buildApp(text: "", isStreaming: false));
@@ -60,7 +63,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("First line of reasoning"), findsOneWidget);
+      expect(finishedRow("First line of reasoning"), findsOneWidget);
     });
 
     testWidgets("strips bold markdown from preview", (tester) async {
@@ -69,7 +72,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("Investigating how xyz works"), findsOneWidget);
+      expect(finishedRow("Investigating how xyz works"), findsOneWidget);
     });
 
     testWidgets("strips italic markdown from preview", (tester) async {
@@ -78,7 +81,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("Summarizing why abc is important"), findsOneWidget);
+      expect(finishedRow("Summarizing why abc is important"), findsOneWidget);
     });
 
     testWidgets("strips heading markdown from preview", (tester) async {
@@ -87,7 +90,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("Planning the approach"), findsOneWidget);
+      expect(finishedRow("Planning the approach"), findsOneWidget);
     });
 
     testWidgets("strips inline code markdown from preview", (tester) async {
@@ -96,7 +99,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("Checking foo() method"), findsOneWidget);
+      expect(finishedRow("Checking foo() method"), findsOneWidget);
     });
 
     testWidgets("decodes HTML character references in preview", (tester) async {
@@ -105,7 +108,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('The user wants "quoted text".'), findsOneWidget);
+      expect(finishedRow('The user wants "quoted text".'), findsOneWidget);
     });
 
     testWidgets("preserves HTML character references inside inline code", (tester) async {
@@ -114,7 +117,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("The literal entity is &quot;."), findsOneWidget);
+      expect(finishedRow("The literal entity is &quot;."), findsOneWidget);
     });
 
     testWidgets("strips link markdown from preview", (tester) async {
@@ -123,7 +126,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("See docs"), findsOneWidget);
+      expect(finishedRow("See docs"), findsOneWidget);
     });
 
     testWidgets("removes images from preview", (tester) async {
@@ -132,7 +135,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("Reviewing"), findsOneWidget);
+      expect(finishedRow("Reviewing"), findsOneWidget);
     });
 
     testWidgets("handles mixed markdown in preview", (tester) async {
@@ -144,7 +147,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("Bold and italic and code here"), findsOneWidget);
+      expect(finishedRow("Bold and italic and code here"), findsOneWidget);
     });
 
     testWidgets("preview is limited to one line with ellipsis", (tester) async {
@@ -167,7 +170,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("First real line"), findsOneWidget);
+      expect(finishedRow("First real line"), findsOneWidget);
     });
 
     testWidgets("preserves snake_case identifiers", (tester) async {
@@ -179,7 +182,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("session_detail_cubit state management"), findsOneWidget);
+      expect(finishedRow("session_detail_cubit state management"), findsOneWidget);
     });
   });
 
@@ -232,17 +235,11 @@ void main() {
       await tester.pumpWidget(buildApp(text: "Reviewing the next step", isStreaming: false));
 
       final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
-      for (final (text, color) in [
-        ("Thought", prego.colors.textSecondary),
-        ("Reviewing the next step", prego.colors.textTertiary),
-      ]) {
-        final style = tester.widget<Text>(find.text(text)).style!;
-        expect(style.fontSize, 14);
-        expect(style.height, closeTo(20 / 14, 0.001));
-        expect(style.color, color);
-        expect(style.fontStyle, isNot(FontStyle.italic));
-      }
-      expect(tester.getCenter(find.text("Thought")).dy, tester.getCenter(find.text("Reviewing the next step")).dy);
+      final style = tester.widget<Text>(finishedRow("Reviewing the next step")).style;
+      expect(style?.fontSize, 14);
+      expect(style?.height, closeTo(20 / 14, 0.001));
+      expect(style?.color, prego.colors.textSecondary);
+      expect(style?.fontStyle, isNot(FontStyle.italic));
       expect(
         find.descendant(of: find.byType(ReasoningPartCard), matching: find.byType(Container)),
         findsNothing,
@@ -261,8 +258,7 @@ void main() {
 
     await tester.pumpWidget(buildApp(text: "**Updated thought**\n\nFinished detail.", isStreaming: false));
     await tester.pumpAndSettle();
-    expect(find.text("Thought"), findsOneWidget);
-    expect(find.text("Updated thought"), findsOneWidget);
+    expect(finishedRow("Updated thought"), findsOneWidget);
     expect(find.byType(PregoShimmer), findsNothing);
     expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isFalse);
   });
@@ -314,7 +310,7 @@ void main() {
       await tester.pumpWidget(buildApp(text: "Some thought", isStreaming: false));
       await tester.pumpAndSettle();
 
-      expect(find.text("Thought"), findsOneWidget);
+      expect(finishedRow("Some thought"), findsOneWidget);
     });
 
     testWidgets("shows 'Thinking...' when streaming", (tester) async {

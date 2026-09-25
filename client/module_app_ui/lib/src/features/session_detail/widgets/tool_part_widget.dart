@@ -29,10 +29,7 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
               panel: _ToolPanel(part: part),
             )
           else
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: prego.spacing.sm),
-              child: _ToolHeader(part: part),
-            ),
+            _ToolHeader(part: part),
           if (state.attachments.isNotEmpty)
             Padding(
               padding: EdgeInsetsDirectional.only(top: prego.spacing.xs),
@@ -46,8 +43,9 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
     );
   }
 
-  static String _toolName({required AppLocalizations loc, required MessagePartTool part}) =>
-      part.tool.isEmpty ? loc.sessionDetailToolUnknown : part.tool;
+  /// The tool's name as its row, panel and live label show it.
+  static String toolName({required AppLocalizations loc, required MessagePartTool part}) =>
+      TranscriptStepRow.capitalize(label: part.tool.isEmpty ? loc.sessionDetailToolUnknown : part.tool);
 }
 
 /// The tool's one line. A finished tool shows only what it did; a failure keeps
@@ -59,8 +57,8 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
     final loc = context.loc;
     final state = part.state;
     final status = state.status;
-    final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
     final command = state.shellCommand;
+    final title = state.title;
     final live = _isLive(status: status);
 
     if (command != null) {
@@ -72,51 +70,29 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
         ToolStatus.cancelled => loc.sessionDetailToolCancelled,
         ToolStatus.unknown => loc.sessionDetailToolUnknown,
       };
-      final rowStyle = status == ToolStatus.error ? style.copyWith(color: prego.colors.textErrorPrimary) : style;
-      return Row(
-        children: [
-          if (live)
-            const TranscriptLiveSparkle()
-          else
-            Icon(TablerRegular.terminal_2, size: PregoIconSize.sm, color: rowStyle.color),
-          SizedBox(width: prego.spacing.md),
-          Expanded(
-            child: _LiveLabel(
-              live: live,
-              label: Text.rich(
-                TextSpan(
-                  text: "$verb ",
-                  children: [
-                    TextSpan(
-                      text: "\$ $command",
-                      style: rowStyle.copyWith(decoration: TextDecoration.underline),
-                    ),
-                  ],
-                ),
-                style: rowStyle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              semanticLabel: "$verb \$ $command",
-            ),
-          ),
-        ],
+      final color = status == ToolStatus.error ? prego.colors.textErrorPrimary : prego.colors.textSecondary;
+      return TranscriptStepRow(
+        leading: live
+            ? const TranscriptLiveSparkle()
+            : Icon(TablerRegular.terminal_2, size: PregoIconSize.sm, color: color),
+        label: verb,
+        detail: TextSpan(
+          text: "\$ $command",
+          style: const TextStyle(decoration: TextDecoration.underline),
+        ),
+        live: live,
+        color: color,
+        below: null,
       );
     }
 
-    final label = [ToolPartWidget._toolName(loc: loc, part: part), ?state.title].join(" ");
-    return Row(
-      children: [
-        if (live) const TranscriptLiveSparkle() else _statusIcon(status: status, prego: prego),
-        SizedBox(width: prego.spacing.md),
-        Expanded(
-          child: _LiveLabel(
-            live: live,
-            label: Text(label, style: style, maxLines: 1, overflow: .ellipsis),
-            semanticLabel: label,
-          ),
-        ),
-      ],
+    return TranscriptStepRow(
+      leading: live ? const TranscriptLiveSparkle() : _statusIcon(status: status, prego: prego),
+      label: ToolPartWidget.toolName(loc: loc, part: part),
+      detail: title == null ? null : TextSpan(text: title),
+      live: live,
+      color: null,
+      below: null,
     );
   }
 
@@ -206,7 +182,7 @@ class _ToolPanelState() extends State<_ToolPanel> {
               children: [
                 Expanded(
                   child: Text(
-                    command != null ? loc.sessionDetailShell : ToolPartWidget._toolName(loc: loc, part: widget.part),
+                    command != null ? loc.sessionDetailShell : ToolPartWidget.toolName(loc: loc, part: widget.part),
                     style: style,
                   ),
                 ),
@@ -283,12 +259,4 @@ class _ToolPanelState() extends State<_ToolPanel> {
       ),
     );
   }
-}
-
-/// A running step's label shimmers after the sparkle; reduced motion keeps
-/// both still.
-class const _LiveLabel({required final bool live, required final Widget label, required final String semanticLabel})
-    extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => live ? TranscriptLiveLabel(label: label, semanticLabel: semanticLabel) : label;
 }

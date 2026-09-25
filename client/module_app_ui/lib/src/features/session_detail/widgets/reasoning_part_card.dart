@@ -67,76 +67,36 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
 
     final prego = context.prego;
     final loc = context.loc;
-    final label = widget.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought;
-    final heading = Text(
-      label,
-      style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-    );
-
-    final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: MergeSemantics(
         child: Semantics(
           button: true,
-          label: label,
           child: Material(
             type: MaterialType.transparency,
             child: InkWell(
               mouseCursor: WidgetStateMouseCursor.clickable,
               onTap: () => _showFullText(context: context),
               borderRadius: BorderRadius.circular(PregoRadius.xs),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 44),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
+              child: TranscriptStepRow(
+                leading: PregoAiLoader(
+                  animate: widget.isStreaming,
+                  fillMode: .outline,
+                  color: prego.colors.textSecondary,
+                ),
+                label: widget.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
+                detail: widget.isStreaming || widget.text.isEmpty ? null : TextSpan(text: _previewText),
+                live: widget.isStreaming,
+                color: null,
+                // The tail eases in with the first streamed words.
+                below: TranscriptPresenceColumn(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        children: [
-                          PregoAiLoader(
-                            animate: widget.isStreaming,
-                            fillMode: .outline,
-                            color: prego.colors.textSecondary,
-                          ),
-                          SizedBox(width: prego.spacing.md),
-                          if (widget.isStreaming)
-                            Expanded(child: TranscriptLiveLabel(label: heading, semanticLabel: null))
-                          else ...[
-                            ExcludeSemantics(child: heading),
-                            if (widget.text.isNotEmpty) ...[
-                              SizedBox(width: prego.spacing.md),
-                              Expanded(
-                                child: Text(
-                                  _previewText,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: style.copyWith(color: prego.colors.textTertiary),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ],
+                    if (widget.isStreaming && widget.text.isNotEmpty)
+                      _LatestWords(
+                        key: const ValueKey("reasoning.latestWords"),
+                        text: ReasoningPartCard.latestWords(text: widget.text),
+                        style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
                       ),
-                    ),
-                    // The tail eases in with the first streamed words.
-                    TranscriptPresenceColumn(
-                      children: [
-                        if (widget.isStreaming && widget.text.isNotEmpty)
-                          Padding(
-                            key: const ValueKey("reasoning.latestWords"),
-                            // Lines up under the label, past the 20 px sparkle.
-                            padding: EdgeInsetsDirectional.only(start: 20 + prego.spacing.md, bottom: 8),
-                            child: _LatestWords(
-                              text: ReasoningPartCard.latestWords(text: widget.text),
-                              style: style,
-                            ),
-                          ),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -209,7 +169,8 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
 
 /// One line holding the end of [text]: the newest words stay in view and the
 /// older start fades out at the leading edge.
-class const _LatestWords({required final String text, required final TextStyle style}) extends StatelessWidget {
+class const _LatestWords({super.key, required final String text, required final TextStyle style})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final direction = Directionality.of(context);

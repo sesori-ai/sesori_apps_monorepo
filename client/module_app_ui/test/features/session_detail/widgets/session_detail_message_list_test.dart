@@ -1229,7 +1229,7 @@ void main() {
     harnessKey.currentState!.appendNewestMessage(toolMessage(status: ToolStatus.running));
     await settle();
     expect(find.text("Working…"), findsNothing);
-    expectSparkleLeads(find.text("read notes.md"));
+    expectSparkleLeads(find.text("Read notes.md"));
 
     harnessKey.currentState!
       ..removeMessage("assistant-1")
@@ -1300,7 +1300,7 @@ void main() {
       ..appendNewestMessage(assistant(last: ToolStatus.running));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text("read second"), findsOneWidget);
+    expect(find.text("Read second"), findsOneWidget);
     expect(_position(tester).pixels, 0);
 
     harnessKey.currentState!
@@ -1313,7 +1313,7 @@ void main() {
       expect(_position(tester).pixels, 0);
       expect(find.byKey(_jumpToLatestKey), findsNothing);
     }
-    expect(find.text("read second"), findsNothing);
+    expect(find.text("Read second"), findsNothing);
     expect(find.text("2 steps"), findsOneWidget);
     expect(find.text("Working…"), findsOneWidget);
   });
