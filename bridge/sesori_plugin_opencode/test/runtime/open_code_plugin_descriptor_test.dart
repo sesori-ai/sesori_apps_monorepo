@@ -796,6 +796,26 @@ void main() {
       expect(host.ownershipRecord("owner-current"), isNull);
       expect(apiRecorder.last, isNull);
     });
+
+    test("an abort raised during the protocol probe wins over the v2 refusal", () async {
+      host.ports.defaultBindable = true;
+      var infoRequests = 0;
+      final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
+        buildApi: apiRecorder.build,
+        // The health check reads `/api/info` first; the second read is the protocol probe.
+        probeClientFactory: () => MockClient((request) async {
+          if (request.url.path != "/api/info") return http.Response("<!doctype html>", 200);
+          if (++infoRequests == 2) host.abort.abort();
+          return http.Response(jsonEncode({"version": "2.0.16"}), 200);
+        }),
+        candidatePorts: const <int>[51000],
+        random: Random(1),
+      );
+
+      await expectLater(descriptor.start(host), throwsA(isA<PluginStartAbortedException>()));
+      expect(host.ownershipRecord("owner-current"), isNull);
+    });
   });
 
   group("OpenCodePluginDescriptor.start (attach / --no-auto-start)", () {

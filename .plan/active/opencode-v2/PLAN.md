@@ -138,8 +138,8 @@ Series titles: `<emoji> [opencode-v2] <description> [step x/10]`.
    - A new top-level `probeOpenCodeProtocol(...)` sits next to `probeOpenCodeHealth` and uses the same probe client
      factory. It maps `/api/info` to the sealed `OpenCodeProtocol { OpenCodeProtocolV1 | OpenCodeProtocolV2(version) }`
      in `lib/src/runtime/open_code_protocol.dart`.
-   - Descriptor `start`: on v2, stop the owned runtime and throw `PluginStartException`: "OpenCode 2.x support is not
-     available yet; install OpenCode 1.x or pass --opencode-bin".
+   - Descriptor `start`: on v2, stop the owned runtime and throw `PluginStartException` that names the version and
+     says not to downgrade, because 2.x has already migrated the database in place.
    - Catalog guard (D5): `OpenCodeCatalogDatabaseApi` reports whether the `session_v2` table exists as a field on
      `OpenCodeCatalogDatabaseSnapshot`. `OpenCodeCatalogRepository.read` returns `PluginCatalogSnapshotUnavailable`
      when it is set.
@@ -203,6 +203,9 @@ Series titles: `<emoji> [opencode-v2] <description> [step x/10]`.
        (the D4 check stays in the descriptor), and passes the protocol to `_defaultBuildApi`.
      - `_defaultBuildApi` switches on the protocol to construct `OpenCodePlugin` or `OpenCodeV2Plugin`.
      - The Step 2 blanket refusal is removed.
+     - `--no-auto-start` with no server at start (`handle == null`) has no protocol to probe. Decide how the
+       server that appears later gets its adapter: probe on late connect, or require a bridge restart. Today
+       that path silently builds the v1 adapter.
    - Tests: a plugin test against a loopback fake v2 server, as the v1 impl test does.
 8. **🌿 Managed runtime on v2 (D9).**
    - `OpenCodeRuntimeManifest`:

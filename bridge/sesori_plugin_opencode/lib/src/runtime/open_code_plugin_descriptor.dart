@@ -713,6 +713,16 @@ class const OpenCodePluginDescriptor({
       }
     }
 
+    // Probe before the late-abort check so an abort during the probe is honored.
+    final protocol = handle == null
+        ? null
+        : await probeOpenCodeProtocol(
+            port: port,
+            password: apiPassword,
+            clientFactory: probeClientFactory,
+            host: connectHost,
+          );
+
     // Honor a late abort: a managed start the supervisor returned just as the
     // bridge aborted must release the owned child before we surface it.
     if (host.startAborted.isAborted) {
@@ -725,22 +735,17 @@ class const OpenCodePluginDescriptor({
 
     // OpenCode 2.x speaks an HTTP protocol this plugin cannot drive yet. Refuse
     // it now, releasing an owned child, instead of failing later on every call.
-    if (handle != null) {
-      final protocol = await probeOpenCodeProtocol(
-        port: port,
-        password: apiPassword,
-        clientFactory: probeClientFactory,
-        host: connectHost,
-      );
-      if (protocol case OpenCodeProtocolV2(:final version)) {
-        if (handle case ManagedRuntimeHandle(isOwned: true, :final record?)) {
-          await service.stopOwnedRuntime(record: record);
-        }
-        throw PluginStartException(
-          "OpenCode ${version.raw} is not supported yet; install OpenCode 1.x or pass --opencode-bin",
-          cause: null,
-        );
+    // 2.x has already migrated the OpenCode database in place, so the message
+    // must not suggest going back to 1.x.
+    if (protocol case OpenCodeProtocolV2(:final version)) {
+      if (handle case ManagedRuntimeHandle(isOwned: true, :final record?)) {
+        await service.stopOwnedRuntime(record: record);
       }
+      throw PluginStartException(
+        "OpenCode ${version.raw} is not supported by this Sesori bridge yet; "
+        "do not downgrade OpenCode, update the Sesori bridge once 2.x support ships",
+        cause: null,
+      );
     }
 
     final ownedRecord = handle?.record;

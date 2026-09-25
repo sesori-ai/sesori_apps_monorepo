@@ -288,8 +288,8 @@ Future<OpenCodeProtocol> probeOpenCodeProtocol({
       }
     }
     return const OpenCodeProtocolV1();
-  } on Object catch (error) {
-    Log.d("[opencode] protocol probe failed; assuming OpenCode 1.x: $error");
+  } on Object catch (error, stackTrace) {
+    Log.w("[opencode] protocol probe failed; assuming OpenCode 1.x", error, stackTrace);
     return const OpenCodeProtocolV1();
   } finally {
     client.close();
