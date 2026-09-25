@@ -12,7 +12,7 @@ import "../session_detail/widgets/session_auto_continuation_notice.dart";
 /// to the session's own notice, which explains them; an older bridge sends no
 /// view at all.
 int? sessionScheduledResumeAt({required SessionAutoContinuationView? view}) {
-  if (view == null || !view.enabled || view.availability == AutoContinuationAvailability.unavailable) return null;
+  if (view == null || !view.enabled || view.availability != AutoContinuationAvailability.conditional) return null;
   return switch (view.status) {
     SessionAutoContinuationResetKnown(:final continueAt) => continueAt,
     SessionAutoContinuationIdle() ||

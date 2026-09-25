@@ -5,8 +5,9 @@ Branch `visual-hierarchy/auto-resume-indicator`.
 ## What changed
 
 - `sessionScheduledResumeAt` in `module_app_ui` is the one rule: a row is
-  scheduled when the view is enabled, its availability is not `unavailable`
-  and its status is `resetKnown`. It returns that status's `continueAt`.
+  scheduled when the view is enabled, its availability is `conditional`
+  and its status is `resetKnown`. An unrecognised availability decodes to
+  `unknown` and does not count, matching the notice and menu. It returns that status's `continueAt`.
 - `SessionScheduledResume` draws a clock and the local time in the row's
   `textXs` secondary style. `sessionScheduledResumeDescription` gives the full
   "Resumes at <date and time>" label, formatted by the notice's
@@ -33,10 +34,11 @@ Branch `visual-hierarchy/auto-resume-indicator`.
 
 - `module_app_ui` `test/features/session_list`: 53 passed, including new
   `SessionTile` tests for the scheduled row, running and waiting precedence,
-  and disabled, unavailable and `null` views.
-- `desktop` `desktop_cockpit_shell_test`: 65 passed, including a new test for
+  and disabled, unavailable, unknown-availability and `null` views.
+- `desktop` `desktop_cockpit_shell_test`: 66 passed, including a new test for
   a scheduled sidebar row, an offer that is not enabled, a running row and an
-  older bridge's `null` view.
+  older bridge's `null` view, plus one for the Activity row: scheduled while
+  unread, and running wins.
 - `app` `test/features/session_list`: 58 passed.
 - `dart analyze --fatal-infos` is clean in module_app_ui, desktop and app.
 - Fixture-only before and after renders for the desktop sidebar and project

@@ -1239,6 +1239,43 @@ void main() {
     expect(find.byIcon(TablerRegular.clock), findsOneWidget);
   });
 
+  testWidgets("an Activity row shows a scheduled auto-continuation unless the session runs", (tester) async {
+    final continueAt = DateTime.now().add(const Duration(minutes: 1)).millisecondsSinceEpoch;
+    Session session({required String id}) => _session(id: id).copyWith(
+      time: SessionTime(created: 1, updated: DateTime.now().millisecondsSinceEpoch, archived: null),
+      autoContinuation: SessionAutoContinuationView(
+        enabled: true,
+        availability: AutoContinuationAvailability.conditional,
+        status: SessionAutoContinuationStatus.resetKnown(resetAt: continueAt, continueAt: continueAt),
+      ),
+    );
+    final sessions = [session(id: "unread"), session(id: "running")];
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: const {
+            "running": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+          },
+          listStateBySessionId: const {"unread": (unseen: true, lastUserActivityAt: null)},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+
+    final unreadRow = find.byKey(const ValueKey("sidebar-activity-session-project-1-unread"));
+    final runningRow = find.byKey(const ValueKey("sidebar-activity-session-project-1-running"));
+    expect(unreadRow, findsOneWidget);
+    expect(runningRow, findsOneWidget);
+    expect(find.descendant(of: unreadRow, matching: find.byIcon(TablerRegular.clock)), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("^unread, .*New activity, Resumes at ")), findsOneWidget);
+    expect(find.descendant(of: runningRow, matching: find.byIcon(TablerRegular.clock)), findsNothing);
+    expect(find.bySemanticsLabel(RegExp("^running, .*Resumes")), findsNothing);
+  });
+
   testWidgets("drag resizes immediately, persists on end, and double-click resets", (tester) async {
     await tester.pumpWidget(app(state: running));
     final gesture = await tester.startGesture(tester.getCenter(resize));

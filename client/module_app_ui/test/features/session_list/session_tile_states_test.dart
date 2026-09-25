@@ -532,10 +532,11 @@ void main() {
       });
     }
 
-    testWidgets("a disabled or unavailable preference and an older bridge keep the time", (tester) async {
+    testWidgets("a disabled, unavailable or unknown preference and an older bridge keep the time", (tester) async {
       for (final session in [
         scheduled(enabled: false),
         scheduled(availability: .unavailable),
+        scheduled(availability: .unknown),
         testSession(title: "My Session", updatedAt: now),
       ]) {
         await pumpTile(tester, tile(session: session));
