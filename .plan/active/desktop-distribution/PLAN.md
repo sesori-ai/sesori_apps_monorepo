@@ -420,8 +420,16 @@ superseded separate desktop-tag/approval assumptions; keep useful read-only QA t
 `🌿 [desktop-distribution] Grant desktop callers read-only PR provenance [step 8.k/14]`.
 Grant only the nested upgrade jobs' required `pull-requests: read` to both desktop
 callers, including when those jobs are skipped. Reproduce the omission in the workflow
-contract test, then verify the correction and GitHub call-graph admission. No new
-mutable state, credentials, write authority or cleanup is needed.
+contract test, then verify the correction and GitHub call-graph admission. Merged as
+#1730; the next scheduled shared run passed for internal build 983. No new mutable
+state, credentials, write authority or cleanup is needed.
+
+**Step 6 acceptance record:**
+`🌱 [desktop-distribution] Record shared-cycle and candidate acceptance [step 8.l/14]`.
+Record the successful shared internal cycle and read-only preparation separately from
+stable build 981's fresh authenticated/Bridge-Off replacement on both CPUs. Docs-only;
+no new state or cleanup. Public admission, production attachment, minimum-OS and
+remaining parent Gate C coverage are still open; do not retire the plan.
 
 **Step 6 continuation PR:**
 `🚧 [desktop-distribution] Qualify signed macOS manual replacement [step 8/14]`.
