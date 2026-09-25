@@ -47,7 +47,7 @@ enum PluginMessagePartType() {
   unknown;
 
   /// Whether this part type is visible to mobile (rendered in the UI).
-  bool get isVisible => this != snapshot && this != patch && this != compaction && this != unknown;
+  bool get isVisible => this != snapshot && this != patch && this != unknown;
 }
 
 @freezed
@@ -148,9 +148,16 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     @JsonKey(includeToJson: true) required String retryError,
   }) = PluginMessagePartRetry;
 
+  /// The harness compacted its context here.
   @FreezedUnionValue("compaction")
-  const factory compaction({required String id, required String sessionID, required String messageID}) =
-      PluginMessagePartCompaction;
+  const factory compaction({
+    required String id,
+    required String sessionID,
+    required String messageID,
+
+    /// The continuation summary, or null when the harness does not expose one.
+    @JsonKey(includeToJson: true) required String? summary,
+  }) = PluginMessagePartCompaction;
 
   @FreezedUnionValue("unknown")
   const factory unknown({required String id, required String sessionID, required String messageID}) =

@@ -12,6 +12,7 @@ import "opencode_message_id.dart";
 import "prompt_message_tracker.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
+import "summary_message_tracker.dart";
 
 enum _StaleSessionOption() {
   agent,
@@ -62,6 +63,7 @@ class OpenCodePlugin._({
   final SseEventMapper _mapper = SseEventMapper(assistantMessageMapper: _assistantMessageMapper);
 
   final PromptMessageTracker _promptMessages = PromptMessageTracker();
+  final SummaryMessageTracker _summaryMessages = SummaryMessageTracker();
   final PluginModelMapper _pluginModelMapper = const PluginModelMapper(
     messagePartMapper: MessagePartMapper(),
     maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
@@ -333,6 +335,7 @@ class OpenCodePlugin._({
     Log.v("[shutdown] OpenCodePlugin.dispose: stopping SSE connection");
     _sseConnection.stop();
     _promptMessages.clear();
+    _summaryMessages.clear();
     // Each teardown step is isolated so a failure in one does not prevent the
     // remaining cleanup (http client + event buffer below) from running.
     try {
@@ -856,10 +859,12 @@ class OpenCodePlugin._({
           }
 
           final canonicalEvent = _canonicalizeEvent(event);
+          _summaryMessages.observe(canonicalEvent);
           final bridgeEvent = _mapper.map(
             canonicalEvent,
             displaySessionId: _displaySessionIdForEvent(canonicalEvent),
             promptId: _promptIdForEvent(canonicalEvent),
+            summaryMessageIds: _summaryMessages.messageIds,
           );
           if (bridgeEvent != null) {
             _eventBuffer.add(bridgeEvent);

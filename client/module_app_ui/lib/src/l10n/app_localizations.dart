@@ -4069,6 +4069,18 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get sessionDetailRetryLabel;
 
+  /// Quiet transcript row marking where the coding agent summarized its earlier conversation to free context space.
+  ///
+  /// In en, this message translates to:
+  /// **'Context compacted'**
+  String get sessionDetailContextCompacted;
+
+  /// Title of the modal showing the summary the coding agent carried forward when it compacted its context.
+  ///
+  /// In en, this message translates to:
+  /// **'Compaction summary'**
+  String get sessionDetailCompactionSummaryTitle;
+
   /// No description provided for @sessionDetailCopy.
   ///
   /// In en, this message translates to:

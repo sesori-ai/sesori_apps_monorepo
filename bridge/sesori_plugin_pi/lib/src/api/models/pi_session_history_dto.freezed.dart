@@ -778,12 +778,13 @@ as DateTime,
 @JsonSerializable(createToJson: false)
 
 class PiCompactionEntryDto implements PiSessionEntryDto {
-  const PiCompactionEntryDto({required this.id, required this.parentId, required this.timestamp,  String? $type}): $type = $type ?? 'compaction';
+  const PiCompactionEntryDto({required this.id, required this.parentId, required this.timestamp, @JsonKey(fromJson: _nonEmptyStringOrNull) required this.summary,  String? $type}): $type = $type ?? 'compaction';
   factory PiCompactionEntryDto.fromJson(Map<String, dynamic> json) => _$PiCompactionEntryDtoFromJson(json);
 
 @override final  String id;
 @override final  String? parentId;
 @override final  DateTime timestamp;
+@JsonKey(fromJson: _nonEmptyStringOrNull) final  String? summary;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -799,13 +800,13 @@ $PiCompactionEntryDtoCopyWith<PiCompactionEntryDto> get copyWith => _$PiCompacti
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCompactionEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCompactionEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.summary, summary) || other.summary == summary));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,parentId,timestamp);
+    return Object.hash(runtimeType,id,parentId,timestamp,summary);
 }
 
 
@@ -817,7 +818,7 @@ abstract mixin class $PiCompactionEntryDtoCopyWith<$Res> implements $PiSessionEn
   factory $PiCompactionEntryDtoCopyWith(PiCompactionEntryDto value, $Res Function(PiCompactionEntryDto) _then) = _$PiCompactionEntryDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? parentId, DateTime timestamp
+ String id, String? parentId, DateTime timestamp,@JsonKey(fromJson: _nonEmptyStringOrNull) String? summary
 });
 
 
@@ -834,12 +835,13 @@ class _$PiCompactionEntryDtoCopyWithImpl<$Res>
 
 /// Create a copy of PiSessionEntryDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? parentId = freezed,Object? timestamp = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? parentId = freezed,Object? timestamp = null,Object? summary = freezed,}) {
   return _then(PiCompactionEntryDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,parentId: freezed == parentId ? _self.parentId : parentId // ignore: cast_nullable_to_non_nullable
 as String?,timestamp: null == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -1634,12 +1636,13 @@ as DateTime,
 @JsonSerializable(createToJson: false)
 
 class PiSessionFileCompactionEntryDto implements PiSessionFileEntryDto {
-  const PiSessionFileCompactionEntryDto({required this.id, required this.parentId, required this.timestamp,  String? $type}): $type = $type ?? 'compaction';
+  const PiSessionFileCompactionEntryDto({required this.id, required this.parentId, required this.timestamp, @JsonKey(fromJson: _nonEmptyStringOrNull) required this.summary,  String? $type}): $type = $type ?? 'compaction';
   factory PiSessionFileCompactionEntryDto.fromJson(Map<String, dynamic> json) => _$PiSessionFileCompactionEntryDtoFromJson(json);
 
 @override final  String? id;
 @override final  String? parentId;
 @override final  DateTime timestamp;
+@JsonKey(fromJson: _nonEmptyStringOrNull) final  String? summary;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1655,13 +1658,13 @@ $PiSessionFileCompactionEntryDtoCopyWith<PiSessionFileCompactionEntryDto> get co
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileCompactionEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileCompactionEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.summary, summary) || other.summary == summary));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,parentId,timestamp);
+    return Object.hash(runtimeType,id,parentId,timestamp,summary);
 }
 
 
@@ -1673,7 +1676,7 @@ abstract mixin class $PiSessionFileCompactionEntryDtoCopyWith<$Res> implements $
   factory $PiSessionFileCompactionEntryDtoCopyWith(PiSessionFileCompactionEntryDto value, $Res Function(PiSessionFileCompactionEntryDto) _then) = _$PiSessionFileCompactionEntryDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? id, String? parentId, DateTime timestamp
+ String? id, String? parentId, DateTime timestamp,@JsonKey(fromJson: _nonEmptyStringOrNull) String? summary
 });
 
 
@@ -1690,12 +1693,13 @@ class _$PiSessionFileCompactionEntryDtoCopyWithImpl<$Res>
 
 /// Create a copy of PiSessionFileEntryDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? parentId = freezed,Object? timestamp = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? parentId = freezed,Object? timestamp = null,Object? summary = freezed,}) {
   return _then(PiSessionFileCompactionEntryDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,parentId: freezed == parentId ? _self.parentId : parentId // ignore: cast_nullable_to_non_nullable
 as String?,timestamp: null == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

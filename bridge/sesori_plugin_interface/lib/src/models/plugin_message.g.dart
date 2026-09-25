@@ -140,6 +140,7 @@ Map<String, dynamic> _$PluginMessagePartCompactionToJson(
   'id': instance.id,
   'sessionID': instance.sessionID,
   'messageID': instance.messageID,
+  'summary': ?instance.summary,
   'type': instance.$type,
 };
 

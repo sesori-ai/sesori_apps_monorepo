@@ -1023,10 +1023,11 @@ final class PiSessionProcessRepository({
       parentId: parentId,
       timestamp: timestamp,
     ),
-    PiSessionFileCompactionEntryDto(:final timestamp) => PiSessionEntryDto.compaction(
+    PiSessionFileCompactionEntryDto(:final timestamp, :final summary) => PiSessionEntryDto.compaction(
       id: id,
       parentId: parentId,
       timestamp: timestamp,
+      summary: summary,
     ),
     PiSessionFileBranchSummaryEntryDto(:final timestamp) => PiSessionEntryDto.branchSummary(
       id: id,
