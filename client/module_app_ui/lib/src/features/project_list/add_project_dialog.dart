@@ -543,8 +543,12 @@ class const _Breadcrumb({
       child: Row(
         children: [
           // Icon-only, so the label it drops travels in its semantics.
+          // Marked a button here too, so at a root it reads as a disabled
+          // button rather than as plain text.
           Semantics(
             label: context.loc.folderBrowserParentFolder,
+            button: true,
+            enabled: onNavigateUp != null,
             child: PregoButtonsSolid.iconOnly(
               leadingIcon: TablerRegular.arrow_up,
               hierarchy: PregoButtonsSolidHierarchy.secondary,

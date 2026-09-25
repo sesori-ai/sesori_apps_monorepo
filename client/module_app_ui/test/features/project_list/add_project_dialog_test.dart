@@ -724,6 +724,13 @@ void main() {
       // The root has no parent, so the button stays in place but disabled.
       expect(_upButton, findsOneWidget);
       expect(_button(tester, _upButton).onPressed, isNull);
+      // Screen readers hear a disabled button, not static text.
+      final semantics = tester.ensureSemantics();
+      expect(
+        tester.getSemantics(find.bySemanticsLabel("Parent folder")),
+        isSemantics(label: "Parent folder", isButton: true, hasEnabledState: true, isEnabled: false),
+      );
+      semantics.dispose();
     });
 
     testWidgets("a short breadcrumb segment gets a touch-sized tap target", (tester) async {
