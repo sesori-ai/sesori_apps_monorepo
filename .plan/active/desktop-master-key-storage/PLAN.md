@@ -348,6 +348,9 @@ these boundaries without claiming cross-device synchronization.
 Register database disposal with GetIt. Drift owns the connection/isolate; no new
 lifecycle controller, background flush loop or global file lock. Native fixture
 seeding uses production Dart storage/schema code, not a copied Python/Swift DDL.
+The existing authenticated macOS upgrade fixture seeds per-value credentials and
+retains an old-format desktop baseline. Adapt both during required qualification
+before using that fixture with the cutover; no desktop legacy migration is owed.
 
 ## Complexity, safeguards and cleanup
 
@@ -414,7 +417,7 @@ adapter bridges this split.
 | 4.a | 🚧 [desktop-master-key-storage] Prepare deprecated mobile storage migration [step 7/12] | #1739 merged; domain keys and deprecated importer with recovery tests; not invoked yet. | Completed: 946 lines (773 authored, 173 generated) |
 | 4.b | 🚧 [desktop-master-key-storage] Provide native client persistence capabilities [step 8/12] | #1744 merged; lazy master/directory/source ports and DB-only Android backup exclusion; no shell cutover. | Completed: 590 lines (565 authored, 25 generated) |
 | 4.c | ⚙️ [desktop-master-key-storage] Prepare storage-upgrade recovery [step 9/12] | #1749 merged; localized recovery root and typed bootstrap catch/disposal; no storage cutover. | Completed: 280 lines (261 authored, 19 generated) |
-| 4.d | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 10/12] | All consumers/exports/bootstrap/guidance in lockstep, production import admission, credential backup exclusions, adapter removal and updated native probe. | Preserved checkpoint; approximately 1,470 lines before updated tracking |
+| 4.d | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 10/12] | All consumers/exports/bootstrap/guidance in lockstep, production import admission, credential backup exclusions, adapter removal and updated native probe. | Approximately 1,540 lines including evidence/docs and 86 generated; keep remaining atomic handoff coherent |
 | 5 | 🌿 [desktop-master-key-storage] Complete shared persistence regression documentation [step 11/12] | Reconcile feature/matrix/distribution/support evidence; no additional runtime/database change. | 100–250 authored |
 | 6 | ⚙️ [desktop-master-key-storage] Qualify and retire shared client persistence [step 12/12] | Required full recorded matrix and bounded evidence; retire plan only on pass, not the still-required deprecated importer. | 100–250 authored |
 

@@ -2,8 +2,8 @@
 
 ## Execution
 
-- Status: #1749 merged with 22 passing checks. Reconciling the preserved
-  both-client cutover onto its merged base for PR 10.
+- Status: #1749 merged with 22 passing checks. Reconciled both-client cutover
+  passes focused verification against fixed main `33c7815`; review pending.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
@@ -29,7 +29,7 @@
 | 4.a — Deprecated mobile import | Merged | #1739; 11 recovery tests, three analyses, architecture approval and 24 passing CI checks; unwired. |
 | 4.b — Native capabilities and backup | Merged | #1744; 28 tests, two analyses, architecture approval and 24 passing checks; no native qualification. |
 | 4.c — Startup recovery | Merged | #1749; eight tests, three analyses, architecture approval and 22 passing checks; no storage cutover. |
-| 4.d — Both-client cutover | Reconciling | PR 10; typed consumers, production import admission, native backup exclusions and removal of obsolete runtime adapters. |
+| 4.d — Both-client cutover | Verified locally | PR 10; 24 reconciled shell cases, retained unchanged auth/core evidence and clean analyses; review pending. |
 | 5 — Regression reconciliation | Not started | PR 11; behavior docs also accompany their implementation. |
 | 6 — Required qualification/retirement | Not started | PR 12; plan remains active until recorded mobile + desktop matrix passes. |
 
@@ -171,6 +171,21 @@
   `064dcf8..683077f` (12 paths, 274 lines) without findings; successor excluded.
 - #1749 merged with current-head Codex complete and no findings; its terminal
   monitor report recorded 22 passing checks. Merged base is `33c7815`.
+- Reconciled cutover: 13 mobile and 11 desktop cases pass, including upstream
+  shared-email-login consumers, production admission, pending disable, local
+  auth/preferences and cold reopen. Both shell analyses and exact Android XML
+  exclusions pass. Auth/core source, tests and configs are byte-identical to
+  `ea7550e`, so retain their 85/46 passing cases and clean analyses rather than
+  rerunning unchanged inputs. Across saved latest-per-suite evidence there are
+  163 unique passing cases, not a new full-suite invocation. DI remains the
+  generated checkpoint output; no generated conflicts or hand edits occurred.
+  Formatting checked 35 handwritten Dart files; obsolete runtime interface and
+  adapter symbol searches found no remaining Dart references.
+- Native qualification must replace the authenticated macOS fixture's old
+  per-value seeding and retained desktop baseline before using it with this
+  cutover. Seed with production Dart storage; do not copy SQL/crypto into Swift
+  or Python. The CI-only packaged platform probe already uses shared storage,
+  but it has not been executed on a native runner for this cutover.
 - None of this evidence establishes released-mobile migration, mobile
   backup/restore, real credential behavior, packaged replacement or actual
   prompt counts. Those gates remain.

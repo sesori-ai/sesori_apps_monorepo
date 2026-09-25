@@ -7,7 +7,8 @@ commit; it is not a second storage backend or a supported normal-runtime API.
 The declaration narrowly acknowledges `remove_deprecations_in_breaking_versions`:
 this internal module's 0.x version does not retire public mobile upgrade support.
 Same-package deprecation diagnostics are already disabled by workspace policy;
-no new blanket suppression is added.
+no new blanket suppression is added. Mobile startup narrowly acknowledges its
+one deprecated call with the same dated retirement condition.
 
 ## Ownership and admission
 
@@ -22,8 +23,9 @@ no new blanket suppression is added.
 Production mobile resolves and awaits the service after shared/core registration
 and before auth, analytics, preferences or other consumers. Bootstrap checks
 `PersistenceScope.production` **before** resolving it: development must not
-construct the legacy source. Desktop never invokes it. The mobile legacy adapter remains inside its own deprecated folder;
-normal storage/native master adapters never import migration types.
+construct the legacy source. Desktop never invokes it. The mobile legacy adapter
+remains inside its own deprecated folder; normal storage/native master adapters
+never import migration types.
 
 ## Data and restart contract
 

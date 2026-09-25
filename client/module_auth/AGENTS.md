@@ -56,7 +56,7 @@ lib/src/
 
 ## Key Design Decisions
 
-- **Single writer**: Only `AuthManager` writes tokens. No external class can clear, refresh, or store tokens.
+- **Runtime single writer**: `AuthManager` owns token mutations. The isolated deprecated mobile importer only copies prior values before any runtime consumer starts.
 - **Package boundary enforcement**: Internal types (`AuthManager`, storage services) are NOT exported. The `implementation_imports` lint prevents cross-package `src/` imports.
 - **No relay knowledge**: Auth package knows nothing about relay, WebSocket, or room keys. Logout emits `AuthState.unauthenticated` — `ConnectionService` reacts by disconnecting.
 - **Singleflight refresh**: Concurrent token refresh requests are coalesced (`_activeRefresh ??= ...`). Only one refresh HTTP call per expiry window.
