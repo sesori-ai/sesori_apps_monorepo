@@ -2761,11 +2761,35 @@ abstract class AppLocalizations {
   /// **'Fast mode'**
   String get sessionDetailFastMode;
 
-  /// Label of the chip beside the session's model picker while the bridge's YOLO mode is on. Keep the product term YOLO.
+  /// Label of the chip beside the session's model picker while YOLO mode is on for the session. Keep the product term YOLO.
   ///
   /// In en, this message translates to:
   /// **'YOLO'**
   String get sessionDetailYoloChip;
+
+  /// Session approval menu option, and the tooltip of the composer's approval chip, for a session where every permission request waits for the user.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for approval'**
+  String get sessionApprovalAsk;
+
+  /// Session approval menu option that makes Sesori approve every permission request for this session. Keep the product term YOLO.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve everything (YOLO)'**
+  String get sessionApprovalYolo;
+
+  /// Marks the session approval menu option that matches the bridge-wide setting, which sessions follow unless changed.
+  ///
+  /// In en, this message translates to:
+  /// **'{option} (default)'**
+  String sessionApprovalDefaultOption(String option);
+
+  /// Error alert when the bridge did not acknowledge a change to the session's approval mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not change approval for this session. Try again.'**
+  String get sessionApprovalUpdateFailed;
 
   /// Title of the sheet or dialog opened by tapping the YOLO chip on the session page.
   ///

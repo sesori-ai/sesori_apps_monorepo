@@ -34,6 +34,7 @@ import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
 import "../../services/session_abort_service.dart";
+import "../../services/session_approval_service.dart";
 import "../../services/session_auto_continuation_service.dart";
 import "../../services/session_detail_load_service.dart";
 import "../../services/session_interaction_calculator.dart";
@@ -45,6 +46,7 @@ import "local_send_phase.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
 import "session_abort_outcome.dart";
+import "session_approval_control.dart";
 import "session_detail_notice.dart";
 import "session_detail_resolvers.dart";
 import "session_detail_state.dart";
@@ -90,6 +92,7 @@ class SessionDetailCubit(
   required final SessionInteractionCalculator _interactionCalculator,
   required final SessionAbortService _sessionAbortService,
   required final SessionAutoContinuationService _autoContinuationService,
+  required final SessionApprovalService _approvalService,
   required SessionRepository promptDispatcher,
   required final PermissionRepository _permissionRepository,
   required final SessionViewingService _sessionViewingService,
@@ -168,6 +171,7 @@ class SessionDetailCubit(
   bool _backgroundOptionsRefreshInFlight = false;
   bool _abortRequestInFlight = false;
   bool _autoContinuationUpdateInFlight = false;
+  bool _approvalUpdateInFlight = false;
 
   /// Route visibility is separate from app lifecycle visibility. Desktop can
   /// cover the nested session navigator with a root-level settings route while
@@ -230,15 +234,15 @@ class SessionDetailCubit(
         ),
       )
       ..add(_lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged))
-      ..add(_bridgeSettingsService.yoloEnabled.listen(_onYoloEnabled));
+      ..add(_bridgeSettingsService.yoloSettings.listen(_onYoloSettings));
     unawaited(_pluginManagementService.refresh());
     unawaited(_loadMessages(isReload: false));
   }
 
-  void _onYoloEnabled(bool yoloEnabled) {
+  void _onYoloSettings(YoloSettingsResponse settings) {
     if (isClosed) return;
-    if (state case final SessionDetailLoaded current when current.yoloEnabled != yoloEnabled) {
-      emit(current.copyWith(yoloEnabled: yoloEnabled));
+    if (state case final SessionDetailLoaded current when current.bridgeYolo != settings) {
+      emit(current.copyWith(bridgeYolo: settings));
     }
   }
 
@@ -1394,6 +1398,37 @@ class SessionDetailCubit(
     } finally {
       _setAutoContinuationProgress(pending: false);
     }
+  }
+
+  /// Asks the bridge to answer this session's permission requests in [mode].
+  /// The acknowledged session carries the new override.
+  Future<void> setApprovalMode({required SessionApprovalMode mode}) async {
+    if (isClosed || _approvalUpdateInFlight) return;
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    final control = current.approvalControl;
+    if (control is! SessionApprovalPerSession || control.effective == mode) return;
+    _setApprovalProgress(pending: true);
+    try {
+      final updated = await _approvalService.choose(
+        sessionId: _sessionId,
+        mode: mode,
+        bridgeDefault: control.bridgeDefault,
+      );
+      if (isClosed) return;
+      _handleEvent(SesoriSessionUpdated(info: updated));
+    } on Object catch (error, stackTrace) {
+      loge("Failed to set the approval mode for session $_sessionId", error, stackTrace);
+      if (!isClosed) _noticeStream.add(const SessionDetailApprovalUpdateFailed());
+    } finally {
+      _setApprovalProgress(pending: false);
+    }
+  }
+
+  void _setApprovalProgress({required bool pending}) {
+    _approvalUpdateInFlight = pending;
+    if (isClosed) return;
+    if (state case final SessionDetailLoaded current) emit(current.copyWith(isUpdatingApproval: pending));
   }
 
   void _setAutoContinuationProgress({required bool pending}) {
@@ -2955,7 +2990,8 @@ class SessionDetailCubit(
       stagedCommand: null,
       isRefreshing: false,
       availableVariants: reconciled.availableVariants,
-      yoloEnabled: _bridgeSettingsService.yoloEnabled.value,
+      bridgeYolo: _bridgeSettingsService.yoloSettings.value,
+      isUpdatingApproval: _approvalUpdateInFlight,
     );
   }
 

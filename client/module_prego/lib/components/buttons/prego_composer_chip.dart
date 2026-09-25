@@ -6,21 +6,27 @@ import "../surfaces/prego_surfaces.dart";
 /// Quiet pill in the composer's model row: a glyph and a short label on the
 /// composer surface, for session states the user may want to inspect. Without
 /// [showLabel] it is a square glyph button that keeps [label] as its tooltip
-/// and accessible name, for rows too narrow to spare the text.
+/// and accessible name, for rows too narrow to spare the text. [isWarning]
+/// tints the glyph and label for a state that trades safety for speed.
 class const PregoComposerChip({
   super.key,
   required final IconData icon,
   required final String label,
   required final bool showLabel,
+  required final bool isWarning,
   required final PregoComposerSurfaceStyle surfaceStyle,
   required final VoidCallback onPressed,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final foreground = prego.colors.textSecondary;
+    final foreground = isWarning ? prego.colors.textWarningPrimary : prego.colors.textSecondary;
     final borderRadius = BorderRadius.circular(PregoRadius.full);
-    final glyph = Icon(icon, size: PregoIconSize.sm, color: foreground);
+    final glyph = Icon(
+      icon,
+      size: PregoIconSize.sm,
+      color: isWarning ? prego.colors.fgWarningPrimary : prego.colors.textSecondary,
+    );
     final pill = DecoratedBox(
       decoration: pregoComposerSurfaceDecoration(prego: prego, style: surfaceStyle, borderRadius: borderRadius),
       child: Padding(

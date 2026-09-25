@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/session_approval_control.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
@@ -35,6 +36,7 @@ import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
+import "package:sesori_dart_core/src/services/session_approval_service.dart";
 import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
@@ -161,6 +163,7 @@ void main() {
       loadService: loadService,
       sessionAbortService: SessionAbortService(repository: promptDispatcher),
       autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
+      approvalService: SessionApprovalService(repository: promptDispatcher),
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: sessionViewingService ?? stubbedSessionViewingService(),
@@ -182,26 +185,128 @@ void main() {
       await connectionStatus.close();
     });
 
-    test("carries the last-known YOLO flag and follows its changes", () async {
-      final yoloEnabled = BehaviorSubject.seeded(true);
-      addTearDown(yoloEnabled.close);
+    test("carries the last-known YOLO setting and follows its changes", () async {
+      final yoloSettings = BehaviorSubject.seeded(const YoloSettingsResponse(enabled: true));
+      addTearDown(yoloSettings.close);
       final bridgeSettingsService = MockBridgeSettingsService();
-      when(() => bridgeSettingsService.yoloEnabled).thenAnswer((_) => yoloEnabled.stream);
+      when(() => bridgeSettingsService.yoloSettings).thenAnswer((_) => yoloSettings.stream);
       final cubit = buildCubit(bridgeSettingsService: bridgeSettingsService);
       addTearDown(cubit.close);
 
       await awaitState(
         cubit: cubit,
-        predicate: (state) => state is SessionDetailLoaded && state.yoloEnabled,
-        description: "loaded with YOLO on",
+        predicate: (state) => state is SessionDetailLoaded && state.approvalControl is SessionApprovalBridgeWideYolo,
+        description: "loaded with bridge-wide YOLO on",
       );
 
-      yoloEnabled.add(false);
+      yoloSettings.add(const YoloSettingsResponse(enabled: false));
       await awaitState(
         cubit: cubit,
-        predicate: (state) => state is SessionDetailLoaded && !state.yoloEnabled,
-        description: "YOLO off",
+        predicate: (state) => state is SessionDetailLoaded && state.approvalControl is SessionApprovalHidden,
+        description: "YOLO off on an older bridge",
       );
+    });
+
+    group("approval mode", () {
+      Future<SessionDetailCubit> loadedCubit({
+        required bool bridgeYolo,
+        required SessionApprovalMode? sessionOverride,
+      }) async {
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(id: sessionId).copyWith(approvalOverride: sessionOverride),
+        );
+        final yoloSettings = BehaviorSubject.seeded(
+          YoloSettingsResponse(enabled: bridgeYolo, supportsSessionOverride: true),
+        );
+        addTearDown(yoloSettings.close);
+        final bridgeSettingsService = MockBridgeSettingsService();
+        when(() => bridgeSettingsService.yoloSettings).thenAnswer((_) => yoloSettings.stream);
+        final cubit = buildCubit(bridgeSettingsService: bridgeSettingsService);
+        addTearDown(cubit.close);
+        await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded, description: "loaded");
+        return cubit;
+      }
+
+      void replyWith({required SessionApprovalMode? sent}) {
+        when(() => mockSessionRepository.setApprovalOverride(sessionId: sessionId, approvalOverride: sent)).thenAnswer(
+          (_) async => ApiResponse.success(testSession(id: sessionId).copyWith(approvalOverride: sent)),
+        );
+      }
+
+      SessionApprovalControl controlOf(SessionDetailCubit cubit) =>
+          (cubit.state as SessionDetailLoaded).approvalControl;
+
+      test("picking YOLO over an asking default stores a YOLO override", () async {
+        replyWith(sent: SessionApprovalMode.yolo);
+        final cubit = await loadedCubit(bridgeYolo: false, sessionOverride: null);
+        expect(
+          controlOf(cubit),
+          isA<SessionApprovalPerSession>().having((c) => c.effective, "effective", SessionApprovalMode.ask),
+        );
+
+        await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);
+
+        verify(
+          () => mockSessionRepository.setApprovalOverride(
+            sessionId: sessionId,
+            approvalOverride: SessionApprovalMode.yolo,
+          ),
+        ).called(1);
+        expect(
+          controlOf(cubit),
+          isA<SessionApprovalPerSession>()
+              .having((c) => c.effective, "effective", SessionApprovalMode.yolo)
+              .having((c) => c.bridgeDefault, "bridgeDefault", SessionApprovalMode.ask),
+        );
+      });
+
+      test("picking the bridge default clears the override", () async {
+        replyWith(sent: null);
+        final cubit = await loadedCubit(bridgeYolo: true, sessionOverride: SessionApprovalMode.ask);
+
+        await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);
+
+        verify(() => mockSessionRepository.setApprovalOverride(sessionId: sessionId, approvalOverride: null)).called(1);
+        expect(
+          controlOf(cubit),
+          isA<SessionApprovalPerSession>().having((c) => c.effective, "effective", SessionApprovalMode.yolo),
+        );
+      });
+
+      test("picking the current mode sends nothing", () async {
+        final cubit = await loadedCubit(bridgeYolo: true, sessionOverride: null);
+
+        await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);
+
+        verifyNever(
+          () => mockSessionRepository.setApprovalOverride(
+            sessionId: any(named: "sessionId"),
+            approvalOverride: any(named: "approvalOverride"),
+          ),
+        );
+      });
+
+      test("keeps the acknowledged mode and reports a failed change", () async {
+        when(
+          () => mockSessionRepository.setApprovalOverride(
+            sessionId: sessionId,
+            approvalOverride: SessionApprovalMode.yolo,
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        final cubit = await loadedCubit(bridgeYolo: false, sessionOverride: null);
+        final notice = cubit.noticeStream.first;
+
+        await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);
+
+        expect(await notice, isA<SessionDetailApprovalUpdateFailed>());
+        expect(
+          controlOf(cubit),
+          isA<SessionApprovalPerSession>().having((c) => c.effective, "effective", SessionApprovalMode.ask),
+        );
+        expect((cubit.state as SessionDetailLoaded).isUpdatingApproval, isFalse);
+      });
     });
 
     group("auto continuation", () {
@@ -1833,6 +1938,7 @@ void main() {
         loadService: loadService,
         sessionAbortService: SessionAbortService(repository: promptDispatcher),
         autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
+        approvalService: SessionApprovalService(repository: promptDispatcher),
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),

@@ -22,6 +22,7 @@ import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
 import "../services/project_viewing_service.dart";
 import "../services/session_abort_service.dart";
+import "../services/session_approval_service.dart";
 import "../services/session_auto_continuation_service.dart";
 import "../services/session_detail_load_service.dart";
 import "../services/session_interaction_calculator.dart";
@@ -51,6 +52,7 @@ SessionDetailCubit createSessionDetailCubit({
     interactionCalculator: locator<SessionInteractionCalculator>(),
     sessionAbortService: locator<SessionAbortService>(),
     autoContinuationService: locator<SessionAutoContinuationService>(),
+    approvalService: locator<SessionApprovalService>(),
     promptDispatcher: locator<SessionRepository>(),
     permissionRepository: locator<PermissionRepository>(),
     sessionViewingService: locator<SessionViewingService>(),

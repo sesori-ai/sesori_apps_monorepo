@@ -162,6 +162,7 @@ void _registerDependencies({
   getIt.registerSingleton<SessionRepository>(promptDispatcher);
   getIt.registerSingleton<SessionAbortService>(SessionAbortService(repository: promptDispatcher));
   getIt.registerSingleton<SessionAutoContinuationService>(SessionAutoContinuationService(repository: promptDispatcher));
+  getIt.registerSingleton<SessionApprovalService>(SessionApprovalService(repository: promptDispatcher));
   getIt.registerSingleton<PermissionRepository>(permissionRepository);
   getIt.registerSingleton<SessionViewingService>(sessionViewingService);
   getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());

@@ -259,6 +259,17 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<Session>> setApprovalOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) {
+    return _client.patch(
+      "/session/approval-override",
+      fromJson: Session.fromJson,
+      body: SetSessionApprovalOverrideRequest(sessionId: sessionId, approvalOverride: approvalOverride),
+    );
+  }
+
   Future<ApiResponse<void>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,

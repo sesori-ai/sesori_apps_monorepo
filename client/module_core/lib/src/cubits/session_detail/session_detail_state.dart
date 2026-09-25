@@ -8,6 +8,7 @@ import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "local_send_phase.dart";
 import "queued_session_submission.dart";
+import "session_approval_control.dart";
 
 part "session_detail_state.freezed.dart";
 
@@ -85,9 +86,12 @@ sealed class SessionDetailState with _$SessionDetailState {
     required bool isRefreshing,
     @Default([]) List<SessionVariant> availableVariants,
 
-    /// Whether the connected bridge approves every permission request, as
-    /// last known by `BridgeSettingsService`.
-    @Default(false) bool yoloEnabled,
+    /// The connected bridge's YOLO setting, as last known by
+    /// `BridgeSettingsService`. See [SessionDetailLoadedX.approvalControl].
+    @Default(YoloSettingsResponse(enabled: false)) YoloSettingsResponse bridgeYolo,
+
+    /// Whether a change to the session's approval mode awaits the bridge.
+    @Default(false) bool isUpdatingApproval,
   }) = SessionDetailLoaded;
 
   /// The harness is blocked *and* the bridge's store holds nothing for this
@@ -133,6 +137,10 @@ extension SessionDetailLoadedX on SessionDetailLoaded {
   /// Whether the next prompt runs in fast mode.
   bool get runsFastMode =>
       _selection.resolvedFastMode(providers: availableProviders, model: selectedAgentModel, requested: fastMode);
+
+  /// What the composer offers for this session's permission approval.
+  SessionApprovalControl get approvalControl =>
+      SessionApprovalControl.resolve(bridge: bridgeYolo, sessionOverride: session.approvalOverride);
 
   FastModeControl get fastModeControl => _fastModeToggle.control(support: fastModeSupport, fastMode: runsFastMode);
 }

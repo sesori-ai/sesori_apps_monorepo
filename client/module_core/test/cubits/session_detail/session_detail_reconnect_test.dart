@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
+import "package:sesori_dart_core/src/services/session_approval_service.dart";
 import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
@@ -88,6 +89,7 @@ void main() {
       loadService: loadService,
       sessionAbortService: SessionAbortService(repository: promptDispatcher),
       autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
+      approvalService: SessionApprovalService(repository: promptDispatcher),
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: stubbedSessionViewingService(),
@@ -197,6 +199,7 @@ void main() {
       loadService: mockLoadService,
       sessionAbortService: SessionAbortService(repository: mockSessionRepository),
       autoContinuationService: SessionAutoContinuationService(repository: mockSessionRepository),
+      approvalService: SessionApprovalService(repository: mockSessionRepository),
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: stubbedSessionViewingService(),
@@ -312,6 +315,7 @@ void main() {
       loadService: mockLoadService,
       sessionAbortService: SessionAbortService(repository: mockSessionRepository),
       autoContinuationService: SessionAutoContinuationService(repository: mockSessionRepository),
+      approvalService: SessionApprovalService(repository: mockSessionRepository),
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: stubbedSessionViewingService(),

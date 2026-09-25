@@ -20,6 +20,7 @@ import "package:sesori_dart_core/src/repositories/models/session_abort_not_accep
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
+import "package:sesori_dart_core/src/services/session_approval_service.dart";
 import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
@@ -228,6 +229,7 @@ void main() {
         loadService: mockLoadService,
         sessionAbortService: SessionAbortService(repository: mockSessionRepository),
         autoContinuationService: SessionAutoContinuationService(repository: mockSessionRepository),
+        approvalService: SessionApprovalService(repository: mockSessionRepository),
         promptDispatcher: mockSessionRepository,
         permissionRepository: MockPermissionRepository(),
         sessionViewingService: stubbedSessionViewingService(),
