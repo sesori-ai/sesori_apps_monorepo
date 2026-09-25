@@ -262,6 +262,7 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<SessionAutoContinuationService>(
       SessionAutoContinuationService(repository: sessionRepository),
     );
+    getIt.registerSingleton<SessionApprovalService>(SessionApprovalService(repository: sessionRepository));
     getIt.registerSingleton<NewSessionOptionsService>(
       NewSessionOptionsService(
         sessionRepository: sessionRepository,

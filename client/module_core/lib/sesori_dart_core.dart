@@ -227,6 +227,8 @@ export "src/services/project_viewing_service.dart";
 export "src/services/recent_session_inventory_service.dart";
 export "src/services/registered_bridges_service.dart";
 export "src/services/session_abort_service.dart";
+export "src/services/session_approval_calculator.dart";
+export "src/services/session_approval_service.dart";
 export "src/services/session_auto_continuation_service.dart";
 export "src/services/session_detail_load_service.dart";
 export "src/services/session_interaction_calculator.dart";

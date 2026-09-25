@@ -31,6 +31,7 @@ class const SessionAutoContinuationChip({
         icon: TablerRegular.clock,
         label: loc.sessionAutoContinuationChip,
         showLabel: showLabel,
+        isWarning: false,
         surfaceStyle: surfaceStyle,
         onPressed: toggle,
       ),

@@ -65,7 +65,7 @@ later on 2026-09-25, which moved the total to 50; merged steps keep their
 | [x] | 42 | `visual-hierarchy/busy-indicator` | [42/49](#pr-titles) | ≤ 700 | done |
 | [x] | 43 | `visual-hierarchy/continuation-notice` | [43/49](#pr-titles) | ≤ 500 | done |
 | [x] | 44 | `visual-hierarchy/yolo-icon` | [44/49](#pr-titles) | ≤ 150 | done |
-| [ ] | 45 | `visual-hierarchy/session-yolo{,-clients}` | [45/50](#pr-titles) | ≤ 1,200 | part a of 2 done |
+| [x] | 45 | `visual-hierarchy/session-yolo{,-clients}` | [45/50](#pr-titles) | ≤ 1,200 | done |
 | [x] | 46 | `visual-hierarchy/group-motion` | [46/50](#pr-titles) | ≤ 900 | done |
 | [ ] | 47 | `visual-hierarchy/group-popover` | [47/50](#pr-titles) | ≤ 800 | pending |
 | [x] | 50 | `visual-hierarchy/auto-resume-indicator` | [50/50](#pr-titles) | ≤ 400 | done |

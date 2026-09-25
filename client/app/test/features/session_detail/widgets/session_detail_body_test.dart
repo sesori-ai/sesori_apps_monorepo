@@ -183,6 +183,9 @@ SessionDetailLoaded _loadedState({
   );
 }
 
+/// Tabler's `shield-exclamation`, the YOLO glyph (see `YoloChip.icon`).
+const _yoloIcon = IconData(0xF9C6, fontFamily: "TablerRegular", fontPackage: "theme_prego");
+
 const _question = SesoriQuestionAsked(
   id: "question-1",
   sessionID: "session-1",
@@ -774,20 +777,24 @@ void main() {
     expect(find.text("Follow up..."), findsNothing);
   });
 
-  testWidgets("the model row shows the YOLO chip only while YOLO is on", (tester) async {
+  testWidgets("an older bridge shows the read-only YOLO chip only while YOLO is on", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
     expect(find.bySemanticsLabel("YOLO"), findsNothing);
+    expect(find.byKey(const Key("session-approval-chip")), findsNothing);
 
-    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(yoloEnabled: true);
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+    ).copyWith(bridgeYolo: const YoloSettingsResponse(enabled: true));
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
     var bridgeSettingsOpened = 0;
     await tester.pumpWidget(_buildApp(cubit: cubit, onOpenBridgeSettings: () => bridgeSettingsOpened++));
     await tester.pumpAndSettle();
-    expect(find.byIcon(TablerRegular.shield_x), findsOneWidget);
+    expect(find.byIcon(_yoloIcon), findsOneWidget);
 
-    await tester.tap(find.byIcon(TablerRegular.shield_x));
+    await tester.tap(find.byIcon(_yoloIcon));
     await tester.pumpAndSettle();
     expect(find.text("YOLO mode is on"), findsOneWidget);
     expect(
@@ -799,12 +806,54 @@ void main() {
     await tester.pumpAndSettle();
     expect(bridgeSettingsOpened, 1);
     expect(find.text("YOLO mode is on"), findsNothing);
+    expect(find.byKey(const Key("session-approval-chip")), findsNothing);
+  });
+
+  testWidgets("a per-session bridge shows the session's mode and picks it from the menu", (tester) async {
+    SessionDetailLoaded withOverride(SessionApprovalMode? approvalOverride) =>
+        _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+          bridgeYolo: const YoloSettingsResponse(enabled: false, supportsSessionOverride: true),
+          session: testConstSession.copyWith(approvalOverride: approvalOverride),
+        );
+    final asking = withOverride(null);
+    when(() => cubit.state).thenReturn(asking);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: asking);
+    when(() => cubit.setApprovalMode(mode: SessionApprovalMode.yolo)).thenAnswer((_) async {});
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Asking is a quiet outline shield, named by its tooltip.
+    final shield = tester.widget<Icon>(find.byIcon(TablerRegular.shield));
+    final prego = tester.element(find.byIcon(TablerRegular.shield)).prego;
+    expect(shield.color, prego.colors.textSecondary);
+    expect(find.bySemanticsLabel("Ask for approval"), findsOneWidget);
+    expect(find.byIcon(_yoloIcon), findsNothing);
+
+    await tester.tap(find.byKey(const Key("session-approval-chip")));
+    await tester.pumpAndSettle();
+    expect(find.text("Ask for approval (default)"), findsOneWidget);
+    expect(find.text("Approve everything (YOLO)"), findsOneWidget);
+    final yoloTitle = tester.widget<Text>(find.text("Approve everything (YOLO)"));
+    expect(yoloTitle.style?.color, prego.colors.textWarningPrimary);
+
+    await tester.tap(find.text("Approve everything (YOLO)"));
+    await tester.pumpAndSettle();
+    verify(() => cubit.setApprovalMode(mode: SessionApprovalMode.yolo)).called(1);
+
+    final yolo = withOverride(SessionApprovalMode.yolo);
+    when(() => cubit.state).thenReturn(yolo);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: yolo);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Icon>(find.byIcon(_yoloIcon)).color, prego.colors.fgWarningPrimary);
+    expect(find.bySemanticsLabel("YOLO"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.shield), findsNothing);
   });
 
   testWidgets("enabled auto continuation shows a model-row chip until a continuation is due", (tester) async {
     SessionDetailLoaded withContinuation(SessionAutoContinuationStatus status) =>
         _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
-          yoloEnabled: true,
+          bridgeYolo: const YoloSettingsResponse(enabled: true),
           session: testConstSession.copyWith(
             autoContinuation: SessionAutoContinuationView(
               enabled: true,
@@ -826,7 +875,7 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text("YOLO"), findsNothing);
     expect(find.bySemanticsLabel("YOLO"), findsOneWidget);
-    expect(find.byIcon(TablerRegular.shield_x), findsOneWidget);
+    expect(find.byIcon(_yoloIcon), findsOneWidget);
     expect(find.byIcon(TablerRegular.bolt), findsNothing);
     expect(find.bySemanticsLabel("Auto-continue"), findsOneWidget);
     expect(find.text("Auto continuation on"), findsNothing);

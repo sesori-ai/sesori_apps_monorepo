@@ -1546,6 +1546,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailYoloChip => 'YOLO';
 
   @override
+  String get sessionApprovalAsk => 'Ask for approval';
+
+  @override
+  String get sessionApprovalYolo => 'Approve everything (YOLO)';
+
+  @override
+  String sessionApprovalDefaultOption(String option) {
+    return '$option (default)';
+  }
+
+  @override
+  String get sessionApprovalUpdateFailed => 'Could not change approval for this session. Try again.';
+
+  @override
   String get sessionDetailYoloTitle => 'YOLO mode is on';
 
   @override

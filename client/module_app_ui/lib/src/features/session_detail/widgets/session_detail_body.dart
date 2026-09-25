@@ -133,6 +133,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         PregoPopupAlertsNotificationsVariant.error,
         const Duration(seconds: 5),
       ),
+      SessionDetailApprovalUpdateFailed() => (
+        context.loc.sessionApprovalUpdateFailed,
+        null,
+        PregoPopupAlertsNotificationsVariant.error,
+        const Duration(seconds: 5),
+      ),
       SessionDetailAutoContinuationAlreadySubmitted() => (
         context.loc.sessionAutoContinuationAlreadySubmitted,
         null,

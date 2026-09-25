@@ -402,6 +402,7 @@ void main() {
         icon: TablerRegular.clock,
         label: label,
         showLabel: false,
+        isWarning: false,
         surfaceStyle: PregoComposerSurfaceStyle.subtle,
         onPressed: () {},
       );
