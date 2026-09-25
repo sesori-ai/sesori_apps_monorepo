@@ -92,8 +92,8 @@ class const PregoButtonsIconGlass({
       height: size.diameter,
       shape: LiquidRoundedRectangle(borderRadius: size.diameter / 2),
       settings: LiquidGlassSettings(glassColor: colors.buttonGlassPrimaryBackground),
-      // The icon carries the label; the button node merges it in.
-      label: "",
+      // No button `label`: as in the old circle, the icon carries the
+      // semantics label and the button announces its content.
       child: Padding(
         padding: EdgeInsetsDirectional.symmetric(horizontal: (size.diameter - resolvedIconSize) / 2),
         child: Row(
