@@ -16,11 +16,11 @@ import sys
 import time
 
 from package_desktop_macos import execute
+from prepare_desktop_release import PRODUCER_WORKFLOWS
 from qualify_desktop import ROOT
 
 
 REPOSITORY = "sesori-ai/sesori_apps_monorepo"
-RUN_WORKFLOW = ".github/workflows/desktop-qualification.yml"
 APPLICATION = Path("/Applications/Sesori.app")
 INSTALLED_HELPER = APPLICATION / "Contents/Helpers/bridge/bin/bridge"
 REGISTRATION = Path.home() / "Library/LaunchAgents/com.sesori.desktop.plist"
@@ -122,18 +122,22 @@ def load_candidate(
     run_id = selected_run.get("id")
     require(type(run_id) is int and run_id > 0, f"{label}: invalid run ID")
     require(selected_run.get("repository", {}).get("full_name") == REPOSITORY, f"{label}: wrong repository")
-    require(selected_run.get("path") == RUN_WORKFLOW, f"{label}: wrong producer workflow")
+    workflow = selected_run.get("path")
+    require(workflow in PRODUCER_WORKFLOWS, f"{label}: wrong producer workflow")
+    if workflow != ".github/workflows/desktop-qualification.yml":
+        require(selected_run.get("head_branch") == "main", f"{label}: shared producer must run from main")
     require(selected_run.get("event") == "workflow_dispatch", f"{label}: producer was not manually dispatched")
     require(selected_run.get("conclusion") == "success", f"{label}: producer did not succeed")
-    source_sha = selected_run.get("head_sha")
-    require(isinstance(source_sha, str) and bool(re.fullmatch(r"[0-9a-f]{40}", source_sha)),
-            f"{label}: invalid source SHA")
-
     packaging = evidence / "desktop-macos-packaging"
     identity = read_json(packaging / "desktop-bundle.json")
+    # Production and private qualification can rebuild an older main-ancestor source.
+    source_sha = identity.get("sourceSha")
+    if workflow == ".github/workflows/release-all-platforms.yml":
+        require(source_sha == selected_run.get("head_sha"), f"{label}: identity source differs from run")
+    require(isinstance(source_sha, str) and bool(re.fullmatch(r"[0-9a-f]{40}", source_sha)),
+            f"{label}: invalid source SHA")
     require(identity.get("os") == "macos", f"{label}: wrong operating system")
     require(identity.get("architecture") == architecture, f"{label}: wrong architecture")
-    require(identity.get("sourceSha") == source_sha, f"{label}: identity source differs from run")
     version = identity.get("version")
     build_number = identity.get("buildNumber")
     require(isinstance(version, str) and bool(re.fullmatch(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", version)),
@@ -141,7 +145,7 @@ def load_candidate(
     require(type(build_number) is int and build_number > 0, f"{label}: invalid build number")
 
     report = read_json(packaging / "packaging.json")
-    require(report.get("packagerSourceSha") == source_sha, f"{label}: packager source differs from run")
+    require(report.get("packagerSourceSha") == source_sha, f"{label}: packager source differs from sealed identity")
     require(report.get("architecture") == architecture, f"{label}: packaging architecture differs")
     artifact_name = f"Sesori-macos-{architecture}.dmg"
     require(set(report.get("artifacts", {})) == {

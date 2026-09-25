@@ -114,6 +114,23 @@ class MacosUpgradeValidationTests(unittest.TestCase):
             ))
             validate_upgrade(previous=previous, current=current)
 
+    def test_shared_release_candidate_keeps_the_sealed_product_source(self):
+        for workflow in ("release-all-platforms.yml", "submit-release.yml", "desktop-qualification.yml"):
+            with self.subTest(workflow=workflow), tempfile.TemporaryDirectory() as directory:
+                fixture = self._fixture(root=Path(directory), label="current", version="1.9.0",
+                                        build_number=62, source_sha="a" * 40, channel="stable")
+                run = json.loads(fixture["run_json"].read_text())
+                run.update(path=f".github/workflows/{workflow}", head_branch="main")
+                if workflow != "release-all-platforms.yml":
+                    run["head_sha"] = "b" * 40
+                fixture["run_json"].write_text(json.dumps(run))
+                self.assertEqual(load_candidate(**fixture).source_sha, "a" * 40)
+                if workflow != "desktop-qualification.yml":
+                    run["head_branch"] = "feature"
+                    fixture["run_json"].write_text(json.dumps(run))
+                    with self.assertRaisesRegex(ValueError, "must run from main"):
+                        load_candidate(**fixture)
+
     def test_rejects_same_or_older_release_identity(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -213,7 +230,7 @@ class MacosUpgradeValidationTests(unittest.TestCase):
                     identity = json.loads(identity_path.read_text())
                     identity["sourceSha"] = "c" * 40
                     identity_path.write_text(json.dumps(identity))
-                    message = "identity source differs from run"
+                    message = "packager source differs from sealed identity"
                 else:
                     defines_path = fixture["evidence"] / "desktop-bundle/dart-defines.env"
                     lines = defines_path.read_text().splitlines()

@@ -15,7 +15,9 @@ run-name: "release · build ${{ github.sha }}"
 #
 # The bridge auto-updater ignores pre-releases, so the rolling internal
 # pre-release never reaches end users — it serves internal testers and the
-# future pre-release update channel.
+# future pre-release update channel. Native macOS desktop packages use the same
+# source/build number, without changing mobile/bridge finalization. Desktop stays
+# in Actions artifacts until its separate platform-publication admission is enabled.
 
 on:
   workflow_dispatch:
@@ -74,12 +76,13 @@ jobs:
           set -euo pipefail
           MOBILE_VERSION=$(awk '/^version:/{split($2,a,"+"); print a[1]; exit}' client/app/pubspec.yaml)
           BRIDGE_VERSION=$(awk '/^version:/{print $2; exit}' bridge/app/pubspec.yaml)
-          if [[ -z "$MOBILE_VERSION" || -z "$BRIDGE_VERSION" ]]; then
+          DESKTOP_VERSION=$(awk '/^version:/{split($2,a,"+"); print a[1]; exit}' client/desktop/pubspec.yaml)
+          if [[ -z "$MOBILE_VERSION" || -z "$BRIDGE_VERSION" || -z "$DESKTOP_VERSION" ]]; then
             echo "::error::Could not parse versions (mobile: '$MOBILE_VERSION', bridge: '$BRIDGE_VERSION')."
             exit 1
           fi
-          if [[ "$MOBILE_VERSION" != "$BRIDGE_VERSION" ]]; then
-            echo "::error::Mobile ($MOBILE_VERSION) and bridge ($BRIDGE_VERSION) versions differ. Run tool/sync_versions.dart."
+          if ! [[ "$MOBILE_VERSION" == "$BRIDGE_VERSION" && "$MOBILE_VERSION" == "$DESKTOP_VERSION" ]]; then
+            echo '::error::Mobile, bridge and desktop versions differ. Run tool/sync_versions.dart.'
             exit 1
           fi
 
@@ -147,7 +150,34 @@ jobs:
       version: ${{ needs.preflight.outputs.version }}-internal.${{ needs.next-build-number.outputs.build_number }}
     secrets: inherit
 
-  # All-or-nothing: runs only when iOS, Android AND all six bridge targets
+  desktop-macos:
+    name: Build and qualify macOS desktop (internal)
+    needs: [preflight, next-build-number]
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/desktop-qualification.yml
+    with:
+      source_sha: ${{ github.sha }}
+      build_number: ${{ needs.next-build-number.outputs.build_number }}
+      channel: internal
+    secrets: inherit
+
+  publish-desktop:
+    name: Attach admitted desktop packages to the internal release
+    if: vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'
+    needs: [preflight, next-build-number, desktop-macos, finalize]
+    permissions:
+      contents: write
+      actions: read
+    uses: ./.github/workflows/_reusable-desktop-publish.yml
+    with:
+      source_sha: ${{ github.sha }}
+      version: ${{ needs.preflight.outputs.version }}
+      build_number: ${{ needs.next-build-number.outputs.build_number }}
+      channel: internal
+
+  # All-or-nothing for mobile/bridge: runs only when iOS, Android AND all six bridge targets
   # succeeded, so every internal tag maps to a complete set (both store builds
   # + all bridge binaries). On failure no release tag or release is published;
   # the attempt marker remains and the pre-release stays on the previous build.

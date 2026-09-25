@@ -4,10 +4,32 @@ name: Desktop Native Qualification
 # Explicit manual macOS modes verify credentials or produce private notarized test artifacts.
 # Targeted SDK/tooling qualification, NOT another full-source PR CI matrix.
 # Product source changes remain covered by desktop-ci.yml and explicit packaged release gates.
-# This intentionally does not gate the independent CLI/mobile release workflows.
+# Shared releases reuse the macOS leg; bridge/mobile finalization remains independent.
 on:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: 'Exact committed product source from the shared release resolver'
+        required: true
+        type: string
+      build_number:
+        description: 'Aligned product build number'
+        required: true
+        type: string
+      channel:
+        required: true
+        type: string
+      mode:
+        type: string
+        default: macos-packaging
   workflow_dispatch:
     inputs:
+      source_sha:
+        description: 'macOS packaging: optional exact main-ancestor source (blank = current main)'
+        type: string
+      build_number:
+        description: 'macOS packaging: optional shared product build number (blank = qualification run number)'
+        type: string
       mode:
         description: 'Qualification mode (no product publication)'
         type: choice
@@ -70,7 +92,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: desktop-qualification-${{ github.event.pull_request.number || github.ref }}
+  group: desktop-qualification-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -104,18 +126,35 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.source_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require trusted committed product source
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/main && "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
+          git merge-base --is-ancestor HEAD origin/main
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-workflow
           persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
           architecture: ${{ matrix.arch }}
       - name: Set up native Xcode
-        uses: ./.github/actions/setup-xcode
+        uses: ./.ci-workflow/.github/actions/setup-xcode
 
       - name: Bootstrap pinned native SDK and stage committed source
         if: inputs.mode == 'macos-packaging'
         env:
           SDK_DIR: ${{ runner.temp }}/desktop-qualification-flutter
+          BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
+          CHANNEL: ${{ inputs.channel }}
         run: |
           set -euo pipefail
           mkdir -p build/desktop-qualification
@@ -123,10 +162,12 @@ jobs:
             2>&1 | tee build/desktop-qualification/bootstrap.log
           # GITHUB_PATH additions take effect in the next step; use this SDK explicitly here.
           export PATH="$SDK_DIR/bin:$PATH"
+          # The workflow-owned action checkout is not part of the committed product source.
+          printf '%s\n' '/.ci-workflow/' >> "$(git rev-parse --git-path info/exclude)"
           (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
           (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
           (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
-            --build-number '${{ github.run_number }}' --channel '${{ inputs.channel }}' \
+            --build-number "$BUILD_NUMBER" --channel "$CHANNEL" \
             --output '${{ github.workspace }}/build/desktop-bundle') \
             2>&1 | tee build/desktop-qualification/bundle-build.log
           if [[ -s build/desktop-bundle/build-source-changes.patch ]]; then

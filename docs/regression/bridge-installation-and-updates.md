@@ -13,14 +13,18 @@ reconciliation, periodic check, in-place apply, and explicit update command.
   Google Cloud Scheduler job `sesori-internal-release` in project `sesori-ai`, location
   `europe-west1` ([Scheduler console](https://console.cloud.google.com/cloudscheduler?project=sesori-ai)),
   through a private Cloud Run dispatcher and repository-limited GitHub App. Released or
-  already-attempted commits skip before store queries; desktop-only and unrelated
-  documentation batches skip, but product changes before an unrelated tip commit still
-  qualify. A rolling `internal-release-attempt` tag is written before version validation
-  or builds, preventing automatic retries after failure or cancellation. Manual GitHub
-  dispatch from `main` with `automatic=false` can retry. Non-main dispatches fail before
+  already-attempted commits skip before store queries. Desktop joins the product cycle:
+  desktop-only changes qualify, while unrelated documentation batches skip. Product
+  changes before an unrelated tip commit still qualify. A rolling `internal-release-attempt`
+  tag is written before version validation or builds, preventing automatic retries after failure or cancellation.
+  Manual GitHub dispatch from `main` with `automatic=false` can retry. Non-main dispatches fail before
   build-number queries or mobile uploads so the main-only macOS signing environment
   cannot leave partial store uploads. Release tags, serialized release concurrency and
-  all-platform success requirements stay unchanged.
+  mobile/bridge success requirements stay unchanged. Native macOS desktop builds share
+  the resolved source/build, but their failure does not alter core finalization. Once
+  separately admitted, desktop assets attach afterward without replacing bridge archives,
+  `checksums.txt`, tags, prerelease status or Latest. Production uses the existing
+  `store-production` approval; explicit `bridge-only` remains CLI-only.
 - Bridge archives use `dart build cli` on six parallel native OS/architecture
   runners, retaining the executable and native libraries together. Every runner
   installs the standalone Dart SDK matching the checked-out source's Flutter pin

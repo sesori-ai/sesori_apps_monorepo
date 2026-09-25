@@ -218,7 +218,12 @@ void main() {
       expect(npmWorkflow, contains('environment: store-production'));
       expect(npmWorkflow, contains('registry-url: "https://registry.npmjs.org"'));
       expect(npmWorkflow, contains(r'gh release download "$RELEASE_TAG"'));
-      expect(npmWorkflow, contains('--pattern "*.tar.gz" --pattern "*.zip" --pattern "checksums.txt"'));
+      expect(npmWorkflow, contains('--pattern "sesori-bridge-*.tar.gz"'));
+      expect(npmWorkflow, contains('--pattern "sesori-bridge-*.zip"'));
+      expect(npmWorkflow, contains('--pattern "checksums.txt"'));
+      // Desktop archives share the release but are not npm runtime inputs.
+      expect(npmWorkflow, isNot(contains('--pattern "*.zip"')));
+      expect(npmWorkflow, isNot(contains('--pattern "*.tar.gz"')));
       expect(npmWorkflow, contains('Verify release archive checksums'));
       expect(npmWorkflow, contains('checksum_for()'));
       expect(npmWorkflow, contains('verify_archive_checksum()'));

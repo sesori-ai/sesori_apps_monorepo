@@ -14,7 +14,7 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 4.a | 5 | Package and notarize native macOS builds | done |
 | 4.b | 6 | Keep desktop startup independent of native notifications | done |
 | 5 | 7 | Offer manual macOS updates through official downloads | done |
-| 6 | 8 | Private release preparation merged; macOS publication gated | blocked |
+| 6 | 8 | Shared-cycle integration in progress; macOS publication remains gated | in-progress |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
 | 9 | 11 | Private native DEB/RPM packages merged; signing/publication gated | blocked |
@@ -25,6 +25,37 @@ its completed step; this table tracks implementation, not transient PR reviews.
 Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
 Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
+
+## Current continuation — shared release cycle (2026-09-25)
+
+The user selected the existing bridge/mobile cycle for desktop. Continuation
+`🚧 [desktop-distribution] Join the shared product release cycle [step 8.j/14]`
+reuses native macOS packaging with the aligned source/build, retaining existing
+core finalizers and `store-production` approval. Desktop-only changes now qualify
+for the scheduled product cycle. Publication stays disabled until explicit platform
+admission; no separate scheduler, desktop tags, approval environment or credentials.
+Fresh native verification of the shared producer remains pending merge.
+
+Evidence reconciliation:
+
+- The user reports the desktop checklist passing on **Apple M4 Pro / macOS 27.0
+  (26A428)**. App version/build was not supplied; this is functional Apple Silicon
+  confirmation, not Intel/minimum-OS coverage or source-specific release acceptance.
+- The project defines `MACOSX_DEPLOYMENT_TARGET = 12.0` in all three configurations.
+  Defining that minimum is distinct from exercising the product on macOS 12.
+- The agent independently ran the existing bridge-control/process repository/service
+  suites at `55781432391c042ebbbfe17a21d5e26083d4f4ba`: **82 tests passed**, with
+  the running app/bridge untouched. Failed-stop refusal, waiting and retry are covered;
+  native packaged fault injection is separate.
+- Remaining parent Gate C checks are concrete: live harness install/login, dedicated
+  sessions, image/permission/diff flows, relay-only recovery; phone-side request
+  resolution clearing desktop alerts; one phone push; physical picker/microphone,
+  shared session/navigation and notification regression. Do not repeat already-passing
+  user checks or relabel automated fixtures as physical-device acceptance.
+- Public admission, fresh candidate/native evidence, minimum-OS execution and website
+  retrieval/trust remain gated. No desktop publication was approved or performed.
+
+## Merged implementation history
 
 Step 4.b merged as #1503: accepted `49694775e5d364a1316b767b66642531bf002e3a`,
 squash `d1813409e3c0a8e053c3a28068d574e24fb70730`. All 11 checks settled at

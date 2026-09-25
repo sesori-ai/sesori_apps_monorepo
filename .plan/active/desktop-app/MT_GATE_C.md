@@ -6,13 +6,32 @@
 - **Checkpoint:** MT Gate C — cockpit parity + mobile regression
 - **Plan date:** 2026-09-03
 - **Execution:** next user-requested working session
-- **State:** planned; not yet executed or accepted
+- **State:** partial external evidence recorded; complete Gate C run and acceptance pending
 - **Approach:** **option (a)** — run and document one complete baseline before
   changing code, then fix confirmed issues together and retest on one final
   build. A blocking failure marks dependent cases `Blocked`; it does not cause a
   mid-run code change while independent cases remain runnable.
 - **Gate authority:** the agent records evidence and a Pass/Partial/Fail/Blocked
   recommendation; the user accepts the gate before the tracker changes to done.
+
+## Distribution evidence reconciliation — 2026-09-25
+
+The user reports the desktop checklist passing on Apple M4 Pro / macOS 27.0
+(26A428), but did not identify the app build. Retain that functional confirmation;
+do not ask for blanket repetition or mark this entire, broader Gate C accepted.
+Intel, configured macOS 12.0 execution and physical-phone cases were not reported.
+
+Separately, 82 existing bridge-control/process repository/service tests passed without
+launching or stopping the user's app/bridge. They cover Quit waiting/refusal/retry,
+not native packaged fault injection. Distribution's earlier build-122 authenticated
+and helper-Off replacement passed on both CPUs; that source-specific evidence is
+recorded in its tracker and does not establish the cases below on a fresh build.
+
+The still-unrecorded cross-device checks are A2 (phone answer clears desktop alert),
+A5 (exactly one phone push and no desktop push registration), and M1–M6 (physical
+phone login/lists, text/image, microphone, permission/diffs, session creation, settings
+and notification activation). C3/C4/C6–C9/C11 also need their own live-harness evidence;
+the short distribution checklist did not establish that full matrix.
 
 ## Planning baseline — not test evidence
 
