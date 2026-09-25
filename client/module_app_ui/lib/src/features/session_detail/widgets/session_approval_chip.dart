@@ -27,6 +27,8 @@ class const SessionApprovalChip({
       flat: true,
       acquireOpenLease: null,
       menuMaxHeight: null,
+      // Room for "Approve everything (YOLO) (default)" without truncation.
+      menuWidth: 300,
       triggerBuilder: (context, toggle) => PregoComposerChip(
         key: const Key("session-approval-chip"),
         icon: yolo ? YoloChip.icon : TablerRegular.shield,
