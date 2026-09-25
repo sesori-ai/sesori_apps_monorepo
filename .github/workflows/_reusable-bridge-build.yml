@@ -50,46 +50,32 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # use_asdf: the asdf/.tool-versions Flutter toolchain only works where
-        # Flutter publishes a host SDK and asdf runs — NOT on Windows (no asdf)
-        # and NOT on linux-arm64 (no Flutter host SDK; asdf would install the
-        # x64 tarball and dart dies with an Exec format error). Those legs use
-        # dart-lang/setup-dart instead, which ships all four host targets.
         include:
           - runner: xcode-27
             asset_name: sesori-bridge-macos-arm64
             archive_ext: tar.gz
-            use_asdf: true
           - runner: macos-26-intel
             asset_name: sesori-bridge-macos-x64
             archive_ext: tar.gz
-            use_asdf: true
           - runner: ubuntu-latest
             asset_name: sesori-bridge-linux-x64
             archive_ext: tar.gz
-            use_asdf: true
           - runner: ubuntu-24.04-arm
             asset_name: sesori-bridge-linux-arm64
             archive_ext: tar.gz
-            use_asdf: false
           - runner: windows-latest
             asset_name: sesori-bridge-windows-x64
             archive_ext: zip
-            use_asdf: false
           - runner: windows-11-arm
             asset_name: sesori-bridge-windows-arm64
             archive_ext: zip
-            use_asdf: false
     steps:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
 
-      # Local `uses: ./...` actions resolve from the CHECKED-OUT tree, which
-      # for submit-release rebuilds can be an older commit whose copy of the
-      # action predates the `workspace` input (it would silently run pub get
-      # in client/). Pull the action from the workflow's own revision into a
-      # side directory and run it from there.
+      # Production submissions can rebuild older source commits. Use helper
+      # actions from the workflow revision, not the checked-out product ref.
       - name: Checkout CI actions at workflow revision
         uses: actions/checkout@v6
         with:
@@ -100,32 +86,19 @@ jobs:
         if: runner.os == 'macOS'
         uses: ./.ci-workflow/.github/actions/setup-xcode
 
-      # Same pinned toolchain as the mobile builds: asdf installs the Flutter
-      # version from .tool-versions and dart comes from that installation. On
-      # macOS the iOS deploy job usually warmed the same asdf cache already.
-      - name: Setup Flutter (asdf)
-        if: matrix.use_asdf
-        uses: ./.ci-workflow/.github/actions/setup-flutter
-        with:
-          workspace: bridge
-
-      # Even without asdf the toolchain must match .tool-versions: resolve the
-      # Dart SDK bundled with the pinned Flutter release from Flutter's
-      # releases manifest (read from the CHECKED-OUT ref, so rebuilds of older
-      # commits keep their own pin) and install exactly that version.
+      # The bridge is pure Dart: avoid installing/restoring the full Flutter
+      # SDK and asdf. Resolve the same Dart version from the CHECKED-OUT ref's
+      # Flutter pin, so production rebuilds retain their source toolchain.
       - name: Resolve pinned Dart version
         id: dart-version
-        if: ${{ !matrix.use_asdf }}
         uses: ./.ci-workflow/.github/actions/resolve-flutter-dart-version
 
-      - name: Setup Dart (setup-dart fallback)
-        if: ${{ !matrix.use_asdf }}
+      - name: Setup Dart
         uses: dart-lang/setup-dart@v1
         with:
           sdk: ${{ steps.dart-version.outputs.version }}
 
-      - name: Cache pub dependencies (setup-dart fallback)
-        if: ${{ !matrix.use_asdf }}
+      - name: Cache pub dependencies
         uses: actions/cache@v5
         with:
           # Default pub cache locations; only the one for the current OS exists.
@@ -134,8 +107,7 @@ jobs:
             ~\AppData\Local\Pub\Cache
           key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
 
-      - name: Get dependencies (setup-dart fallback)
-        if: ${{ !matrix.use_asdf }}
+      - name: Get dependencies
         run: dart pub get
         working-directory: bridge
 
