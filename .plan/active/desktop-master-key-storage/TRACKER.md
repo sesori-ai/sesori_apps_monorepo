@@ -3,8 +3,8 @@
 ## Execution
 
 - Status: #1734 merged with 24 passing checks. The isolated deprecated importer
-  (PR 7) passes 11 real-SQL recovery tests and core/auth/mobile analysis;
-  implementation review pending.
+  (PR 7) passes 11 real-SQL recovery tests, core/auth/mobile analysis and
+  architecture review.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
@@ -27,7 +27,7 @@
 | 3.b — Shared storage foundations | Merged | #1726; 26 shared tests, one Android options test, architecture approval, four clean analyses; 23 checks passed at readiness. |
 | 3.c — Shared Drift/primitive persistence | Merged | #1729; 29 tests, architecture approval, clean analysis/generation and 25 passing CI checks. |
 | 3.d — Cached shared secrets | Merged | #1734; 46 shared tests, architecture approval, clean analysis/generation and 24 passing CI checks. |
-| 4.a — Deprecated mobile import | Verified locally | PR 7; deprecated layered importer, domain keys and 11 recovery tests; three clean analyses; unwired; review pending. |
+| 4.a — Deprecated mobile import | Architecture approved | PR 7; deprecated layered importer, domain keys and 11 recovery tests; three clean analyses; unwired. |
 | 4.b — Native capabilities and backup | Not started | PR 8; narrow platform adapters and actual mobile backup boundary. |
 | 4.c — Both-client cutover | Not started | PR 9; lockstep consumers, migration/failure startup gate and runtime adapter removal. |
 | 5 — Regression reconciliation | Not started | PR 10; behavior docs also accompany their implementation. |
@@ -138,6 +138,9 @@
   failures, and cold-reopen recovery without replacing committed rows.
   Core/auth/mobile analysis, resolution, generation and formatting passed.
   No native source adapter or startup invocation is present yet.
+- Importer review `d885b123-0d8a-49db-982e-be35c37e0413` approved exact range
+  `f1f00ee..3b8ac72`, all 25 paths, without findings. Native adapters and the
+  future consumer/bootstrap cutover were explicitly outside that scope.
 - None of this evidence establishes released-mobile migration, mobile
   backup/restore, real credential behavior, packaged replacement or actual
   prompt counts. Those gates remain.

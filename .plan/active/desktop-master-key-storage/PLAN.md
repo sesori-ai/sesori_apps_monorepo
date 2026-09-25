@@ -469,3 +469,6 @@ or successful build is not native authorization, migration or distribution proof
 - Cached-secret implementation review `51bf34aa-9408-4082-ae7e-7ba5a3a55c39`
   approved exact range `0818f4b..bae788a` (all 13 paths) without findings. This
   does not approve native shell adapters, migration or future app cutover.
+- Deprecated-importer implementation review `d885b123-0d8a-49db-982e-be35c37e0413`
+  approved exact range `f1f00ee..3b8ac72` (all 25 paths) without findings. Native
+  adapters and future consumer/bootstrap cutover remain outside that approval.
