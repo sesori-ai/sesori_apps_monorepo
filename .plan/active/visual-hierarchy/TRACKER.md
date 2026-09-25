@@ -15,7 +15,9 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 2026-09-23, which moved the total from 38 to 41; steps 1–3 merged as `/38`.
 Steps 40–47 were added on 2026-09-25 from the user's feedback, which moved the
 total to 49; merged steps keep their `/41` titles. Step 41 applied
-variant E, which the user picked from a local review page.
+variant E, which the user picked from a local review page. Step 50 was added
+later on 2026-09-25, which moved the total to 50; merged steps keep their
+`/49` titles. Step 50 lands before steps 48–49.
 
 | Done | Step | Branch | Title | Target | State |
 |---|---|---|---|---|---|
@@ -63,11 +65,12 @@ variant E, which the user picked from a local review page.
 | [x] | 42 | `visual-hierarchy/busy-indicator` | [42/49](#pr-titles) | ≤ 700 | done |
 | [x] | 43 | `visual-hierarchy/continuation-notice` | [43/49](#pr-titles) | ≤ 500 | done |
 | [x] | 44 | `visual-hierarchy/yolo-icon` | [44/49](#pr-titles) | ≤ 150 | done |
-| [ ] | 45 | `visual-hierarchy/session-yolo{,-clients}` | [45/49](#pr-titles) | ≤ 1,200 | part a of 2 done |
-| [ ] | 46 | `visual-hierarchy/group-motion` | [46/49](#pr-titles) | ≤ 900 | pending |
-| [ ] | 47 | `visual-hierarchy/group-popover` | [47/49](#pr-titles) | ≤ 800 | pending |
-| [ ] | 48 | `visual-hierarchy/regression-docs` | [48/49](#pr-titles) | ≤ 600 | pending |
-| [ ] | 49 | `visual-hierarchy/retire` | [49/49](#pr-titles) | ≤ 300 | pending |
+| [ ] | 45 | `visual-hierarchy/session-yolo{,-clients}` | [45/50](#pr-titles) | ≤ 1,200 | part a of 2 done |
+| [ ] | 46 | `visual-hierarchy/group-motion` | [46/50](#pr-titles) | ≤ 900 | pending |
+| [ ] | 47 | `visual-hierarchy/group-popover` | [47/50](#pr-titles) | ≤ 800 | pending |
+| [ ] | 50 | `visual-hierarchy/auto-resume-indicator` | [50/50](#pr-titles) | ≤ 400 | pending; lands before 48 |
+| [ ] | 48 | `visual-hierarchy/regression-docs` | [48/50](#pr-titles) | ≤ 600 | pending |
+| [ ] | 49 | `visual-hierarchy/retire` | [49/50](#pr-titles) | ≤ 300 | pending |
 
 ## Round 2 Answers
 
@@ -152,10 +155,12 @@ Answered 2026-09-23; every answer took the recommended option.
 42. `⚙️ [visual-hierarchy] Show a real busy indicator in the session [step 42/49]`
 43. `⚙️ [visual-hierarchy] Show the auto-continuation card only when it is due [step 43/49]`
 44. `🌱 [visual-hierarchy] Give YOLO its own icon [step 44/49]`
-45. `🚧 [visual-hierarchy] Choose YOLO per session [step 45/49]`, or two PRs:
+45. Two PRs:
    - `⚙️ [visual-hierarchy] Store a per-session YOLO override on the bridge [step 45.a/49]`
-   - `⚙️ [visual-hierarchy] Pick YOLO per session from the composer [step 45.b/49]`
-46. `🚧 [visual-hierarchy] Animate steps folding into their group [step 46/49]`
-47. `⚙️ [visual-hierarchy] Open expanded step groups in an anchored panel [step 47/49]`
-48. `🌱 [visual-hierarchy] Reconcile regression docs [step 48/49]`
-49. `🌱 [visual-hierarchy] Record the final matrix and retire the plan [step 49/49]`
+   - `⚙️ [visual-hierarchy] Pick YOLO per session from the composer [step 45.b/50]`
+46. `🚧 [visual-hierarchy] Animate steps folding into their group [step 46/50]`
+47. `⚙️ [visual-hierarchy] Open expanded step groups in an anchored panel [step 47/50]`
+48. `🌱 [visual-hierarchy] Reconcile regression docs [step 48/50]`
+49. `🌱 [visual-hierarchy] Record the final matrix and retire the plan [step 49/50]`
+50. `⚙️ [visual-hierarchy] Show scheduled auto-resume in session lists [step 50/50]`
+   (lands before 48–49)
