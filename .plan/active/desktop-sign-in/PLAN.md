@@ -203,13 +203,16 @@ widgets → desktop and phone shells.
   It composes the auth model rather than copying its fields.
 - `LoginState.polling({required LoginHandoff handoff})`. Every polling
   emission, including the phone's resume and interruption paths, carries it.
-  The current OAuth attempt holds its handoff once init returns (null for
-  email and native Apple attempts, which never poll).
+  The cubit's attempt is sealed: a pending variant (email, native Apple, or
+  a browser sign-in before init returns) and a browser variant that owns a
+  non-null handoff and replaces the pending one once init returns. Only the
+  browser variant polls, reopens or cancels.
 - `cancel()`: ends the current OAuth attempt, reports its terminal failure
   cause (rule below), calls `cancelOAuthFlow()` (a failure there is logged and
   still ends in idle), and emits idle at once.
 - `reopenBrowser()`: launches the handoff URL again and re-emits polling with
-  the new launch result. The server accepts the same URL until the provider
+  the new launch result, only while the same attempt still owns the flow, so
+  a launch that returns after Cancel is discarded. The server accepts the same URL until the provider
   callback consumes its state; after that the provider shows its own error
   page and the poll still ends normally.
 - A failed launch emits polling with `browser: failed` and keeps polling
@@ -255,6 +258,9 @@ widgets → desktop and phone shells.
 - Provider buttons are desktop widgets (layouts stay per shell, D12) using
   `PregoButtonsSolid` primaryAlt xl with logos; email is tertiary. Choosing
   email swaps the provider list for `EmailLoginForm` in the same column.
+  Switching either way clears a pending `LoginFailed` through
+  `onDismissedLoginFailureError()`, so a provider failure never shows as an
+  email failure and an email failure never outlives the form.
 - The legal sentence renders `loginAgreementText`; links open through the
   existing `UrlLauncher`.
 - `_DesktopHandoffCard` renders `LoginPolling.handoff` in place of the provider
@@ -277,7 +283,12 @@ widgets → desktop and phone shells.
   deliberately leaves the key alone, so it survives logout. `AuthSession`
   exposes `lastSignedInProvider()`. A small `LastSignInProviderCubit`
   (`Cubit<AuthProvider?>`) in `module_desktop_core` loads it once for the
-  login screen. Step 6 records at its start which storage backend the new
+  login screen. `LoginScreen` constructs it next to `LoginCubit`, in a
+  `BlocProvider(create:)` with `authSession: getIt()`, matching how the screen
+  builds `LoginCubit` today; `LoginView` reads both from context. The chip
+  sits on the matching provider button; when the last method was email, the
+  "Sign in with email" link carries a quiet "Last used" marker instead, since
+  email is a supported method and the value is recorded anyway. Step 6 records at its start which storage backend the new
   class sits on: today's `SecureStorage`, or the typed replacement if
   `desktop-master-key-storage` has cut storage over by then.
 - **Window forward (step 6).** `AuthGateCubit` gains a `WindowHost`
@@ -429,8 +440,9 @@ widget tests for the form on both shells, phone email sign-in by hand once.
 first (Prerequisite). Build D1's idle layout and D2's responsive rule, the
 Apple/GitHub/Google buttons, the inline email form, the legal sentence and
 the localized strings. Waiting still uses a minimal status line until step 5.
-Verify: widget tests at 1,200×800, 819×800 and 560×480; drag band; before and
-after screenshots, both themes.
+Verify: widget tests at 1,200×800, 819×800 and 560×480; a provider failure
+followed by switching to email shows no error in the form; drag band; before
+and after screenshots, both themes.
 
 **Step 5 — handoff card and inline errors.** The waiting card, mock 2a and 2b
 states, fixed-height notice slot. Verify: widget tests for each state and the
@@ -439,7 +451,10 @@ countdown; a real GitHub cancel, reopen and copy-link run on macOS.
 **Step 6 — last used and window forward.** Verify: `AuthManager` records on
 both interactive paths and keeps the key through logout; the OAuth flow's
 provider survives an interrupted-poll resume (section 1); the gate shows the
-window only on signed-out → signed-in; widget test for the chip.
+window only on signed-out → signed-in; widget tests for the chip on a
+provider button and the marker on the email link; a `LoginScreen` composition
+test with fakes registered in `getIt` (as the new-session screen test does)
+showing the stored provider's chip.
 
 **Step 7 — regression docs.** Reconcile `account-and-onboarding.md`: desktop
 sign-in options, handoff controls, failure signals (a trapped waiting state, a

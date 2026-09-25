@@ -834,6 +834,24 @@ void main() {
         await cubit.close();
       });
 
+      test("a reopen that finishes after cancel does not bring the waiting state back", () async {
+        when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
+        final cubit = buildCubit();
+        unawaited(cubit.loginWithProvider(AuthProvider.google));
+        await settle();
+
+        final reopenLaunch = Completer<bool>();
+        when(() => mockUrlLauncher.launch(any())).thenAnswer((_) => reopenLaunch.future);
+        final reopen = cubit.reopenBrowser();
+        await cubit.cancel();
+        reopenLaunch.complete(true);
+        await reopen;
+
+        expect(cubit.state, isA<LoginIdle>());
+        verifyFailedCause(LoginAttemptFailureCause.launch);
+        await cubit.close();
+      });
+
       test("a failed reopen after an opened browser still reports cancelled", () async {
         final cubit = buildCubit();
         unawaited(cubit.loginWithProvider(AuthProvider.google));
