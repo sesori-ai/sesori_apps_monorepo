@@ -8,15 +8,17 @@ import "package:opencode_plugin/src/v2/models/openapi/permission_request.g.dart"
 import "package:opencode_plugin/src/v2/models/openapi/project.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/provider_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_info.g.dart";
+import "package:opencode_plugin/src/v2/models/v2_agent_names.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_model_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show Session, jsonCastMap, jsonDecodeMap;
 import "package:test/test.dart";
 
 void main() {
-  const mapper = V2ModelMapper(pluginId: "fixture-plugin");
   final fixture = jsonDecodeMap(File("test/v2/fixtures/native_2_0_16.json").readAsStringSync());
   Map<String, dynamic> native({required String key}) => jsonCastMap(fixture[key]);
+  final names = V2AgentNames.fromAgents(agents: [AgentInfo.fromJson(native(key: "agent"))]);
+  const mapper = V2ModelMapper(pluginId: "fixture-plugin");
 
   test("maps native project identity without fabricating session activity", () {
     final project = mapper.mapProject(project: Project.fromJson(native(key: "project")), activity: null);
@@ -35,23 +37,27 @@ void main() {
     final session = mapper.mapSession(session: raw, projectId: "/fixture/project");
     expect(session.parentID, "parent");
     expect(session.time!.created, raw.time.created.toInt());
-    final details = mapper.mapSessionDetails(session: raw, projectId: "/fixture/project");
+    final details = mapper.mapSessionDetails(session: raw, projectId: "/fixture/project", agentNames: names);
     expect(details.pluginId, "fixture-plugin");
     expect(details.projectID, "/fixture/project");
-    expect(details.promptDefaults!.agent, "build");
+    expect(details.promptDefaults!.agent, "Build");
     expect(details.promptDefaults!.model!.modelID, "model");
     expect(details.approvalOverride, isNull);
     expect(Session.fromJson(details.toJson()), details);
     expect(details.toJson(), isNot(contains("location")));
   });
 
-  test("uses native agent IDs rather than display-only labels", () {
+  test("exposes display-ready agent names with plugin-local reverse translation", () {
     final raw = AgentInfo.fromJson(native(key: "agent"));
     expect(raw.name, "Build");
     final agent = mapper.mapAgent(agent: raw);
-    expect(agent.name, "build");
+    expect(agent.name, "Build");
     expect(agent.mode, PluginAgentMode.primary);
     expect(agent.hidden, isFalse);
+    expect(names.nativeId(selection: agent.name), "build");
+    expect(names.nativeId(selection: raw.id), "build");
+    expect(names.nativeId(selection: "not-in-catalog"), isNull);
+    expect(names.displayName(id: "historical-agent"), "historical-agent");
   });
 
   test("maps native catalog dates and preserves backend variant defaults", () {

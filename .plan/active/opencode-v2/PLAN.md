@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-v2`
-- **Status:** Active; Steps 1–4 merged, Step 5.a model mapping in progress (PR 5/11).
+- **Status:** Active; Steps 1–4 merged, Step 5.a catalog normalization in review (#1733, PR 5/12).
 - **Plan date:** 2026-09-25
 - **Implementation base:** `main` at `fed841c2f9`
 - **Trigger:** issue #1677 — OpenCode 2.0.11 on PATH fails cold start with `FormatException ... <!doctype html>`.
@@ -117,6 +117,7 @@ All v2 code lives under `bridge/sesori_plugin_opencode/lib/src/v2/`, one directo
 | Path | Class | Layer |
 |---|---|---|
 | `models/openapi/*.g.dart`, `models/v2_event.g.dart` | generated DTOs | 0 |
+| `models/v2_agent_names.dart` | `V2AgentNames` | 0 (immutable identity/display lookup) |
 | `api/opencode_v2_api.dart` | `OpenCodeV2Api` | 1 |
 | `sse/v2_event_parser.dart` | `V2EventParser` | 1 |
 | `repositories/opencode_v2_repository.dart` | `OpenCodeV2Repository` | 2 |
@@ -131,13 +132,13 @@ All v2 code lives under `bridge/sesori_plugin_opencode/lib/src/v2/`, one directo
 
 ## Steps
 
-Series titles: `<emoji> [opencode-v2] <description> [step x/11]`.
+Series titles: `<emoji> [opencode-v2] <description> [step x/12]`.
 
-Step 5 is split into 5.a model mapping (PR 5) and 5.b repository integration (PR 6).
-Durable Steps 6–10 then correspond to PRs 7–11. Earlier PRs retain ordinals 1–4.
-The split keeps transcript/form/catalog transformations separate from API-backed repository flows;
-no compatibility shim or additional mutable state is needed. Both slices target around 1,500 total changed lines,
-including generated output; report authored and generated churn separately.
+Step 5 is split into 5.a catalog normalization (PR 5), 5.b transcript mapping (PR 6), and
+5.c repository integration (PR 7). Durable Steps 6–10 correspond to PRs 8–12; earlier PRs keep ordinals 1–4.
+Review feedback exposed independent catalog/identity and transcript seams near the soft cap. The transcript
+implementation through `ef5015416a` remains in #1733's published history and moves into the immediate successor;
+no history rewrite, compatibility shim or new mutable owner is needed. Count all authored/generated churn.
 
 1. **🌱 Raise plan.** Adds `PLAN.md` and `TRACKER.md` only.
 2. **🌿 Detect v2 and refuse it honestly.**
@@ -167,16 +168,21 @@ including generated output; report authored and generated churn separately.
    - `SseConnection` takes its event path as a parameter.
    - `V2EventParser` decodes the envelope; unknown types are logged and dropped.
    - Tests: `MockClient` HTTP tests and parser tests.
-5.a. **🚧 v2 model mapping (PR 5/11).**
+5.a. **⚙️ v2 catalog normalization (PR 5/12).**
    - `V2ModelMapper`: project and session (`location.directory`, `time`, `parentID`) → plugin models and
      `shared.Session`; agents, providers/models/variants, commands and form/permission presentation.
-   - `V2MessageMapper`: flat v2 messages → existing plugin message/part models. Text/reasoning parts get the deterministic id
-     `<messageID>:<ordinal>`; tool parts use the tool `id`.
-   - Tool state: `streaming` → pending, `running`, `completed`, `error`. User/synthetic/compaction/shell messages map to
-     their closest v1 equivalents.
-   - Tests: native 2.0.16 catalog/session fixtures plus source-derived transcript/form edge fixtures.
-     Two immutable mappers; no caches, timers, persistence or lifecycle owners.
-5.b. **🚧 v2 repository integration (PR 6/11).**
+   - `V2AgentNames`: immutable catalog lookup keeps display names in selections and session defaults,
+     with reverse translation to native IDs inside the plugin. No cache or mutable lifecycle owner.
+   - Tests: native 2.0.16 catalog/session fixtures and source-derived form projection cases.
+5.b. **🚧 v2 transcript mapping (PR 6/12).**
+   - Restore the transcript mapper and typed tool-display DTOs preserved in `ef5015416a`.
+   - Flat v2 messages → existing plugin message/part models. Text/reasoning retain `<messageID>:<ordinal>`;
+     tools retain their native tool IDs. Apply the catalog's agent-name lookup at projection boundaries.
+   - Tool state: `streaming` → pending, `running`, `completed`, `error`; shell-command extraction is gated
+     on recognized shell tools. Preserve bounded attachments and native errors without payload logging.
+   - Include assistant retry metadata and system-authored agent-switch notices raised during #1733 review.
+   - Source-derived transcript tests; no caches, timers, persistence or lifecycle owners.
+5.c. **🚧 v2 repository integration (PR 7/12).**
    - `OpenCodeV2Repository` (Api → mapped plugin models) reads projects, sessions, children, messages, agents, models
      with variants and commands. It also exposes, per directory, active sessions, pending permission requests and
      pending forms, and every write Step 7 needs:
@@ -184,6 +190,7 @@ including generated output; report authored and generated churn separately.
      - rename, delete, worktree delete;
      - compact, synthetic message;
      - permission reply, form reply/cancel.
+   - Compose the immutable agent-name lookup from the native catalog for readable selections and native write IDs.
    - Tests: repository tests over a fake `OpenCodeV2Api`, using the preceding mapper fixtures.
 6. **🚧 v2 live events, activity and service.**
    - `V2EventMapper` is stateless:

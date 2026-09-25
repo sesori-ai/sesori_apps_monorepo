@@ -16,9 +16,9 @@ import "../models/openapi/permission_request.g.dart";
 import "../models/openapi/project.g.dart";
 import "../models/openapi/provider_info.g.dart";
 import "../models/openapi/session_info.g.dart";
+import "../models/v2_agent_names.dart";
 
-/// Pure v2 catalog and interaction projection. Native project hashes and
-/// display-only agent labels never become the bridge's selectable identities.
+/// Pure v2 catalog projection with plugin-owned agent-name normalization.
 class const V2ModelMapper({required final String _pluginId}) {
   PluginProject mapProject({required Project project, required PluginProjectActivity? activity}) => PluginProject(
     id: project.canonical,
@@ -40,7 +40,11 @@ class const V2ModelMapper({required final String _pluginId}) {
     ),
   );
 
-  shared.Session mapSessionDetails({required SessionInfo session, required String projectId}) => shared.Session(
+  shared.Session mapSessionDetails({
+    required SessionInfo session,
+    required String projectId,
+    required V2AgentNames agentNames,
+  }) => shared.Session(
     id: session.id,
     pluginId: _pluginId,
     projectID: projectId,
@@ -53,7 +57,10 @@ class const V2ModelMapper({required final String _pluginId}) {
       archived: session.time.archived?.toInt(),
     ),
     promptDefaults: shared.SessionPromptDefaults(
-      agent: session.agent,
+      agent: switch (session.agent) {
+        final id? => agentNames.displayName(id: id),
+        null => null,
+      },
       model: switch (session.model) {
         final model? => shared.AgentModel(providerID: model.providerID, modelID: model.id, variant: model.variant),
         null => null,
@@ -67,9 +74,7 @@ class const V2ModelMapper({required final String _pluginId}) {
   );
 
   PluginAgent mapAgent({required AgentInfo agent}) => PluginAgent(
-    // PluginAgent.name is the selectable key. In v2, id=build has name=Build;
-    // sending the display label back would address a different native agent.
-    name: agent.id,
+    name: agent.name,
     description: agent.description,
     model: switch (agent.model) {
       final model? => PluginAgentModel(providerID: model.providerID, modelID: model.id, variant: model.variant),

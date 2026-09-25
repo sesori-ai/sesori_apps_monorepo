@@ -17,6 +17,6 @@ Responses came from `/api/location`, `/api/project`, `/api/session/{id}`,
 `POST /api/session`. Paths and generated IDs are normalized to fixture values;
 model settings are omitted so provider credential material is not retained.
 
-These fixtures prove native REST shapes, not authenticated model execution.
-Transcript, tool-state, form and forward-compatibility cases in mapper tests are
-source-derived fixtures for the pinned 2.0.16 schema, not captured native turns.
+These fixtures prove native REST shapes, not authenticated model execution or
+native turns. Form projection cases in mapper tests are source-derived fixtures
+for the pinned 2.0.16 schema, not captured native form execution.
