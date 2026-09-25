@@ -82,6 +82,7 @@ class const SesoriLogo({
           SvgPicture(
             const AssetBytesLoader(
               "assets/images/sesori_icon_with_shadow.svg.vec",
+              packageName: "sesori_app_ui",
             ),
             width: _svgWidth * scale,
             height: _svgHeight * scale,

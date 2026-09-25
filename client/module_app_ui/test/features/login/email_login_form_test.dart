@@ -17,14 +17,20 @@ void _stubState(MockLoginCubit cubit, LoginState state) {
   when(cubit.close).thenAnswer((_) async {});
 }
 
-Widget _buildApp({required MockLoginCubit cubit, required VoidCallback onSignedIn}) => MaterialApp(
+Widget _buildApp({
+  required MockLoginCubit cubit,
+  required VoidCallback onSignedIn,
+  required VoidCallback? onBack,
+}) => MaterialApp(
   theme: ThemeData(extensions: [PregoDesignSystem.light]),
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   home: Scaffold(
     body: BlocProvider<LoginCubit>.value(
       value: cubit,
-      child: SingleChildScrollView(child: EmailLoginForm(onSignedIn: onSignedIn)),
+      child: SingleChildScrollView(
+        child: EmailLoginForm(onSignedIn: onSignedIn, onBack: onBack),
+      ),
     ),
   ),
 );
@@ -43,8 +49,8 @@ void main() {
   late MockLoginCubit cubit;
   late int signedInCalls;
 
-  Future<void> pumpForm(WidgetTester tester) =>
-      tester.pumpWidget(_buildApp(cubit: cubit, onSignedIn: () => signedInCalls++));
+  Future<void> pumpForm(WidgetTester tester, {VoidCallback? onBack}) =>
+      tester.pumpWidget(_buildApp(cubit: cubit, onSignedIn: () => signedInCalls++, onBack: onBack));
 
   setUp(() {
     cubit = MockLoginCubit();
@@ -157,5 +163,24 @@ void main() {
 
     expect(tester.widget<TextField>(find.byType(TextField).first).enabled, isFalse);
     expect(tester.widget<TextField>(find.byType(TextField).last).enabled, isFalse);
+  });
+
+  testWidgets("draws no way back unless the host asks for one", (tester) async {
+    await pumpForm(tester);
+
+    expect(find.text("Other ways to sign in"), findsNothing);
+  });
+
+  testWidgets("the way back hands control to the host, except while authenticating", (tester) async {
+    var backCalls = 0;
+    await pumpForm(tester, onBack: () => backCalls++);
+
+    await tester.tap(find.text("Other ways to sign in"));
+    expect(backCalls, 1);
+
+    _stubState(cubit, const LoginState.authenticating());
+    await pumpForm(tester, onBack: () => backCalls++);
+    await tester.tap(find.text("Other ways to sign in"), warnIfMissed: false);
+    expect(backCalls, 1);
   });
 }

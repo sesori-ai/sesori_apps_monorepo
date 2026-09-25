@@ -23,6 +23,10 @@ const double _submitGap = 30.0;
 class const EmailLoginForm({
   super.key,
   required final VoidCallback onSignedIn,
+
+  /// Returns to the host's other sign-in options. Null when the host offers
+  /// its own way out, such as a sheet's close control; no link is drawn then.
+  required final VoidCallback? onBack,
 }) extends StatefulWidget {
   @override
   State<EmailLoginForm> createState() => _EmailLoginFormState();
@@ -149,6 +153,17 @@ class _EmailLoginFormState() extends State<EmailLoginForm> {
               fullWidth: true,
               onPressed: isLoading ? null : _submit,
             ),
+            if (widget.onBack case final onBack?) ...[
+              const SizedBox(height: 12),
+              PregoButtonsSolid(
+                label: loc.loginOtherWaysToSignIn,
+                hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                size: PregoButtonsSolidSize.xl,
+                leadingIcon: TablerRegular.arrow_left,
+                fullWidth: true,
+                onPressed: isLoading ? null : onBack,
+              ),
+            ],
           ],
         ),
       ),

@@ -101,6 +101,8 @@ export "src/widgets/pending_archive_alerts.dart";
 export "src/widgets/project_nav_subtitle.dart";
 export "src/widgets/remote_failure_view.dart";
 export "src/widgets/rename_sheet.dart";
+export "src/widgets/sesori_background_widget.dart";
+export "src/widgets/sesori_logo.dart";
 export "src/widgets/session_split/empty_session_detail_panel.dart";
 export "src/widgets/session_split/session_split_breakpoints.dart";
 export "src/widgets/session_split/session_split_scope.dart";

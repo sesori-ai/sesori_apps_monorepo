@@ -3169,6 +3169,54 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get loginCancel;
 
+  /// Link under the email sign-in form that returns to the provider buttons.
+  ///
+  /// In en, this message translates to:
+  /// **'Other ways to sign in'**
+  String get loginOtherWaysToSignIn;
+
+  /// One-line pitch on the desktop sign-in window's brand panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch and steer your coding sessions from your desk or your phone.'**
+  String get desktopLoginTagline;
+
+  /// No description provided for @desktopLoginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get desktopLoginTitle;
+
+  /// No description provided for @desktopLoginSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the same account as on your phone.'**
+  String get desktopLoginSubtitle;
+
+  /// No description provided for @desktopLoginContinueWithGithub.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with GitHub'**
+  String get desktopLoginContinueWithGithub;
+
+  /// No description provided for @desktopLoginContinueWithApple.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Apple'**
+  String get desktopLoginContinueWithApple;
+
+  /// No description provided for @desktopLoginContinueWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get desktopLoginContinueWithGoogle;
+
+  /// Subtitle above the desktop email sign-in form.
+  ///
+  /// In en, this message translates to:
+  /// **'For accounts created with an email and password.'**
+  String get desktopLoginEmailSubtitle;
+
   /// Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle
   ///
   /// In en, this message translates to:

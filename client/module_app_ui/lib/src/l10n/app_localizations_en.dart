@@ -1766,6 +1766,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginCancel => 'Cancel';
 
   @override
+  String get loginOtherWaysToSignIn => 'Other ways to sign in';
+
+  @override
+  String get desktopLoginTagline => 'Watch and steer your coding sessions from your desk or your phone.';
+
+  @override
+  String get desktopLoginTitle => 'Sign in';
+
+  @override
+  String get desktopLoginSubtitle => 'Use the same account as on your phone.';
+
+  @override
+  String get desktopLoginContinueWithGithub => 'Continue with GitHub';
+
+  @override
+  String get desktopLoginContinueWithApple => 'Continue with Apple';
+
+  @override
+  String get desktopLoginContinueWithGoogle => 'Continue with Google';
+
+  @override
+  String get desktopLoginEmailSubtitle => 'For accounts created with an email and password.';
+
+  @override
   String get sessionListRunning => 'Running';
 
   @override
