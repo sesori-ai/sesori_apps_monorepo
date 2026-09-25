@@ -112,6 +112,7 @@ sealed class const ClaudeStreamMessage({
           // from spells it camelCase, and replayed frames have carried both.
           toolUseResult: ClaudeToolUseResult.parse(json["tool_use_result"] ?? json["toolUseResult"]),
           taskNotifications: _taskNotifications(message["content"]),
+          isSynthetic: json["isSynthetic"] == true,
           timestamp: _dateTimeOrNull(json["timestamp"]),
           sessionId: sessionId,
           uuid: uuid,
@@ -497,6 +498,10 @@ final class const ClaudeUserMessage({
   /// `<task-notification>` text, parsed here so lifecycle consumers never read
   /// the wire content shape.
   required final List<ClaudeTaskNotification> taskNotifications,
+
+  /// The CLI generated this frame rather than the user typing it, such as the
+  /// summary that follows a `compact_boundary`.
+  required final bool isSynthetic,
   required final DateTime? timestamp,
   required super.sessionId,
   required super.uuid,

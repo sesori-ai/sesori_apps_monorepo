@@ -449,7 +449,7 @@ final class ClaudeEventDispatcher({
   }) {
     // The summary frame's uuid is the transcript record's id, so live and
     // replayed rows share one message id.
-    if (_awaitingCompactionSummary.remove(sessionId) && message.raw["isSynthetic"] == true) {
+    if (_awaitingCompactionSummary.remove(sessionId) && message.isSynthetic) {
       if (_nonEmptyString(message.uuid) case final messageId?) {
         final compaction = _content.compactionMessage(
           sessionId: sessionId,

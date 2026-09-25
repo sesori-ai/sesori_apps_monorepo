@@ -7,7 +7,6 @@ import "package:sesori_shared/sesori_shared.dart" show Harness, maxTranscriptIma
 
 import "../opencode_plugin.dart";
 import "assistant_message_mapper.dart";
-import "models/openapi/assistant_message.g.dart";
 import "models/openapi/user_message.g.dart";
 import "opencode_message_id.dart";
 import "prompt_message_tracker.dart";
@@ -63,13 +62,8 @@ class OpenCodePlugin._({
   final SseEventMapper _mapper = SseEventMapper(assistantMessageMapper: _assistantMessageMapper);
 
   final PromptMessageTracker _promptMessages = PromptMessageTracker();
-
-  /// OpenCode's compaction summary messages, whose text parts render as
-  /// compaction rows. The `message.updated` naming one precedes its parts.
-  final Set<String> _summaryMessageIds = {};
-  static const MessagePartMapper _messagePartMapper = MessagePartMapper();
   final PluginModelMapper _pluginModelMapper = const PluginModelMapper(
-    messagePartMapper: _messagePartMapper,
+    messagePartMapper: MessagePartMapper(),
     maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
     assistantMessageMapper: _assistantMessageMapper,
   );
@@ -339,6 +333,7 @@ class OpenCodePlugin._({
     Log.v("[shutdown] OpenCodePlugin.dispose: stopping SSE connection");
     _sseConnection.stop();
     _promptMessages.clear();
+    _mapper.clear();
     // Each teardown step is isolated so a failure in one does not prevent the
     // remaining cleanup (http client + event buffer below) from running.
     try {
@@ -862,18 +857,11 @@ class OpenCodePlugin._({
           }
 
           final canonicalEvent = _canonicalizeEvent(event);
-          if (canonicalEvent case SseMessageUpdated(info: AssistantMessage(summary: true, :final id))) {
-            _summaryMessageIds.add(id);
-          }
-          final bridgeEvent = switch (_mapper.map(
+          final bridgeEvent = _mapper.map(
             canonicalEvent,
             displaySessionId: _displaySessionIdForEvent(canonicalEvent),
             promptId: _promptIdForEvent(canonicalEvent),
-          )) {
-            BridgeSseMessagePartUpdated(:final part) when _summaryMessageIds.contains(part.messageID) =>
-              BridgeSseMessagePartUpdated(part: _messagePartMapper.mapSummaryPart(part)),
-            final mapped => mapped,
-          };
+          );
           if (bridgeEvent != null) {
             _eventBuffer.add(bridgeEvent);
           }

@@ -4,6 +4,7 @@ import "assistant_message_mapper.dart";
 import "message_part_mapper.dart";
 import "models/openapi/assistant_message.g.dart";
 import "models/openapi/message.g.dart";
+import "models/openapi/part.g.dart";
 import "models/openapi/user_message.g.dart";
 import "models/sse_event_data.g.dart";
 import "plugin_model_mapper.dart";
@@ -11,11 +12,33 @@ import "question_info_mapper.dart";
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
 ///
-/// Extracted from [OpenCodePlugin] to isolate the mapping concern.
-/// This class is stateless — all methods are pure transformations.
+/// Extracted from [OpenCodePlugin] to isolate the mapping concern. Its only
+/// state is the recent compaction summary messages, whose text parts it maps
+/// to compaction parts.
 class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = const AssistantMessageMapper()}) {
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
   final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper();
+
+  /// Summary messages seen in `message.updated`, which precedes their parts.
+  /// Bounded because nothing announces that a summary message is complete.
+  final Set<String> _summaryMessageIds = {};
+  static const int _maxSummaryMessages = 16;
+
+  PluginMessage _mapAssistantMessage(AssistantMessage info) {
+    if (info.summary ?? false) {
+      _summaryMessageIds.add(info.id);
+      if (_summaryMessageIds.length > _maxSummaryMessages) _summaryMessageIds.remove(_summaryMessageIds.first);
+    }
+    return _assistantMessageMapper.map(info);
+  }
+
+  PluginMessagePart _mapLivePart(Part raw) {
+    final part = _messagePartMapper.mapPart(raw);
+    return _summaryMessageIds.contains(part.messageID) ? _messagePartMapper.mapSummaryPart(part) : part;
+  }
+
+  /// Forgets the recorded summary messages.
+  void clear() => _summaryMessageIds.clear();
 
   /// Maps a `message.updated` payload to its plugin envelope, mirroring the
   /// REST load path ([PluginModelMapper.mapMessageWithParts]). Crucially this
@@ -34,7 +57,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         // anywhere else (the OpenCode TUI, another tool) has none.
         promptId: promptId,
       ),
-      AssistantMessage() => _assistantMessageMapper.map(info),
+      AssistantMessage() => _mapAssistantMessage(info),
       // Unknown roles from a newer OpenCode server have no plugin shape the
       // bridge can deliver; the event is dropped here.
       _ => null,
@@ -87,7 +110,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         sessionID: sessionID,
         messageID: messageID,
       ),
-      SseMessagePartUpdated(:final part) => BridgeSseMessagePartUpdated(part: _messagePartMapper.mapPart(part)),
+      SseMessagePartUpdated(:final part) => BridgeSseMessagePartUpdated(part: _mapLivePart(part)),
       SseMessagePartDelta(
         :final sessionID,
         :final messageID,
