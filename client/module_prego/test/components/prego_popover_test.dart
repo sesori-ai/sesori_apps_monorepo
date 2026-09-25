@@ -96,6 +96,31 @@ void main() {
     expect(find.byType(SingleChildScrollView), findsOneWidget);
   }, variant: _everyPlatform);
 
+  testWidgets("opens and closes at once under reduced motion", (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await tester.pumpWidget(_harness(contentBuilder: _bodyWithClose));
+
+    // One frame after the tap, not a spring's worth.
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.text("Popover body"), findsOneWidget);
+    // Already at rest: fully opaque, and where it settles.
+    final shown = _panel(tester: tester);
+    final fades = tester.widgetList<Opacity>(
+      find.ancestor(of: find.text("Popover body"), matching: find.byType(Opacity)),
+    );
+    expect(fades.every((fade) => fade.opacity == 1), isTrue);
+    await tester.pumpAndSettle();
+    expect(_panel(tester: tester), shown);
+
+    await tester.tap(find.text("Done"));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.text("Popover body"), findsNothing);
+  });
+
   testWidgets("dismisses on an outside tap", (tester) async {
     await tester.pumpWidget(
       _harness(

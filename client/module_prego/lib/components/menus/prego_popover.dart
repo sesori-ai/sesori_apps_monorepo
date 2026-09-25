@@ -3,6 +3,7 @@ import "dart:async";
 import "package:cue/cue.dart";
 import "package:material_ui/material_ui.dart";
 
+import "../../motion/prego_reduced_motion.dart";
 import "anchored_flat_panel.dart";
 
 /// Builds the trigger that opens the popover. [toggle] opens the popup — wire it
@@ -57,13 +58,15 @@ class const PregoPopover({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    // Reduced motion opens and closes the popover at once.
+    final reduced = prefersReducedMotion(context);
     // `cue` still imports the SDK Material library and reads its localizations.
     // ignore: deprecated_member_use
     return MaterialUiCompatibilityBridge(
       child: CueModalTransition(
         barrierColor: Colors.transparent,
-        motion: const Spring.smooth(),
-        reverseMotion: const Spring.snappy(),
+        motion: reduced ? CueMotion.none : const Spring.smooth(),
+        reverseMotion: reduced ? CueMotion.none : const Spring.snappy(),
         // No alignment: the panel positions itself from the trigger rect so it can
         // clamp to the screen edges.
         triggerBuilder: (context, showModal) => triggerBuilder(

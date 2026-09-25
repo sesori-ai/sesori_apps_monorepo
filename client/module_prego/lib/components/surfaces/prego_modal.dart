@@ -80,6 +80,7 @@ Future<T?> showPregoModalRoute<T>({required BuildContext context, required Widge
       backgroundColor: Colors.transparent,
       // The surface caps itself just below the status bar.
       useSafeArea: false,
+      sheetAnimationStyle: prefersReducedMotion(context) ? AnimationStyle.noAnimation : null,
       builder: builder,
     ),
     PregoInteractionMode.pointer => _showDialogFrame<T>(context: context, isDismissible: true, builder: builder),

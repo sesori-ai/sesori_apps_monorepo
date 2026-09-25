@@ -1,6 +1,8 @@
 import "dart:typed_data";
 import "dart:ui" show SemanticsAction;
 
+import "package:bloc_test/bloc_test.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:http/http.dart" as http;
@@ -23,6 +25,8 @@ class _MockImageSaver() extends Mock implements ImageSaver;
 class _MockImageClipboard() extends Mock implements ImageClipboard;
 
 class _MockImageSharer() extends Mock implements ImageSharer;
+
+class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
 late MessageImageRepository _messageImageRepository;
 
@@ -65,19 +69,22 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
         canShareImages: true,
         openExternalLink: ({required url, required mode}) async => false,
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-        child: Scaffold(
-          body: AssistantMessageCard(
-            projectId: null,
-            blocks: const TranscriptBuilder()
-                .build(
-                  messages: [widget.message],
-                  streamingText: _streamingText,
-                  children: const [],
-                  childStatuses: const {},
-                )
-                .blocksFor(messageId: widget.message.info.id),
-            streamingText: _streamingText,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: BlocProvider<SessionDetailCubit>.value(
+          value: _MockSessionDetailCubit(),
+          child: Scaffold(
+            body: AssistantMessageCard(
+              projectId: null,
+              blocks: const TranscriptBuilder()
+                  .build(
+                    messages: [widget.message],
+                    streamingText: _streamingText,
+                    children: const [],
+                    childStatuses: const {},
+                  )
+                  .blocksFor(messageId: widget.message.info.id),
+              streamingText: _streamingText,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            ),
           ),
         ),
       ),

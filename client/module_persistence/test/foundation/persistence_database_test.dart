@@ -32,7 +32,7 @@ void main() {
     expect(await api.readBool(key: "first"), isNull);
   });
 
-  test("production open is lazy and development/production files stay separate", () async {
+  test("file open is lazy, enables WAL and keeps scopes separate across reopen", () async {
     final directory = Directory.systemTemp.createTempSync("sesori-storage-scope-");
     addTearDown(() => directory.deleteSync(recursive: true));
     final platform = _FixtureDirectory(directory: directory);
@@ -43,6 +43,8 @@ void main() {
       try {
         expect(await api.readString(key: "scope"), isNull);
         expect(platform.resolutions, before + 1);
+        final journal = await database.customSelect("PRAGMA journal_mode").getSingle();
+        expect(journal.read<String>("journal_mode"), "wal");
         await api.writeString(key: "scope", value: scope.storageId);
       } finally {
         await database.close();
@@ -58,23 +60,28 @@ void main() {
     }
   });
 
-  test("file database and WAL contain ciphertext, not plaintext secrets or master keys", () async {
+  test("shared secret DI stays lazy and persists only ciphertext through WAL and cold reopen", () async {
     const key = FixtureSecretKey(storageKey: "fixture.secret");
     const secret = "FIXTURE-SECRET-MUST-NOT-REACH-SQLITE-0123456789";
     final directory = Directory.systemTemp.createTempSync("sesori-storage-content-");
     addTearDown(() => directory.deleteSync(recursive: true));
     final platform = _FixtureDirectory(directory: directory);
     final native = FixtureMasterKeyStore(value: null);
-    final cipher = StorageCipher(scope: PersistenceScope.development);
-    var database = PersistenceDatabase.open(
-      persistenceDirectory: platform,
-      scope: PersistenceScope.development,
-    );
+    final getIt = GetIt.asNewInstance()
+      ..registerSingleton<PersistenceDirectory>(platform)
+      ..registerSingleton<PersistenceScope>(PersistenceScope.development)
+      ..registerSingleton<MasterKeyStore>(native);
+    configurePersistenceDependencies(getIt: getIt);
+    final cipher = getIt<StorageCipher>();
+    final database = getIt<PersistenceDatabase>();
     try {
-      final api = SecureStorageApi(database: database, masterKeyStore: native);
-      final repository = SecureStorageRepository(storageApi: api, cipher: cipher);
+      final repository = getIt<SecureStorageRepository>();
+      expect(getIt<SecureStorageRepository>(), same(repository));
+      expect(platform.resolutions, 0);
+      expect(native.reads, 0);
+      expect(native.writes, 0);
       await repository.write(key: key, value: secret);
-      await PersisterApi(database: database).writeString(key: "theme", value: "fixture-plaintext-theme");
+      await getIt<PersisterRepository>().writeString(key: _StringKey.theme, value: "fixture-plaintext-theme");
       final encodedMasterKey = native.storedValue!;
       final files = directory.listSync().whereType<File>().toList();
       expect(files.any((file) => file.path.endsWith("-wal")), isTrue);
@@ -89,24 +96,24 @@ void main() {
       expect(row.key, key.storageKey);
       expect(utf8.decode(row.ciphertext, allowMalformed: true), isNot(contains(secret)));
     } finally {
-      await database.close();
+      await getIt.reset();
     }
 
-    database = PersistenceDatabase.open(
+    final reopened = PersistenceDatabase.open(
       persistenceDirectory: platform,
       scope: PersistenceScope.development,
     );
     try {
       final coldNative = FixtureMasterKeyStore(value: native.storedValue);
       final cold = SecureStorageRepository(
-        storageApi: SecureStorageApi(database: database, masterKeyStore: coldNative),
+        storageApi: SecureStorageApi(database: reopened, masterKeyStore: coldNative),
         cipher: cipher,
       );
       expect(await cold.read(key: key), secret);
       expect(coldNative.reads, 1);
       expect(coldNative.writes, 0);
     } finally {
-      await database.close();
+      await reopened.close();
     }
   });
 
@@ -114,11 +121,9 @@ void main() {
     final directory = Directory.systemTemp.createTempSync("sesori-storage-disposal-");
     addTearDown(() => directory.deleteSync(recursive: true));
     final platform = _FixtureDirectory(directory: directory);
-    final native = FixtureMasterKeyStore(value: null);
     final getIt = GetIt.asNewInstance()
       ..registerSingleton<PersistenceDirectory>(platform)
-      ..registerSingleton<PersistenceScope>(PersistenceScope.development)
-      ..registerSingleton<MasterKeyStore>(native);
+      ..registerSingleton<PersistenceScope>(PersistenceScope.development);
     addTearDown(getIt.reset);
     configurePersistenceDependencies(getIt: getIt);
     expect(platform.resolutions, 0);
@@ -126,18 +131,19 @@ void main() {
     expect(getIt<PersistenceDatabase>(), same(database));
     expect(getIt<StorageCipher>(), same(getIt<StorageCipher>()));
     expect(getIt<PersisterRepository>(), same(getIt<PersisterRepository>()));
-    expect(getIt<SecureStorageRepository>(), same(getIt<SecureStorageRepository>()));
     expect(platform.resolutions, 0);
-    expect(native.reads, 0);
     final repository = getIt<PersisterRepository>();
     await repository.writeBool(key: _BoolKey.fixture, value: true);
     expect(await repository.readBool(key: _BoolKey.fixture), isTrue);
     expect(platform.resolutions, 1);
-    expect(native.reads, 0);
-    expect(native.writes, 0);
+    expect(getIt.isRegistered<MasterKeyStore>(), isFalse);
     await getIt.reset();
     await expectLater(repository.readBool(key: _BoolKey.fixture), throwsA(anything));
   });
+}
+
+enum _StringKey({@override required final String storageKey}) implements StringPersistenceKey {
+  theme(storageKey: "theme"),
 }
 
 enum _BoolKey({@override required final String storageKey}) implements BoolPersistenceKey {

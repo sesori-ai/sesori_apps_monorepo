@@ -2,19 +2,22 @@
 
 ## Execution
 
-- Status: shared-client plan findings applied without another approval round.
-  Shared foundations verified and architecture-approved for replacement PR 4.
+- Status: #1729 merged with 25 passing checks. Cached shared secrets (PR 6)
+  are reconciled with that SQL layer and pass focused verification;
+  implementation review pending.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
   with a retirement condition and deletion checklist.
-- Current branch: `sesori/desktop-master-key-storage-shared-foundation`, based on
-  main in the supplied worktree. No additional worktree is allowed.
-- #1717 is closed as superseded, not merged. Its published backend checkpoint is
-  preserved at `4a27888` on `sesori/desktop-master-key-storage-drift`; carry that
-  implementation into shared-backend PR 5 without rewriting published history.
-- One open PR and at most one local successor. Current total: **10 PRs**;
-  published series titles are synchronized.
+- Current branch: `sesori/desktop-master-key-storage-shared-secrets`. The saved
+  `de38951` checkpoint is reconciled with fixed main `0818f4b` in the supplied
+  worktree, preserving the SQL slice's tests/docs and regenerating DI.
+  No additional worktree is allowed; no subsequent migration branch has started.
+- #1717 is closed as superseded, not merged. Its published desktop checkpoint
+  `4a27888` and the full shared checkpoint `de38951` remain in history.
+- One open PR and at most one local successor. Current total: **11 PRs** after
+  splitting the 1,611-line combined backend at SQL versus secret ownership.
+  Published series titles are synchronized.
 - Source of truth: [PLAN.md](PLAN.md). Original directory slug stays stable.
 
 | Milestone | State | PR / evidence |
@@ -22,13 +25,14 @@
 | 1 — Initial reviewed plan | Merged | #1698; original scope now revised by user direction. |
 | 2 — Typed persistence contracts | Merged | #1708; 10 tests, architecture approval, 27 passing CI checks. |
 | 3.a — Initial cipher foundation | Merged | #1715; 15 tests, architecture approval, 15 passing CI checks. |
-| 3.b — Shared storage foundations | Architecture approved | Replacement PR 4; 26 shared tests, one Android options test, four clean package analyses. |
-| 3.c — Shared encrypted Drift backend | Checkpoint preserved | Replacement PR 5; reuse tested backend and fold primitive delegation. Unused secure interface removed in PR 4. |
-| 4.a — Deprecated mobile import | Not started | PR 6; isolated module, explicit deprecation, domain keys and recovery tests. |
-| 4.b — Native capabilities and backup | Not started | PR 7; narrow platform adapters and actual mobile backup boundary. |
-| 4.c — Both-client cutover | Not started | PR 8; lockstep consumers, migration/failure startup gate and runtime adapter removal. |
-| 5 — Regression reconciliation | Not started | PR 9; behavior docs also accompany their implementation. |
-| 6 — Required qualification/retirement | Not started | PR 10; plan remains active until recorded mobile + desktop matrix passes. |
+| 3.b — Shared storage foundations | Merged | #1726; 26 shared tests, one Android options test, architecture approval, four clean analyses; 23 checks passed at readiness. |
+| 3.c — Shared Drift/primitive persistence | Merged | #1729; 29 tests, architecture approval, clean analysis/generation and 25 passing CI checks. |
+| 3.d — Cached shared secrets | Verified locally | PR 6; 46 shared tests, clean owning analysis/generation; review pending; no app cutover. |
+| 4.a — Deprecated mobile import | Not started | PR 7; isolated module, explicit deprecation, domain keys and recovery tests. |
+| 4.b — Native capabilities and backup | Not started | PR 8; narrow platform adapters and actual mobile backup boundary. |
+| 4.c — Both-client cutover | Not started | PR 9; lockstep consumers, migration/failure startup gate and runtime adapter removal. |
+| 5 — Regression reconciliation | Not started | PR 10; behavior docs also accompany their implementation. |
+| 6 — Required qualification/retirement | Not started | PR 11; plan remains active until recorded mobile + desktop matrix passes. |
 
 ## Decisions and code-informed constraints
 
@@ -102,6 +106,27 @@
 - Shared-foundation review `4d74e149-75fb-486c-919e-e5124b39a3a8` approved exact
   range `66db48e..f38a2f7`, all 24 changed paths, without findings. No future
   migration/cutover implementation or unrelated architecture was reviewed.
+- #1726 current-head Codex completed without findings; 23 checks were passing
+  when readiness triggered its merge. The terminal report showed an additional
+  check still running; that later check is not counted as passed here.
+- The combined shared backend at unpublished `de38951` passed 46 tests and owning
+  analysis. Native calls remained fake; real SQLite used temporary files. Its
+  1,611-line diff motivated the SQL/secret split, not a change to the design.
+  Each extracted slice needs its own verification and implementation review.
+- Extracted SQL slice: 29 tests passed independently without secret-backend
+  source, including real SQLite/WAL/reopen, lazy DI and disposal. Owning analysis,
+  dependency resolution, generation, formatting and whitespace checks passed.
+  No application data or native credentials were accessed.
+- SQL implementation review `7ee56961-ed06-48a5-aa30-2cff50d8bbd5` approved exact
+  range `af23da2..2e1309b`, all 20 paths, without findings. Cached secrets,
+  native adapters and future consumer/migration work were outside that scope.
+- #1729 merged with current-head Codex complete and no findings; its terminal
+  monitor report recorded 25 passing checks.
+- Reconciled cached-secret slice: 46 shared tests pass, including the SQL tests
+  from #1729, real temporary DB/WAL/reopen with complete secret DI, concurrent
+  initialization, native denial/loss, ciphertext-before-key exclusion and
+  rollback. Dependency resolution, generation, formatting and owning analysis
+  passed. Native access remains fake; app bindings are unchanged.
 - None of this evidence establishes released-mobile migration, mobile
   backup/restore, real credential behavior, packaged replacement or actual
   prompt counts. Those gates remain.

@@ -135,6 +135,25 @@ void main() {
     expect(fade.opacity.value, 1);
   });
 
+  testWidgets("reduced motion opens the sheet at once", (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await tester.pumpWidget(
+      _app(
+        mode: PregoInteractionMode.touch,
+        onOpen: (context) =>
+            showPregoModal<void>(context: context, title: "Rename", builder: (_) => const Text("Body")),
+      ),
+    );
+    await tester.tap(find.text("Open"));
+    await tester.pump();
+    await tester.pump();
+    // Already where it settles, not sliding up from the bottom edge.
+    final shown = tester.getRect(find.byType(PregoBottomSheet));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.byType(PregoBottomSheet)), shown);
+  });
+
   testWidgets("pointer shows the action sheet as a request-wide dialog", (tester) async {
     await tester.pumpWidget(
       _app(
