@@ -97,7 +97,7 @@ void main() {
     expect(find.byType(Dialog), findsNothing);
   });
 
-  testWidgets("a dialog that is not dismissible ignores Esc and the scrim", (tester) async {
+  testWidgets("a dialog that is not dismissible ignores Esc and the scrim and has no close button", (tester) async {
     await tester.pumpWidget(
       _app(
         mode: PregoInteractionMode.pointer,
@@ -114,10 +114,7 @@ void main() {
     await tester.tapAt(const Offset(4, 4));
     await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsOneWidget);
-
-    await tester.tap(find.byTooltip("Close"));
-    await tester.pumpAndSettle();
-    expect(find.byType(Dialog), findsNothing);
+    expect(find.byTooltip("Close"), findsNothing);
   });
 
   testWidgets("reduced motion opens the dialog at once", (tester) async {
