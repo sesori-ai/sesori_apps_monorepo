@@ -62,7 +62,6 @@ void main() {
         expiresAt: any(named: "expiresAt"),
       ),
     ).thenAnswer((_) async {});
-    when(() => mockOAuthStorage.saveAuthProvider(provider: any(named: "provider"))).thenAnswer((_) async {});
     when(() => mockOAuthStorage.getOAuthSession()).thenAnswer(
       (_) async => (sessionToken: null, expiresAt: null),
     );
@@ -793,7 +792,6 @@ void main() {
         "device": {"name": "Test iPhone", "osVersion": "iOS 17.5", "appVersion": "1.2.0"},
       });
       expect(body.values, isNot(contains(sessionToken)));
-      verify(() => mockOAuthStorage.saveAuthProvider(provider: AuthProvider.github)).called(1);
     });
 
     test("pollForResult retries pending then stores complete tokens and emits authenticated", () async {
@@ -1319,7 +1317,6 @@ void main() {
             expiresAt: any(named: "expiresAt"),
           ),
         ).thenAnswer((_) async {});
-        when(() => mockOAuthStorage.saveAuthProvider(provider: any(named: "provider"))).thenAnswer((_) async {});
         when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
         when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
         when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
@@ -1523,34 +1520,6 @@ void main() {
       verifyNever(() => mockTokenStorage.saveUser(any()));
       expect(authManager.currentState, const AuthState.initial());
       expect(storedSessionToken, isNull);
-    });
-
-    test("the recorded provider survives an interrupted-poll resume", () async {
-      await authManager.startOAuthFlow(provider: AuthProvider.github);
-      verifyInOrder([
-        () => mockOAuthStorage.saveOAuthSession(
-          sessionToken: any(named: "sessionToken"),
-          expiresAt: any(named: "expiresAt"),
-        ),
-        () => mockOAuthStorage.saveAuthProvider(provider: AuthProvider.github),
-      ]);
-
-      // The phone's socket is torn down while the browser is in front; the
-      // interrupted poll releases in-memory ownership and the resume reads
-      // the stored session.
-      final Future<AuthLoginResult> interrupted = authManager.pollForResult();
-      await pumpEventQueue();
-      statusResponses.single.completeError(http.ClientException("connection aborted"));
-      await expectLater(interrupted, throwsA(isA<http.ClientException>()));
-
-      final Future<AuthLoginResult> resumed = authManager.resumeOAuthFlow();
-      await pumpEventQueue();
-      statusResponses.last.completeError(http.ClientException("connection aborted"));
-      await expectLater(resumed, throwsA(isA<http.ClientException>()));
-
-      expect(statusResponses, hasLength(2));
-      verifyNever(mockOAuthStorage.clearAuthProvider);
-      verifyNever(() => mockOAuthStorage.saveAuthProvider(provider: any(named: "provider")));
     });
   });
 

@@ -167,7 +167,6 @@ class AuthManager(
             sessionToken: sessionToken,
             expiresAt: handoff.expiresAt,
           );
-          await _oAuthStorage.saveAuthProvider(provider: provider);
           _throwIfGenerationSuperseded(generation: generation);
           if (!_ownsOAuthSession(generation: generation, sessionToken: sessionToken)) {
             throw const _AuthFlowSuperseded();

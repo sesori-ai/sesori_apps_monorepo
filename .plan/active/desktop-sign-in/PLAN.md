@@ -182,7 +182,9 @@ widgets → desktop and phone shells.
   `OAuthFlowExpired` exceptions (`module_auth/lib/src/models/oauth_flow_errors.dart`,
   exported) instead of `StateError`; each keeps the status context in its
   message. Other status errors are unchanged.
-- `startOAuthFlow` also records the flow's provider next to the session:
+- Step 6, its only consumer, adds this with "Last used" (moved out of step 2
+  by its implementation review, since nothing reads it earlier).
+  `startOAuthFlow` also records the flow's provider next to the session:
   in memory beside `_oAuthSessionToken`, and in `OAuthStorageService`'s
   existing `oauth_provider` slot, which `_clearOAuthStateInMutation` already
   clears. `pollForResult` reads it from memory, or from storage when it
@@ -416,7 +418,7 @@ and 2 plus the phone waiting-line change. Verify: `module_auth` and
 `module_core` tests (cancel during a pending poll, cancel racing a complete
 response saves nothing, cancel then an immediate new start keeps the new
 flow, a completion already persisting when Cancel runs saves nothing, the
-provider survives an interrupted-poll resume, the terminal-cause rule, reopen, launch failure keeps polling and reports
+terminal-cause rule, reopen, launch failure keeps polling and reports
 `launch` on cancel/timeout, the phone Cancel link in every waiting state, expired → timeout, denied → declined, resume
 paths carry the handoff), phone login widget test, analyze the three packages.
 
@@ -435,7 +437,8 @@ states, fixed-height notice slot. Verify: widget tests for each state and the
 countdown; a real GitHub cancel, reopen and copy-link run on macOS.
 
 **Step 6 — last used and window forward.** Verify: `AuthManager` records on
-both interactive paths and keeps the key through logout; the gate shows the
+both interactive paths and keeps the key through logout; the OAuth flow's
+provider survives an interrupted-poll resume (section 1); the gate shows the
 window only on signed-out → signed-in; widget test for the chip.
 
 **Step 7 — regression docs.** Reconcile `account-and-onboarding.md`: desktop
