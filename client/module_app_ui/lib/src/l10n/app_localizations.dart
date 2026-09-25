@@ -4627,6 +4627,12 @@ abstract class AppLocalizations {
   /// **'Auto continuation on'**
   String get sessionAutoContinuationOn;
 
+  /// Label of the quiet chip beside the session's model picker while auto continuation is enabled and nothing is due. Tapping it offers Disable.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-continue'**
+  String get sessionAutoContinuationChip;
+
   /// No description provided for @sessionAutoContinuationQuotaReached.
   ///
   /// In en, this message translates to:

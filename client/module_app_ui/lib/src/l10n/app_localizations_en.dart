@@ -2640,6 +2640,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionAutoContinuationOn => 'Auto continuation on';
 
   @override
+  String get sessionAutoContinuationChip => 'Auto-continue';
+
+  @override
   String get sessionAutoContinuationQuotaReached => 'Quota reached';
 
   @override

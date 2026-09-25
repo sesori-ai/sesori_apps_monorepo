@@ -784,6 +784,43 @@ void main() {
     expect(find.text("YOLO mode is on"), findsNothing);
   });
 
+  testWidgets("enabled auto continuation shows a model-row chip until a continuation is due", (tester) async {
+    SessionDetailLoaded withContinuation(SessionAutoContinuationStatus status) =>
+        _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+          yoloEnabled: true,
+          session: testConstSession.copyWith(
+            autoContinuation: SessionAutoContinuationView(
+              enabled: true,
+              availability: AutoContinuationAvailability.conditional,
+              status: status,
+            ),
+          ),
+        );
+    final idle = withContinuation(const SessionAutoContinuationStatus.idle());
+    when(() => cubit.state).thenReturn(idle);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: idle);
+    when(() => cubit.setAutoContinuation(enabled: false)).thenAnswer((_) async {});
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.text("YOLO"), findsOneWidget);
+    expect(find.text("Auto continuation on"), findsNothing);
+
+    await tester.tap(find.byKey(const Key("session-auto-continuation-chip")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Disable"));
+    await tester.pumpAndSettle();
+    verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
+
+    final due = withContinuation(const SessionAutoContinuationStatus.resetKnown(resetAt: 100000, continueAt: 220000));
+    when(() => cubit.state).thenReturn(due);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: due);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("session-auto-continuation-chip")), findsNothing);
+    expect(find.text("Auto continuation on"), findsOneWidget);
+    expect(find.textContaining("Continues at"), findsOneWidget);
+  });
+
   testWidgets("opens the variant picker and forwards the selection to the cubit", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();

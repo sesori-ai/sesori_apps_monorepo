@@ -6,6 +6,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "composer_row_chip.dart";
 
 /// Neutral "⚡ YOLO" chip in the session's model row while the connected
 /// bridge approves every permission request. A tap explains YOLO and offers
@@ -16,47 +17,13 @@ class const YoloChip({
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    final foreground = prego.colors.textSecondary;
-    final borderRadius = BorderRadius.circular(PregoRadius.full);
-    return Semantics(
-      button: true,
-      child: SizedBox(
-        height: 36,
-        child: DecoratedBox(
-          decoration: pregoComposerSurfaceDecoration(prego: prego, style: surfaceStyle, borderRadius: borderRadius),
-          child: Padding(
-            padding: const EdgeInsets.all(1),
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: borderRadius,
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                mouseCursor: WidgetStateMouseCursor.clickable,
-                onTap: () => unawaited(_explain(context)),
-                borderRadius: borderRadius,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    spacing: 4,
-                    children: [
-                      Icon(TablerRegular.bolt, size: PregoIconSize.sm, color: foreground),
-                      Text(
-                        context.loc.sessionDetailYoloChip,
-                        style: prego.textTheme.textXs.medium.copyWith(color: foreground),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => ComposerRowChip(
+    icon: TablerRegular.bolt,
+    label: context.loc.sessionDetailYoloChip,
+    showLabel: true,
+    surfaceStyle: surfaceStyle,
+    onPressed: () => unawaited(_explain(context)),
+  );
 
   Future<void> _explain(BuildContext context) async {
     final loc = context.loc;
