@@ -4,36 +4,39 @@ Pure-Dart infrastructure below client auth/core, shared by mobile and desktop.
 No dependency on Flutter or product/domain packages.
 
 - Distinct `StringPersistenceKey`, `BoolPersistenceKey` and `SecretStorageKey`
-  contracts prevent secrets from entering plaintext APIs.
-- Domain packages own their enums, scoped identities and typed serialization.
-  Spellings are explicit, not enum ordinals or `.name`.
-- `StorageCipher` supplies per-row AES-256-GCM, authenticated scope/key identity,
-  fresh nonces and privacy-safe failures retaining their original causes.
-- `PersistenceScope` owns stable client database/master-item names. Its new
-  native master namespace is separate from legacy per-value storage.
-- Shells provide `MasterKeyStore` and `PersistenceDirectory`: native I/O and a
-  ready persistent directory with appropriate backup policy, not encryption,
-  caching or database lifetime. Native errors must not reset stored values.
-- `PersisterRepository` maps typed keys through `PersisterApi`; defaults apply
-  only to absence and failures propagate. It owns no value cache.
+  contracts prevent secrets from entering plaintext APIs. Domain packages own
+  explicit key spellings, scoped identities and typed serialization.
+- `PersisterRepository` maps typed string/bool keys through `PersisterApi`
+  directly into Drift. Defaults apply only to absence; failures propagate.
+- `SecureStorageRepository` owns per-row AES-256-GCM and one cached master-key
+  initialization future. Failed initialization stays failed for that instance.
+  Missing-row reads, deletes and all primitive operations require no native key.
+- A missing master key is created only for a store without encrypted rows, and
+  saved natively before ciphertext. Key loss/corruption never clears or re-keys
+  existing rows. `StorageCipher` authenticates scope/key identity with fresh
+  nonces and retains diagnostic causes behind privacy-safe error presentation.
+- `PersistenceDatabase` owns three tables (`StringValues`, `BoolValues`,
+  `EncryptedValues`), a lazy background SQLite connection, WAL and disposal.
+  SQLite owns atomicity; there is no value cache or custom write queue. Never
+  await native authorization within a database transaction.
+- Shells provide `PersistenceScope`, `MasterKeyStore` and
+  `PersistenceDirectory`: native I/O and a ready non-purgeable directory with
+  platform backup policy applied. Normal storage contains no migration logic.
 
 ## Composition and cutover
 
-Register lazy platform bindings and scope, then call
+Register lazy platform capabilities and scope, then call
 `configurePersistenceDependencies(getIt: getIt)` before auth/core registration.
-Cipher and primitive registrations are lazy and perform no storage I/O.
+Database, APIs, cipher and repositories are lazy; graph reset closes the database.
 
-The active `desktop-master-key-storage` plan moves the Drift backend and cached
-secure repository into this package next, replacing the current raw
-`PrimitiveStorage` delegation. Both apps then switch together; there will be no
-mobile-native runtime alternative. The public-mobile import stays in a clearly
-deprecated core module, never inside normal persistence APIs/repositories.
-
-The foundation is still unwired in product shells: no new database or master
-item is opened by this slice. Existing auth's per-value interface stays live
-until the lockstep consumer cutover, not as an alias to new shared code.
+Product shells are not switched yet. The active `desktop-master-key-storage`
+plan adds deprecated mobile import and native capabilities before the coherent
+consumer cutover. Existing auth's per-value interface remains live until then,
+not as an alias or fallback inside this implementation.
 
 ## Verification
 
-Run `dart test` and `dart analyze --fatal-infos` here. Generate DI with
-`dart run build_runner build`; never edit generated output by hand.
+Run `dart test` and `dart analyze --fatal-infos` here. Fixtures use real temporary
+SQLite files/in-memory databases but fake native keys, never personal credentials.
+Generate Drift and DI with `dart run build_runner build`; never edit generated
+output by hand. See [the regression contract](../../docs/regression/client-persistence.md).

@@ -31,10 +31,11 @@ its password UX, CBC fallback and unrelated application models are not adopted.
 - Auth owns token/user/OAuth serialization and mutation/logout fencing. Core owns
   relay keys, theme/input preferences, bridge/plugin preferences, device identity
   and account-scoped analytics preferences.
-- Shared typed contracts and a desktop-named cipher foundation have merged in
-  #1708/#1715 but are unwired. The unwired desktop backend is preserved on
-  `sesori/desktop-master-key-storage-drift` at `4a27888` in draft #1717. No app
-  database/native credential cutover has occurred.
+- Shared typed contracts and cipher foundations merged in #1708/#1715/#1726;
+  all common ownership is now in `module_persistence`, still unwired in apps.
+  The old desktop backend is preserved on `sesori/desktop-master-key-storage-drift`
+  at `4a27888` in closed/superseded #1717. PR 5 ports that backend into the shared
+  package. No app database/native credential cutover has occurred.
 - Public mobile production releases create a real migration obligation: preserve
   credentials, room keys, preferences and pending analytics opt-out, not merely
   enough data to present a logged-in screen. Do not clear/re-key failed data.
@@ -51,8 +52,8 @@ its password UX, CBC fallback and unrelated application models are not adopted.
   the production scope only. Debug/profile use fresh development databases.
 - Android's manifest currently declares no credential backup exclusions. Pinned
   `flutter_secure_storage` 11.2.0 warns that restoring its preferences without
-  Android Keystore keys can fail; `AndroidOptions.resetOnError` defaults to true.
-  New native adapters must fail explicitly rather than silently resetting data.
+  Android Keystore keys can fail. #1726 disabled `resetOnError` on the active
+  adapter; new native adapters must retain that non-destructive error policy.
 - Desktop analytics remains disabled by `unsupportedPlatform`. This work does
   not activate it or add telemetry to migration.
 
