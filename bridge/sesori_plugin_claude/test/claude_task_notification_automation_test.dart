@@ -96,6 +96,35 @@ void main() {
     expect(replayed.taskState?.output, "Synthetic result");
   });
 
+  test("a background Bash notification folds into its Bash tile, live and after replay", () async {
+    final frames = [
+      _assistant(
+        toolUseId: "toolu-bash",
+        name: "Bash",
+        input: {"command": "sleep 1", "run_in_background": true},
+      ),
+      _launchResult(toolUseId: "toolu-bash", agent: false),
+      _user(
+        uuid: "notification",
+        content: _envelope(toolUseId: "toolu-bash", status: "failed"),
+        origin: _origin,
+      ),
+    ];
+    final events = mapLive(frames: frames);
+    expect(events.whereType<BridgeSseMessageUpdated>(), isEmpty);
+    final live = events.whereType<BridgeSseMessagePartUpdated>().single.part as PluginMessagePartTool;
+    expect(live.id, "toolu-bash");
+    expect(live.state.status, PluginToolStatus.error);
+    expect(live.state.error, "Synthetic task finished");
+
+    final stored = await replay(records: frames);
+    expect(stored, hasLength(1));
+    final replayed = stored.single.parts.single as PluginMessagePartTool;
+    expect(replayed.id, "toolu-bash");
+    expect(replayed.state.status, PluginToolStatus.error);
+    expect(replayed.state.error, "Synthetic task finished");
+  });
+
   test("a SendMessage-resumed agent's notification becomes one Automation step", () async {
     final stored = await automation(
       frames: [
@@ -172,7 +201,9 @@ void main() {
   });
 }
 
-Map<String, Object?> _assistant({required String toolUseId, required String name}) => {
+const _agentInput = {"description": "Synthetic", "prompt": "Synthetic prompt", "subagent_type": "general-purpose"};
+
+Map<String, Object?> _assistant({required String toolUseId, required String name, Object? input = _agentInput}) => {
   "type": "assistant",
   "session_id": _sessionId,
   "sessionId": _sessionId,
@@ -186,16 +217,16 @@ Map<String, Object?> _assistant({required String toolUseId, required String name
         "type": "tool_use",
         "id": toolUseId,
         "name": name,
-        "input": {"description": "Synthetic", "prompt": "Synthetic prompt", "subagent_type": "general-purpose"},
+        "input": input,
       },
     ],
   },
 };
 
-/// The async launch acknowledgement, carrying its typed result under both the
-/// stream's and the transcript's key.
-Map<String, Object?> _launchResult({required String toolUseId}) {
-  const launched = {"isAsync": true, "status": "async_launched", "agentId": "task-1"};
+/// The launch acknowledgement, carrying an agent's typed async result under
+/// both the stream's and the transcript's key.
+Map<String, Object?> _launchResult({required String toolUseId, bool agent = true}) {
+  final launched = agent ? const {"isAsync": true, "status": "async_launched", "agentId": "task-1"} : null;
   return {
     "type": "user",
     "session_id": _sessionId,
@@ -205,11 +236,11 @@ Map<String, Object?> _launchResult({required String toolUseId}) {
     "message": {
       "role": "user",
       "content": [
-        {"type": "tool_result", "tool_use_id": toolUseId, "content": "Async agent launched."},
+        {"type": "tool_result", "tool_use_id": toolUseId, "content": "Launched in background."},
       ],
     },
-    "tool_use_result": launched,
-    "toolUseResult": launched,
+    "tool_use_result": ?launched,
+    "toolUseResult": ?launched,
   };
 }
 

@@ -92,9 +92,10 @@ final class const ClaudeTrackedTask({
 /// Tracks Claude `tool_use` blocks from their streamed start through the
 /// matching `tool_result` block.
 ///
-/// `Agent` calls are tracked as tasks in a second per-session map that
-/// survives [beginTurn], because a background sub-agent outlives the turn that
-/// launched it; only [cancelAll] and [forgetSession] clear it.
+/// `Agent` calls and background `Bash` commands are tracked as tasks in a
+/// second per-session map that survives [beginTurn], because their completion
+/// notification arrives after the turn that launched them; only [cancelAll]
+/// and [forgetSession] clear it.
 final class ClaudeToolTracker() {
   final Map<String, _SessionTools> _sessions = {};
 
@@ -154,6 +155,7 @@ final class ClaudeToolTracker() {
       status: PluginToolStatus.running,
     );
     tool.input = input;
+    _trackTask(tool);
     if (!_isTerminal(tool.status)) tool.status = PluginToolStatus.running;
     return tool.snapshot(sessionDiffRequired: false);
   }
@@ -179,8 +181,13 @@ final class ClaudeToolTracker() {
       ),
     );
     tool.name = name;
-    if (tool.isTask) _tasks.putIfAbsent(toolId, () => tool);
+    _trackTask(tool);
     return tool;
+  }
+
+  /// Registers [tool] once its input shows it outlives its turn.
+  void _trackTask(_TrackedTool tool) {
+    if (tool.isTask || tool.isBackgroundCommand) _tasks.putIfAbsent(tool.id, () => tool);
   }
 
   /// Buffers one `input_json_delta` fragment in wire order.
@@ -226,6 +233,7 @@ final class ClaudeToolTracker() {
         );
       }
     }
+    _trackTask(tool);
     if (!_isTerminal(tool.status)) tool.status = PluginToolStatus.running;
     return tool.snapshot(sessionDiffRequired: false);
   }
@@ -427,6 +435,15 @@ final class _TrackedTool({
   bool get isEdit => kind == _ClaudeToolKind.edit;
   bool get isTodoWrite => kind == _ClaudeToolKind.todoWrite;
   bool get isTask => kind == _ClaudeToolKind.task;
+
+  /// A `run_in_background` shell command, which Claude reports finished
+  /// through a task notification naming this call's tool-use id.
+  bool get isBackgroundCommand =>
+      name.toLowerCase() == "bash" &&
+      switch (input) {
+        {"run_in_background": true} => true,
+        _ => false,
+      };
 
   ClaudeTrackedTool snapshot({required bool sessionDiffRequired, bool todoRefreshRequired = false}) {
     final state = PluginToolState(
