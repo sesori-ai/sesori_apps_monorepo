@@ -36,6 +36,7 @@ client/desktop ───────────→ module_app_ui ───┤
      └→ module_prego
 
 module_core ──────────→ module_persistence ←────────── module_auth
+client/app, client/desktop ────┘
 ```
 
 `module_persistence` is lower-level pure-Dart infrastructure for the shared
@@ -46,7 +47,9 @@ shells supply native master-key access, storage scope and a persistent directory
 with the appropriate backup policy. Temporary public-mobile data migration stays
 isolated and explicitly deprecated in core, never inside normal repositories.
 Auth/core now depend on persistence for domain key contracts and the isolated
-mobile importer. Its registrations are lazy and it is not invoked yet.
+mobile importer. Shells now register a build-mode scope value and lazy native
+master/directory capabilities; mobile also registers the temporary source.
+Neither shell configures the shared storage backend or invokes import yet.
 Consumer/bootstrap integration follows the active `desktop-master-key-storage`
 plan; the existing DI sequence below is unchanged until that integration lands.
 

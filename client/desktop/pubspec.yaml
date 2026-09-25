@@ -41,6 +41,8 @@ dependencies:
     path: ../module_core
   sesori_desktop_core:
     path: ../module_desktop_core
+  sesori_persistence:
+    path: ../module_persistence
   sesori_shared:
     path: ../../shared/sesori_shared
   share_plus: ^13.3.0

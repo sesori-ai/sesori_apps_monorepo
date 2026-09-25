@@ -49,10 +49,12 @@ clearing app data, replacing keys and automatic re-entry are not recovery paths.
 
 ## Native gates (not established by pure-Dart tests)
 
-The future source adapter must preserve the old namespace/algorithms/protection,
-disable Android `resetOnError`, and enumerate iOS using the same account/group
-without an accessibility filter. Native/decryption failure must throw, not look
-like an empty snapshot. Actual iOS/Android released-format enumeration, failure
+The mobile source adapter is now prepared under its own deprecated folder. It
+preserves the old namespace/algorithms/protection, disables Android `resetOnError`,
+and uses the same iOS account/group without an accessibility filter for both
+enumeration and named cleanup. Plugin-channel fixtures verify options and error
+forwarding, not actual native completeness. Native/decryption failure must throw,
+not look like an empty snapshot. Actual iOS/Android released-format enumeration, failure
 propagation, startup admission/disposal and backup/restore require qualification.
 Android legacy credential-backup exclusions must land with import/cutover, not
 while released credentials still depend on backup behavior.

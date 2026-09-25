@@ -50,10 +50,11 @@ its password UX, CBC fallback and unrelated application models are not adopted.
   release currently share `com.sesori.app`; development must not consume/delete
   the production legacy namespace. The deprecated mobile import is admitted for
   the production scope only. Debug/profile use fresh development databases.
-- Android's manifest currently declares no credential backup exclusions. Pinned
-  `flutter_secure_storage` 11.2.0 warns that restoring its preferences without
-  Android Keystore keys can fail. #1726 disabled `resetOnError` on the active
-  adapter; new native adapters must retain that non-destructive error policy.
+- Android's manifest now excludes only the unused new database directory, not
+  still-active credential preferences. Pinned `flutter_secure_storage` 11.2.0
+  warns that restoring its preferences without Keystore keys can fail. #1726
+  disabled destructive reset on the active adapter; new master/source adapters
+  retain it. Native credential exclusions still wait for import/cutover.
 - Desktop analytics remains disabled by `unsupportedPlatform`. This work does
   not activate it or add telemetry to migration.
 
@@ -301,7 +302,10 @@ Development never resolves the importer/native source or calls enumeration or
 cleanup. Test the guard with a legacy source that fails if even constructed.
 The `bootstrapSesoriApp` typed catch/disposal/render path above owns presentation;
 normal consumers never start on failure. Desktop's primary gate, helper
-supervision and rendering sequence are not reordered by storage.
+supervision and rendering sequence are not reordered by storage. Shell scope
+values are explicitly registered before platform DI from `kReleaseMode` (release
+production; debug/profile development): Injectable module providers reject enum
+return types. Master/directory/source capabilities remain lazy.
 
 With cutover PR 4.c, update the dependency diagram and phase/ownership guidance
 in `client/AGENTS.md`, `desktop/AGENTS.md`, `module_auth/AGENTS.md` and
@@ -326,6 +330,17 @@ iOS keeps its existing unlocked, non-synchronizable Keychain accessibility and
 Application Support backup eligibility: qualify a paired encrypted backup/restore
 of the database and master item instead of gratuitously disabling existing iOS
 recovery or adding a backup-policy channel. No unrelated backup disablement.
+
+Pinned-source inspection for cutover: `path_provider_android` 2.3.1 resolves
+Application Support to Android `filesDir`. `flutter_secure_storage` 11.2.0 uses
+these SharedPreferences names (on-disk `.xml` files): `FlutterSecureStorage`,
+`FlutterSecureKeyStorage`, `FlutterSecureStorageConfiguration`,
+`FlutterSecureStorageConfiguration:FlutterSecureStorage`,
+`com.sesori.client.persistence`,
+`FlutterSecureKeyStorage:com.sesori.client.persistence`, and
+`FlutterSecureStorageConfiguration:com.sesori.client.persistence`. Apply those
+credential/config exclusions in PR 4.c, not while old storage is active.
+
 Ordinary updates retain data; Android new-device restore starts fresh. A copied
 DB without a usable master must fail explicitly, never silently re-key. Test
 these boundaries without claiming cross-device synchronization.
@@ -378,8 +393,8 @@ smaller history. Carry applicable feedback into shared-backend PRs 5/6.
 The combined shared port measured 1,611 changed lines before final tracking.
 Split at the existing ownership boundary: schema/direct primitives first,
 cached secret repository second. Both compile independently without a temporary
-adapter, schema, migration or app backend. SQL #1729 and cached secrets #1734
-merged. The next isolated importer is based on fixed main `f1f00ee`.
+adapter, schema, migration or app backend. SQL #1729, cached secrets #1734 and
+deprecated importer #1739 merged. Native capabilities use fixed main `d07c69d`.
 
 | Milestone | Exact PR title | Scope / expected result | Estimate |
 |---|---|---|---|
@@ -389,7 +404,7 @@ merged. The next isolated importer is based on fixed main `f1f00ee`.
 | 3.b | ⚙️ [desktop-master-key-storage] Share client storage foundations [step 4/11] | #1726 merged; shared cipher/capabilities and Android reset safety; no database cutover. | Completed: 1,260 lines including 13 generated |
 | 3.c | ⚙️ [desktop-master-key-storage] Add shared Drift persistence [step 5/11] | #1729 merged; schema/direct primitives, lazy lifecycle and tests; no shell cutover. | Completed: 1,194 lines (517 authored, 621 generated, 56 lockfile) |
 | 3.d | 🚧 [desktop-master-key-storage] Add cached shared secret storage [step 6/11] | #1734 merged; cached-key repository, encryption/recovery/concurrency tests and docs; no shell cutover. | Completed: 672 lines (655 authored, 17 generated) |
-| 4.a | 🚧 [desktop-master-key-storage] Prepare deprecated mobile storage migration [step 7/11] | Domain keys and isolated/deprecated importer, completion semantics and failure tests; not invoked yet. | 600–1,000 authored plus generated models/DI |
+| 4.a | 🚧 [desktop-master-key-storage] Prepare deprecated mobile storage migration [step 7/11] | #1739 merged; domain keys and deprecated importer with recovery tests; not invoked yet. | Completed: 946 lines (773 authored, 173 generated) |
 | 4.b | 🚧 [desktop-master-key-storage] Provide native client persistence capabilities [step 8/11] | Master-item/directory adapters, unused DB-directory backup exclusion, isolated legacy-source adapter and native capability tests. Existing native-value backup eligibility remains until cutover. | 450–900 authored plus generated DI |
 | 4.c | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 9/11] | All consumers/exports/bootstrap and guidance in lockstep, mobile import/failure gate, old native-preference backup exclusions, runtime adapter removal and native fixtures. Both apps use the same store. | 1,000–1,450 authored plus DI; split further if a clean boundary appears |
 | 5 | 🌿 [desktop-master-key-storage] Complete shared persistence regression documentation [step 10/11] | Reconcile feature/matrix/distribution/support evidence; no additional runtime/database change. | 100–250 authored |

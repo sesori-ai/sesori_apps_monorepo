@@ -43,6 +43,8 @@ import 'package:sesori_desktop/core/platform/desktop_oauth_device_descriptor_pro
     as _i20;
 import 'package:sesori_desktop/core/platform/desktop_pasteboard_client.dart'
     as _i210;
+import 'package:sesori_desktop/core/platform/desktop_persistence_directory.dart'
+    as _i824;
 import 'package:sesori_desktop/core/platform/desktop_plugin_authentication_browser.dart'
     as _i916;
 import 'package:sesori_desktop/core/platform/desktop_route_source.dart'
@@ -73,6 +75,7 @@ import 'package:sesori_desktop/core/platform/no_op_attribution_client.dart'
 import 'package:sesori_desktop/core/platform/path_provider_temporary_directory_provider.dart'
     as _i393;
 import 'package:sesori_desktop_core/sesori_desktop_core.dart' as _i316;
+import 'package:sesori_persistence/sesori_persistence.dart' as _i903;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -137,6 +140,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i227.DesktopFailureReporter(),
     );
+    gh.lazySingleton<_i903.MasterKeyStore>(
+      () => registerModule.masterKeyStore(scope: gh<_i903.PersistenceScope>()),
+    );
     gh.lazySingleton<_i948.ActiveBridgeLocality>(
       () => _i202.DesktopActiveBridgeLocality(
         statusTracker: gh<_i316.BridgeStatusTracker>(),
@@ -179,6 +185,11 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());
+    gh.lazySingleton<_i903.PersistenceDirectory>(
+      () => _i824.DesktopPersistenceDirectory(
+        directories: gh<_i316.DesktopApplicationSupportDirectory>(),
+      ),
+    );
     gh.lazySingleton<_i948.ImageSharer>(
       () =>
           _i501.DesktopImageSharer(shareClient: gh<_i692.DesktopShareClient>()),

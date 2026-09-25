@@ -103,8 +103,19 @@ so the dependency is explicit and the adapter can be tested in isolation.
 
 | Interface | Implementation | Wraps |
 |-----------|---------------|-------|
-| `SecureStorage` | `FlutterSecureStorageAdapter` | `flutter_secure_storage` |
+| `SecureStorage` | `FlutterSecureStorageAdapter` | Existing per-value `flutter_secure_storage` (until cutover) |
+| `MasterKeyStore` | `FlutterMasterKeyStore` | One scoped native item in the new persistence namespace |
+| `PersistenceDirectory` | `FlutterPersistenceDirectory` | Existing app-support resolver; ready `persistence/` subtree |
+| `LegacyNativeStorage` | `FlutterLegacyNativeStorageAdapter` | Temporary old-keyspace enumeration/named deletion |
 | `UrlLauncher` | `FlutterUrlLauncher` | `url_launcher` |
 | `DeepLinkSource` | `AppLinksDeepLinkSource` | `app_links` |
+
+The persistence contracts come from lower-level `sesori_persistence`. Scope is
+registered explicitly (release → production; debug/profile → development);
+capabilities are lazy and remain unused until the planned consumer cutover.
+Android backup XML currently excludes only the unused database subtree. Legacy
+credential preferences remain eligible until migration/cutover; iOS retains
+Application Support backup eligibility. The legacy adapter stays inside
+`deprecated_native_storage_v1/` and is deleted with its core importer.
 
 `AppLifecycleObserver` bridges Flutter's `WidgetsBindingObserver` to `ConnectionService.onAppBackgrounded()` / `onAppResumed()`.

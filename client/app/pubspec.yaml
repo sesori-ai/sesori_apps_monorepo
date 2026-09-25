@@ -48,6 +48,8 @@ dependencies:
     path: ../module_auth
   sesori_dart_core:
     path: ../module_core
+  sesori_persistence:
+    path: ../module_persistence
   sesori_app_ui:
     path: ../module_app_ui
   theme_prego:

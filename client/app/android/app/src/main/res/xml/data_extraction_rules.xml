@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <!-- Do not exclude still-active legacy credentials before cutover. -->
+    <cloud-backup>
+        <exclude domain="file" path="persistence/" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="persistence/" />
+    </device-transfer>
+</data-extraction-rules>

@@ -70,6 +70,8 @@ import 'package:sesori_mobile/core/platform/flutter_local_notification_client.da
     as _i636;
 import 'package:sesori_mobile/core/platform/flutter_oauth_device_descriptor_provider.dart'
     as _i363;
+import 'package:sesori_mobile/core/platform/flutter_persistence_directory.dart'
+    as _i512;
 import 'package:sesori_mobile/core/platform/flutter_plugin_authentication_browser.dart'
     as _i987;
 import 'package:sesori_mobile/core/platform/flutter_secure_storage_adapter.dart'
@@ -102,6 +104,7 @@ import 'package:sesori_mobile/core/platform/singular_attribution_startup.dart'
     as _i853;
 import 'package:sesori_mobile/core/routing/deep_link_service.dart' as _i902;
 import 'package:sesori_mobile/core/routing/deep_link_source.dart' as _i919;
+import 'package:sesori_persistence/sesori_persistence.dart' as _i903;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
 const String _firebaseEnabled = 'firebaseEnabled';
@@ -134,6 +137,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
+    );
+    gh.lazySingleton<_i948.LegacyNativeStorage>(
+      () => registerModule.legacyNativeStorage(),
     );
     gh.lazySingleton<_i441.ApplicationSupportDirectoryClient>(
       () => _i441.ApplicationSupportDirectoryClient(),
@@ -181,6 +187,11 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i903.PersistenceDirectory>(
+      () => _i512.FlutterPersistenceDirectory(
+        directories: gh<_i441.ApplicationSupportDirectoryClient>(),
+      ),
+    );
     gh.lazySingleton<_i948.NotificationCanceller>(
       () => registerModule.notificationCanceller(
         gh<_i948.LocalNotificationClient>(),
@@ -188,6 +199,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i948.RouteDispatcher>(
       () => _i610.GoRouterRouteDispatcher(),
+    );
+    gh.lazySingleton<_i903.MasterKeyStore>(
+      () => registerModule.masterKeyStore(scope: gh<_i903.PersistenceScope>()),
     );
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),

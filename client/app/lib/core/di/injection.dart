@@ -2,10 +2,12 @@ import "package:get_it/get_it.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 
 import "analytics_runtime_bootstrap.dart";
 import "firebase_register_module.dart";
 import "injection.config.dart";
+import "register_module.dart";
 
 final getIt = GetIt.instance;
 
@@ -17,7 +19,7 @@ final getIt = GetIt.instance;
 // Core registrations are lazy. Resolve only the crawl-gate service after phase
 // 3, prepare the analytics runtime without awaiting its remote crawl-gate
 // decision, then register the capability before any consumer is instantiated.
-@InjectableInit()
+@InjectableInit(ignoreUnregisteredTypes: [PersistenceScope])
 Future<AnalyticsRuntimeBootstrap> configureDependencies({
   required bool firebaseEnabled,
   required Future<AnalyticsRuntimeBootstrap> Function({
@@ -25,6 +27,7 @@ Future<AnalyticsRuntimeBootstrap> configureDependencies({
   })
   createAnalyticsRuntimeBootstrap,
 }) async {
+  getIt.registerSingleton<PersistenceScope>(clientPersistenceScope);
   getIt.init(
     environment: firebaseEnabled ? firebaseEnabledEnvironmentName : firebaseDisabledEnvironmentName,
   );
