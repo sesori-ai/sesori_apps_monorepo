@@ -2147,10 +2147,12 @@ class SessionDetailCubit(
         case ErrorResponse(:final error):
           sendSettledElsewhere = !_settleFailedSend(
             sendConnectionGeneration: sendConnectionGeneration,
-            // Only a bridge answer proves the prompt was not accepted. A
-            // transport error or timeout may have reached it anyway.
+            // Only a client-error answer proves the prompt was not accepted.
+            // A 5xx (an OpenCode 502 can still run the prompt), a transport
+            // error or a timeout may have reached the harness anyway.
             failure: switch (error) {
-              NonSuccessCodeError() || NotAuthenticatedError() => LocalSendFailure.rejected,
+              NonSuccessCodeError(errorCode: >= 400 && < 500) || NotAuthenticatedError() => LocalSendFailure.rejected,
+              NonSuccessCodeError() ||
               DartHttpClientError() ||
               GenericError() ||
               EmptyResponseError() ||

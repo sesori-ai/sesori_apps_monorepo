@@ -38,6 +38,11 @@
   because the bridge may already have accepted that prompt id. Retry is hidden
   while the harness cannot take prompts; Remove stays. A cubit test covers
   both failure kinds and widget tests cover both action gates.
+- Third review round: only a 4xx `NonSuccessCodeError` counts as `rejected`;
+  a 5xx is `uncertain`, because an upstream 502 can still run the prompt. The
+  "Sending to <harness>…" label wraps, so a long harness name fits a narrow
+  pane at large text. Declined: making the bridge record acceptance before the
+  plugin call returns is a bridge dedup change outside this step.
 - Both apps mount this list, so the change covers phone and desktop.
 
 ## Deviations

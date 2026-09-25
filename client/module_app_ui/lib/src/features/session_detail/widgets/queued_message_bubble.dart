@@ -105,18 +105,27 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         presentation is UnavailableCommandBubblePresentation ||
         presentation is FailedMessageBubblePresentation;
     final status = switch (presentation) {
-      SendingMessageBubblePresentation(:final harnessName) => _status(
-        prego: prego,
-        icon: const ExcludeSemantics(
-          child: SizedBox.square(
-            dimension: 14,
-            child: PregoActivityIndicator(color: null),
+      // The label names the harness, so it wraps rather than overflowing a
+      // narrow pane at large text.
+      SendingMessageBubblePresentation(:final harnessName) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ExcludeSemantics(
+            child: SizedBox.square(
+              dimension: 14,
+              child: PregoActivityIndicator(color: null),
+            ),
           ),
-        ),
-        label: _isSlowSend && harnessName != null
-            ? loc.sessionDetailSendingToHarness(harnessName)
-            : loc.sessionDetailSendingMessage,
-        color: prego.colors.textTertiary,
+          const SizedBox(width: PregoSpacing.xs),
+          Flexible(
+            child: Text(
+              _isSlowSend && harnessName != null
+                  ? loc.sessionDetailSendingToHarness(harnessName)
+                  : loc.sessionDetailSendingMessage,
+              style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary),
+            ),
+          ),
+        ],
       ),
       PendingMessageBubblePresentation(:final onCancel) => Row(
         mainAxisSize: MainAxisSize.min,

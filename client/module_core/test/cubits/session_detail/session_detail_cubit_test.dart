@@ -2312,7 +2312,12 @@ void main() {
     );
 
     for (final (label, error, failure) in [
-      ("a bridge rejection", ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null), LocalSendFailure.rejected),
+      ("a bridge rejection", ApiError.nonSuccessCode(errorCode: 400, rawErrorString: null), LocalSendFailure.rejected),
+      (
+        "an upstream server error",
+        ApiError.nonSuccessCode(errorCode: 502, rawErrorString: null),
+        LocalSendFailure.uncertain,
+      ),
       ("a lost response", ApiError.dartHttpClient(Exception("timed out")), LocalSendFailure.uncertain),
     ]) {
       test("$label marks the failed send ${failure.name}", () async {
