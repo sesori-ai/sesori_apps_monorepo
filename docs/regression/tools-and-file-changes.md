@@ -74,7 +74,7 @@ sub-agent parts, plus the signal that a tool changed files.
   messages yet”); a starting step or streaming text takes its place and
   the swap eases rather than jumps, as does the row's arrival when work starts
   and its departure when work ends. A retry row replaces it, with the same
-  sparkle and band. Streaming thinking shows a shimmering “Thinking...” with one
+  sparkle and band, and folds away when the retry error clears. Streaming thinking shows a shimmering “Thinking...” with one
   line of its
   latest words below, the older start fading out; a finished thought is one row,
   “Thought” and its first line, that opens the full text. While the reader is

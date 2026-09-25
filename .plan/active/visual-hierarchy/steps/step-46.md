@@ -18,6 +18,8 @@ both shells. No new cubit state.
   newest edge while the reader follows. Prompt and user rows appear at once, as
   before; nothing animates while the reader is scrolled away, and the rows
   caught up on reattach do not animate.
+- The retry card's row always exists too, so the card folds away when the retry
+  error clears instead of vanishing in one frame.
 - `TranscriptRollingLine` renders the summary's counts and its failure count.
   At rest it is the same single ellipsizing `Text`. On a change it rolls only
   what differs, word by word: "read 1 file" to "read 2 files" rolls the digit
