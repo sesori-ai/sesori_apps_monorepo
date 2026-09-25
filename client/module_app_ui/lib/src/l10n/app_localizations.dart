@@ -3259,6 +3259,12 @@ abstract class AppLocalizations {
   /// **'Root'**
   String get folderPickerRoot;
 
+  /// Accessibility label for the up-arrow button at the start of the add-project browser's breadcrumb, which opens the parent of the folder being browsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent folder'**
+  String get folderBrowserParentFolder;
+
   /// No description provided for @fetchDirectoryFailed.
   ///
   /// In en, this message translates to:

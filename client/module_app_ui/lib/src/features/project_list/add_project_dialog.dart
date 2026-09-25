@@ -409,6 +409,10 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
                   _Breadcrumb(
                     crumbs: _breadcrumb(loc: loc),
                     onNavigate: (path) => _navigateInto(path: path),
+                    onNavigateUp: switch (widget.cubit.parentHostPath(path: _currentPath)) {
+                      final parentPath? => () => _navigateInto(path: parentPath),
+                      null => null,
+                    },
                   ),
                 Expanded(
                   // The listing runs to the bottom edge and the actions float
@@ -514,59 +518,98 @@ typedef _Crumb = ({String label, String path});
 /// being browsed, in bold; every one before it opens that folder. A deep path
 /// scrolls sideways and starts scrolled to its end, so the current folder
 /// always shows.
+///
+/// An up button ahead of the path opens the parent folder. It stays put while
+/// the path scrolls, and is disabled rather than hidden at a root, so the path
+/// does not shift.
 class const _Breadcrumb({
   required final List<_Crumb> crumbs,
   required final ValueChanged<String> onNavigate,
+
+  /// Null at the host root or a drive root, which have no parent.
+  required final VoidCallback? onNavigateUp,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final segmentStyle = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
+    final touch = PregoInteractionScope.of(context) == PregoInteractionMode.touch;
+    // A short segment such as "/" still gets a finger- or pointer-sized target;
+    // it only shows while hovered or pressed.
+    final minTarget = touch ? _touchTarget : _pointerTarget;
 
-    // Start-aligned while it fits; once it overflows, the scroll view fills
-    // the width and the reverse scroll keeps the current folder in view.
-    return Container(
-      alignment: AlignmentDirectional.centerStart,
-      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        reverse: true,
-        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg),
-        child: Row(
-          children: [
-            for (final (index, crumb) in crumbs.indexed) ...[
-              if (index > 0)
-                ExcludeSemantics(
-                  child: Icon(
-                    TablerLight.chevron_right,
-                    size: _breadcrumbChevronSize,
-                    color: prego.colors.textTertiary,
-                  ),
-                ),
-              if (index == crumbs.length - 1)
-                Padding(
-                  padding: const EdgeInsets.all(PregoSpacing.xs),
-                  child: Text(
-                    crumb.label,
-                    style: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textPrimary),
-                  ),
-                )
-              else
-                Semantics(
-                  button: true,
-                  child: InkWell(
-                    mouseCursor: WidgetStateMouseCursor.clickable,
-                    borderRadius: BorderRadius.circular(PregoRadius.sm),
-                    onTap: () => onNavigate(crumb.path),
-                    child: Padding(
-                      padding: const EdgeInsets.all(PregoSpacing.xs),
-                      child: Text(crumb.label, style: segmentStyle),
-                    ),
-                  ),
-                ),
-            ],
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl, bottom: PregoSpacing.md),
+      child: Row(
+        children: [
+          // Icon-only, so the label it drops travels in its semantics.
+          // Marked a button here too, so at a root it reads as a disabled
+          // button rather than as plain text.
+          Semantics(
+            label: context.loc.folderBrowserParentFolder,
+            button: true,
+            enabled: onNavigateUp != null,
+            child: PregoButtonsSolid.iconOnly(
+              leadingIcon: TablerRegular.arrow_up,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              // lg is 44 tall, a touch target; sm is 36, over the pointer one.
+              size: touch ? PregoButtonsSolidSize.lg : PregoButtonsSolidSize.sm,
+              onPressed: onNavigateUp,
+            ),
+          ),
+          // Start-aligned while it fits; once it overflows, the scroll view
+          // fills the rest of the row and the reverse scroll keeps the current
+          // folder in view.
+          Flexible(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              reverse: true,
+              padding: const EdgeInsetsDirectional.only(start: PregoSpacing.sm, end: PregoSpacing.lg),
+              child: Row(
+                children: [
+                  for (final (index, crumb) in crumbs.indexed) ...[
+                    if (index > 0)
+                      ExcludeSemantics(
+                        child: Icon(
+                          TablerLight.chevron_right,
+                          size: _breadcrumbChevronSize,
+                          color: prego.colors.textTertiary,
+                        ),
+                      ),
+                    if (index == crumbs.length - 1)
+                      Padding(
+                        padding: const EdgeInsets.all(PregoSpacing.xs),
+                        child: Text(
+                          crumb.label,
+                          style: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textPrimary),
+                        ),
+                      )
+                    else
+                      Semantics(
+                        button: true,
+                        child: InkWell(
+                          mouseCursor: WidgetStateMouseCursor.clickable,
+                          borderRadius: BorderRadius.circular(PregoRadius.sm),
+                          onTap: () => onNavigate(crumb.path),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minWidth: minTarget, minHeight: minTarget),
+                            child: Center(
+                              widthFactor: 1,
+                              heightFactor: 1,
+                              child: Padding(
+                                padding: const EdgeInsets.all(PregoSpacing.xs),
+                                child: Text(crumb.label, style: segmentStyle),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -918,6 +961,11 @@ enum _AddProjectAction() {
 const double _folderIconSize = 16;
 const double _chevronSize = 16;
 const double _breadcrumbChevronSize = 13;
+
+/// The smallest tap target a breadcrumb segment gets under a finger and under
+/// a pointer.
+const double _touchTarget = 44;
+const double _pointerTarget = 32;
 const double _errorIconSize = 48;
 
 /// The line box a folder name renders into (16/24 text), so the skeleton holds

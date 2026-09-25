@@ -183,6 +183,22 @@ PregoButtonsSolid _button(WidgetTester tester, Finder finder) => tester.widget<P
 /// The quick-navigation button labelled [label] in the row above the breadcrumb.
 Finder _placeButton(String label) => find.widgetWithText(PregoButtonsSolid, label);
 
+/// The icon-only up button at the start of the breadcrumb.
+final Finder _upButton = find.widgetWithIcon(PregoButtonsSolid, TablerRegular.arrow_up);
+
+/// A screen whose one button opens the add-project dialog.
+Widget _buildOpenerApp({required ProjectListCubit cubit}) => _buildApp(
+  cubit: cubit,
+  child: Scaffold(
+    body: Builder(
+      builder: (context) => ElevatedButton(
+        onPressed: () => _showAddProjectDialog(context, cubit),
+        child: const Text("Open"),
+      ),
+    ),
+  ),
+);
+
 /// The breadcrumb's Home segment. The Home place button comes first in the
 /// tree, so the breadcrumb's is the last "Home".
 final Finder _breadcrumbHome = find.text("Home").last;
@@ -676,6 +692,80 @@ void main() {
       await tester.pumpAndSettle();
       verify(() => mockCubit.fetchFilesystemSuggestions(prefix: _homePath)).called(1);
       expect(_button(tester, _placeButton("Home")).onPressed, isNull);
+    });
+
+    testWidgets("the up button opens the parent folder and is disabled at the root", (tester) async {
+      _stubSuggestionsPerPrefix(
+        mockCubit,
+        byPrefix: {
+          "": _homeDirEntries,
+          "/home": const [FilesystemSuggestion(path: _homePath, name: "user", isGitRepo: false)],
+          "/": const [FilesystemSuggestion(path: "/home", name: "home", isGitRepo: false)],
+        },
+      );
+
+      await tester.pumpWidget(_buildOpenerApp(cubit: mockCubit));
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(find.bySemanticsLabel("Parent folder"), findsOneWidget);
+      expect(_button(tester, _upButton).onPressed, isNotNull);
+
+      // From Home, up leaves the starting folder for its real parent.
+      await tester.tap(_upButton);
+      await tester.pumpAndSettle();
+      verify(() => mockCubit.fetchFilesystemSuggestions(prefix: "/home")).called(1);
+      expect(find.text("user"), findsOneWidget);
+
+      await tester.tap(_upButton);
+      await tester.pumpAndSettle();
+      verify(() => mockCubit.fetchFilesystemSuggestions(prefix: "/")).called(1);
+
+      // The root has no parent, so the button stays in place but disabled.
+      expect(_upButton, findsOneWidget);
+      expect(_button(tester, _upButton).onPressed, isNull);
+      // Screen readers hear a disabled button, not static text.
+      final semantics = tester.ensureSemantics();
+      expect(
+        tester.getSemantics(find.bySemanticsLabel("Parent folder")),
+        isSemantics(label: "Parent folder", isButton: true, hasEnabledState: true, isEnabled: false),
+      );
+      semantics.dispose();
+    });
+
+    testWidgets("a short breadcrumb segment gets a touch-sized tap target", (tester) async {
+      _stubSuggestionsPerPrefix(mockCubit, byPrefix: {"": _homeDirEntries});
+
+      await tester.pumpWidget(_buildOpenerApp(cubit: mockCubit));
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      final rootSegment = find.ancestor(of: find.text("/"), matching: find.byType(InkWell));
+      final size = tester.getSize(rootSegment);
+      expect(size.width, greaterThanOrEqualTo(44));
+      expect(size.height, greaterThanOrEqualTo(44));
+
+      // A tap below the glyph, outside its drawn padding, still opens the root.
+      await tester.tapAt(tester.getCenter(find.text("/")) + const Offset(0, 18));
+      await tester.pumpAndSettle();
+      verify(() => mockCubit.fetchFilesystemSuggestions(prefix: "/")).called(1);
+    });
+
+    testWidgets("under a pointer a breadcrumb segment gets a pointer-sized tap target", (tester) async {
+      _stubSuggestionsPerPrefix(mockCubit, byPrefix: {"": _homeDirEntries});
+
+      await tester.pumpWidget(
+        PregoInteractionScope(
+          mode: PregoInteractionMode.pointer,
+          child: _buildOpenerApp(cubit: mockCubit),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      final size = tester.getSize(find.ancestor(of: find.text("/"), matching: find.byType(InkWell)));
+      expect(size.width, greaterThanOrEqualTo(32));
+      expect(size.height, greaterThanOrEqualTo(32));
     });
 
     testWidgets("a listing that lands after stepping back out is ignored", (tester) async {

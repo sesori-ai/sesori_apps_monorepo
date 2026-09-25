@@ -1063,6 +1063,10 @@
   "@folderPickerRoot": {
     "description": "Shortcut button that jumps to the host filesystem root in the add-project browser. Shown on hosts without drive letters."
   },
+  "folderBrowserParentFolder": "Parent folder",
+  "@folderBrowserParentFolder": {
+    "description": "Accessibility label for the up-arrow button at the start of the add-project browser's breadcrumb, which opens the parent of the folder being browsed."
+  },
   "fetchDirectoryFailed": "Could not load directory contents",
   "fetchDirectoryRetry": "Retry",
   "gitRepoBadge": "Git",
