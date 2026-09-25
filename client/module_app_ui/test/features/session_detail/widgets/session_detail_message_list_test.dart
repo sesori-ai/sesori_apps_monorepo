@@ -1107,6 +1107,60 @@ void main() {
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   });
 
+  testWidgets("the jump button names the step running now while the rows hold still", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    MessageWithParts toolMessage({required String id, required ToolStatus status}) => MessageWithParts(
+      info: Message.assistant(
+        id: id,
+        sessionID: "session-1",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        time: null,
+      ),
+      parts: [
+        MessagePart.tool(
+          id: "$id-tool",
+          sessionID: "session-1",
+          messageID: id,
+          tool: "bash",
+          state: ToolState(status: status, title: null, shellCommand: "make check", output: null, error: null),
+        ),
+      ],
+    );
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _detachViewport(tester);
+    expect(find.text("Jump to latest"), findsOneWidget);
+
+    harnessKey.currentState!.appendNewestMessage(toolMessage(id: "run-1", status: ToolStatus.running));
+    await _pumpListUpdate(tester);
+    final pill = find.byKey(_jumpToLatestKey);
+    expect(find.descendant(of: pill, matching: find.text(r"Running $ make check")), findsOneWidget);
+    expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsOneWidget);
+
+    harnessKey.currentState!.removeMessage("run-1");
+    harnessKey.currentState!.appendNewestMessage(toolMessage(id: "queued", status: ToolStatus.pending));
+    await _pumpListUpdate(tester);
+    expect(find.descendant(of: pill, matching: find.text(r"Pending $ make check")), findsOneWidget);
+
+    harnessKey.currentState!.removeMessage("queued");
+    harnessKey.currentState!.appendNewestMessage(toolMessage(id: "run-2", status: ToolStatus.completed));
+    await _pumpListUpdate(tester);
+    expect(find.descendant(of: pill, matching: find.text("Jump to latest")), findsOneWidget);
+    expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsNothing);
+  });
+
   testWidgets("following mode stays pinned to latest", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));

@@ -195,55 +195,59 @@ void main() {
     });
   });
 
-  group("streaming tail slicing", () {
-    test("returns text under the tail budget unchanged", () {
-      expect(ReasoningPartCard.streamingTail(text: "short thought"), "short thought");
+  group("latest words", () {
+    test("returns a short thought on one line", () {
+      expect(ReasoningPartCard.latestWords(text: "short\n\nthought  here"), "short thought here");
     });
 
-    test("starts the slice after the first newline inside the tail window", () {
-      final text = "${"a" * 800}\n${"b" * 400}";
+    test("keeps only the end of a long thought", () {
+      final text = "${"a" * 800} newest words";
 
-      expect(ReasoningPartCard.streamingTail(text: text), "b" * 400);
+      expect(ReasoningPartCard.latestWords(text: text), "${"a" * 147} newest words");
     });
 
-    test("keeps the whole slice when a newline near the end would empty the preview", () {
-      // The only newline in the window sits 10 characters from the end;
-      // aligning to it would collapse the 56px preview to a near-blank
-      // sliver showing just those characters.
-      final text = "${"a" * 1000}\n${"b" * 10}";
+    test("never starts on an orphaned UTF-16 low surrogate", () {
+      // The cut lands between the emoji's two code units.
+      final text = "${"x" * 10}😀${"y" * 159}";
 
-      expect(ReasoningPartCard.streamingTail(text: text), "${"a" * 689}\n${"b" * 10}");
-    });
-
-    test("never starts the slice on an orphaned UTF-16 low surrogate", () {
-      // Position an emoji so the tail cut lands exactly between its two
-      // UTF-16 code units; no newline follows, so the raw slice would
-      // otherwise begin with a malformed lone low surrogate.
-      final text = "${"x" * 700}😀${"y" * 699}";
-
-      expect(ReasoningPartCard.streamingTail(text: text), "y" * 699);
+      expect(ReasoningPartCard.latestWords(text: text), "y" * 159);
     });
   });
 
+  testWidgets("a streaming thought shows its latest words on one line", (tester) async {
+    await tester.pumpWidget(buildApp(text: "${"older words " * 40}newest words", isStreaming: true));
+    await tester.pumpAndSettle();
+
+    final tail = find.textContaining("newest words");
+    expect(tester.widget<Text>(tail).maxLines, 1);
+    // The newest words stay in view at the row's end; the older start is cut.
+    expect(tester.getRect(tail).right, closeTo(tester.getRect(find.byType(ReasoningPartCard)).right, 1));
+    expect(tester.takeException(), isNull);
+  });
+
   for (final brightness in Brightness.values) {
-    testWidgets("${brightness.name} reasoning uses unboxed activity typography", (tester) async {
+    testWidgets("${brightness.name} a finished thought is one unboxed row", (tester) async {
       tester.platformDispatcher.platformBrightnessTestValue = brightness;
       addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
       await tester.pumpWidget(buildApp(text: "Reviewing the next step", isStreaming: false));
 
       final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
-      for (final text in ["Thought", "Reviewing the next step"]) {
+      for (final (text, color) in [
+        ("Thought", prego.colors.textSecondary),
+        ("Reviewing the next step", prego.colors.textTertiary),
+      ]) {
         final style = tester.widget<Text>(find.text(text)).style!;
         expect(style.fontSize, 14);
         expect(style.height, closeTo(20 / 14, 0.001));
-        expect(style.color, prego.colors.textSecondary);
+        expect(style.color, color);
         expect(style.fontStyle, isNot(FontStyle.italic));
       }
+      expect(tester.getCenter(find.text("Thought")).dy, tester.getCenter(find.text("Reviewing the next step")).dy);
       expect(
         find.descendant(of: find.byType(ReasoningPartCard), matching: find.byType(Container)),
         findsNothing,
       );
-      expect(find.byIcon(TablerRegular.chevron_right), findsOneWidget);
+      expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
       expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isFalse);
     });
   }
@@ -300,7 +304,7 @@ void main() {
       await tester.pumpWidget(buildApp(text: "A long thought about the next step " * 60, isStreaming: streaming));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      expect(tester.getRect(find.byIcon(TablerRegular.chevron_right)).right, lessThanOrEqualTo(240));
+      expect(tester.getRect(find.byType(InkWell)).right, lessThanOrEqualTo(240));
       expect(tester.getSize(find.byType(InkWell)).height, greaterThanOrEqualTo(44));
     }
   });

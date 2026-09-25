@@ -7,14 +7,17 @@
 - **Plan date:** 2026-09-23
 - **Repository:** `sesori-ai/sesori_apps_monorepo`, implementation base `main`
   at `a845f1434c`.
-- **Delivery:** 41-step PR series titled
-  `<emoji> [visual-hierarchy] <description> [step <x>/41]`. Steps 1–3 merged
-  as `/38`; three steps were added on 2026-09-23 (35–37). Exact titles and
-  branches are in [TRACKER](TRACKER.md#pr-titles).
+- **Delivery:** 49-step PR series titled
+  `<emoji> [visual-hierarchy] <description> [step <x>/49]`. Steps 1–3 merged
+  as `/38` and steps 4–36 as `/41`; three steps were added on 2026-09-23
+  (35–37) and eight on 2026-09-25 (40–47). Exact titles and branches are in
+  [TRACKER](TRACKER.md#pr-titles).
 - **Order:** steps 2–36 need no further input from the user and run first.
   Step 37 is a discussion with the user backed by prototypes. Step 38 waits
   for the user to scope the sign-in rebuild, and step 39 for their approval of
-  screenshots (D16). Steps 40–41 close the series.
+  screenshots (D16). Steps 40–47 come from the user's feedback of 2026-09-25
+  and need no input except step 41, which applies the variant the user picks.
+  Steps 48–49 close the series.
 - **Sources:** the user's verdicts on the round 1 UI review and on the motion
   review, their answers to the follow-up questions, and their round 2 answers
   of 2026-09-23 (D19–D23; [TRACKER](TRACKER.md#round-2-answers)). The review
@@ -194,7 +197,8 @@ Data paths:
 - **D1 Scope.** As in Scope. Nothing marked Not worth it or Later is built.
 - **D2 Order.** Steps that need no input first (2–36), then the turn
   navigation discussion (37), then the sign-in plan (38), then H6 (39), which
-  the user asked to be last. Foundations come before
+  the user asked to be last among the original steps; the 2026-09-25
+  additions (40–47) run as soon as they are unblocked. Foundations come before
   the screens that use them, and the transcript (31–32) builds on the restyled
   tokens, rows and session page.
 - **D3 The sparkle stays.** It is the running and unread signal everywhere and
@@ -651,6 +655,89 @@ is that plan's PR; its implementation runs under it.
 before and after screenshots of the running app first, because an over-strong
 fade looks worse than none. No PR before approval.
 
+### Added from the user's feedback of 2026-09-25 (40–47)
+
+**Step 40 — smaller phone up button.** The folder browser's up-arrow button
+(#1688) is a size too large on the phone. Step it down one size on touch while
+keeping the 44 px hit area; the desktop size stays.
+
+**Step 41 — recovery card polish (approval gate).** The desktop bridge
+recovery card (#1695) gets smaller buttons, more space above them, an icon
+centred on the first text line, and lighter or smaller message text. The user
+picks one of the lettered variants on a local review page of real renders; the
+step implements that variant only. If it needs a smaller solid button, a new
+`PregoButtonsSolidSize.xs` joins the design system and its catalog. No PR
+before the pick.
+
+**Step 42 — a real busy indicator.** Today only the phone's top bar shows that
+a session is working. On the desktop the title shimmer is invisible in dark
+mode, because `PregoShimmer` sweeps a white band over near-white
+`textPrimary`, and nothing in the transcript marks the gap between steps or
+before the first token. The shimmer is judged too faint and not good-looking.
+Changes:
+- The live row leads with the turning `PregoAiLoader` sparkle again. The
+  shimmer on its label becomes clearly visible in both themes: a
+  theme-aware highlight.
+- While the session is busy and no step is live, a trailing live row says
+  "Working…" with the same sparkle. When a step starts, the step takes its
+  place.
+- The desktop title shows the sparkle again in front of the title (as step 7
+  had it), with the title shimmer made visible in dark mode or dropped.
+- The busy test is the existing `hasActiveWork`; no new state.
+
+Before and after screenshots and a short recording go in the PR.
+
+**Step 43 — auto-continuation notice only when due.** The notice floats above
+the composer for as long as auto-continuation is enabled, which costs a lot of
+screen space. The card now shows only while a continuation is pending (waiting
+to send) and when an attempt fails. While it is only armed, a quiet
+"Auto-continue" chip joins the composer's model row, beside the YOLO chip, and
+tapping it offers Disable. No wire change: the client already receives the
+continuation phase.
+
+**Step 44 — a YOLO icon of its own.** The YOLO chip reuses the fast-mode bolt.
+It gets a distinct shield-with-warning icon from the Tabler set, in the spirit
+of Codex's "Full access" shield, used by the chip, the per-session control
+(step 45) and the Settings row.
+
+**Step 45 — YOLO per session.** The bridge setting becomes the default for new
+and existing sessions, and each session can override it.
+- **Bridge:** a nullable `approval_override` column on the bridge's session
+  table. `null` means "follow the default", and absence is genuinely
+  meaningful. Auto-approval in the orchestrator checks the session's effective
+  mode instead of the global flag, and `approvePending` approves only the
+  pending requests of sessions in YOLO.
+- **Wire:** the session carries its override, with an honest `null` default
+  and a compatibility marker. A new request sets or clears it.
+- **Clients:** the composer's approval chip, shown in every session, opens an
+  anchored menu with "Ask for approval" and "Approve everything (YOLO)",
+  marking the default. The YOLO choice uses the warning colour, as Codex's
+  "Full access" does. An older bridge does not report the override, so the
+  client shows today's read-only chip and hides the menu.
+- **Harnesses:** approval happens in the bridge, so every harness gets it with
+  no plugin change.
+
+May split as 45.a (bridge, wire and tests) and 45.b (clients).
+Architecture implementation review: persistence and wire change.
+
+**Step 46 — tool-group motion.** Grouping works, but changes jump.
+- A finished live row collapses into its group with a size-and-fade
+  animation.
+- The group's summary animates its change: the changed count rolls, and the
+  new words slide in, without flicker.
+- Every row that appears or vanishes (tool, thinking tail, live row) animates
+  its size, so the transcript never jumps.
+- The motion uses the existing motion tokens and respects reduced motion.
+- It must look calm, not busy. A short recording goes in the PR.
+
+**Step 47 — expanded group as an anchored panel.** Expanding a large group
+pushes a wall of steps into the chat. Tapping a group summary instead opens
+its steps in an anchored popover: step 4's height-capped popover, scrollable
+and dismissed by tapping outside or Esc. Tapping a step inside still expands
+its details there. On the phone the same content opens as a sheet through
+`showPregoModal`. The transcript layout no longer changes when a group opens.
+Architecture implementation review: new shared surface.
+
 ## Compatibility
 
 - Only steps 25, 27, 32, 34 and 36 touch the client-bridge contract. Each adds an
@@ -658,13 +745,19 @@ fade looks worse than none. No PR before approval.
   degrades to today's behaviour and an older app ignores the field. Step 32's
   kind also reads a newer bridge's unknown values as unknown. Markers use the
   product version from `bridge/app/pubspec.yaml` at the time.
-- No database, migration or persisted-format change. The desktop layout file
-  is unchanged.
+- Step 45 adds a nullable per-session approval override: a new bridge
+  database column with a migration, a session field with an honest `null`
+  default, and a new set request. An older bridge omits the field, so the
+  client hides the per-session menu. An older app ignores it, and the bridge
+  default still governs sessions without an override.
+- Apart from step 45, there is no database, migration or persisted-format
+  change. The desktop layout file is unchanged.
 - Plugin and module APIs change in lockstep inside the repository.
 
 ## Complexity Budget
 
-New persistent state: none.
+New persistent state: one nullable per-session approval override on the
+bridge (step 45).
 
 New in-memory state, each with one owner:
 
@@ -725,8 +818,8 @@ time.
 
 ## Delivery Plan
 
-41 steps, one PR at a time in order; step 4 lands as three PRs (4.a–4.c), so
-the series has 43 PRs; exact titles and branches are in
+49 steps; step 4 landed as three PRs (4.a–4.c) and step 45 may land as two
+(45.a bridge, 45.b clients). Exact titles and branches are in
 [TRACKER](TRACKER.md#pr-titles). Targets count additions plus deletions
 across every path.
 
@@ -771,11 +864,19 @@ across every path.
 | 37 | set after the discussion | 🌱 | — |
 | 38 | ≤ 600 | 🌱 | its own plan review |
 | 39 | set at approval | ⚙️ | — |
-| 40 | ≤ 600 | 🌱 | — |
-| 41 | ≤ 300 | 🌱 | — |
+| 40 | ≤ 150 | 🌱 | — |
+| 41 | ≤ 300 | 🌿 | — |
+| 42 | ≤ 700 | ⚙️ | — |
+| 43 | ≤ 500 | ⚙️ | — |
+| 44 | ≤ 150 | 🌱 | — |
+| 45 | ≤ 1,200, or 45.a + 45.b | 🚧 | yes |
+| 46 | ≤ 900 | 🚧 | — |
+| 47 | ≤ 800 | ⚙️ | yes |
+| 48 | ≤ 600 | 🌱 | — |
+| 49 | ≤ 300 | 🌱 | — |
 
 Evidence for a finished step goes in `steps/step-NN.md`, written by that
-step's own PR. Step 40 reconciles `docs/regression/`. Step 41 runs the final
+step's own PR. Step 48 reconciles `docs/regression/`. Step 49 runs the final
 matrix below on the merged series, records every cell, and retires the plan to
 `.plan/completed/visual-hierarchy/`.
 
@@ -840,7 +941,9 @@ because they share one mapper.
   projects with activity.
 - **YOLO can look stale on a second surface** until it reconnects or opens
   Settings (step 33). Accepted: it self-corrects and changes no behaviour.
-- **Step 39 can take several rounds.** It blocks only steps 40–41.
+- **Step 39 can take several rounds.** It blocks only steps 48–49.
+- **Per-session YOLO stays on the bridge that owns the session** (step 45). A
+  session moved to another bridge follows that bridge's default. Accepted.
 - **Search sees loaded titles only.** Accepted (D11).
 - **The palette and Activity read loaded session data.** A session the app has
   not loaded does not appear until it loads. Accepted.
