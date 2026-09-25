@@ -1,3 +1,4 @@
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -110,4 +111,25 @@ void main() {
       );
     });
   }
+
+  testWidgets("a focused button activates on Enter and Space", (tester) async {
+    var presses = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: Scaffold(
+          body: PregoButtonsSolid(
+            label: "Go",
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.lg,
+            onPressed: () => presses++,
+          ),
+        ),
+      ),
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    expect(presses, 2);
+  });
 }

@@ -212,8 +212,8 @@ enum PregoBottomSheetBodySize() { natural, seventyPercent, full }
 ///
 /// The sheet is scroll-controlled (so it can grow to the status bar) over a
 /// transparent route background — [PregoBottomSheet] paints its own rounded
-/// surface. Scrim-tap and drag-to-dismiss both follow [isDismissible]. The
-/// close button pops this route.
+/// surface. Scrim-tap, drag-to-dismiss and the close button all follow
+/// [isDismissible]; the close button pops this route.
 // ignore: no_slop_linter/prefer_required_named_parameters, contentPadding/handleBottomSafeArea keep sheet-chrome defaults
 Future<T?> showPregoBottomSheet<T>({
   required BuildContext context,
@@ -236,6 +236,7 @@ Future<T?> showPregoBottomSheet<T>({
   // modal route strips the top padding from the sheet's own MediaQuery, so the
   // sheet can't read it once inside.
   final topInset = MediaQuery.paddingOf(context).top;
+  // ignore: no_slop_linter/avoid_raw_modal_presenters, the touch frame behind showPregoModal
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
@@ -277,7 +278,7 @@ Future<T?> showPregoBottomSheet<T>({
         handleBottomSafeArea: handleBottomSafeArea,
         topInset: topInset,
         // ignore: no_slop_linter/avoid_navigator_of, design module has no go_router dep; pops the modal route this helper pushed
-        onClose: () => Navigator.of(sheetContext).pop(),
+        onClose: isDismissible ? () => Navigator.of(sheetContext).pop() : null,
         child: body,
       );
     },

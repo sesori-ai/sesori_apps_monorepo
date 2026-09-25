@@ -279,41 +279,70 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
 
   Future<OpenProjectGitAction?> _showGitChoiceDialog() {
     final loc = context.loc;
-    return showDialog<OpenProjectGitAction>(
+    return showPregoModal<OpenProjectGitAction>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(loc.addProjectEnableGitTitle),
-        content: Text(loc.addProjectEnableGitBody),
-        actions: [
-          TextButton(
-            onPressed: () => dialogContext.pop(OpenProjectGitAction.openWithoutGit),
-            child: Text(loc.addProjectContinueWithoutGit),
-          ),
-          FilledButton(
-            onPressed: () => dialogContext.pop(OpenProjectGitAction.initializeGit),
-            child: Text(loc.addProjectEnableGit),
-          ),
-        ],
+      title: loc.addProjectEnableGitTitle,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              loc.addProjectEnableGitBody,
+              style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+            ),
+            const SizedBox(height: PregoSpacing.x2l),
+            PregoSheetActions(
+              secondary: PregoButtonsSolid(
+                label: loc.addProjectContinueWithoutGit,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => sheetContext.pop(OpenProjectGitAction.openWithoutGit),
+              ),
+              primary: PregoButtonsSolid(
+                label: loc.addProjectEnableGit,
+                hierarchy: PregoButtonsSolidHierarchy.primary,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => sheetContext.pop(OpenProjectGitAction.initializeGit),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Future<void> _showGitSetupIncompleteDialog() {
     final loc = context.loc;
-    return showDialog<void>(
+    return showPregoModal<void>(
       context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => PopScope(
+      title: loc.addProjectGitSetupIncompleteTitle,
+      isDismissible: false,
+      builder: (sheetContext) => PopScope(
         canPop: false,
-        child: AlertDialog(
-          title: Text(loc.addProjectGitSetupIncompleteTitle),
-          content: Text(loc.addProjectGitSetupIncompleteBody),
-          actions: [
-            FilledButton(
-              onPressed: () => dialogContext.pop(),
-              child: Text(loc.addProjectGitSetupIncompleteAcknowledge),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                loc.addProjectGitSetupIncompleteBody,
+                style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+              ),
+              const SizedBox(height: PregoSpacing.x2l),
+              PregoButtonsSolid(
+                label: loc.addProjectGitSetupIncompleteAcknowledge,
+                hierarchy: PregoButtonsSolidHierarchy.primary,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => sheetContext.pop(),
+              ),
+            ],
+          ),
         ),
       ),
     );

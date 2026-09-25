@@ -462,8 +462,10 @@ void main() {
     expect(find.textContaining("Signed in with"), findsOneWidget);
     await tester.tap(find.text("Log out"));
     await tester.pumpAndSettle();
-    // Logging out asks first.
+    // Logging out asks first, in a dialog rather than a sheet on desktop.
     verifyNever(authGateCubit.signOut);
+    expect(find.byType(PregoBottomSheet), findsNothing);
+    expect(find.ancestor(of: find.byKey(const Key("logout_confirm_action")), matching: find.byType(Dialog)), findsOneWidget);
     await tester.tap(find.byKey(const Key("logout_confirm_action")));
     await tester.pumpAndSettle();
     verify(authGateCubit.signOut).called(1);

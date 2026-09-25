@@ -7,6 +7,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
@@ -85,7 +86,7 @@ void main() {
     expect(archives.state.hiddenIds, {"s1"});
     // Closing inside the window cancels its timer and sends nothing.
     await archives.close();
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text("Archive a running session?"), findsNothing);
   });
 
   testWidgets("a running session is asked about first, and Cancel archives nothing", (tester) async {
@@ -99,7 +100,7 @@ void main() {
 
     await tester.tap(find.text("go"));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, "Archive"));
+    await tester.tap(find.widgetWithText(PregoButtonsSolid, "Archive"));
     await tester.pumpAndSettle();
     expect(archived, ["s1"]);
     expect(archives.state.hiddenIds, {"s1"});
