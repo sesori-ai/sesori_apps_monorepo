@@ -39,6 +39,13 @@ MODULES := sesori_plugin_interface sesori_bridge_foundation sesori_plugin_runtim
 #
 # Reads `tool/opencode_events_v1.json` (hand-curated v1 SSE event manifest)
 # and the OpenAPI spec.
+#
+# The OpenCode 2.x adapter's models are regenerated separately, from
+# sesori_plugin_opencode/:
+#   dart run tool/generate_opencode_client.dart --tag v2.0.16 \
+#     --surface tool/opencode_v2_surface.json --out-dir lib/src/v2
+#   dart run tool/generate_sse_events.dart --manifest tool/opencode_events_v2.json \
+#     --out lib/src/v2/models/v2_event.g.dart
 opencode-codegen:
 	@count=0; \
 	set --; \
