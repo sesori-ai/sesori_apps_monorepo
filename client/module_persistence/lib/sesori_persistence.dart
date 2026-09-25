@@ -1,4 +1,4 @@
-/// Shared client persistence contracts, encryption and typed primitive access.
+/// Shared client Drift persistence, typed primitives and encrypted secrets.
 library;
 
 export "src/di/injection.dart";
@@ -12,3 +12,4 @@ export "src/foundation/platform/persistence_directory.dart";
 export "src/foundation/storage_cipher.dart";
 export "src/foundation/storage_exception.dart";
 export "src/repositories/persister_repository.dart";
+export "src/repositories/secure_storage_repository.dart";
