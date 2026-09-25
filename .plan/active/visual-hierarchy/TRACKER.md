@@ -58,7 +58,7 @@ variant E, which the user picked from a local review page.
 | [ ] | 37 | `visual-hierarchy/turn-navigation` | [37/41](#pr-titles) | later | blocked on discussion |
 | [ ] | 38 | `desktop-sign-in/plan` | [38/41](#pr-titles) | ≤ 600 | blocked on scoping |
 | [ ] | 39 | `visual-hierarchy/header-backdrop` | [39/41](#pr-titles) | set at approval | blocked on approval |
-| [ ] | 40 | `visual-hierarchy/folder-up-size` | [40/49](#pr-titles) | ≤ 150 | pending |
+| [x] | 40 | `visual-hierarchy/folder-up-size` | [40/49](#pr-titles) | ≤ 150 | done |
 | [x] | 41 | `visual-hierarchy/recovery-card` | [41/49](#pr-titles) | ≤ 300 | done |
 | [x] | 42 | `visual-hierarchy/busy-indicator` | [42/49](#pr-titles) | ≤ 700 | done |
 | [x] | 43 | `visual-hierarchy/continuation-notice` | [43/49](#pr-titles) | ≤ 500 | done |
