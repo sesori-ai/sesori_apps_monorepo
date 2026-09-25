@@ -56,6 +56,9 @@ class const PregoButtonsIconGlass({
   final Color? iconColor,
     /// Optional semantics label describing the action for screen readers.
   final String? semanticLabel,
+    /// Optional content after the icon, such as counts; the circle widens
+  /// into a pill of the same height to hold it.
+  final Widget? trailing,
   }) extends StatelessWidget {
   double get _defaultIconSize => switch (size) {
     PregoButtonsIconGlassSize.xs => 20.0,
@@ -71,6 +74,28 @@ class const PregoButtonsIconGlass({
     final isDisabled = onPressed == null;
     final resolvedIconColor = iconColor ?? (isDisabled ? colors.textDisabled : colors.textPrimary);
     final resolvedIconSize = iconSize ?? _defaultIconSize;
+
+    if (trailing case final trailing?) {
+      return GlassButton.custom(
+        onTap: onPressed ?? () {},
+        enabled: !isDisabled,
+        height: size.diameter,
+        shape: LiquidRoundedSuperellipse(borderRadius: size.diameter / 2),
+        settings: LiquidGlassSettings(glassColor: colors.buttonGlassPrimaryBackground),
+        label: semanticLabel ?? "",
+        child: Padding(
+          padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.lg),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: PregoSpacing.sm,
+            children: [
+              Icon(icon, size: resolvedIconSize, color: resolvedIconColor),
+              trailing,
+            ],
+          ),
+        ),
+      );
+    }
 
     return GlassIconButton(
       onPressed: onPressed,

@@ -151,8 +151,18 @@ Widget _composerScope({required Widget child, required ComposerCapabilityProvide
     presentation: ComposerPresentation.pointer,
     attachmentDispatcher: _MockComposerAttachmentDispatcher.new,
     imageClipboard: imageClipboard,
-    child: child,
+    child: BlocProvider<DiffSummaryCubit>(create: (_) => _StubDiffSummaryCubit(), child: child),
   );
+}
+
+class _StubDiffSummaryCubit() extends Cubit<DiffSummaryState> implements DiffSummaryCubit {
+  this : super(const DiffSummaryState.counts(additions: 12, deletions: 2));
+
+  @override
+  String get sessionId => "session-1";
+
+  @override
+  Duration get refreshInterval => Duration.zero;
 }
 
 void main() {
@@ -243,6 +253,9 @@ void main() {
     expect(imageClipboardResolutions, 0);
     expect(imageSharerResolutions, 0);
 
+    final changes = find.byKey(const Key("desktop-session-page-changes"));
+    expect(find.descendant(of: changes, matching: find.text("+12")), findsOneWidget);
+    expect(find.descendant(of: changes, matching: find.text("−2")), findsOneWidget);
     await tester.tap(find.byIcon(TablerRegular.git_compare));
     expect(diffCalls, 1);
 

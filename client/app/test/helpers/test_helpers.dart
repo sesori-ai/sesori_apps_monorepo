@@ -53,6 +53,20 @@ class StubChatInputModeCubit({ChatInputMode initialState = ChatInputMode.voiceFi
   Future<void> select({required ChatInputMode mode}) async => emit(mode);
 }
 
+/// The session page's Changes button reads its line totals from
+/// [DiffSummaryCubit], so any harness that pumps that button must provide one.
+class StubDiffSummaryCubit({DiffSummaryState initialState = const DiffSummaryState.unknown()})
+    extends Cubit<DiffSummaryState>
+    implements DiffSummaryCubit {
+  this : super(initialState);
+
+  @override
+  String get sessionId => "session-1";
+
+  @override
+  Duration get refreshInterval => Duration.zero;
+}
+
 class MockAudioRecorder() extends Mock implements AudioRecorder;
 
 class MockRecorderPrewarmClient() extends Mock implements RecorderPrewarmClient;

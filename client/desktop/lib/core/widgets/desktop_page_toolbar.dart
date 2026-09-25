@@ -66,19 +66,22 @@ class const DesktopPageToolbar({
                 Row(
                   children: [
                     if (breadcrumb != null) ...[
-                      // A long project name gives way to the title rather than sharing the row with it.
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 200),
-                        child: InkWell(
-                          mouseCursor: WidgetStateMouseCursor.clickable,
-                          key: const Key("desktop-page-breadcrumb"),
-                          onTap: breadcrumb.onPressed,
-                          borderRadius: BorderRadius.circular(PregoRadius.sm),
-                          child: Text(
-                            breadcrumb.label,
-                            style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                      // A long project name gives way to the title rather than sharing the row with it,
+                      // and shrinks with it when the actions leave the row little room.
+                      Flexible(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 200),
+                          child: InkWell(
+                            mouseCursor: WidgetStateMouseCursor.clickable,
+                            key: const Key("desktop-page-breadcrumb"),
+                            onTap: breadcrumb.onPressed,
+                            borderRadius: BorderRadius.circular(PregoRadius.sm),
+                            child: Text(
+                              breadcrumb.label,
+                              style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                       ),
