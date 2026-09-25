@@ -26,6 +26,7 @@ Only these types are exported. Everything else is internal (`lib/src/`).
 
 - `AuthState` (freezed sealed class) — `unauthenticated`, `authenticating`, `authenticated`, `failed`
 - `AuthProvider` enum — `github`, `google`, `email`
+- `AuthSecretKey` enum — canonical typed secret identities with stable persisted spellings, shared with the temporary mobile importer. Normal auth storage remains on the existing adapter until coherent consumer cutover.
 - `SecureStorage` abstract interface — platform-agnostic key-value secure storage
 - `authBaseUrl` constant — auth server base URL
 

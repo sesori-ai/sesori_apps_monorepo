@@ -79,7 +79,15 @@ import 'package:sesori_dart_core/src/foundation/platform/plugin_authentication_b
     as _i732;
 import 'package:sesori_dart_core/src/foundation/platform/temporary_directory_provider.dart'
     as _i800;
-import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i903;
+import 'package:sesori_dart_core/src/migrations/deprecated_native_storage_v1/api/legacy_native_storage_migration_api.dart'
+    as _i691;
+import 'package:sesori_dart_core/src/migrations/deprecated_native_storage_v1/foundation/platform/legacy_native_storage.dart'
+    as _i99;
+import 'package:sesori_dart_core/src/migrations/deprecated_native_storage_v1/repositories/legacy_native_storage_migration_repository.dart'
+    as _i695;
+import 'package:sesori_dart_core/src/migrations/deprecated_native_storage_v1/services/legacy_native_storage_migration_service.dart'
+    as _i843;
+import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i904;
 import 'package:sesori_dart_core/src/platform/local_notification_client.dart'
     as _i1037;
 import 'package:sesori_dart_core/src/platform/push_messaging_source.dart'
@@ -204,6 +212,7 @@ import 'package:sesori_dart_core/src/services/session_viewing_service.dart'
 import 'package:sesori_dart_core/src/services/sse_event_tracker.dart' as _i508;
 import 'package:sesori_dart_core/src/services/voice_transcription_service.dart'
     as _i680;
+import 'package:sesori_persistence/sesori_persistence.dart' as _i903;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -256,6 +265,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i727.AnalyticsApi>(
       () => _i727.AnalyticsApi(client: gh<_i791.AnalyticsClient>()),
     );
+    gh.lazySingleton<_i691.LegacyNativeStorageMigrationApi>(
+      () => _i691.LegacyNativeStorageMigrationApi(
+        storage: gh<_i99.LegacyNativeStorage>(),
+      ),
+    );
     gh.lazySingleton<_i682.TemporaryDirectoryClient>(
       () => _i682.TemporaryDirectoryClient(
         provider: gh<_i800.TemporaryDirectoryProvider>(),
@@ -274,6 +288,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i901.ChatInputModeStore>(
       () => _i901.ChatInputModeStore(secureStorage: gh<_i442.SecureStorage>()),
+    );
+    gh.lazySingleton<_i695.LegacyNativeStorageMigrationRepository>(
+      () => _i695.LegacyNativeStorageMigrationRepository(
+        api: gh<_i691.LegacyNativeStorageMigrationApi>(),
+      ),
     );
     gh.lazySingleton<_i674.PluginAuthenticationBrowserService>(
       () => _i674.PluginAuthenticationBrowserService(
@@ -343,6 +362,13 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i843.LegacyNativeStorageMigrationService>(
+      () => _i843.LegacyNativeStorageMigrationService(
+        source: gh<_i695.LegacyNativeStorageMigrationRepository>(),
+        persister: gh<_i903.PersisterRepository>(),
+        secrets: gh<_i903.SecureStorageRepository>(),
+      ),
+    );
     gh.lazySingleton<_i894.AttachmentThumbnailStorage>(
       () => _i898.FileAttachmentThumbnailStorage(
         temporaryDirectoryClient: gh<_i682.TemporaryDirectoryClient>(),
@@ -354,7 +380,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i895.RoomKeyStorage>(),
         gh<_i442.AuthTokenProvider>(),
         gh<_i442.AuthSession>(),
-        gh<_i903.LifecycleSource>(),
+        gh<_i904.LifecycleSource>(),
         gh<_i553.FailureReporter>(),
       ),
     );
@@ -538,7 +564,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i413.ProjectViewingService>(
       () => _i413.ProjectViewingService(
         viewRepository: gh<_i143.ViewDeclarationRepository>(),
-        lifecycleSource: gh<_i903.LifecycleSource>(),
+        lifecycleSource: gh<_i904.LifecycleSource>(),
         connectionService: gh<_i369.ConnectionService>(),
         routeSource: gh<_i366.RouteSource>(),
       ),
@@ -578,7 +604,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i18.SessionViewingService>(
       () => _i18.SessionViewingService(
         viewRepository: gh<_i143.ViewDeclarationRepository>(),
-        lifecycleSource: gh<_i903.LifecycleSource>(),
+        lifecycleSource: gh<_i904.LifecycleSource>(),
       ),
     );
     gh.lazySingleton<_i531.MessageImageRepository>(

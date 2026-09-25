@@ -130,6 +130,7 @@ export "src/foundation/models/product_analytics/installation_analytics_event.dar
 export "src/foundation/models/product_analytics/product_analytics_event.dart";
 export "src/foundation/models/product_analytics/product_analytics_preference.dart";
 export "src/foundation/models/session_interaction_state.dart";
+export "src/foundation/persistence/persistence_keys.dart";
 export "src/foundation/platform/active_bridge_locality.dart";
 export "src/foundation/platform/analytics_client.dart";
 export "src/foundation/platform/analytics_release_cutoff_source.dart";
@@ -144,6 +145,9 @@ export "src/foundation/platform/installed_app_build_source.dart";
 export "src/foundation/platform/plugin_authentication_browser.dart";
 export "src/foundation/platform/temporary_directory_provider.dart";
 export "src/logging/logging.dart";
+export "src/migrations/deprecated_native_storage_v1/foundation/models/legacy_storage_migration_exception.dart";
+export "src/migrations/deprecated_native_storage_v1/foundation/platform/legacy_native_storage.dart";
+export "src/migrations/deprecated_native_storage_v1/services/legacy_native_storage_migration_service.dart";
 export "src/platform/deep_link_source.dart";
 export "src/platform/lifecycle_source.dart";
 export "src/platform/local_notification_client.dart";
