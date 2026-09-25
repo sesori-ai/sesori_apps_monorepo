@@ -413,4 +413,6 @@ signed updates, OS credential behavior or public release readiness.
   output. Recovery source/hash are retained in private local artifacts.
 - Step 2 implementation review `240d3ac4-7970-4398-9917-2ee9b58e2a79` approved
   the unwired shared-persistence slice (`origin/main..fc8b270`) with no findings.
-  Desktop storage and integration implementation reviews remain future gates.
+- Step 3.a implementation review `dd2c7b27-5c57-4ab7-b051-7b915aa39be3` approved
+  the exact `3ffe4a1..634f109` cipher/scope slice with no findings. Desktop backend
+  and integration implementation reviews remain future gates.

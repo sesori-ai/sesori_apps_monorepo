@@ -2,7 +2,7 @@
 
 ## Execution
 
-- Status: preparing the scoped-cipher PR (3.a); its 15 tests pass, architecture review pending.
+- Status: scoped-cipher slice (3.a) verified and architecture-approved; publishing PR 3/7.
 - Plan PR: [#1698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1698), merged.
 - Branch: `sesori/desktop-master-key-storage-cipher`.
 - One local successor: `sesori/desktop-master-key-storage-drift` preserves the
@@ -16,7 +16,7 @@
 |---|---|---|
 | 1 — Reviewed Drift plan | Merged | #1698; both reviews' concrete findings applied without a third review. |
 | 2 — Shared typed persistence contracts | Merged | #1708; 10 local tests, architecture approval and 27 passing CI checks. |
-| 3.a — Scoped secret encryption | Preparing PR | 15 cipher tests; no native item, database or platform binding. |
+| 3.a — Scoped secret encryption | Ready for PR | 15 tests, clean analysis and architecture approval; no storage I/O. |
 | 3.b — Encrypted Drift desktop boundary | Local successor | Database, raw APIs and key-owning repository; still unwired. |
 | 4 — Consumer and platform integration | Not started | Mobile native format preserved; desktop adopts Drift. |
 | 5 — Regression/distribution reconciliation | Not started | Behavior-specific docs also change with Step 4. |
@@ -70,7 +70,9 @@
   no report recovery or repeat review was needed.
 - Independent 3.a slice: 15 cipher tests pass after extraction, owning-package
   analysis is clean, and DI generation succeeds without any Drift/native backend
-  dependency. This slice adds no storage I/O; its architecture review is pending.
+  dependency. Architecture review `dd2c7b27-5c57-4ab7-b051-7b915aa39be3`
+  approved the exact `3ffe4a1..634f109` scope with no findings. This slice adds no
+  storage I/O; broader backend and integration gates remain pending.
 - Combined Step 3 checkpoint: 35 focused cipher, repository and real SQLite tests
   passed, including file/WAL inspection, reopen, pending/failed key initialization,
   independent writes/deletes, SQL rollback, scope isolation and GetIt disposal.
