@@ -35,6 +35,7 @@ import "package:sesori_shared/sesori_shared.dart"
         Session,
         SessionAbortNotPerformedRefusal,
         SessionAbortSubAgentPolicy,
+        SessionApprovalMode,
         SessionPromptDefaults,
         SessionStatus,
         SessionStatusResponse,
@@ -503,6 +504,34 @@ class SessionRepository({
     );
     return true;
   }
+
+  /// Persists the session's approval override (null follows the bridge YOLO
+  /// setting) and returns the updated catalog session, or null when the
+  /// session is not stored.
+  Future<Session?> setApprovalOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) async {
+    final stored = await _sessionDao.setApprovalOverride(sessionId: sessionId, approvalOverride: approvalOverride);
+    return stored ? await getCatalogSession(sessionId: sessionId) : null;
+  }
+
+  /// The override that governs [sessionId]'s permission requests: its own, or
+  /// else its nearest ancestor's, so a sub-agent session follows the session
+  /// that started it. Null when none is set or the session is not stored.
+  Future<SessionApprovalMode?> resolveApprovalOverride({required String sessionId}) async {
+    const maxDepth = 256;
+    String? currentSessionId = sessionId;
+    for (var depth = 0; depth < maxDepth && currentSessionId != null; depth++) {
+      final row = await _sessionDao.getSession(sessionId: currentSessionId);
+      if (row == null) return null;
+      if (row.approvalOverride case final approvalOverride?) return approvalOverride;
+      currentSessionId = row.parentSessionId;
+    }
+    return null;
+  }
+
+  Future<bool> hasYoloApprovalOverride() => _sessionDao.hasApprovalOverride(approvalOverride: SessionApprovalMode.yolo);
 
   Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async {
     final updated = await _sessionDao.setTitleIfNull(

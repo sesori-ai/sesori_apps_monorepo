@@ -14,7 +14,7 @@
       "id": "prego-buttons-solid",
       "name": "PregoButtonsSolid",
       "source": "client/module_prego/lib/components/buttons/prego_buttons_solid.dart",
-      "scenarioCount": 16,
+      "scenarioCount": 17,
       "scenarios": [
         {
           "id": "primary-md-enabled",
@@ -61,6 +61,19 @@
           "description": "Compact low-emphasis action for dense surfaces.",
           "size": "sm",
           "hierarchy": "tertiary",
+          "tone": "regular",
+          "state": "enabled",
+          "presentation": "label",
+          "fullWidth": false,
+          "leadingIcon": null,
+          "trailingIcon": null
+        },
+        {
+          "id": "primary-alt-xs-enabled",
+          "name": "Primary Alt / Notice",
+          "description": "Smallest action, for compact notices such as the desktop recovery card.",
+          "size": "xs",
+          "hierarchy": "primaryAlt",
           "tone": "regular",
           "state": "enabled",
           "presentation": "label",

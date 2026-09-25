@@ -10,6 +10,7 @@ workspace:
   - design_catalog
   - module_core
   - module_auth
+  - module_persistence
   - module_prego
   - module_app_ui
   - module_desktop_core

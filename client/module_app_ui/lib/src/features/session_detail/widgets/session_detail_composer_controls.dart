@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -10,6 +12,8 @@ import "background_tasks_bar.dart";
 import "composer_surface_style.dart";
 import "prompt_input.dart";
 import "session_abort_scope_dialog.dart";
+import "session_auto_continuation_chip.dart";
+import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
 import "yolo_chip.dart";
 
@@ -112,12 +116,11 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                 decideFastModeToggle: context.read<SessionDetailCubit>().fastModeToggleDecision,
                 onFastModeChanged: context.read<SessionDetailCubit>().setFastMode,
                 compact: composerCapabilities.presentation == ComposerPresentation.pointer,
-                trailing: state.yoloEnabled
-                    ? YoloChip(
-                        surfaceStyle: surfaceStyle,
-                        onOpenSettings: () => SessionDetailPresentationScope.read(context).openBridgeSettings(),
-                      )
-                    : null,
+                trailing: _statusChips(
+                  state: state,
+                  surfaceStyle: surfaceStyle,
+                  pointer: composerCapabilities.presentation == ComposerPresentation.pointer,
+                ),
               ),
             ),
             composerTrailing: state.children.isEmpty
@@ -139,5 +142,36 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         ),
       ],
     );
+  }
+
+  /// Quiet session states beside the pickers: YOLO while the bridge approves
+  /// everything, and auto-continuation while it is enabled but not due.
+  List<Widget> _statusChips({
+    required SessionDetailLoaded state,
+    required PregoComposerSurfaceStyle surfaceStyle,
+    required bool pointer,
+  }) {
+    final view = state.session.autoContinuation;
+    // Enabled with nothing due: the chip stands in for the hidden card.
+    final continuation = view != null && view.enabled && !sessionAutoContinuationNoticeVisible(view: view)
+        ? view
+        : null;
+    return [
+      if (state.yoloEnabled)
+        YoloChip(
+          surfaceStyle: surfaceStyle,
+          // Touch status chips stay glyphs so the shared-width pickers keep their labels.
+          showLabel: pointer,
+          onOpenSettings: () => SessionDetailPresentationScope.read(context).openBridgeSettings(),
+        ),
+      if (continuation != null)
+        SessionAutoContinuationChip(
+          surfaceStyle: surfaceStyle,
+          view: continuation,
+          showLabel: pointer,
+          updating: state.isUpdatingAutoContinuation,
+          onDisable: () => unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: false)),
+        ),
+    ];
   }
 }

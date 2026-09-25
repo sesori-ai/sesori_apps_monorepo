@@ -257,8 +257,9 @@ Update phase comments and affected scoped instruction diagrams with the code.
 
 1. Plain string/bool operations access only SQLite. Theme/input preference reads
    must work while Keychain access is denied or an unlock remains pending.
-2. The first secret read/write shares one initialization future with concurrent
-   callers. Read the scope's native master item once, validate its base64 encoding
+2. The first secret write or existing-row read shares one initialization future
+   with concurrent callers. Missing-row reads return null without native access.
+   Read the scope's native master item once, validate its base64 encoding
    and 32-byte length, then retain the usable key in memory for this process.
 3. If no key exists, generate one only when there are **no encrypted rows**.
    A database containing only plaintext preferences is a valid fresh-secret
@@ -328,22 +329,27 @@ custom write queue, timers, watchers, registries, or cross-process lock.
 ## PR series
 
 Keep the supplied worktree only, one open PR and at most one local successor.
-Series total is now **6**, replacing the initial five-step file plan. Preserve
-published history; update the existing plan PR with an ordinary follow-up commit.
+Series total is **7**. The original Step 3 is split into independently compiling
+**3.a** and **3.b** after its implementation measured about 1,700 changed lines
+(about 1,040 authored and 667 generated). The cipher/scope boundary is a clean
+extraction: no temporary API, schema, migration or compatibility code is needed.
+Completed PR links/history are retained; their GitHub titles use the current
+series total. Milestone IDs below remain stable; PR ordinals are explicit in titles.
 Changed-line estimates include tests/docs; report generated churn separately and
 reassess before each push against the 1,500-line soft cap.
 
-| Step | Exact PR title | Scope / expected result | Estimate |
+| Milestone | Exact PR title | Scope / expected result | Estimate |
 |---|---|---|---|
-| 1 | 🌿 [desktop-master-key-storage] Plan typed Drift desktop persistence [step 1/6] | Reviewed revised plan/tracker. No runtime, user-visible or database change. | 450–750 total changed lines against main |
-| 2 | ⚙️ [desktop-master-key-storage] Add typed client persistence contracts [step 2/6] | Shared pure-Dart key contracts, primitive API/repository, focused tests and public exports. Not wired yet; existing app behavior and data unchanged. | 450–800 authored |
-| 3 | 🚧 [desktop-master-key-storage] Add encrypted Drift desktop storage [step 3/6] | Three typed tables, raw APIs, scoped database, cipher and cached-key repository plus tests. Not bound in shell DI yet. | 800–1,300 authored plus substantial generated Drift output |
-| 4 | 🚧 [desktop-master-key-storage] Integrate typed desktop and mobile persistence [step 4/6] | Enum-keyed consumers, exact-compatible mobile adapters, desktop master-key/Drift DI, native fixtures, and changed-behavior docs. Desktop adopts SQLite; mobile physical storage stays unchanged; no server database/wire change. | 1,000–1,450 authored plus generated DI; split if a clean boundary emerges |
-| 5 | 🌿 [desktop-master-key-storage] Complete persistence regression documentation [step 5/6] | Reconcile feature matrix and affected distribution/support docs/evidence. No additional runtime/database change. | 100–250 authored |
-| 6 | ⚙️ [desktop-master-key-storage] Qualify and retire typed desktop persistence [step 6/6] | Run required matrix, record bounded evidence, retire only after pass. No extra runtime/database change. | 100–250 authored |
+| 1 | 🌿 [desktop-master-key-storage] Plan typed Drift desktop persistence [step 1/7] | Reviewed revised plan/tracker. No runtime, user-visible or database change. | 450–750 total changed lines against main |
+| 2 | ⚙️ [desktop-master-key-storage] Add typed client persistence contracts [step 2/7] | Shared pure-Dart key contracts, primitive API/repository, focused tests and public exports. Not wired yet; existing app behavior and data unchanged. | 450–800 authored |
+| 3.a | ⚙️ [desktop-master-key-storage] Add scoped desktop secret encryption [step 3/7] | Stable scope, per-row AES-GCM envelope, privacy-safe typed failures and focused cipher tests. No native item or database access yet. | 250–400 authored plus small generated DI |
+| 3.b | 🚧 [desktop-master-key-storage] Add encrypted Drift desktop storage [step 4/7] | Three typed tables, raw APIs, scoped database, native-key capability and cached-key repository plus tests. Not bound in shell DI yet. | 700–850 authored plus about 650 generated |
+| 4 | 🚧 [desktop-master-key-storage] Integrate typed desktop and mobile persistence [step 5/7] | Enum-keyed consumers, exact-compatible mobile adapters, desktop master-key/Drift DI, native fixtures, and changed-behavior docs. Desktop adopts SQLite; mobile physical storage stays unchanged; no server database/wire change. | 1,000–1,450 authored plus generated DI; split if a clean boundary emerges |
+| 5 | 🌿 [desktop-master-key-storage] Complete persistence regression documentation [step 6/7] | Reconcile feature matrix and affected distribution/support docs/evidence. No additional runtime/database change. | 100–250 authored |
+| 6 | ⚙️ [desktop-master-key-storage] Qualify and retire typed desktop persistence [step 7/7] | Run required matrix, record bounded evidence, retire only after pass. No extra runtime/database change. | 100–250 authored |
 
-Dependencies follow step order. Large Step 3 generated output stays with its
-schema, with authored/generated totals explicit. Do not split tables into fake
+Dependencies follow row order. Step 3.b generated output stays with its schema,
+with authored/generated totals explicit. Do not split tables into fake
 intermediate schemas or add temporary mobile/desktop compatibility adapters only
 to manufacture a PR boundary. Architecture review covers the revised plan and
 architecture-bearing production diffs; documentation/tooling-only edits do not
@@ -405,4 +411,8 @@ signed updates, OS credential behavior or public release readiness.
 - The second report's full 5,759-character tool-write content was recovered from
   its session source after a short final acknowledgement replaced the saved
   output. Recovery source/hash are retained in private local artifacts.
-- Implementation reviews: not started.
+- Step 2 implementation review `240d3ac4-7970-4398-9917-2ee9b58e2a79` approved
+  the unwired shared-persistence slice (`origin/main..fc8b270`) with no findings.
+- Step 3.a implementation review `dd2c7b27-5c57-4ab7-b051-7b915aa39be3` approved
+  the exact `3ffe4a1..634f109` cipher/scope slice with no findings. Desktop backend
+  and integration implementation reviews remain future gates.

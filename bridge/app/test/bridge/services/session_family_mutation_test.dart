@@ -508,6 +508,7 @@ class _SessionRecord({
   );
 
   Session get session => Session(
+    approvalOverride: null,
     autoContinuation: null,
     id: id,
     pluginId: pluginId,

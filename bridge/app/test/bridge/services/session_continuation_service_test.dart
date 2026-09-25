@@ -379,6 +379,7 @@ class _Sessions() implements SessionRepository {
   }) async => (pluginId: "plugin", rootSessionId: sessionId);
   @override
   Future<Session?> getCatalogSession({required String sessionId}) async => Session(
+    approvalOverride: null,
     id: sessionId,
     pluginId: "plugin",
     projectID: "/fixture",

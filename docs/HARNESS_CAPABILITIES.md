@@ -18,6 +18,26 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Automation transcript attribution
+
+| Harness | Native evidence | Sesori availability |
+|---|---|---|
+| Pi | Visible `custom` messages / `custom_message` entries | ✅ Automation attribution live and after history load. |
+| Claude Code | User-role frames and transcript records with `origin.kind: peer` | ✅ Automation attribution live and after history load, including `isMeta` peer records. |
+
+Claude attribution uses host provenance, not plugin names or text matching. It
+covers any sender using that peer/socket path, but `origin.from: unknown` does
+not identify which plugin sent it. Missing/unmodelled origins and channels that
+may forward human input are not promoted to automation. Existing task-outcome,
+tool-result, compaction and hidden-metadata behavior remains separate.
+
+Verified on **2026-09-25** with native Claude Code **2.1.281**, an isolated MCP
+socket sender and a loopback model fixture: idle wake-up, live stdout provenance
+and persisted records. Native captured frames/history also pass through the
+production Claude parsers/mappers. Shared client fixture tests cover the existing
+Automation surface; authenticated-provider and full client/relay journeys were
+not exercised for this change.
+
 ## Quota-reset auto continuation
 
 Claude/Pi also implement named-session readiness for idle, retry, queued work

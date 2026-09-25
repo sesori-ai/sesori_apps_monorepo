@@ -26,6 +26,35 @@ concrete problem can justify a documented temporary hold with a resolution path.
   Inspect `bridge/sesori_plugin_opencode/tool/opencode_v1_surface.json` and the
   plugin's DB-first import before promising that a new API can replace it. Keep
   minimum-surface metadata aligned only if a floor increase is approved.
+- **Regenerate models on every target update:** from
+  `bridge/sesori_plugin_opencode/`, run the matching commands below with the
+  selected release tag (replace the `X.Y` placeholders; use `--commit <sha>`
+  instead of `--tag` when pinning its resolved immutable revision):
+
+  ```bash
+  # OpenCode 1.x: packages/sdk/openapi.json -> lib/src/models/openapi/
+  dart run tool/generate_opencode_client.dart --tag v1.X.Y
+  dart run tool/generate_sse_events.dart
+
+  # OpenCode 2.x: packages/protocol/openapi.json -> lib/src/v2/models/openapi/
+  dart run tool/generate_opencode_client.dart --tag v2.X.Y \
+    --surface tool/opencode_v2_surface.json --out-dir lib/src/v2
+  dart run tool/generate_sse_events.dart --manifest tool/opencode_events_v2.json \
+    --out lib/src/v2/models/v2_event.g.dart
+  ```
+
+  Audit `tool/opencode_events_v1.json` or `tool/opencode_events_v2.json` against
+  the selected release's emitted event shapes **before** regenerating SSE:
+  these manifests are hand-curated, so rerunning the generator alone cannot
+  discover upstream event changes. Update the matching surface allowlist when
+  the driven API changes, review the model diff, and commit manifests/generator
+  changes with their generated output in the same update PR. Record the
+  release/revision and an explicit no-diff result when output is unchanged.
+  A v2 target update must not overwrite v1 models with v2 schemas; regenerate
+  each supported adapter only against its own protocol-compatible source.
+  Run affected model/union round-trip, API and SSE tests plus the package
+  analyzer. Never hand-edit generated output or treat generation alone as
+  live-protocol verification.
 - **Probe:** production current-host managed install, exact version, isolated
   loopback `opencode serve`, and the REST/SSE startup paths the plugin actually
   drives. Read the current runtime policy/client and use disposable database and

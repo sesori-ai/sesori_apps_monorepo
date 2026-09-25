@@ -1,5 +1,6 @@
 /// Supported button sizes exposed by the catalog manifest.
 enum CatalogButtonSize() {
+  xs,
   sm,
   md,
   lg,

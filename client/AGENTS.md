@@ -15,6 +15,7 @@ cd desktop && flutter test                                # desktop shell tests
 cd module_app_ui && flutter test                          # shared Flutter UI tests
 cd module_core && dart test                               # pure Dart tests
 cd module_auth && dart test                               # pure Dart tests
+cd module_persistence && dart test                        # typed persistence contract tests
 cd module_prego && flutter test                           # shared Flutter design-system tests
 cd module_desktop_core && dart test                       # pure Dart desktop tests
 dart run build_runner build --delete-conflicting-outputs  # per module, after modifying annotated classes
@@ -34,6 +35,14 @@ client/desktop ───────────→ module_app_ui ───┤
      │                         └→ sesori_shared
      └→ module_prego
 ```
+
+`module_persistence` is lower-level pure-Dart persistence infrastructure. It owns
+separate string/bool/secret key contracts and primitive API/repository access,
+not domain keys, native storage, encryption policy or application state. It must
+not depend on auth, core, desktop-core or Flutter. Its platform capabilities are
+provided by the shell. Consumer/bootstrap integration follows the active
+`desktop-master-key-storage` plan; the existing DI sequence below is unchanged
+until that integration lands.
 
 `module_app_ui` owns shared Flutter localization, context, route-presentation,
 settings/harness-management screens, and adaptive-screen foundations above
@@ -73,7 +82,7 @@ operations use the dedicated plugin-scoped request DTO.
 ## Testing
 
 - `flutter test` from `app/`
-- `dart test` from `module_core/` and `module_auth/`
+- `dart test` from `module_core/`, `module_auth/`, and `module_persistence/`
 - `flutter test` from `module_prego/` and `module_app_ui/`
 - `flutter test` from `desktop/` and `dart test` from `module_desktop_core/`
 - Cubits in `module_core/` and `module_desktop_core/` must be testable without Flutter. Use fake streams and fake services, not `WidgetTester`.

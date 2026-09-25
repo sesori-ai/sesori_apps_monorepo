@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/routing/patch_bridge_settings_handler.dart";
 import "package:sesori_bridge/src/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/services/plugin_warmup_settings_service.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
+import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -27,6 +28,7 @@ void main() {
       service = YoloSettingsService(
         bridgeSettingsRepository: repository,
         permissionAutoApprovalService: _FakePermissionAutoApprovalService(),
+        sessionMutationDispatcher: _FakeSessionMutationDispatcher(),
       );
       patchHandler = PatchBridgeSettingsHandler(
         pullRequestRefreshSettingsService: PullRequestRefreshSettingsService(
@@ -51,7 +53,7 @@ void main() {
         BridgeSettingsResponse.fromJson(jsonDecodeMap(response.body!)),
         const BridgeSettingsResponse(
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
-          yolo: YoloSettingsResponse(enabled: false),
+          yolo: YoloSettingsResponse(enabled: false, supportsSessionOverride: true),
           warmUpPluginsOnSessionOpen: true,
         ),
       );
@@ -103,6 +105,11 @@ class _FakePermissionAutoApprovalService() implements PermissionAutoApprovalServ
   @override
   Future<void> approvePending() async {}
 
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeSessionMutationDispatcher() implements SessionMutationDispatcher {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

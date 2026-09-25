@@ -6,10 +6,13 @@ import "dart:math";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:opencode_plugin/src/runtime/open_code_ownership_record.dart";
+import "package:opencode_plugin/src/runtime/open_code_protocol.dart";
 import "package:opencode_plugin/src/runtime/open_code_runtime_policy.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
+
+const String _v1HealthBody = '{"healthy":true,"version":"1.18.32"}';
 
 void main() {
   group("generateOpenCodePassword", () {
@@ -149,7 +152,7 @@ void main() {
         host: "127.0.0.1",
         clientFactory: () => MockClient((request) async {
           captured = request;
-          return http.Response("", 200);
+          return http.Response(_v1HealthBody, 200);
         }),
       );
 
@@ -170,7 +173,7 @@ void main() {
         host: "10.0.0.5",
         clientFactory: () => MockClient((request) async {
           captured = request;
-          return http.Response("", 200);
+          return http.Response(_v1HealthBody, 200);
         }),
       );
 
@@ -186,7 +189,7 @@ void main() {
         host: "::1",
         clientFactory: () => MockClient((request) async {
           captured = request;
-          return http.Response("", 200);
+          return http.Response(_v1HealthBody, 200);
         }),
       );
 
@@ -202,7 +205,7 @@ void main() {
         host: "127.0.0.1",
         clientFactory: () => MockClient((request) async {
           captured = request;
-          return http.Response("", 200);
+          return http.Response(_v1HealthBody, 200);
         }),
       );
 
@@ -218,7 +221,7 @@ void main() {
         host: "127.0.0.1",
         clientFactory: () => MockClient((request) async {
           captured = request;
-          return http.Response("", 200);
+          return http.Response(_v1HealthBody, 200);
         }),
       );
 
@@ -248,6 +251,114 @@ void main() {
       expect(probe.error, isA<SocketException>());
     });
 
+    test("reports healthy for an OpenCode 2.x /api/info JSON behind an HTML /global/health", () async {
+      final paths = <String>[];
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: "secret",
+        host: "127.0.0.1",
+        clientFactory: () => MockClient((request) async {
+          paths.add(request.url.path);
+          return request.url.path == "/api/info"
+              ? http.Response('{"version":"2.0.11","pid":1}', 200)
+              : http.Response("<!doctype html>", 200);
+        }),
+      );
+
+      expect(probe.healthy, isTrue);
+      expect(paths, equals(["/global/health", "/api/info"]));
+    });
+
+    test("reports unhealthy when every endpoint answers an HTML 200", () async {
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: "secret",
+        host: "127.0.0.1",
+        clientFactory: () => MockClient((request) async => http.Response("<!doctype html>", 200)),
+      );
+
+      expect(probe.healthy, isFalse);
+      expect(probe.error, isA<StateError>());
+    });
+
+    test("accepts a probe body exactly at the byte limit", () async {
+      const prefix = '{"version":"1.18.32","padding":"';
+      const suffix = '"}';
+      final body = "$prefix${"x" * (openCodeProbeMaxBodyBytes - prefix.length - suffix.length)}$suffix";
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: null,
+        host: "127.0.0.1",
+        clientFactory: () => MockClient((_) async => http.Response(body, 200)),
+      );
+
+      expect(utf8.encode(body), hasLength(openCodeProbeMaxBodyBytes));
+      expect(probe.healthy, isTrue);
+    });
+
+    test("cancels oversized streamed bodies without reading their tail", () async {
+      var chunksRead = 0;
+      var cancellations = 0;
+      Stream<List<int>> oversizedBody() async* {
+        try {
+          for (var i = 0; i < 3; i++) {
+            chunksRead++;
+            yield List<int>.filled(openCodeProbeMaxBodyBytes ~/ 2 + 1, 32);
+          }
+        } finally {
+          cancellations++;
+        }
+      }
+
+      final paths = <String>[];
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: null,
+        host: "10.0.0.5",
+        clientFactory: () => MockClient.streaming((request, _) async {
+          paths.add(request.url.path);
+          return http.StreamedResponse(oversizedBody(), 200);
+        }),
+      );
+
+      expect(probe.healthy, isFalse);
+      expect(probe.error, isA<StateError>());
+      expect(paths, ["/global/health", "/api/info"]);
+      expect(chunksRead, 4);
+      expect(cancellations, 2);
+    });
+
+    test("still discovers v2 behind an oversized web UI page", () async {
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: null,
+        host: "127.0.0.1",
+        clientFactory: () => MockClient((request) async {
+          return http.Response(
+            request.url.path == "/api/info" ? '{"version":"2.0.16"}' : "x" * (openCodeProbeMaxBodyBytes + 1),
+            200,
+          );
+        }),
+      );
+
+      expect(probe.healthy, isTrue);
+    });
+
+    test("reports unhealthy while OpenCode 2.x /api/info is still booting", () async {
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: "secret",
+        host: "127.0.0.1",
+        clientFactory: () => MockClient((request) async {
+          return request.url.path == "/api/info"
+              ? http.Response("booting", 503)
+              : http.Response("<!doctype html>", 200);
+        }),
+      );
+
+      expect(probe.healthy, isFalse);
+    });
+
     test("reports unhealthy when the response body never completes within the timeout", () async {
       // A wrong localhost service that sends 200 headers but keeps the body
       // open: the drain must be bounded by the same timeout as the send, or
@@ -261,6 +372,50 @@ void main() {
       );
       expect(probe.healthy, isFalse);
       expect(probe.error, isA<TimeoutException>());
+    });
+  });
+
+  group("probeOpenCodeProtocol", () {
+    Future<OpenCodeProtocol> probe(http.Response Function(http.Request request) respond) {
+      return probeOpenCodeProtocol(
+        port: 51000,
+        password: "secret",
+        host: "127.0.0.1",
+        clientFactory: () => MockClient((request) async => respond(request)),
+      );
+    }
+
+    test("detects OpenCode 2.x from its /api/info version", () async {
+      late http.BaseRequest captured;
+      final protocol = await probe((request) {
+        captured = request;
+        return http.Response('{"version":"2.0.11","pid":1,"urls":[],"paths":{}}', 200);
+      });
+
+      expect(
+        protocol,
+        isA<OpenCodeProtocolV2>().having((protocol) => protocol.version.raw, "version", equals("2.0.11")),
+      );
+      expect(captured.url.toString(), equals("http://127.0.0.1:51000/api/info"));
+      expect(captured.headers["Authorization"], equals("Basic ${base64Encode(utf8.encode("opencode:secret"))}"));
+    });
+
+    test("keeps OpenCode 1.x when /api/info is not a 2.x JSON object", () async {
+      expect(await probe((_) => http.Response("<!doctype html>", 200)), isA<OpenCodeProtocolV1>());
+      expect(await probe((_) => http.Response("", 404)), isA<OpenCodeProtocolV1>());
+      expect(await probe((_) => http.Response('{"version":"1.18.32"}', 200)), isA<OpenCodeProtocolV1>());
+      expect(await probe((_) => http.Response('{"version":"next"}', 200)), isA<OpenCodeProtocolV1>());
+      expect(await probe((_) => http.Response('{"version":2}', 200)), isA<OpenCodeProtocolV1>());
+      expect(await probe((_) => http.Response('[]', 200)), isA<OpenCodeProtocolV1>());
+    });
+
+    test("does not decode an oversized info response", () async {
+      final body = '{"version":"2.0.16","padding":"${"x" * openCodeProbeMaxBodyBytes}"}';
+      expect(await probe((_) => http.Response(body, 200)), isA<OpenCodeProtocolV1>());
+    });
+
+    test("keeps OpenCode 1.x when the request fails", () async {
+      expect(await probe((_) => throw const SocketException("refused")), isA<OpenCodeProtocolV1>());
     });
   });
 
@@ -358,7 +513,7 @@ void main() {
         executablePath: "/bin/opencode",
         password: "secret",
         portPolicy: const ExplicitPortPolicy(port: 4096),
-        probeClientFactory: () => MockClient((request) async => http.Response("", 200)),
+        probeClientFactory: () => MockClient((request) async => http.Response(_v1HealthBody, 200)),
         bindHost: "127.0.0.1",
         connectHost: "127.0.0.1",
       );
@@ -376,7 +531,7 @@ void main() {
         portPolicy: const ExplicitPortPolicy(port: 4096),
         probeClientFactory: () => MockClient((request) async {
           captured = request;
-          return http.Response("", 200);
+          return http.Response(_v1HealthBody, 200);
         }),
         bindHost: "0.0.0.0",
         connectHost: "127.0.0.1",

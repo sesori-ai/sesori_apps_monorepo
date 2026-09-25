@@ -85,6 +85,7 @@ Widget _buildApp({
 
 Session _childSession({required String id, String? title}) {
   return Session(
+    approvalOverride: null,
     autoContinuation: null,
     branchName: null,
     id: id,

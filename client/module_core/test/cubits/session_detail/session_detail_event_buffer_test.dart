@@ -266,6 +266,7 @@ void main() {
 
       // Emit a global child-session event while still loading
       const childSession = Session(
+        approvalOverride: null,
         autoContinuation: null,
         branchName: null,
         id: "child-1",

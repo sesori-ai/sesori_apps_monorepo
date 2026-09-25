@@ -154,6 +154,8 @@ jobs:
         run: |
           dart run tool/generate_sse_events.dart
           git diff --exit-code -- lib/src/models/sse_event_data.g.dart
+          dart run tool/generate_sse_events.dart --manifest tool/opencode_events_v2.json --out lib/src/v2/models/v2_event.g.dart
+          git diff --exit-code -- lib/src/v2/models/v2_event.g.dart
 
   build-smoke:
     needs: toolchain

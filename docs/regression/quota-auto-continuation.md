@@ -7,7 +7,8 @@ original observation time, and either an absolute UTC reset or an explicit
 unknown reset. The headless bridge persists session opt-in, exposes
 `PATCH /session/auto-continuation`, and sends one ordinary `Continue.` after
 a known reset plus two minutes. Phone and desktop chat share an inline opt-in
-hint, an enabled/scheduled/paused notice, and a top-right menu toggle. Live
+hint, a notice shown only while a continuation is due or needs explaining, a
+quiet model-row chip while it is merely enabled, and a top-right menu toggle. Live
 provider and platform verification remains in the
 [active plan](../../.plan/active/quota-auto-continuation/PLAN.md).
 
@@ -84,7 +85,17 @@ provider and platform verification remains in the
   reads and the unavailable-history shell; saving controls become usable again.
 - A known reset offers opt-in; the scheduled notice shows the bridge's buffered
   date/time in the viewer's local zone and says the bridge must remain running.
-  Enabled idle sessions retain a compact indicator and Disable action.
+- The card above the composer shows only for a known or unknown reset (offer
+  or schedule), and, while enabled, for paused, unconfirmed, failed and unknown
+  statuses. An enabled idle or already-submitted continuation shows no card:
+  a quiet "Auto-continue" chip joins the composer's model row beside YOLO, with
+  its label on pointer and only the clock on touch (where YOLO shows only its
+  glyph, and pickers too narrow for a label show only theirs, so a 320-point
+  row never overflows), and its anchored menu offers Disable (with the send time
+  after a submission). In an interactive chat with a composer, exactly one of
+  the card and the chip is visible for an enabled preference. Without a
+  composer (blocked harness), an enabled idle or submitted preference shows
+  neither, and the top-right menu remains the way to disable it.
 - Unknown reset, paused, submitted, unconfirmed and failed attempts have distinct
   explanations. Unavailable harnesses cannot enable, but can disable an existing
   preference. An already-submitted prompt cannot be retracted by disabling.
@@ -117,6 +128,8 @@ provider and platform verification remains in the
 - **L1:** Client service/cubit and shared notice tests: acknowledgement, failed
   mutations, legacy route errors, incoming session updates, unavailable disable,
   all outcome explanations, local dates, and enlarged text at narrow widths.
+  The notice visibility table per status and preference, the chip menu's
+  Disable and subtitles, and the phone body test's chip-to-card handoff.
   Phone and desktop screen tests exercise their actual top-right menu wiring.
 - **L3 — live plugin:** For each advertised harness/provider case, use a naturally
   observed terminal quota and usable reset to verify opt-in → post-reset ordinary
@@ -124,7 +137,7 @@ provider and platform verification remains in the
   protocol fixtures do not prove that the real provider recovers after reset;
   no suitable observation/account means this portion is blocked.
 - **L3 — client end to end:** iOS simulator and macOS desktop each show opt-in,
-  the acknowledged enabled/scheduled state, local date/time, menu and inline
+  the acknowledged enabled/scheduled state, local date/time, menu, chip and inline
   disable, unavailable/unknown-reset explanations, and the ordinary user-message
   echo. One Android smoke checks the shared notice layout and menu wiring.
 - **L4 — headless/relay recovery:** Run the real route, durable repository/DAO and
@@ -162,6 +175,9 @@ reported as a client end-to-end or live-provider pass.
   stale state after a session update, or an unsupported bridge appears schedulable.
 - A date is displayed in the wrong local day, pending input is shown as a ready
   schedule, or an unconfirmed/failed attempt is presented as a successful send.
+- The card floats while nothing is due, a due/paused/failed state hides it, or
+  an enabled preference in an interactive chat with a composer shows neither
+  the card nor the chip.
 - The checked menu state cannot be disabled after support becomes unavailable,
   or archived/route-read-only chat surfaces expose mutation controls. An
   unavailable-harness chat must still allow disabling an existing preference.
@@ -180,5 +196,5 @@ for the current provider/format/version scope and unverified adapters.
   `SessionContinuationRepository`, `SessionViewService`, the setting route and
   composed event/handoff tests under `bridge/app`.
 - Client: `SessionAutoContinuationService`, `SessionDetailCubit`, shared
-  `SessionAutoContinuationNotice` and menu, with focused service/cubit/widget
+  `SessionAutoContinuationNotice`, `SessionAutoContinuationChip` and menu, with focused service/cubit/widget
   tests under `client/module_core` and `client/module_app_ui`.

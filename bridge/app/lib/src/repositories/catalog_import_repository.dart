@@ -640,6 +640,7 @@ class CatalogImportRepository({
       pluginId: pluginId,
       title: existing?.title,
       catalogTitle: _usefulText(session.title) ?? existing?.catalogTitle,
+      approvalOverride: existing?.approvalOverride,
     );
   }
 

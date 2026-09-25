@@ -46,7 +46,7 @@ class BridgeSettingsRepository({
       pullRequestRefresh: PullRequestRefreshSettingsResponse(
         intervalSeconds: settings.pullRequestRefreshIntervalSeconds,
       ),
-      yolo: YoloSettingsResponse(enabled: settings.yolo),
+      yolo: YoloSettingsResponse(enabled: settings.yolo, supportsSessionOverride: true),
       warmUpPluginsOnSessionOpen: settings.warmUpPluginsOnSessionOpen,
     );
   }

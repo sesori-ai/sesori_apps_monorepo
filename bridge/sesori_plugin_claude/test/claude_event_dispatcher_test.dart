@@ -817,7 +817,7 @@ void main() {
                 isVisibleInTranscriptOnly: false,
                 isCompactSummary: false,
                 toolUseResult: const ClaudeToolUseResultAbsent(),
-                isTaskNotification: false,
+                originKind: ClaudeMessageOriginKind.unknown,
                 cwd: "/tmp/project",
                 timestamp: timestamp,
                 isSidechain: false,
