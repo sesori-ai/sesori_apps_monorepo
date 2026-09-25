@@ -19,6 +19,12 @@ variant E, which the user picked from a local review page. Step 50 was added
 later on 2026-09-25, which moved the total to 50; merged steps keep their
 `/49` titles. Step 50 lands before steps 48–49.
 
+On 2026-09-25 the user dropped step 39 after comparing three backdrop
+strengths with today's headers (evidence in `steps/step-39.md`). Steps 37
+(turn navigation: prototypes shown, direction pending) and 38 (desktop
+sign-in: mocks shown, scoping pending) leave this series and become their own
+plans; they do not block step 49.
+
 | Done | Step | Branch | Title | Target | State |
 |---|---|---|---|---|---|
 | [x] | 1 | `visual-hierarchy/plan` | [1/38](#pr-titles) | ≤ 1,000 | done |
@@ -59,7 +65,7 @@ later on 2026-09-25, which moved the total to 50; merged steps keep their
 | [x] | 36 | `visual-hierarchy/compaction-row` | [36/41](#pr-titles) | ≤ 900 | done |
 | [ ] | 37 | `visual-hierarchy/turn-navigation` | [37/41](#pr-titles) | later | blocked on discussion |
 | [ ] | 38 | `desktop-sign-in/plan` | [38/41](#pr-titles) | ≤ 600 | blocked on scoping |
-| [ ] | 39 | `visual-hierarchy/header-backdrop` | [39/41](#pr-titles) | set at approval | blocked on approval |
+| [ ] | 39 | `visual-hierarchy/header-backdrop` | [39/41](#pr-titles) | — | dropped |
 | [x] | 40 | `visual-hierarchy/folder-up-size` | [40/49](#pr-titles) | ≤ 150 | done |
 | [x] | 41 | `visual-hierarchy/recovery-card` | [41/49](#pr-titles) | ≤ 300 | done |
 | [x] | 42 | `visual-hierarchy/busy-indicator` | [42/49](#pr-titles) | ≤ 700 | done |
@@ -69,7 +75,7 @@ later on 2026-09-25, which moved the total to 50; merged steps keep their
 | [x] | 46 | `visual-hierarchy/group-motion` | [46/50](#pr-titles) | ≤ 900 | done |
 | [x] | 47 | `visual-hierarchy/group-popover` | [47/50](#pr-titles) | ≤ 800 | done |
 | [x] | 50 | `visual-hierarchy/auto-resume-indicator` | [50/50](#pr-titles) | ≤ 400 | done |
-| [ ] | 48 | `visual-hierarchy/regression-docs` | [48/50](#pr-titles) | ≤ 600 | pending |
+| [x] | 48 | `visual-hierarchy/regression-docs` | [48/50](#pr-titles) | ≤ 600 | done |
 | [ ] | 49 | `visual-hierarchy/retire` | [49/50](#pr-titles) | ≤ 300 | pending |
 
 ## Round 2 Answers
@@ -160,7 +166,7 @@ Answered 2026-09-23; every answer took the recommended option.
    - `⚙️ [visual-hierarchy] Pick YOLO per session from the composer [step 45.b/50]`
 46. `🚧 [visual-hierarchy] Animate steps folding into their group [step 46/50]`
 47. `⚙️ [visual-hierarchy] Open expanded step groups in an anchored panel [step 47/50]`
-48. `🌱 [visual-hierarchy] Reconcile regression docs [step 48/50]`
+48. `🌱 [visual-hierarchy] Cover the September 25 additions in regression docs [step 48/50]`
 49. `🌱 [visual-hierarchy] Record the final matrix and retire the plan [step 49/50]`
 50. `⚙️ [visual-hierarchy] Show scheduled auto-resume in session lists [step 50/50]`
    (lands before 48–49)

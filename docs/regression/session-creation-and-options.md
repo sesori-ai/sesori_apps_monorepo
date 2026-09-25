@@ -326,7 +326,8 @@ variant, and worktree mode, and creating the session with its first input.
   detail, only when that support is available or unavailable. An absent or
   unknown value (older bridge, harness without fast mode, a model without it)
   shows no pill.
-- Available: the pill is highlighted while on and neutral while off. Prompts,
+- Available: the pill's bolt is yellow while on, in both themes, and neutral
+  while off. Prompts,
   slash commands, and session creation carry the choice as `fastMode`; a model
   without available fast mode always sends `fastMode: false`, whatever was chosen.
 - Unavailable: the pill is dimmed. A tap changes nothing and shows the standard
