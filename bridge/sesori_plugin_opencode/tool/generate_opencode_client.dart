@@ -1347,7 +1347,9 @@ class ModelWriter({
   /// nullable rather than default to `''`. Mirrors the v1 hand-written
   /// models. (`Command.template`, a required string that can arrive as a
   /// non-string payload, is handled separately via its field context.)
-  static const _alwaysNullableStringFields = {'title', 'version'};
+  static const _alwaysNullableStringFields = {'title'};
+  // Version omission belongs to sessions, not server identity or installation events.
+  static const _omittableStringContexts = {'SessionVersion', 'GlobalSessionVersion', 'CommandTemplate'};
 
   /// Synthesized classes for inline `type: object` schemas with
   /// `properties` (e.g. `Session.time` → `SessionTime`). Registered by
@@ -1958,19 +1960,21 @@ class ModelWriter({
       return b.toString();
     }
     if (type == 'object') {
-      // Inline object variant — same emission as a top-level object
-      // class, with the union interface attached (which also enables
-      // the discriminator-literal handling).
-      return _emitObjectClass(className, schema, implementsClass: unionName);
+      final properties = schema['properties'] as Map<String, dynamic>?;
+      if ((properties != null && properties.isNotEmpty) || schema['additionalProperties'] == false) {
+        // Structured inline objects use fields; unrestricted objects below
+        // retain their keys instead of decoding to an empty class.
+        return _emitObjectClass(className, schema, implementsClass: unionName);
+      }
     }
-    // Fallback: emit an opaque Map wrapper.
+    // Free-form object or opaque fallback: preserve the original map.
     _usesImmutable = true;
     _usesDeepEquality = true;
     b.writeln('@immutable');
     b.writeln('class $className implements $unionName {');
-    b.writeln('  const $className(this.json);');
+    b.writeln('  const $className({required this.json});');
     b.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
-    b.writeln('    return $className(json);');
+    b.writeln('    return $className(json: json);');
     b.writeln('  }');
     b.writeln('  @override');
     b.writeln('  Map<String, dynamic> toJson() => json;');
@@ -2074,7 +2078,8 @@ class ModelWriter({
       // violation that should surface loudly rather than be papered over
       // with a synthetic default.
       final isOmittableString =
-          baseType == 'String' && (_alwaysNullableStringFields.contains(fieldName) || context == 'CommandTemplate');
+          baseType == 'String' &&
+          (_alwaysNullableStringFields.contains(fieldName) || _omittableStringContexts.contains(context));
       final isNonNull = isRequired && !isSchemaNullable && !isOmittableString;
       fields.add(
         _FieldRecord(
@@ -2940,6 +2945,14 @@ class ModelWriter({
       // below. Without the explicit `is Map<String, dynamic>`, the
       // analyzer can't promote from a plain `is Map`.
       final required = ((variant['required'] as List?) ?? const []).cast<String>();
+      final properties = variant['properties'] as Map<String, dynamic>?;
+      for (final field in required) {
+        final property = properties?[field] as Map<String, dynamic>?;
+        final values = property?['enum'];
+        if (values is List && values.length == 1) {
+          return 'json is Map<String, dynamic> && json[${jsonEncode(field)}] == ${jsonEncode(values.single)}';
+        }
+      }
       if (required.isNotEmpty) {
         return "json is Map<String, dynamic> && json.containsKey(${jsonEncode(required.first)})";
       }

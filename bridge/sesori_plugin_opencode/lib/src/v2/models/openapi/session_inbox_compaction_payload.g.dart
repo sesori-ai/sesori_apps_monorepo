@@ -30,19 +30,22 @@ abstract interface class SessionInboxCompactionPayload {
 
 @immutable
 class SessionInboxCompactionPayload00Inline implements SessionInboxCompactionPayload {
-  const SessionInboxCompactionPayload00Inline();
-
-  // ignore: avoid_unused_constructor_parameters
+  const SessionInboxCompactionPayload00Inline({required this.json});
   factory SessionInboxCompactionPayload00Inline.fromJson(Map<String, dynamic> json) {
-    return const SessionInboxCompactionPayload00Inline();
+    return SessionInboxCompactionPayload00Inline(json: json);
   }
+  @override
+  Map<String, dynamic> toJson() => json;
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionInboxCompactionPayload00Inline &&
+          const DeepCollectionEquality().equals(other.json, json));
 
   @override
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-    };
-  }
+  int get hashCode => const DeepCollectionEquality().hash(json);
 
+  final Map<String, dynamic> json;
 }
 
 

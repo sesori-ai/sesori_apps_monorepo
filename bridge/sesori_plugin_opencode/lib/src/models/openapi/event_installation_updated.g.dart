@@ -61,7 +61,7 @@ class EventInstallationUpdatedProperties {
 
   factory EventInstallationUpdatedProperties.fromJson(Map<String, dynamic> json) {
     return EventInstallationUpdatedProperties(
-      version: json["version"] as String?,
+      version: json["version"] as String,
     );
   }
 
@@ -90,5 +90,5 @@ class EventInstallationUpdatedProperties {
   @override
   int get hashCode => version.hashCode;
 
-  final String? version;
+  final String version;
 }

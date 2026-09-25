@@ -18,7 +18,7 @@ abstract interface class PermissionSource {
   Object? toJson();
 
   factory PermissionSource.fromJson(Object json) {
-    if (json is Map<String, dynamic> && json.containsKey("type")) {
+    if (json is Map<String, dynamic> && json["type"] == "tool") {
       return PermissionSource00Inline.fromJson(json);
     }
     return PermissionSourceUnknown(raw: json);

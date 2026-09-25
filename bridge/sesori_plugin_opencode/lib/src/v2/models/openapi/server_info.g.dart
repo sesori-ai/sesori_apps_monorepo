@@ -15,7 +15,7 @@ class ServerInfo {
 
   factory ServerInfo.fromJson(Map<String, dynamic> json) {
     return ServerInfo(
-      version: json["version"] as String?,
+      version: json["version"] as String,
       pid: (json["pid"] as num).toInt(),
       urls: (json["urls"] as List<dynamic>).cast<String>(),
       paths: ServerInfoPaths.fromJson(json["paths"] as Map<String, dynamic>),
@@ -59,7 +59,7 @@ class ServerInfo {
   @override
   int get hashCode => Object.hash(version, pid, const DeepCollectionEquality().hash(urls), paths);
 
-  final String? version;
+  final String version;
   final int pid;
   final List<String> urls;
   final ServerInfoPaths paths;

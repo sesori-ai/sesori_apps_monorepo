@@ -30,8 +30,11 @@
 
 - Generated from OpenCode `v2.0.16` (`3a103fe0aff726a4edc7492f03f7b88195d9e4c9`):
   29 selected REST operations, 106 model files and 35 event variants. No v2 adapter is active yet.
-- Eight model decode/round-trip tests pass; owning-package analyzer is clean. Both v1/v2 REST and SSE
-  regeneration reproduce committed output exactly. Architecture implementation review approved.
+- Eleven v2 and twenty v1 model decode/round-trip tests pass; owning-package analyzer is clean.
+  Architecture implementation review approved. REST and SSE outputs are generated from their pinned sources.
+- Review corrections preserve free-form compaction object payloads and unknown permission-source variants,
+  and keep required server/installation versions non-nullable. Legacy v1 session version omission remains
+  supported; regeneration changes only the three non-session v1 version fields alongside the v2 fixes.
 - Churn is approximately 1,100 authored plus 10,700 generated lines. The generated output remains with its
   source as one coherent code-generation change; there is no runtime behavior or database change.
 - Step 4 must decode response envelopes and the active-session keyed map through typed boundary models;

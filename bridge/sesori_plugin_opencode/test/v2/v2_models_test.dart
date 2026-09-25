@@ -7,6 +7,8 @@ import "package:opencode_plugin/src/v2/models/openapi/form_multiselect_field.g.d
 import "package:opencode_plugin/src/v2/models/openapi/form_string_field.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_reply.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_source.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/server_info.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/session_inbox_compaction_payload.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_message_assistant.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_message_assistant_reasoning.g.dart";
@@ -92,6 +94,42 @@ Map<String, dynamic> messagesJson() => <String, dynamic>{
 };
 
 void main() {
+  test("retains free-form object compaction payloads", () {
+    const payload = <String, dynamic>{
+      "budget": 100,
+      "nested": <String, dynamic>{"keep": true},
+      "items": <Object?>["summary", null],
+    };
+    final decoded = SessionInboxCompactionPayload.fromJson(payload);
+
+    expect(decoded.toJson(), payload);
+    expect(SessionInboxCompactionPayload.fromJson(decoded.toJson()!), decoded);
+  });
+
+  test("preserves unrecognized permission source discriminators", () {
+    const payload = <String, dynamic>{"type": "future-source", "context": "value"};
+    final source = PermissionSource.fromJson(payload);
+
+    expect(source, isA<PermissionSourceUnknown>());
+    expect(source.toJson(), payload);
+    expect(
+      () => PermissionSource.fromJson(const <String, dynamic>{"type": "tool"}),
+      throwsA(isA<TypeError>()),
+    );
+  });
+
+  test("requires the server identity version", () {
+    final payload = <String, dynamic>{
+      "version": "2.0.16",
+      "pid": 123,
+      "urls": <String>["http://127.0.0.1:4096"],
+      "paths": <String, dynamic>{"tmp": "/tmp/opencode-fixture"},
+    };
+    expect(ServerInfo.fromJson(payload).version, "2.0.16");
+    payload.remove("version");
+    expect(() => ServerInfo.fromJson(payload), throwsA(isA<TypeError>()));
+  });
+
   group("SessionInfo", () {
     test("decodes a 2.0.16 session and round-trips", () {
       final session = SessionInfo.fromJson(sessionJson());
