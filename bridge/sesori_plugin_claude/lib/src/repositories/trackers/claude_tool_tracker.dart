@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../../models/claude_subagent_session_id.dart";
+import "../../models/claude_task_notification.dart";
 import "../../models/claude_task_status.dart";
 import "../../models/claude_tool_use_result.dart";
 import "../mappers/claude_shell_command_mapper.dart";
@@ -322,6 +323,20 @@ final class ClaudeToolTracker() {
       ..error = mapped == PluginToolStatus.error ? _bounded(summary) : null;
     return task.snapshot(sessionDiffRequired: false);
   }
+
+  /// [taskNotified] for a `<task-notification>` envelope; null when it names
+  /// no known task, including an envelope without a tool-use id.
+  ClaudeTrackedTool? envelopeNotified({required ClaudeTaskNotification notification}) =>
+      switch (notification.toolUseId) {
+        final toolUseId? => taskNotified(
+          toolUseId: toolUseId,
+          taskId: notification.taskId,
+          status: notification.status,
+          summary: notification.summary,
+          result: notification.result,
+        ),
+        null => null,
+      };
 
   bool isKnownTask({required String toolUseId}) => _tasks.containsKey(toolUseId);
 

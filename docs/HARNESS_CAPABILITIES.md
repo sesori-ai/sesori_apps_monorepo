@@ -24,12 +24,24 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 |---|---|---|
 | Pi | Visible `custom` messages / `custom_message` entries | ✅ Automation attribution live and after history load. |
 | Claude Code | User-role frames and transcript records with `origin.kind: peer` | ✅ Automation attribution live and after history load, including `isMeta` peer records. |
+| Claude Code (task notifications) | User-role `<task-notification>` turns with `origin.kind: task-notification`, or a whole envelope on CLIs without origin | ✅ A notification no known Agent/Bash task absorbs renders as an Automation step live and after history load. |
+| OpenCode (task notifications) | Unknown | Unverified: needs a probe of whether a background child's completion is injected as a user turn. |
+| Codex (task notifications) | None | Not applicable: no background-task completion arrives as a user turn. |
 
 Claude attribution uses host provenance, not plugin names or text matching. It
 covers any sender using that peer/socket path, but `origin.from: unknown` does
 not identify which plugin sent it. Missing/unmodelled origins and channels that
 may forward human input are not promoted to automation. Existing task-outcome,
 tool-result, compaction and hidden-metadata behavior remains separate.
+
+Claude task notifications fold into the launching Agent/Bash tile when the
+tracker knows the envelope's tool-use id. Otherwise (a SendMessage-resumed
+agent, an unknown id or no tool-use id) the turn becomes one completed
+Automation step labelled by the envelope's summary, with its result as output
+and the summary as error on failure; note, usage and output-file are dropped.
+An envelope that does not parse still renders as Automation text, never as a
+user bubble. Only a text block that is a whole envelope counts as one without
+provenance, so a prompt quoting the protocol stays user input.
 
 Verified on **2026-09-25** with native Claude Code **2.1.281**, an isolated MCP
 socket sender and a loopback model fixture: idle wake-up, live stdout provenance
