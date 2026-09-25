@@ -240,11 +240,13 @@ widgets → desktop and phone shells.
 - Move the form body of `client/app/lib/features/login/email_login_sheet.dart`
   into `module_app_ui/lib/src/features/login/email_login_form.dart`
   (`EmailLoginForm`). It reads `LoginCubit` from context, owns its
-  controllers and inline failure, and exposes an `onBack` callback only where
-  the desktop needs "Other ways to sign in". The phone sheet keeps its modal
-  wrapper and stale-error clearing and hosts the shared form.
-- Review LG2 fixes land here because the form moves anyway: no blue required
-  asterisks, readable placeholder contrast.
+  controllers and inline failure, and hands a success to its host through
+  `onSignedIn`. The phone sheet keeps its modal wrapper, stale-error clearing
+  and pop after success, and hosts the shared form. Step 4 adds the `onBack`
+  callback for the desktop's "Other ways to sign in" together with its only
+  consumer.
+- Review LG2 (no blue required asterisks, readable placeholder) was already
+  fixed by visual-hierarchy step 8; step 3 verified it and changes no styling.
 - Shared error copy: one `LoginFailedReason` → localized message extension in
   `module_app_ui`, used by both shells (replaces the phone-only extension).
 

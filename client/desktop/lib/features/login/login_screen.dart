@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -89,8 +90,6 @@ class const _LoginStatus({required final LoginState state}) extends StatelessWid
   static const String _timeout = "Sign-in timed out. Please try again.";
   static const String _browserOpenFailed = "Couldn't open your browser.";
   static const String _cancel = "Cancel";
-  static const String _declined = "Sign-in was declined. The browser page did not confirm this sign-in.";
-  static const String _genericFailure = "Sign-in failed. Please try again.";
 
   @override
   Widget build(BuildContext context) {
@@ -113,13 +112,7 @@ class const _LoginStatus({required final LoginState state}) extends StatelessWid
         style: TextStyle(color: colors.error),
       ),
       LoginFailed(:final reason) => Text(
-        switch (reason) {
-          LoginFailedReason.declined => _declined,
-          LoginFailedReason.emailRequired ||
-          LoginFailedReason.passwordRequired ||
-          LoginFailedReason.appleIdTokenMissing ||
-          LoginFailedReason.unknown => _genericFailure,
-        },
+        reason.localizedMessage(loc: context.loc),
         textAlign: TextAlign.center,
         style: TextStyle(color: colors.error),
       ),
