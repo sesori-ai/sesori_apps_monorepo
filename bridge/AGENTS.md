@@ -22,9 +22,11 @@ From `bridge/app/`:
 
 The Makefiles resolve Dart from the Flutter SDK pinned in the repository's
 `.tool-versions`; install that asdf Flutter version before using the Make
-targets. `sqlite3` build hooks require native target compilation, so
-cross-platform release artifacts are built on the matching CI OS/architecture
-rather than cross-compiled locally.
+targets. Release CI installs that pin's standalone Dart SDK directly and uses
+`dart build cli` on each matching OS/architecture. Dart 3.13+ can cross-compile
+Linux bundles with hooks, including SQLite's prebuilt libraries; hooks that
+compile native sources still need a suitable target toolchain. Native parallel
+release jobs remain the default, and macOS/Windows cross targets are unsupported.
 
 ## Module Order
 

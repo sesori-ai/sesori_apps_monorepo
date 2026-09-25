@@ -21,6 +21,12 @@ reconciliation, periodic check, in-place apply, and explicit update command.
   build-number queries or mobile uploads so the main-only macOS signing environment
   cannot leave partial store uploads. Release tags, serialized release concurrency and
   all-platform success requirements stay unchanged.
+- Bridge archives use `dart build cli` on six parallel native OS/architecture
+  runners, retaining the executable and native libraries together. Every runner
+  installs the standalone Dart SDK matching the checked-out source's Flutter pin
+  in `.tool-versions`; bridge builds do not bootstrap Flutter or asdf. Workflow
+  helper actions come from the workflow revision, including when production
+  submissions rebuild an older source commit.
 - TestFlight and Play internal notes list commit subjects since the nearest
   `v*` release tag on the build's first-parent history, newest first, and retain
   the build SHA. Failed attempts do not reset this range. With no release tag,
@@ -104,6 +110,9 @@ after apply. Use a throwaway machine when mutating an install root.
 - Store notes showing only the tip commit of a batch, losing commits after a failed
   attempt, exceeding store limits, cutting entries mid-message, or reporting an
   incorrect omitted-commit count.
+- Bridge SDK setup drifting from the checked-out source's pin, restoring Flutter
+  for a Dart-only build, dropping a target, or archiving the executable without
+  its native libraries.
 - An installer selecting a pre-release, a release missing or mis-keying its manifest, or
   an artifact installed without verification.
 - Auto-update running for a supervised run, npm payload, CI, or opted-out process, or a
@@ -159,6 +168,8 @@ macOS signing are material failures.
 
 - `.github/workflows/release-all-platforms.yml`, `.github/scripts/check_internal_release.sh`,
   `.github/scripts/test_check_internal_release.py`, `tool/release_scheduler/README.md`
+- `.github/workflows/_reusable-bridge-build.yml`, `.github/scripts/test_bridge_build_workflow.py`,
+  `.github/actions/resolve-flutter-dart-version/action.yml`
 - `client/app/fastlane/build_changelog.rb`, `client/app/fastlane/test_build_changelog.rb`,
   `client/app/{ios,android}/fastlane/Fastfile`
 - `bridge/RELEASING.md`, `bridge/INSTALL.md`, `install.sh`, `install.ps1`, `bridge/app/npm/`
