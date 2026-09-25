@@ -341,7 +341,9 @@ defaults and queued client sends coherent.
   input, including human-forwarding channels. Ordinary internal metadata,
   transcript-only/sidechain records, task outcomes and tool results retain their
   existing handling. A synthetic peer message cannot consume a pending
-  compaction summary, and correlated prompt echoes retain their user prompt ID.
+  compaction summary. Peer provenance also prevents replay metadata and matching
+  content from acknowledging a queued human prompt; the later human echo retains
+  its user prompt ID and consumes the queue entry.
   Native Claude Code 2.1.281 was verified with an isolated socket sender and
   loopback model fixture: idle wake-up, peer-origin stdout and persisted history.
   This is not authenticated-provider or full app-to-relay verification.

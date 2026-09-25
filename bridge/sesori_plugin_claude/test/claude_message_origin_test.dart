@@ -112,6 +112,16 @@ void main() {
       expect(info.promptId, "queued-prompt");
     });
 
+    test("peer provenance takes precedence over an advisory prompt id", () {
+      final frame = _user(content: _peerText, origin: {"kind": "peer"});
+      final events = live.mapPromptReplay(
+        message: ClaudeStreamMessage.parse(frame) as ClaudeUserMessage,
+        promptId: "queued-prompt",
+      );
+      final info = events.whereType<BridgeSseMessageUpdated>().single.info as PluginMessageAssistant;
+      expect(info.sender, PluginMessageSender.system);
+    });
+
     test("history permits peer metadata without exposing unrelated hidden records", () async {
       final peer = _user(content: _peerText, origin: {"kind": "peer"});
       final records = [

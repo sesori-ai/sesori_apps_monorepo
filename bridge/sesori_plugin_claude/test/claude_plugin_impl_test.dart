@@ -481,13 +481,12 @@ void main() {
       await _waitForUserText(first, "steer it");
       final written = first.written.lastWhere((frame) => frame["type"] == "user");
       expect(written["priority"], "next");
+      // Native peer provenance takes precedence over replay metadata and an
+      // exact content match; it cannot acknowledge a queued human prompt.
       first.emit({
-        "type": "user",
-        "session_id": testSessionId,
-        "uuid": "peer-before-echo",
+        ..._replayOf(written, uuid: "peer-before-echo"),
         "origin": {"kind": "peer"},
         "isSynthetic": true,
-        "message": {"role": "user", "content": "Synthetic plugin report"},
       });
       await pump();
       final peer = events.whereType<BridgeSseMessageUpdated>().singleWhere(

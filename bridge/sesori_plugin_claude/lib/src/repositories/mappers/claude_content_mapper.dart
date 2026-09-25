@@ -130,8 +130,8 @@ final class const ClaudeContentMapper() {
   }
 
   /// Projects visible user-role content consistently for live and stored rows.
-  /// A correlated stdin replay belongs to the user's queued prompt; otherwise
-  /// only explicit peer provenance identifies automation, never the text itself.
+  /// Explicit peer provenance identifies automation regardless of prompt hints;
+  /// only ordinary stdin replays can replace a queued human prompt.
   PluginMessageWithParts? userMessage({
     required String sessionId,
     required String messageId,
@@ -140,7 +140,7 @@ final class const ClaudeContentMapper() {
     required ClaudeMessageOriginKind originKind,
     required String? promptId,
   }) {
-    final isPeer = originKind == ClaudeMessageOriginKind.peer && promptId == null;
+    final isPeer = originKind == ClaudeMessageOriginKind.peer;
     final parts = mapParts(
       content: isPeer ? content : visibleUserContent(content: content),
       sessionId: sessionId,
