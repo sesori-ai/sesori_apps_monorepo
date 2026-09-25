@@ -62,7 +62,7 @@ gate: the user picks a variant from a local review page first.
 | [ ] | 41 | `visual-hierarchy/recovery-card` | [41/49](#pr-titles) | ≤ 300 | blocked on the user's variant pick |
 | [ ] | 42 | `visual-hierarchy/busy-indicator` | [42/49](#pr-titles) | ≤ 700 | pending |
 | [ ] | 43 | `visual-hierarchy/continuation-notice` | [43/49](#pr-titles) | ≤ 500 | pending |
-| [ ] | 44 | `visual-hierarchy/yolo-icon` | [44/49](#pr-titles) | ≤ 150 | pending |
+| [x] | 44 | `visual-hierarchy/yolo-icon` | [44/49](#pr-titles) | ≤ 150 | done |
 | [ ] | 45 | `visual-hierarchy/session-yolo{,-clients}` | [45/49](#pr-titles) | ≤ 1,200 | pending |
 | [ ] | 46 | `visual-hierarchy/group-motion` | [46/49](#pr-titles) | ≤ 900 | pending |
 | [ ] | 47 | `visual-hierarchy/group-popover` | [47/49](#pr-titles) | ≤ 800 | pending |

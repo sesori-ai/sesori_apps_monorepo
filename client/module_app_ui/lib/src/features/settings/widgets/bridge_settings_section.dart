@@ -8,6 +8,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../session_detail/widgets/yolo_chip.dart";
 import "settings_section.dart";
 
 /// How far the rows dim while no bridge is connected.
@@ -97,7 +98,7 @@ class const _YoloSettingsRow() extends StatelessWidget {
     return MergeSemantics(
       child: PregoGroupedRow(
         key: const Key("yolo_setting"),
-        icon: TablerRegular.shield_off,
+        icon: YoloChip.icon,
         title: Text(context.loc.settingsYoloTitle),
         subtitle: Text(_yoloDescription(context: context, state: state)),
         trailing: switch (state) {

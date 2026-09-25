@@ -7,7 +7,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 
-/// Neutral "⚡ YOLO" chip in the session's model row while the connected
+/// Neutral "YOLO" chip in the session's model row while the connected
 /// bridge approves every permission request. A tap explains YOLO and offers
 /// the settings where it is turned off.
 class const YoloChip({
@@ -15,6 +15,11 @@ class const YoloChip({
   required final PregoComposerSurfaceStyle surfaceStyle,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
+  /// The one icon that stands for YOLO wherever it appears: a shield with a
+  /// mark inside, in the spirit of Codex's "Full access". Fast mode keeps the
+  /// bolt.
+  static const IconData icon = TablerRegular.shield_x;
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -42,7 +47,7 @@ class const YoloChip({
                     mainAxisSize: MainAxisSize.min,
                     spacing: 4,
                     children: [
-                      Icon(TablerRegular.bolt, size: PregoIconSize.sm, color: foreground),
+                      Icon(icon, size: PregoIconSize.sm, color: foreground),
                       Text(
                         context.loc.sessionDetailYoloChip,
                         style: prego.textTheme.textXs.medium.copyWith(color: foreground),
