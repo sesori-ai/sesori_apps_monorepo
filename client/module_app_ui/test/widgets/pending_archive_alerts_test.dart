@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -133,5 +135,73 @@ void main() {
     expect(find.text("Failed to archive session"), findsOneWidget);
     expect(cubit.state.hiddenIds, isEmpty);
     await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
+
+  group("a failure while another archive's Undo shows", () {
+    final other = testSession(id: "s2", title: "Tidy the docs");
+
+    Future<void> failFirstWhileSecondOffersUndo(WidgetTester tester) async {
+      await pumpAlerts(tester);
+      final failure = Completer<ApiResponse<shared.Session>>();
+      when(
+        () => repository.archiveSession(sessionId: "s1", deleteWorktree: true, force: false),
+      ).thenAnswer((_) => failure.future);
+      when(
+        () => repository.archiveSession(sessionId: "s2", deleteWorktree: true, force: false),
+      ).thenAnswer((_) async => ApiResponse.success(other));
+
+      cubit.archive(session: session, deleteWorktree: true);
+      await tester.pump();
+      // Archiving the second commits the first, which fails inside the second's window.
+      cubit.archive(session: other, deleteWorktree: true);
+      await tester.pump(const Duration(milliseconds: 500));
+      failure.complete(ApiResponse.error(ApiError.generic()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text("Session archived"), findsOneWidget);
+      expect(find.text("Failed to archive session"), findsNothing);
+    }
+
+    testWidgets("waits for the window to end", (tester) async {
+      await failFirstWhileSecondOffersUndo(tester);
+
+      await tester.pump(PendingSessionArchiveCubit.undoWindow);
+      await tester.pump();
+
+      expect(find.text("Failed to archive session"), findsOneWidget);
+      await tester.pumpAndSettle(const Duration(seconds: 4));
+    });
+
+    testWidgets("shows after Undo", (tester) async {
+      await failFirstWhileSecondOffersUndo(tester);
+
+      await tester.tap(find.text("Undo"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text("Session archived"), findsNothing);
+      expect(find.text("Failed to archive session"), findsOneWidget);
+      await tester.pumpAndSettle(const Duration(seconds: 4));
+    });
+
+    testWidgets("stays held when a third archive opens the next window", (tester) async {
+      await failFirstWhileSecondOffersUndo(tester);
+      final third = testSession(id: "s3", title: "Bump the version");
+      when(
+        () => repository.archiveSession(sessionId: "s3", deleteWorktree: true, force: false),
+      ).thenAnswer((_) async => ApiResponse.success(third));
+
+      cubit.archive(session: third, deleteWorktree: true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text("Session archived"), findsOneWidget);
+      expect(find.text("Failed to archive session"), findsNothing);
+
+      await tester.pump(PendingSessionArchiveCubit.undoWindow);
+      await tester.pump();
+      expect(find.text("Failed to archive session"), findsOneWidget);
+      await tester.pumpAndSettle(const Duration(seconds: 4));
+    });
   });
 }

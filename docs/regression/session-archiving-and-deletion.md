@@ -34,7 +34,8 @@ entirely along with its transcript and, optionally, its worktree.
 - When the bridge refuses the archive because its worktree is not safe to delete, the session
   returns to the lists and a compact alert names the issues and offers Archive and keep the worktree, the
   default, or Delete it anyway. That second choice archives at once with no further Undo. Any other failure
-  returns the session and shows an error alert.
+  returns the session and shows an error alert. A failure that arrives while another archive's Undo alert is
+  showing waits until that alert's window ends or Undo is pressed, so it never hides a pending Undo.
 - Desktop Delete asks in a compact centred alert that names the session; Cancel is the default button and
   the destructive button never is. The phone keeps its delete sheet.
 - Deletion removes the session record immediately and is destructive and not
@@ -160,6 +161,8 @@ restart before explicit re-import.
 - A covered detail marks late output seen, reports activity, or presents a
   question, permission or notice over another page; child Back or cover dismissal
   loses the retained detail/draft or fails to restore its loaded viewed state.
+- An archive failure replaces another archive's showing Undo alert, or is never
+  shown after that alert's window ends or Undo is pressed.
 
 - An archived session accepts a prohibited non-deletion mutation, or becomes
   unarchived by any path.
@@ -183,8 +186,8 @@ restart before explicit re-import.
 ## Known Limitations
 
 - On both shells the Undo offer lives in the single popup alert slot. Another alert shown inside the
-  five-second window replaces it, and the archive still commits when the window ends, as it would had the user closed
-  the alert.
+  five-second window, other than an archive failure, replaces it, and the archive still commits when the window ends,
+  as it would had the user closed the alert.
 - Archiving is intentionally irreversible; deletion additionally destroys the
   audit record. The read-only rule covers the named session only, not ancestors,
   descendants, or related sessions.
