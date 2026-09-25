@@ -241,6 +241,10 @@ void main() {
     // The finished row folds while the summary and the new row grow.
     expect(find.text("1 step"), findsOneWidget);
     expect(find.text("bash"), findsOneWidget);
+    // The new summary already sits above the row folding into it.
+    final summaryTop = tester.getTopLeft(find.text("1 step")).dy;
+    expect(summaryTop, lessThan(tester.getTopLeft(find.text("read")).dy));
+    expect(tester.getTopLeft(find.text("read")).dy, lessThan(tester.getTopLeft(find.text("bash")).dy));
     final midway = _height(tester);
 
     await tester.pump(const Duration(milliseconds: 150));

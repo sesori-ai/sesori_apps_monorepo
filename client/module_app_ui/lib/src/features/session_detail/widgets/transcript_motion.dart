@@ -133,6 +133,13 @@ class _TranscriptPresenceColumnState() extends State<TranscriptPresenceColumn> {
     final rows = <Widget>[];
     final placed = <Key?>{};
     var nextIndex = 0;
+    // A new first row, such as a group's first summary, goes above the rows
+    // folding into it; other new rows follow the rows leaving before them.
+    if (next.firstOrNull case final first? when !shownKeys.contains(first.key)) {
+      rows.add(first);
+      placed.add(first.key);
+      nextIndex = 1;
+    }
     for (final row in _rows) {
       if (nextKeys.contains(row.key)) {
         if (placed.contains(row.key)) continue;

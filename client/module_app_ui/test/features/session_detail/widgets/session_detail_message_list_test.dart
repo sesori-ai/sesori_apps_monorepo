@@ -1793,6 +1793,9 @@ void main() {
 
     harnessKey.currentState!.setRetryErrorMessage(null);
     await _pumpListUpdate(tester);
+    // The card folds away rather than vanishing in one frame.
+    expect(find.byType(RetryErrorMessageCard), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(RetryErrorMessageCard), findsNothing);
     expect(_messageKey("user-2"), findsOneWidget);

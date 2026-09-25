@@ -132,7 +132,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// Synthetic id for the shimmering retry-error row pinned at the newest
   /// edge. Domain message ids come from the assistant backend and cannot
-  /// collide with this.
+  /// collide with this. Like the working row it stays in the list, empty
+  /// without a retry, so the card eases in and out.
   static const _kRetryErrorRowId = "session-detail-retry-error-row";
 
   /// Synthetic id for the live row that closes the transcript while the
@@ -327,7 +328,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<QueuedSessionSubmission> queuedMessages,
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
-    required bool hasRetryError,
   }) {
     final deliveredPromptIds = <String>{
       for (final message in messages)
@@ -337,7 +337,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final entries = <String>[
       for (final message in messages)
         if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
-      if (hasRetryError) _kRetryErrorRowId,
+      _kRetryErrorRowId,
       _kWorkingRowId,
       for (final prompt in bridgeQueuedPrompts)
         if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
@@ -431,7 +431,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       queuedMessages: queuedMessages,
       bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
       awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
-      hasRetryError: retryErrorMessage != null,
     );
     final knownRowIds = _knownRowIds;
     _knownRowIds = rowIds.toSet();
@@ -561,9 +560,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required bool isBusy,
   }) {
     if (entryId == _kRetryErrorRowId) {
-      if (retryErrorMessage == null) return const SizedBox.shrink();
       // Synthetic row: no timestamp, but it still slides with the rest.
-      return _revealable(createdAtMs: null, child: RetryErrorMessageCard(message: retryErrorMessage));
+      return _revealable(
+        createdAtMs: null,
+        child: TranscriptPresenceColumn(
+          children: [
+            if (retryErrorMessage != null)
+              RetryErrorMessageCard(key: const ValueKey("session-detail-retry-error"), message: retryErrorMessage),
+          ],
+        ),
+      );
     }
     if (entryId == _kWorkingRowId) {
       // Streaming text, a live step or the retry row already shows progress;
