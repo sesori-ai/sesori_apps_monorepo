@@ -81,7 +81,7 @@
   shape evidence, not authenticated provider execution or native transcript/tool lifecycle evidence.
 - Native fixture provenance stays with the catalog slice; form examples are source-derived.
   Seven catalog/form/identity tests, full code generation and owning-package analysis pass.
-  The second architecture pass is pending: 727 authored + 88 generated changed lines (815 total), catalog-only scope.
+  Second architecture pass approved `f830e46`: 727 authored + 88 generated changed lines (815 total), catalog-only scope.
 - Published history through `ef5015416a` preserves the extracted transcript mapper, its typed tool-display DTOs
   and generated parts, and `v2_message_mapper_test.dart`. Restore these into Step 5.b rather than rebuilding them.
   That checkpoint passed 11 transcript cases and analysis; it includes the accepted shell-classification fix.
