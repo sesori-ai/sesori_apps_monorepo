@@ -465,6 +465,13 @@ text, Unicode-scalar output truncation, inline-image byte limits and combined in
 candidate limits. Budget overflow logs once per collection. File and credentialed URLs
 remain metadata-only. These cases are source-derived, not native turns.
 
+Inactive v2 repository coverage composes the API and mappers: project-scoped root
+paging across worktrees, canonical identity versus opened directory, session-derived
+activity, directory-specific agent names, global active IDs and retained native form
+constraints. It checks stale-selection refusal, native defaults, typed write bodies,
+permission decisions and unchanged propagation of history failures. Fake-API and
+HTTP-boundary tests do not prove native write, turn or reconnect behavior.
+
 ## Exploration Guidance
 
 Vary which harness runs first and which stays disabled, and the configuration: default

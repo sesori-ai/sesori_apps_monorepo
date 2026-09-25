@@ -76,6 +76,29 @@ void main() {
     expect(calls, 2);
   });
 
+  for (final projectId in const <String?>["project-fixture", null]) {
+    test("pages roots for ${projectId ?? "all projects"} without a directory filter", () async {
+      var calls = 0;
+      final api = makeApi(
+        handler: (request) async {
+          calls++;
+          expect(request.url.queryParameters["project"], projectId);
+          expect(request.url.queryParameters.containsKey("directory"), isFalse);
+          expect(request.url.queryParameters["parentID"], "null");
+          expect(request.url.queryParameters["cursor"], calls == 1 ? null : "next");
+          return http.Response(
+            jsonEncode(<String, dynamic>{
+              "data": <Object>[v2SessionFixture],
+              "cursor": <String, dynamic>{"next": calls == 1 ? "next" : null},
+            }),
+            200,
+          );
+        },
+      );
+      expect(await api.listRootSessions(projectId: projectId), hasLength(2));
+    });
+  }
+
   test("follows message cursors and decodes message variants", () async {
     var calls = 0;
     final api = makeApi(

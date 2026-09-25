@@ -4,14 +4,14 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 5.b (PR 6/12) — transcript mapping, [#1743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1743),
-  on `sesori/opencode-v2-step-5b-transcript`.
+- Current step: 5.c (PR 7/12) — repository integration, in review on `sesori/opencode-v2-step-5c-repository`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
   Step 3 [#1716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1716),
   Step 4 [#1720](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1720),
-  Step 5.a [#1733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1733).
-- One-step-ahead successor: Step 5.c repository integration (PR 7/12); do not start before Step 5.b is in PR.
+  Step 5.a [#1733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1733),
+  Step 5.b [#1743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1743).
+- One-step-ahead successor: Step 6 events/activity/service (PR 8/12); do not start before Step 5.c is in PR.
 - Takeover: continue from `aqua-hummingbird`; preserve the existing published Step 2/3 history.
 - Architecture review: first pass rejected 9 layering points; all applied (see PLAN.md Status)
 
@@ -100,6 +100,22 @@
 - Step 7 must use synthetic-message descriptions for user-visible compaction arguments rather than expose
   bridge-authored model guidance. Form answers must reuse the visible field order and convert labels to
   native option values; external fields and conditional rendering remain the accepted D7 gap.
+
+## Step 5.c Evidence And Handoff
+
+- #1743 merged with accepted head `b9fa631`; CI passed 21/21 and the current-head Codex review had no new findings.
+  Its final scope was 860 authored + 97 generated lines. Step 5.c starts from updated `main` at `99dbc2aa98`.
+- `OpenCodeV2Repository` composes the existing API/catalog/transcript mappers with three final dependencies and
+  no runtime cache, tracker, timer, transport or persistence owner. V1 and the v2 startup refusal are unchanged.
+- Native root paging uses `parentID=null` plus optional native `project` ID; directory and project scope are not
+  mixed. Project IDs remain canonical paths while opened worktree directories and session locations remain distinct.
+- The repository preserves native defaults, resolves explicit display-name selections before writes, exposes global
+  active IDs and retains directory-scoped native input constraints. History failures propagate without empty fallback.
+- Twenty-eight focused repository/API cases and owning-package analysis pass.
+  Architecture review approved `7f4977e` with no findings (866 authored lines; no generated churn).
+  No generated source changed, so generation was not rerun. Evidence is fixture/fake/HTTP-boundary only.
+- Step 7 must verify parent-linked creation: plain native creation has no parent field, while fork/import routes
+  exist. Inspect their semantics before satisfying `parentSessionId`; never silently create an unrelated root.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.
