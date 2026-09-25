@@ -39,11 +39,12 @@ Plugin ID: `"opencode"`.
 
 ### `SseConnection`
 
-Manages a persistent SSE connection to `GET /global/event` on the OpenCode server. Reconnects automatically with exponential backoff (1s initial, 30s cap). On reconnect, it calls an optional `onReconnect` callback so the plugin can reset and re-sync state.
+Manages a persistent SSE connection to the supplied event path (`/global/event` for v1, `/api/event` for v2) on the OpenCode server. Reconnects automatically with exponential backoff (1s initial, 30s cap). On reconnect, it calls an optional `onReconnect` callback so the plugin can reset and re-sync state.
 
 ```dart
 SseConnection({
   required String targetUrl,
+  required String eventPath,
   required String? password,
   required void Function(String rawData) onEvent,
   Future<void> Function()? onReconnect,
