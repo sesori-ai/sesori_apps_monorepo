@@ -37,6 +37,9 @@ class const OpenCodeCatalogSessionRow({
 });
 
 class const OpenCodeCatalogDatabaseSnapshot({
+  /// Whether the database has OpenCode 2.x's `session_v2` table. Such a
+  /// database is not read, so the row lists are empty.
+  required final bool hasSessionV2Table,
   required final List<OpenCodeCatalogProjectRow> projects,
   required final List<OpenCodeCatalogProjectDirectoryRow> projectDirectories,
   required final List<OpenCodeCatalogSessionRow> sessions,
@@ -66,6 +69,20 @@ class const _SqliteOpenCodeCatalogDatabaseWorker() {
     try {
       database = sqlite3.open(databasePath, mode: OpenMode.readOnly);
       database.execute("BEGIN");
+      // Checked before schema validation so a 2.x database is reported, not
+      // rejected for a schema this reader never needs to understand.
+      final sessionV2Tables = database.select(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'session_v2' LIMIT 1",
+      );
+      if (sessionV2Tables.isNotEmpty) {
+        database.execute("COMMIT");
+        return const OpenCodeCatalogDatabaseSnapshot(
+          hasSessionV2Table: true,
+          projects: [],
+          projectDirectories: [],
+          sessions: [],
+        );
+      }
       _validateSchema(database: database);
       _validateSandboxJson(database: database);
 
@@ -124,6 +141,7 @@ class const _SqliteOpenCodeCatalogDatabaseWorker() {
       ];
       database.execute("COMMIT");
       return OpenCodeCatalogDatabaseSnapshot(
+        hasSessionV2Table: false,
         projects: List.unmodifiable(projects),
         projectDirectories: List.unmodifiable(projectDirectories),
         sessions: List.unmodifiable(sessions),

@@ -15,6 +15,7 @@ import "../plugin_model_mapper.dart";
 import "../repositories/open_code_catalog_repository.dart";
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
+import "open_code_protocol.dart";
 import "open_code_record_mapper.dart";
 import "open_code_runtime_manifest.dart";
 import "open_code_runtime_policy.dart";
@@ -720,6 +721,26 @@ class const OpenCodePluginDescriptor({
         await service.stopOwnedRuntime(record: ownedHandle.record!);
       }
       throw const PluginStartAbortedException();
+    }
+
+    // OpenCode 2.x speaks an HTTP protocol this plugin cannot drive yet. Refuse
+    // it now, releasing an owned child, instead of failing later on every call.
+    if (handle != null) {
+      final protocol = await probeOpenCodeProtocol(
+        port: port,
+        password: apiPassword,
+        clientFactory: probeClientFactory,
+        host: connectHost,
+      );
+      if (protocol case OpenCodeProtocolV2(:final version)) {
+        if (handle case ManagedRuntimeHandle(isOwned: true, :final record?)) {
+          await service.stopOwnedRuntime(record: record);
+        }
+        throw PluginStartException(
+          "OpenCode ${version.raw} is not supported yet; install OpenCode 1.x or pass --opencode-bin",
+          cause: null,
+        );
+      }
     }
 
     final ownedRecord = handle?.record;

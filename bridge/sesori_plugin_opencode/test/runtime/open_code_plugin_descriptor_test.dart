@@ -19,6 +19,17 @@ Future<PluginCatalogSnapshotResult> _unavailableCatalogSnapshot({
   required PluginCatalogCancellationSignal cancellation,
 }) async => const PluginCatalogSnapshotUnavailable();
 
+const String _v1HealthBody = '{"healthy":true,"version":"1.18.32"}';
+
+/// An OpenCode 2.x server: an HTML 200 on `/global/health` and a JSON
+/// `/api/info` reporting [version].
+MockClient _v2ServerClient({required String version}) => MockClient((request) async {
+  if (request.url.path == "/api/info") {
+    return http.Response(jsonEncode({"version": version, "pid": 1, "urls": <String>[]}), 200);
+  }
+  return http.Response("<!doctype html>", 200);
+});
+
 void main() {
   group("OpenCodePluginDescriptor.needsManagedRuntimeUpgrade", () {
     final descriptor = OpenCodePluginDescriptor.production();
@@ -455,7 +466,7 @@ void main() {
       return OpenCodePluginDescriptor(
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
-        probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
+        probeClientFactory: () => MockClient((_) async => http.Response(_v1HealthBody, 200)),
         candidatePorts: const <int>[51000],
         random: Random(1),
       );
@@ -763,6 +774,28 @@ void main() {
       expect(apiRecorder.last!.disposeCount, equals(1));
       expect(host.ownershipRecord("owner-current"), isNull);
     });
+
+    test("refuses an OpenCode 2.x server and stops the owned runtime", () async {
+      host.ports.defaultBindable = true;
+      final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
+        buildApi: apiRecorder.build,
+        probeClientFactory: () => _v2ServerClient(version: "2.0.11"),
+        candidatePorts: const <int>[51000],
+        random: Random(1),
+      );
+
+      await expectLater(
+        descriptor.start(host),
+        throwsA(
+          isA<PluginStartException>().having((error) => error.message, "message", contains("OpenCode 2.0.11")),
+        ),
+      );
+      // The owned runtime was spawned and then stopped: its record is gone.
+      expect(host.processes.spawnedProcesses, hasLength(1));
+      expect(host.ownershipRecord("owner-current"), isNull);
+      expect(apiRecorder.last, isNull);
+    });
   });
 
   group("OpenCodePluginDescriptor.start (attach / --no-auto-start)", () {
@@ -790,7 +823,7 @@ void main() {
       final descriptor = OpenCodePluginDescriptor(
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
-        probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
+        probeClientFactory: () => MockClient((_) async => http.Response(_v1HealthBody, 200)),
       );
 
       final plugin = await descriptor.start(host);
@@ -802,6 +835,19 @@ void main() {
       expect(host.processes.spawnedProcesses, isEmpty);
 
       await plugin.shutdown(budget: null);
+    });
+
+    test("refuses an attached OpenCode 2.x server without signalling it", () async {
+      final host = attachHost();
+      final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
+        buildApi: apiRecorder.build,
+        probeClientFactory: () => _v2ServerClient(version: "2.0.16"),
+      );
+
+      await expectLater(descriptor.start(host), throwsA(isA<PluginStartException>()));
+      expect(host.processes.signals, isEmpty);
+      expect(apiRecorder.last, isNull);
     });
 
     test("attaches to a non-loopback host at the configured address", () async {
@@ -820,7 +866,7 @@ void main() {
       final descriptor = OpenCodePluginDescriptor(
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
-        probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
+        probeClientFactory: () => MockClient((_) async => http.Response(_v1HealthBody, 200)),
       );
 
       final plugin = await descriptor.start(remoteHost);
@@ -847,7 +893,7 @@ void main() {
       final descriptor = OpenCodePluginDescriptor(
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
-        probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
+        probeClientFactory: () => MockClient((_) async => http.Response(_v1HealthBody, 200)),
       );
 
       final plugin = await descriptor.start(host);
@@ -880,7 +926,7 @@ void main() {
       final descriptor = OpenCodePluginDescriptor(
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
-        probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
+        probeClientFactory: () => MockClient((_) async => http.Response(_v1HealthBody, 200)),
       );
 
       final trimmedHost = _FakeHost(
@@ -925,7 +971,7 @@ void main() {
       final descriptor = OpenCodePluginDescriptor(
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
-        probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
+        probeClientFactory: () => MockClient((_) async => http.Response(_v1HealthBody, 200)),
         coldStartBudget: const Duration(milliseconds: 200),
       );
 

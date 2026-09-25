@@ -4,10 +4,12 @@ import "dart:io" as io;
 import "dart:math";
 
 import "package:http/http.dart" as http;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show HostPortService, PluginHost, SpawnedProcess;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show HostPortService, Log, PluginHost, SpawnedProcess;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "open_code_ownership_record.dart";
+import "open_code_protocol.dart";
 
 /// OpenCode-specific launch, health-probe, and ownership-record policy over
 /// services exposed by [PluginHost].
@@ -207,10 +209,13 @@ Future<SpawnedProcess> spawnOpenCodeProcess({
   return DrainingSpawnedProcess(inner: process);
 }
 
-/// Probes OpenCode health on [port]: `GET /global/health` with Basic auth
-/// `opencode:<password>` when a password is supplied, or with no auth when
-/// [password] is null or empty. Healthy iff the response is HTTP 200 (matching
-/// the legacy probe). Reports unhealthy rather than throwing on any error.
+/// Probes OpenCode health on [port] with Basic auth `opencode:<password>` when
+/// a password is supplied, or with no auth when [password] is null or empty.
+///
+/// Healthy iff `GET /global/health` returns HTTP 200 with a JSON object (1.x),
+/// or, when that 200 is not JSON, `GET /api/info` does (2.x serves its web UI
+/// as an HTML 200 on unknown paths and answers `503` on `/api/info` while
+/// booting). Reports unhealthy rather than throwing on any error.
 Future<RuntimeHealthProbe> probeOpenCodeHealth({
   required int port,
   required String? password,
@@ -220,31 +225,108 @@ Future<RuntimeHealthProbe> probeOpenCodeHealth({
 }) async {
   final client = clientFactory();
   try {
-    // Structured fields (not string interpolation) so an IPv6 literal host is
-    // correctly bracketed (e.g. `http://[::1]:port`).
-    final uri = Uri(scheme: "http", host: host, port: port, path: "/global/health");
-    final request = http.Request("GET", uri);
-    if (password != null && password.isNotEmpty) {
-      request.headers["Authorization"] = "Basic ${base64Encode(utf8.encode("opencode:$password"))}";
-    }
-    // One timeout bounds the send AND the body drain together (mirroring the
-    // legacy probe): a service that returns headers but never closes the body
-    // must fail the attempt, not hang the supervisor under the startup mutex.
-    final statusCode = await () async {
-      final response = await client.send(request);
-      await response.stream.drain<void>();
-      return response.statusCode;
-    }().timeout(timeout);
-    final healthy = statusCode == 200;
-    return RuntimeHealthProbe(
-      healthy: healthy,
-      error: healthy ? null : StateError("OpenCode health probe returned HTTP $statusCode"),
+    var response = await _getOpenCodeJson(
+      client: client,
+      host: host,
+      port: port,
+      path: "/global/health",
+      password: password,
+      timeout: timeout,
     );
+    if (response case (statusCode: 200, body: null)) {
+      response = await _getOpenCodeJson(
+        client: client,
+        host: host,
+        port: port,
+        path: "/api/info",
+        password: password,
+        timeout: timeout,
+      );
+    }
+    return switch (response) {
+      (statusCode: 200, body: _?) => const RuntimeHealthProbe(healthy: true),
+      (statusCode: 200, body: null) => RuntimeHealthProbe.unhealthy(
+        error: StateError("OpenCode health probe returned a non-JSON HTTP 200"),
+      ),
+      (:final statusCode, body: _) => RuntimeHealthProbe.unhealthy(
+        error: StateError("OpenCode health probe returned HTTP $statusCode"),
+      ),
+    };
   } on Object catch (error) {
     return RuntimeHealthProbe.unhealthy(error: error);
   } finally {
     client.close();
   }
+}
+
+/// Detects the protocol of the OpenCode server on [port], which must already
+/// have answered [probeOpenCodeHealth]: `GET /api/info` returning a JSON
+/// object whose `version` parses as `>= 2.0.0` selects
+/// [OpenCodeProtocolV2]; anything else, including a failed request, keeps
+/// [OpenCodeProtocolV1].
+Future<OpenCodeProtocol> probeOpenCodeProtocol({
+  required int port,
+  required String? password,
+  required http.Client Function() clientFactory,
+  required String host,
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final client = clientFactory();
+  try {
+    final response = await _getOpenCodeJson(
+      client: client,
+      host: host,
+      port: port,
+      path: "/api/info",
+      password: password,
+      timeout: timeout,
+    );
+    if (response case (statusCode: 200, body: {"version": final String rawVersion})) {
+      final version = SemanticRuntimeVersion.tryParse(value: rawVersion);
+      if (version != null && version.version.major >= 2) {
+        return OpenCodeProtocolV2(version: version);
+      }
+    }
+    return const OpenCodeProtocolV1();
+  } on Object catch (error) {
+    Log.d("[opencode] protocol probe failed; assuming OpenCode 1.x: $error");
+    return const OpenCodeProtocolV1();
+  } finally {
+    client.close();
+  }
+}
+
+/// Sends an authenticated `GET [path]` and returns its status with the body
+/// decoded as a JSON object, or a null body when it is not one.
+Future<({int statusCode, Map<String, Object?>? body})> _getOpenCodeJson({
+  required http.Client client,
+  required String host,
+  required int port,
+  required String path,
+  required String? password,
+  required Duration timeout,
+}) {
+  // Structured fields (not string interpolation) so an IPv6 literal host is
+  // correctly bracketed (e.g. `http://[::1]:port`).
+  final uri = Uri(scheme: "http", host: host, port: port, path: path);
+  final request = http.Request("GET", uri);
+  if (password != null && password.isNotEmpty) {
+    request.headers["Authorization"] = "Basic ${base64Encode(utf8.encode("opencode:$password"))}";
+  }
+  // One timeout bounds the send AND the body read together (mirroring the
+  // legacy probe): a service that returns headers but never closes the body
+  // must fail the attempt, not hang the supervisor under the startup mutex.
+  return () async {
+    final response = await client.send(request);
+    final text = await response.stream.bytesToString();
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(text);
+    } on FormatException {
+      return (statusCode: response.statusCode, body: null);
+    }
+    return (statusCode: response.statusCode, body: decoded is Map<String, Object?> ? decoded : null);
+  }().timeout(timeout);
 }
 
 /// Builds the "starting" ownership record from the post-spawn facts, mirroring
