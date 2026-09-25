@@ -50,6 +50,7 @@ class const CompactionPartWidget({super.key, required final String? summary}) ex
           child: MarkdownBody(
             data: summary,
             selectable: false,
+            blockSyntaxes: sessionMarkdownBlockSyntaxes,
             onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
             styleSheet: buildSessionMarkdownStyleSheet(
               prego: prego,

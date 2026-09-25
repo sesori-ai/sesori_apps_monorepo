@@ -421,7 +421,7 @@ row, which opens the carried-forward summary when the harness exposes it.
 | Pi | ✅ | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
 | Codex | ✅ | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
 | DeepSeek | ⬜ | ⬜ The runtime reports a live `compaction_completed` status without message identity or a replayable history record, so Sesori maps it only to a session-compacted event; a live-only row would vanish on reload. |
-| Antigravity, Copilot, Cursor, Hermes, OMP, Grok | ⬜ | ⬜ Not yet assessed: whether their ACP updates mark a compaction was not probed. |
+| Antigravity, Copilot, Cursor, Hermes, OMP, Grok | ⬜ | ⬜ The ACP session updates Sesori consumes (message, thought and user chunks, tool calls, plan, commands, session info) have no compaction variant, so a compaction, such as Cursor's `/summarize` behind Sesori's `compact` command, arrives as ordinary agent text. A row needs a harness extension signal; none was probed live. |
 
 A row without a summary is inert. Older clients ignore the summary field and
 show no row.
