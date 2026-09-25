@@ -1,5 +1,5 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
@@ -10,10 +10,8 @@ import "assistant_message_card.dart";
 class const SystemMessageCard({
   super.key,
   required final String? projectId,
-  required final MessageWithParts message,
+  required final List<TranscriptBlock> blocks,
   required final Map<String, String> streamingText,
-  required final List<Session> children,
-  required final Map<String, SessionStatus> childStatuses,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -43,10 +41,8 @@ class const SystemMessageCard({
               const SizedBox(height: PregoSpacing.md),
               AssistantMessageCard(
                 projectId: projectId,
-                message: message,
+                blocks: blocks,
                 streamingText: streamingText,
-                children: children,
-                childStatuses: childStatuses,
                 contentPadding: EdgeInsets.zero,
               ),
             ],

@@ -67,10 +67,15 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
         child: Scaffold(
           body: AssistantMessageCard(
             projectId: null,
-            message: widget.message,
+            blocks: const TranscriptBuilder()
+                .build(
+                  messages: [widget.message],
+                  streamingText: _streamingText,
+                  children: const [],
+                  childStatuses: const {},
+                )
+                .blocksFor(messageId: widget.message.info.id),
             streamingText: _streamingText,
-            children: const <Session>[],
-            childStatuses: const <String, SessionStatus>{},
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           ),
         ),
@@ -230,11 +235,17 @@ void main() {
       ),
     );
 
+    // The pending tool is a live row; the sub-agent without a lifecycle has
+    // finished and folds into the summary.
     expect(find.text("Tool"), findsOneWidget);
-    expect(find.text("Pending"), findsOneWidget);
-    expect(find.text("Background task"), findsOneWidget);
+    expect(find.text("1 sub-agent"), findsOneWidget);
+    expect(find.text("Background task"), findsNothing);
     expect(find.text("Agent"), findsOneWidget);
     expect(find.text("Retry"), findsOneWidget);
+
+    await tester.tap(find.text("1 sub-agent"));
+    await tester.pumpAndSettle();
+    expect(find.text("Background task"), findsOneWidget);
   });
 
   testWidgets("renders an active compaction tool as running", (tester) async {
@@ -246,7 +257,7 @@ void main() {
     );
 
     expect(find.text("compact"), findsOneWidget);
-    expect(find.text("Running"), findsOneWidget);
+    expect(find.byType(PregoActivityIndicator), findsOneWidget);
   });
 
   testWidgets("streaming text updates the rendered markdown without breaking the SelectionArea", (tester) async {

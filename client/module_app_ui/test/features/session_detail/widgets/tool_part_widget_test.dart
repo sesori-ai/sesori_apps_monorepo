@@ -11,7 +11,7 @@ const _viewport = ValueKey("shellTool.viewport");
 /// The open details around the terminal viewport.
 final _panel = find.ancestor(
   of: find.byKey(_viewport),
-  matching: find.byWidgetPredicate((widget) => widget is Container && widget.key is GlobalKey),
+  matching: find.byWidgetPredicate((widget) => widget is Container && widget.decoration != null),
 );
 
 /// The command row plus whatever part of the panel is showing.
@@ -89,7 +89,8 @@ void main() {
       // A short transcript keeps the panel short.
       expect(tester.getSize(find.byKey(_viewport)).height, lessThan(144));
       expect(find.text("Shell"), findsOneWidget);
-      expect(find.text("Done"), findsOneWidget);
+      // A finished command says nothing more than what it ran.
+      expect(find.text("Done"), findsNothing);
       expect(find.text("\$ git status --short\n\n M file.dart"), findsOneWidget);
       await tester.tap(find.byKey(_toggle));
       await tester.pumpAndSettle();
@@ -101,12 +102,12 @@ void main() {
   for (final (status, label) in [
     (ToolStatus.pending, "Pending"),
     (ToolStatus.running, "Running"),
-    (ToolStatus.completed, "Done"),
+    (ToolStatus.completed, "Ran"),
     (ToolStatus.error, "Failed"),
     (ToolStatus.cancelled, "Cancelled"),
     (ToolStatus.unknown, "Tool"),
   ]) {
-    testWidgets("shell retains the ${status.name} status", (tester) async {
+    testWidgets("shell names the ${status.name} status in its line", (tester) async {
       await tester.pumpWidget(
         _app(
           part: _part(
@@ -117,9 +118,9 @@ void main() {
           ),
         ),
       );
+      expect(find.text("$label \$ make check"), findsOneWidget);
       await tester.tap(find.byKey(_toggle));
       await tester.pump();
-      expect(find.text(label), findsOneWidget);
       if (status == ToolStatus.error) {
         expect(find.text("\$ make check\n\nCommand exited with code 1"), findsOneWidget);
       }
@@ -180,9 +181,9 @@ void main() {
     expect(vertical.offset, greaterThan(0));
     expect(tester.getSize(_panel).height, panelHeight);
     expect(tester.getSize(viewport).height, 144);
-    // A sideways swipe on the panel's footer still scrolls the transcript.
+    // A sideways swipe on the panel's title still scrolls the transcript.
     final before = horizontal.offset;
-    await tester.drag(find.text("Done"), const Offset(-100, 0));
+    await tester.drag(find.text("Shell"), const Offset(-100, 0));
     await tester.pumpAndSettle();
     expect(horizontal.offset, greaterThan(before));
     expect(tester.takeException(), isNull);
@@ -204,7 +205,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(_panel, findsOneWidget);
     expect(find.text("\$ make check\n\nAll checks passed"), findsOneWidget);
-    expect(find.text("Done"), findsOneWidget);
+    expect(find.text(r"Ran $ make check"), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -363,7 +364,7 @@ void main() {
     });
   }
 
-  testWidgets("long tool output eases open behind Show more", (tester) async {
+  testWidgets("tool output eases open behind its row", (tester) async {
     await tester.pumpWidget(
       _app(
         part: _part(
@@ -374,15 +375,19 @@ void main() {
         ),
       ),
     );
-    double height() => tester.getSize(find.byType(AnimatedSize)).height;
+    double height() => _shellHeight(tester);
     final collapsed = height();
-    await tester.tap(find.text("Show more"));
+    expect(find.textContaining("line 0"), findsNothing);
+    await tester.tap(find.byKey(_toggle));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     final opening = height();
     await tester.pumpAndSettle();
     expect(opening, allOf(greaterThan(collapsed), lessThan(height())));
-    expect(find.text("Show less"), findsOneWidget);
+    expect(find.textContaining("line 0"), findsOneWidget);
+    // Long output scrolls inside the bounded viewport; nothing says Show more.
+    expect(tester.getSize(find.byKey(_viewport)).height, 144);
+    expect(find.text("Show more"), findsNothing);
   });
 
   testWidgets("shell disclosure supports keyboard activation", (tester) async {
@@ -425,10 +430,33 @@ void main() {
         part: _part(status: ToolStatus.completed, command: null, output: "Old peer output", error: null),
       ),
     );
-    expect(find.byKey(_toggle), findsNothing);
     expect(find.text("Any normalized tool name A tool title"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.tool), findsOneWidget);
+    expect(find.text("Done"), findsNothing);
+    expect(find.text("Old peer output"), findsNothing);
+
+    await tester.tap(find.byKey(_toggle));
+    await tester.pumpAndSettle();
     expect(find.text("Old peer output"), findsOneWidget);
     expect(find.byType(PregoCopyIconButton), findsOneWidget);
-    expect(find.byIcon(TablerRegular.tool), findsOneWidget);
+  });
+
+  testWidgets("a tool without details is a plain row", (tester) async {
+    await tester.pumpWidget(_app(part: _part(status: ToolStatus.completed, command: null, output: null, error: null)));
+    expect(find.byKey(_toggle), findsNothing);
+    expect(find.text("Any normalized tool name A tool title"), findsOneWidget);
+  });
+
+  testWidgets("a failed tool keeps one signal and shows its error in the details", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        part: _part(status: ToolStatus.error, command: null, output: null, error: "File not found"),
+      ),
+    );
+    expect(find.byIcon(TablerSolid.alert_circle), findsOneWidget);
+    expect(find.text("Failed"), findsNothing);
+    await tester.tap(find.byKey(_toggle));
+    await tester.pumpAndSettle();
+    expect(find.text("File not found"), findsOneWidget);
   });
 }

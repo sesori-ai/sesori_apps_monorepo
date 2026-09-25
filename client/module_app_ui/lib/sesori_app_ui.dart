@@ -53,6 +53,8 @@ export "src/features/session_detail/widgets/subtask_part_widget.dart";
 export "src/features/session_detail/widgets/system_message_card.dart";
 export "src/features/session_detail/widgets/text_part_widget.dart";
 export "src/features/session_detail/widgets/tool_part_widget.dart";
+export "src/features/session_detail/widgets/transcript_disclosure.dart";
+export "src/features/session_detail/widgets/transcript_group_widget.dart";
 export "src/features/session_detail/widgets/user_message_card.dart";
 export "src/features/session_detail/widgets/voice_cancel_button.dart";
 export "src/features/session_diffs/session_diffs_view.dart";

@@ -809,12 +809,42 @@
   "sessionDetailImageSaveAccessDenied": "Permission denied while saving this image",
   "sessionDetailToolPending": "Pending",
   "sessionDetailToolRunning": "Running",
-  "sessionDetailToolCompleted": "Done",
   "sessionDetailToolError": "Failed",
   "sessionDetailToolCancelled": "Cancelled",
   "sessionDetailShell": "Shell",
   "sessionDetailCommandRan": "Ran",
   "sessionDetailFollowOutput": "Follow",
+  "transcriptSummaryThought": "Thought",
+  "@transcriptSummaryThought": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript, present when the agent thought at least once, e.g. 'Thought · 3 steps'."
+  },
+  "transcriptSummarySteps": "{count, plural, =1{1 step} other{{count} steps}}",
+  "@transcriptSummarySteps": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many tool calls the agent made, e.g. 'Thought · 3 steps'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSummarySubAgents": "{count, plural, =1{1 sub-agent} other{{count} sub-agents}}",
+  "@transcriptSummarySubAgents": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many sub-agents the agent ran, e.g. '3 steps · 2 sub-agents'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSummaryFailed": "{count, plural, =1{1 failed} other{{count} failed}}",
+  "@transcriptSummaryFailed": {
+    "description": "Last part of the one-line summary of a collapsed group of agent steps in a session transcript: how many of the steps failed, e.g. '3 steps · 1 failed'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sessionDetailJumpToLatest": "Jump to latest",
   "@sessionDetailJumpToLatest": {
     "description": "Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages."
@@ -1310,8 +1340,6 @@
   "sessionDetailAgentFallback": "Agent",
   "sessionDetailRetryLabel": "Retry",
   "sessionDetailCopy": "Copy",
-  "sessionDetailShowMore": "Show more",
-  "sessionDetailShowLess": "Show less",
   "emptySessionDetailTitle": "Select a session",
   "emptySessionDetailSubtitle": "Choose a session from the list to view details",
   "projectsOnboardingWhyLede": "Your LLM of choice runs on your computer.",
