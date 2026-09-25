@@ -5,6 +5,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/markdown_styles.dart";
 import "../session_detail_presentation_scope.dart";
+import "text_part_widget.dart";
 
 /// The quiet transcript row marking where the harness compacted its context.
 /// Tapping it opens the carried-forward [summary]; without one it is inert.
@@ -51,6 +52,7 @@ class const CompactionPartWidget({super.key, required final String? summary}) ex
             data: summary,
             selectable: false,
             blockSyntaxes: sessionMarkdownBlockSyntaxes,
+            imageBuilder: (uri, title, alt) => MarkdownMessageImage(uri: uri, semanticLabel: alt),
             onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
             styleSheet: buildSessionMarkdownStyleSheet(
               prego: prego,
