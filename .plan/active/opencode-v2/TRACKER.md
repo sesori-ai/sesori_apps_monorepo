@@ -80,7 +80,7 @@
 - Sanitized native REST fixtures are committed alongside their provenance. Transcript/form examples are
   source-derived. Seventeen mapper cases pass, including per-image and collection byte/count bounds,
   unsafe URL fallback and malformed images; owning-package analyzer is clean. Full build_runner ran.
-- Implementation architecture review is pending. Scope: 1,363 authored + 97 generated changed lines
+- Architecture review approved `465baf1` with no findings. Scope: 1,363 authored + 97 generated changed lines
   (1,460 total). No v1 code or public wire/database contract changes.
 - Step 7 must use synthetic-message descriptions for user-visible compaction arguments rather than expose
   bridge-authored model guidance. Form answers must reuse the visible field order and convert labels to
