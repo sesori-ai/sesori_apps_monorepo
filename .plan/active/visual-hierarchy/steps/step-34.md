@@ -33,6 +33,19 @@
 - Both pages use the shared `sessionChangesCounts` helper, which leaves out a
   zero side and shows nothing when both sides are zero.
 
+## Review follow-up
+
+- The cubit runs one request at a time. A signal that arrives during a
+  request runs one more afterwards, even when the first request fails, so an
+  older response can no longer overwrite a newer one.
+- The cubit also refreshes after a reconnect (the status becomes connected
+  again) and on `dataMayBeStale`, through the same queue.
+- On the bridge, an untracked file whose read fails still counts as 0 lines,
+  but now logs a warning with the file and the worktree. The failure result
+  carries no underlying error to include.
+- Three cubit tests cover these: overlapping refreshes, a failure followed by
+  a queued refresh, and the reconnect and stale signals.
+
 ## Deviations
 
 - The phone pill shows the icon and counts without the word "Changes". The

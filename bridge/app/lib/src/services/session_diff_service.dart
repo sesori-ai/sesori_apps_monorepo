@@ -1,5 +1,6 @@
 import "dart:convert";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/filesystem_repository.dart";
@@ -142,9 +143,15 @@ class SessionDiffService({
       BoundedTextFileContent(:final content) => (additions: _countLines(content: content), deletions: 0),
       BoundedTextFileMissing() ||
       BoundedTextFileBinary() ||
-      BoundedTextFileTooLarge() ||
-      BoundedTextFileReadFailure() => const (additions: 0, deletions: 0),
+      BoundedTextFileTooLarge() => const (additions: 0, deletions: 0),
+      BoundedTextFileReadFailure() => _unreadableUntrackedFile(worktreePath: worktreePath, file: file),
     };
+  }
+
+  /// The summary still returns; the file just adds nothing to the totals.
+  SessionDiffLineCounts _unreadableUntrackedFile({required String worktreePath, required String file}) {
+    Log.w("Could not read untracked file '$file' in '$worktreePath' for the change totals; counting it as 0 lines");
+    return const (additions: 0, deletions: 0);
   }
 
   /// What the session's changes are measured against; null when there is
