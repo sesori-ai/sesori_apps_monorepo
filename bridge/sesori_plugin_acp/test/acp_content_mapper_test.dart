@@ -203,6 +203,15 @@ void main() {
       expect(mapper.toolName(update: {"kind": "", "title": "Read file"}), "Read file");
       expect(mapper.toolName(update: {"kind": 42, "title": null}), "tool");
 
+      expect(mapper.toolKind(tool: "read"), PluginToolKind.read);
+      expect(mapper.toolKind(tool: "edit"), PluginToolKind.edit);
+      expect(mapper.toolKind(tool: "delete"), PluginToolKind.edit);
+      expect(mapper.toolKind(tool: "move"), PluginToolKind.edit);
+      expect(mapper.toolKind(tool: "execute"), PluginToolKind.command);
+      expect(mapper.toolKind(tool: "search"), PluginToolKind.search);
+      expect(mapper.toolKind(tool: "fetch"), PluginToolKind.other);
+      expect(mapper.toolKind(tool: "Read file"), PluginToolKind.other);
+
       expect(mapper.toolStatus(status: "pending"), PluginToolStatus.pending);
       expect(mapper.toolStatus(status: "in_progress"), PluginToolStatus.running);
       expect(mapper.toolStatus(status: "completed"), PluginToolStatus.completed);

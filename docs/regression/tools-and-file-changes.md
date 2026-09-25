@@ -40,6 +40,14 @@ sub-agent parts, plus the signal that a tool changed files.
   running steps shows no summary. Finished sub-agents show a neutral icon and
   failed ones a red one, without a status label; the grouping is computed by the
   shared `TranscriptBuilder`, so phone and desktop match.
+- Each tool part carries a kind (read, edit, command, search or other) that its
+  plugin classifies from the backend's own tool names; the client never
+  classifies a raw tool name or parses tool input. The summary names finished
+  calls by kind in order of first appearance, for example “Thought · read 2
+  files · edited 1 file · ran 1 command · 1 search · 1 step · 1 failed”. Counts
+  are calls, so reading one file twice reads “read 2 files”, and edits carry no
+  line counts. An other kind, a kind the app does not know, and a part from an
+  older bridge that sends no kind all count as plain steps.
 - Tapping or keyboard-activating a command opens a Shell panel, on the same
   raised inset as other tool output and code blocks, with the
   full available command, output and error in a two-axis scroll viewport that
@@ -234,6 +242,9 @@ guarantee.
 - Steps separated by visible text merge into one group, a group swallows a text
   or file part, a summary counts a running step, a finished step stays outside
   its summary, or a finished tool or sub-agent shows a “Done” label.
+- A summary names a backend tool, counts distinct files instead of calls, shows
+  line counts for edits, or fails to decode a tool part whose kind is missing
+  or new; a reloaded session reports different kinds than the live one did.
 - Backend naming or payload shape reaches the client unnormalized, or a local
   path or unsafe URL crosses the attachment contract.
 - A part carries fields owned by another variant, or a released known-type
@@ -302,6 +313,10 @@ guarantee.
 
 ## Sources
 
+- Tool kinds: `ClaudeToolKindMapper`, `CodexToolKindMapper`, `PiToolKindMapper`,
+  OpenCode `MessagePartMapper` and ACP `AcpContentMapper.toolKind`, with their
+  tests; `shared/sesori_shared/test/models/tool_kind_test.dart`,
+  `client/module_core/test/cubits/session_detail/transcript_builder_test.dart`
 - Contract: `bridge/sesori_plugin_interface/lib/src/models/plugin_message.dart`;
   `shared/sesori_shared/lib/src/models/sesori/message_part.dart`
 - Bridge: `bridge/app/lib/src/repositories/mappers/plugin_to_shared_mapping.dart`,
