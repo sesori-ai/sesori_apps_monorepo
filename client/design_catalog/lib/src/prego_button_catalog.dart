@@ -178,6 +178,7 @@ material.IconData _iconFor(CatalogButtonIcon icon) => switch (icon) {
 };
 
 PregoButtonsSolidSize _sizeFor(CatalogButtonSize size) => switch (size) {
+  .xs => .xs,
   .sm => .sm,
   .md => .md,
   .lg => .lg,

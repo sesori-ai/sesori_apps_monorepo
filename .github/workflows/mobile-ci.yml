@@ -9,6 +9,7 @@ on:
       - 'client/app/**'
       - 'client/module_core/**'
       - 'client/module_auth/**'
+      - 'client/module_persistence/**'
       - 'client/module_prego/**'
       - 'client/module_app_ui/**'
       - 'client/pubspec.yaml'
@@ -28,6 +29,7 @@ on:
       - 'client/app/**'
       - 'client/module_core/**'
       - 'client/module_auth/**'
+      - 'client/module_persistence/**'
       - 'client/module_prego/**'
       - 'client/module_app_ui/**'
       - 'client/pubspec.yaml'
@@ -120,6 +122,9 @@ jobs:
             runner: dart
             shard: 1/1
           - package: module_auth
+            runner: dart
+            shard: 1/1
+          - package: module_persistence
             runner: dart
             shard: 1/1
           - package: module_prego
