@@ -2,7 +2,7 @@
 
 ## Execution
 
-- Status: synced Drift/backend slice (3.b) verified; architecture review pending.
+- Status: Drift/backend slice (3.b) verified and architecture-approved; publishing PR 4/7.
 - Plan PR: [#1698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1698), merged.
 - Branch: `sesori/desktop-master-key-storage-drift`.
 - Use the supplied worktree only; one open PR and at most one local successor.
@@ -15,7 +15,7 @@
 | 1 — Reviewed Drift plan | Merged | #1698; both reviews' concrete findings applied without a third review. |
 | 2 — Shared typed persistence contracts | Merged | #1708; 10 local tests, architecture approval and 27 passing CI checks. |
 | 3.a — Scoped secret encryption | Merged | #1715; 15 focused tests, architecture approval and 15 passing CI checks. |
-| 3.b — Encrypted Drift desktop boundary | In progress | 20 backend tests and clean analysis on merged 3.a; review pending. |
+| 3.b — Encrypted Drift desktop boundary | Ready for PR | 20 backend tests, clean analysis and architecture approval. |
 | 4 — Consumer and platform integration | Not started | Mobile native format preserved; desktop adopts Drift. |
 | 5 — Regression/distribution reconciliation | Not started | Behavior-specific docs also change with Step 4. |
 | 6 — Required qualification and retirement | Not started | Keep active until all recorded gates pass. |
@@ -74,6 +74,9 @@
 - Independent 3.b slice after syncing merged 3.a: 20 database/repository tests
   pass, owning-package analysis is clean, and Drift/Injectable generation succeeds.
   The generated DI conflict was resolved by regeneration, not manual editing.
+  Architecture review `94992f10-0bb1-4d18-8a90-9703e659e2e5` approved the exact
+  `ee30870..bd6e7a4` scope with no findings. Native credential/prompt qualification
+  and the consumer/platform cutover are not claimed by this approval.
 - Combined Step 3 checkpoint: 35 focused cipher, repository and real SQLite tests
   passed, including file/WAL inspection, reopen, pending/failed key initialization,
   independent writes/deletes, SQL rollback, scope isolation and GetIt disposal.
