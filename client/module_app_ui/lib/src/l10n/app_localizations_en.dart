@@ -1761,6 +1761,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get folderPickerRoot => 'Root';
 
   @override
+  String get folderBrowserParentFolder => 'Parent folder';
+
+  @override
   String get fetchDirectoryFailed => 'Could not load directory contents';
 
   @override
