@@ -36,8 +36,12 @@ void main() {
     expect(find.text(" files"), findsOneWidget);
     expect(tester.getTopLeft(find.text("10")).dy, greaterThan(tester.getTopLeft(find.text("9")).dy));
     final midway = _width(tester);
+    String line() => "${tester.state(find.byType(TranscriptRollingLine))}";
+    expect(line(), contains("tracking 1 ticker"));
 
     await tester.pump(const Duration(milliseconds: 150));
+    // A settled line holds no controller or ticker.
+    expect(line(), isNot(contains("tracking 1 ticker")));
     expect(find.text("Thought · read 10 files"), findsOneWidget);
     expect(midway, inExclusiveRange(before, _width(tester)));
   });

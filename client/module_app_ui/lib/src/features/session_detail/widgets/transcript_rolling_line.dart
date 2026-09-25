@@ -30,7 +30,9 @@ class const TranscriptRollingLine({
   State<TranscriptRollingLine> createState() => _TranscriptRollingLineState();
 }
 
-class _TranscriptRollingLineState() extends State<TranscriptRollingLine> with SingleTickerProviderStateMixin {
+// Not the single-ticker mixin: each roll after the line settles makes a new
+// controller.
+class _TranscriptRollingLineState() extends State<TranscriptRollingLine> with TickerProviderStateMixin {
   /// The line the running change started from.
   List<TranscriptLineSegment> _from = const [];
   AnimationController? _controller;
@@ -42,7 +44,7 @@ class _TranscriptRollingLineState() extends State<TranscriptRollingLine> with Si
     super.didUpdateWidget(oldWidget);
     if (listEquals(oldWidget.segments, widget.segments)) return;
     if (context.isReducedMotion) {
-      _controller?.stop();
+      _release();
       return;
     }
     // A change during a change starts from the line the first was heading to.
@@ -56,15 +58,26 @@ class _TranscriptRollingLineState() extends State<TranscriptRollingLine> with Si
     if (existing != null) return existing;
     final controller = _controller = AnimationController(vsync: this, duration: transcriptMotionDuration);
     _curve = CurvedAnimation(parent: controller, curve: transcriptMotionCurve);
-    // Every tick redraws only this line; the last one returns it to rest.
-    controller.addListener(() => setState(() {}));
+    // Every tick redraws only this line; the last one returns it to rest and
+    // gives the controller back.
+    controller
+      ..addListener(() => setState(() {}))
+      ..addStatusListener((status) {
+        if (status.isCompleted) setState(_release);
+      });
     return controller;
+  }
+
+  void _release() {
+    _curve?.dispose();
+    _controller?.dispose();
+    _curve = null;
+    _controller = null;
   }
 
   @override
   void dispose() {
-    _curve?.dispose();
-    _controller?.dispose();
+    _release();
     super.dispose();
   }
 
