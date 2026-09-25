@@ -12,7 +12,6 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
-import "package:sesori_dart_core/src/cubits/session_detail/session_approval_control.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
@@ -36,6 +35,7 @@ import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
+import "package:sesori_dart_core/src/services/session_approval_calculator.dart";
 import "package:sesori_dart_core/src/services/session_approval_service.dart";
 import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
@@ -211,12 +211,11 @@ void main() {
       Future<SessionDetailCubit> loadedCubit({
         required bool bridgeYolo,
         required SessionApprovalMode? sessionOverride,
-        required String? parentId,
       }) async {
         stubSessionRepositoryGetSession(
           repository: mockSessionRepository,
           sessionId: sessionId,
-          session: testSession(id: sessionId, parentID: parentId).copyWith(approvalOverride: sessionOverride),
+          session: testSession(id: sessionId).copyWith(approvalOverride: sessionOverride),
         );
         final yoloSettings = BehaviorSubject.seeded(
           YoloSettingsResponse(enabled: bridgeYolo, supportsSessionOverride: true),
@@ -241,7 +240,7 @@ void main() {
 
       test("picking YOLO over an asking default stores a YOLO override", () async {
         replyWith(sent: SessionApprovalMode.yolo);
-        final cubit = await loadedCubit(bridgeYolo: false, sessionOverride: null, parentId: null);
+        final cubit = await loadedCubit(bridgeYolo: false, sessionOverride: null);
         expect(
           controlOf(cubit),
           isA<SessionApprovalPerSession>().having((c) => c.effective, "effective", SessionApprovalMode.ask),
@@ -265,48 +264,11 @@ void main() {
 
       test("picking the bridge default clears the override", () async {
         replyWith(sent: null);
-        final cubit = await loadedCubit(bridgeYolo: true, sessionOverride: SessionApprovalMode.ask, parentId: null);
+        final cubit = await loadedCubit(bridgeYolo: true, sessionOverride: SessionApprovalMode.ask);
 
         await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);
 
         verify(() => mockSessionRepository.setApprovalOverride(sessionId: sessionId, approvalOverride: null)).called(1);
-        expect(
-          controlOf(cubit),
-          isA<SessionApprovalPerSession>().having((c) => c.effective, "effective", SessionApprovalMode.yolo),
-        );
-      });
-
-      test("picking the default clears an explicit override that matches it", () async {
-        replyWith(sent: null);
-        final cubit = await loadedCubit(bridgeYolo: true, sessionOverride: SessionApprovalMode.yolo, parentId: null);
-
-        await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);
-
-        verify(() => mockSessionRepository.setApprovalOverride(sessionId: sessionId, approvalOverride: null)).called(1);
-        expect((cubit.state as SessionDetailLoaded).session.approvalOverride, isNull);
-      });
-
-      test("a child session stores its own override", () async {
-        when(
-          () => mockSessionRepository.setApprovalOverride(
-            sessionId: sessionId,
-            approvalOverride: SessionApprovalMode.yolo,
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            testSession(id: sessionId, parentID: "parent-1").copyWith(approvalOverride: SessionApprovalMode.yolo),
-          ),
-        );
-        final cubit = await loadedCubit(bridgeYolo: false, sessionOverride: null, parentId: "parent-1");
-
-        await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);
-
-        verify(
-          () => mockSessionRepository.setApprovalOverride(
-            sessionId: sessionId,
-            approvalOverride: SessionApprovalMode.yolo,
-          ),
-        ).called(1);
         expect(
           controlOf(cubit),
           isA<SessionApprovalPerSession>().having((c) => c.effective, "effective", SessionApprovalMode.yolo),
@@ -314,7 +276,7 @@ void main() {
       });
 
       test("picking the current mode sends nothing", () async {
-        final cubit = await loadedCubit(bridgeYolo: true, sessionOverride: null, parentId: null);
+        final cubit = await loadedCubit(bridgeYolo: true, sessionOverride: null);
 
         await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);
 
@@ -333,7 +295,7 @@ void main() {
             approvalOverride: SessionApprovalMode.yolo,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-        final cubit = await loadedCubit(bridgeYolo: false, sessionOverride: null, parentId: null);
+        final cubit = await loadedCubit(bridgeYolo: false, sessionOverride: null);
         final notice = cubit.noticeStream.first;
 
         await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);

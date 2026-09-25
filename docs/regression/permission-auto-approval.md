@@ -47,9 +47,11 @@ user present. It is a bridge policy, not a client feature.
   named "Ask for approval", while it asks. Touch rows show only the glyph.
   Its menu offers "Ask for approval" and "Approve everything (YOLO)", marks the
   option matching the bridge setting "(default)", and shows YOLO in the warning
-  colour. Picking the default option clears the override, so the session
-  follows later changes to the bridge setting; picking the other option stores
-  it as an override. A failed change keeps the acknowledged mode and says so.
+  colour. On a top-level session, picking the default option clears the
+  override, so the session follows later changes to the bridge setting; picking
+  the other option stores it as an override. A child session always stores its
+  pick as an explicit override, so it wins over an ancestor's. A failed change
+  keeps the acknowledged mode and says so.
 - On a bridge that predates overrides, the session page shows a "YOLO" chip
   only while the setting is on. Tapping it explains the setting and opens the
   settings surface that holds the toggle; it offers no per-session choice.
@@ -109,6 +111,7 @@ in the same run.
   the next reconnect or Settings visit; a session override shows at once.
 - The chip reads only the session's own override. A child session without one
   shows the bridge default even when the bridge applies its parent's override.
+  Picking a mode on the child still always takes effect.
 
 ## Sources
 

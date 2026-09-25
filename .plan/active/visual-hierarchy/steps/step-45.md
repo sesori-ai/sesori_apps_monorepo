@@ -47,15 +47,16 @@
 ### What changed
 
 - `SessionApi`, `SessionRepository` and a new `SessionApprovalService` carry
-  `PATCH /session/approval-override`. The service owns the default rule:
-  picking the mode the bridge setting gives sends a null override, so the
-  session follows later changes to the bridge setting; picking the other mode
-  stores it.
+  `PATCH /session/approval-override`. `SessionApprovalCalculator` owns the
+  default rule: on a top-level session, picking the mode the bridge setting
+  gives sends a null override, so the session follows later changes to the
+  bridge setting; picking the other mode stores it. A child session always
+  sends an explicit override, since the client cannot see an ancestor's.
 - `BridgeSettingsService` publishes the whole `YoloSettingsResponse` instead of
   a bool, so sessions learn `supportsSessionOverride`. A committed YOLO save
   updates only `enabled` and keeps the loaded support flag.
 - `SessionDetailLoaded` carries `bridgeYolo` and `isUpdatingApproval`, and its
-  `approvalControl` resolves a sealed `SessionApprovalControl`: hidden or a
+  `approvalControl` asks the calculator for a sealed `SessionApprovalControl`: hidden or a
   read-only bridge-wide YOLO chip on older bridges, or per-session with the
   effective mode and the bridge default. `SessionDetailCubit.setApprovalMode`
   applies the acknowledged session and reports a failure as a notice.

@@ -34,6 +34,7 @@ import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
 import "../../services/session_abort_service.dart";
+import "../../services/session_approval_calculator.dart";
 import "../../services/session_approval_service.dart";
 import "../../services/session_auto_continuation_service.dart";
 import "../../services/session_detail_load_service.dart";
@@ -46,7 +47,6 @@ import "local_send_phase.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
 import "session_abort_outcome.dart";
-import "session_approval_control.dart";
 import "session_detail_notice.dart";
 import "session_detail_resolvers.dart";
 import "session_detail_state.dart";
@@ -117,6 +117,7 @@ class SessionDetailCubit(
 }) extends Cubit<SessionDetailState> {
   static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
   static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
+  static const SessionApprovalCalculator _approval = SessionApprovalCalculator();
   static const TranscriptSnapshotCalculator _transcript = TranscriptSnapshotCalculator();
 
   /// Shown when a catalog offers no agent at all, so the composer still names
@@ -1412,13 +1413,14 @@ class SessionDetailCubit(
     if (current is! SessionDetailLoaded) return;
     final control = current.approvalControl;
     if (control is! SessionApprovalPerSession) return;
-    // Compare stored overrides, not effective modes: an explicit override equal
-    // to the current default must still clear, or it outlives a default change.
-    final approvalOverride = control.overrideFor(mode: mode);
-    if (approvalOverride == current.session.approvalOverride) return;
+    final change = _approval.change(session: current.session, control: control, mode: mode);
+    if (change == null) return;
     _setApprovalProgress(pending: true);
     try {
-      final updated = await _approvalService.setOverride(sessionId: _sessionId, approvalOverride: approvalOverride);
+      final updated = await _approvalService.setOverride(
+        sessionId: _sessionId,
+        approvalOverride: change.approvalOverride,
+      );
       if (isClosed) return;
       _handleEvent(SesoriSessionUpdated(info: updated));
     } on Object catch (error, stackTrace) {

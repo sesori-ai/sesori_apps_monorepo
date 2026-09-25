@@ -5,10 +5,10 @@ import "../../errors/remote_failure_reason.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/session_interaction_state.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
+import "../../services/session_approval_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "local_send_phase.dart";
 import "queued_session_submission.dart";
-import "session_approval_control.dart";
 
 part "session_detail_state.freezed.dart";
 
@@ -124,6 +124,7 @@ extension SessionDetailStateX on SessionDetailState {
 extension SessionDetailLoadedX on SessionDetailLoaded {
   static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
   static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
+  static const SessionApprovalCalculator _approval = SessionApprovalCalculator();
 
   String? get retryErrorMessage => switch (sessionStatus) {
     SessionStatusRetry(:final message) => message,
@@ -139,8 +140,7 @@ extension SessionDetailLoadedX on SessionDetailLoaded {
       _selection.resolvedFastMode(providers: availableProviders, model: selectedAgentModel, requested: fastMode);
 
   /// What the composer offers for this session's permission approval.
-  SessionApprovalControl get approvalControl =>
-      SessionApprovalControl.resolve(bridge: bridgeYolo, sessionOverride: session.approvalOverride);
+  SessionApprovalControl get approvalControl => _approval.control(bridge: bridgeYolo, session: session);
 
   FastModeControl get fastModeControl => _fastModeToggle.control(support: fastModeSupport, fastMode: runsFastMode);
 }
