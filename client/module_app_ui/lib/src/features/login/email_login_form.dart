@@ -102,7 +102,7 @@ class _EmailLoginFormState() extends State<EmailLoginForm> {
             if (state is LoginFailed) ...[
               PregoInlineAlertsNotifications(
                 title: loc.loginAuthenticationFailedTitle,
-                supportingText: state.reason.localizedMessage(loc),
+                supportingText: state.reason.localizedMessage(loc: loc),
                 type: PregoInlineAlertsNotificationsType.error,
               ),
               const SizedBox(height: _fieldGap),

@@ -6,7 +6,7 @@ extension LoginFailedReasonLocalization on LoginFailedReason {
   /// Maps this login failure reason to a localized, user-facing message.
   /// Shared by every shell's login failure surface and the email sign-in
   /// form's inline alert so the `reason → string` mapping lives in one place.
-  String localizedMessage(AppLocalizations loc) => switch (this) {
+  String localizedMessage({required AppLocalizations loc}) => switch (this) {
     LoginFailedReason.declined => loc.loginDeclined,
     LoginFailedReason.appleIdTokenMissing => loc.appleIdTokenMissing,
     LoginFailedReason.emailRequired => loc.emailRequired,

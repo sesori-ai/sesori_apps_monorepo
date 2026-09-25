@@ -112,7 +112,7 @@ class const _LoginStatus({required final LoginState state}) extends StatelessWid
         style: TextStyle(color: colors.error),
       ),
       LoginFailed(:final reason) => Text(
-        reason.localizedMessage(context.loc),
+        reason.localizedMessage(loc: context.loc),
         textAlign: TextAlign.center,
         style: TextStyle(color: colors.error),
       ),
