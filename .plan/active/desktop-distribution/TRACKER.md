@@ -14,7 +14,7 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 4.a | 5 | Package and notarize native macOS builds | done |
 | 4.b | 6 | Keep desktop startup independent of native notifications | done |
 | 5 | 7 | Offer manual macOS updates through official downloads | done |
-| 6 | 8 | Shared-cycle integration in progress; macOS publication remains gated | in-progress |
+| 6 | 8 | Shared-cycle caller permission fix; macOS publication remains gated | in-progress |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
 | 9 | 11 | Private native DEB/RPM packages merged; signing/publication gated | blocked |
@@ -28,13 +28,26 @@ remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
 ## Current continuation — shared release cycle (2026-09-25)
 
-The user selected the existing bridge/mobile cycle for desktop. Continuation
-`🚧 [desktop-distribution] Join the shared product release cycle [step 8.j/14]`
-reuses native macOS packaging with the aligned source/build, retaining existing
-core finalizers and `store-production` approval. Desktop-only changes now qualify
-for the scheduled product cycle. Publication stays disabled until explicit platform
-admission; no separate scheduler, desktop tags, approval environment or credentials.
-Fresh native verification of the shared producer remains pending merge.
+The user selected the existing bridge/mobile cycle for desktop. PR #1724 merged
+as `af23da2078a53f6515c75303f37b673e65983ec4`, with 43/43 terminal checks and
+Codex reporting no new issues on the accepted head. It reuses native macOS packaging
+with the aligned source/build, retaining core finalizers and `store-production`.
+Desktop-only changes now qualify for the scheduled product cycle. Publication stays
+disabled until platform admission; no separate scheduler, desktop tags or credentials.
+
+Private packaging `36168531963` and read-only preparation `36171714173` passed for
+both CPUs at stable `1.9.1+981`, rebuilding the existing internal candidate source
+`9ff459e6316ed91b285d573a03f15e0c598b24c3` with newer workflow tooling. Artifact
+identities, channel, clean-source evidence, receipts and hashes were verified; see
+[step 6](steps/step-06.md#shared-cycle-native-evidence-2026-09-25).
+
+The first scheduled shared run `36169071807` was rejected before any job ran: skipped
+nested upgrade jobs still require `pull-requests: read`. Continuation
+`🌿 [desktop-distribution] Grant desktop callers read-only PR provenance [step 8.k/14]`
+grants that scope only to the two native-desktop callers and guards both contracts.
+Branch validation `36172912862` proved GitHub accepts the corrected call graph: its
+only running job rejected the non-main ref before checkout or release work, as intended.
+Successful shared-cycle execution remains unproven until the corrected workflow runs.
 
 Evidence reconciliation:
 
@@ -52,8 +65,8 @@ Evidence reconciliation:
   resolution clearing desktop alerts; one phone push; physical picker/microphone,
   shared session/navigation and notification regression. Do not repeat already-passing
   user checks or relabel automated fixtures as physical-device acceptance.
-- Public admission, fresh candidate/native evidence, minimum-OS execution and website
-  retrieval/trust remain gated. No desktop publication was approved or performed.
+- Public admission, source-specific interactive acceptance, minimum-OS execution and
+  website retrieval/trust remain gated. No desktop publication was approved or performed.
 
 ## Merged implementation history
 

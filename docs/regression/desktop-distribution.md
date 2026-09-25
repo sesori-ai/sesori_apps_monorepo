@@ -86,7 +86,10 @@ with the same source commit and resolved build number. Desktop-only product chan
 now qualify for that cycle. Native x64 and arm64 signing, notarization, extracted-helper
 and GUI-fixture checks remain required. Stable submissions rebuild the selected source
 with the stable channel rather than relabeling an internal binary. Beta and explicit
-`bridge-only` submissions retain their scope.
+`bridge-only` submissions retain their scope. Both reusable native-desktop callers
+must grant `contents: read`, `actions: read` and `pull-requests: read`: GitHub validates
+the nested upgrade jobs' PR-provenance permission even when those jobs are skipped.
+A missing scope rejects the entire caller before its release gate can execute.
 
 Desktop attachment follows the existing shared release finalizer; production already
 passed `store-production`. Desktop failure does not change bridge/mobile finalization.

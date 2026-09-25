@@ -139,6 +139,10 @@ class DesktopReleaseWorkflowTest(unittest.TestCase):
                 self.assertIn("uses: ./.github/workflows/desktop-qualification.yml", build)
                 self.assertIn("secrets: inherit", build)
                 self.assertIn("build_number: ${{ needs.", build)
+                permissions = build.split("    permissions:\n", 1)[1].split("    uses:", 1)[0]
+                # GitHub validates even skipped nested upgrade jobs, which read PR provenance.
+                self.assertEqual(dict(line.strip().split(": ") for line in permissions.splitlines()),
+                                 {"contents": "read", "actions": "read", "pull-requests": "read"})
                 publish = text.split("  publish-desktop:\n", 1)[1].split("\n  #", 1)[0]
                 self.assertIn("vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'", publish)
                 self.assertIn(build_job, publish)

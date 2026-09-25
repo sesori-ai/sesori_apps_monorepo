@@ -2,8 +2,9 @@
 
 Ordinal 8/14. Builds on merged step 5 (#1506). Private preparation is already merged.
 The user selected the shared bridge/mobile release cycle on 2026-09-25. Continuation
-`8.j/14` wires native macOS builds and gated asset attachment into that cycle without
-changing the existing bridge/mobile finalizers or publishing a desktop release.
+`8.j/14` merged as #1724, wiring native macOS builds and gated asset attachment without
+changing bridge/mobile finalizers or publishing a desktop release. Follow-up `8.k/14`
+corrects the reusable callers' read-only PR-provenance permission.
 
 ## Code-informed implementation boundary
 
@@ -80,6 +81,61 @@ migration plan retired in #1534. Remaining gates:
 
 No automatic updater layers remain to clean up. The private producer stays separate
 from public release authority. Windows/Linux publication remains disabled.
+
+## Shared-cycle native evidence (2026-09-25)
+
+Private package run
+[36168531963](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36168531963)
+passed at workflow source `af23da2078a53f6515c75303f37b673e65983ec4`. Product source
+`9ff459e6316ed91b285d573a03f15e0c598b24c3` is the main-ancestor target of existing
+`v1.9.1-internal.981`; both new packages compile **stable `1.9.1+981`**. This tests an
+older product source/shared build number without relabeling existing binaries.
+
+Tooling job `108182131099`, arm64 `108182190901` (`xcode-27`) and x64
+`108182190956` (`macos-26-intel`) passed. Each native job staged clean source,
+signed/notarized packages, exercised the extracted helper with isolated fakes and
+probed the installed GUI/separate platform fixture. Both ZIP/DMG inventories contain
+the same eight native binaries; both app and DMG receipts report `Accepted`.
+
+| CPU | Private packages artifact | Evidence artifact / verified archive SHA256 |
+|---|---|---|
+| arm64 | `10879113046` | `10879322858` / `0d605543f6466fbbe575e6f67c4c0f8c2a6c9d5353a9aa9da58c8f1b1a3fcb2a` |
+| x64 | `10881365014` | `10880830350` / `b080fee29a4520460278d89529283ec57edd7b137b1a54a247b70608a116321b` |
+
+Read-only preparation
+[36171714173](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36171714173)
+passed job `108192600638` at tooling `9e2adab90b47c1f3607a02414c978bd9abe6f050`.
+It downloaded and hashed all four payloads; independently inspected evidence archives
+and preparation metadata agree on identities, stable channel, clean patches, receipts,
+inventories and these payload SHA256 values:
+
+- arm64 DMG: `3664b979dd9418696c2fef6cef4dd409a07642b1f4f45dcf206894044aaaf9d7`
+- arm64 ZIP: `6562da55ebc412e4a562c8fa0da9f0d4fa5492594f2dfdd74d3fbcd15ee8bbd3`
+- x64 DMG: `695a5b3d6f0a8dee2787bab151f75a88d1c3afc0329df0dc8f0eaeddd9d66dc3`
+- x64 ZIP: `b3a8949f9b6fd49e613a0c263ab3944b53756c8b3099a766b66033cf4c8117cc`
+
+Preparation artifact `10880996051` has verified archive SHA256
+`e4f642973fcb4073600cf45a246691a392658d66522e51b9383e006023336325`.
+It proposes shared tag `v1.9.1` but does not publish it. These runs do not establish
+new authenticated replacement, minimum-OS/interactive acceptance or public trust.
+The local installed app/bridge was untouched.
+
+Scheduled shared run
+[36169071807](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36169071807)
+was rejected at startup: the nested `macos-upgrade` and `macos-authenticated-upgrade`
+jobs request `pull-requests: read`, even though packaging would skip them. No job,
+release-attempt write, store query or upload ran. The `8.k/14` fix grants that read-only
+scope to the internal and production native-desktop callers; it does not broaden
+publication authority. Private package acceptance above does not accept this failed
+shared run. Real shared-cycle execution remains pending the corrected workflow.
+
+At correction commit `99c95999e101d6524ea8b7b3f248876088ac9f95`, branch-only validation
+[36172912862](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36172912862)
+passed GitHub's workflow admission, then intentionally failed the existing main-only
+guard. Only preflight job `108196547789` ran; checkout, attempt recording, version
+validation and all seven other jobs were skipped. Watch exit 1 is expected here,
+not a successful release. Both caller-contract subcases failed before the permission
+fix; all 12 publisher/workflow tests and actionlint passed afterward.
 
 ## Post-migration continuation
 
