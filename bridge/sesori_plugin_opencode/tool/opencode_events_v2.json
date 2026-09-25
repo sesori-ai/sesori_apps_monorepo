@@ -4,6 +4,14 @@
     "baseClass": "V2EventData",
     "sessionMarkerClass": "V2SessionEventData",
     "classPrefix": "V2",
+    "envelope": {
+      "className": "V2EventEnvelope",
+      "fields": [
+        { "name": "id", "type": "string" },
+        { "name": "created", "type": "double" },
+        { "name": "location", "ref": "LocationPublicRef", "required": false }
+      ]
+    },
     "imports": {
       "FormAnswer": "openapi/form_answer.g.dart",
       "FormInfo": "openapi/form_info.g.dart",

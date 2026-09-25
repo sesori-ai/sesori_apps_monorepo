@@ -106,6 +106,19 @@ void main() {
     expect(SessionInboxCompactionPayload.fromJson(decoded.toJson()!), decoded);
   });
 
+  test("retains nulls in unconstrained compaction arrays", () {
+    const payload = <Object?>[
+      null,
+      "summary",
+      <String, dynamic>{"keep": true},
+      <Object?>[null],
+    ];
+    final decoded = SessionInboxCompactionPayload.fromJson(payload);
+
+    expect(decoded.toJson(), payload);
+    expect(SessionInboxCompactionPayload.fromJson(decoded.toJson()!), decoded);
+  });
+
   test("preserves unrecognized permission source discriminators", () {
     const payload = <String, dynamic>{"type": "future-source", "context": "value"};
     final source = PermissionSource.fromJson(payload);

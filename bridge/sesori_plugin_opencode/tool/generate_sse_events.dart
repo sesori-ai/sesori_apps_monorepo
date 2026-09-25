@@ -66,10 +66,12 @@ void main(List<String> args) {
   final sessionClass = dart['sessionMarkerClass'] as String;
   _classPrefix = dart['classPrefix'] as String;
   final imports = (dart['imports'] as Map<String, dynamic>).cast<String, String>();
+  final envelope = dart['envelope'] as Map<String, dynamic>?;
+  final fieldOwners = [...events, ?envelope];
 
   // Validate every ref is in the import map.
   final missingImports = <String>{};
-  for (final ev in events) {
+  for (final ev in fieldOwners) {
     for (final f in (ev['fields'] as List).cast<Map<String, dynamic>>()) {
       final ref = f['ref'] as String?;
       if (ref != null && !imports.containsKey(ref)) {
@@ -86,7 +88,7 @@ void main(List<String> args) {
   // Collect refs actually used, in alphabetical order to satisfy
   // `directives_ordering`.
   final usedRefs = <String>[];
-  for (final ev in events) {
+  for (final ev in fieldOwners) {
     for (final f in (ev['fields'] as List).cast<Map<String, dynamic>>()) {
       final ref = f['ref'] as String?;
       if (ref != null && !usedRefs.contains(ref)) usedRefs.add(ref);
@@ -187,6 +189,9 @@ void main(List<String> args) {
   for (final ev in events) {
     _emitVariant(out, ev, baseClass: baseClass, sessionClass: sessionClass);
   }
+  if (envelope != null) {
+    _emitEnvelope(out: out, envelope: envelope, baseClass: baseClass);
+  }
 
   File(outputPath).writeAsStringSync(out.toString());
   stdout.writeln('Wrote $outputPath (${events.length} variants, ${usedRefs.length} refs)');
@@ -195,6 +200,40 @@ void main(List<String> args) {
 // ---------------------------------------------------------------------------
 // Emission helpers
 // ---------------------------------------------------------------------------
+
+/// A protocol may wrap its type-discriminated event data in a frame carrying
+/// identity, time and location. Emit that boundary from the same manifest.
+void _emitEnvelope({
+  required StringBuffer out,
+  required Map<String, dynamic> envelope,
+  required String baseClass,
+}) {
+  final className = envelope['className'] as String;
+  final fields = (envelope['fields'] as List).cast<Map<String, dynamic>>();
+  out.writeln('class $className {');
+  out.writeln('  const $className({');
+  for (final field in fields) {
+    out.writeln('    required this.${field['name']},');
+  }
+  out.writeln('    required this.data,');
+  out.writeln('  });');
+  for (final field in fields) {
+    out.writeln('  final ${_dartType(field, required: field['required'] != false)} ${field['name']};');
+  }
+  out.writeln('  final $baseClass data;');
+  out.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
+  out.writeln('    return $className(');
+  for (final field in fields) {
+    final name = field['name'] as String;
+    out.writeln('      $name: ${_decodeField(name, field, field['required'] != false)},');
+  }
+  // The outer discriminator is authoritative, even if a future payload happens
+  // to contain its own field named type.
+  out.writeln('      data: $baseClass.fromJson({...json["data"] as Map<String, dynamic>, "type": json["type"]}),');
+  out.writeln('    );');
+  out.writeln('  }');
+  out.writeln('}');
+}
 
 void _emitVariant(
   StringBuffer out,
