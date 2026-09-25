@@ -40,7 +40,8 @@ user present. It is a bridge policy, not a client feature.
   shows the capability as unsupported rather than pretending to control it.
 - The client settings surface describes the setting in one plain sentence
   ("Sesori approves every permission request for you, so the agent never stops
-  to ask."), with no warning tone.
+  to ask."), with no warning tone. Its row and the YOLO chip share one YOLO
+  icon, a shield with an x, distinct from the fast-mode bolt.
 - On a bridge that supports overrides, every session page shows the session's
   approval mode in the composer's model row: a warning-coloured shield with
   "YOLO" while the session is effectively YOLO, and a quiet outline shield,
