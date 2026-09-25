@@ -5,6 +5,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "agent_part_widget.dart";
 import "attachment_collection_widget.dart";
+import "compaction_part_widget.dart";
 import "retry_part_widget.dart";
 import "text_part_widget.dart";
 import "transcript_group_widget.dart";
@@ -73,7 +74,11 @@ class const AssistantMessageCard({
   }
 
   bool _isVisible(MessagePart part) => switch (part) {
-    MessagePartText() || MessagePartAgent() || MessagePartRetry() || MessagePartFile() => true,
+    MessagePartText() ||
+    MessagePartAgent() ||
+    MessagePartRetry() ||
+    MessagePartCompaction() ||
+    MessagePartFile() => true,
     MessagePartReasoning() ||
     MessagePartTool() ||
     MessagePartSubtask() ||
@@ -102,6 +107,7 @@ class const AssistantMessageCard({
         attempt: attempt,
         retryError: retryError,
       ),
+      MessagePartCompaction(:final summary) => CompactionPartWidget(key: ValueKey(part.id), summary: summary),
       // Steps render in their group; the builder never puts them here.
       MessagePartReasoning() ||
       MessagePartTool() ||
@@ -110,8 +116,7 @@ class const AssistantMessageCard({
       MessagePartStepFinish() ||
       MessagePartFile() ||
       MessagePartSnapshot() ||
-      MessagePartPatch() ||
-      MessagePartCompaction() => const SizedBox.shrink(),
+      MessagePartPatch() => const SizedBox.shrink(),
     };
   }
 }

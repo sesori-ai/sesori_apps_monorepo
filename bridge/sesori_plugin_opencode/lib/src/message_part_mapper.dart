@@ -53,6 +53,18 @@ class const MessagePartMapper() {
     return part;
   }
 
+  /// Maps a part of OpenCode's compaction summary message (`summary: true`):
+  /// its text is the continuation summary, shown as a compaction row.
+  PluginMessagePart mapSummaryPart(PluginMessagePart part) => switch (part) {
+    PluginMessagePartText(:final id, :final sessionID, :final messageID, :final text) => PluginMessagePart.compaction(
+      id: id,
+      sessionID: sessionID,
+      messageID: messageID,
+      summary: text.isEmpty ? null : text,
+    ),
+    _ => part,
+  };
+
   PluginMessagePart _mapPart(Part raw) => switch (raw) {
     TextPart(synthetic: true) => _unknownPart(raw),
     TextPart() => PluginMessagePart.text(

@@ -73,6 +73,7 @@ sealed class PiSessionEntryDto with _$PiSessionEntryDto {
     required String id,
     required String? parentId,
     required DateTime timestamp,
+    @JsonKey(fromJson: _nonEmptyStringOrNull) required String? summary,
   }) = PiCompactionEntryDto;
 
   @FreezedUnionValue("branch_summary")
@@ -158,6 +159,7 @@ sealed class PiSessionFileEntryDto with _$PiSessionFileEntryDto {
     required String? id,
     required String? parentId,
     required DateTime timestamp,
+    @JsonKey(fromJson: _nonEmptyStringOrNull) required String? summary,
   }) = PiSessionFileCompactionEntryDto;
 
   @FreezedUnionValue("branch_summary")
@@ -396,6 +398,8 @@ List<PiContentDto> _contentFromJson(Object? value) {
       ),
   ];
 }
+
+String? _nonEmptyStringOrNull(Object? value) => value is String && value.isNotEmpty ? value : null;
 
 int? _intOrNull(Object? value) => value is num && value.isFinite ? value.toInt() : null;
 

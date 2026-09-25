@@ -91,6 +91,18 @@ final class const ClaudeHistoryMapper({
           });
           apiError.content.add(record.content);
           apiError.apiErrorStatus ??= record.apiErrorStatus;
+        case ClaudeTranscriptUserRecord(isCompactSummary: true):
+          if (skip(record)) continue;
+          entries.add(
+            _MappedHistoryMessage(
+              message: _content.compactionMessage(
+                sessionId: sessionId,
+                messageId: record.id,
+                time: _messageTime(record.timestamp),
+                content: record.content,
+              ),
+            ),
+          );
         case ClaudeTranscriptUserRecord():
           if (skip(record) || record.isMeta || record.isVisibleInTranscriptOnly) {
             continue;
@@ -146,7 +158,7 @@ final class const ClaudeHistoryMapper({
           );
           if (!parts.any((part) => part.type.isVisible)) continue;
           entries.add(
-            _UserHistoryMessage(
+            _MappedHistoryMessage(
               message: PluginMessageWithParts(
                 info: PluginMessage.user(
                   id: record.id,
@@ -177,7 +189,7 @@ final class const ClaudeHistoryMapper({
     final messages = <PluginMessageWithParts>[];
     for (final entry in entries) {
       switch (entry) {
-        case _UserHistoryMessage(:final message):
+        case _MappedHistoryMessage(:final message):
           messages.add(message);
         case _ApiErrorHistoryMessage():
           messages.add(_buildApiError(entry: entry, sessionId: sessionId, modelId: modelId));
@@ -270,7 +282,8 @@ final class const ClaudeHistoryMapper({
 
 sealed class const _ClaudeHistoryEntry();
 
-final class const _UserHistoryMessage({required final PluginMessageWithParts message}) extends _ClaudeHistoryEntry;
+/// A message fully mapped from one record: a user turn or a compaction row.
+final class const _MappedHistoryMessage({required final PluginMessageWithParts message}) extends _ClaudeHistoryEntry;
 
 final class _ApiErrorHistoryMessage({
   required final String id,

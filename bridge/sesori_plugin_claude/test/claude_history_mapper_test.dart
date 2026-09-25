@@ -197,6 +197,42 @@ IMPORTANT: Do NOT create new worktrees.
       expect(messages.map((message) => message.parts.single.text), ["visible prompt", "/review visible args"]);
     });
 
+    test("maps the transcript-only compaction summary to one compaction row", () async {
+      _writeTranscript(
+        temp: temp,
+        records: [
+          {
+            "type": "system",
+            "subtype": "compact_boundary",
+            "sessionId": _sessionId,
+            "uuid": "boundary",
+            "timestamp": "2026-08-09T10:00:00Z",
+            "content": "Conversation compacted",
+          },
+          {
+            ..._messageRecord(type: "user", uuid: "summary-record", content: "Continue the auth work."),
+            "isVisibleInTranscriptOnly": true,
+            "isCompactSummary": true,
+          },
+        ],
+      );
+
+      final messages = mapper.map(
+        sessionId: _sessionId,
+        agentId: null,
+        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        residentTaskToolUseIds: const {},
+        catalogModelId: null,
+      );
+
+      expect(messages.single.info, isA<PluginMessageAssistant>());
+      expect(messages.single.info.id, "summary-record");
+      expect(
+        messages.single.parts.single,
+        isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", "Continue the auth work."),
+      );
+    });
+
     test("ignores an unknown historical effort", () async {
       _writeTranscript(
         temp: temp,

@@ -2226,6 +2226,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailRetryLabel => 'Retry';
 
   @override
+  String get sessionDetailContextCompacted => 'Context compacted';
+
+  @override
+  String get sessionDetailCompactionSummaryTitle => 'Compaction summary';
+
+  @override
   String get sessionDetailCopy => 'Copy';
 
   @override

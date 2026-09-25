@@ -293,6 +293,7 @@ class ClaudeStreamClient({
       case ClaudeTaskProgressMessage():
       case ClaudeTaskStartedMessage():
       case ClaudeTaskNotificationMessage():
+      case ClaudeCompactBoundaryMessage():
       case ClaudeToolProgressMessage():
       case ClaudeHookStartedMessage():
       case ClaudeHookOutputMessage():

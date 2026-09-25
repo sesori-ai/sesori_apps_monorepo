@@ -345,6 +345,68 @@ void main() {
       expect((stamped[2].info as PluginMessageUser).promptId, isNull);
     });
 
+    test("streams the text of a compaction summary message as a compaction part", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+      await server.waitForSseConnection();
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      Future<void> emit(Map<String, Object?> payload) =>
+          server.emitRawSse(jsonEncode({"directory": "/repo", "payload": payload}));
+      await emit({
+        "type": "message.updated",
+        "properties": {
+          "info": {
+            "id": "msg_summary",
+            "sessionID": "s-root",
+            "role": "assistant",
+            "time": {"created": 1},
+            "parentID": "msg_user",
+            "modelID": "gpt-5.4",
+            "providerID": "openai",
+            "mode": "compaction",
+            "agent": "compaction",
+            "path": {"cwd": "/repo", "root": "/repo"},
+            "summary": true,
+            "cost": 0,
+            "tokens": {
+              "input": 0,
+              "output": 0,
+              "reasoning": 0,
+              "cache": {"read": 0, "write": 0},
+            },
+          },
+        },
+      });
+      await emit({
+        "type": "message.part.updated",
+        "properties": {
+          "part": {
+            "id": "prt_summary",
+            "sessionID": "s-root",
+            "messageID": "msg_summary",
+            "type": "text",
+            "text": "## Goal",
+          },
+        },
+      });
+      await _awaitEvents<BridgeSseMessagePartUpdated>(events, count: 1);
+
+      expect(
+        events.whereType<BridgeSseMessagePartUpdated>().single.part,
+        equals(
+          const PluginMessagePart.compaction(
+            id: "prt_summary",
+            sessionID: "s-root",
+            messageID: "msg_summary",
+            summary: "## Goal",
+          ),
+        ),
+      );
+    });
+
     test("sendPrompt marks an accepted turn busy before SSE arrives", () async {
       final connected = Completer<void>();
       final plugin = OpenCodePlugin(

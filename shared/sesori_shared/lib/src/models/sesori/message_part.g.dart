@@ -222,6 +222,7 @@ MessagePartCompaction _$MessagePartCompactionFromJson(Map json) =>
       id: json['id'] as String,
       sessionID: json['sessionID'] as String,
       messageID: json['messageID'] as String,
+      summary: json['summary'] as String?,
       $type: json['type'] as String?,
     );
 
@@ -231,6 +232,7 @@ Map<String, dynamic> _$MessagePartCompactionToJson(
   'id': instance.id,
   'sessionID': instance.sessionID,
   'messageID': instance.messageID,
+  'summary': ?instance.summary,
   'type': instance.$type,
 };
 

@@ -62,6 +62,7 @@ sealed class const ClaudeStreamMessage({
             raw: json,
           ),
           "task_progress" => ClaudeTaskProgressMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
+          "compact_boundary" => ClaudeCompactBoundaryMessage(sessionId: sessionId, uuid: uuid, raw: json),
           "task_started" => ClaudeTaskStartedMessage(
             taskId: _stringOrNull(json["task_id"]),
             toolUseId: _stringOrNull(json["tool_use_id"]),
@@ -210,6 +211,14 @@ final class const ClaudeInitMessage({
 
   bool supports(String capability) => capabilities.contains(capability);
 }
+
+/// `system`/`compact_boundary` — the CLI compacted the context. The next
+/// synthetic `user` frame carries the continuation summary.
+final class const ClaudeCompactBoundaryMessage({
+  required super.sessionId,
+  required super.uuid,
+  required super.raw,
+}) extends ClaudeStreamMessage;
 
 /// `system`/`status` — a coarse work-state signal such as `requesting`.
 final class const ClaudeStatusMessage({

@@ -409,6 +409,23 @@ bridge's harness. Provider keys and local/free models may make a backend usable
 without an OAuth login. Setup detection above does **not** imply that Sesori
 can initiate login, and managed installation does **not** authenticate a harness.
 
+## Context compaction row
+
+The transcript marks a finished context compaction with a "Context compacted"
+row, which opens the carried-forward summary when the harness exposes it.
+
+| Harness | Compaction row | Summary |
+|---|---|---|
+| Claude | ✅ | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.281). |
+| OpenCode | ✅ | ✅ The text of the `summary: true` assistant message. |
+| Pi | ✅ | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
+| Codex | ✅ | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
+| DeepSeek | ⬜ | ⬜ The runtime reports a live `compaction_completed` status without message identity or a replayable history record, so Sesori maps it only to a session-compacted event; a live-only row would vanish on reload. |
+| Antigravity, Copilot, Cursor, Hermes, OMP, Grok | ⬜ | ⬜ Not yet assessed: whether their ACP updates mark a compaction was not probed. |
+
+A row without a summary is inert. Older clients ignore the summary field and
+show no row.
+
 ## Command limitations
 
 Pi 0.84.4 advertises its bundled `/llama` command over RPC, but the handler

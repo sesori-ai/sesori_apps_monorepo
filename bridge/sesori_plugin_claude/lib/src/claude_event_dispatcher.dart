@@ -31,6 +31,9 @@ final class ClaudeEventDispatcher({
   final Map<String, Set<String>> _streamedMessageIds = {};
   final Set<String> _mappedApiErrorSessions = {};
 
+  /// Sessions whose next synthetic `user` frame is a compaction summary.
+  final Set<String> _awaitingCompactionSummary = {};
+
   /// Content blocks already carried by `assistant` frames, per message id.
   ///
   /// Claude Code emits one `assistant` frame per content block under the same
@@ -114,6 +117,7 @@ final class ClaudeEventDispatcher({
     _mappedApiErrorSessions.remove(sessionId);
     _models.remove(sessionId);
     _turnSelections.remove(sessionId);
+    _awaitingCompactionSummary.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.forgetSession(sessionId: sessionId);
   }
@@ -193,6 +197,7 @@ final class ClaudeEventDispatcher({
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
         ClaudeTaskStartedMessage() => _mapTaskStarted(message: message),
         ClaudeTaskNotificationMessage() => _mapTaskNotification(message: message),
+        ClaudeCompactBoundaryMessage() => _awaitCompactionSummary(sessionId: sessionId),
         ClaudeInitMessage() ||
         ClaudeStatusMessage() ||
         // ponytail: parsed but not surfaced — no client UI consumes thinking
@@ -432,11 +437,32 @@ final class ClaudeEventDispatcher({
     return events;
   }
 
+  List<BridgeSseEvent> _awaitCompactionSummary({required String sessionId}) {
+    _awaitingCompactionSummary.add(sessionId);
+    return const [];
+  }
+
   List<BridgeSseEvent> _mapUser({
     required String sessionId,
     required ClaudeUserMessage message,
     required String? promptId,
   }) {
+    // The summary frame's uuid is the transcript record's id, so live and
+    // replayed rows share one message id.
+    if (_awaitingCompactionSummary.remove(sessionId) && message.raw["isSynthetic"] == true) {
+      if (_nonEmptyString(message.uuid) case final messageId?) {
+        final compaction = _content.compactionMessage(
+          sessionId: sessionId,
+          messageId: messageId,
+          time: _messageTime(message.timestamp),
+          content: message.message["content"],
+        );
+        return [
+          BridgeSseMessageUpdated(info: compaction.info),
+          for (final part in compaction.parts) BridgeSseMessagePartUpdated(part: part),
+        ];
+      }
+    }
     final mapped = _content.map(content: message.message["content"]);
     if (_content.containsInternalCommandOutput(blocks: mapped)) return const [];
     final results = mapped.whereType<ClaudeMappedToolResultContentBlock>().toList();

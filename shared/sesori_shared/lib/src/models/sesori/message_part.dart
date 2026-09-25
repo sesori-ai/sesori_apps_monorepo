@@ -213,9 +213,19 @@ sealed class const MessagePart._() with _$MessagePart {
     @Default("") String retryError,
   }) = MessagePartRetry;
 
+  /// The harness compacted its context here.
   @FreezedUnionValue("compaction")
-  const factory compaction({required String id, required String sessionID, required String messageID}) =
-      MessagePartCompaction;
+  const factory compaction({
+    required String id,
+    required String sessionID,
+    required String messageID,
+
+    /// The continuation summary the harness carried forward, when it exposes
+    /// one. Null when the harness keeps it private.
+    // COMPATIBILITY 2026-09-25 (v1.9.1): Released bridges omit the summary, which reads as null.
+    // Keep the field nullable; null stays the honest value for harnesses without a readable summary.
+    required String? summary,
+  }) = MessagePartCompaction;
 
   factory fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
 }

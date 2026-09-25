@@ -51,7 +51,7 @@ user's explicit decision to drop or defer step 39. Steps 35–37 were added on
 | [ ] | 33 | `visual-hierarchy/yolo` | [33/41](#pr-titles) | ≤ 500 | pending |
 | [x] | 34 | `visual-hierarchy/changes-count` | [34/41](#pr-titles) | ≤ 800 | done |
 | [ ] | 35 | `visual-hierarchy/modal-lint` | [35/41](#pr-titles) | ≤ 600 | pending |
-| [ ] | 36 | `visual-hierarchy/compaction-row` | [36/41](#pr-titles) | ≤ 900 | pending |
+| [x] | 36 | `visual-hierarchy/compaction-row` | [36/41](#pr-titles) | ≤ 900 | done |
 | [ ] | 37 | `visual-hierarchy/turn-navigation` | [37/41](#pr-titles) | later | blocked on discussion |
 | [ ] | 38 | `desktop-sign-in/plan` | [38/41](#pr-titles) | ≤ 600 | blocked on scoping |
 | [ ] | 39 | `visual-hierarchy/header-backdrop` | [39/41](#pr-titles) | set at approval | blocked on approval |

@@ -127,6 +127,40 @@ final class const ClaudeContentMapper() {
     return trailing.isEmpty ? prefix : "$prefix $trailing";
   }
 
+  /// The compaction row for the continuation summary [content] the CLI
+  /// injects as a user turn right after compacting.
+  PluginMessageWithParts compactionMessage({
+    required String sessionId,
+    required String messageId,
+    required PluginMessageTime? time,
+    required Object? content,
+  }) {
+    final summary = [
+      for (final block in map(content: content))
+        if (block case ClaudeMappedTextContentBlock(:final text)) text,
+    ].join("\n\n").trim();
+    return PluginMessageWithParts(
+      info: PluginMessage.assistant(
+        id: messageId,
+        sessionID: sessionId,
+        agent: "claude",
+        modelID: null,
+        providerID: "anthropic",
+        variant: null,
+        sender: PluginMessageSender.agent,
+        time: time,
+      ),
+      parts: [
+        PluginMessagePart.compaction(
+          id: "$messageId-compaction",
+          sessionID: sessionId,
+          messageID: messageId,
+          summary: summary.isEmpty ? null : summary,
+        ),
+      ],
+    );
+  }
+
   List<PluginMessagePart> mapParts({
     required Object? content,
     required String sessionId,
