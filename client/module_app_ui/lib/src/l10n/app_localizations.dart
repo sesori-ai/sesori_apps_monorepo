@@ -3925,6 +3925,48 @@ abstract class AppLocalizations {
   /// **'Allow this action?'**
   String get diffPermissionRequestTitle;
 
+  /// No description provided for @permissionCommandTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow this command?'**
+  String get permissionCommandTitle;
+
+  /// No description provided for @permissionFilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow these file changes?'**
+  String get permissionFilesTitle;
+
+  /// No description provided for @permissionNetworkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow this network access?'**
+  String get permissionNetworkTitle;
+
+  /// No description provided for @permissionFileCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'create'**
+  String get permissionFileCreate;
+
+  /// No description provided for @permissionFileWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'write'**
+  String get permissionFileWrite;
+
+  /// No description provided for @permissionFileDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'delete'**
+  String get permissionFileDelete;
+
+  /// No description provided for @permissionNetworkTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to {target}'**
+  String permissionNetworkTarget(String target);
+
   /// No description provided for @diffPermissionReject.
   ///
   /// In en, this message translates to:

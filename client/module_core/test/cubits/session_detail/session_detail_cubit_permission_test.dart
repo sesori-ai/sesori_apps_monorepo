@@ -528,6 +528,7 @@ void main() {
             data: [
               PendingPermission(
                 id: "perm-child",
+                details: PermissionDetails.command(command: "ls -al /complete/path"),
                 sessionID: "child-1",
                 displaySessionId: sessionId,
                 tool: "bash",
@@ -556,6 +557,10 @@ void main() {
       expect(loaded.pendingPermissions.map((p) => p.requestID), ["perm-child"]);
       expect(loaded.pendingPermissions.single.allowAlways, isFalse);
       expect(loaded.pendingPermissions.single.displaySessionId, sessionId);
+      expect(
+        loaded.pendingPermissions.single.details,
+        const PermissionDetails.command(command: "ls -al /complete/path"),
+      );
     });
 
     test("child-session permission surfaces on the root via the global stream", () async {

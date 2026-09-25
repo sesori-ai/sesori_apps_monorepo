@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/services.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -28,7 +29,7 @@ class _ReplyCapture() {
   String? sessionId;
   PermissionReply? reply;
   bool isPending = true;
-  final pending = StreamController<bool>();
+  final pending = StreamController<bool>.broadcast();
 
   void onReply({
     required String requestId,
@@ -94,6 +95,148 @@ Future<void> _openPermissionModal(WidgetTester tester) async {
 }
 
 void main() {
+  for (final brightness in Brightness.values) {
+    testWidgets("rich command keeps literal text and Markdown reason in $brightness", (tester) async {
+      tester.platformDispatcher.platformBrightnessTestValue = brightness;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      const command = "printf '[literal] * [link](not-a-link)'";
+      final router = _createRouter(
+        permission: _permission.copyWith(
+          details: const PermissionDetails.command(command: command),
+          description: "Review **this command** before allowing it.",
+        ),
+        capture: _ReplyCapture(),
+      );
+      await tester.pumpWidget(_buildApp(router: router));
+      await _openPermissionModal(tester);
+      expect(find.text("Allow this command?"), findsOneWidget);
+      final commandText = find.byWidgetPredicate((widget) => widget is SelectableText && widget.data == command);
+      expect(commandText, findsOneWidget);
+      final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
+      expect(tester.widget<SelectableText>(commandText).style, prego.textTheme.code);
+      expect(
+        tester.widget<MarkdownBody>(find.byType(MarkdownBody)).data,
+        "Review **this command** before allowing it.",
+      );
+      expect(find.byType(TextField), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("file rows retain full cross-platform paths and known operations in $brightness", (tester) async {
+      tester.platformDispatcher.platformBrightnessTestValue = brightness;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      final router = _createRouter(
+        permission: _permission.copyWith(
+          details: const PermissionDetails.fileChanges(
+            files: [
+              PermissionFile(path: "/workspace/config.toml", operation: PermissionFileOperation.write),
+              PermissionFile(path: r"C:\workspace\bridge.json", operation: PermissionFileOperation.create),
+              PermissionFile(path: "/workspace/unknown.txt", operation: null),
+            ],
+          ),
+        ),
+        capture: _ReplyCapture(),
+      );
+      await tester.pumpWidget(_buildApp(router: router));
+      await _openPermissionModal(tester);
+      expect(find.text("Allow these file changes?"), findsOneWidget);
+      expect(find.text("config.toml"), findsOneWidget);
+      expect(find.text("/workspace/config.toml"), findsOneWidget);
+      expect(find.text("bridge.json"), findsOneWidget);
+      expect(find.text(r"C:\workspace\bridge.json"), findsOneWidget);
+      expect(find.text("write"), findsOneWidget);
+      expect(find.text("create"), findsOneWidget);
+      expect(find.byType(PregoGroupedRow), findsNWidgets(3));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets("desktop rich approval remains a dialog with passive Escape and owning-session replies", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      permission: _permission.copyWith(details: const PermissionDetails.command(command: _command)),
+      capture: capture,
+    );
+    await tester.pumpWidget(
+      PregoInteractionScope(
+        mode: PregoInteractionMode.pointer,
+        child: _buildApp(router: router),
+      ),
+    );
+    await _openPermissionModal(tester);
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text("Allow this command?"), findsOneWidget);
+    expect(find.text(_command), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(PermissionModal), findsNothing);
+    expect(capture.reply, isNull);
+    expect(capture.isPending, isTrue);
+
+    await _openPermissionModal(tester);
+    await tester.tap(find.text("Allow"));
+    await tester.pumpAndSettle();
+    expect(capture.reply, PermissionReply.once);
+    expect(capture.sessionId, _permission.sessionID);
+    expect(capture.requestId, _permission.requestID);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("network approval keeps target and command and hides unsupported Always", (tester) async {
+    final router = _createRouter(
+      permission: _permission.copyWith(
+        allowAlways: false,
+        details: const PermissionDetails.network(
+          targets: ["https://example.com/full/path?q=1"],
+          command: "curl https://example.com/full/path?q=1",
+        ),
+      ),
+      capture: _ReplyCapture(),
+    );
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openPermissionModal(tester);
+    expect(find.text("Allow this network access?"), findsOneWidget);
+    expect(find.text("Connect to https://example.com/full/path?q=1"), findsOneWidget);
+    expect(find.text("curl https://example.com/full/path?q=1"), findsOneWidget);
+    expect(find.text("Always approve"), findsNothing);
+    expect(find.byType(TextField), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("rich details stay reachable in a compact enlarged-text sheet", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 480);
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      permission: _permission.copyWith(
+        details: PermissionDetails.fileChanges(
+          files: [
+            for (var i = 0; i < 8; i++)
+              PermissionFile(
+                path: "/very/long/full/workspace/path/file-$i.txt",
+                operation: PermissionFileOperation.write,
+              ),
+          ],
+        ),
+      ),
+      capture: capture,
+    );
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openPermissionModal(tester);
+    final reject = find.widgetWithText(PregoButtonsSolid, "Don’t allow");
+    await tester.scrollUntilVisible(reject, 300, scrollable: find.byType(Scrollable).first);
+    await tester.tap(reject);
+    await tester.pumpAndSettle();
+    expect(capture.reply, PermissionReply.reject);
+    expect(capture.sessionId, "child-session-1");
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("uses the floating Prego sheet and preserves complete request details", (tester) async {
     final router = _createRouter(permission: _permission, capture: _ReplyCapture());
     await tester.pumpWidget(_buildApp(router: router));

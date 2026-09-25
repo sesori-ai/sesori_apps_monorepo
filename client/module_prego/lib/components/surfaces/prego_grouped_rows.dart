@@ -84,6 +84,9 @@ class const PregoGroupedRow({
 
   /// Vertical content inset, independently of the minimum row height.
   final double verticalPadding = PregoSpacing.md,
+
+  /// Use zero when a containing sheet already supplies horizontal gutters.
+  final double horizontalPadding = PregoSpacing.xl,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -136,7 +139,7 @@ class const PregoGroupedRow({
     Widget tile = Container(
       constraints: BoxConstraints(minHeight: minHeight ?? (subtitle != null ? _tallRowMinHeight : _rowMinHeight)),
       padding: EdgeInsets.symmetric(
-        horizontal: PregoSpacing.xl,
+        horizontal: horizontalPadding,
         vertical: verticalPadding,
       ),
       alignment: AlignmentDirectional.centerStart,
@@ -150,7 +153,7 @@ class const PregoGroupedRow({
 
     // Hairline between rows, aligned with the title column like the Figma
     // rows' top border (which starts after the leading slot).
-    final dividerIndent = PregoSpacing.xl + (leading != null ? _leadingSlotWidth + PregoSpacing.md : 0.0);
+    final dividerIndent = horizontalPadding + (leading != null ? _leadingSlotWidth + PregoSpacing.md : 0.0);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -158,7 +161,7 @@ class const PregoGroupedRow({
         tile,
         ExcludeSemantics(
           child: Padding(
-            padding: EdgeInsetsDirectional.only(start: dividerIndent, end: PregoSpacing.xl),
+            padding: EdgeInsetsDirectional.only(start: dividerIndent, end: horizontalPadding),
             child: ColoredBox(
               color: context.prego.colors.borderSecondary,
               child: const SizedBox(height: 1),

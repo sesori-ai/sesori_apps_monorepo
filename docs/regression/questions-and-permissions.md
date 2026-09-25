@@ -37,16 +37,27 @@ reaches the backend so the turn continues.
 - Allow once, allow always, and reject each reach the backend with the meaning
   the user chose. Once is never escalated to a broader grant.
 - Permission dialogs use the shared Prego action sheet in both themes. Like
-  the question form, it floats on phone and is a centred dialog on desktop. It
-  shows a generic action heading, the complete backend tool label and selectable,
-  copyable Markdown description, then full-width stacked **Allow**, optional
+  the question form, it floats on phone and is a centred dialog on desktop.
+  It shows an action-specific heading when the wire request supplies authoritative
+  command, file-change or network details, otherwise the generic action heading.
+  Commands remain literal and copyable, file rows retain full paths and only
+  known operations, and network rows retain targets and any accompanying command.
+  The complete backend tool label and selectable, copyable Markdown description
+  remain available (an identical command is displayed only once), then full-width
+  stacked **Allow**, optional
   **Always approve**, and **Don’t allow** actions. **Allow** means once only.
   Long details normally scroll above visible actions. When the viewport is
   cramped relative to the text scale, the whole sheet scrolls so every decision
   remains reachable; enlarged text can cause this breakpoint to be crossed.
   Keyboard and safe-area insets keep the floating surface clear of system UI.
-  Scrim, swipe, or Escape dismissal leaves the request pending; external settlement closes
-  it without a reply.
+  Scrim, swipe, or Escape dismissal leaves the request pending; external settlement
+  closes it without a reply. Inline text/voice instructions are never offered. Reject
+  answers only the permission; it does not abort/restart or submit another prompt.
+- Shared permission details survive JSON and client pending-snapshot conversion,
+  including child-owned requests displayed under the root. Absent details and
+  unknown future kinds stay generic; unknown file operations remain unknown.
+  Native plugins currently keep their existing generic permission presentation;
+  see [the capability matrix](../HARNESS_CAPABILITIES.md#rich-permission-request-details).
 - A plugin advertising ACP form elicitation maps supported string, string-enum,
   boolean, and finite string-choice array properties to questions and returns
   typed content under the backend's original property keys. An array whose

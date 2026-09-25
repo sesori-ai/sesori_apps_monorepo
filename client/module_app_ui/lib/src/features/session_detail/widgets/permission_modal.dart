@@ -1,4 +1,3 @@
-import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -7,9 +6,8 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../platform/external_link_opener.dart";
-import "../../../utils/copy_text_to_clipboard.dart";
-import "../../../widgets/markdown_styles.dart";
 import "pending_request_auto_dismiss.dart";
+import "permission_request_details.dart";
 
 /// Presents every supported tool permission using the shared Prego action sheet.
 /// The backend's tool and description remain intact; this surface does not infer
@@ -72,7 +70,12 @@ class const PermissionModal({
   Widget build(BuildContext context) {
     final prego = context.prego;
     return PregoActionSheet(
-      title: context.loc.diffPermissionRequestTitle,
+      title: switch (permission.details) {
+        GenericPermissionDetails() => context.loc.diffPermissionRequestTitle,
+        CommandPermissionDetails() => context.loc.permissionCommandTitle,
+        FileChangesPermissionDetails() => context.loc.permissionFilesTitle,
+        NetworkPermissionDetails() => context.loc.permissionNetworkTitle,
+      },
       topInset: topInset,
       actions: Column(
         mainAxisSize: MainAxisSize.min,
@@ -103,55 +106,7 @@ class const PermissionModal({
           ),
         ],
       ),
-      child: Container(
-        key: const Key("permission-request-detail"),
-        padding: EdgeInsets.all(prego.spacing.lg),
-        decoration: BoxDecoration(
-          color: prego.colors.bgSurface2,
-          borderRadius: BorderRadius.circular(prego.radius.xl),
-          border: Border.all(color: prego.colors.borderPrimary),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    permission.tool,
-                    style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textSecondary),
-                  ),
-                ),
-                PregoCopyIconButton(
-                  onCopy: () => copyTextToClipboard(
-                    text: permission.description,
-                    operation: "permission description",
-                  ),
-                  tooltip: context.loc.sessionDetailCopy,
-                ),
-              ],
-            ),
-            SizedBox(height: prego.spacing.md),
-            MarkdownBody(
-              data: permission.description,
-              selectable: true,
-              onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
-              styleSheet:
-                  buildSessionMarkdownStyleSheet(
-                    prego: prego,
-                    paragraphStyle: prego.textTheme.code.copyWith(color: prego.colors.textPrimary),
-                  ).copyWith(
-                    codeblockDecoration: BoxDecoration(
-                      color: prego.colors.bgSurface1,
-                      borderRadius: BorderRadius.circular(prego.radius.md),
-                      border: Border.all(color: prego.colors.borderSecondary),
-                    ),
-                  ),
-            ),
-          ],
-        ),
-      ),
+      child: PermissionRequestDetails(permission: permission, openExternalLink: openExternalLink),
     );
   }
 }
