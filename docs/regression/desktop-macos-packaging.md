@@ -24,6 +24,11 @@ packaging capability does not imply public downloads or an updater have shipped.
 - Sign nested native code/frameworks inside-out, including every helper dylib;
   enable hardened runtime for the GUI/helper without adding speculative security
   exceptions. Keep the established non-sandboxed classic-Keychain configuration.
+  The Dart AOT bridge helper alone needs `allow-unsigned-executable-memory` for
+  its mapped snapshot pages; keep library validation enabled and do not apply
+  this exception to the GUI or helper dylibs. On macOS 27, verify the helper
+  starts without a `CODESIGNING / Invalid Page` crash or exit 137, including
+  `--version` and the installed GUI's supervised bridge startup.
 - Notarize/staple the app before creating the final ZIP. Sign/notarize/staple the
   DMG too. Both extracted payloads must retain valid signatures and tickets, pass
   Gatekeeper assessment and execute the native helper. Their extracted native
@@ -119,5 +124,6 @@ following the macOS QA process.
 - `client/desktop/tool/stage_desktop_bundle.dart`
 - `client/desktop/lib/core/di/register_module.dart`
 - `client/desktop/macos/Runner/Release.entitlements`
+- `client/desktop/macos/Bridge.entitlements`
 - `.agents/skills/macos-desktop-qa/SKILL.md`
 - `.plan/active/desktop-distribution/PLAN.md`

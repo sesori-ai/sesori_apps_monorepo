@@ -64,7 +64,7 @@ class MacPackagingTests(unittest.TestCase):
                                    keychain=self.keychain, log=self.log)
         execute.assert_not_called()
 
-    def test_hardened_executables_use_exact_publisher_and_only_gui_gets_release_entitlements(self):
+    def test_hardened_executables_use_exact_publisher_and_separate_runtime_entitlements(self):
         with mock.patch.object(packaging, "execute") as execute:
             packaging.sign_app(app=self.app, arch="arm64", identity="Expected publisher",
                                keychain=self.keychain, log=self.log)
@@ -75,9 +75,19 @@ class MacPackagingTests(unittest.TestCase):
             self.assertEqual(command[command.index("--keychain") + 1], str(self.keychain))
             self.assertIn("--timestamp", command)
             self.assertEqual("--options" in command, target in (self.app, self.helper))
-            self.assertEqual("--entitlements" in command, target == self.app)
+            self.assertEqual("--entitlements" in command, target in (self.app, self.helper))
+            if target in (self.app, self.helper):
+                entitlements = packaging.ENTITLEMENTS if target == self.app else packaging.BRIDGE_ENTITLEMENTS
+                self.assertEqual(command[command.index("--entitlements") + 1], str(entitlements))
             self.assertNotIn("--deep", command)  # Deep verification, never deep signing.
         self.assertEqual(execute.call_args_list[-1].kwargs["command"][-1], str(self.app))
+
+    def test_bridge_entitlements_allow_aot_memory_without_disabling_library_validation(self):
+        with packaging.BRIDGE_ENTITLEMENTS.open("rb") as stream:
+            entitlements = plistlib.load(stream)
+        self.assertEqual(entitlements, {"com.apple.security.cs.allow-unsigned-executable-memory": True})
+        with packaging.ENTITLEMENTS.open("rb") as stream:
+            self.assertNotIn("com.apple.security.cs.allow-unsigned-executable-memory", plistlib.load(stream))
 
     def test_extracted_verification_checks_every_native_binary_and_gatekeeper(self):
         with mock.patch.object(packaging, "execute", return_value="1.8.4\n") as execute:
