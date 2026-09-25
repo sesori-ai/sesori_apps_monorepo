@@ -40,9 +40,15 @@ sub-agent parts, plus the signal that a tool changed files.
   running steps shows no summary. Finished sub-agents show a neutral icon and
   failed ones a red one, without a status label; the grouping is computed by the
   shared `TranscriptBuilder`, so phone and desktop match.
-- A running tool or sub-agent is a live row: its label shimmers in place of a
-  spinner, and reduced motion keeps it still while screen readers still hear
-  it. Streaming thinking shows a shimmering “Thinking...” with one line of its
+- A running tool or sub-agent is a live row: the turning outline sparkle leads
+  it and a primary-text band sweeps across its dimmed label, visible in both
+  themes. Reduced motion keeps the sparkle and label still while screen readers
+  still hear it. While the session works (a question or permission waiting on
+  the user does not count) and no step is live — before the first token and
+  between steps — a “Working…” live row with the same sparkle closes the
+  transcript; a starting step takes its place and the swap eases rather than
+  jumps. A retry row replaces it. Streaming thinking shows a shimmering
+  “Thinking...” with one line of its
   latest words below, the older start fading out; a finished thought is one row,
   “Thought” and its first line, that opens the full text. While the reader is
   scrolled away, the jump button names the newest running step, shimmering,
@@ -198,7 +204,7 @@ sub-agent parts, plus the signal that a tool changed files.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, eased and reduced-motion disclosure, enlarged text and both themes; attachment visibility and title-only older-peer rendering. Authoritative tool execution still requires a live turn. |
+| L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, eased and reduced-motion disclosure, enlarged text and both themes; attachment visibility and title-only older-peer rendering; the sparkle leading a live row, and the “Working…” row showing while busy with no live step and leaving when a step starts, the session idles or a retry row shows. Authoritative tool execution still requires a live turn. |
 | L2 Routine | Live plugin, representative: a file-editing tool produces a lightweight tool part with name and terminal status, while a shell tool preserves its command and bounded result. |
 | L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok target coverage: a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. Grok owned-phone coverage passed completed-tile rendering, exact read-only child navigation, and genuine permission Once. File diff/invalidation, mutating-tool permission linkage, failing-tool presentation, and permission denial remain unexecuted. |
 | L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity and status intact, shell commands retain their results, and non-shell snippets remain absent; a failing shell command surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. |
@@ -244,6 +250,9 @@ guarantee.
 - A live row spins or shimmers under reduced motion, a thinking tail hides the
   newest words or wraps past one line, or the jump button keeps naming a step
   that has finished.
+- A working session shows no live row between steps, “Working…” stays beside a
+  live step or after the session goes idle, or a live label's band is invisible
+  in either theme.
 - Backend naming or payload shape reaches the client unnormalized, or a local
   path or unsafe URL crosses the attachment contract.
 - A part carries fields owned by another variant, or a released known-type

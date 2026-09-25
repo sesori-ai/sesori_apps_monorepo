@@ -174,6 +174,11 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           streamingText: state.streamingText,
                           children: state.children,
                           childStatuses: state.childStatuses,
+                          // A session waiting on the user is not working; its card says so.
+                          isBusy:
+                              hasActiveWork(sessionStatus: state.sessionStatus, childStatuses: state.childStatuses) &&
+                              state.pendingQuestions.isEmpty &&
+                              state.pendingPermissions.isEmpty,
                           // Null once the start of the transcript is loaded,
                           // so the list stops asking for more.
                           onLoadOlderMessages: state.olderMessagesCursor == null

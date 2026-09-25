@@ -5,6 +5,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../session_detail_presentation_scope.dart";
+import "transcript_live_row.dart";
 
 /// A sub-agent's row. A finished one says nothing; a failed one keeps one
 /// signal, its icon.
@@ -62,7 +63,8 @@ class const SubtaskPartWidget({
             child: Row(
               children: [
                 switch (status) {
-                  TranscriptStepStatus.running || TranscriptStepStatus.finished => Icon(
+                  TranscriptStepStatus.running => const TranscriptLiveSparkle(),
+                  TranscriptStepStatus.finished => Icon(
                     TablerRegular.robot,
                     size: PregoIconSize.sm,
                     color: prego.colors.textTertiary,
@@ -79,9 +81,7 @@ class const SubtaskPartWidget({
                     crossAxisAlignment: .start,
                     children: [
                       if (status == TranscriptStepStatus.running)
-                        // A running sub-agent's label shimmers in place of a
-                        // spinner; reduced motion keeps it still.
-                        PregoShimmer(appearDelay: Duration.zero, semanticLabel: description, child: title)
+                        TranscriptLiveLabel(label: title, semanticLabel: description)
                       else
                         title,
                       if (agent.isNotEmpty)

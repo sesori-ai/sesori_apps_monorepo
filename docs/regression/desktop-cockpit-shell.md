@@ -221,8 +221,8 @@ The main pane hosts one full-width routed page.
 - The session page uses the same toolbar anatomy above the transcript, never over it: the breadcrumb
   and the title share one 16 pt line and baseline, the breadcrumb medium and secondary, a slash between
   them, the title bold. The amber awaiting glyph leads the title when a question or permission waits; a
-  running session instead sweeps a shimmer across its title, and shows the running glyph there when
-  reduced motion stills the shimmer. A root session's breadcrumb is its project; a
+  running session instead leads it with the turning sparkle, still under reduced motion. The title
+  itself never shimmers. A root session's breadcrumb is its project; a
   subtask's is "Main session", which returns to the session that started it (back to the kept parent
   page when it was opened from there). No harness or model line sits under the title. The Changes button shows
   on a root unarchived session; and a menu with
@@ -345,8 +345,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   sidebar recovery/actions/locks.
 - The session page toolbar above a centred transcript column: the breadcrumb, status slot and title styles
   and order, the breadcrumb opening the project or, for a subtask, "Main session" returning to its parent
-  (popping to the kept parent when opened from it, opening the parent otherwise), the title shimmering
-  only while the session runs, session actions disabled until the session is hydrated,
+  (popping to the kept parent when opened from it, opening the parent otherwise), the sparkle leading
+  the title only while the session runs, session actions disabled until the session is hydrated,
   Mark unread sending unread and leaving the page from the menu (which shows its shortcut) and from
   Shift+Cmd/Ctrl+U, and a menu without Mark as read.
 - The command palette opened by Cmd/Ctrl+K and the Search row: recency order with project names, filtering

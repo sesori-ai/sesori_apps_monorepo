@@ -25,9 +25,6 @@ class const DesktopPageToolbar({
   required final Widget? status,
   required final String title,
 
-  /// Sweeps a shimmer across the title while the page's session works.
-  required final bool isRunning,
-
   /// A second, quieter line under the title; null leaves the title alone.
   required final Widget? subtitle,
   required final List<Widget> actions,
@@ -99,13 +96,7 @@ class const DesktopPageToolbar({
                         child: Center(child: status),
                       ),
                     Flexible(
-                      // One heading node carries the title; the shimmer is decorative.
-                      child: Semantics(
-                        header: true,
-                        label: title,
-                        excludeSemantics: true,
-                        child: isRunning ? PregoShimmer(appearDelay: Duration.zero, child: titleText) : titleText,
-                      ),
+                      child: Semantics(header: true, label: title, excludeSemantics: true, child: titleText),
                     ),
                   ],
                 ),

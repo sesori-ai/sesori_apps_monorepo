@@ -35,6 +35,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   Map<String, List<ComposerAttachment>> _bridgePromptAttachments = const {};
   final List<String> cancelledBridgePromptIds = [];
   late String? _retryErrorMessage;
+  bool _isBusy = false;
   bool _isLoadingOlderMessages = false;
   int? lastCancelledQueuedMessageIndex;
 
@@ -73,6 +74,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
 
   void updateStreamingText({required String partId, required String text}) {
     setState(() => _streamingText = {..._streamingText, partId: text});
+  }
+
+  void setBusy(bool isBusy) {
+    setState(() => _isBusy = isBusy);
   }
 
   void setRetryErrorMessage(String? message) {
@@ -190,6 +195,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           streamingText: _streamingText,
           children: const <Session>[],
           childStatuses: const <String, SessionStatus>{},
+          isBusy: _isBusy,
           retryErrorMessage: _retryErrorMessage,
           onCancelQueuedMessage: cancelQueuedMessage,
         ),
@@ -1159,6 +1165,77 @@ void main() {
     await _pumpListUpdate(tester);
     expect(find.descendant(of: pill, matching: find.text("Jump to latest")), findsOneWidget);
     expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsNothing);
+  });
+
+  testWidgets("a busy session with no live step ends in a Working row that a live step replaces", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    MessageWithParts toolMessage({required ToolStatus status}) => MessageWithParts(
+      info: const Message.assistant(
+        id: "assistant-1",
+        sessionID: "session-1",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        time: null,
+      ),
+      parts: [
+        MessagePart.tool(
+          id: "assistant-1-tool",
+          sessionID: "session-1",
+          messageID: "assistant-1",
+          tool: "read",
+          state: ToolState(status: status, title: "notes.md", shellCommand: null, output: null, error: null),
+        ),
+      ],
+    );
+    Future<void> settle() => tester.pump(const Duration(milliseconds: 300));
+    // The sparkle leads its row's label.
+    void expectSparkleLeads(Finder label) {
+      final row = find.ancestor(of: label, matching: find.byType(Row)).first;
+      final sparkle = find.descendant(of: row, matching: find.byType(PregoAiLoader));
+      expect(sparkle, findsOneWidget);
+      expect(tester.getTopLeft(sparkle).dx, lessThan(tester.getTopLeft(label).dx));
+    }
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 2),
+        initialStreamingText: const {},
+      ),
+    );
+    await settle();
+    expect(find.text("Working…"), findsNothing);
+
+    harnessKey.currentState!.setBusy(true);
+    await settle();
+    expect(find.text("Working…"), findsOneWidget);
+    expectSparkleLeads(find.text("Working…"));
+
+    harnessKey.currentState!.appendNewestMessage(toolMessage(status: ToolStatus.running));
+    await settle();
+    expect(find.text("Working…"), findsNothing);
+    expectSparkleLeads(find.text("read notes.md"));
+
+    harnessKey.currentState!
+      ..removeMessage("assistant-1")
+      ..appendNewestMessage(toolMessage(status: ToolStatus.completed));
+    await settle();
+    expect(find.text("Working…"), findsOneWidget);
+
+    harnessKey.currentState!.setBusy(false);
+    await settle();
+    expect(find.text("Working…"), findsNothing);
+
+    // A retry row already says the session works.
+    harnessKey.currentState!
+      ..setBusy(true)
+      ..setRetryErrorMessage("Rate limited");
+    await settle();
+    expect(find.text("Working…"), findsNothing);
   });
 
   testWidgets("following mode stays pinned to latest", (tester) async {
