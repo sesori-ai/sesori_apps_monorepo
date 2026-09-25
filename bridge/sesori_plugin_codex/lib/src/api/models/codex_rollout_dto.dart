@@ -205,7 +205,7 @@ sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMet
 sealed class CodexRolloutTurnContextPayloadDto with _$CodexRolloutTurnContextPayloadDto {
   const factory({
     required String? model,
-    @JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) required String? effort,
+    @JsonKey(fromJson: _stringOrNull) required String? effort,
   }) = _CodexRolloutTurnContextPayloadDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexRolloutTurnContextPayloadDtoFromJson(json);

@@ -154,6 +154,7 @@ void main() {
       SessionPromptDefaults? promptDefaults,
       bool areOptionsStale = false,
       bool supportsPromptAttachments = false,
+      bool isArchived = false,
     }) async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
@@ -182,7 +183,7 @@ void main() {
             canonicalSessionTitle: null,
             promptDefaults: promptDefaults,
             isRootSession: true,
-            isArchived: false,
+            isArchived: isArchived,
           ),
         ),
       );
@@ -276,19 +277,24 @@ void main() {
       expect(notices, isEmpty);
     });
 
-    test("a fresh snapshot refreshes nothing", () async {
-      final cubit = await createLoadedCubit();
-      await Future<void>.delayed(Duration.zero);
+    for (final (description, areOptionsStale, isArchived) in [
+      ("a fresh snapshot", false, false),
+      ("an archived session's stale snapshot", true, true),
+    ]) {
+      test("$description refreshes nothing", () async {
+        final cubit = await createLoadedCubit(areOptionsStale: areOptionsStale, isArchived: isArchived);
+        await Future<void>.delayed(Duration.zero);
 
-      expect(cubit.state, isA<SessionDetailLoaded>());
-      verifyNever(
-        () => mockSessionRepository.loadSessionOptions(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-          mode: any(named: "mode"),
-        ),
-      );
-    });
+        expect(cubit.state, isA<SessionDetailLoaded>());
+        verifyNever(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        );
+      });
+    }
 
     test("an options update re-reads the cache and drops a withdrawn agent", () async {
       when(

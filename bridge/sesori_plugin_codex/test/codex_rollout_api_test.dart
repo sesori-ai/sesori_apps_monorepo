@@ -322,7 +322,7 @@ void main() {
         }),
         CodexRolloutLineDto.fromJson({
           "type": "turn_context",
-          "payload": {"model": "gpt-5.4", "reasoning_effort": "high"},
+          "payload": {"model": "gpt-5.4", "effort": "high"},
         }),
         CodexRolloutLineDto.fromJson({
           "type": "response_item",
@@ -1495,7 +1495,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         extraLines: [
           jsonEncode({
             "type": "turn_context",
-            "payload": {"model": "gpt-5.6", "reasoning_effort": "high"},
+            "payload": {"model": "gpt-5.6", "effort": "high"},
           }),
           jsonEncode({
             "timestamp": "2026-08-19T18:06:15.079Z",
@@ -2757,7 +2757,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         extraLines: [
           jsonEncode({
             "type": "turn_context",
-            "payload": {"model": "gpt-5.2-codex", "reasoning_effort": "low"},
+            "payload": {"model": "gpt-5.2-codex", "effort": "low"},
           }),
         ],
       );
@@ -2788,7 +2788,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         extraLines: [
           jsonEncode({
             "type": "turn_context",
-            "payload": {"model": "gpt-5.2-codex", "reasoning_effort": "low"},
+            "payload": {"model": "gpt-5.2-codex", "effort": "low"},
           }),
           jsonEncode({
             "type": "response_item",
@@ -2803,7 +2803,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
           // Model switches mid-session — later assistant messages reflect it.
           jsonEncode({
             "type": "turn_context",
-            "payload": {"model": "gpt-5.4-codex", "reasoning_effort": "xhigh"},
+            "payload": {"model": "gpt-5.4-codex", "effort": "xhigh"},
           }),
           jsonEncode({
             "type": "response_item",

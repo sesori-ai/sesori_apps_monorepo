@@ -78,6 +78,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     required String selectedAgent,
     required AgentModel? selectedAgentModel,
 
+    /// The session's prompt defaults as the bridge last reported them, before
+    /// any catalog fallback, or null when it holds none.
+    required SessionPromptDefaults? promptDefaults,
+
     /// The user's fast-mode choice, reconciled from the bridge's prompt
     /// defaults. It only runs while the selected model's fast mode is
     /// available; see [SessionDetailLoadedX.runsFastMode].

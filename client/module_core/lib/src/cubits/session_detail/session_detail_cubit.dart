@@ -942,6 +942,7 @@ class SessionDetailCubit(
               session: refreshedSession,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
+              promptDefaults: snapshot.promptDefaults,
               stagedCommand: _selection.resolveStagedCommand(
                 commands: availableCommands,
                 staged: preservedStagedCommand,
@@ -1046,7 +1047,9 @@ class SessionDetailCubit(
   /// reconnect can re-read the same still-stale cache while the first is still
   /// in flight.
   void _refreshStaleOptions({required SessionDetailSnapshot snapshot}) {
-    if (!snapshot.areOptionsStale || _backgroundOptionsRefreshInFlight) return;
+    // An archived session's options only name what it ran with, which never
+    // justifies waking its harness.
+    if (snapshot.isArchived || !snapshot.areOptionsStale || _backgroundOptionsRefreshInFlight) return;
     _backgroundOptionsRefreshInFlight = true;
     unawaited(
       _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: false).whenComplete(() {
@@ -1064,20 +1067,6 @@ class SessionDetailCubit(
     // A plugin-scoped catalog names no project and applies to every one of them.
     if (projectId != null && projectId.normalize() != _projectId.normalize()) return;
     unawaited(_reloadOptions(mode: SessionOptionsRequestMode.cacheOnly, notify: false));
-  }
-
-  /// Returns the latest agent-authored assistant or error [Message], or null if none.
-  Message? _latestAssistantOrErrorMessage(List<MessageWithParts> messages) {
-    for (var i = messages.length - 1; i >= 0; i--) {
-      final info = messages[i].info;
-      switch (info) {
-        case MessageAssistant(sender: MessageSender.agent) || MessageError():
-          return info;
-        case MessageAssistant() || MessageUser():
-          continue;
-      }
-    }
-    return null;
   }
 
   // ---------------------------------------------------------------------------
@@ -1471,6 +1460,7 @@ class SessionDetailCubit(
         selectedAgent: reconciled.agentName ?? current.selectedAgent,
         selectedAgentModel: reconciled.model,
         availableVariants: reconciled.availableVariants,
+        promptDefaults: promptDefaults,
         // The bridge owns the stored choice and sends it with every change.
         fastMode: promptDefaults.fastMode,
       ),
@@ -2926,14 +2916,8 @@ class SessionDetailCubit(
   /// The model the latest agent-authored assistant/error message of [messages]
   /// ran on, resolved against the [agents] catalog in effect.
   AgentModel? _assistantAgentModel({required List<MessageWithParts> messages, required List<AgentInfo> agents}) {
-    return switch (_latestAssistantOrErrorMessage(messages)) {
-      MessageAssistant(sender: MessageSender.agent, :final modelID, :final providerID) ||
-      MessageError(
-        :final modelID,
-        :final providerID,
-      ) => _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
-      MessageAssistant() || MessageUser() || null => null,
-    };
+    final reply = messages.latestAgentReply;
+    return _resolveAgentModel(agents: agents, providerID: reply?.providerID, modelID: reply?.modelID);
   }
 
   SessionDetailLoaded _buildLoadedState({
@@ -2992,6 +2976,7 @@ class SessionDetailCubit(
       availableCommands: snapshot.commands,
       selectedAgent: reconciled.agentName ?? _fallbackAgentName,
       selectedAgentModel: reconciled.model,
+      promptDefaults: snapshot.promptDefaults,
       fastMode: snapshot.promptDefaults?.fastMode ?? false,
       stagedCommand: null,
       isRefreshing: false,

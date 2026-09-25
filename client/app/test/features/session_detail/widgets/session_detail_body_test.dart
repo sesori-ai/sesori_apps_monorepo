@@ -57,6 +57,7 @@ Widget _buildApp({
   VoidCallback? onClose,
   SessionDetailMenuEntriesBuilder? menuEntriesBuilder,
   DiffSummaryState diffSummary = const DiffSummaryState.unknown(),
+  bool readOnly = false,
 }) {
   final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
@@ -92,7 +93,7 @@ Widget _buildApp({
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Session",
-              readOnly: false,
+              readOnly: readOnly,
               banner: null,
               onBack: context.pop,
               onShowDiffs: () => context.push("/projects/project-1/sessions/session-1/diffs"),
@@ -173,6 +174,7 @@ SessionDetailLoaded _loadedState({
       modelID: provider.defaultModelID!,
       variant: "xhigh",
     ),
+    promptDefaults: null,
     fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
@@ -943,6 +945,7 @@ void main() {
         modelID: "claude-3-5-sonnet",
         variant: "low",
       ),
+      promptDefaults: null,
       fastMode: false,
       stagedCommand: null,
       isRefreshing: false,
@@ -1338,6 +1341,93 @@ void main() {
       tester.widget<UserMessageBubble>(find.byType(UserMessageBubble)).outlined,
       isTrue,
     );
+    // Nothing names what it ran with, so no pill guesses from the composer's
+    // catalog fallbacks.
+    expect(find.byType(PregoPickerButton), findsNothing);
+  });
+
+  group("read-only run details", () {
+    const explore = AgentInfo(name: "explore", description: null, model: null, mode: AgentMode.subagent);
+    final pills = find.byType(ReadOnlyAgentModelPills);
+    Finder pill(String label) => find.descendant(of: pills, matching: find.text(label));
+
+    testWidgets("a child session shows what it ran with in pills that open nothing", (tester) async {
+      final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+        availableAgents: [testAgentInfo(), explore],
+        promptDefaults: const SessionPromptDefaults(
+          agent: "explore",
+          model: AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: "high"),
+        ),
+      );
+      when(() => cubit.state).thenReturn(state);
+
+      await tester.pumpWidget(_buildApp(cubit: cubit, readOnly: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PromptInput), findsNothing);
+      expect(pill("explore"), findsOneWidget);
+      expect(pill("Claude 3.5 Sonnet"), findsOneWidget);
+      expect(pill("high"), findsOneWidget);
+      // Quiet information: no caret, no press feedback, no button to announce.
+      expect(find.descendant(of: pills, matching: find.byIcon(TablerRegular.selector)), findsNothing);
+      expect(find.descendant(of: pills, matching: find.byType(InkWell)), findsNothing);
+      expect(tester.getSemantics(pill("high")), isSemantics(isButton: false, hasTapAction: false));
+      await tester.tap(find.ancestor(of: pill("explore"), matching: find.byType(PregoPickerButton)));
+      await tester.pumpAndSettle();
+      expect(find.text("Agent"), findsNothing);
+    });
+
+    testWidgets("an archived session names its latest reply's agent and model, never a variant", (tester) async {
+      final state =
+          _loadedState(
+            pendingQuestions: const [],
+            pendingPermissions: const [],
+            messages: const [
+              MessageWithParts(
+                info: Message.assistant(
+                  id: "reply",
+                  sessionID: "session-1",
+                  agent: "explore",
+                  modelID: "claude-3-5-sonnet",
+                  providerID: "anthropic",
+                  time: null,
+                ),
+                parts: [],
+              ),
+            ],
+          ).copyWith(
+            isArchived: true,
+            availableAgents: [testAgentInfo(), explore],
+          );
+      when(() => cubit.state).thenReturn(state);
+
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+
+      expect(pill("explore"), findsOneWidget);
+      expect(pill("Claude 3.5 Sonnet"), findsOneWidget);
+      // The composer's selection carries "xhigh"; a reply records no variant.
+      expect(find.descendant(of: pills, matching: find.byType(PregoPickerButton)), findsNWidgets(2));
+    });
+
+    testWidgets("a harness with one agent names none, and the harness notice stays above the pills", (tester) async {
+      final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+        interaction: authRequired,
+        promptDefaults: const SessionPromptDefaults(
+          agent: "coder",
+          model: AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: null),
+        ),
+      );
+      when(() => cubit.state).thenReturn(state);
+
+      await tester.pumpWidget(_buildApp(cubit: cubit, readOnly: true));
+      await tester.pumpAndSettle();
+
+      expect(find.descendant(of: pills, matching: find.byType(PregoPickerButton)), findsOneWidget);
+      expect(pill("Claude 3.5 Sonnet"), findsOneWidget);
+      final notice = tester.getRect(find.text("Sign in to Claude Code to continue."));
+      expect(notice.bottom, lessThanOrEqualTo(tester.getRect(pills).top));
+    });
   });
 
   for (final (name, interaction) in [

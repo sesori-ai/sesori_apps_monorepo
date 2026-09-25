@@ -58,6 +58,30 @@ void main() {
     expect(find.bySemanticsLabel("Agent"), findsOneWidget);
   });
 
+  testWidgets("without onPressed the pill only shows its value", (tester) async {
+    Widget pill({required bool showLabel}) => _harness(
+      SizedBox(
+        width: showLabel ? 200 : 44,
+        child: PregoPickerButton(
+          leadingIcon: TablerRegular.cpu,
+          label: "Model",
+          surfaceStyle: PregoComposerSurfaceStyle.subtle,
+          onPressed: null,
+          showLabel: showLabel,
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(pill(showLabel: true));
+    expect(find.text("Model"), findsOneWidget);
+    // No caret and no press feedback: there is nothing to open.
+    expect(find.byIcon(TablerRegular.selector), findsNothing);
+    expect(find.byType(InkWell), findsNothing);
+
+    await tester.pumpWidget(pill(showLabel: false));
+    expect(tester.getSemantics(find.bySemanticsLabel("Model")), isSemantics(label: "Model", isButton: false));
+  });
+
   testWidgets(
     "uses the composer surface and Material interaction on both platforms",
     (tester) async {

@@ -10,6 +10,7 @@ import "../../../extensions/build_context_x.dart";
 import "../../session_diffs/widgets/session_changes_counts.dart";
 import "../session_auto_continuation_menu.dart";
 import "../session_detail_presentation_scope.dart";
+import "agent_model_buttons.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
 import "session_auto_continuation_notice.dart";
@@ -340,9 +341,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                 state: loaded,
                 onShowPendingQuestions: _showPendingQuestions,
                 onShowPendingPermissions: _showPendingPermissions,
-                bottomControls: loaded.isArchived || loaded.interaction.canInteract
-                    ? null
-                    : _buildHarnessNotice(interaction: loaded.interaction, historyUnavailable: false),
+                bottomControls: _buildReadOnlyControls(loaded: loaded),
                 maxContentWidth: maxContentWidth,
               )
             : SessionDetailLoadedView.interactive(
@@ -517,6 +516,27 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
 
   bool get _isCurrentPage =>
       context.read<SessionDetailCubit>().isRouteVisible && (ModalRoute.of(context)?.isCurrent ?? false);
+
+  /// Where a session that cannot prompt would have its composer: what it ran
+  /// with, below the harness notice while its harness is unavailable.
+  Widget _buildReadOnlyControls({required SessionDetailLoaded loaded}) {
+    final (:agent, :model) = loaded.ranWith;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!loaded.isArchived && !loaded.interaction.canInteract)
+          _buildHarnessNotice(interaction: loaded.interaction, historyUnavailable: false),
+        ReadOnlyAgentModelPills(
+          agents: loaded.availableAgents,
+          agent: agent,
+          providers: loaded.availableProviders,
+          model: model,
+          // A page frame marks a pointer surface, whose pills hug their labels.
+          compact: widget.pageChrome != null,
+        ),
+      ],
+    );
+  }
 
   Widget _buildHarnessNotice({required SessionInteractionState interaction, required bool historyUnavailable}) {
     return SessionHarnessUnavailableNotice(

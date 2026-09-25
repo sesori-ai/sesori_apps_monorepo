@@ -138,6 +138,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
     availableCommands: const [],
     selectedAgent: "coder",
     selectedAgentModel: null,
+    promptDefaults: null,
     fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
@@ -374,10 +375,15 @@ void main() {
     late int openedProject;
     late List<String> openedParents;
 
-    Future<void> pumpPage(WidgetTester tester, {required Session session}) async {
+    Future<void> pumpPage(
+      WidgetTester tester, {
+      required Session session,
+      bool readOnly = false,
+      SessionPromptDefaults? promptDefaults,
+    }) async {
       cubit = _MockSessionDetailCubit();
       when(() => cubit.isRouteVisible).thenReturn(true);
-      final state = _loadedState(session: session);
+      final state = _loadedState(session: session).copyWith(promptDefaults: promptDefaults);
       when(() => cubit.state).thenReturn(state);
       whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
       when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
@@ -429,7 +435,7 @@ void main() {
                     onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session),
                   ),
                   onMarkedUnread: () => leftPage++,
-                  readOnly: false,
+                  readOnly: readOnly,
                   projectName: "UI / Core",
                   onOpenProject: () => openedProject++,
                   onOpenParentSession: ({required parentSessionId}) => openedParents.add(parentSessionId),
@@ -470,6 +476,27 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key("session-auto-continuation-toggle")));
       verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
+    });
+
+    testWidgets("a read-only child names what it ran with in pills that hug their labels", (tester) async {
+      await pumpPage(
+        tester,
+        session: _session,
+        readOnly: true,
+        promptDefaults: const SessionPromptDefaults(
+          agent: null,
+          model: AgentModel(providerID: "anthropic", modelID: "claude-sonnet-4-5", variant: "high"),
+        ),
+      );
+
+      expect(find.byType(SessionDetailComposerControls), findsNothing);
+      final pills = find.descendant(of: find.byType(ReadOnlyAgentModelPills), matching: find.byType(PregoPickerButton));
+      expect(pills, findsNWidgets(2));
+      // Without a catalog entry the model shows its id.
+      expect(find.descendant(of: pills.first, matching: find.text("claude-sonnet-4-5")), findsOneWidget);
+      expect(find.descendant(of: pills.last, matching: find.text("high")), findsOneWidget);
+      expect(tester.getSize(pills.last).width, lessThan(tester.getSize(pills.first).width));
+      expect(find.descendant(of: find.byType(ReadOnlyAgentModelPills), matching: find.byType(InkWell)), findsNothing);
     });
 
     testWidgets("sits above a centred transcript column", (tester) async {

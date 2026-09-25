@@ -16,6 +16,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "composer_surface_style.dart";
 import "model_picker.dart";
 
 /// Composer header exposing the available agent / model / variant selections
@@ -96,14 +97,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     // One agent is no choice: the entry appears only when there is another.
     final hasAgentSelection = widget.agents.length > 1 && selectedAgent != null;
     final compact = widget.compact;
-    Widget slot(Widget menu) => compact
-        ? Flexible(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 240),
-              child: IntrinsicWidth(child: menu),
-            ),
-          )
-        : Expanded(child: menu);
+    Widget slot(Widget menu) => _pickerSlot(compact: compact, child: menu);
     final selectors = [
       if (hasAgentSelection)
         slot(
@@ -151,19 +145,82 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
   }
 }
 
+/// What a session that cannot prompt ran with, where its composer would sit:
+/// the [AgentModelButtons] pills, showing their values without opening any
+/// picker. A value that is unknown leaves its pill out.
+class const ReadOnlyAgentModelPills({
+  super.key,
+  required final List<AgentInfo> agents,
+  required final String? agent,
+  required final List<ProviderInfo> providers,
+  required final AgentModel? model,
+
+  /// Whether each pill hugs its label at the leading edge (pointer shells)
+  /// instead of sharing the strip's width equally (touch shells).
+  required final bool compact,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final agent = this.agent;
+    final model = this.model;
+    final variant = model?.variant;
+    Widget pill({required IconData icon, required String label}) => _pickerSlot(
+      compact: compact,
+      child: _pickerButton(
+        collapsible: !compact,
+        leadingIcon: icon,
+        label: label,
+        surfaceStyle: PregoComposerSurfaceStyle.subtle,
+        onPressed: null,
+      ),
+    );
+    final pills = [
+      // As in the composer, a harness with a single agent has none to name.
+      if (agents.length > 1 && agent != null) pill(icon: TablerRegular.robot, label: agent),
+      if (model != null)
+        pill(
+          icon: TablerRegular.cpu,
+          label: _resolveModelName(context, providers: providers, selected: model),
+        ),
+      if (variant != null) pill(icon: TablerRegular.gauge, label: variant),
+    ];
+    if (pills.isEmpty) return const SizedBox.shrink();
+    return DecoratedBox(
+      decoration: composerScrimDecoration(prego: context.prego),
+      child: Padding(
+        padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
+        child: Row(spacing: 8, children: pills),
+      ),
+    );
+  }
+}
+
+/// A pill's share of the strip: a pointer (compact) pill hugs its label up to a
+/// cap, while touch pills split the width equally.
+Widget _pickerSlot({required bool compact, required Widget child}) {
+  if (!compact) return Expanded(child: child);
+  return Flexible(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 240),
+      child: IntrinsicWidth(child: child),
+    ),
+  );
+}
+
 /// A picker's glyphs, caret and padding take about 68 points; below this width
 /// its label would show only a few characters.
 const double _minLabelledPickerWidth = 96;
 
 /// The pill for one picker. A [collapsible] (touch) pill shares the row's width
 /// and drops to its glyph when its share is too narrow for a readable label.
-/// Pointer pills size to their label, so they never collapse.
+/// Pointer pills size to their label, so they never collapse. Without
+/// [onPressed] the pill only shows its value.
 Widget _pickerButton({
   required bool collapsible,
   required IconData leadingIcon,
   required String label,
   required PregoComposerSurfaceStyle surfaceStyle,
-  required VoidCallback onPressed,
+  required VoidCallback? onPressed,
 }) {
   Widget pill({required bool showLabel}) => PregoPickerButton(
     leadingIcon: leadingIcon,
