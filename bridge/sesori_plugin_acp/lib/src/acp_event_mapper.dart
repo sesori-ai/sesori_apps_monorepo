@@ -1359,6 +1359,7 @@ class AcpEventMapper({
       sessionID: sessionId,
       messageID: messageId,
       tool: tool,
+      kind: _contentMapper.toolKind(tool: tool),
       state: state,
     );
   }

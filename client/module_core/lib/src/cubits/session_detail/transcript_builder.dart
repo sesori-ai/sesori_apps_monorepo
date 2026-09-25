@@ -9,9 +9,14 @@ enum TranscriptStepStatus() {
   failed,
 }
 
-/// What a summary counts, in the order its kinds first appear.
+/// What a summary counts, in the order its kinds first appear. Tool calls count
+/// by the kind their plugin reported; [tool] holds the rest as plain steps.
 enum TranscriptStepKind() {
   thinking,
+  read,
+  edit,
+  command,
+  search,
   tool,
   subAgent,
 }
@@ -45,7 +50,13 @@ final class const TranscriptToolStep({
   String get id => part.id;
 
   @override
-  TranscriptStepKind get kind => TranscriptStepKind.tool;
+  TranscriptStepKind get kind => switch (part.kind) {
+    ToolKind.read => TranscriptStepKind.read,
+    ToolKind.edit => TranscriptStepKind.edit,
+    ToolKind.command => TranscriptStepKind.command,
+    ToolKind.search => TranscriptStepKind.search,
+    ToolKind.other || ToolKind.unknown => TranscriptStepKind.tool,
+  };
 }
 
 final class const TranscriptSubAgentStep({

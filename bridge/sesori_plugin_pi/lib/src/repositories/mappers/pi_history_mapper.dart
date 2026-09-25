@@ -13,6 +13,7 @@ import "../../api/models/pi_session_history_dto.dart";
 import "../../models/pi_assistant_stop_reason.dart";
 import "pi_message_identity_builder.dart";
 import "pi_persisted_user_text_codec.dart";
+import "pi_tool_kind_mapper.dart";
 
 final class PiHistoryMapper({
   required final String pluginId,
@@ -189,6 +190,7 @@ final class PiHistoryMapper({
               sessionID: sessionId,
               messageID: messageId,
               tool: toolCall.name,
+              kind: PiToolKindMapper.map(name: toolCall.name),
               state: PluginToolState(
                 status: PluginToolStatus.pending,
                 title: titleForToolCall(toolCall: toolCall),
@@ -756,6 +758,7 @@ final class PiHistoryMapper({
           sessionID: sessionId,
           messageID: messageId,
           tool: tool,
+          kind: PiToolKindMapper.map(name: tool),
           state: PluginToolState(
             status: status,
             title: title,
