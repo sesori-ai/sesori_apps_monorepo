@@ -78,6 +78,10 @@ Confirmed from code, with one live check left for step 4.
   real Apple sign-in from a macOS desktop dev build against the deployed auth
   server, and record it in `steps/step-04.md`. If the deployed server rejects
   it, stop step 4's Apple button and ask the user; the rest of step 4 proceeds.
+  *Step 4 outcome:* the gate was narrowed to an unauthenticated
+  `/auth/apple/init` probe for `app_macos`, which returned an Apple authorize
+  URL, so the button shipped. The full sign-in waits for the user's Apple ID
+  and is covered by the step 8 macOS row ([step 4](steps/step-04.md)).
 
 ## Decisions
 
