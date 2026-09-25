@@ -497,3 +497,7 @@ or successful build is not native authorization, migration or distribution proof
 - Native-capability implementation review `12180381-83ef-42c8-9963-633f1e74f283`
   approved exact range `d07c69d..b234217` (all 26 paths) without findings. Consumer
   cutover, migration invocation and actual native qualification remain separate.
+- Startup-recovery implementation review `324bf4c7-5bc4-4cfe-94b1-c56e5d52401e`
+  approved exact range `064dcf8..683077f` (all 12 paths) without findings. The
+  preserved consumer/import-admission successor and native qualification remain
+  outside this approval.

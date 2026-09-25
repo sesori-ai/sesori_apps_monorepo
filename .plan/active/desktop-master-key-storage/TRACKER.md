@@ -3,7 +3,7 @@
 ## Execution
 
 - Status: #1744 merged with 24 passing checks. Extracted recovery foundation
-  passes eight focused tests and three analyses; architecture review pending.
+  passes eight focused tests, three analyses and architecture review.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
@@ -29,7 +29,7 @@
 | 3.d — Cached shared secrets | Merged | #1734; 46 shared tests, architecture approval, clean analysis/generation and 24 passing CI checks. |
 | 4.a — Deprecated mobile import | Merged | #1739; 11 recovery tests, three analyses, architecture approval and 24 passing CI checks; unwired. |
 | 4.b — Native capabilities and backup | Merged | #1744; 28 tests, two analyses, architecture approval and 24 passing checks; no native qualification. |
-| 4.c — Startup recovery | Verified locally | PR 9; eight tests, three analyses and two font-loaded fixture previews; no storage cutover; review pending. |
+| 4.c — Startup recovery | Architecture approved | PR 9; eight tests, three analyses and two font-loaded fixture previews; no storage cutover. |
 | 4.d — Both-client cutover | Local checkpoint | PR 10; preserved `ea7550e`, to reconcile after recovery foundation merges. |
 | 5 — Regression reconciliation | Not started | PR 11; behavior docs also accompany their implementation. |
 | 6 — Required qualification/retirement | Not started | PR 12; plan remains active until recorded mobile + desktop matrix passes. |
@@ -168,6 +168,8 @@
   cutover. Shared UI, mobile and desktop analyses pass; localization is generated.
   Two additional font-loaded fixture previews were inspected and published on
   `pr-media` (`a6efba6`), with no account content or real app/service launch.
+  Architecture review `324bf4c7-5bc4-4cfe-94b1-c56e5d52401e` approved exact
+  `064dcf8..683077f` (12 paths, 274 lines) without findings; successor excluded.
 - None of this evidence establishes released-mobile migration, mobile
   backup/restore, real credential behavior, packaged replacement or actual
   prompt counts. Those gates remain.
