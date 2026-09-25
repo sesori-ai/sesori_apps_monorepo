@@ -1189,6 +1189,56 @@ void main() {
     expect(find.bySemanticsLabel("session-1, 3h ago"), findsOneWidget);
   });
 
+  testWidgets("a scheduled auto-continuation replaces the time unless the session runs", (tester) async {
+    final updated = DateTime.now().subtract(const Duration(hours: 3)).millisecondsSinceEpoch;
+    final continueAt = DateTime.now().add(const Duration(minutes: 1)).millisecondsSinceEpoch;
+    Session session({required String id, required bool enabled}) => _session(id: id).copyWith(
+      time: SessionTime(created: 1, updated: updated, archived: null),
+      autoContinuation: SessionAutoContinuationView(
+        enabled: enabled,
+        availability: AutoContinuationAvailability.conditional,
+        status: SessionAutoContinuationStatus.resetKnown(resetAt: continueAt, continueAt: continueAt),
+      ),
+    );
+    final sessions = [
+      session(id: "scheduled", enabled: true),
+      _session(id: "older-bridge").copyWith(time: SessionTime(created: 1, updated: updated, archived: null)),
+      session(id: "offered", enabled: false),
+      session(id: "running", enabled: true),
+    ];
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: const {
+            "running": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+
+    final scheduledRow = find.byKey(const ValueKey("sidebar-session-project-1-scheduled"));
+    expect(find.descendant(of: scheduledRow, matching: find.textContaining(":")), findsOneWidget);
+    expect(find.descendant(of: scheduledRow, matching: find.byIcon(TablerRegular.clock)), findsOneWidget);
+    expect(find.descendant(of: scheduledRow, matching: find.text("3h")), findsNothing);
+    expect(find.bySemanticsLabel(RegExp("^scheduled, Resumes at ")), findsOneWidget);
+    // Only an enabled preference is a schedule; a bare offer keeps the time.
+    final offeredRow = find.byKey(const ValueKey("sidebar-session-project-1-offered"));
+    expect(find.descendant(of: offeredRow, matching: find.text("3h")), findsOneWidget);
+    expect(find.descendant(of: offeredRow, matching: find.byIcon(TablerRegular.clock)), findsNothing);
+    // Running wins, in the project and in Activity.
+    expect(find.bySemanticsLabel(RegExp("running.*Resumes")), findsNothing);
+    // An older bridge sends no view, and the row stays as it was.
+    final olderRow = find.byKey(const ValueKey("sidebar-session-project-1-older-bridge"));
+    expect(find.descendant(of: olderRow, matching: find.text("3h")), findsOneWidget);
+    expect(find.byIcon(TablerRegular.clock), findsOneWidget);
+  });
+
   testWidgets("drag resizes immediately, persists on end, and double-click resets", (tester) async {
     await tester.pumpWidget(app(state: running));
     final gesture = await tester.startGesture(tester.getCenter(resize));

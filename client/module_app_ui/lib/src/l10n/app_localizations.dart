@@ -3139,6 +3139,18 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get sessionListRunning;
 
+  /// Shown on a session row, in place of its last-activity time, while the bridge has scheduled an automatic continuation after a quota reset. The time is local, with the date only when it is not today.
+  ///
+  /// In en, this message translates to:
+  /// **'Resumes {time}'**
+  String sessionListResumes(String time);
+
+  /// Screen-reader and tooltip wording for a session row whose automatic continuation is scheduled; the time includes the date.
+  ///
+  /// In en, this message translates to:
+  /// **'Resumes at {time}'**
+  String sessionListResumesAtDescription(String time);
+
   /// Screen-reader label for a session with unopened agent activity; the visual signal is the resting sparkle
   ///
   /// In en, this message translates to:

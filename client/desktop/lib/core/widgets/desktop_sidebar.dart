@@ -995,8 +995,16 @@ class const _SidebarActivitySessionRow({
     );
     // A running session is happening now; its spinning sparkle says so.
     final updatedAt = item.isRunning ? null : item.session.time?.updated;
+    final resumeAt = _scheduledResumeAt(session: item.session, awaiting: item.isAwaitingInput, running: item.isRunning);
     // The row's "3h" is a glance mark; the label says it in full.
-    final description = [identity, ...statuses, if (updatedAt != null) context.formatTimestamp(updatedAt)].join(", ");
+    final description = [
+      identity,
+      ...statuses,
+      if (resumeAt != null)
+        sessionScheduledResumeDescription(loc: context.loc, continueAt: resumeAt)
+      else if (updatedAt != null)
+        context.formatTimestamp(updatedAt),
+    ].join(", ");
     return DesktopSidebarPhaseBuilder(
       expansion: expansion,
       builder: (context, phase) {
@@ -1036,19 +1044,10 @@ class const _SidebarActivitySessionRow({
                   ),
                 ),
               );
-        final time = updatedAt == null || phase == DesktopSidebarPhase.rail
+        final trailing = _sessionRowTime(context: context, resumeAt: resumeAt, updatedAt: updatedAt);
+        final time = trailing == null || phase == DesktopSidebarPhase.rail
             ? null
-            : FadeTransition(
-                opacity: expansion,
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                  child: Text(
-                    context.formatTimestampCompact(ms: updatedAt),
-                    maxLines: 1,
-                    style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
-                  ),
-                ),
-              );
+            : FadeTransition(opacity: expansion, child: trailing);
         return PregoAnchorMenu(
           flat: true,
           menuWidth: 220,
@@ -1085,7 +1084,12 @@ class const _SidebarActivitySessionRow({
                         children: [
                           signals,
                           ?labels,
-                          if (time != null && _rowFitsTime(context: context, width: constraints.maxWidth)) time,
+                          if (time != null && _rowFitsTime(context: context, width: constraints.maxWidth))
+                            // A resume time is longer than "3h"; it never takes the title's half.
+                            ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: constraints.maxWidth / 2),
+                              child: time,
+                            ),
                         ],
                       ),
                     ),
@@ -1098,6 +1102,33 @@ class const _SidebarActivitySessionRow({
       },
     );
   }
+}
+
+/// When a quiet session row resumes on its own. Waiting and running outrank a
+/// scheduled continuation.
+int? _scheduledResumeAt({required Session session, required bool awaiting, required bool running}) =>
+    awaiting || running ? null : sessionScheduledResumeAt(view: session.autoContinuation);
+
+/// A session row's trailing mark: when it resumes, else when it last changed.
+Widget? _sessionRowTime({required BuildContext context, required int? resumeAt, required int? updatedAt}) {
+  final prego = context.prego;
+  final Widget child;
+  if (resumeAt != null) {
+    // The sidebar is narrow: the clock says "resumes"; the row's label says it in full.
+    child = SessionScheduledResume(continueAt: resumeAt, labelled: false);
+  } else if (updatedAt != null) {
+    child = Text(
+      context.formatTimestampCompact(ms: updatedAt),
+      maxLines: 1,
+      style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+    );
+  } else {
+    return null;
+  }
+  return Padding(
+    padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+    child: child,
+  );
 }
 
 /// Whether a row this wide has room for its time beside the title. The
@@ -1123,13 +1154,17 @@ class const _SidebarSessionRow({
     final awaiting = entry.isAwaitingInput(session: session);
     // A running session is happening now; its spinning sparkle says so.
     final updatedAt = running ? null : session.time?.updated;
+    final resumeAt = _scheduledResumeAt(session: session, awaiting: awaiting, running: running);
     final description = [
       session.title ?? context.loc.sessionListUntitled,
       if (awaiting) context.loc.sessionListAwaitingInput,
       if (running) context.loc.projectListRunning(1),
       if (unseen) context.loc.projectListNewActivity,
       // The row's "3h" is a glance mark; the label says it in full.
-      if (updatedAt != null) context.formatTimestamp(updatedAt),
+      if (resumeAt != null)
+        sessionScheduledResumeDescription(loc: context.loc, continueAt: resumeAt)
+      else if (updatedAt != null)
+        context.formatTimestamp(updatedAt),
     ].join(", ");
     // The status column sits under the project's avatar.
     final signals = SizedBox(
@@ -1150,16 +1185,7 @@ class const _SidebarSessionRow({
         style: _sessionTitleStyle(context: context, unseen: unseen),
       ),
     );
-    final time = updatedAt == null
-        ? null
-        : Padding(
-            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-            child: Text(
-              context.formatTimestampCompact(ms: updatedAt),
-              maxLines: 1,
-              style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
-            ),
-          );
+    final time = _sessionRowTime(context: context, resumeAt: resumeAt, updatedAt: updatedAt);
     return PregoAnchorMenu(
       flat: true,
       menuWidth: 220,
@@ -1199,7 +1225,12 @@ class const _SidebarSessionRow({
                       signals,
                       gap,
                       title,
-                      if (time != null && _rowFitsTime(context: context, width: constraints.maxWidth)) time,
+                      if (time != null && _rowFitsTime(context: context, width: constraints.maxWidth))
+                        // A resume time is longer than "3h"; it never takes the title's half.
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: constraints.maxWidth / 2),
+                          child: time,
+                        ),
                     ],
                   ),
                 ),

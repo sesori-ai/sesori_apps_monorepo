@@ -5,6 +5,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "pr_status_row.dart";
+import "session_scheduled_resume.dart";
 
 /// Builds the long-press actions for a session row. It is a builder rather than
 /// a ready-made list because the entries are owned by the screen's action
@@ -23,7 +24,8 @@ typedef SessionOpenedCallback = void Function({required Session session});
 /// an agent works and rests solid — the same "new activity" mark the project
 /// list uses — when the session has activity the user hasn't opened; an amber
 /// dot means it waits for the user. A quiet session leaves the slot empty, so
-/// titles still line up. The time always shows at the trailing edge. States
+/// titles still line up. The time always shows at the trailing edge; a quiet
+/// session with a scheduled auto-continuation shows when it resumes. States
 /// that need words lead the meta line in their colour.
 ///
 /// Tapping opens the session; long-pressing — or right-clicking with a mouse —
@@ -273,8 +275,18 @@ class const SessionTile({
     );
   }
 
-  /// When the session last changed, at the end of the title line.
+  /// When the session last changed, at the end of the title line, or when a
+  /// quiet session will continue on its own. Waiting and running outrank a
+  /// scheduled continuation.
   Widget? _time({required BuildContext context}) {
+    if (!awaitingInput && !isRunning) {
+      if (sessionScheduledResumeAt(view: session.autoContinuation) case final continueAt?) {
+        return Padding(
+          padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+          child: SessionScheduledResume(continueAt: continueAt, labelled: true),
+        );
+      }
+    }
     final prego = context.prego;
     final updatedAt = session.time?.updated;
     if (updatedAt == null) return null;

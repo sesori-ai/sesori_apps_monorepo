@@ -8,7 +8,8 @@ unknown reset. The headless bridge persists session opt-in, exposes
 `PATCH /session/auto-continuation`, and sends one ordinary `Continue.` after
 a known reset plus two minutes. Phone and desktop chat share an inline opt-in
 hint, a notice shown only while a continuation is due or needs explaining, a
-quiet model-row chip while it is merely enabled, and a top-right menu toggle. Live
+quiet model-row chip while it is merely enabled, and a top-right menu toggle.
+Session lists show when a scheduled continuation resumes. Live
 provider and platform verification remains in the
 [active plan](../../.plan/active/quota-auto-continuation/PLAN.md).
 
@@ -101,6 +102,16 @@ provider and platform verification remains in the
   preference. An already-submitted prompt cannot be retracted by disabling.
 - An older bridge without the view exposes an unavailable menu entry with an
   update explanation. Read-only and archived chats do not expose mutation controls.
+- Session rows (the shared `SessionTile` on phone and desktop project lists, and
+  both desktop sidebar rows) replace their relative time with a clock and
+  "Resumes <time>" (the narrow sidebar shows only the clock and time) while the
+  view is enabled, its availability is not unavailable and its status is a
+  known reset. The time is local, with the date
+  only when it is not today; the row's assistive label and sidebar tooltip say
+  "Resumes at <date and time>". Awaiting input and running keep their
+  precedence. Paused, unknown-reset and failed states stay inside the session.
+  The row follows `session.updated`; it runs no timer. An older bridge's `null`
+  view leaves the row unchanged.
 
 ## Coverage Worth Running
 
@@ -131,6 +142,9 @@ provider and platform verification remains in the
   The notice visibility table per status and preference, the chip menu's
   Disable and subtitles, and the phone body test's chip-to-card handoff.
   Phone and desktop screen tests exercise their actual top-right menu wiring.
+- **L1:** `SessionTile` states and desktop cockpit shell tests: a scheduled row
+  shows the resume time and full label; running, waiting, disabled, unavailable
+  and `null` views keep the relative time.
 - **L3 — live plugin:** For each advertised harness/provider case, use a naturally
   observed terminal quota and usable reset to verify opt-in → post-reset ordinary
   `Continue.` acceptance. Never deliberately exhaust an account. Synthetic
@@ -178,6 +192,8 @@ reported as a client end-to-end or live-provider pass.
 - The card floats while nothing is due, a due/paused/failed state hides it, or
   an enabled preference in an interactive chat with a composer shows neither
   the card nor the chip.
+- A session row shows a resume time while running, waiting, disabled or
+  paused, or a scheduled row keeps showing only its last-activity time.
 - The checked menu state cannot be disabled after support becomes unavailable,
   or archived/route-read-only chat surfaces expose mutation controls. An
   unavailable-harness chat must still allow disabling an existing preference.
@@ -196,5 +212,6 @@ for the current provider/format/version scope and unverified adapters.
   `SessionContinuationRepository`, `SessionViewService`, the setting route and
   composed event/handoff tests under `bridge/app`.
 - Client: `SessionAutoContinuationService`, `SessionDetailCubit`, shared
-  `SessionAutoContinuationNotice`, `SessionAutoContinuationChip` and menu, with focused service/cubit/widget
+  `SessionAutoContinuationNotice`, `SessionAutoContinuationChip` and menu,
+  `SessionScheduledResume` on session rows, with focused service/cubit/widget
   tests under `client/module_core` and `client/module_app_ui`.
