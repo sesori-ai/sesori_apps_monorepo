@@ -2,7 +2,7 @@
 
 ## Execution
 
-- Status: shared typed persistence implemented and locally verified; implementation review pending.
+- Status: shared typed persistence verified and architecture-approved; publishing Step 2.
 - Plan PR: [#1698](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1698), merged.
 - Branch: `sesori/desktop-master-key-storage-core`.
 - Use the supplied worktree only; one open PR and at most one local successor.
@@ -12,7 +12,7 @@
 | Step | State | PR / evidence |
 |---|---|---|
 | 1 — Reviewed Drift plan | Merged | #1698; both reviews' concrete findings applied without a third review. |
-| 2 — Shared typed persistence contracts | In progress | 10 tests and owning-package analysis pass; unwired, review pending. |
+| 2 — Shared typed persistence contracts | Ready for PR | 10 tests, clean analysis and architecture approval; still unwired. |
 | 3 — Encrypted Drift desktop boundary | Not started | Database, raw APIs, cipher and key-owning repository. |
 | 4 — Consumer and platform integration | Not started | Mobile native format preserved; desktop adopts Drift. |
 | 5 — Regression/distribution reconciliation | Not started | Behavior-specific docs also change with Step 4. |
@@ -61,6 +61,9 @@
 - Step 2: `dart pub get` and Injectable generation passed. The final package has
   10 passing tests and clean `dart analyze --fatal-infos`; changed workflows pass
   `actionlint`. No native backend, app storage or platform bootstrap is switched.
+- Step 2 architecture review `240d3ac4-7970-4398-9917-2ee9b58e2a79` approved
+  `origin/main..fc8b270` with no findings. The full final response was captured;
+  no report recovery or repeat review was needed.
 - The new package is included in workspace discovery, local Makefile commands,
   shared mobile/client test coverage, and desktop change detection. Existing
   consumers and the original auth-owned interface remain in use until Step 4,

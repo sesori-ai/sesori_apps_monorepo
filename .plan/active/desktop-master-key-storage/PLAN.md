@@ -405,4 +405,6 @@ signed updates, OS credential behavior or public release readiness.
 - The second report's full 5,759-character tool-write content was recovered from
   its session source after a short final acknowledgement replaced the saved
   output. Recovery source/hash are retained in private local artifacts.
-- Implementation reviews: not started.
+- Step 2 implementation review `240d3ac4-7970-4398-9917-2ee9b58e2a79` approved
+  the unwired shared-persistence slice (`origin/main..fc8b270`) with no findings.
+  Desktop storage and integration implementation reviews remain future gates.
