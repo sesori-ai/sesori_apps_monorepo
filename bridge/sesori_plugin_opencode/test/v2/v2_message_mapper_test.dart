@@ -66,6 +66,27 @@ void main() {
     expect(tool.state.output!.length, maxToolOutputLength);
   });
 
+  test("truncates tool output by Unicode scalar without splitting surrogate pairs", () {
+    final prefix = "x" * (maxToolOutputLength - 1);
+    for (final (text, expected) in [
+      ("$prefix🌈!", "$prefix🌈"),
+      ("🌈" * (maxToolOutputLength + 1), "🌈" * maxToolOutputLength),
+    ]) {
+      final result = mapper.mapToolState(
+        toolName: "read",
+        state: SessionMessageToolState.fromJson(<String, dynamic>{
+          "status": "completed",
+          "input": const <String, dynamic>{},
+          "content": <Object>[
+            <String, dynamic>{"type": "text", "text": text},
+          ],
+        }),
+      );
+      expect(result.output, expected);
+      expect(result.output!.runes.length, maxToolOutputLength);
+    }
+  });
+
   test("retains retry metadata without shifting content identities", () {
     for (final count in [1, 2]) {
       final result = mapped(

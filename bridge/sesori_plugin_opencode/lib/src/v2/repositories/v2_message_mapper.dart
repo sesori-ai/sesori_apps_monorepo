@@ -408,7 +408,8 @@ class const V2MessageMapper() {
   List<PluginMessageAttachment> _limitAttachments({required List<PluginMessageAttachment> attachments}) {
     var remaining = maxTranscriptImageCollectionBytes;
     var candidates = 0;
-    return attachments.map((attachment) {
+    var overflowCount = 0;
+    final bounded = attachments.map((attachment) {
       final bytes = switch (attachment) {
         PluginMessageAttachmentInlineImage(:final base64) => decodedBase64Length(base64Data: base64),
         PluginMessageAttachmentRemoteUrl() => 0,
@@ -416,14 +417,19 @@ class const V2MessageMapper() {
       };
       if (bytes == null) return attachment;
       if (++candidates > maxTranscriptImageCandidates || bytes > remaining) {
-        Log.w("OpenCode v2 transcript image budget reached; retaining metadata only");
+        overflowCount++;
         return PluginMessageAttachment.metadata(mime: attachment.mime, filename: attachment.filename);
       }
       remaining -= bytes;
       return attachment;
     }).toList();
+    if (overflowCount > 0) {
+      Log.w("OpenCode v2 transcript image budget reached; retaining metadata for $overflowCount attachments");
+    }
+    return bounded;
   }
 
-  String? _truncate({required String? text}) =>
-      text != null && text.length > maxToolOutputLength ? text.substring(0, maxToolOutputLength) : text;
+  String? _truncate({required String? text}) => text != null && text.length > maxToolOutputLength
+      ? String.fromCharCodes(text.runes.take(maxToolOutputLength))
+      : text;
 }

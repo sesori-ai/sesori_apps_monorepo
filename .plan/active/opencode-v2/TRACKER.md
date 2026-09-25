@@ -4,7 +4,8 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 5.b (PR 6/12) — transcript mapping, in review on `sesori/opencode-v2-step-5b-transcript`.
+- Current step: 5.b (PR 6/12) — transcript mapping, [#1743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1743),
+  on `sesori/opencode-v2-step-5b-transcript`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
   Step 3 [#1716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1716),
@@ -87,8 +88,12 @@
   checkpoint `ef5015416a`, retaining the accepted shell-classification fix without rewriting history.
 - Assistant retry metadata now uses stable `<messageID>:retry` parts; agent-switch records use system-authored
   `<messageID>:0` agent parts. All transcript agent fields use the explicit immutable `V2AgentNames` value.
-  Thirteen transcript tests, full code generation and owning-package analysis pass.
+  Fourteen transcript tests, full code generation and owning-package analysis pass.
   Architecture review approved `93b2ce2` with no findings (826 authored + 97 generated reviewed lines).
+- #1743 review fixes preserve the 500-Unicode-scalar output limit and aggregate budget-overflow diagnostics
+  once per attachment collection. Existing budget fixtures now emit four warnings instead of six.
+  Empty-title/command, empty-output and empty-image fallbacks were declined under the repository's
+  low-damage/producer-evidence policy; no internal missing-data sentinel is introduced by these projections.
   A Dart 3.13.4 probe disproved the data-URL finding: `UriData.contentText` preserves Base64.
 - Duplicate option-label machinery was declined without a concrete producer: the pinned question tool maps
   both native value and label from the same option label. Revisit if a real distinct-value collision is demonstrated.
