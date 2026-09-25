@@ -112,6 +112,42 @@ void main() {
     });
   }
 
+  testWidgets("xs buttons are 30px high with a text-xs label and a 16px icon", (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: Scaffold(
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PregoButtonsSolid(
+                label: "Retry",
+                hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                size: PregoButtonsSolidSize.xs,
+                leadingIcon: TablerRegular.check,
+                onPressed: () {},
+              ),
+              PregoButtonsSolid.iconOnly(
+                leadingIcon: TablerRegular.check,
+                hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                size: PregoButtonsSolidSize.xs,
+                onPressed: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final buttons = find.byType(PregoButtonsSolid);
+    expect(tester.getSize(buttons.first).height, 30);
+    expect(tester.getSize(buttons.last), const Size(30, 30));
+    expect(
+      tester.widget<Text>(find.text("Retry")).style?.fontSize,
+      PregoDesignSystem.light.textTheme.textXs.medium.fontSize,
+    );
+    expect(tester.widgetList<Icon>(find.byType(Icon)).map((icon) => icon.size), everyElement(16));
+  });
+
   testWidgets("a focused button activates on Enter and Space", (tester) async {
     var presses = 0;
     await tester.pumpWidget(
