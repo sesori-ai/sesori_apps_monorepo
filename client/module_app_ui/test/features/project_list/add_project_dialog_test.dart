@@ -748,6 +748,14 @@ void main() {
 
       expect(tester.getSize(_upButton), const Size(40, 40));
 
+      // Screen readers get one button node covering the whole 44 target.
+      final semantics = tester.ensureSemantics();
+      expect(find.bySemanticsLabel("Parent folder"), findsOneWidget);
+      final node = tester.getSemantics(find.bySemanticsLabel("Parent folder"));
+      expect(node, isSemantics(label: "Parent folder", isButton: true, hasTapAction: true));
+      expect(node.rect.size, const Size(44, 44));
+      semantics.dispose();
+
       // A tap just above the drawn button, inside the 44 target, still goes up.
       await tester.tapAt(tester.getCenter(_upButton) - const Offset(0, 21));
       await tester.pumpAndSettle();

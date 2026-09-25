@@ -538,40 +538,40 @@ class const _Breadcrumb({
     // it only shows while hovered or pressed.
     final minTarget = touch ? _touchTarget : _pointerTarget;
 
-    // Icon-only, so the label it drops travels in its semantics. Marked a
-    // button here too, so at a root it reads as a disabled button rather than
-    // as plain text.
-    final upButton = Semantics(
-      label: context.loc.folderBrowserParentFolder,
-      button: true,
-      enabled: onNavigateUp != null,
-      child: PregoButtonsSolid.iconOnly(
-        leadingIcon: TablerRegular.arrow_up,
-        hierarchy: PregoButtonsSolidHierarchy.secondary,
-        // md is 40 tall, with the touch target padded out below; sm is 36,
-        // over the pointer one.
-        size: touch ? PregoButtonsSolidSize.md : PregoButtonsSolidSize.sm,
-        onPressed: onNavigateUp,
-      ),
+    final upButton = PregoButtonsSolid.iconOnly(
+      leadingIcon: TablerRegular.arrow_up,
+      hierarchy: PregoButtonsSolidHierarchy.secondary,
+      // md is 40 tall, with the touch target padded out below; sm is 36,
+      // over the pointer one.
+      size: touch ? PregoButtonsSolidSize.md : PregoButtonsSolidSize.sm,
+      onPressed: onNavigateUp,
     );
 
     return Padding(
       padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl, bottom: PregoSpacing.md),
       child: Row(
         children: [
-          if (touch)
-            // A tap just outside the drawn button still opens the parent.
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              excludeFromSemantics: true,
-              onTap: onNavigateUp,
-              child: SizedBox.square(
-                dimension: _touchTarget,
-                child: Center(child: upButton),
-              ),
-            )
-          else
-            upButton,
+          // Icon-only, so the label it drops travels in its semantics. Marked
+          // a button here too, so at a root it reads as a disabled button
+          // rather than as plain text. Wrapping the padded touch area makes
+          // the one semantics node as large as the tap target.
+          Semantics(
+            label: context.loc.folderBrowserParentFolder,
+            button: true,
+            enabled: onNavigateUp != null,
+            child: touch
+                // A tap just outside the drawn button still opens the parent.
+                ? GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    excludeFromSemantics: true,
+                    onTap: onNavigateUp,
+                    child: SizedBox.square(
+                      dimension: _touchTarget,
+                      child: Center(child: upButton),
+                    ),
+                  )
+                : upButton,
+          ),
           // Start-aligned while it fits; once it overflows, the scroll view
           // fills the rest of the row and the reverse scroll keeps the current
           // folder in view.
