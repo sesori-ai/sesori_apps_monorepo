@@ -332,6 +332,33 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("a step that finishes before it has eased in folds straight into the summary", (tester) async {
+    List<MessagePart> parts({required ToolStatus last}) => [
+      _tool(id: "t1", name: "read", status: ToolStatus.completed),
+      _tool(id: "t2", name: "bash", status: last),
+    ];
+    await tester.pumpWidget(
+      _app(
+        group: _group(parts: parts(last: ToolStatus.completed).take(1).toList()),
+      ),
+    );
+    await tester.pumpWidget(
+      _app(
+        group: _group(parts: parts(last: ToolStatus.running)),
+      ),
+    );
+    await tester.pumpWidget(
+      _app(
+        group: _group(parts: parts(last: ToolStatus.completed)),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpAndSettle();
+    expect(find.text("bash"), findsNothing);
+    expect(find.text("2 steps"), findsOneWidget);
+  });
+
   testWidgets("reduced motion folds a finished row and changes the count at once", (tester) async {
     List<MessagePart> parts({required ToolStatus last}) => [
       _tool(id: "t1", name: "read", status: ToolStatus.completed),

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:material_ui/material_ui.dart";
 
 import "../../../extensions/build_context_x.dart";
@@ -75,7 +77,13 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
     controller
       ..addListener(() => setState(() {}))
       ..addStatusListener((status) {
-        if (status.isDismissed && widget.exiting) widget.onExited?.call();
+        // In a microtask: a row that leaves before it has eased in dismisses
+        // at once, mid-build, when its parent cannot drop it yet.
+        if (status.isDismissed && widget.exiting) {
+          scheduleMicrotask(() {
+            if (mounted && widget.exiting) widget.onExited?.call();
+          });
+        }
         // A settled row gives its controller back; leaving makes a new one.
         if (status.isCompleted) setState(_release);
       });
