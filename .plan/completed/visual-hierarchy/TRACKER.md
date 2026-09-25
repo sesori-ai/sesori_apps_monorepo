@@ -65,7 +65,7 @@ plans; they do not block step 49.
 | [x] | 35 | `visual-hierarchy/modal-lint` | [35/41](#pr-titles) | ≤ 600 | done |
 | [x] | 36 | `visual-hierarchy/compaction-row` | [36/41](#pr-titles) | ≤ 900 | done |
 | [ ] | 37 | `visual-hierarchy/turn-navigation` | [37/41](#pr-titles) | — | carried out of the plan |
-| [ ] | 38 | `desktop-sign-in/plan` | [38/41](#pr-titles) | — | carried out of the plan |
+| [x] | 38 | `desktop-sign-in/plan` | [38/50](#pr-titles) | ≤ 600 | done: plan raised as `desktop-sign-in` (direction A) |
 | [ ] | 39 | `visual-hierarchy/header-backdrop` | [39/41](#pr-titles) | — | dropped |
 | [x] | 40 | `visual-hierarchy/folder-up-size` | [40/49](#pr-titles) | ≤ 150 | done |
 | [x] | 41 | `visual-hierarchy/recovery-card` | [41/49](#pr-titles) | ≤ 300 | done |
@@ -80,9 +80,11 @@ plans; they do not block step 49.
 | [x] | 49 | `visual-hierarchy/retire` | [49/50](#pr-titles) | ≤ 300 | done |
 
 Step 49 is done through the acceptance of its unexecuted matrix cells, not a
-claim that every cell passed. Steps 37 and 38 are not done: they left the
-series undelivered and become their own plans once the user picks a
-direction (see `steps/step-49.md`).
+claim that every cell passed. Step 37 is not done: it left the series
+undelivered and becomes its own plan once the user picks a direction (see
+`steps/step-49.md`). Step 38 finished after retirement: its PR raised the
+`desktop-sign-in` plan with direction A (see `steps/step-38.md`); the
+rebuild itself runs under that plan.
 
 ## Round 2 Answers
 
@@ -160,7 +162,7 @@ Answered 2026-09-23; every answer took the recommended option.
 35. `⚙️ [visual-hierarchy] Enforce the one modal entry point with a lint rule [step 35/41]`
 36. `🚧 [visual-hierarchy] Show compaction as its own row with the summary in a modal [step 36/41]`
 37. `🌱 [visual-hierarchy] Prototype turn navigation for discussion [step 37/41]`
-38. `🌱 [visual-hierarchy] Plan the desktop sign-in rebuild [step 38/41]`
+38. `🌿 [visual-hierarchy] Plan the desktop sign-in rebuild [step 38/50]`
 39. `⚙️ [visual-hierarchy] Give headers a soft backdrop [step 39/41]`
 40. `🌱 [visual-hierarchy] Shrink the phone folder up button [step 40/49]`
 41. `🌿 [visual-hierarchy] Polish the desktop bridge recovery card [step 41/49]`
