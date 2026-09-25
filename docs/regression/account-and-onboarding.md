@@ -17,6 +17,10 @@ participates.
   Cancel is unaffected. A browser that fails to open keeps the attempt waiting
   and says so instead of failing. A declined page fails as declined and a
   server-expired session ends as timed out.
+- Email sign-in uses one shared form on every shell that offers it: it
+  validates before submitting, shows a failure inline next to the fields, and
+  marks no field with a required asterisk. Every shell shows the same message
+  for each login failure reason.
 - Startup routing uses local session state only, with no network work at splash.
 - Tokens live in secure storage with one writer, refresh before expiry, and are
   cleared on logout; the connection follows logout. Startup reads stored tokens

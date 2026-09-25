@@ -458,6 +458,20 @@ display-ready agent names with plugin-local native-ID lookup, plugin-neutral ses
 JSON, model/variant defaults and form field ordering. The form examples are
 source-derived; this coverage does not prove native turn or form execution.
 
+Inactive v2 transcript coverage retains ordinal text/reasoning IDs, native tool IDs,
+stable retry IDs, agent-switch notices and display-ready attribution. It verifies
+terminal tool/compaction/shell states, shell-only command projection, preserved error
+text, Unicode-scalar output truncation, inline-image byte limits and combined inline/remote
+candidate limits. Budget overflow logs once per collection. File and credentialed URLs
+remain metadata-only. These cases are source-derived, not native turns.
+
+Inactive v2 repository coverage composes the API and mappers: project-scoped root
+paging across worktrees, canonical identity versus opened directory, session-derived
+activity, directory-specific agent names, global active IDs and retained native form
+constraints. It checks stale-selection refusal, native defaults, typed write bodies,
+permission decisions and unchanged propagation of history failures. Fake-API and
+HTTP-boundary tests do not prove native write, turn or reconnect behavior.
+
 ## Exploration Guidance
 
 Vary which harness runs first and which stays disabled, and the configuration: default

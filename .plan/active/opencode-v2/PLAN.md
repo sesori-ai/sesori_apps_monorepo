@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-v2`
-- **Status:** Active; Steps 1–4 merged, Step 5.a catalog normalization in review (#1733, PR 5/12).
+- **Status:** Active; Steps 1–4 and 5.a–b merged, Step 5.c repository integration in review (PR 7/12).
 - **Plan date:** 2026-09-25
 - **Implementation base:** `main` at `fed841c2f9`
 - **Trigger:** issue #1677 — OpenCode 2.0.11 on PATH fails cold start with `FormatException ... <!doctype html>`.
@@ -180,33 +180,42 @@ no history rewrite, compatibility shim or new mutable owner is needed. Count all
      tools retain their native tool IDs. Apply the catalog's agent-name lookup at projection boundaries.
    - Tool state: `streaming` → pending, `running`, `completed`, `error`; shell-command extraction is gated
      on recognized shell tools. Preserve bounded attachments and native errors without payload logging.
-   - Include assistant retry metadata and system-authored agent-switch notices raised during #1733 review.
+   - Include assistant retry metadata (`<messageID>:retry`, independent of content growth) and
+     system-authored agent-switch notices (`<messageID>:0`) raised during #1733 review.
    - Source-derived transcript tests; no caches, timers, persistence or lifecycle owners.
 5.c. **🚧 v2 repository integration (PR 7/12).**
    - `OpenCodeV2Repository` (Api → mapped plugin models) reads projects, sessions, children, messages, agents, models
-     with variants and commands. It also exposes, per directory, active sessions, pending permission requests and
-     pending forms, and every write Step 7 needs:
+     with variants and commands. Root paging uses the native project-ID filter across worktrees; canonical project
+     identity stays separate from an opened directory. Project activity comes only from root sessions.
+   - Active IDs are global; pending permission/form reads remain directory-scoped and retain native constraints
+     for the tracker/validator. The repository exposes every write Step 7 needs:
      - create, prompt, command, interrupt;
-     - rename, delete, worktree delete;
-     - compact, synthetic message;
+     - project/session rename, session delete, worktree delete;
+     - agent/model selection, compact, synthetic message;
      - permission reply, form reply/cancel.
-   - Compose the immutable agent-name lookup from the native catalog for readable selections and native write IDs.
-   - Tests: repository tests over a fake `OpenCodeV2Api`, using the preceding mapper fixtures.
+   - Compose the immutable agent-name lookup from the target directory's catalog for readable selections and
+     native write IDs; reject stale explicit selections before dispatch. Omitted selections retain native defaults.
+   - Complexity budget: three final injected dependencies, no mutable runtime state, caches, timers or new
+     persistence. No obsolete production mechanism is replaced; v1 and the v2 startup refusal remain intact.
+   - Tests: repository tests over a fake `OpenCodeV2Api`, using preceding fixtures, plus scoped root-paging HTTP tests.
 6. **🚧 v2 live events, activity and service.**
    - `V2EventMapper` is stateless:
      - session created/renamed/deleted → `BridgeSseSession*`;
      - execution started/succeeded/failed/interrupted and retry → status;
      - text/reasoning/tool started/delta/ended/success/failed → part updated/delta events with the Step 5 ids;
-     - permission and form events → existing permission/question events.
+     - permission and form events → existing permission/question events;
+     - add `session.agent.selected` to the manifest and reuse the transcript's agent-switch and retry part identities.
    - `OpenCodeV2ActivityTracker` is a standalone tracker with no Api or Repository dependency. It holds active sessions,
      pending permissions and pending forms, and exposes `seed(...)`, `apply(event)` and `reset()`.
-   - `OpenCodeV2Service(repository, tracker)` owns cold start and the reconnect re-fetch: it reads active sessions,
-     pending permissions and pending forms per known directory through the repository and seeds the tracker. It also
-     builds activity summaries, and it never touches `OpenCodeV2Api`.
+   - `OpenCodeV2Service(repository, tracker)` owns cold start and the reconnect re-fetch: it reads global active IDs
+     and pending permissions/forms per known directory through the repository and seeds the tracker. It also builds
+     activity summaries, and it never touches `OpenCodeV2Api`.
    - Tests: event-sequence tests for the mapper/tracker, and service tests over a fake repository.
 7. **🚧 v2 writes and activation.**
    - `OpenCodeV2Service` gains the write flows:
      - create + first prompt; prompt with files; command;
+     - resolve the existing `parentSessionId` creation contract before activation: native `POST /api/session` has
+       no parent field; inspect fork/import semantics rather than silently creating an unrelated root session;
      - interrupt of the root plus active children;
      - rename, delete, worktree delete;
      - compaction (guidance `synthetic` message first, then `compact`);

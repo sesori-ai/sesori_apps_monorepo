@@ -106,6 +106,7 @@ fixture files; never seed or read a personal Keychain/application directory.
 - Pending analytics disable, scoped identity, empty value or diagnostic cause lost.
 - Development consuming production legacy data, consumers starting before import
   completion, or migration/disposal failure preventing safe recovery rendering.
+- Rendering before disposal settles or failure copy exposing payloads.
 
 ## Known Limitations
 

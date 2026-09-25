@@ -2,21 +2,20 @@
 
 ## Execution
 
-- Status: #1739 merged with 24 passing checks. Native capabilities (PR 8)
-  pass 28 focused channel/directory tests, two shell analyses, Android XML
-  configuration validation and architecture review.
+- Status: #1749 merged with 22 passing checks. Reconciling the preserved
+  both-client cutover onto its merged base for PR 10.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
   with a retirement condition and deletion checklist.
-- Current branch: `sesori/desktop-master-key-storage-native-capabilities`, from
-  fixed main `d07c69d` in the supplied worktree. No additional worktree is
-  allowed; no consumer-cutover successor has started.
+- Current branch: `sesori/desktop-master-key-storage-client-cutover`, preserving
+  complete checkpoint `ea7550e` and merging fixed main `33c7815`. No additional
+  worktree is allowed. No regression-reconciliation successor has started.
 - #1717 is closed as superseded, not merged. Its published desktop checkpoint
   `4a27888` and the full shared checkpoint `de38951` remain in history.
-- One open PR and at most one local successor. Current total: **11 PRs** after
-  splitting the 1,611-line combined backend at SQL versus secret ownership.
-  Published series titles are synchronized.
+- One open PR and at most one local successor. Current total: **12 PRs** after
+  splitting the backend at SQL/secret ownership and extracting startup recovery
+  from the 1,650-line consumer cutover. Published titles use the same total.
 - Source of truth: [PLAN.md](PLAN.md). Original directory slug stays stable.
 
 | Milestone | State | PR / evidence |
@@ -28,10 +27,11 @@
 | 3.c — Shared Drift/primitive persistence | Merged | #1729; 29 tests, architecture approval, clean analysis/generation and 25 passing CI checks. |
 | 3.d — Cached shared secrets | Merged | #1734; 46 shared tests, architecture approval, clean analysis/generation and 24 passing CI checks. |
 | 4.a — Deprecated mobile import | Merged | #1739; 11 recovery tests, three analyses, architecture approval and 24 passing CI checks; unwired. |
-| 4.b — Native capabilities and backup | Architecture approved | PR 8; 28 channel/directory tests, two analyses, DB-only Android XML exclusions; no native qualification. |
-| 4.c — Both-client cutover | Not started | PR 9; lockstep consumers, migration/failure startup gate and runtime adapter removal. |
-| 5 — Regression reconciliation | Not started | PR 10; behavior docs also accompany their implementation. |
-| 6 — Required qualification/retirement | Not started | PR 11; plan remains active until recorded mobile + desktop matrix passes. |
+| 4.b — Native capabilities and backup | Merged | #1744; 28 tests, two analyses, architecture approval and 24 passing checks; no native qualification. |
+| 4.c — Startup recovery | Merged | #1749; eight tests, three analyses, architecture approval and 22 passing checks; no storage cutover. |
+| 4.d — Both-client cutover | Reconciling | PR 10; typed consumers, production import admission, native backup exclusions and removal of obsolete runtime adapters. |
+| 5 — Regression reconciliation | Not started | PR 11; behavior docs also accompany their implementation. |
+| 6 — Required qualification/retirement | Not started | PR 12; plan remains active until recorded mobile + desktop matrix passes. |
 
 ## Decisions and code-informed constraints
 
@@ -153,6 +153,24 @@
 - Native-capability review `12180381-83ef-42c8-9963-633f1e74f283` approved exact
   range `d07c69d..b234217`, all 26 paths, without findings. Consumer cutover,
   migration invocation and real native qualification were outside that scope.
+- #1744 merged with current-head Codex complete and no findings; its terminal
+  monitor report recorded 24 passing checks.
+- Complete cutover checkpoint `ea7550e`, based on `064dcf8`: 153 focused cases
+  pass (auth 85, core 46, shared UI 2, mobile 17, desktop 3), with five clean
+  analyses, regenerated DI/localization and Android XML validation. Real SQL/
+  crypto and fake native ports prove startup admission, pre-analytics pending
+  disable, local auth/preferences and cold reopen; no native OS proof follows.
+  Measure: 1,650 lines, 1,545 authored and 105 generated. The recovery foundation
+  and reconciled consumer successor each need independent verification/review.
+- Extracted recovery foundation: two standalone light/dark large-text widget
+  cases and six mobile bootstrap/notification cases pass without the consumer
+  cutover. Shared UI, mobile and desktop analyses pass; localization is generated.
+  Two additional font-loaded fixture previews were inspected and published on
+  `pr-media` (`a6efba6`), with no account content or real app/service launch.
+  Architecture review `324bf4c7-5bc4-4cfe-94b1-c56e5d52401e` approved exact
+  `064dcf8..683077f` (12 paths, 274 lines) without findings; successor excluded.
+- #1749 merged with current-head Codex complete and no findings; its terminal
+  monitor report recorded 22 passing checks. Merged base is `33c7815`.
 - None of this evidence establishes released-mobile migration, mobile
   backup/restore, real credential behavior, packaged replacement or actual
   prompt counts. Those gates remain.

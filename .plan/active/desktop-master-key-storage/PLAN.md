@@ -307,7 +307,7 @@ values are explicitly registered before platform DI from `kReleaseMode` (release
 production; debug/profile development): Injectable module providers reject enum
 return types. Master/directory/source capabilities remain lazy.
 
-With cutover PR 4.c, update the dependency diagram and phase/ownership guidance
+With cutover PR 4.d, update the dependency diagram and phase/ownership guidance
 in `client/AGENTS.md`, `desktop/AGENTS.md`, `module_auth/AGENTS.md` and
 `module_core/AGENTS.md`, alongside actual exports and regenerated DI. Do not
 leave the old 3/4-phase or auth-owned secure-storage descriptions in force.
@@ -322,7 +322,7 @@ WAL/SHM/journal) and old/new plugin credential preferences from cloud/device-
 transfer backup using both supported XML formats, because Keystore keys do not
 transfer with those files. Confirm exact filenames from the pinned plugin. PR
 4.b may exclude only the unused new DB directory; exclusions for the still-active
-old credential preferences wait for the migration/cutover in PR 4.c. Separately,
+old credential preferences wait for the migration/cutover in PR 4.d. Separately,
 PR 3.b immediately disables `resetOnError` on the current mobile native instance,
 so intermediate public builds cannot reset legacy values before import ships;
 the later master-key and temporary source adapters must retain this safety.
@@ -339,7 +339,7 @@ these SharedPreferences names (on-disk `.xml` files): `FlutterSecureStorage`,
 `com.sesori.client.persistence`,
 `FlutterSecureKeyStorage:com.sesori.client.persistence`, and
 `FlutterSecureStorageConfiguration:com.sesori.client.persistence`. Apply those
-credential/config exclusions in PR 4.c, not while old storage is active.
+credential/config exclusions in PR 4.d, not while old storage is active.
 
 Ordinary updates retain data; Android new-device restore starts fresh. A copied
 DB without a usable master must fail explicitly, never silently re-key. Test
@@ -386,7 +386,7 @@ implementation change; consent restoration must precede existing analytics.
 
 Keep this worktree only, one open PR and at most one local successor. The stable
 slug remains `desktop-master-key-storage`; the approved scope is now all native
-clients. Current total: **11 PRs**. #1717 is closed as superseded, not merged.
+clients. Current total: **12 PRs**. #1717 is closed as superseded, not merged.
 Its published branch/review evidence stays intact; never force-push it to fake a
 smaller history. Carry applicable feedback into shared-backend PRs 5/6.
 
@@ -394,21 +394,29 @@ The combined shared port measured 1,611 changed lines before final tracking.
 Split at the existing ownership boundary: schema/direct primitives first,
 cached secret repository second. Both compile independently without a temporary
 adapter, schema, migration or app backend. SQL #1729, cached secrets #1734 and
-deprecated importer #1739 merged. Native capabilities use fixed main `d07c69d`.
+deprecated importer #1739 and native capabilities #1744 merged.
+
+The complete consumer cutover at `ea7550e` (base `064dcf8`) measures 1,650 lines:
+1,545 authored and 105 generated. It passes 153 focused tests and five module/
+shell analyses. Standalone recovery #1749 merged; reconcile the preserved
+consumer checkpoint with fixed main `33c7815`, keeping every storage consumer
+and production import admission atomic. No temporary backend or compatibility
+adapter bridges this split.
 
 | Milestone | Exact PR title | Scope / expected result | Estimate |
 |---|---|---|---|
-| 1 | 🌿 [desktop-master-key-storage] Plan typed Drift desktop persistence [step 1/11] | #1698 merged; original reviewed plan. | Completed |
-| 2 | ⚙️ [desktop-master-key-storage] Add typed client persistence contracts [step 2/11] | #1708 merged; unwired shared contracts. | Completed |
-| 3.a | ⚙️ [desktop-master-key-storage] Add scoped desktop secret encryption [step 3/11] | #1715 merged; unwired cipher foundation. | Completed |
-| 3.b | ⚙️ [desktop-master-key-storage] Share client storage foundations [step 4/11] | #1726 merged; shared cipher/capabilities and Android reset safety; no database cutover. | Completed: 1,260 lines including 13 generated |
-| 3.c | ⚙️ [desktop-master-key-storage] Add shared Drift persistence [step 5/11] | #1729 merged; schema/direct primitives, lazy lifecycle and tests; no shell cutover. | Completed: 1,194 lines (517 authored, 621 generated, 56 lockfile) |
-| 3.d | 🚧 [desktop-master-key-storage] Add cached shared secret storage [step 6/11] | #1734 merged; cached-key repository, encryption/recovery/concurrency tests and docs; no shell cutover. | Completed: 672 lines (655 authored, 17 generated) |
-| 4.a | 🚧 [desktop-master-key-storage] Prepare deprecated mobile storage migration [step 7/11] | #1739 merged; domain keys and deprecated importer with recovery tests; not invoked yet. | Completed: 946 lines (773 authored, 173 generated) |
-| 4.b | 🚧 [desktop-master-key-storage] Provide native client persistence capabilities [step 8/11] | Master-item/directory adapters, unused DB-directory backup exclusion, isolated legacy-source adapter and native capability tests. Existing native-value backup eligibility remains until cutover. | 450–900 authored plus generated DI |
-| 4.c | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 9/11] | All consumers/exports/bootstrap and guidance in lockstep, mobile import/failure gate, old native-preference backup exclusions, runtime adapter removal and native fixtures. Both apps use the same store. | 1,000–1,450 authored plus DI; split further if a clean boundary appears |
-| 5 | 🌿 [desktop-master-key-storage] Complete shared persistence regression documentation [step 10/11] | Reconcile feature/matrix/distribution/support evidence; no additional runtime/database change. | 100–250 authored |
-| 6 | ⚙️ [desktop-master-key-storage] Qualify and retire shared client persistence [step 11/11] | Required full recorded matrix and bounded evidence; retire plan only on pass, not the still-required deprecated importer. | 100–250 authored |
+| 1 | 🌿 [desktop-master-key-storage] Plan typed Drift desktop persistence [step 1/12] | #1698 merged; original reviewed plan. | Completed |
+| 2 | ⚙️ [desktop-master-key-storage] Add typed client persistence contracts [step 2/12] | #1708 merged; unwired shared contracts. | Completed |
+| 3.a | ⚙️ [desktop-master-key-storage] Add scoped desktop secret encryption [step 3/12] | #1715 merged; unwired cipher foundation. | Completed |
+| 3.b | ⚙️ [desktop-master-key-storage] Share client storage foundations [step 4/12] | #1726 merged; shared cipher/capabilities and Android reset safety; no database cutover. | Completed: 1,260 lines including 13 generated |
+| 3.c | ⚙️ [desktop-master-key-storage] Add shared Drift persistence [step 5/12] | #1729 merged; schema/direct primitives, lazy lifecycle and tests; no shell cutover. | Completed: 1,194 lines (517 authored, 621 generated, 56 lockfile) |
+| 3.d | 🚧 [desktop-master-key-storage] Add cached shared secret storage [step 6/12] | #1734 merged; cached-key repository, encryption/recovery/concurrency tests and docs; no shell cutover. | Completed: 672 lines (655 authored, 17 generated) |
+| 4.a | 🚧 [desktop-master-key-storage] Prepare deprecated mobile storage migration [step 7/12] | #1739 merged; domain keys and deprecated importer with recovery tests; not invoked yet. | Completed: 946 lines (773 authored, 173 generated) |
+| 4.b | 🚧 [desktop-master-key-storage] Provide native client persistence capabilities [step 8/12] | #1744 merged; lazy master/directory/source ports and DB-only Android backup exclusion; no shell cutover. | Completed: 590 lines (565 authored, 25 generated) |
+| 4.c | ⚙️ [desktop-master-key-storage] Prepare storage-upgrade recovery [step 9/12] | #1749 merged; localized recovery root and typed bootstrap catch/disposal; no storage cutover. | Completed: 280 lines (261 authored, 19 generated) |
+| 4.d | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 10/12] | All consumers/exports/bootstrap/guidance in lockstep, production import admission, credential backup exclusions, adapter removal and updated native probe. | Preserved checkpoint; approximately 1,470 lines before updated tracking |
+| 5 | 🌿 [desktop-master-key-storage] Complete shared persistence regression documentation [step 11/12] | Reconcile feature/matrix/distribution/support evidence; no additional runtime/database change. | 100–250 authored |
+| 6 | ⚙️ [desktop-master-key-storage] Qualify and retire shared client persistence [step 12/12] | Required full recorded matrix and bounded evidence; retire plan only on pass, not the still-required deprecated importer. | 100–250 authored |
 
 Dependencies follow row order. Generated schema stays with source. No temporary
 schemas, compatibility adapters or incomplete mobile cutover to manufacture a
@@ -490,3 +498,7 @@ or successful build is not native authorization, migration or distribution proof
 - Native-capability implementation review `12180381-83ef-42c8-9963-633f1e74f283`
   approved exact range `d07c69d..b234217` (all 26 paths) without findings. Consumer
   cutover, migration invocation and actual native qualification remain separate.
+- Startup-recovery implementation review `324bf4c7-5bc4-4cfe-94b1-c56e5d52401e`
+  approved exact range `064dcf8..683077f` (all 12 paths) without findings. The
+  preserved consumer/import-admission successor and native qualification remain
+  outside this approval.
