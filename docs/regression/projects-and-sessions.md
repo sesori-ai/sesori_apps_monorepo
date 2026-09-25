@@ -290,7 +290,9 @@ state.
   stored time, then idle rows follow in updated-time date buckets;
   archived rows retain archive-time date buckets. Awaiting-input-only rows stay
   in their updated-time bucket, and missing timestamps use an Unknown date
-  heading rather than an invented epoch.
+  heading rather than an invented epoch. Archiving, deleting or restoring a
+  row animates only that row: its date heading stays in place and leaves or
+  enters only with the first or last row of its group.
 - Above the active session list, on the phone and the split pane alike, chips
   read All, Running and Unread with exact counts from the loaded list and narrow
   it locally without a request. A filter that leaves nothing says so. The chips

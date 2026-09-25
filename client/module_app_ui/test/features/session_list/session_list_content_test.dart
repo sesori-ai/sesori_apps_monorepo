@@ -188,6 +188,33 @@ void main() {
     expect(topOf(tester: tester, text: "Yesterday"), lessThan(topOf(tester: tester, text: "Archived yesterday")));
   });
 
+  testWidgets("archiving the first session of a group keeps its heading in place", (tester) async {
+    final today = atStartOfDay(date: DateTime.now()).add(const Duration(hours: 12));
+    final first = testSession(id: "first", title: "First task", updatedAt: today.millisecondsSinceEpoch);
+    final second = testSession(id: "second", title: "Second task", updatedAt: today.millisecondsSinceEpoch);
+
+    await pumpList(tester: tester, sessions: [first, second], filter: SessionListFilter.active);
+    final heading = tester.element(find.text("Today"));
+    final headingTop = topOf(tester: tester, text: "Today");
+
+    // Mid-transition, only the archived row is closing: the heading is the
+    // same element, alone and unmoved.
+    await pumpList(tester: tester, sessions: [second], filter: SessionListFilter.active);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text("Today"), findsOneWidget);
+    expect(tester.element(find.text("Today")), same(heading));
+    expect(topOf(tester: tester, text: "Today"), headingTop);
+    await tester.pumpAndSettle();
+
+    // Undo re-inserts the row under the same heading.
+    await pumpList(tester: tester, sessions: [first, second], filter: SessionListFilter.active);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text("Today"), findsOneWidget);
+    expect(tester.element(find.text("Today")), same(heading));
+    await tester.pumpAndSettle();
+    expect(topOf(tester: tester, text: "First task"), lessThan(topOf(tester: tester, text: "Second task")));
+  });
+
   for (final filter in [SessionListFilter.active, SessionListFilter.archived]) {
     testWidgets("${filter.name} sessions label missing timestamps without inventing a date", (tester) async {
       final session = testSession(id: "missing-time", title: "Missing timestamp").copyWith(time: null);
