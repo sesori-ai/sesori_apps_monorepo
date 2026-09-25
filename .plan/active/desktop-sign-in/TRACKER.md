@@ -30,7 +30,7 @@ step 38 for the plan PR). Evidence for a finished step lives in
 |---|---|---|---|---|
 | 1 | `desktop-sign-in/plan` | [1](#fixed-pr-titles) | ≤ 600 | — |
 | 2 | `desktop-sign-in/handoff-state` | [2](#fixed-pr-titles) | ≤ 900 | 1 |
-| 3 | `desktop-sign-in/email-form` | [3](#fixed-pr-titles) | ≤ 600 | 1 |
+| 3 | `desktop-sign-in/email-form` | [3](#fixed-pr-titles) | ≤ 600 | 2 |
 | 4 | `desktop-sign-in/layout` | [4](#fixed-pr-titles) | ≤ 1,000 | 2, 3 |
 | 5 | `desktop-sign-in/handoff-card` | [5](#fixed-pr-titles) | ≤ 800 | 4 |
 | 6 | `desktop-sign-in/last-used` | [6](#fixed-pr-titles) | ≤ 500 | 4 |

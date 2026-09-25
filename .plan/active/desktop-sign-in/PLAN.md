@@ -165,15 +165,19 @@ widgets → desktop and phone shells.
   `AuthManager` already computes `expiresAt` and has the descriptor's
   `device.name`. The only consumer is `LoginCubit`.
 - `OAuthFlowProvider.cancelOAuthFlow()` captures the current
-  `_oAuthSessionToken` and `_oAuthSessionGeneration` synchronously when
-  called. Inside the existing mutation lock it clears the pending OAuth
-  storage and releases ownership only if those same values still own the
-  flow, so a cancel queued behind the lock never clears a newer flow the user
-  started meanwhile. The in-flight `pollForResult` then ends at its next
-  ownership check with the existing superseded error, and a late "complete"
-  response cannot save tokens because persistence already requires ownership.
-  No server call: the pending session expires server-side, and nobody else
-  holds its session token.
+  `_oAuthSessionToken` and `_oAuthSessionGeneration` and **releases
+  ownership synchronously**, before awaiting anything. A completion already
+  inside `_persistAuthenticatedResult` re-checks ownership after each of its
+  awaits, so it fails its next check, clears the tokens it wrote and returns
+  false; the only completion that still wins is one that emitted
+  authenticated before Cancel ran, and by then the gate has already replaced
+  the login screen. Afterwards, under the mutation lock, it clears the pending
+  OAuth storage only while no newer flow owns the manager (the in-memory token
+  is still unset) and the stored session token equals the captured one, so a
+  cancel never clears a flow the user started meanwhile. The in-flight
+  `pollForResult` ends at its next ownership check with the existing
+  superseded error. No server call: the pending session expires server-side,
+  and nobody else holds its session token.
 - Denied and server-expired statuses throw typed `OAuthFlowDenied` and
   `OAuthFlowExpired` exceptions (`module_auth/lib/src/models/oauth_flow_errors.dart`,
   exported) instead of `StateError`; each keeps the status context in its
@@ -181,8 +185,12 @@ widgets → desktop and phone shells.
 - `startOAuthFlow` also records the flow's provider next to the session:
   in memory beside `_oAuthSessionToken`, and in `OAuthStorageService`'s
   existing `oauth_provider` slot, which `_clearOAuthStateInMutation` already
-  clears. `pollForResult` reads it from memory, or from storage on the
-  relaunch path. Step 6 uses it to record "Last used".
+  clears. `pollForResult` reads it from memory, or from storage when it
+  resumes a flow whose in-memory ownership was released, which happens on the
+  phone when a backgrounded poll is interrupted and `_onAppResumed` resumes it
+  (`_releaseOAuthSessionIfOwned` runs in the interrupted poll's `finally`).
+  A fresh process never resumes a flow: a new `LoginCubit` has no attempt.
+  Step 6 uses the provider to record "Last used".
 
 ### 2. `module_core`: `LoginCubit` owns the handoff (step 2)
 
@@ -195,25 +203,32 @@ widgets → desktop and phone shells.
   emission, including the phone's resume and interruption paths, carries it.
   The current OAuth attempt holds its handoff once init returns (null for
   email and native Apple attempts, which never poll).
-- `cancel()`: ends the current OAuth attempt, reports the existing
-  `cancelled` failure cause, calls `cancelOAuthFlow()` (a failure there is
-  logged and still ends in idle), and emits idle at once.
+- `cancel()`: ends the current OAuth attempt, reports its terminal failure
+  cause (rule below), calls `cancelOAuthFlow()` (a failure there is logged and
+  still ends in idle), and emits idle at once.
 - `reopenBrowser()`: launches the handoff URL again and re-emits polling with
   the new launch result. The server accepts the same URL until the provider
   callback consumes its state; after that the provider shows its own error
   page and the poll still ends normally.
 - A failed launch emits polling with `browser: failed` and keeps polling
-  (D14). If that attempt then ends by cancel or timeout, it reports the
-  `launch` failure cause, so the funnel keeps meaning "the browser never
-  opened and the user did not recover".
+  (D14).
+- **One terminal-cause rule.** The OAuth attempt records whether any launch
+  (first or reopen) ever succeeded. A cancel or timeout of an attempt whose
+  browser never opened reports `launch`; otherwise a cancel reports
+  `cancelled` and a timeout `timeout`. The cause is chosen once, from that
+  attempt state, before the single terminal report, so it never depends on
+  call order. The funnel keeps meaning "the browser never opened and the
+  user did not recover".
 - `OAuthFlowExpired` → `LoginTimeout`; `OAuthFlowDenied` → new
   `LoginFailedReason.declined`. `LoginFailedReason.browserOpenFailed` is
   removed.
 - Lockstep consumers: the phone login screen and `login_failed_reason_x.dart`
-  drop `browserOpenFailed`; the phone's waiting line shows the existing
-  "couldn't open the browser" copy plus a Cancel link when
-  `browser == failed`. The current desktop screen compiles against the new
-  state and is replaced in steps 4–5.
+  drop `browserOpenFailed` and map `declined`. The phone's waiting line shows
+  a Cancel link in every `LoginPolling` state, because the phone disables its
+  provider buttons while polling and would otherwise trap a user who returns
+  without finishing; the existing "couldn't open the browser" copy appears
+  only when `browser == failed`. The current desktop screen compiles against
+  the new state and is replaced in steps 4–5.
 
 ### 3. `module_app_ui`: shared email form (step 3)
 
@@ -243,8 +258,9 @@ widgets → desktop and phone shells.
 - `_DesktopHandoffCard` renders `LoginPolling.handoff` in place of the provider
   list: provider, device name, countdown, Open again, Copy link, Cancel. The
   countdown is a one-second ticker inside the card's own state; Copy link uses
-  the clipboard directly. Browser-failed shows mock 2b's copy with Copy link
-  and Try again (`reopenBrowser`). Timeout and failure show an inline notice
+  the clipboard directly. Browser-failed shows the copy under
+  [Approved copy](#approved-copy) with Copy link and Try again
+  (`reopenBrowser`). Timeout and failure show an inline notice
   above the re-enabled buttons with a fixed-height slot, so nothing jumps.
 - All copy moves to `app_en.arb` in `module_app_ui` (English is the only
   locale today).
@@ -271,16 +287,40 @@ widgets → desktop and phone shells.
   `windowHost: getIt()`, and the gate's test fakes follow; `WindowHost` is
   already registered in DI.
 
+## Approved Copy
+
+Literal English copy from the reviewed direction A mocks, recorded here
+because the review page stays local. `{provider}` is GitHub, Apple or Google;
+`{device}` is `OAuthHandoff.deviceName`; `{m:ss}` counts down to
+`OAuthHandoff.expiresAt`. Steps 4–5 add these to `app_en.arb`; wording may be
+polished in review, but not the meaning.
+
+| State | Copy |
+|---|---|
+| Brand panel | "Sesori" · "Watch and steer your coding sessions from your desk or your phone." |
+| Idle (`LoginIdle`) | Title "Sign in" · subtitle "Use the same account as on your phone." · buttons "Continue with GitHub", "Continue with Apple", "Continue with Google" · quiet "Sign in with email" · chip "Last used" |
+| Legal (every state but success) | the existing `loginAgreementText`: "By signing in, you accept our Terms of Use and Privacy Policy." |
+| Email form | Title "Sign in with email" · "For accounts created with an email and password." · fields "Email", "Password" · button "Sign in" · link "← Other ways to sign in" |
+| Waiting (`LoginPolling`, `browser: opened`) | Title "Continue in your browser" · "We opened {provider} sign-in in your browser. The page will ask you to confirm “{device}”. Come back here when it is done." · "The link expires in {m:ss}" · "Open again", "Copy link" · "Cancel and choose another way" |
+| Browser failed (`LoginPolling`, `browser: failed`) | Title "Couldn’t open your browser" · "Copy the link, open it in any browser on this computer, and finish signing in there. We are still waiting." · "The link expires in {m:ss}" · "Copy link", "Try again" · "Cancel and choose another way" |
+| Expired (`LoginTimeout`) | Notice "The sign-in link expired" · "Nothing was confirmed in the browser within 5 minutes. Choose a way to sign in again." Provider buttons return below it. |
+| Declined (`LoginFailed(declined)`) | Not drawn in the mocks, which paired it with the expired notice; new copy: "Sign-in was declined" · "The browser page did not confirm this sign-in. Choose a way to sign in again." |
+| Other failures (`LoginFailed`) | The shared `LoginFailedReason` copy from step 3 (for `unknown`, the existing `loginError`). |
+
 ## Analytics
 
 Checked against `.opencode/skills/add-analytics/SKILL.md`: account-less login
 belongs to `InstallationAnalyticsService`'s started/completed/failed funnel,
 which `LoginCubit` already reports per `AuthProvider` (Apple and email
 included) with the causes `authentication`, `launch`, `cancelled`, `timeout`
-and `unknown`. Desktop Apple and email adoption, cancel, and unrecovered
-launch failures are all visible through existing events and parameters. Open
-again, Copy link and the "Last used" chip are UI details, not product
-decisions. No new events or parameters.
+and `unknown`. Open again, Copy link and the "Last used" chip are UI
+details, not product decisions. No new events or parameters.
+
+The desktop sends no analytics today: its registered `AnalyticsClient` is
+`NoOpAnalyticsClient` (asserted in `client/desktop/test/core/di/injection_test.dart`).
+This plan accepts that desktop sign-in adoption, cancels and launch failures
+are not observable; wiring desktop analytics delivery is a separate decision
+outside this plan. The cubit's cause changes still reach the phone's funnel.
 
 ## Security And Privacy
 
@@ -355,8 +395,9 @@ tests for both desktop layouts, the handoff card and the phone waiting line.
 
 ## Delivery Rules
 
-- Steps run in order, one open PR at a time, except that step 3 touches
-  different files from step 2 and may be open alongside it.
+- Steps run in order, one open PR at a time. Step 3 depends on step 2: both
+  touch the phone's `LoginFailedReason` copy, which step 2 edits and step 3
+  moves into `module_app_ui`.
 - Each step verifies the plan's claims before editing, writes its evidence to
   `steps/step-NN.md` in its own PR, and updates `account-and-onboarding.md`
   for the behavior it ships. Step 7 reconciles the document as a whole.
@@ -374,8 +415,9 @@ tests for both desktop layouts, the handoff card and the phone waiting line.
 and 2 plus the phone waiting-line change. Verify: `module_auth` and
 `module_core` tests (cancel during a pending poll, cancel racing a complete
 response saves nothing, cancel then an immediate new start keeps the new
-flow, the provider survives a relaunch resume, reopen, launch failure keeps polling and reports
-`launch` on cancel/timeout, expired → timeout, denied → declined, resume
+flow, a completion already persisting when Cancel runs saves nothing, the
+provider survives an interrupted-poll resume, the terminal-cause rule, reopen, launch failure keeps polling and reports
+`launch` on cancel/timeout, the phone Cancel link in every waiting state, expired → timeout, denied → declined, resume
 paths carry the handoff), phone login widget test, analyze the three packages.
 
 **Step 3 — shared email form.** Architecture section 3. Verify: moved and new
@@ -444,3 +486,10 @@ non-vague findings, all applied directly without re-review (per AGENTS.md):
 
 The revised plan has not been re-reviewed; this record does not claim it
 passed.
+
+Codex review of PR #1740, 2026-09-25 (seven threads), applied to the plan:
+cancel releases ownership synchronously (P1); the desktop's no-op analytics
+is recorded as accepted; one terminal-cause rule; the phone Cancel link shows
+in every waiting state; step 3 now depends on step 2; the stored provider is
+justified by the in-process interrupted-poll resume, not a relaunch; the
+approved copy is recorded above.
