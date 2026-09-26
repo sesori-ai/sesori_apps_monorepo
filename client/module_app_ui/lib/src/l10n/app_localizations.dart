@@ -1879,6 +1879,12 @@ abstract class AppLocalizations {
   /// **'Rate Sesori'**
   String get settingsRateSesori;
 
+  /// Second line of the Rate Sesori settings row
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us how Sesori feels'**
+  String get settingsRateSesoriSubtitle;
+
   /// No description provided for @feedbackRatingTitle.
   ///
   /// In en, this message translates to:

@@ -150,32 +150,56 @@ void main() {
     ),
   ).captured.cast<ProductAnalyticsEvent>();
 
-  testWidgets("Yes keeps the authored opening, locks both answers, then asks for a review", (tester) async {
+  testWidgets("Yes locks both answers, then asks for a review while the celebration plays on", (tester) async {
     await open(tester: tester);
     final heroAnimation = tester.widget<FeedbackRatingHero>(find.byType(FeedbackRatingHero)).animation;
     expect(tester.widget<FeedbackLoveButton>(find.byType(FeedbackLoveButton)).animation, same(heroAnimation));
 
     await tester.tap(love);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(heroAnimation.value, closeTo(0.25, 0.0001), reason: "The first 1.2s retain the authored Figma timing.");
+    await tester.pump(const Duration(milliseconds: 299));
     expect(tester.widget<TextButton>(love).onPressed, isNull);
     expect(tester.widget<TextButton>(improve).onPressed, isNull);
+    expect(find.text(_reviewTitle), findsNothing, reason: "The love button's pop registers first.");
 
-    await tester.pump(const Duration(milliseconds: 700));
-    expect(heroAnimation.value, closeTo(0.6, 0.0001));
-    await tester.pump(const Duration(milliseconds: 299));
-    expect(find.text(_ratingTitle), findsOneWidget);
-    expect(find.text(_reviewTitle), findsNothing);
-
+    // The question takes over right after the pop, not after the celebration.
     await tester.pump(const Duration(milliseconds: 1));
-    await tester.pumpAndSettle();
-    expect(find.text(_ratingTitle), findsNothing);
+    await tester.pump();
     expect(find.text(_reviewTitle), findsOneWidget);
+    expect(find.text(_ratingTitle), findsOneWidget, reason: "The answers leave while the question arrives.");
+
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(heroAnimation.value, closeTo(0.25, 0.0001), reason: "The first 1.2s retain the authored Figma timing.");
+    expect(find.text(_ratingTitle), findsNothing);
     expect(find.text(_reviewBody), findsOneWidget);
     // The hero stays in place: only the answers hand over to the question.
     expect(tester.widget<FeedbackRatingHero>(find.byType(FeedbackRatingHero)).animation, same(heroAnimation));
+
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(heroAnimation.value, closeTo(0.6, 0.0001));
+    await tester.pumpAndSettle();
+    expect(find.text(_reviewTitle), findsOneWidget);
     expect(outcomes, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("the review question visibly rises into place as the answers lift away", (tester) async {
+    await open(tester: tester);
+    // Measured from the hero, so the sheet's own resize does not count.
+    double below({required String text}) =>
+        tester.getTopLeft(find.text(text)).dy - tester.getBottomLeft(find.byType(FeedbackRatingHero)).dy;
+    await tester.tap(love);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+    final restingAnswers = below(text: _ratingTitle);
+
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(below(text: _ratingTitle), lessThan(restingAnswers - 4));
+    final arriving = below(text: _reviewTitle);
+
+    await tester.pumpAndSettle();
+    expect(arriving - below(text: _reviewTitle), greaterThan(8));
     expect(tester.takeException(), isNull);
   });
 
@@ -200,7 +224,7 @@ void main() {
     },
   );
 
-  testWidgets("an automatic sheet with an in-app OS prompt closes itself after the celebration", (tester) async {
+  testWidgets("an automatic sheet with an in-app OS prompt closes itself a beat after the pop", (tester) async {
     final appReviewClient = _MockAppReviewClient();
     when(() => appReviewClient.requestReviewOpensStore).thenReturn(false);
     await cubit.close();
@@ -215,10 +239,13 @@ void main() {
 
     await tester.tap(love);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 1500));
+    bool? sheetIsCurrent() => ModalRoute.of(tester.element(find.byType(BottomSheet, skipOffstage: false)))?.isCurrent;
+    await tester.pump(const Duration(milliseconds: 799));
+    expect(sheetIsCurrent(), isTrue, reason: "The celebration still reads first.");
+    await tester.pump(const Duration(milliseconds: 1));
     await tester.pump(const Duration(milliseconds: 16));
-    // The sheet leaves on the celebration's last frame, with no confirmation.
-    expect(find.byType(BottomSheet, skipOffstage: false), findsOneWidget);
+    // The sheet leaves mid-celebration, with no confirmation.
+    expect(sheetIsCurrent(), isFalse);
     expect(find.text(_ratingTitle), findsOneWidget);
     expect(find.text(_reviewTitle), findsNothing);
     expect(outcomes, isEmpty, reason: "The OS prompt must wait for the closing sheet animation.");
@@ -229,15 +256,15 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("a celebration that ends while the sheet closes does not switch to the review step", (tester) async {
+  testWidgets("a handoff that falls while the sheet closes does not switch to the review step", (tester) async {
     await open(tester: tester);
     await tester.tap(love);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 1400));
+    await tester.pump(const Duration(milliseconds: 200));
 
     await tester.tap(close);
     await tester.pump();
-    // The celebration completes 100 ms into the 200 ms exit animation.
+    // The handoff time passes 100 ms into the 200 ms exit animation.
     await tester.pump(const Duration(milliseconds: 150));
     expect(find.byType(BottomSheet, skipOffstage: false), findsOneWidget);
     expect(cubit.state, const FeedbackSheetState.celebrating());
@@ -257,7 +284,7 @@ void main() {
     expect(find.text(_ratingTitle), findsOneWidget, reason: "Reopening starts fresh.");
     await tester.tap(love);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 200));
     await tapAndSettle(tester: tester, finder: close);
 
     expect(outcomes, [
@@ -430,7 +457,7 @@ void main() {
       await open(tester: tester);
       await tester.tap(love);
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 200));
 
       final changed = tester.binding.clock.now();
       tester.platformDispatcher.accessibilityFeaturesTestValue = features;

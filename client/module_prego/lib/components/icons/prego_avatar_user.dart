@@ -24,6 +24,10 @@ class const PregoAvatarUser({
 
   /// Width and height of the avatar square. The glyph scales at half of it.
   final double size = 40,
+
+  /// Glyph drawn in the brand gradient; rows beside the account row reuse the
+  /// avatar with their own glyph to share its geometry.
+  final IconData icon = TablerRegular.user,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -45,7 +49,7 @@ class const PregoAvatarUser({
             end: Alignment.bottomCenter,
             colors: [colors.brandGradientTop, colors.brandGradientBottom],
           ).createShader(bounds),
-          child: Icon(TablerRegular.user, size: size / 2, color: colors.fgWhite),
+          child: Icon(icon, size: size / 2, color: colors.fgWhite),
         ),
       ),
     );

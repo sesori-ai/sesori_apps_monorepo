@@ -983,6 +983,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsRateSesori => 'Rate Sesori';
 
   @override
+  String get settingsRateSesoriSubtitle => 'Tell us how Sesori feels';
+
+  @override
   String get feedbackRatingTitle => 'Are you enjoying Sesori?';
 
   @override

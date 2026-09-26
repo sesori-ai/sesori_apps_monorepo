@@ -6,7 +6,9 @@ The mobile rating sheet that asks whether the user enjoys Sesori. A positive
 answer can hand the user to the platform's store review page. A negative answer
 collects private feedback, which is sent to the Sesori auth server. The sheet
 opens from **Rate Sesori**, the second row of the Account section in mobile
-Settings. Desktop Settings does not show the row. On phones, the sheet also
+Settings. The row shares the account row's avatar-style leading, title
+position, height, and title-aligned divider, with the subtitle "Tell us how
+Sesori feels". Desktop Settings does not show the row. On phones, the sheet also
 opens by itself after enough good interactions. Desktop never opens it by
 itself.
 
@@ -18,8 +20,9 @@ itself.
   a dark disc so it stays legible over the celebration artwork.
 - An answer is final. After the first tap, both answers are locked, so repeated
   or crossed taps cannot change it.
-- **Yes, love it!** plays the 1.5 s celebration. The hero stays in place while
-  the answers cross-fade into "Thanks! Leave a review?". The body does not name
+- **Yes, love it!** plays the 1.5 s celebration. About 300 ms in, once the
+  button's pink pop has peaked, the answers lift away and "Thanks! Leave a
+  review?" rises into place while the hero keeps celebrating above it. The body does not name
   a store. The actions are **Leave a review** (primary) and **Not now**
   (secondary).
 - **Leave a review** closes the sheet. The store opens only after the sheet's
@@ -54,8 +57,8 @@ itself.
     starts again from zero.
 - The automatic sheet asks for the review differently (Settings is
   unchanged):
-  - iOS skips the confirmation. The sheet closes on the celebration's last
-    frame, and only after its exit animation has finished does Sesori ask
+  - iOS skips the confirmation. The sheet closes 800 ms into the
+    celebration, once the button has settled and the hearts have risen, and only after its exit animation has finished does Sesori ask
     StoreKit for its in-app review prompt through the `com.sesori.app/app_review`
     channel. StoreKit may skip the prompt silently and never reports whether it
     appeared. A failed request is logged.
@@ -129,8 +132,10 @@ itself.
 - The store opens while the sheet is still visible or animating out, or opens
   after **Not now**, the close button, or a swipe down.
 - A second tap changes a recorded answer, or reopening resumes a finished step.
-- Closing the sheet as the celebration ends switches it to the review step
-  while it animates out.
+- Closing the sheet before the review step's handoff switches it to the review
+  step while it animates out.
+- The review question waits for the whole celebration, or swaps in without
+  visible travel when motion is allowed.
 - Android shows nothing when the Play Store app is unavailable.
 - An automatic sheet on iOS shows the review confirmation, switches content
   while it closes, or requests the StoreKit prompt before it has gone.

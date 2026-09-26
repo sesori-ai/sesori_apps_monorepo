@@ -80,6 +80,26 @@ void main() {
     expect(hairlines, hasLength(1));
   });
 
+  testWidgets("hairlines start at the title for both glyph and avatar leadings", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        const PregoGroupedRows(
+          children: [
+            PregoGroupedRow(leading: PregoAvatarUser(), title: Text("Avatar")),
+            PregoGroupedRow(icon: TablerRegular.bell, title: Text("Glyph")),
+            PregoGroupedRow(title: Text("Last")),
+          ],
+        ),
+      ),
+    );
+
+    final hairlines = find.byWidgetPredicate(
+      (widget) => widget is ColoredBox && widget.color == PregoDesignSystem.light.colors.borderSecondary,
+    );
+    expect(tester.getTopLeft(hairlines.at(0)).dx, tester.getTopLeft(find.text("Avatar")).dx);
+    expect(tester.getTopLeft(hairlines.at(1)).dx, tester.getTopLeft(find.text("Glyph")).dx);
+  });
+
   testWidgets("card tone, divider omission and minimum height are opt-in", (tester) async {
     await tester.pumpWidget(
       _harness(

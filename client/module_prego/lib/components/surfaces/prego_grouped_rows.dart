@@ -18,6 +18,9 @@ const double _tallRowMinHeight = 68.0;
 /// Width of the leading icon slot.
 const double _leadingSlotWidth = 24.0;
 
+/// Width of the slot for a custom leading widget, sized for a 40px avatar.
+const double _customLeadingSlotWidth = 40.0;
+
 /// Size of the leading glyph inside its slot.
 const double _leadingIconSize = 20.0;
 
@@ -72,7 +75,8 @@ class const PregoGroupedRow({
   /// [leading] is provided.
   final IconData? icon,
 
-  /// Custom leading widget (e.g. an avatar). Takes precedence over [icon].
+  /// Custom leading widget (e.g. an avatar), centred in a 40px slot. Takes
+  /// precedence over [icon].
   final Widget? leading,
   required final Widget title,
   final Widget? subtitle,
@@ -90,15 +94,19 @@ class const PregoGroupedRow({
     final prego = context.prego;
     final subtitle = this.subtitle;
     final trailing = this.trailing;
-    final leading =
-        this.leading ??
-        switch (icon) {
-          final glyph? => SizedBox(
-            width: _leadingSlotWidth,
-            child: Icon(glyph, size: _leadingIconSize, color: prego.colors.textTertiary),
-          ),
-          null => null,
-        };
+    final customLeading = this.leading;
+    final leadingSlotWidth = customLeading != null ? _customLeadingSlotWidth : _leadingSlotWidth;
+    final leading = switch ((customLeading, icon)) {
+      (final custom?, _) => SizedBox(
+        width: leadingSlotWidth,
+        child: Center(child: custom),
+      ),
+      (null, final glyph?) => SizedBox(
+        width: leadingSlotWidth,
+        child: Icon(glyph, size: _leadingIconSize, color: prego.colors.textTertiary),
+      ),
+      (null, null) => null,
+    };
 
     final row = Row(
       children: [
@@ -150,7 +158,7 @@ class const PregoGroupedRow({
 
     // Hairline between rows, aligned with the title column like the Figma
     // rows' top border (which starts after the leading slot).
-    final dividerIndent = PregoSpacing.xl + (leading != null ? _leadingSlotWidth + PregoSpacing.md : 0.0);
+    final dividerIndent = PregoSpacing.xl + (leading != null ? leadingSlotWidth + PregoSpacing.md : 0.0);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,

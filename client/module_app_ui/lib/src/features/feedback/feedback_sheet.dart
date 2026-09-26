@@ -130,7 +130,7 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _celebration.addStatusListener(_celebrationStatusChanged);
+    _celebration.addListener(_celebrationTicked);
   }
 
   @override
@@ -152,21 +152,26 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
   }
 
   void _chooseLove() {
-    final cubit = context.read<FeedbackSheetCubit>();
-    cubit.chooseLove();
+    context.read<FeedbackSheetCubit>().chooseLove();
     if (prefersReducedMotion(context)) {
-      cubit.finishCelebration();
+      // Jumps past every celebration beat at once.
+      _celebration.value = 1;
     } else {
       _celebration.forward();
     }
   }
 
-  void _celebrationStatusChanged(AnimationStatus status) {
-    if (status != AnimationStatus.completed) return;
-    // A sheet closed in the celebration's last moments keeps its content while
-    // it animates out instead of switching to the review step.
+  /// Hands over to the review step early in the celebration, and closes for
+  /// the OS review prompt a beat later, while the hero keeps celebrating.
+  void _celebrationTicked() {
+    final cubit = context.read<FeedbackSheetCubit>();
+    if (cubit.state is! FeedbackSheetCelebrating && cubit.state is! FeedbackSheetReviewPromptPending) return;
+    // A sheet closed mid-celebration keeps its content while it animates out
+    // instead of switching to the review step, and is not popped twice.
     if (ModalRoute.of(context)?.isCurrent == false) return;
-    context.read<FeedbackSheetCubit>().finishCelebration();
+    final elapsed = feedbackCelebrationDuration * _celebration.value;
+    if (elapsed >= feedbackCelebrationHandoff) cubit.finishCelebration();
+    if (cubit.state is FeedbackSheetReviewPromptPending && elapsed >= feedbackReviewPromptCloseDelay) _close();
   }
 
   void _chooseCouldBeBetter() => context.read<FeedbackSheetCubit>().chooseCouldBeBetter();
@@ -247,11 +252,7 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
     // send lands. The back gesture and barrier tap ask PopScope first.
     final sending = state is FeedbackSheetPrivateFeedback && state.submission == FeedbackSubmission.submitting;
     return BlocListener<FeedbackSheetCubit, FeedbackSheetState>(
-      // The OS review prompt follows a finished celebration without a
-      // confirmation, keeping the celebration's last frame as the sheet leaves.
-      listenWhen: (_, next) =>
-          next is FeedbackSheetReviewPromptPending ||
-          (next is FeedbackSheetPrivateFeedback && next.submission == FeedbackSubmission.sent),
+      listenWhen: (_, next) => next is FeedbackSheetPrivateFeedback && next.submission == FeedbackSubmission.sent,
       listener: (_, _) => _close(),
       child: PopScope(
         canPop: !sending,
@@ -311,8 +312,7 @@ class const _RatingStep({
           ],
         ),
         const SizedBox(height: 18),
-        FeedbackContentTransition(
-          layoutBuilder: (current, previous) => feedbackStepLayout(current: current, previous: previous),
+        FeedbackStepTransition(
           child: confirming
               ? _ReviewConfirmation(
                   key: const ValueKey("feedback-review-confirmation"),

@@ -8,6 +8,20 @@ const feedbackEaseOut = Cubic(0.23, 1, 0.32, 1);
 const feedbackSheetOpenDuration = Duration(milliseconds: 250);
 const feedbackSheetCloseDuration = Duration(milliseconds: 200);
 const feedbackCelebrationDuration = Duration(milliseconds: 1500);
+// The review question takes over once the love button's pink pop has peaked
+// (~200ms), while the hero celebration keeps playing above it.
+const feedbackCelebrationHandoff = Duration(milliseconds: 300);
+// Without a confirmation, the sheet leaves for the OS review prompt once the
+// button has settled back from pink and the hearts have risen, so the
+// celebration still reads as intentional.
+const feedbackReviewPromptCloseDelay = Duration(milliseconds: 800);
+// The review question's arrival: the answers leave first, then the question
+// rises into place, so the swap is legible rather than a crossfade.
+const _stepInDuration = Duration(milliseconds: 360);
+const _stepOutDuration = Duration(milliseconds: 180);
+const _stepInDelay = Interval(0.25, 1, curve: feedbackEaseOut);
+const _stepInOffset = 20.0;
+const _stepOutOffset = -12.0;
 // Content transitions: step changes and inline messages.
 const feedbackContentDuration = Duration(milliseconds: 220);
 const feedbackContentReverseDuration = Duration(milliseconds: 160);
@@ -43,6 +57,41 @@ class const FeedbackContentTransition({
           ).animate(animation),
           child: child,
         ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Hands one step over to the next: the outgoing step fades while lifting
+/// away, then the incoming step fades in while rising into place. Reduce
+/// Motion keeps the fades without travel.
+class const FeedbackStepTransition({super.key, required final Widget child}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final reducedMotion = prefersReducedMotion(context);
+    return AnimatedSwitcher(
+      duration: reducedMotion ? Duration.zero : _stepInDuration,
+      reverseDuration: reducedMotion ? Duration.zero : _stepOutDuration,
+      layoutBuilder: (current, previous) => feedbackStepLayout(
+        current: current,
+        previous: [for (final child in previous) IgnorePointer(child: ExcludeSemantics(child: child))],
+      ),
+      transitionBuilder: (child, animation) => AnimatedBuilder(
+        animation: animation,
+        child: child,
+        builder: (context, child) {
+          // The switcher reverses the outgoing child's animation.
+          final leaving = animation.status == AnimationStatus.reverse;
+          final progress = leaving
+              ? feedbackEaseOut.flipped.transform(animation.value)
+              : _stepInDelay.transform(animation.value);
+          final travel = reducedMotion ? 0.0 : (leaving ? _stepOutOffset : _stepInOffset) * (1 - progress);
+          return Opacity(
+            opacity: progress,
+            child: Transform.translate(offset: Offset(0, travel), child: child),
+          );
+        },
       ),
       child: child,
     );
