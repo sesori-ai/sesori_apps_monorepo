@@ -1493,7 +1493,10 @@ depends on it.
   the control stays first and without a correction the
   reader's rows would move down by the added extent. Every added row and header has
   the same fixed extent as the ones already there, so the view adds that extent to
-  its offset in the same frame and what the reader is looking at stays put. This is
+  its offset in the same frame and what the reader is looking at stays put. When
+  the load that reaches the session's start clears `olderMessagesCursor`, the
+  control disappears in that same rebuild, so the correction is the net change:
+  the added extent minus the control's, even when the page adds nothing. This is
   the one place on this screen where content could jump, so it is the one place the
   step measures a row's position across a load.
 
