@@ -38,6 +38,7 @@ import "../repositories/session_repository.dart";
 import "../routing/app_routes.dart";
 import "../services/bridge_settings_service.dart";
 import "../services/catalog_rescan_service.dart";
+import "../services/feedback_prompt_service.dart";
 import "../services/models/catalog_rescan_state.dart";
 import "../services/models/session_activity_info.dart";
 import "../services/models/session_list_item_state.dart";
@@ -309,6 +310,30 @@ class MockRegisteredBridgesStore() extends Mock implements RegisteredBridgesStor
 class MockRegisteredBridgesService() extends Mock implements RegisteredBridgesService;
 
 class MockFailureReporter() extends Mock implements FailureReporter;
+
+/// Counts what the automatic rating sheet was told, without storing anything.
+class FakeFeedbackPromptService() extends Fake implements FeedbackPromptService {
+  final StreamController<void> promptsController = StreamController<void>.broadcast();
+  int _positiveInteractions = 0;
+  int _failures = 0;
+  int _yesAnswers = 0;
+
+  int get positiveInteractions => _positiveInteractions;
+  int get failures => _failures;
+  int get yesAnswers => _yesAnswers;
+
+  @override
+  Stream<void> get prompts => promptsController.stream;
+
+  @override
+  Future<void> recordPositiveInteraction() async => _positiveInteractions++;
+
+  @override
+  Future<void> recordFailure() async => _failures++;
+
+  @override
+  Future<void> recordYes() async => _yesAnswers++;
+}
 
 class MockConnectionService() extends Mock implements ConnectionService {
   final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();

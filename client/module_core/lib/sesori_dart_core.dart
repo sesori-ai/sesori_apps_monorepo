@@ -70,6 +70,8 @@ export "src/cubits/bridge_settings/bridge_settings_state.dart";
 export "src/cubits/chat_input_mode/chat_input_mode_cubit.dart";
 export "src/cubits/connection_overlay/connection_overlay_cubit.dart";
 export "src/cubits/connection_overlay/connection_overlay_state.dart";
+export "src/cubits/feedback_prompt/feedback_prompt_cubit.dart";
+export "src/cubits/feedback_prompt/feedback_prompt_presentation.dart";
 export "src/cubits/feedback_sheet/feedback_sheet_cubit.dart";
 export "src/cubits/feedback_sheet/feedback_sheet_outcome.dart";
 export "src/cubits/feedback_sheet/feedback_sheet_state.dart";
