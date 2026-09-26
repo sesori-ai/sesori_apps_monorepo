@@ -23,8 +23,8 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 | Harness | Native evidence | Sesori availability |
 |---|---|---|
 | Pi | Visible `custom` messages / `custom_message` entries | ✅ Automation attribution live and after history load. |
-| Claude Code | User-role frames and transcript records with `origin.kind: peer` | ✅ Automation attribution live and after history load, including `isMeta` peer records. |
-| Claude Code (task notifications) | User-role `<task-notification>` turns with `origin.kind: task-notification`, or a whole envelope on CLIs without origin | ✅ A notification no known Agent/Bash task absorbs renders as an Automation step live and after history load. |
+| Claude Code | User-role frames, transcript records and `queued_command` attachments with `origin.kind: peer` | ✅ Automation attribution live and after history load, including `isMeta` peer records and peers queued mid-turn. |
+| Claude Code (task notifications) | User-role `<task-notification>` turns with `origin.kind: task-notification`, `queued_command` attachments in `task-notification` mode, or a whole envelope on CLIs without origin | ✅ A notification no known Agent/Bash task absorbs renders as an Automation step live and after history load, including one queued mid-turn. |
 | OpenCode (task notifications) | Unknown | Unverified: needs a probe of whether a background child's completion is injected as a user turn. |
 | Codex (task notifications) | None | Not applicable: no background-task completion arrives as a user turn. |
 
@@ -49,6 +49,14 @@ and persisted records. Native captured frames/history also pass through the
 production Claude parsers/mappers. Shared client fixture tests cover the existing
 Automation surface; authenticated-provider and full client/relay journeys were
 not exercised for this change.
+
+A command Claude queues while a turn runs (a follow-up, a peer message or a
+task outcome) is persisted as a `queued_command` attachment instead of a user
+record. History maps it like its live replay frame: the attachment's
+`source_uuid` (the record's own `uuid` on CLIs that omit it) as the id, the same
+sender and parts, at the point the model received it. Verified on
+**2026-09-26** with native Claude Code **2.1.281** captures and live rows the
+bridge stored from CLIs 2.1.237 to 2.1.281.
 
 ## Quota-reset auto continuation
 

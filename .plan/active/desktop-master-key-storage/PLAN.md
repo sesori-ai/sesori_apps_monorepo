@@ -401,10 +401,10 @@ deprecated importer #1739 and native capabilities #1744 merged.
 
 The complete consumer cutover at `ea7550e` (base `064dcf8`) measures 1,650 lines:
 1,545 authored and 105 generated. It passes 153 focused tests and five module/
-shell analyses. Standalone recovery #1749 merged; reconcile the preserved
-consumer checkpoint with fixed main `33c7815`, keeping every storage consumer
-and production import admission atomic. No temporary backend or compatibility
-adapter bridges this split.
+shell analyses. Standalone recovery #1749 and atomic consumer cutover #1751
+merged. No temporary backend or compatibility adapter bridged this split.
+Regression reconciliation starts from fixed main `6056290`; required native
+qualification still precedes plan retirement.
 
 | Milestone | Exact PR title | Scope / expected result | Estimate |
 |---|---|---|---|
@@ -417,8 +417,8 @@ adapter bridges this split.
 | 4.a | 🚧 [desktop-master-key-storage] Prepare deprecated mobile storage migration [step 7/12] | #1739 merged; domain keys and deprecated importer with recovery tests; not invoked yet. | Completed: 946 lines (773 authored, 173 generated) |
 | 4.b | 🚧 [desktop-master-key-storage] Provide native client persistence capabilities [step 8/12] | #1744 merged; lazy master/directory/source ports and DB-only Android backup exclusion; no shell cutover. | Completed: 590 lines (565 authored, 25 generated) |
 | 4.c | ⚙️ [desktop-master-key-storage] Prepare storage-upgrade recovery [step 9/12] | #1749 merged; localized recovery root and typed bootstrap catch/disposal; no storage cutover. | Completed: 280 lines (261 authored, 19 generated) |
-| 4.d | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 10/12] | All consumers/exports/bootstrap/guidance in lockstep, production import admission, credential backup exclusions, adapter removal and updated native probe. | Approximately 1,640 lines including corrected package READMEs/evidence and 86 generated; keep remaining atomic handoff coherent |
-| 5 | 🌿 [desktop-master-key-storage] Complete shared persistence regression documentation [step 11/12] | Reconcile feature/matrix/distribution/support evidence; no additional runtime/database change. | 100–250 authored |
+| 4.d | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 10/12] | #1751 merged; coherent consumers/admission, backup rules and obsolete-adapter removal. Native qualification remains. | Completed: 1,634 lines (1,548 authored, 86 generated) |
+| 5 | 🌿 [desktop-master-key-storage] Complete shared persistence regression documentation [step 11/12] | Reconcile storage, account, analytics and package contracts; distinguish automated proof from required native migration/restore/replacement evidence. No runtime/database change. | 100–250 authored |
 | 6 | ⚙️ [desktop-master-key-storage] Qualify and retire shared client persistence [step 12/12] | Required full recorded matrix and bounded evidence; retire plan only on pass, not the still-required deprecated importer. | 100–250 authored |
 
 Dependencies follow row order. Generated schema stays with source. No temporary

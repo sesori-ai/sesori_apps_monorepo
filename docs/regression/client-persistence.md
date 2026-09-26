@@ -77,19 +77,32 @@ desktop do not resolve it. No coding plugin participates.
 
 ## Regression Levels
 
+These are cumulative required checks, not a claim that native qualification has
+passed. Automated fixtures establish ordering and data invariants, not OS import,
+authorization or restore behavior. See the [account](account-and-onboarding.md),
+[analytics](analytics.md) and [distribution](desktop-distribution.md) contracts
+for the affected consumer boundaries.
+
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Typed primitive/secret roundtrips, absence/defaults, false/empty values and key-local updates/deletes through the shared repositories. Verify shell master keys/options, lazy construction, missing values/error forwarding and persistent directory resolution. Automated with real SQLite and mocked native channels; no coding plugin. |
-| L2 Routine | Concurrent initialization, cached failure, pending/denied unlock without blocking preferences, key-save-before-ciphertext ordering, corruption and rollback. Import inventory/identities, unknown-item retention, completion skip, malformed bool, failed read/copy/cleanup/marker and relaunch recovery. Automated; no plugin. |
-| L3 Release | Real SQL/crypto/DI import recovery, production-only admission, pending opt-out before analytics, offline auth/preference restoration and cold reopen. Failure disposes before rendering even when cleanup fails; recovery UI renders independently in light/dark and large text. Isolated fixtures and fake native ports; no plugin. |
-| L4 Extended | Actual iOS/Android released-format upgrade, interruption/recovery, denial/error and backup/restore qualification; Developer ID macOS plus Windows/Linux packaged SQLite/master roundtrips. Record actual prompt behavior separately from call counts. Missing platform evidence remains blocked; no coding plugin. |
+| L2 Routine | Automated SQL/crypto/DI and widget fixtures: concurrency, cached failure, plaintext independence, key-save ordering, corruption/rollback, complete import inventory and restart recovery. Production admission precedes consumers and pending opt-out restoration; development never constructs the source. Local auth/preferences survive cold reopen. Failure disposes before rendering, even if disposal fails; recovery is service-free in both themes and large text. Native ports remain fake; no plugin. |
+| L3 Release | Actual iOS and Android released-format native fixtures: preserve auth/OAuth/relay/preferences/scoped identities and pending opt-out, clean only copied items, restore after restart, and write subsequent values only to the new store. Prove production admission and development isolation in those native fixtures. Packaged Developer ID macOS arm64 plus native Windows/Linux: shared SQLite/master roundtrip, cold reopen and new-format replacement preserving the database/master pairing on all three platforms. No plugin. |
+| L4 Extended | Shared suites on macOS/Windows/Linux; actual mobile interruption at copy/cleanup/marker boundaries, native enumeration/decryption failure without an empty-success result, and recovery presentation. Qualify paired iOS database/master encrypted-backup restore, Android cloud/device-transfer exclusions and fresh new-device state, and explicit copied-DB/key-loss failure. Native macOS denial, unchanged relaunch and same-identity replacement preserve committed data; record actual prompts separately from adapter call counts. No plugin. |
 | L5 Full | No additional feature-specific coverage beyond the complete L4 matrix. |
 
 ## Exploration Guidance
 
 Vary overlapping operations on different rows, existing versus missing native
-keys, reopen boundaries and native denial/save failures. Inspect only disposable
+keys, reopen boundaries and native denial/save failures. Seed the legacy fixture
+with the released format, not the new adapter; seed new-format fixtures through
+production Dart storage, never copied SQL/crypto. Bind evidence to the exact
+source/build, OS/CPU, storage scope, phase and cleanup. Inspect only disposable
 fixture files; never seed or read a personal Keychain/application directory.
+
+Use explicitly permitted local fixtures or isolated native CI. An unavailable
+required target is Blocked, not inapplicable. Static XML, successful compilation,
+channel mocks and old-format package evidence do not establish the L3/L4 matrix.
 
 ## Failure Signals
 
@@ -107,6 +120,8 @@ fixture files; never seed or read a personal Keychain/application directory.
 - Development consuming production legacy data, consumers starting before import
   completion, or migration/disposal failure preventing safe recovery rendering.
 - Rendering before disposal settles or failure copy exposing payloads.
+- Android restoring unusable ciphertext/credential envelopes without their
+  Keystore keys, or an iOS restore losing the usable database/master pairing.
 
 ## Known Limitations
 

@@ -3235,6 +3235,90 @@ abstract class AppLocalizations {
   /// **'For accounts created with an email and password.'**
   String get desktopLoginEmailSubtitle;
 
+  /// No description provided for @desktopLoginWaitingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue in your browser'**
+  String get desktopLoginWaitingTitle;
+
+  /// Desktop card shown while a browser sign-in waits. The device is the name the browser page asks the user to confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'We opened {provider} sign-in in your browser. The page will ask you to confirm “{device}”. Come back here when it is done.'**
+  String desktopLoginWaitingMessage(String provider, String device);
+
+  /// Countdown on the desktop browser sign-in card, in minutes and seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'The link expires in {time}'**
+  String desktopLoginExpiresIn(String time);
+
+  /// No description provided for @desktopLoginOpenAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Open again'**
+  String get desktopLoginOpenAgain;
+
+  /// No description provided for @desktopLoginCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get desktopLoginCopyLink;
+
+  /// No description provided for @desktopLoginLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied to clipboard'**
+  String get desktopLoginLinkCopied;
+
+  /// No description provided for @desktopLoginCancelHandoff.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel and choose another way'**
+  String get desktopLoginCancelHandoff;
+
+  /// No description provided for @desktopLoginBrowserFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t open your browser'**
+  String get desktopLoginBrowserFailedTitle;
+
+  /// No description provided for @desktopLoginBrowserFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the link, open it in any browser on this computer, and finish signing in there. We are still waiting.'**
+  String get desktopLoginBrowserFailedMessage;
+
+  /// Button that tries again to open the sign-in page in the browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get desktopLoginTryAgain;
+
+  /// No description provided for @desktopLoginExpiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in link expired'**
+  String get desktopLoginExpiredTitle;
+
+  /// No description provided for @desktopLoginExpiredMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing was confirmed in the browser within 5 minutes. Choose a way to sign in again.'**
+  String get desktopLoginExpiredMessage;
+
+  /// No description provided for @desktopLoginDeclinedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in was declined'**
+  String get desktopLoginDeclinedTitle;
+
+  /// No description provided for @desktopLoginDeclinedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser page did not confirm this sign-in. Choose a way to sign in again.'**
+  String get desktopLoginDeclinedMessage;
+
   /// Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle
   ///
   /// In en, this message translates to:
