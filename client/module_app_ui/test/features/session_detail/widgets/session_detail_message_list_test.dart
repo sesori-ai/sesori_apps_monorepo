@@ -2557,6 +2557,24 @@ void main() {
       expect(tester.getTopLeft(band).dy, moreOrLessEquals(_topInset, epsilon: 0.5));
     });
 
+    testWidgets("paints no full-width scrim, so the rows beside it stay whole", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+
+      expect(
+        find.descendant(
+          of: overlay,
+          matching: find.byWidgetPredicate(
+            (widget) => widget is DecoratedBox && widget.decoration is BoxDecoration
+                ? (widget.decoration as BoxDecoration).gradient != null
+                : false,
+          ),
+        ),
+        findsNothing,
+      );
+    });
+
     testWidgets("is pushed out by the next turn's prompt", (tester) async {
       await _pumpTurns(tester, messages: shortTurns, folded: false);
       await _scrollRowTo(tester, rowId: "u9", top: _topInset + 300);

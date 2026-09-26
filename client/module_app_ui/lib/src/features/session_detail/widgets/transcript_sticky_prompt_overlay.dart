@@ -55,37 +55,30 @@ class const TranscriptStickyPromptOverlay({
         behavior: HitTestBehavior.translucent,
         onTap: jump,
         child: IgnorePointer(
-          // The page's background fades out below the bubble, so the rows it
-          // covers do not read as part of it.
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: const [0.78, 1],
-                colors: [background, background.withValues(alpha: 0)],
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
-              child: LayoutBuilder(
-                builder: (context, constraints) => Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  heightFactor: 1,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl, vertical: PregoSpacing.xs),
-                    padding: const EdgeInsets.all(10),
-                    constraints: BoxConstraints(maxWidth: (constraints.maxWidth - PregoSpacing.xl * 2) * 0.76),
-                    decoration: BoxDecoration(
-                      color: prego.colors.bgSurface2,
-                      borderRadius: BorderRadius.circular(PregoRadius.xl),
-                    ),
-                    child: Text(
-                      text,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: buildChatMessageMarkdownStyleSheet(prego: prego).p,
-                    ),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
+            child: LayoutBuilder(
+              builder: (context, constraints) => Align(
+                alignment: AlignmentDirectional.centerEnd,
+                heightFactor: 1,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl, vertical: PregoSpacing.xs),
+                  padding: const EdgeInsets.all(10),
+                  constraints: BoxConstraints(maxWidth: (constraints.maxWidth - PregoSpacing.xl * 2) * 0.76),
+                  decoration: BoxDecoration(
+                    color: prego.colors.bgSurface2,
+                    borderRadius: BorderRadius.circular(PregoRadius.xl),
+                    // A halo of the page's own background, so the bubble lifts
+                    // off the rows it covers without a row's half-clipped
+                    // glyphs crowding its edge. It fades within a bubble's
+                    // width, leaving the rest of every row untouched.
+                    boxShadow: [BoxShadow(color: background, blurRadius: 28, spreadRadius: 14)],
+                  ),
+                  child: Text(
+                    text,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: buildChatMessageMarkdownStyleSheet(prego: prego).p,
                   ),
                 ),
               ),
