@@ -103,10 +103,13 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
   }
 
   void _handleMicPointerMove(PointerMoveEvent event) {
-    if (event.pointer != _holdPointer) return;
+    if (event.pointer == _holdPointer) _trackCancelDrag(position: event.position);
+  }
+
+  void _trackCancelDrag({required Offset position}) {
     final target = _cancelTargetKey.currentContext?.findRenderObject();
     if (target is! RenderBox || !target.hasSize) return;
-    final distance = (event.position - target.localToGlobal(target.size.center(Offset.zero))).distance;
+    final distance = (position - target.localToGlobal(target.size.center(Offset.zero))).distance;
     final threshold = _cancelProgress.value >= 1 ? _cancelDisengageRadius : _cancelCommitRadius;
     final progress = (1 - (distance - threshold) / (_cancelReachRadius - threshold)).clamp(0.0, 1.0);
     if ((progress >= 1) != (_cancelProgress.value >= 1)) unawaited(_playHaptic(play: HapticFeedback.selectionClick));
@@ -114,7 +117,10 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
   }
 
   void _handleMicPointerUp(PointerUpEvent event) {
-    if (event.pointer == _holdPointer) unawaited(_release());
+    if (event.pointer != _holdPointer) return;
+    // The lift can be the first sample inside the cancel target.
+    _trackCancelDrag(position: event.position);
+    unawaited(_release());
   }
 
   /// The system took the touch, for example when the sheet closes under the
