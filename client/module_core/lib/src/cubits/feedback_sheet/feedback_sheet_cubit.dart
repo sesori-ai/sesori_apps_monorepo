@@ -8,9 +8,6 @@ import "../../repositories/feedback_repository.dart";
 import "feedback_sheet_outcome.dart";
 import "feedback_sheet_state.dart";
 
-/// The server's limit on private feedback text.
-const feedbackMessageMaxLength = 4000;
-
 /// Drives one rating sheet from its first question to its outcome.
 class FeedbackSheetCubit({
   required final AppReviewClient _appReviewClient,
@@ -44,7 +41,7 @@ class FeedbackSheetCubit({
 
   void toggleIssue({required FeedbackIssue issue}) {
     final current = state;
-    if (current is! FeedbackSheetPrivateFeedback || !_editable(current)) return;
+    if (current is! FeedbackSheetPrivateFeedback || !current.submission.canEdit) return;
     final issues = current.issues.contains(issue) ? current.issues.difference({issue}) : current.issues.union({issue});
     emit(current.copyWith(issues: issues));
   }
@@ -53,7 +50,7 @@ class FeedbackSheetCubit({
   /// with its draft so the user can retry.
   Future<void> submit({required String message}) async {
     final current = state;
-    if (current is! FeedbackSheetPrivateFeedback || !_editable(current)) return;
+    if (current is! FeedbackSheetPrivateFeedback || !current.submission.canEdit) return;
     final submitting = current.copyWith(submission: FeedbackSubmission.submitting);
     emit(submitting);
     FeedbackSubmission result;
@@ -69,9 +66,6 @@ class FeedbackSheetCubit({
     if (isClosed || !identical(state, submitting)) return;
     emit(submitting.copyWith(submission: result));
   }
-
-  bool _editable(FeedbackSheetPrivateFeedback state) =>
-      state.submission == FeedbackSubmission.editing || state.submission == FeedbackSubmission.failed;
 
   /// The answer this sheet ended with, read once its route has closed.
   FeedbackSheetOutcome get outcome => switch (state) {

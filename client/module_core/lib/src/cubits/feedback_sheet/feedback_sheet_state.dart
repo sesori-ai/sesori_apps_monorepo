@@ -31,5 +31,8 @@ enum FeedbackSubmission() {
   editing,
   submitting,
   failed,
-  sent,
+  sent;
+
+  /// Whether the user may change the issues and text, and send them.
+  bool get canEdit => this == editing || this == failed;
 }

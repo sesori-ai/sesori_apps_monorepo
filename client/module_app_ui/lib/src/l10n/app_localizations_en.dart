@@ -1040,6 +1040,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get feedbackMessageHint => 'Example: Hard to navigate';
 
   @override
+  String get feedbackRecipient => 'Sent privately to the Sesori team.';
+
+  @override
   String get feedbackSend => 'Send feedback';
 
   @override

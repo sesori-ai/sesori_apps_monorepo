@@ -56,8 +56,9 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
     final loc = context.loc;
     final state = context.watch<FeedbackSheetCubit>().state;
     if (state is! FeedbackSheetPrivateFeedback) return const SizedBox.shrink();
-    final editable = state.submission == FeedbackSubmission.editing || state.submission == FeedbackSubmission.failed;
+    final editable = state.submission.canEdit;
     final failed = state.submission == FeedbackSubmission.failed;
+    final sending = state.submission == FeedbackSubmission.submitting;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -86,10 +87,12 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
           ),
         ),
         const SizedBox(height: 18),
-        _buildComposer(
-          context: context,
-          editable: editable,
-          sending: state.submission == FeedbackSubmission.submitting,
+        _buildComposer(context: context, editable: editable, sending: sending),
+        const SizedBox(height: PregoSpacing.md),
+        Text(
+          loc.feedbackRecipient,
+          textAlign: TextAlign.center,
+          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
         ),
         FeedbackContentTransition(
           child: failed
@@ -124,10 +127,12 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
           width: double.infinity,
           child: TextButton(
             key: const ValueKey("feedback-cancel"),
-            onPressed: widget.onCancel,
+            // Closing mid-send would drop the result, so the sheet stays until it lands.
+            onPressed: sending ? null : widget.onCancel,
             style: TextButton.styleFrom(
               minimumSize: const Size(44, 52),
               foregroundColor: prego.colors.textSecondary,
+              disabledForegroundColor: prego.colors.textDisabled,
               textStyle: prego.textTheme.textMd.bold,
             ),
             child: Text(loc.feedbackCancel),

@@ -1987,6 +1987,12 @@ abstract class AppLocalizations {
   /// **'Example: Hard to navigate'**
   String get feedbackMessageHint;
 
+  /// Quiet line below the private feedback text field saying who receives it
+  ///
+  /// In en, this message translates to:
+  /// **'Sent privately to the Sesori team.'**
+  String get feedbackRecipient;
+
   /// Accessibility label of the private feedback send button
   ///
   /// In en, this message translates to:

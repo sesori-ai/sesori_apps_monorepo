@@ -7,6 +7,9 @@ import "../../foundation/models/feedback/feedback_source.dart";
 part "feedback_submit_request.freezed.dart";
 part "feedback_submit_request.g.dart";
 
+/// The server's limit on [FeedbackSubmitRequest.message].
+const feedbackMessageMaxLength = 4000;
+
 @Freezed(fromJson: true, toJson: true)
 sealed class FeedbackSubmitRequest with _$FeedbackSubmitRequest {
   const factory({

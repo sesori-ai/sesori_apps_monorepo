@@ -37,7 +37,7 @@ It does **not** see:
 
 ## What Sesori stores
 
-Sesori retains the minimum account-level data needed to make the service work while your account is active: your sign-in identity, a small amount of routing metadata, and push notification tokens. We do not store your code, prompts, or AI responses.
+Sesori retains the minimum account-level data needed to make the service work while your account is active: your sign-in identity, a small amount of routing metadata, and push notification tokens. We do not store your code, prompts, or AI responses, except any text you paste into feedback you choose to send.
 
 If you send private feedback from the app, the Sesori auth server stores it with your account: the issues you ticked, any text you wrote, where the sheet was opened, your platform, and the app version. Nothing is stored unless you choose to send it. Feedback text goes only to Sesori, never to an app store. It is deleted along with your account's other data when you ask us to delete your account ([hello@sesori.com](mailto:hello@sesori.com)).
 
@@ -47,7 +47,7 @@ If you enable push notifications, our backend builds a notification payload that
 
 ## Account deletion
 
-You can delete your account from the Sesori mobile app. Because we do not store message history, deletion removes account and routing metadata only. You can also email [hello@sesori.com](mailto:hello@sesori.com) for assistance.
+You can delete your account from the Sesori mobile app. Because we do not store message history, deletion removes account and routing metadata only. Feedback you sent is deleted manually on request. You can also email [hello@sesori.com](mailto:hello@sesori.com) for assistance or to request that deletion.
 
 ## Reporting issues
 

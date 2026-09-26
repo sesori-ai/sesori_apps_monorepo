@@ -183,10 +183,18 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
         ),
       ),
     );
+    // A sheet closed mid-send would drop the result, so it stays until the
+    // send lands. The back gesture and barrier tap ask PopScope first.
+    final sending = state is FeedbackSheetPrivateFeedback && state.submission == FeedbackSubmission.submitting;
     return BlocListener<FeedbackSheetCubit, FeedbackSheetState>(
       listenWhen: (_, next) => next is FeedbackSheetPrivateFeedback && next.submission == FeedbackSubmission.sent,
       listener: (_, _) => _close(),
-      child: sheet,
+      child: PopScope(
+        canPop: !sending,
+        // Drag-to-dismiss pops without asking PopScope, so this claims the
+        // vertical drag ahead of the sheet's own recognizer while sending.
+        child: GestureDetector(onVerticalDragStart: sending ? (_) {} : null, child: sheet),
+      ),
     );
   }
 }

@@ -648,6 +648,10 @@
   "@feedbackMessageHint": {
     "description": "Placeholder of the private feedback text field"
   },
+  "feedbackRecipient": "Sent privately to the Sesori team.",
+  "@feedbackRecipient": {
+    "description": "Quiet line below the private feedback text field saying who receives it"
+  },
   "feedbackSend": "Send feedback",
   "@feedbackSend": {
     "description": "Accessibility label of the private feedback send button"

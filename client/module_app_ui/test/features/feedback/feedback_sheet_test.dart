@@ -212,6 +212,42 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("the sheet cannot be dismissed while a send is in flight", (tester) async {
+    final pending = Completer<void>();
+    answerSubmit(() => pending.future);
+    await open(tester: tester);
+    await tapAndSettle(tester: tester, finder: improve);
+    expect(find.text("Sent privately to the Sesori team."), findsOneWidget);
+    await tester.enterText(text, "Fixture feedback");
+    await tester.tap(send);
+    await tester.pump();
+
+    // The send button's spinner never settles, so pump a second of frames.
+    Future<void> pumpASecond() async {
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    expect(tester.widget<TextButton>(cancel).onPressed, isNull);
+    await tester.tapAt(const Offset(20, 20));
+    await pumpASecond();
+    await tester.binding.handlePopRoute();
+    await pumpASecond();
+    await tester.drag(find.text("What should we improve?"), const Offset(0, 600));
+    await pumpASecond();
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.text("What should we improve?"), findsOneWidget);
+    expect(outcomes, isEmpty);
+
+    pending.complete();
+    await tester.pumpAndSettle();
+    expect(outcomes.single, isA<FeedbackSheetOutcomeCouldBeBetter>().having((o) => o.sent, "sent", isTrue));
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("a failed send keeps the draft and Retry sends it again", (tester) async {
     answerSubmit(() async => throw StateError("offline"));
     await open(tester: tester);
