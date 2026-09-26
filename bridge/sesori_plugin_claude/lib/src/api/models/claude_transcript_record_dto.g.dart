@@ -27,7 +27,19 @@ _ClaudeTranscriptRecordDto _$ClaudeTranscriptRecordDtoFromJson(Map json) =>
       message: _messageOrNull(json['message']),
       toolUseResult: ClaudeToolUseResult.parse(json['toolUseResult']),
       originKind: _originKind(json['origin']),
+      attachment: _attachmentOrNull(json['attachment']),
     );
+
+_ClaudeTranscriptAttachmentDto _$ClaudeTranscriptAttachmentDtoFromJson(
+  Map json,
+) => _ClaudeTranscriptAttachmentDto(
+  type: _stringOrNull(json['type']),
+  prompt: json['prompt'],
+  commandMode: _stringOrNull(json['commandMode']),
+  sourceUuid: _stringOrNull(json['source_uuid']),
+  isMeta: _boolOrNull(json['isMeta']),
+  originKind: _originKind(json['origin']),
+);
 
 _ClaudeTranscriptMessageDto _$ClaudeTranscriptMessageDtoFromJson(Map json) =>
     _ClaudeTranscriptMessageDto(

@@ -3,6 +3,7 @@ import "dart:async";
 import "package:bloc/bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
+import "../../foundation/platform/window_host.dart";
 import "../../orchestration/desktop_logout_orchestrator.dart";
 import "../../services/desktop_relay_connection_service.dart";
 import "auth_gate_state.dart";
@@ -18,15 +19,18 @@ class AuthGateCubit._create({
   required final AuthSession _authSession,
   required final DesktopLogoutOrchestrator _logoutOrchestrator,
   required final DesktopRelayConnectionService _relayConnectionService,
+  required final WindowHost _windowHost,
 }) extends Cubit<AuthGateState> {
   new({
     required AuthSession authSession,
     required DesktopLogoutOrchestrator logoutOrchestrator,
     required DesktopRelayConnectionService relayConnectionService,
+    required WindowHost windowHost,
   }) : this._create(
          authSession: authSession,
          logoutOrchestrator: logoutOrchestrator,
          relayConnectionService: relayConnectionService,
+         windowHost: windowHost,
        );
 
   this : super(const AuthGateState.checking()) {
@@ -120,8 +124,20 @@ class AuthGateCubit._create({
       // Mid-login progress belongs to the login surface, not the gate.
       AuthAuthenticating() => null,
     };
-    if (next != null) {
-      emit(next);
+    if (next == null) return;
+    // Signing in brings the window forward, for example after confirming in
+    // the browser. A startup restore leaves checking instead of signedOut, so
+    // a window launched hidden at login stays hidden.
+    final bool signedInFromLogin = state is AuthGateSignedOut && next is AuthGateSignedIn;
+    emit(next);
+    if (signedInFromLogin) unawaited(_showWindow());
+  }
+
+  Future<void> _showWindow() async {
+    try {
+      await _windowHost.show();
+    } on Object catch (error, stackTrace) {
+      logw("Failed to show the desktop window", error, stackTrace);
     }
   }
 

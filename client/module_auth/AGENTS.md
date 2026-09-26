@@ -50,6 +50,7 @@ lib/src/
 ├── platform/
 │   └── oauth_device_descriptor_provider.dart
 └── storage/
+    ├── last_sign_in_storage.dart    (NOT exported; survives logout)
     ├── oauth_storage_service.dart   (NOT exported)
     └── token_storage_service.dart   (NOT exported)
 ```
@@ -80,6 +81,7 @@ lib/src/
 - `AuthenticatedHttpApiClient`
 - `TokenStorageService` (internal)
 - `OAuthStorageService` (internal)
+- `LastSignInStorage` (internal)
 
 **Prerequisite**: both shells configure `sesori_persistence` before auth DI.
 Storage services consume its shared `SecureStorageRepository` using `AuthSecretKey`;

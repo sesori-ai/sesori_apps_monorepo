@@ -124,7 +124,11 @@ Release `396977798` gained exactly the six expected desktop assets. Existing sev
 bridge assets retained their IDs/sizes/digests; release identity/body/prerelease fields
 and Latest stable `v1.9.0` (`395815709`) were unchanged. Private evidence stayed private.
 This proves real internal publication and public trust, not stable promotion or
-build-987 authenticated replacement. The rolling internal release may later be replaced
+build-987 authenticated replacement. Build 987 also predates the subsequent desktop
+shared-store cutover: its evidence does not prove new-format cold reopen, authorization
+or N→N+1 preservation. Old-format internal users must sign out before replacing with
+a shared-store preview and sign in again; this is not a production migration promise.
+The rolling internal release may later be replaced
 by the normal shared cycle; historical source/tag/evidence attribution remains explicit.
 
 ## Shared-cycle native evidence (2026-09-25)

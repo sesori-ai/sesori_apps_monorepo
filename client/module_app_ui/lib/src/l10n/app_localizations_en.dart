@@ -1794,7 +1794,59 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopLoginContinueWithGoogle => 'Continue with Google';
 
   @override
+  String get desktopLoginLastUsed => 'Last used';
+
+  @override
   String get desktopLoginEmailSubtitle => 'For accounts created with an email and password.';
+
+  @override
+  String get desktopLoginWaitingTitle => 'Continue in your browser';
+
+  @override
+  String desktopLoginWaitingMessage(String provider, String device) {
+    return 'We opened $provider sign-in in your browser. The page will ask you to confirm “$device”. Come back here when it is done.';
+  }
+
+  @override
+  String desktopLoginExpiresIn(String time) {
+    return 'The link expires in $time';
+  }
+
+  @override
+  String get desktopLoginOpenAgain => 'Open again';
+
+  @override
+  String get desktopLoginCopyLink => 'Copy link';
+
+  @override
+  String get desktopLoginLinkCopied => 'Link copied to clipboard';
+
+  @override
+  String get desktopLoginCancelHandoff => 'Cancel and choose another way';
+
+  @override
+  String get desktopLoginBrowserFailedTitle => 'Couldn’t open your browser';
+
+  @override
+  String get desktopLoginBrowserFailedMessage =>
+      'Copy the link, open it in any browser on this computer, and finish signing in there. We are still waiting.';
+
+  @override
+  String get desktopLoginTryAgain => 'Try again';
+
+  @override
+  String get desktopLoginExpiredTitle => 'The sign-in link expired';
+
+  @override
+  String get desktopLoginExpiredMessage =>
+      'Nothing was confirmed in the browser within 5 minutes. Choose a way to sign in again.';
+
+  @override
+  String get desktopLoginDeclinedTitle => 'Sign-in was declined';
+
+  @override
+  String get desktopLoginDeclinedMessage =>
+      'The browser page did not confirm this sign-in. Choose a way to sign in again.';
 
   @override
   String get sessionListRunning => 'Running';

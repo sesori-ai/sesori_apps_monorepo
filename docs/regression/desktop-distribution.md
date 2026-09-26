@@ -25,6 +25,18 @@ Failed helper stop retains the existing refusal to Quit. Nothing in the download
 action stops a helper, installs, changes bridge intent or automatically relaunches.
 Linux upgrades remain package-manager-owned. Shared CLI data is not update cleanup.
 
+## Client storage boundary
+
+Desktop uses the shared SQLite preferences/encrypted-value store and one native
+master item. Replacement must preserve both; file sentinels alone do not prove
+that secrets decrypt or local auth restores. Plaintext preference operations must
+not acquire native authorization. See [client persistence](client-persistence.md).
+
+No production desktop release exists yet. Published internal build 987 predates this
+cutover. An old per-value-native build requires explicit sign-out before replacement
+and one new sign-in, not a migration/compatibility promise for internal previews.
+New-format N→N+1 preservation needs two shared-store builds.
+
 ## Private Windows installer qualification
 
 Manual `windows-packaging` qualification builds unsigned x64 and ARM64 per-user
@@ -156,6 +168,15 @@ observations on both CPUs record `NO_INSTALLED_HELPER`; all 11 report checks are
 including `helperAbsentBeforeQuit`. Exact artifacts, hashes and historical investigation
 remain in [the step evidence](../../.plan/active/desktop-distribution/steps/step-06.md).
 
+The recorded authenticated replacement evidence below predates the shared-store
+cutover and applies only to its named sources. The current authenticated fixture
+still seeds per-value Keychain entries; do not run that seed path against a
+shared-store candidate or treat the old passes as shared-store qualification.
+Required adaptation must seed through production Dart storage and select a
+shared-format baseline, preserving the isolated credential/cleanup boundaries.
+The CI-only packaged platform probe now targets shared SQLite/master roundtrips;
+its source change alone does not establish a native pass.
+
 The separate manual `macos-authenticated-upgrade-probe` is the credential-bearing
 continuation. It is restricted to `main`, serializes the CPU jobs around the dedicated
 `qa@sesori.com` production account, and reads its email/password from repository Actions
@@ -239,6 +260,9 @@ hash verification. Both CPUs' apps/DMGs passed independent Developer ID, stapled
 and Gatekeeper checks without local app execution. Bridge assets and Latest stable
 were unchanged. Website wiring and stable production attachment remain separate.
 Windows signed N→N+1 and Linux signed-repository N→N+1 requirements remain open.
+Shared-store native roundtrip, cold reopen, replacement and authorization remain
+unproved by pre-cutover package evidence; the retired gate does not relabel that
+historical evidence as shared-store qualification.
 
 ## Coverage
 

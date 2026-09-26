@@ -188,15 +188,16 @@ widgets → desktop and phone shells.
   message. Other status errors are unchanged.
 - Step 6, its only consumer, adds this with "Last used" (moved out of step 2
   by its implementation review, since nothing reads it earlier).
-  `startOAuthFlow` also records the flow's provider next to the session:
-  in memory beside `_oAuthSessionToken`, and in `OAuthStorageService`'s
-  existing `oauth_provider` slot, which `_clearOAuthStateInMutation` already
-  clears. `pollForResult` reads it from memory, or from storage when it
-  resumes a flow whose in-memory ownership was released, which happens on the
-  phone when a backgrounded poll is interrupted and `_onAppResumed` resumes it
-  (`_releaseOAuthSessionIfOwned` runs in the interrupted poll's `finally`).
-  A fresh process never resumes a flow: a new `LoginCubit` has no attempt.
-  Step 6 uses the provider to record "Last used".
+  `startOAuthFlow` also records the flow's provider in memory, keyed by its
+  session token. Releasing ownership keeps that record, so a flow resumed after
+  its in-memory ownership was released still finds its provider; that happens
+  on the phone when a backgrounded poll is interrupted and `_onAppResumed`
+  resumes it (`_releaseOAuthSessionIfOwned` runs in the interrupted poll's
+  `finally`). A fresh process never resumes a flow: a new `LoginCubit` has no
+  attempt. Step 6 deviation: memory alone covers that one in-process resume, so
+  the provider is not written to `OAuthStorageService`'s `oauth_provider` slot,
+  which saves a storage write and its cleanup. Step 6 uses the provider to
+  record "Last used".
 
 ### 2. `module_core`: `LoginCubit` owns the handoff (step 2)
 
@@ -360,8 +361,8 @@ New mutable parts:
 1. The OAuth attempt's handoff slot in `LoginCubit` (set once init returns,
    replaced on reopen). Needed so resume, reopen and cancel act on the right URL.
 2. One persisted provider key for "Last used". Needed to survive sign-out.
-   The in-flight flow's provider reuses the existing `oauth_provider` slot
-   plus one in-memory field beside `_oAuthSessionToken`, cleared with it.
+   The in-flight flow's provider is one in-memory record keyed by its session
+   token, replaced by the next `startOAuthFlow` (step 6 deviation, section 1).
 3. `LastSignInProviderCubit` state (one nullable value, loaded once).
 4. The card's countdown ticker (UI only, disposed with the card).
 

@@ -32,8 +32,12 @@ release. Private unsigned per-user installers have passed isolated native packag
 fixtures, but they are not downloads and do not establish SmartScreen, interactive
 GUI/account behavior or a signed N→N+1 update.
 
-Internal is an explicit test channel, not an automatic promotion to stable. The
-sections below do not imply a release exists. Do not use GitHub's generic Latest
+Internal is an explicit test channel, not an automatic promotion to stable.
+Internal build 987 uses the older per-value native storage format. Before replacing
+that build with a shared-store preview, sign out in the old app, Quit, install the
+new package, then sign in again. Internal format changes do not carry a production
+migration promise; old-format replacement proof does not qualify the new format.
+The sections below do not imply every platform/channel has a release. Do not use GitHub's generic Latest
 release to choose a desktop installer.
 
 ## Stable macOS x64
