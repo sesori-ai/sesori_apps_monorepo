@@ -174,6 +174,38 @@ String toString() {
 /// @nodoc
 
 
+class FeedbackSheetReviewPromptPending implements FeedbackSheetState {
+  const FeedbackSheetReviewPromptPending();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FeedbackSheetReviewPromptPending);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'FeedbackSheetState.reviewPromptPending()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
 class FeedbackSheetPrivateFeedback implements FeedbackSheetState {
   const FeedbackSheetPrivateFeedback({required  Set<FeedbackIssue> issues, required this.submission}): _issues = issues;
   

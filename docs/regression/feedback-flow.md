@@ -26,6 +26,16 @@ Settings. Desktop Settings does not show the row.
   - Android opens the Play Store app. If that app is missing or fails to open,
     Android falls back to the web listing.
 - A failed store launch is logged. The user stays in Sesori and sees no error.
+- A sheet opened with the `automatic` source asks for the review differently
+  (Settings is unchanged). No flow opens it yet:
+  - iOS skips the confirmation. The sheet closes on the celebration's last
+    frame, and only after its exit animation has finished does Sesori ask
+    StoreKit for its in-app review prompt through the `com.sesori.app/app_review`
+    channel. StoreKit may skip the prompt silently and never reports whether it
+    appeared. A failed request is logged.
+  - Android keeps the confirmation, and **Leave a review** opens the Play Store
+    listing. Android never uses Play In-App Review, because Play policy forbids
+    it after Sesori's own question.
 - **Not now**, the close button, and a swipe down after **Yes** all count as a
   positive answer without a review, and no store opens.
 - **Could be better** replaces the rating step with "What should we improve?".
@@ -58,7 +68,7 @@ Settings. Desktop Settings does not show the row.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: the sheet widget suite proves the celebration timing, the confirmation copy, the locked answers, that the outcome resolves only after the sheet has closed, the outcomes for dismiss, Not now, close during the celebration and Cancel, private Send with its toast after closing, the recipient line, that Cancel, back, a barrier tap, and a swipe down cannot dismiss the sheet mid-send, a failed send that keeps the draft and retries, the 4,000-character limit and counter, reduced motion (at open, turned on mid-flight, and while writing), and the narrow large-text layout. The cubit, repository, API, store-client, and Settings suites prove the outcome mapping, send locking and failure, message trimming and omission, the request's wire values, the store URLs with the Android fallback, that Settings opens the store only after the sheet has closed, and that Settings sends with the `settings` source. |
+| L1 Smoke | Automated: the sheet widget suite proves the celebration timing, the confirmation copy, the locked answers, that the outcome resolves only after the sheet has closed, the outcomes for dismiss, Not now, close during the celebration and Cancel, private Send with its toast after closing, the recipient line, that Cancel, back, a barrier tap, and a swipe down cannot dismiss the sheet mid-send, a failed send that keeps the draft and retries, the 4,000-character limit and counter, reduced motion (at open, turned on mid-flight, and while writing), and the narrow large-text layout. The cubit, repository, API, store-client, and Settings suites prove the outcome mapping, send locking and failure, message trimming and omission, the request's wire values, the store URLs with the Android fallback, the automatic source's StoreKit request on iOS (no confirmation, the sheet closes itself first) and store listing on Android, that Settings opens the store only after the sheet has closed, and that Settings sends with the `settings` source. |
 | L2 Routine | Client end to end on the release-target client platform against the dev auth server: Settings shows **Rate Sesori**; **Yes**, then **Leave a review**, opens the store review page after the sheet has closed; **Not now** returns to Settings without leaving the app; **Could be better** sends ticked issues and fixture text, closes the sheet, and shows the toast, and the stored document matches (message omitted when blank). |
 | L3 Release | Client end to end on the alternate client platform: the same journey opens that platform's store. |
 | L4 Extended | Client end to end with Reduce Motion or Remove animations enabled and at accessibility text sizes. On Android, a device without the Play Store app falls back to the web listing. Sending offline or past the server's rate limit shows the inline error, keeps the draft, and Retry succeeds once the server accepts it. |
@@ -72,6 +82,9 @@ Settings. Desktop Settings does not show the row.
 - Closing the sheet as the celebration ends switches it to the review step
   while it animates out.
 - Android shows nothing when the Play Store app is unavailable.
+- An automatic sheet on iOS shows the review confirmation, switches content
+  while it closes, or requests the StoreKit prompt before it has gone.
+- Android requests Play In-App Review.
 - A send failure clears the draft or issues, closes the sheet, or shows the
   success toast.
 - The sheet closes while a send is in flight, so a successful send shows no
@@ -91,6 +104,7 @@ Settings. Desktop Settings does not show the row.
 - `client/module_core/lib/src/repositories/feedback_repository.dart`
 - `client/module_core/lib/src/api/feedback_api.dart`
 - `client/app/lib/core/platform/flutter_app_review_client.dart`
+- `client/app/ios/Runner/AppDelegate.swift`
 - `client/app/lib/features/settings/settings_screen.dart`
 - `client/module_app_ui/test/features/feedback/feedback_sheet_test.dart`
 - `client/module_core/test/cubits/feedback_sheet/feedback_sheet_cubit_test.dart`

@@ -26,7 +26,9 @@ class FeedbackSheetCubit({
 
   void finishCelebration() {
     if (state is! FeedbackSheetCelebrating) return;
-    emit(const FeedbackSheetState.reviewConfirmation());
+    emit(
+      _reviewLeavesApp ? const FeedbackSheetState.reviewConfirmation() : const FeedbackSheetState.reviewPromptPending(),
+    );
   }
 
   void chooseLeaveReview() {
@@ -70,15 +72,25 @@ class FeedbackSheetCubit({
   /// The answer this sheet ended with, read once its route has closed.
   FeedbackSheetOutcome get outcome => switch (state) {
     FeedbackSheetRating() => const FeedbackSheetOutcomeDismissed(),
-    FeedbackSheetCelebrating() ||
-    FeedbackSheetReviewConfirmation() => const FeedbackSheetOutcomeLoveNotNow(),
-    FeedbackSheetReviewAccepted() => const FeedbackSheetOutcomeLoveLeaveReview(),
+    FeedbackSheetCelebrating() || FeedbackSheetReviewConfirmation() => const FeedbackSheetOutcomeLoveNotNow(),
+    FeedbackSheetReviewAccepted() || FeedbackSheetReviewPromptPending() => const FeedbackSheetOutcomeLoveLeaveReview(),
     FeedbackSheetPrivateFeedback(:final submission) => FeedbackSheetOutcomeCouldBeBetter(
       sent: submission == FeedbackSubmission.sent,
     ),
   };
 
-  /// Opens the store review page. Call only after the sheet's route has
-  /// finished closing, so leaving the app never cuts its exit short.
-  Future<void> requestStoreReview() => _appReviewClient.openStoreReviewPage();
+  /// Asks for a review: the OS review prompt for the automatic sheet, the
+  /// store review page from Settings. Call only after the sheet's route has
+  /// finished closing, so neither cuts its exit short.
+  Future<void> requestStoreReview() => switch (_source) {
+    FeedbackSource.automatic => _appReviewClient.requestReview(),
+    FeedbackSource.settings => _appReviewClient.openStoreReviewPage(),
+  };
+
+  /// Whether the review leaves Sesori for the store, which the user confirms
+  /// first so leaving the app is never a surprise.
+  bool get _reviewLeavesApp => switch (_source) {
+    FeedbackSource.automatic => _appReviewClient.requestReviewOpensStore,
+    FeedbackSource.settings => true,
+  };
 }

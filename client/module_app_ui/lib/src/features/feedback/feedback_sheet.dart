@@ -190,7 +190,11 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
     // send lands. The back gesture and barrier tap ask PopScope first.
     final sending = state is FeedbackSheetPrivateFeedback && state.submission == FeedbackSubmission.submitting;
     return BlocListener<FeedbackSheetCubit, FeedbackSheetState>(
-      listenWhen: (_, next) => next is FeedbackSheetPrivateFeedback && next.submission == FeedbackSubmission.sent,
+      // The OS review prompt follows a finished celebration without a
+      // confirmation, keeping the celebration's last frame as the sheet leaves.
+      listenWhen: (_, next) =>
+          next is FeedbackSheetReviewPromptPending ||
+          (next is FeedbackSheetPrivateFeedback && next.submission == FeedbackSubmission.sent),
       listener: (_, _) => _close(),
       child: PopScope(
         canPop: !sending,

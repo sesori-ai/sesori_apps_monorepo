@@ -139,6 +139,33 @@ void main() {
     },
   );
 
+  testWidgets("an automatic sheet with an in-app OS prompt closes itself after the celebration", (tester) async {
+    final appReviewClient = _MockAppReviewClient();
+    when(() => appReviewClient.requestReviewOpensStore).thenReturn(false);
+    await cubit.close();
+    cubit = FeedbackSheetCubit(
+      appReviewClient: appReviewClient,
+      feedbackRepository: feedbackRepository,
+      source: FeedbackSource.automatic,
+    );
+    await open(tester: tester);
+
+    await tester.tap(love);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump(const Duration(milliseconds: 16));
+    // The sheet leaves on the celebration's last frame, with no confirmation.
+    expect(find.byType(BottomSheet, skipOffstage: false), findsOneWidget);
+    expect(find.text(_ratingTitle), findsOneWidget);
+    expect(find.text(_reviewTitle), findsNothing);
+    expect(outcomes, isEmpty, reason: "The OS prompt must wait for the closing sheet animation.");
+
+    await tester.pumpAndSettle();
+    expect(outcomes.single, isA<FeedbackSheetOutcomeLoveLeaveReview>());
+    expect(sheetsAtOutcome, [false]);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("a celebration that ends while the sheet closes does not switch to the review step", (tester) async {
     await open(tester: tester);
     await tester.tap(love);
