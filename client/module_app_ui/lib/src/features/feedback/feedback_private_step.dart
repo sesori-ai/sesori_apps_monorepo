@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/gestures.dart" show kPrimaryButton;
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
@@ -8,6 +9,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "../session_detail/widgets/voice_cancel_button.dart";
 import "feedback_sheet_motion.dart";
 
 const _pressScale = 0.97;
@@ -17,7 +19,26 @@ const _pressFadeDuration = Duration(milliseconds: 100);
 /// The counter appears once this few characters remain.
 const _counterThreshold = 200;
 
-/// "What should we improve?": issue pills and a typed message, sent privately.
+/// A shorter hold is a tap, not speech, and is discarded like the session
+/// composer's.
+const _minimumRecordingDuration = Duration(milliseconds: 200);
+
+/// Drag-to-cancel geometry around the cancel target's centre: the drag starts
+/// engaging it within the reach radius and commits within the commit radius.
+const _cancelReachRadius = 170.0;
+const _cancelCommitRadius = 44.0;
+
+enum _VoicePresentation() {
+  idle,
+  recording,
+  transcribing,
+}
+
+/// "What should we improve?": issue pills and a message, typed or dictated by
+/// holding the microphone, sent privately.
+///
+/// Reads the [VoiceInputCubit] the product shell provides around this step.
+/// Transcripts are appended to the draft and never sent by themselves.
 class const FeedbackPrivateStep({super.key, required final VoidCallback onCancel}) extends StatefulWidget {
   @override
   State<FeedbackPrivateStep> createState() => _FeedbackPrivateStepState();
@@ -26,6 +47,22 @@ class const FeedbackPrivateStep({super.key, required final VoidCallback onCancel
 class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
   final _text = TextEditingController();
   final _focus = FocusNode();
+  final _textScroll = ScrollController();
+  final _cancelTargetKey = GlobalKey();
+
+  /// 0 at rest, 1 with the holding finger on the cancel target.
+  final _cancelProgress = ValueNotifier<double>(0);
+
+  /// True from a press on the microphone (or an assistive-technology toggle)
+  /// until its release.
+  bool _holding = false;
+
+  /// The pointer holding the microphone; null for an assistive toggle.
+  int? _holdPointer;
+  Timer? _minimumDurationTimer;
+  bool _minimumDurationReached = false;
+
+  VoiceInputCubit get _voice => context.read<VoiceInputCubit>();
 
   @override
   void initState() {
@@ -38,10 +75,13 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
 
   @override
   void dispose() {
+    _minimumDurationTimer?.cancel();
     _text.removeListener(_refresh);
     _focus.removeListener(_refresh);
     _text.dispose();
     _focus.dispose();
+    _textScroll.dispose();
+    _cancelProgress.dispose();
     super.dispose();
   }
 
@@ -50,8 +90,175 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
     unawaited(context.read<FeedbackSheetCubit>().submit(message: _text.text));
   }
 
+  void _handleMicPointerDown(PointerDownEvent event) {
+    if (_holding || (event.buttons & kPrimaryButton) == 0) return;
+    _holdPointer = event.pointer;
+    unawaited(_startRecording());
+  }
+
+  void _handleMicPointerMove(PointerMoveEvent event) {
+    if (event.pointer != _holdPointer) return;
+    final target = _cancelTargetKey.currentContext?.findRenderObject();
+    if (target is! RenderBox || !target.hasSize) return;
+    final distance = (event.position - target.localToGlobal(target.size.center(Offset.zero))).distance;
+    final progress = (1 - (distance - _cancelCommitRadius) / (_cancelReachRadius - _cancelCommitRadius)).clamp(
+      0.0,
+      1.0,
+    );
+    if ((progress >= 1) != (_cancelProgress.value >= 1)) unawaited(_playHaptic(play: HapticFeedback.selectionClick));
+    _cancelProgress.value = progress;
+  }
+
+  void _handleMicPointerUp(PointerUpEvent event) {
+    if (event.pointer == _holdPointer) unawaited(_release());
+  }
+
+  /// The system took the touch, for example when the sheet closes under the
+  /// finger, so nothing was meant to be sent for transcription.
+  void _handleMicPointerCancel(PointerCancelEvent event) {
+    if (event.pointer == _holdPointer) _cancelVoice();
+  }
+
+  /// Assistive technologies cannot express the hold, so activation toggles.
+  void _handleSemanticToggle() {
+    if (_holding) {
+      unawaited(_release());
+    } else {
+      unawaited(_startRecording());
+    }
+  }
+
+  Future<void> _startRecording() async {
+    final voice = _voice;
+    if (voice.state is! VoiceInputIdle) {
+      _holdPointer = null;
+      return;
+    }
+    _holding = true;
+    _minimumDurationReached = false;
+    _cancelProgress.value = 0;
+    // Before the recorder starts, so touch-down feels immediate.
+    unawaited(_playHaptic(play: HapticFeedback.lightImpact));
+    await voice.startRecording();
+    if (!mounted || voice.state is! VoiceInputRecording) return;
+    if (!_holding) {
+      // Released while the recorder was starting: nothing worth transcribing.
+      await voice.cancel();
+      return;
+    }
+    _minimumDurationTimer = Timer(_minimumRecordingDuration, () => _minimumDurationReached = true);
+  }
+
+  Future<void> _release() async {
+    if (!_holding) return;
+    final discard = _cancelProgress.value >= 1 || !_minimumDurationReached;
+    _endHold();
+    // Still starting: _startRecording cancels once the recorder is up.
+    if (_voice.state is! VoiceInputRecording) return;
+    if (discard) {
+      await _voice.cancel();
+    } else {
+      await _voice.stopAndTranscribe(limitReached: false);
+    }
+  }
+
+  /// Cancels the recording or transcription; the draft stays as it is.
+  void _cancelVoice() {
+    _endHold();
+    unawaited(_voice.cancel());
+  }
+
+  void _endHold() {
+    _holding = false;
+    _holdPointer = null;
+    _minimumDurationTimer?.cancel();
+    _cancelProgress.value = 0;
+  }
+
+  void _handleVoiceState(BuildContext context, VoiceInputState state) {
+    final loc = context.loc;
+    switch (state) {
+      case VoiceInputTranscribing(limitReached: true):
+        _showNotice(message: loc.voiceRecordingLimitReached, variant: PregoPopupAlertsNotificationsVariant.warning);
+      case VoiceInputCompleted(:final transcript):
+        _appendTranscript(transcript: transcript);
+        _voice.acknowledgeOutcome();
+      case VoiceInputStartFailed(:final error):
+        _endHold();
+        if (error is MicrophonePermissionDeniedError) {
+          _showNotice(message: loc.voiceErrorPermission, variant: PregoPopupAlertsNotificationsVariant.warning);
+        } else {
+          _showNotice(message: loc.voiceErrorRecording, variant: PregoPopupAlertsNotificationsVariant.error);
+        }
+        _voice.acknowledgeOutcome();
+      case VoiceInputTranscriptionFailed(:final error):
+        _showNotice(
+          message: error is NotAuthenticatedVoiceError ? loc.voiceErrorNotAuthenticated : loc.voiceErrorTranscription,
+          variant: PregoPopupAlertsNotificationsVariant.error,
+        );
+        _voice.acknowledgeOutcome();
+      case VoiceInputRetryPending():
+        // The approved flow drops a recording that could not be transcribed
+        // and invites a fresh one; the draft stays as it is.
+        _showNotice(message: loc.voiceErrorTranscription, variant: PregoPopupAlertsNotificationsVariant.error);
+        unawaited(_voice.discard());
+      case VoiceInputIdle() ||
+          VoiceInputStarting() ||
+          VoiceInputRecording() ||
+          VoiceInputTranscribing() ||
+          VoiceInputRetrying() ||
+          VoiceInputRetryCancelling() ||
+          VoiceInputDiscarding() ||
+          VoiceInputCancelling():
+        break;
+    }
+  }
+
+  /// Appends to whatever the draft holds now, including text typed while
+  /// transcribing, and cuts the result at the server's limit.
+  void _appendTranscript({required String transcript}) {
+    final addition = transcript.trim();
+    if (addition.isEmpty) return;
+    final draft = _text.text;
+    final separator = draft.isEmpty || draft.endsWith(" ") || draft.endsWith("\n") ? "" : " ";
+    final text = "$draft$separator$addition".characters.take(feedbackMessageMaxLength).toString();
+    _text.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    unawaited(_playHaptic(play: HapticFeedback.lightImpact));
+    // Bring the new words into view once the field has laid them out.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_textScroll.hasClients) return;
+      final end = _textScroll.position.maxScrollExtent;
+      if (prefersReducedMotion(context)) {
+        _textScroll.jumpTo(end);
+      } else {
+        _textScroll.animateTo(end, duration: feedbackContentDuration, curve: feedbackEaseOut);
+      }
+    });
+  }
+
+  void _showNotice({required String message, required PregoPopupAlertsNotificationsVariant variant}) =>
+      PregoPopupAlertPresenter.of(context).show(title: message, variant: variant);
+
+  static Future<void> _playHaptic({required Future<void> Function() play}) async {
+    try {
+      await play();
+    } on Object catch (error, stackTrace) {
+      logw("Failed to play feedback voice haptics", error, stackTrace);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    return BlocListener<VoiceInputCubit, VoiceInputState>(
+      listener: _handleVoiceState,
+      child: _buildContent(context: context),
+    );
+  }
+
+  Widget _buildContent({required BuildContext context}) {
     final prego = context.prego;
     final loc = context.loc;
     final state = context.watch<FeedbackSheetCubit>().state;
@@ -59,6 +266,18 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
     final editable = state.submission.canEdit;
     final failed = state.submission == FeedbackSubmission.failed;
     final sending = state.submission == FeedbackSubmission.submitting;
+    final voice = switch (context.watch<VoiceInputCubit>().state) {
+      VoiceInputStarting() || VoiceInputRecording() => _VoicePresentation.recording,
+      VoiceInputTranscribing() || VoiceInputRetrying() => _VoicePresentation.transcribing,
+      VoiceInputIdle() ||
+      VoiceInputRetryPending() ||
+      VoiceInputRetryCancelling() ||
+      VoiceInputDiscarding() ||
+      VoiceInputCompleted() ||
+      VoiceInputStartFailed() ||
+      VoiceInputTranscriptionFailed() ||
+      VoiceInputCancelling() => _VoicePresentation.idle,
+    };
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -87,7 +306,7 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
           ),
         ),
         const SizedBox(height: 18),
-        _buildComposer(context: context, editable: editable, sending: sending),
+        _buildComposer(context: context, editable: editable, sending: sending, voice: voice),
         const SizedBox(height: PregoSpacing.md),
         Text(
           loc.feedbackRecipient,
@@ -142,11 +361,16 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
     );
   }
 
-  Widget _buildComposer({required BuildContext context, required bool editable, required bool sending}) {
+  Widget _buildComposer({
+    required BuildContext context,
+    required bool editable,
+    required bool sending,
+    required _VoicePresentation voice,
+  }) {
     final prego = context.prego;
     final loc = context.loc;
     final focused = _focus.hasFocus;
-    final remaining = feedbackMessageMaxLength - _text.text.characters.length;
+    final canSend = editable && voice == _VoicePresentation.idle;
     return TweenAnimationBuilder<Decoration>(
       duration: prefersReducedMotion(context) ? Duration.zero : feedbackControlDuration,
       curve: feedbackEaseOut,
@@ -178,6 +402,7 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
               key: const ValueKey("feedback-text"),
               controller: _text,
               focusNode: _focus,
+              scrollController: _textScroll,
               readOnly: !editable,
               keyboardType: TextInputType.multiline,
               textInputAction: TextInputAction.newline,
@@ -203,35 +428,78 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
               ),
             ),
             const SizedBox(height: PregoSpacing.md),
+            // The row keeps its 44px height in every voice state, so the draft
+            // above it never moves; only the leading slot cross-fades.
             Row(
               children: [
                 Expanded(
-                  child: remaining <= _counterThreshold
-                      ? Padding(
-                          padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                          child: Text(
-                            loc.feedbackCharactersLeft(remaining),
-                            key: const ValueKey("feedback-counter"),
-                            style: prego.textTheme.textSm.regular.copyWith(
-                              color: remaining == 0 ? prego.colors.textErrorPrimary : prego.colors.textTertiary,
+                  child: FeedbackContentTransition(
+                    layoutBuilder: _leadingSlotLayout,
+                    child: switch (voice) {
+                      _VoicePresentation.idle => _buildCounter(context: context),
+                      _VoicePresentation.recording => Row(
+                        key: const ValueKey("feedback-voice-recording"),
+                        children: [
+                          VoiceCancelButton(key: _cancelTargetKey, progress: _cancelProgress, onCancel: _cancelVoice),
+                          const SizedBox(width: PregoSpacing.md),
+                          Expanded(
+                            child: PregoVoiceWaveform(
+                              amplitudeStream: _voice.amplitudeStream,
+                              barColor: prego.colors.textPrimary,
+                              dotColor: prego.colors.fgQuaternary,
+                              flattenProgress: _cancelProgress,
                             ),
                           ),
-                        )
-                      : const SizedBox.shrink(),
+                        ],
+                      ),
+                      _VoicePresentation.transcribing => Row(
+                        key: const ValueKey("feedback-voice-transcribing"),
+                        children: [
+                          Tooltip(
+                            message: loc.voiceCancelTranscription,
+                            child: PregoButtonsSolid.iconOnly(
+                              key: const ValueKey("feedback-voice-cancel-transcription"),
+                              leadingIcon: TablerRegular.x,
+                              hierarchy: PregoButtonsSolidHierarchy.secondary,
+                              size: PregoButtonsSolidSize.lg,
+                              onPressed: _cancelVoice,
+                            ),
+                          ),
+                          const SizedBox(width: PregoSpacing.md),
+                          Flexible(
+                            child: PregoShimmer(
+                              appearDelay: Duration.zero,
+                              highlightColor: prego.colors.textPlaceholderSubtle,
+                              semanticLabel: loc.voiceTranscribing,
+                              child: Text(
+                                loc.voiceTranscribing,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    },
+                  ),
                 ),
+                const SizedBox(width: PregoSpacing.md),
+                _buildMicrophone(context: context, editable: editable),
+                const SizedBox(width: PregoSpacing.md),
                 Semantics(
                   label: loc.feedbackSend,
                   button: true,
-                  enabled: editable,
+                  enabled: canSend,
                   excludeSemantics: true,
-                  onTap: editable ? _submit : null,
+                  onTap: canSend ? _submit : null,
                   child: PregoButtonsSolid.iconOnly(
                     key: const ValueKey("feedback-send"),
                     leadingIcon: TablerRegular.arrow_up,
                     hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
                     size: PregoButtonsSolidSize.lg,
                     isLoading: sending,
-                    onPressed: editable ? _submit : null,
+                    onPressed: canSend ? _submit : null,
                   ),
                 ),
               ],
@@ -241,7 +509,61 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
       ),
     );
   }
+
+  Widget _buildCounter({required BuildContext context}) {
+    final prego = context.prego;
+    final remaining = feedbackMessageMaxLength - _text.text.characters.length;
+    if (remaining > _counterThreshold) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+      child: Text(
+        context.loc.feedbackCharactersLeft(remaining),
+        key: const ValueKey("feedback-counter"),
+        style: prego.textTheme.textSm.regular.copyWith(
+          color: remaining == 0 ? prego.colors.textErrorPrimary : prego.colors.textTertiary,
+        ),
+      ),
+    );
+  }
+
+  /// Hold to record, release to transcribe, or drag onto the cancel target
+  /// to discard. The button stays mounted through every voice state because
+  /// it owns the hold.
+  Widget _buildMicrophone({required BuildContext context, required bool editable}) {
+    return Semantics(
+      button: true,
+      label: context.loc.voiceRecord,
+      enabled: editable,
+      excludeSemantics: true,
+      onTap: editable ? _handleSemanticToggle : null,
+      // Claims vertical drags that start on the microphone, so a hold that
+      // drifts neither scrolls nor dismisses the sheet.
+      child: GestureDetector(
+        onVerticalDragStart: (_) {},
+        child: Listener(
+          onPointerDown: editable ? _handleMicPointerDown : null,
+          onPointerMove: _handleMicPointerMove,
+          onPointerUp: _handleMicPointerUp,
+          onPointerCancel: _handleMicPointerCancel,
+          child: PregoButtonsSolid.iconOnly(
+            key: const ValueKey("feedback-voice"),
+            leadingIcon: TablerRegular.microphone,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.lg,
+            // Keeps the enabled look; the listener drives recording.
+            onPressed: editable ? _ignoreTap : null,
+          ),
+        ),
+      ),
+    );
+  }
+
+  static void _ignoreTap() {}
 }
+
+/// Pins every leading-slot state to the row's start edge.
+Widget _leadingSlotLayout(Widget? current, List<Widget> previous) =>
+    Stack(alignment: AlignmentDirectional.centerStart, children: [...previous, ?current]);
 
 class const _IssuePill({
   super.key,

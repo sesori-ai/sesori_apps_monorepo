@@ -10,6 +10,7 @@ import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
 import "../../core/platform/package_info_client.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/widgets/feedback_voice_input_scope.dart";
 import "../../core/widgets/legal_document_sheet.dart";
 
 /// Mobile-shell composition for the shared settings view.
@@ -74,7 +75,11 @@ class const _MobileSettingsView() extends StatelessWidget {
 
 Future<void> _openRateSesori({required BuildContext context}) async {
   final cubit = context.read<FeedbackSheetCubit>();
-  final outcome = await showFeedbackSheet(context: context, cubit: cubit);
+  final outcome = await showFeedbackSheet(
+    context: context,
+    cubit: cubit,
+    voiceInputScopeBuilder: ({required child}) => FeedbackVoiceInputScope(child: child),
+  );
   switch (outcome) {
     case FeedbackSheetOutcomeLoveLeaveReview():
       await cubit.requestStoreReview();

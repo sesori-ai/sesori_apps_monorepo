@@ -11,6 +11,10 @@ import "feedback_private_step.dart";
 import "feedback_rating_motion.dart";
 import "feedback_sheet_motion.dart";
 
+/// Wraps the private step in the product shell's voice input scope, which
+/// provides the step's [VoiceInputCubit] and closes it with the step.
+typedef FeedbackVoiceInputScopeBuilder = Widget Function({required Widget child});
+
 /// Presents the rating sheet driven by [cubit] and resolves with its outcome
 /// once the sheet's route has fully closed, so a follow-up such as opening
 /// the store never cuts the exit animation short. Sent private feedback is
@@ -18,8 +22,13 @@ import "feedback_sheet_motion.dart";
 Future<FeedbackSheetOutcome> showFeedbackSheet({
   required BuildContext context,
   required FeedbackSheetCubit cubit,
+  required FeedbackVoiceInputScopeBuilder voiceInputScopeBuilder,
 }) async {
-  final outcome = await _presentFeedbackSheet(context: context, cubit: cubit);
+  final outcome = await _presentFeedbackSheet(
+    context: context,
+    cubit: cubit,
+    voiceInputScopeBuilder: voiceInputScopeBuilder,
+  );
   if (outcome case FeedbackSheetOutcomeCouldBeBetter(sent: true) when context.mounted) {
     _confirmFeedbackSent(context: context, alerts: PregoPopupAlertPresenter.of(context));
   }
@@ -33,6 +42,7 @@ Future<FeedbackSheetOutcome> showFeedbackSheet({
 Future<FeedbackSheetOutcome?> showFeedbackSheetOnNavigator({
   required GlobalKey<NavigatorState> navigatorKey,
   required FeedbackSheetCubit cubit,
+  required FeedbackVoiceInputScopeBuilder voiceInputScopeBuilder,
 }) async {
   final context = navigatorKey.currentContext;
   final overlay = navigatorKey.currentState?.overlay;
@@ -40,7 +50,11 @@ Future<FeedbackSheetOutcome?> showFeedbackSheetOnNavigator({
     logw("Cannot present the rating sheet before the navigator is ready");
     return null;
   }
-  final outcome = await _presentFeedbackSheet(context: context, cubit: cubit);
+  final outcome = await _presentFeedbackSheet(
+    context: context,
+    cubit: cubit,
+    voiceInputScopeBuilder: voiceInputScopeBuilder,
+  );
   if (outcome case FeedbackSheetOutcomeCouldBeBetter(sent: true) when context.mounted) {
     _confirmFeedbackSent(context: context, alerts: PregoPopupAlertPresenter.fromOverlayState(overlay));
   }
@@ -50,6 +64,7 @@ Future<FeedbackSheetOutcome?> showFeedbackSheetOnNavigator({
 Future<FeedbackSheetOutcome> _presentFeedbackSheet({
   required BuildContext context,
   required FeedbackSheetCubit cubit,
+  required FeedbackVoiceInputScopeBuilder voiceInputScopeBuilder,
 }) async {
   cubit.start();
   final reducedMotion = prefersReducedMotion(context);
@@ -69,7 +84,10 @@ Future<FeedbackSheetOutcome> _presentFeedbackSheet({
     ),
     builder: (context) {
       sheetRoute = ModalRoute.of<void>(context);
-      return BlocProvider.value(value: cubit, child: const FeedbackSheet());
+      return BlocProvider.value(
+        value: cubit,
+        child: FeedbackSheet(voiceInputScopeBuilder: voiceInputScopeBuilder),
+      );
     },
   );
   // A popped sheet's result completes before its closing animation does.
@@ -86,7 +104,10 @@ void _confirmFeedbackSent({required BuildContext context, required PregoPopupAle
 
 /// Grabber-only sheet from Figma 5527:8368. `PregoBottomSheet` carries a
 /// navigation header, so this chrome stays local to the feedback flow.
-class const FeedbackSheet({super.key}) extends StatefulWidget {
+class const FeedbackSheet({
+  super.key,
+  required final FeedbackVoiceInputScopeBuilder voiceInputScopeBuilder,
+}) extends StatefulWidget {
   @override
   State<FeedbackSheet> createState() => _FeedbackSheetState();
 }
@@ -101,7 +122,8 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
       TweenSequenceItem(tween: Tween<double>(begin: 0.6, end: 1), weight: 20),
     ]),
   );
-  // Keeps the draft when Reduce Motion removes the surrounding AnimatedSize.
+  // Keeps the draft, and the recorder beside it, when Reduce Motion removes
+  // the surrounding AnimatedSize.
   final _privateStepKey = GlobalKey();
 
   @override
@@ -166,7 +188,10 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
     final content = FeedbackContentTransition(
       layoutBuilder: (current, previous) => feedbackStepLayout(current: current, previous: previous),
       child: privateStep
-          ? FeedbackPrivateStep(key: _privateStepKey, onCancel: _close)
+          ? KeyedSubtree(
+              key: _privateStepKey,
+              child: widget.voiceInputScopeBuilder(child: FeedbackPrivateStep(onCancel: _close)),
+            )
           : _RatingStep(
               key: const ValueKey("feedback-rating-step"),
               animation: reducedMotion ? const AlwaysStoppedAnimation(0) : _celebrationTimeline,

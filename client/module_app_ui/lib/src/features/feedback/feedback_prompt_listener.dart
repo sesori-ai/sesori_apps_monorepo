@@ -12,6 +12,7 @@ import "feedback_sheet.dart";
 /// Reads the [FeedbackSheetCubit] for the automatic entry from above.
 class const FeedbackPromptListener({
   required final GlobalKey<NavigatorState> navigatorKey,
+  required final FeedbackVoiceInputScopeBuilder voiceInputScopeBuilder,
   required final Widget child,
   super.key,
 }) extends StatelessWidget {
@@ -19,15 +20,28 @@ class const FeedbackPromptListener({
   Widget build(BuildContext context) {
     return BlocListener<FeedbackPromptCubit, FeedbackPromptPresentation>(
       listenWhen: (_, current) => current is FeedbackPromptShow,
-      listener: (context, _) =>
-          unawaited(_present(navigatorKey: navigatorKey, cubit: context.read<FeedbackSheetCubit>())),
+      listener: (context, _) => unawaited(
+        _present(
+          navigatorKey: navigatorKey,
+          cubit: context.read<FeedbackSheetCubit>(),
+          voiceInputScopeBuilder: voiceInputScopeBuilder,
+        ),
+      ),
       child: child,
     );
   }
 }
 
-Future<void> _present({required GlobalKey<NavigatorState> navigatorKey, required FeedbackSheetCubit cubit}) async {
-  final outcome = await showFeedbackSheetOnNavigator(navigatorKey: navigatorKey, cubit: cubit);
+Future<void> _present({
+  required GlobalKey<NavigatorState> navigatorKey,
+  required FeedbackSheetCubit cubit,
+  required FeedbackVoiceInputScopeBuilder voiceInputScopeBuilder,
+}) async {
+  final outcome = await showFeedbackSheetOnNavigator(
+    navigatorKey: navigatorKey,
+    cubit: cubit,
+    voiceInputScopeBuilder: voiceInputScopeBuilder,
+  );
   switch (outcome) {
     case FeedbackSheetOutcomeLoveLeaveReview():
       await cubit.requestStoreReview();
