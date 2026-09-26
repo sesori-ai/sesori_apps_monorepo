@@ -277,6 +277,9 @@ widgets → desktop and phone shells.
   [Approved copy](#approved-copy) with Copy link and Try again
   (`reopenBrowser`). Timeout and failure show an inline notice
   above the re-enabled buttons with a fixed-height slot, so nothing jumps.
+  *Step 5 deviations* ([step 5](steps/step-05.md)): the notice takes the
+  heading's place instead of a reserved slot, and Copy link confirms with a
+  "Link copied to clipboard" popup.
 - All copy moves to `app_en.arb` in `module_app_ui` (English is the only
   locale today).
 - **Last used (step 6).** `AuthManager` records the provider of each
@@ -408,6 +411,11 @@ this file before retirement:
 | Linux desktop | Apple and one other provider through the browser; Copy link, including without a working opener. |
 | iOS phone | Email sign-in through the shared form; one browser provider; native Apple unchanged. |
 | Android phone | Email sign-in through the shared form; one browser provider. |
+
+*Step 7:* the account document files the macOS row and the release-target
+phone under L3, and the Windows, Linux and second-phone rows under L4, where
+the other desktop documents keep alternate platforms. Retirement still runs the
+whole matrix above.
 
 Automated coverage in the steps: `AuthManager` cancel and typed-error tests,
 `LoginCubit` tests for cancel, reopen, launch failure and resume, and widget
