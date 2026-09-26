@@ -41,6 +41,14 @@ class SecureStorageRepository({required SecureStorageApi storageApi, required St
     await resetting;
   }
 
+  /// Prevent secret use after an incomplete startup operation, without native I/O.
+  /// Observe the failure immediately even when no consumer requests a secret.
+  void blockAccess({required Object error, required StackTrace stackTrace}) {
+    final blocked = Future<SecretKey>.error(error, stackTrace);
+    _masterKey = blocked;
+    unawaited(blocked.then<void>((_) {}, onError: (Object _, StackTrace _) {}));
+  }
+
   Future<SecretKey> _resetMasterKey() async {
     // Attempt both even if one fails. Rotating the master also invalidates old
     // ciphertext on relaunch when SQL cleanup failed but native access worked.

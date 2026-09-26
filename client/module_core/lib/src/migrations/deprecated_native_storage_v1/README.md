@@ -49,30 +49,31 @@ through `LegacyStorageMigrationException`, retaining native/SQL causes, operatio
 and original stacks (including both reset failures). Parser source buffers are
 omitted, not their error messages/offsets. Before normal startup:
 
-1. Independently attempt ciphertext clearing and protected-master replacement
-   through `SecureStorageRepository.reset()`. Its replacement future retains both
-   failures and stays cached. A saved replacement key also makes old ciphertext
-   unusable on relaunch if SQL deletion failed; no new writes use it until both
-   operations succeed.
-2. Clear both primitive tables atomically through `PersisterRepository.clear()`.
-3. Retire this import permanently only when the destination consumers inherit is
-   whole: either the copy committed every value, or the reset emptied it to a clean
-   slate. Any other outcome leaves half-copied or half-fenced rows, so retire
-   nothing and let a relaunch retry from the still-untouched source. A failed reset
-   also leaves this process unable to persist a session that such a retry could
-   overwrite. A committed copy stays trusted even when the reset could not fence
-   it: it is a finished import, not the partial state this recovery discards, and
-   its source remainder must never be imported in halves.
-4. After successful secret reset, clear the old native namespace, including unknown
-   entries. The new master uses a separate namespace. Then attempt completion even
-   if preference/source cleanup failed, fencing surviving legacy auth when saved.
+1. Persist `false` in the existing completion key before destruction. Absence means
+   ordinary import, `false` means recovery only, and `true` means handled. If the
+   marker cannot be read or intent cannot be written, block secret use for this
+   launch without authorizing destruction. Do not claim durable erasure.
+2. Independently attempt ciphertext clearing and protected-master replacement
+   through `SecureStorageRepository.reset()`. Both errors stay observable.
+3. Attempt `PersisterRepository.clearAndWriteBool` to atomically clear preferences
+   and retain `false`, even if secret reset failed. Rollback preserves intent.
+4. Only after both operations succeed, attempt legacy-namespace clearing and
+   write `true`. The new master uses a separate namespace. A failed legacy clear
+   is fenced by committed `true`; failed completion always blocks secret use,
+   even when native clearing succeeded, because pending reset must not erase a
+   newly established session on relaunch.
 
-Each cleanup failure stays logged. Primitive clearing is attempted even when
-secret reset failed; retirement is gated only by the whole-destination rule above.
-Either namespace clearing or the marker fences the source. When neither can be
-recorded the source stays importable, which a later launch then imports before any
-consumer starts; the accepted residue is that a session established between those
-launches can be replaced by the imported one.
+Every incomplete recovery blocks existing secret reads and new writes through
+`SecureStorageRepository.blockAccess`, which replaces its cached future without
+I/O and retains the cause/stack. Missing-row reads remain null; the normal login
+UI is not blocked. On restart `false` retries recovery, never legacy import,
+regardless of how many copies or source deletions previously succeeded.
+
+No compatibility repair is supplied for ambiguous stores created by unpublished
+#1779 builds (absent marker plus surviving legacy values plus fresh destination
+credentials). They have no public-release obligation and cannot be distinguished
+from an interrupted ordinary import. Do not claim those existing internal stores
+are safe. Released-mobile upgrades and normal interrupted imports remain supported.
 Successful reset permits fresh login and follows normal account/server analytics
 preferences; pending local-only opt-out may be lost, as explicitly accepted.
 No alternate store, consent flag or blocking migration-specific UI is introduced.

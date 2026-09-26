@@ -146,10 +146,11 @@ void main() {
           // the appearance row, so the subsequent recovery marker can commit.
           await fixture.database.customStatement("""
             CREATE TEMP TRIGGER reject_marker BEFORE INSERT ON bool_values
-            WHEN NEW.key = 'deprecated_native_storage_v1_completed'
+            WHEN NEW.key = 'deprecated_native_storage_v1_completed' AND NEW.value = 1
             AND EXISTS (SELECT 1 FROM string_values)
             BEGIN SELECT RAISE(FAIL, 'fixture marker failure'); END;
           """);
+        case LegacyStorageMigrationOperation.writeRecovery:
         case LegacyStorageMigrationOperation.readCompletion:
         case LegacyStorageMigrationOperation.resetSecrets:
         case LegacyStorageMigrationOperation.clearPreferences:
@@ -208,20 +209,18 @@ void main() {
     expect(await fixture.secrets.read(key: AuthSecretKey.accessToken), isNull);
   });
 
-  test("persistent marker/primitive failure stays observable without stopping other cleanup", () async {
+  test("unreadable completion blocks secrets without authorizing destruction", () async {
     final fixture = await MigrationFixture.create(values: _values);
     addTearDown(fixture.dispose);
     await fixture.database.customStatement("DROP TABLE bool_values");
     await fixture.service.migrate();
     expect(fixture.source.reads, 0);
-    expect(fixture.source.clears, 1);
-    expect(fixture.source.values, isEmpty);
+    expect(fixture.source.clears, 0);
+    expect(fixture.source.values, _values);
+    expect(fixture.master.writes, 0);
     expect(await fixture.secrets.read(key: AuthSecretKey.accessToken), isNull);
-    expect(logs.records.map((e) => e.diagnosticError), [
-      contains("readCompletion"),
-      contains("clearPreferences"),
-      contains("markReset"),
-    ]);
+    await expectLater(fixture.secrets.write(key: AuthSecretKey.accessToken, value: "fresh"), throwsA(isA<Exception>()));
+    expect(logs.records.single.diagnosticError, contains("readCompletion"));
   });
 
   test("denied key reset remains cached and retains the source for retry", () async {
@@ -232,7 +231,7 @@ void main() {
     expect(fixture.source.values, _values);
     expect(fixture.source.clears, 0);
     expect(await fixture.secrets.read(key: AuthSecretKey.accessToken), isNull);
-    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), isNull);
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), false);
     expect(logs.records.map((e) => e.diagnosticError), [contains("copyValues"), contains("resetSecrets")]);
     await expectLater(
       fixture.secrets.write(key: AuthSecretKey.accessToken, value: "new"),
@@ -257,7 +256,7 @@ void main() {
       fixture.secrets.read(key: AuthSecretKey.accessToken),
       throwsA(isA<ParallelWaitError<Object?, Object?>>()),
     );
-    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), isNull);
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), false);
     expect(fixture.source.values, _values);
     expect(fixture.source.clears, 0);
     final diagnostic = logs.records.last.formatted;
@@ -272,13 +271,13 @@ void main() {
     await fixture.reopen();
     fixture.master.writeFailure = null;
     await fixture.service.migrate();
-    expect(fixture.source.reads, 2);
+    expect(fixture.source.reads, 1);
     expect(fixture.source.clears, 1);
     expect(await fixture.secrets.read(key: AuthSecretKey.accessToken), isNull);
     expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), true);
   });
 
-  test("a half-deleted source is retired, not re-imported, when secret reset fails", () async {
+  test("a half-deleted source remains reset-pending, never re-imported", () async {
     final fixture = await MigrationFixture.create(values: _values);
     addTearDown(fixture.dispose);
     // The native store dies mid-cleanup: deleting the second auth entry fails,
@@ -291,18 +290,13 @@ void main() {
     };
     await fixture.service.migrate();
 
-    // The surviving half still holds a restorable session, so the import must be
-    // retired rather than left retryable; only its deletion can be retried.
+    // The surviving half remains behind durable reset intent, never an import retry.
     expect(fixture.source.values.keys, containsAll(["refresh_token", "auth_user"]));
     expect(fixture.source.values.containsKey("access_token"), false);
-    expect(fixture.source.clears, 1);
+    expect(fixture.source.clears, 0);
     expect(await fixture.database.select(fixture.database.encryptedValues).get(), isEmpty);
-    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), true);
-    expect(logs.records.map((e) => e.diagnosticError), [
-      contains("deleteSource"),
-      contains("resetSecrets"),
-      contains("clearSource"),
-    ]);
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), false);
+    expect(logs.records.map((e) => e.diagnosticError), [contains("deleteSource"), contains("resetSecrets")]);
 
     // A cold launch must not import the remaining half of the old session.
     await fixture.reopen();
@@ -313,7 +307,7 @@ void main() {
     expect(await fixture.secrets.read(key: AuthSecretKey.user), isNull);
   });
 
-  test("a fully copied destination stays trusted when both reset legs fail", () async {
+  test("a fully copied destination is reset on relaunch when both reset legs failed", () async {
     final fixture = await MigrationFixture.create(values: _values);
     addTearDown(fixture.dispose);
     fixture.source.deleteFailure = (key: "refresh_token", error: StateError("fixture cleanup denied"));
@@ -330,29 +324,109 @@ void main() {
     };
     await fixture.service.migrate();
 
-    // Deletion only starts once the import committed in full, so what survives an
-    // unfenced reset is a complete migration rather than partial state. Recording
-    // completion keeps that session instead of orphaning it; only the primitives
-    // this recovery cleared are lost.
+    // Even fully copied credentials were designated for destructive recovery.
+    // A failed reset cannot mark them trusted on the next launch.
     final master = fixture.master.value;
     expect(master, isNotNull);
     expect(await fixture.database.select(fixture.database.encryptedValues).get(), hasLength(8));
     expect(await fixture.database.select(fixture.database.stringValues).get(), isEmpty);
-    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), true);
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), false);
 
-    // Nothing new can be persisted here, so no later import can overwrite it.
+    // Nothing new can be persisted here, so no later recovery can erase it.
     await expectLater(
       fixture.secrets.write(key: AuthSecretKey.accessToken, value: "fresh-login"),
       throwsA(isA<ParallelWaitError<Object?, Object?>>()),
     );
 
     await fixture.reopen();
+    fixture.master.writeFailure = null;
     final reads = fixture.source.reads;
     await fixture.service.migrate();
     expect(fixture.source.reads, reads);
-    expect(fixture.master.value, master);
-    expect(await fixture.secrets.read(key: AuthSecretKey.refreshToken), "fixture-refresh");
+    expect(fixture.master.value, isNot(master));
+    expect(await fixture.secrets.read(key: AuthSecretKey.refreshToken), isNull);
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), true);
   });
+
+  test("failed reset admission preserves stores and blocks new credentials", () async {
+    final fixture = await MigrationFixture.create(values: _values);
+    addTearDown(fixture.dispose);
+    await fixture.secrets.write(key: AuthSecretKey.accessToken, value: "existing");
+    final master = fixture.master.value;
+    fixture.source.readFailure = (error: StateError("source denied"), stackTrace: StackTrace.current);
+    await fixture.database.customStatement("""
+      CREATE TEMP TRIGGER reject_pending BEFORE INSERT ON bool_values
+      WHEN NEW.value = 0 BEGIN SELECT RAISE(ABORT, 'pending denied'); END;
+    """);
+    await fixture.service.migrate();
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), isNull);
+    expect(await fixture.database.select(fixture.database.encryptedValues).get(), hasLength(1));
+    expect(fixture.master.value, master);
+    expect(fixture.source.clears, 0);
+    await expectLater(fixture.secrets.read(key: AuthSecretKey.accessToken), throwsA(isA<Exception>()));
+    await expectLater(
+      fixture.secrets.write(key: AuthSecretKey.refreshToken, value: "fresh"),
+      throwsA(isA<Exception>()),
+    );
+    expect(logs.records.last.diagnosticError, contains("writeRecovery"));
+  });
+
+  test("failed primitive cleanup retains false and blocks fresh credentials after successful secret reset", () async {
+    final fixture = await MigrationFixture.create(values: _values);
+    addTearDown(fixture.dispose);
+    await fixture.persister.writeBool(key: LegacyMigrationKey.completed, value: false);
+    await fixture.persister.writeString(key: StringPreferenceKey.appearanceMode, value: "dark");
+    await fixture.database.customStatement("""
+      CREATE TEMP TRIGGER reject_pending BEFORE INSERT ON bool_values
+      WHEN NEW.value = 0 BEGIN SELECT RAISE(ABORT, 'pending reinsertion denied'); END;
+    """);
+    await fixture.service.migrate();
+    expect(fixture.master.writes, 1);
+    expect(fixture.source.reads, 0);
+    expect(fixture.source.clears, 0);
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), false);
+    expect(await fixture.persister.readString(key: StringPreferenceKey.appearanceMode), "dark");
+    await expectLater(fixture.secrets.write(key: AuthSecretKey.accessToken, value: "fresh"), throwsA(isA<Exception>()));
+    await fixture.reopen();
+    await fixture.service.migrate();
+    expect(fixture.source.reads, 0);
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), true);
+    await fixture.secrets.write(key: AuthSecretKey.accessToken, value: "fresh");
+  });
+
+  for (final sourceClearFails in [false, true]) {
+    test(
+      "failed completion blocks fresh login and retries only reset (source clear fails: $sourceClearFails)",
+      () async {
+        final fixture = await MigrationFixture.create(values: _values);
+        addTearDown(fixture.dispose);
+        fixture.source.readFailure = (error: StateError("source denied"), stackTrace: StackTrace.current);
+        if (sourceClearFails) fixture.source.clearFailure = StateError("source clear denied");
+        await fixture.database.customStatement("""
+        CREATE TEMP TRIGGER reject_complete BEFORE INSERT ON bool_values
+        WHEN NEW.value = 1 BEGIN SELECT RAISE(ABORT, 'completion denied'); END;
+      """);
+        await fixture.service.migrate();
+        expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), false);
+        expect(await fixture.secrets.read(key: AuthSecretKey.refreshToken), isNull);
+        await expectLater(
+          fixture.secrets.write(key: AuthSecretKey.refreshToken, value: "NEW-SESSION"),
+          throwsA(isA<Exception>()),
+        );
+        await fixture.reopen();
+        fixture.source.readFailure = null;
+        await fixture.service.migrate();
+        expect(fixture.source.reads, 1);
+        expect(await fixture.secrets.read(key: AuthSecretKey.refreshToken), isNull);
+        expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), true);
+        await fixture.secrets.write(key: AuthSecretKey.refreshToken, value: "NEW-SESSION");
+        await fixture.reopen();
+        await fixture.service.migrate();
+        expect(fixture.source.reads, 1);
+        expect(await fixture.secrets.read(key: AuthSecretKey.refreshToken), "NEW-SESSION");
+      },
+    );
+  }
 
   test("storage diagnostics unwrap causes but omit parser source buffers", () {
     final error = LegacyStorageMigrationException(

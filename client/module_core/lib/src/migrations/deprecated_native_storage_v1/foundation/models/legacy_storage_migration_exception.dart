@@ -8,6 +8,7 @@ enum LegacyStorageMigrationOperation() {
   copyValues,
   deleteSource,
   writeCompletion,
+  writeRecovery,
   resetSecrets,
   clearPreferences,
   clearSource,

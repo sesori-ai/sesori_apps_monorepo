@@ -13,6 +13,11 @@ class PersisterApi({required PersistenceDatabase database}) {
     batch.deleteAll(_database.boolValues);
   });
 
+  Future<void> clearAndWriteBool({required String key, required bool value}) => _database.transaction(() async {
+    await clear();
+    await writeBool(key: key, value: value);
+  });
+
   Future<String?> readString({required String key}) => (_database.select(
     _database.stringValues,
   )..where((table) => table.key.equals(key))).map((row) => row.value).getSingleOrNull();
