@@ -64,10 +64,7 @@ sub-agent parts, plus the signal that a tool changed files.
   motion makes every such change instant. Finished sub-agents show a neutral icon and
   failed ones a red one, without a status label; the grouping is computed by the
   shared `TranscriptBuilder`, so phone and desktop match.
-- Each tool part carries a kind (read, edit, command, search or other) that its
-  plugin classifies from the backend's own tool names; the client never
-  classifies a raw tool name or parses tool input. The group summary does not
-  read it.
+- The client never classifies a raw tool name or parses tool input.
 - A finished context compaction renders as one quiet "Context compacted" row in
   the step style; like visible text it ends a group. While it runs, Pi and Codex
   show a running `compact` tool that the finished row replaces in place. When the
@@ -305,8 +302,7 @@ edge (see `transcript-turn-navigation.md`).
 - A step that finishes before its live row has eased in raises a framework
   assertion or breaks the transcript instead of folding into the summary.
 - A group shows a per-kind list, a failed count, or a lone finished step's own
-  row instead of “1 step”, or a summary names a backend tool. A tool part
-  whose kind is missing or new fails to decode.
+  row instead of “1 step”, or a summary names a backend tool.
 - A finished compaction shows no row, shows its summary inline as a user or
   assistant message, leaves a running `compact` tool beside the row, or opens an
   empty modal; tapping a long summary stalls before the ripple, skips the
@@ -389,9 +385,6 @@ edge (see `transcript-turn-navigation.md`).
 
 ## Sources
 
-- Tool kinds: `ClaudeToolKindMapper`, `CodexToolKindMapper`, `PiToolKindMapper`,
-  OpenCode `MessagePartMapper` and ACP `AcpContentMapper.toolKind`, with their
-  tests; `shared/sesori_shared/test/models/tool_kind_test.dart`
 - Contract: `bridge/sesori_plugin_interface/lib/src/models/plugin_message.dart`;
   `shared/sesori_shared/lib/src/models/sesori/message_part.dart`
 - Bridge: `bridge/app/lib/src/repositories/mappers/plugin_to_shared_mapping.dart`,

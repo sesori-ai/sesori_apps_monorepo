@@ -107,7 +107,6 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
               sessionID: event.sessionID,
               messageID: event.assistantMessageID,
               tool: event.name,
-              kind: _messageMapper.toolKind(name: event.name),
               state: const PluginToolState(
                 status: PluginToolStatus.pending,
                 title: null,

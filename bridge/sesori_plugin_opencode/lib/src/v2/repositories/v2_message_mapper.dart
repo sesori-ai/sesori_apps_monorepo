@@ -198,7 +198,6 @@ class const V2MessageMapper() {
             sessionID: sessionId,
             messageID: message.id,
             tool: "shell",
-            kind: PluginToolKind.command,
             state: PluginToolState(
               status: switch (message.status) {
                 SessionMessageShellStatus.running => PluginToolStatus.running,
@@ -252,7 +251,6 @@ class const V2MessageMapper() {
       sessionID: sessionId,
       messageID: messageId,
       tool: content.name,
-      kind: toolKind(name: content.name),
       state: mapToolState(toolName: content.name, state: content.state),
     ),
     _ => _unsupportedContent(),
@@ -288,7 +286,7 @@ class const V2MessageMapper() {
     return PluginToolState(
       status: status,
       title: metadata == null ? null : V2ToolPresentationFields.fromJson(metadata).title,
-      shellCommand: input == null || toolKind(name: toolName) != PluginToolKind.command
+      shellCommand: input == null || !_isShellTool(name: toolName)
           ? null
           : V2ToolPresentationFields.fromJson(input).command,
       output: text.isEmpty ? null : _truncate(text: text.join("\n")),
@@ -299,13 +297,7 @@ class const V2MessageMapper() {
     );
   }
 
-  PluginToolKind toolKind({required String name}) => switch (name) {
-    "read" => PluginToolKind.read,
-    "write" || "edit" || "apply_patch" => PluginToolKind.edit,
-    "bash" || "shell" => PluginToolKind.command,
-    "glob" || "grep" || "webfetch" || "websearch" || "codesearch" => PluginToolKind.search,
-    _ => PluginToolKind.other,
-  };
+  static bool _isShellTool({required String name}) => name == "bash" || name == "shell";
 
   PluginMessage _systemMessage({
     required String sessionId,

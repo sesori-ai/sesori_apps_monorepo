@@ -208,20 +208,6 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 | Codex | ✅ Argument-derived title (`cmd`, `command`, `path`, `filePath`, `query`, else bounded raw arguments). |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ Agent-supplied ACP `tool_call` title, when the agent sends one; Sesori does not derive titles from ACP inputs. A call without `kind` uses its title as the tool name and drops the title, so the card does not say it twice. |
 
-## Tool kinds
-
-Each plugin classifies its own tool names into read, edit, command, search or
-other. No client surface reads the kind: the transcript summary counts every
-call as one step.
-
-| Harness | Status and kind source |
-|---|---|
-| Claude | ✅ Built-in names: `Read`/`NotebookRead`; `Edit`/`MultiEdit`/`NotebookEdit`/`Write`; `Bash`; `Grep`/`Glob`/`LS`/`WebSearch`. MCP and other tools are other. |
-| OpenCode | ✅ Built-in names: `read`; `edit`/`multiedit`/`write`/`patch`/`apply_patch`; `bash`; `grep`/`glob`/`list`/`codesearch`/`websearch`. |
-| Pi | ✅ Built-in names: `read`; `edit`/`write`; `bash`; `grep`/`find`/`ls`. Extension tools are other. |
-| Codex | ✅ Partial: shell calls are commands, file changes are edits and web searches are searches. Codex reads and searches files through shell commands, so those count as commands, not reads. |
-| Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ The ACP tool `kind`: `read`; `edit`/`delete`/`move`; `execute`; `search`. A call without a `kind`, or with `fetch`, `think` or `other`, counts as a plain step. |
-
 ## OpenCode v2 adapter (not yet active)
 
 The staged adapter targets the public 2.0.11–2.0.16 API; active v1 behavior is unchanged.
