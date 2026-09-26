@@ -8,7 +8,8 @@ The descriptor selects `OpenCodePlugin` for v1 or `OpenCodeV2Plugin` for v2 (min
 Both share the raw HTTP client and `SseConnection`, not business state. The v2 stack lives under
 `src/v2/`: facade → service → repository → API, with stateless mappers and an activity tracker.
 Its complete cold-start/reconnect snapshot establishes baseline trust; failed refresh preserves
-useful state but reports unknown work. Managed downloads remain on 1.18.32 until the runtime refresh.
+useful state but reports unknown work. Managed downloads target 2.0.18 through six integrity-pinned npm
+archives; the PATH minimum remains 1.14.0. First launch on v2 migrates the native database one-way.
 
 The v1 stack below remains layered. Each layer has a single responsibility:
 
