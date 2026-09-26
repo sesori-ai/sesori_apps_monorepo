@@ -1078,6 +1078,38 @@ void main() {
       await subscription.cancel();
     });
 
+    test("republishes the summary with the main agent stopped when a turn ends on a background agent", () async {
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      process.emit({
+        "type": "user",
+        "session_id": testSessionId,
+        "uuid": "launch-result",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "tool_result", "tool_use_id": "toolu-agent", "content": "Async agent launched successfully."},
+          ],
+        },
+        "tool_use_result": {"isAsync": true, "status": "async_launched", "agentId": "abc123"},
+      });
+      await pump();
+      events.clear();
+      process.emit({"type": "result", "subtype": "success", "session_id": testSessionId, "is_error": false});
+      await pump();
+
+      expect(events.whereType<BridgeSseProjectUpdated>(), isNotEmpty);
+      expect(events.whereType<BridgeSseSessionIdle>(), isEmpty);
+      final session = harness.plugin.getActiveSessionsSummary().single.activeSessions.single;
+      expect(session.mainAgentRunning, isFalse);
+      expect((await harness.plugin.getSessionStatuses())[testSessionId], isA<PluginSessionStatusBusy>());
+      await subscription.cancel();
+    });
+
     test("persisted cleanup is idempotent for an absent transcript", () async {
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);

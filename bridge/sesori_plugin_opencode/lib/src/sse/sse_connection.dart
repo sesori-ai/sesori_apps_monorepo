@@ -8,7 +8,7 @@ class SseConnection({
   required final String _targetUrl,
   required final String _eventPath,
   required final String? _password,
-  required final void Function(String rawData) _onEvent,
+  required final FutureOr<void> Function(String rawData) _onEvent,
   final Future<void> Function()? _onReconnect,
   final void Function()? _onConnected,
   final void Function()? _onDisconnected,
@@ -133,11 +133,12 @@ class SseConnection({
         if (line.isEmpty) {
           if (dataLines.isNotEmpty) {
             try {
-              _onEvent(dataLines.join("\n"));
+              await _onEvent(dataLines.join("\n"));
             } catch (e, st) {
               Log.e("[sse-conn] onEvent callback error", e, st);
             }
             dataLines.clear();
+            if (!_active || _generation != generation) return;
           }
           continue;
         }
@@ -150,9 +151,9 @@ class SseConnection({
       }
     }
 
-    if (dataLines.isNotEmpty) {
+    if (_active && _generation == generation && dataLines.isNotEmpty) {
       try {
-        _onEvent(dataLines.join("\n"));
+        await _onEvent(dataLines.join("\n"));
       } catch (e, st) {
         Log.e("[sse-conn] onEvent callback error", e, st);
       }

@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
+import "../../opencode_message_id.dart";
 import "../api/opencode_v2_api.dart";
 import "../models/openapi/form_info.g.dart";
 import "../models/openapi/form_reply.g.dart";
@@ -25,21 +26,18 @@ class OpenCodeV2Repository({
   required final V2ModelMapper _modelMapper,
   required final V2MessageMapper _messageMapper,
 }) {
-  Future<List<({PluginProject project, List<String> sandboxes})>> getProjects() async {
+  Future<bool> healthCheck() => _api.healthCheck();
+
+  Future<List<PluginProject>> getProjects() async {
     final (projects, sessions) = await shared.wait2(
       _api.listProjects(),
       _api.listRootSessions(projectId: null),
     );
     return [
       for (final project in projects)
-        (
-          project: _modelMapper.mapProject(
-            project: project,
-            activity: _activity(
-              sessions: sessions.where((session) => session.projectID == project.id).toList(),
-            ),
-          ),
-          sandboxes: project.sandboxes,
+        _modelMapper.mapProject(
+          project: project,
+          activity: _activity(sessions: sessions.where((session) => session.projectID == project.id).toList()),
         ),
     ];
   }
@@ -65,6 +63,21 @@ class OpenCodeV2Repository({
     final sessions = await _api.listRootSessions(projectId: location.project.id);
     return [
       for (final session in sessions) _modelMapper.mapSession(session: session, projectId: location.project.canonical),
+    ];
+  }
+
+  /// Global roots and children, without directory-specific option discovery.
+  Future<List<shared.Session>> getSessionMetadata() async {
+    final (sessions, projects) = await shared.wait2(
+      _api.listSessions(directory: null, parentId: null),
+      _api.listProjects(),
+    );
+    return [
+      for (final session in sessions)
+        _modelMapper.mapSessionMetadata(
+          session: session,
+          projectId: _projectId(session: session, projects: projects),
+        ),
     ];
   }
 
@@ -162,7 +175,7 @@ class OpenCodeV2Repository({
     return _modelMapper.mapProviders(providers: providers, models: models, defaultModel: defaultModel);
   }
 
-  Future<List<PluginCommand>> getCommands({required String directory}) async => [
+  Future<List<PluginCommand>> getCommands({required String? directory}) async => [
     for (final command in await _api.listCommands(directory: directory)) _modelMapper.mapCommand(command: command),
   ];
 
@@ -194,6 +207,15 @@ class OpenCodeV2Repository({
     return _modelMapper.mapSession(session: session, projectId: location.project.canonical);
   }
 
+  Future<PluginAgentModel?> getSessionModel({required String sessionId}) async {
+    final session = await _api.getSession(sessionId: sessionId);
+    if (session.model case final model?) {
+      return PluginAgentModel(providerID: model.providerID, modelID: model.id, variant: model.variant);
+    }
+    final model = await _api.getDefaultModel(directory: session.location.directory);
+    return model == null ? null : PluginAgentModel(providerID: model.providerID, modelID: model.id, variant: null);
+  }
+
   Future<void> switchAgent({required String sessionId, required String directory, required String agent}) async {
     final nativeAgent = await _nativeAgent(directory: directory, selection: agent);
     await _api.switchAgent(
@@ -207,11 +229,15 @@ class OpenCodeV2Repository({
     body: V2SwitchModelBody(model: _modelRef(model: model)),
   );
 
-  Future<void> sendPrompt({required String sessionId, required List<PluginPromptPart> parts}) async {
+  Future<void> sendPrompt({
+    required String sessionId,
+    required String? promptId,
+    required List<PluginPromptPart> parts,
+  }) async {
     await _api.prompt(
       sessionId: sessionId,
       body: V2PromptBody(
-        id: null,
+        id: _promptMessageId(promptId: promptId),
         text: parts.whereType<PluginPromptPartText>().map((part) => part.text).join("\n"),
         files: _files(parts: parts),
         agents: null,
@@ -248,8 +274,14 @@ class OpenCodeV2Repository({
   Future<bool> interrupt({required String sessionId, required bool resume}) async =>
       (await _api.interrupt(sessionId: sessionId, resume: resume)).interrupted;
 
-  Future<void> compact({required String sessionId}) async {
-    await _api.compact(sessionId: sessionId, body: const V2CompactBody(id: null, delivery: null));
+  Future<void> compact({required String sessionId, required String? promptId}) async {
+    await _api.compact(
+      sessionId: sessionId,
+      body: V2CompactBody(
+        id: _promptMessageId(promptId: promptId),
+        delivery: null,
+      ),
+    );
   }
 
   Future<void> addSyntheticMessage({
@@ -301,6 +333,10 @@ class OpenCodeV2Repository({
 
   ModelRef _modelRef({required PluginAgentModel model}) =>
       ModelRef(providerID: model.providerID, id: model.modelID, variant: model.variant);
+
+  String? _promptMessageId({required String? promptId}) => promptId == null
+      ? null
+      : V2MessageMapper.withPromptId(messageId: generateOpenCodeMessageId(), promptId: promptId);
 
   List<PromptInputFileAttachment> _files({required List<PluginPromptPart> parts}) {
     final files = <PromptInputFileAttachment>[];

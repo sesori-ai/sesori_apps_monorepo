@@ -67,19 +67,19 @@ jobs:
           echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
           echo "Release ${RELEASE_TAG} is a live stable bridge release — publishing npm packages."
 
-      # The rolling internal pre-release for this version (v<X.Y.Z>-internal.<N>)
-      # is now superseded by the stable release — drop the release object (its
-      # tag is kept: submit-release.yml uses it to map build numbers to
-      # commits). Internal pre-releases for OTHER versions (e.g. the next bump
-      # already merged on main) are left alone.
+      # Stable bridge publication supersedes core-only internal releases of this
+      # version. Completed desktop previews stay in their own channel; only the
+      # internal rollover retires them after a newer preview is complete. Tags
+      # remain build-number mappings, and other versions stay untouched.
       - name: Delete superseded internal pre-release
         if: steps.check.outputs.proceed == 'true'
         env:
           VERSION: ${{ steps.check.outputs.version }}
         run: |
           set -euo pipefail
-          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,isPrerelease \
-            --jq '.[] | select(.isPrerelease) | .tagName' \
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            | jq -r '.[] | select(.prerelease)
+                     | select(any(.assets[]; .name == "desktop-release.json") | not) | .tag_name' \
             | { grep -E "^v${VERSION//./\\.}-internal\.[0-9]+$" || true; } \
             | while read -r stale; do
                 echo "Deleting superseded internal pre-release $stale (tag kept)"

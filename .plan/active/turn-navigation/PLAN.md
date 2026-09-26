@@ -410,22 +410,27 @@ for users until place-keeping (step 5) exists. Step 6 adds the controls.
 
 - **Fold state (step 4).** It is session page state, so `SessionDetailCubit`
   owns it.
-  - `SessionDetailLoaded` gains `@Default(false) bool transcriptFolded`.
+  - `SessionDetailLoaded` gains `required bool transcriptFolded`, with no
+    default, so the compiler flags any construction site that would reset the
+    fold by leaving it out.
   - The cubit keeps a private `_transcriptFolded` field and seeds every loaded
     state it builds with it in `_buildLoadedState`
     (`session_detail_cubit.dart:2939`), as it already does for
     `isUpdatingAutoContinuation`. A full reload emits
     `SessionDetailState.loading()` first, so the field carries the state
-    across it. Copies of a loaded state keep it on their own.
+    across it. Copies of a loaded state keep it on their own. The two load
+    failures that re-emit the state from before the load seed it again too,
+    as they do `isUpdatingAutoContinuation`.
   - One intent, `setTranscriptFolded({required bool folded})`, is the single
     entry point for every control. It updates the field and, while loaded,
     emits the switched state. A request that changes nothing emits nothing.
     From step 6 it also reports the analytics event.
   - Widgets observe the state and dispatch the intent directly. The bars
-    already read `SessionDetailCubit`, and `SessionDetailLoadedView` passes
-    `state.transcriptFolded` and the intent to `SessionDetailMessageList`, as
-    it passes `loadOlderMessages` today. No notifier or setter is forwarded,
-    and `SessionDetailHeaderBuilder` is unchanged.
+    already read `SessionDetailCubit`. In step 4 `SessionDetailLoadedView`
+    passes only `state.transcriptFolded` to `SessionDetailMessageList`. Step 5
+    adds the intent as the list's fold callback, passed as `loadOlderMessages`
+    is today, together with the stub tap that first calls it. No notifier or
+    setter is forwarded, and `SessionDetailHeaderBuilder` is unchanged.
   - Only render-derived layout signals stay widget-local: the row registry,
     the pending anchor, and the sticky and current-turn values.
   - Each session page creates its own cubit, so the state resets with the page
@@ -516,13 +521,14 @@ merged, so the controls need no interim follow rule.
     freezes the newest end, where synthetic rows shift every index alike. So
     the search ends with the target built, or earlier when its row id
     disappears. It needs no attempt cap.
-  - The helper calls `detach()` before moving away from the latest edge.
-    Otherwise `scheduleJumpToEdge()`, which runs on every build while
-    following, would pull the list back.
+  - The helper needs no `detach()`. Each `jumpTo` ends a scroll, and the
+    tracker then detaches the list, or follows again within its 20 px
+    tolerance of the latest edge. A step that finds the list following ends
+    the anchor, except the first, so a tap while following still anchors.
 - **Anchor rules.**
-  - While following, a switch keeps following.
-  - Otherwise the anchor is the top-edge turn (button or shortcut) or the
-    tapped turn (stub).
+  - The anchor is the top-edge turn (button or shortcut) or the tapped turn
+    (stub), even while following (user decision in step 6). A switch that
+    moves the list stops following until the reader scrolls back down.
   - If the anchor's opener row is on screen, it keeps its distance from the top
     edge.
   - If the reader is mid-turn (the opener is above the edge), the opener lands
@@ -531,6 +537,8 @@ merged, so the controls need no interim follow rule.
   - Triggers inside the list (stub tap here, then pinch and index click) set
     the pending anchor for their turn, then dispatch the intent through the
     list's callback. They do this only when the fold state actually changes.
+    This step adds that callback, `onTranscriptFoldedChanged`, which
+    `SessionDetailLoadedView` binds to `setTranscriptFolded`.
   - The list sees the switch in `didUpdateWidget`, when `transcriptFolded`
     changes. That runs before the new layout, so when no anchor is pending it
     captures the top-edge turn from the last frame's layout. That covers the
@@ -539,11 +547,6 @@ merged, so the controls need no interim follow rule.
 - **Pending anchor.** One nullable target. It clears once its row settles, or
   when its row id disappears.
 - **Stub tap.** Unfolds every turn and anchors on the tapped turn (D9).
-- **`onJumpToTurn`.** The list builds one private callback,
-  `onJumpToTurn({required String openerMessageId})`, and later hands it to the
-  sticky overlay and the index.
-  - Folded: unfold, anchored on that turn.
-  - Unfolded: scroll the opener to the top edge.
 
 ### 5. Pinch (step 7)
 
@@ -583,6 +586,11 @@ merged, so the controls need no interim follow rule.
 - **Anchor.** The turn under the focal point, found through the registry, with
   the section 4 rules.
 - **Follow state.**
+  - A pinch that switches holds the turn under the fingers even while
+    following, and stops following, like a button or shortcut switch (decision
+    delegated by the user, 2026-09-26: an explicit gesture on a place wins over
+    following). The rules below only keep a pinch that never reaches a
+    threshold from changing the follow state.
   - A trackpad pinch begins with a pan-zoom start, which `FollowDetachScrollable`
     treats as a scroll and so detaches.
   - Following the peek's `_revealStartedFollowing` precedent, the list records
@@ -644,6 +652,12 @@ merged, so the controls need no interim follow rule.
     never excluded, because in a long turn the opener row is not built, and
     the overlay is then the only place the prompt and its jump exist.
   - A tap calls `onJumpToTurn`, which puts the opener at the top edge.
+- **`onJumpToTurn`.** The overlay is its first caller, so this step adds the
+  list's one private callback,
+  `onJumpToTurn({required String openerMessageId})`, which step 9 also hands
+  to the index.
+  - Folded: unfold, anchored on that turn.
+  - Unfolded: scroll the opener to the top edge.
 - A one-frame lag is accepted. Move to a render object only if a device shows
   the lag.
 
@@ -884,7 +898,7 @@ this file before retirement:
 | Platform | Coverage |
 |---|---|
 | iOS phone, real device (release target) | Pinch in and out on a session of three or more pages: the turn under the fingers stays in place. The fold button. A stub tap unfolds at that turn. The sticky prompt appears mid-turn, is pushed out by the next prompt, clamps a long prompt, and scrolls to it on tap. A partial oldest turn, then scrolling up while folded loads older pages. A running turn's stub while following. VoiceOver reads the stubs, the fold button and the pinned prompt, and the pinned prompt's action jumps to it. One-finger scroll, the timestamp peek and a code block's horizontal scroll are unaffected. `transcript_turns_folded` arrives. |
-| macOS desktop | Trackpad pinch both ways, while following (it stays following) and while reading history (it stays detached). ⌘− and ⌘=. The toolbar toggle. The index follows the scroll, highlights the current turn, jumps on click (folded and unfolded) and loads earlier turns. Below 1,000 px the index hides. Trackpad scroll and the trackpad peek are unaffected. |
+| macOS desktop | Trackpad pinch both ways, while following (the turn under the fingers stays in place and following stops) and while reading history (it stays detached). ⌘− and ⌘=. The toolbar toggle. The index follows the scroll, highlights the current turn, jumps on click (folded and unfolded) and loads earlier turns. Below 1,000 px the index hides. Trackpad scroll and the trackpad peek are unaffected. |
 | Android phone | Pinch both ways, the fold button, and a sticky prompt smoke check. |
 | Windows and Linux desktop | Ctrl+− and Ctrl+=, the toolbar toggle, and an index smoke check. |
 | Plugins (live plugin plus client) | A follow-up sent while a turn runs: with Claude, Codex, Pi and OpenCode it stays inside the running turn, and the turn keeps one sticky prompt. With one ACP plugin (the stop-and-send base is shared) it opens a new turn, as the capability doc records. Claude and Pi automation stays inside its turn and is never a sticky prompt. After a forced Claude history re-import, follow-ups, peer messages and task notifications are still present, with the same ids and order. Run together with `session-turns.md`'s busy-send check. |
@@ -1001,8 +1015,9 @@ under [Regression Coverage](#regression-coverage), and analyze `module_core`,
   - pinch in folds once, and pinch out unfolds once;
   - one-finger scroll, tap, the touch and trackpad peek, and a nested
     horizontal scroll are unaffected;
-  - a trackpad pinch while following stays following, and while reading stays
-    detached;
+  - a switching pinch while following holds the turn under the fingers and
+    stops following, one below the thresholds leaves following alone, and a
+    pinch while reading stays detached;
   - the focal-point anchor.
 - **A real iPhone pinch and a real macOS trackpad pinch**, recorded.
 - Pinch in the regression document.

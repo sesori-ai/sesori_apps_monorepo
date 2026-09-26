@@ -10,6 +10,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
+import "../../core/widgets/desktop_command_palette.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
 import "../../core/widgets/desktop_page_toolbar.dart";
 import "../../core/widgets/desktop_session_signals.dart";
@@ -147,7 +148,6 @@ class const DesktopSessionDetailView({
           if (session != null) _markUnread(context: context, session: session);
         },
         child: SessionDetailBody(
-          onClose: null,
           projectId: projectId,
           sessionId: sessionId,
           sessionTitle: sessionTitle,
@@ -163,8 +163,13 @@ class const DesktopSessionDetailView({
                 state: state,
               ),
           pageChrome: SessionDetailPageChrome(
-            maxContentWidth: maxContentWidth,
+            columnWidths: const SessionDetailColumnWidths(
+              transcript: maxTranscriptWidth,
+              composer: maxComposerWidth,
+            ),
             headerBuilder: _buildToolbar,
+            foldActivator: _foldShortcut,
+            unfoldActivator: _unfoldShortcut,
           ),
           menuEntriesBuilder: null,
         ),
@@ -172,7 +177,26 @@ class const DesktopSessionDetailView({
     );
   }
 
-  static const double maxContentWidth = 760;
+  /// Caps the transcript's reading column, which is deliberately wider than
+  /// the composer's: long assistant prose reads better in a longer measure.
+  ///
+  /// Bounded above by the timestamp peek. A drag slides the row content 108 px
+  /// left and brings a 108 px gutter in from the right, so the whole reveal
+  /// stays inside the window only while the column is at most
+  /// `paneWidth - 216`. On the 1240 px window the desktop is designed around
+  /// that ceiling is 1024, leaving 960 with 64 px of headroom. Widening past
+  /// the ceiling is not guarded and does not break: the peek degrades to the
+  /// phone's behaviour, where content slides under the window edge during the
+  /// drag, and a settled reveal is never clipped at any width.
+  static const double maxTranscriptWidth = 960;
+
+  /// Caps the composer, its pointer-picker pills and the needs-you cards above
+  /// them. A text field and a pill row read as stretched long before body text
+  /// does, so they stay at the narrower measure.
+  static const double maxComposerWidth = 760;
+
+  static SingleActivator get _foldShortcut => desktopShortcut(key: LogicalKeyboardKey.minus);
+  static SingleActivator get _unfoldShortcut => desktopShortcut(key: LogicalKeyboardKey.equal);
 
   void _markUnread({required BuildContext context, required Session session}) {
     sessionActions.handleSessionMarkUnread(
@@ -216,12 +240,24 @@ class const DesktopSessionDetailView({
           BlocBuilder<DiffSummaryCubit, DiffSummaryState>(
             builder: (context, summary) => PregoButtonsSolid(
               key: const Key("desktop-session-page-changes"),
-              label: loc.desktopSessionPageChanges,
+              label: loc.sessionChangesLabel,
               leadingIcon: TablerRegular.git_compare,
               labelTrailing: sessionChangesCounts(state: summary, style: context.prego.textTheme.textSm.medium),
               hierarchy: PregoButtonsSolidHierarchy.secondary,
               size: PregoButtonsSolidSize.sm,
               onPressed: onShowDiffs,
+            ),
+          ),
+        if (state case SessionDetailLoaded(:final transcriptFolded))
+          IconButton(
+            key: const Key("desktop-session-page-fold"),
+            tooltip: transcriptFolded
+                ? loc.desktopShortcutHint(loc.transcriptUnfoldAll, desktopShortcutLabel(shortcut: _unfoldShortcut))
+                : loc.desktopShortcutHint(loc.transcriptFoldAll, desktopShortcutLabel(shortcut: _foldShortcut)),
+            onPressed: () => context.read<SessionDetailCubit>().setTranscriptFolded(folded: !transcriptFolded),
+            icon: Icon(
+              transcriptFolded ? TablerRegular.separator_horizontal : TablerRegular.fold,
+              size: PregoIconSize.md,
             ),
           ),
         PregoAnchorMenu(

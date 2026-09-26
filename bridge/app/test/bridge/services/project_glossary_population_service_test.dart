@@ -52,6 +52,8 @@ void main() {
     expect(projectRepository.requestedProjectIds, ["project-1"]);
     expect(scopeService.projectPaths, ["/workspace/project"]);
     expect(glossaryRepository.projectPaths, ["/workspace/project"]);
+    // The whole glossary must fit the single add request.
+    expect(termCalculator.requestedMaximumTerms, [100]);
     expect(publicationRepository.operations, ["get", "add", "remove", "remove", "remove"]);
     expect(publicationRepository.additions, hasLength(1));
     expect(publicationRepository.additions.single.scope, scope);
@@ -196,9 +198,13 @@ final class _FakeProjectGlossaryRepository() implements ProjectGlossaryRepositor
 
 final class _FakeProjectGlossaryTermCalculator() implements ProjectGlossaryTermCalculator {
   List<String> words = [];
+  final List<int> requestedMaximumTerms = [];
 
   @override
-  List<String> calculate({required ProjectGlossarySource source}) => List<String>.of(words);
+  List<String> calculate({required ProjectGlossarySource source, required int maximumTerms}) {
+    requestedMaximumTerms.add(maximumTerms);
+    return List<String>.of(words);
+  }
 }
 
 final class _FakeProjectGlossaryPublicationRepository() implements ProjectGlossaryPublicationRepository {

@@ -648,7 +648,12 @@ final class ClaudeSessionService({
   /// Publishes idle and arms the reap once nothing keeps the process busy —
   /// no queued turn, no self-started turn, no running task.
   void _settleIdle({required String sessionId, required _SessionTurnState state}) {
-    if (state.hasWork) return;
+    if (state.hasWork) {
+      // Only background tasks remain: the session stays busy, but the
+      // summary's main agent stopped running.
+      if (!isTurnRunning(sessionId: sessionId)) _emit(const BridgeSseProjectUpdated());
+      return;
+    }
     _emit(BridgeSseSessionIdle(sessionID: sessionId));
     _emit(const BridgeSseProjectUpdated());
     _syncWorkState();

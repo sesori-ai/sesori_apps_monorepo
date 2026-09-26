@@ -89,6 +89,17 @@ void main() {
     });
   }
 
+  test("inline code keeps a translucent chip so a selection highlight shows through", () {
+    for (final theme in [PregoDesignSystem.light, PregoDesignSystem.dark]) {
+      // A paragraph paints its selection highlight before its glyphs, so an
+      // opaque run background hides it and a selection crossing inline code
+      // looks like it skipped the code.
+      final background = buildChatMessageMarkdownStyleSheet(prego: theme).code?.backgroundColor;
+      expect(background, isNotNull);
+      expect(background?.a, lessThan(0.5));
+    }
+  });
+
   test("sessionMarkdownBlockSyntaxes keeps raw HTML visible as a code block", () {
     const message =
         "Pi assistant response failed: <html>\n"

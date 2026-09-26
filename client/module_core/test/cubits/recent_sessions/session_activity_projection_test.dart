@@ -265,7 +265,7 @@ void main() {
 
     expect(projection.activityGroups.single.sessions.single.session.id, "priority");
     expect(
-      loaded.rows(selectedSessionId: "session-5", limit: 3).map((session) => session.id),
+      loaded.rows(selectedSessionId: "session-5", idleLimit: 3).map((session) => session.id),
       ["priority", "session-2", "session-3", "session-5"],
     );
   });

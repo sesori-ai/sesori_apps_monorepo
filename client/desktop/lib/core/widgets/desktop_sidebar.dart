@@ -714,17 +714,18 @@ class const _SidebarProjectGroup({
 }
 
 class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
-  static const int _initialRows = 3;
+  static const int _initialIdleRows = 2;
   static const int _moreRows = 10;
   bool _hovered = false;
   bool _focused = false;
-  // Show more grows this in place; folding the project starts over.
-  int _rowLimit = _initialRows;
+  // Running sessions always show; this caps the rest. Show more grows it in
+  // place; folding the project starts over.
+  int _idleRowLimit = _initialIdleRows;
 
   @override
   void didUpdateWidget(_SidebarProjectGroup oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!widget.expanded) _rowLimit = _initialRows;
+    if (!widget.expanded) _idleRowLimit = _initialIdleRows;
   }
 
   @override
@@ -734,7 +735,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
     final hidden = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
     final rows = entry is RecentSessionsLoaded
         ? entry
-              .rows(selectedSessionId: widget.selectedSessionId, limit: _rowLimit)
+              .rows(selectedSessionId: widget.selectedSessionId, idleLimit: _idleRowLimit)
               .where((session) => !hidden.contains(session.id))
               .toList()
         : const <Session>[];
@@ -793,7 +794,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                             minimumSize: const Size(0, 28),
                             padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
                           ),
-                          onPressed: () => setState(() => _rowLimit += _moreRows),
+                          onPressed: () => setState(() => _idleRowLimit += _moreRows),
                           child: Text(
                             loc.desktopSidebarShowMore(more < _moreRows ? more : _moreRows),
                             maxLines: 1,

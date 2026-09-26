@@ -162,14 +162,14 @@ void main() {
     await inventory.ensureLoaded(projectId: projectId);
     expect(loaded().visibleSessions.map((session) => session.id), ["4", "3", "2", "1"]);
     expect(
-      loaded().rows(selectedSessionId: "1", limit: 3).map((session) => session.id),
+      loaded().rows(selectedSessionId: "1", idleLimit: 3).map((session) => session.id),
       ["4", "3", "2", "1"],
     );
-    expect(loaded().rows(selectedSessionId: "4", limit: 3).length, 3);
-    expect(loaded().rows(selectedSessionId: "1", limit: 1).map((session) => session.id), ["4", "1"]);
-    expect(loaded().rows(selectedSessionId: null, limit: 13).length, 4);
+    expect(loaded().rows(selectedSessionId: "4", idleLimit: 3).length, 3);
+    expect(loaded().rows(selectedSessionId: "1", idleLimit: 1).map((session) => session.id), ["4", "1"]);
+    expect(loaded().rows(selectedSessionId: null, idleLimit: 13).length, 4);
     expect(
-      loaded().rows(selectedSessionId: "archived", limit: 3).map((session) => session.id),
+      loaded().rows(selectedSessionId: "archived", idleLimit: 3).map((session) => session.id),
       ["4", "3", "2"],
     );
     expect(() => loaded().sourceSessions.clear(), throwsUnsupportedError);
@@ -232,7 +232,7 @@ void main() {
       ),
     );
     expect(loaded().visibleSessions, isEmpty);
-    expect(loaded().rows(selectedSessionId: "created", limit: 3), isEmpty);
+    expect(loaded().rows(selectedSessionId: "created", idleLimit: 3), isEmpty);
     expect(loaded().sourceSessions, hasLength(1));
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: session)));
     expect(loaded().sourceSessions, isEmpty);
@@ -369,7 +369,7 @@ void main() {
     events.add(SseEvent(data: SesoriSseEvent.sessionUpdated(info: archivedUpdate)));
     expect(inventory.state.value[projectId], isA<RecentSessionsLoaded>());
     expect(loaded().visibleSessions.single, renamed);
-    expect(loaded().rows(selectedSessionId: "archived", limit: 3), [renamed]);
+    expect(loaded().rows(selectedSessionId: "archived", idleLimit: 3), [renamed]);
     stubSessions(sessions: [renamed, archivedUpdate]);
     reply.complete(ApiResponse.success(SessionListResponse(items: [deleted, archived])));
     expect(await pending, isTrue);

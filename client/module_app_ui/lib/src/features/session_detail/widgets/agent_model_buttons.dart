@@ -103,7 +103,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
         slot(
           _AgentMenu(
             surfaceStyle: widget.surfaceStyle,
-            collapsible: !compact,
+            hugLabel: compact,
             agents: widget.agents,
             selectedAgent: selectedAgent,
             onAgentSelected: widget.onAgentSelected,
@@ -112,7 +112,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
       slot(
         _ModelMenu(
           surfaceStyle: widget.surfaceStyle,
-          collapsible: !compact,
+          hugLabel: compact,
           sections: _modelSections,
           selected: selected,
           providers: widget.providers,
@@ -123,7 +123,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
         slot(
           _VariantMenu(
             surfaceStyle: widget.surfaceStyle,
-            collapsible: !compact,
+            hugLabel: compact,
             availableVariants: widget.availableVariants,
             selectedVariant: selected?.variant,
             onVariantSelected: widget.onVariantSelected,
@@ -167,7 +167,7 @@ class const ReadOnlyAgentModelPills({
     Widget pill({required IconData icon, required String label}) => _pickerSlot(
       compact: compact,
       child: _pickerButton(
-        collapsible: !compact,
+        hugLabel: compact,
         leadingIcon: icon,
         label: label,
         surfaceStyle: PregoComposerSurfaceStyle.subtle,
@@ -202,7 +202,7 @@ Widget _pickerSlot({required bool compact, required Widget child}) {
   return Flexible(
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 240),
-      child: IntrinsicWidth(child: child),
+      child: child,
     ),
   );
 }
@@ -211,12 +211,12 @@ Widget _pickerSlot({required bool compact, required Widget child}) {
 /// its label would show only a few characters.
 const double _minLabelledPickerWidth = 96;
 
-/// The pill for one picker. A [collapsible] (touch) pill shares the row's width
-/// and drops to its glyph when its share is too narrow for a readable label.
-/// Pointer pills size to their label, so they never collapse. Without
-/// [onPressed] the pill only shows its value.
+/// The pill for one picker. Any pill drops to its glyph when its share of the
+/// row is too narrow for a readable label. A labelled pointer pill hugs its
+/// label, while a touch pill fills its share. Without [onPressed] the pill
+/// only shows its value.
 Widget _pickerButton({
-  required bool collapsible,
+  required bool hugLabel,
   required IconData leadingIcon,
   required String label,
   required PregoComposerSurfaceStyle surfaceStyle,
@@ -229,9 +229,12 @@ Widget _pickerButton({
     surfaceStyle: surfaceStyle,
     onPressed: onPressed,
   );
-  if (!collapsible) return pill(showLabel: true);
   return LayoutBuilder(
-    builder: (context, constraints) => pill(showLabel: constraints.maxWidth >= _minLabelledPickerWidth),
+    builder: (context, constraints) {
+      if (constraints.maxWidth < _minLabelledPickerWidth) return pill(showLabel: false);
+      final labelled = pill(showLabel: true);
+      return hugLabel ? IntrinsicWidth(child: labelled) : labelled;
+    },
   );
 }
 
@@ -241,7 +244,7 @@ Widget _pickerButton({
 /// method) so it gets its own element subtree and only rebuilds with its inputs.
 class const _AgentMenu({
   required final PregoComposerSurfaceStyle surfaceStyle,
-  required final bool collapsible,
+  required final bool hugLabel,
   required final List<AgentInfo> agents,
   required final String selectedAgent,
   required final ValueChanged<String> onAgentSelected,
@@ -255,7 +258,7 @@ class const _AgentMenu({
       acquireOpenLease: null,
       menuMaxHeight: PregoPickerPopover.maxHeight,
       triggerBuilder: (context, toggle) => _pickerButton(
-        collapsible: collapsible,
+        hugLabel: hugLabel,
         leadingIcon: TablerRegular.robot,
         label: selectedAgent,
         surfaceStyle: surfaceStyle,
@@ -279,7 +282,7 @@ class const _AgentMenu({
 /// Model-selection pill + its searchable picker.
 class const _ModelMenu({
   required final PregoComposerSurfaceStyle surfaceStyle,
-  required final bool collapsible,
+  required final bool hugLabel,
   required final List<ModelPickerSection> sections,
   required final AgentModel? selected,
   required final List<ProviderInfo> providers,
@@ -291,7 +294,7 @@ class const _ModelMenu({
       pointerWidth: 300,
       onClosed: null,
       triggerBuilder: (context, toggle) => _pickerButton(
-        collapsible: collapsible,
+        hugLabel: hugLabel,
         leadingIcon: TablerRegular.cpu,
         label: _resolveModelName(context, providers: providers, selected: selected),
         surfaceStyle: surfaceStyle,
@@ -313,7 +316,7 @@ class const _ModelMenu({
 /// Variant-selection pill + its popup.
 class const _VariantMenu({
   required final PregoComposerSurfaceStyle surfaceStyle,
-  required final bool collapsible,
+  required final bool hugLabel,
   required final List<SessionVariant> availableVariants,
   required final String? selectedVariant,
   required final ValueChanged<SessionVariant> onVariantSelected,
@@ -328,7 +331,7 @@ class const _VariantMenu({
       menuMaxHeight: PregoPickerPopover.maxHeight,
       reverseScroll: true,
       triggerBuilder: (context, toggle) => _pickerButton(
-        collapsible: collapsible,
+        hugLabel: hugLabel,
         leadingIcon: TablerRegular.gauge,
         label: selectedVariant ?? availableVariants.first.id,
         surfaceStyle: surfaceStyle,

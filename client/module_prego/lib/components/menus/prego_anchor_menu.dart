@@ -24,8 +24,8 @@ sealed class const PregoMenuEntry();
 class const PregoMenuLabel({required final String text}) extends PregoMenuEntry;
 
 /// A tappable menu row with a [title], optional [subtitle], an optional
-/// leading glyph or widget, and an optional selected check mark. Tapping runs
-/// [onTap] and dismisses the menu.
+/// leading glyph or widget, and an optional [trailing] mark or selected check.
+/// Tapping runs [onTap] and dismisses the menu.
 class const PregoMenuItem({
   required final String title,
   required final String? subtitle,
@@ -49,6 +49,11 @@ class const PregoMenuItem({
   /// [leadingIcon]; the caller sizes it.
   final Widget? leading,
 
+  /// Optional caller-built mark at the trailing end of the row, for a value the
+  /// row carries rather than an action it offers (a session's "+12 −2"). It
+  /// takes the selected check's slot, so a row shows one or the other.
+  final Widget? trailing,
+
   /// Whether the row can be picked. A disabled row keeps its place in the menu
   /// — so the reader still learns the option exists — but dims and ignores
   /// taps. Pair it with a [subtitle] saying why.
@@ -69,7 +74,8 @@ class const PregoMenuItem({
         leadingIcon == null || leading == null,
         "A row leads with either a glyph or a custom widget, not both.",
       ),
-      assert(!(isDestructive && isWarning), "A row is either destructive or a warning, not both.");
+      assert(!(isDestructive && isWarning), "A row is either destructive or a warning, not both."),
+      assert(trailing == null || !isSelected, "A row ends with either its own mark or the selected check, not both.");
 }
 
 /// A thin separator line between entries.
@@ -292,6 +298,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         :final onTap,
         :final leadingIcon,
         :final leading,
+        :final trailing,
         :final isEnabled,
         :final isDestructive,
         :final isWarning,
@@ -318,7 +325,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
                     )),
           titleStyle: _titleStyle(prego, isDestructive: isDestructive, isWarning: isWarning),
           subtitleStyle: _subtitleStyle(prego),
-          trailing: isSelected ? _selectedCheck(prego) : null,
+          trailing: trailing ?? (isSelected ? _selectedCheck(prego) : null),
           onTap: onTap,
         );
       case PregoMenuDivider():
@@ -452,6 +459,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         :final shortcutLabel,
         :final leadingIcon,
         :final leading,
+        :final trailing,
         :final isEnabled,
         :final isDestructive,
         :final isWarning,
@@ -465,6 +473,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           shortcutLabel: compact ? shortcutLabel : null,
           leadingIcon: leadingIcon,
           leading: leading,
+          trailing: trailing,
           isEnabled: isEnabled,
           isDestructive: isDestructive,
           isWarning: isWarning,
@@ -511,6 +520,7 @@ class const _FlatMenuTile({
   required final bool isWarning,
   final IconData? leadingIcon,
   final Widget? leading,
+  final Widget? trailing,
 }) extends StatelessWidget {
   /// How far a row that cannot be picked is dimmed — GlassMenuItem's own
   /// disabled opacity, so both paths read the same.
@@ -523,6 +533,7 @@ class const _FlatMenuTile({
     final shortcutLabel = this.shortcutLabel;
     final leadingIcon = this.leadingIcon;
     final leading = this.leading;
+    final trailing = this.trailing;
     return Opacity(
       opacity: isEnabled ? 1 : _disabledOpacity,
       child: InkWell(
@@ -571,6 +582,10 @@ class const _FlatMenuTile({
                 if (shortcutLabel != null) ...[
                   const SizedBox(width: 12),
                   Text(shortcutLabel, style: _subtitleStyle(prego)),
+                ],
+                if (trailing != null) ...[
+                  const SizedBox(width: 12),
+                  trailing,
                 ],
                 if (isSelected) ...[
                   const SizedBox(width: 8),

@@ -73,7 +73,7 @@ void main() {
       expect(removed, isTrue);
       expect(tester.takeException(), isNull);
       semantics.dispose();
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
   }
 
   for (final direction in TextDirection.values) {

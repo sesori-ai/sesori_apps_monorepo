@@ -4,13 +4,26 @@ Publication content specification for **https://sesori.com/desktop/**, which is 
 and built from the `sesori-ai/landingpage` repository. The app opens that website, not
 this repository document. The page renders every channel/OS/CPU heading anchor below
 plus `linux-package-managers`, and its contract checks fail when one is renamed or
-removed. Publishing a row means registering the verified public artifact in that
-repository's `src/lib/desktop-downloads.ts` and updating the matching section here.
+removed. Its `src/lib/desktop-downloads.ts` resolves completed public shared releases;
+individual preview builds do not need a source edit or website redeployment.
 
-Desktop packages are undergoing private qualification. **No public desktop release
-is available yet.** Private CI artifacts are not supported public downloads. This
-index lists only verified public artifacts after the relevant release gate passes;
-it never substitutes a mobile/CLI release or a private artifact.
+**Internal macOS installers are public for both CPUs, with live website downloads.**
+Stable macOS and Windows/Linux are not published yet. The website selects the newest
+completed internal release rather than permanently pinning the first publication.
+Private CI artifacts are not public links. This index never substitutes a mobile/CLI
+release or private evidence for a desktop installer.
+
+Release discovery is anonymous and cached for five minutes, including logged failed
+lookups. All release pages share one five-second timeout on the fixed repository
+endpoint. A completed macOS entry requires the desktop manifest/checksum assets and
+both native DMGs with valid index sizes/SHA-256 digests. The publisher uploads the
+manifest last; the website does not rehash packages or parse that manifest on each
+lookup. Displayed checksums and manifest links support independent verification.
+Preview availability never creates stable controls, version metadata or offers.
+
+The website's base branch deploys automatically after push/merge, normally within
+1–3 minutes. A source merge alone is not live-page verification; allow the existing
+deployment to finish instead of creating a redundant deploy commit.
 
 ## Updating safely
 
@@ -31,9 +44,13 @@ release. Private unsigned per-user installers have passed isolated native packag
 fixtures, but they are not downloads and do not establish SmartScreen, interactive
 GUI/account behavior or a signed N→N+1 update.
 
-Internal is an explicit test channel, not an automatic promotion to stable. The
-sections below do not imply a release exists. Do not use GitHub's generic Latest
-release to choose a desktop installer.
+Internal is an explicit test channel, not an automatic promotion to stable.
+Internal build 987 uses the older per-value native storage format. Before replacing
+that build with a shared-store preview, sign out in the old app, Quit, install the
+new package, then sign in again. Internal format changes do not carry a production
+migration promise; old-format replacement proof does not qualify the new format.
+The sections below do not imply every platform/channel has a release. Do not use
+GitHub's generic Latest release to choose a desktop installer.
 
 ## Stable macOS x64
 
@@ -45,11 +62,26 @@ No public download is available.
 
 ## Internal macOS x64
 
-No public download is available.
+Available in the newest internal [shared release][shared-releases] with a desktop completion manifest:
+`Sesori-macos-x64.dmg` or `Sesori-macos-x64.zip`. Verify against its
+`desktop-checksums.txt` and `desktop-release.json`, not bridge `checksums.txt`.
 
 ## Internal macOS arm64
 
-No public download is available.
+Available in the newest internal [shared release][shared-releases] with a desktop completion manifest:
+`Sesori-macos-arm64.dmg` or `Sesori-macos-arm64.zip`. Verify against its
+`desktop-checksums.txt` and `desktop-release.json`, not bridge `checksums.txt`.
+
+Desktop previews advance only when `desktop-release.json` completes publication.
+The shared cycle retains the newest desktop-completed internal release while newer
+core-only releases build or desktop fails. Older completed previews can roll away
+after a newer one is available. The website must select that newest completed desktop
+preview, not merely the newest core release. Stable bridge/npm publication preserves
+completed internal previews too; it does not replace their channel with stable.
+Do not pin a permanent website link to the first internal tag or use Latest stable
+as a substitute.
+
+[shared-releases]: https://github.com/sesori-ai/sesori_apps_monorepo/releases
 
 ## Stable Windows x64
 

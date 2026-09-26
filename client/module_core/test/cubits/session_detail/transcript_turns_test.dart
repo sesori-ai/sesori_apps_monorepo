@@ -126,7 +126,7 @@ List<String> _byPosition({required List<MessageWithParts> messages}) {
     for (final (index, turn) in turns.turns.indexed)
       [
         "${_kind(turn: turn)}${[for (final id in turn.messageIds) positionById[id]]}",
-        "${turn.summary.steps}/${turn.summary.failedSteps}",
+        "${turn.summary.steps}",
         outcomes[index],
         if (turn is TranscriptPromptTurn) "${turn.duration}" else "-",
       ].join(" "),
@@ -341,7 +341,7 @@ void main() {
   });
 
   group("TranscriptTurnBuilder summary", () {
-    test("counts every grouped step, running ones included, and the failed ones", () {
+    test("counts every grouped step, running and failed ones included", () {
       final turns = _turns(
         messages: [
           _prompt(id: "u1"),
@@ -363,7 +363,7 @@ void main() {
       );
       final summary = turns.turns.single.summary;
 
-      expect((summary.steps, summary.failedSteps), (5, 1));
+      expect(summary.steps, 5);
     });
 
     test("a turn that ends in text carries that text's first line", () {
@@ -533,9 +533,9 @@ void main() {
       ];
 
       expect(_byPosition(messages: messages), [
-        "preamble[0] 0/0 done: null -",
-        "prompt[1, 2, 3, 4] 2/0 done: Done. 0:00:02.000000",
-        "prompt[5, 6] 0/0 running null",
+        "preamble[0] 0 done: null -",
+        "prompt[1, 2, 3, 4] 2 done: Done. 0:00:02.000000",
+        "prompt[5, 6] 0 running null",
       ]);
       expect(_byPosition(messages: reimported), _byPosition(messages: messages));
     });

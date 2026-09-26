@@ -24,8 +24,10 @@ with release-injected credentials. Desktop uses a no-op sink, the bridge is excl
   persistence.
 - Account preferences are scoped typed SQL values. Production-mobile import
   preserves opaque preference JSON, including pending disable, before analytics
-  runtime preparation or consent reads. Failed import must not start normal
-  analytics consumers with guessed/default consent. See
+  runtime preparation or consent reads. Failed import resets local state before
+  normal logged-out startup. The user-approved recovery policy uses normal account/
+  server preferences after login; pending local-only opt-out may be lost in this
+  destructive recovery, with no additional consent flag or activation path. See
   [client persistence](client-persistence.md) for the native upgrade proof boundary.
 - Account-less authentication events carry only a pinned provider or method plus the attempt funnel's bounded failure
   kind, and no user key. Settings copy must not claim the switch stops vendor automatic events, these authentication
@@ -110,7 +112,7 @@ account against a real property.
 - An account-linked event is emitted while unknown, disabled, unauthenticated, or in a debug or profile build.
 - Any automatic or Sesori-defined event reaches Firebase from a debug/profile process, or from an unauthenticated
   eligible Android release build newer than a successfully fetched production-submission cutoff.
-- Disable is delayed, reported saved while sync failed, or lost across restart, logout or native-storage upgrade;
+- Disable is delayed, reported saved while sync failed, or lost across restart, logout or successful native-storage upgrade;
   consent reads precede import completion; enable activates before server success plus local persistence.
 - An event fires on a tap or failed operation, is duplicated after deferral, has a rewritten occurrence time, or
   carries a route path instead of a pinned screen.

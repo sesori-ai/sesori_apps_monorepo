@@ -1,7 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../repositories/mappers/pi_tool_kind_mapper.dart";
-
 final class const PiTrackedTool({
   required final String id,
   required final String messageId,
@@ -92,7 +90,7 @@ final class _TrackedTool({
   bool diffEmitted = false;
 
   bool get isTerminal => state.status.isTerminal;
-  bool get isEdit => PiToolKindMapper.map(name: name) == PluginToolKind.edit;
+  bool get isEdit => name.toLowerCase() == "edit" || name.toLowerCase() == "write";
 
   PiTrackedTool snapshot({required bool sessionDiffRequired}) => PiTrackedTool(
     id: id,

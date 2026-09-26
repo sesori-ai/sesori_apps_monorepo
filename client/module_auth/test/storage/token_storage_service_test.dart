@@ -2,6 +2,7 @@ import "dart:convert";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart" show AuthSecretKey;
+import "package:sesori_auth/src/storage/last_sign_in_storage.dart";
 import "package:sesori_auth/src/storage/oauth_storage_service.dart";
 import "package:sesori_auth/src/storage/token_storage_service.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
@@ -461,6 +462,17 @@ void main() {
       // then
       verify(() => mockStorage.delete(key: AuthSecretKey.oauthProvider)).called(1);
     });
+  });
+
+  test("LastSignInStorage never fails a sign-in: storage errors are logged, not thrown", () async {
+    when(() => mockStorage.write(key: AuthSecretKey.lastSignInProvider, value: "github"))
+        .thenThrow(StateError("locked"));
+    when(() => mockStorage.read(key: AuthSecretKey.lastSignInProvider)).thenThrow(StateError("locked"));
+    final storage = LastSignInStorage(storage: mockStorage);
+
+    await storage.save(provider: AuthProvider.github);
+
+    expect(await storage.read(), isNull);
   });
 }
 

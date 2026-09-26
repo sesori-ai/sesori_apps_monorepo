@@ -23,6 +23,7 @@ export "src/cubits/desktop_sidebar/desktop_sidebar_cubit.dart";
 export "src/cubits/desktop_sidebar/desktop_sidebar_refresh_cubit.dart";
 export "src/cubits/file_access/file_access_cubit.dart";
 export "src/cubits/file_access/file_access_state.dart";
+export "src/cubits/last_sign_in_provider/last_sign_in_provider_cubit.dart";
 export "src/di/injection.dart";
 export "src/foundation/bridge_process_desired_state.dart";
 export "src/foundation/control_channel_server.dart";

@@ -97,11 +97,13 @@ void main() {
       lifecycleSource: FakeLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
+      feedbackPromptService: FakeFeedbackPromptService(),
       sessionId: _sessionId,
       projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
       bridgeSettingsService: stubbedBridgeSettingsService(),
+      sseEventTracker: MockSseEventTracker(),
     );
     addTearDown(cubit.close);
 
@@ -207,11 +209,13 @@ void main() {
       lifecycleSource: FakeLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
+      feedbackPromptService: FakeFeedbackPromptService(),
       sessionId: _sessionId,
       projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
       bridgeSettingsService: stubbedBridgeSettingsService(),
+      sseEventTracker: MockSseEventTracker(),
     );
     addTearDown(cubit.close);
 
@@ -323,11 +327,13 @@ void main() {
       lifecycleSource: FakeLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
+      feedbackPromptService: FakeFeedbackPromptService(),
       sessionId: _sessionId,
       projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
       bridgeSettingsService: stubbedBridgeSettingsService(),
+      sseEventTracker: MockSseEventTracker(),
     );
     addTearDown(cubit.close);
 

@@ -21,10 +21,11 @@ void main() {
           "Sesori connects the GoRouter client to XChaCha20 tooling.",
         ],
       ),
+      maximumTerms: 100,
     );
 
     expect(terms.first, "Sesori");
-    expect(terms, containsAll(["Sesori-AI", "XChaCha20-Poly1305", "GoRouter"]));
+    expect(terms, containsAll(["XChaCha20", "Poly1305", "GoRouter", "SesoriRelayClient"]));
     expect(terms, isNot(contains("project")));
     expect(terms, isNot(contains("service")));
     expect(terms.where((term) => term.contains("0123456789abcdef")), isEmpty);
@@ -44,10 +45,10 @@ void main() {
         metadataDocuments: const [
           "AcmeCompiler uses AKIAIOSFODNN7EXAMPLE, q7Vn2Lp9Rk4Tz8Mw6Hx3, and $secretAccessKey.",
           "password=SuperSecretProductionPassword token=aBcDeFgHiJkLmNoPqRsTuVwXyZ",
-          '''password = "Correct Horse Battery Staple"''',
+          '''password = "Correct HorseBattery Staple"''',
           'password = """Topaz Riverstone\nSilverPine"""',
-          "token = '''Amber Willow'''",
-          '''AWS_SECRET_ACCESS_KEY = "Compound Correct Horse"''',
+          "token = '''Amber WillowGrove'''",
+          '''AWS_SECRET_ACCESS_KEY = "Compound CorrectStallion"''',
           '''signing_passphrase = "SigningOrchid SecretGrove"''',
           '''pass = "PassOrchid HiddenSpruce"''',
           '''--pass "CliPassOrchid HiddenBirch" --bypass BypassFramework''',
@@ -63,14 +64,15 @@ void main() {
           "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==",
           '''{"Authorization":"CustomScheme customCredentialValue123"}''',
           '''<server><password>CorrectHorse</password><credential value="AttributeSecretValue"/></server>''',
-          "<api-key>Azure Falcon Battery</api-key>",
+          "<api-key>Azure FalconBattery</api-key>",
           "<db.password>DottedSecretValue</db.password>",
-          "<mvn:server.password>Quartz Meadow Cedar</mvn:server.password>",
+          "<mvn:server.password>Quartz MeadowCedar</mvn:server.password>",
           "<dbPassword>CamelSecretValue</dbPassword>",
-          "<clientApiKey>Magnolia Garden</clientApiKey>",
+          "<clientApiKey>Magnolia GardenGate</clientApiKey>",
           "AcmeCompiler appears again without exposing credentials.",
         ],
       ),
+      maximumTerms: 100,
     );
 
     expect(terms, contains("AcmeCompiler"));
@@ -85,12 +87,15 @@ void main() {
       "Horse",
       "Battery",
       "Staple",
+      "HorseBattery",
       "Topaz",
       "Riverstone",
       "SilverPine",
       "Amber",
       "Willow",
+      "WillowGrove",
       "Compound",
+      "CorrectStallion",
       "SigningOrchid",
       "SecretGrove",
       "PassOrchid",
@@ -127,14 +132,16 @@ void main() {
       "AttributeSecretValue",
       "Azure",
       "Falcon",
-      "Battery",
+      "FalconBattery",
       "DottedSecretValue",
       "Quartz",
       "Meadow",
       "Cedar",
+      "MeadowCedar",
       "CamelSecretValue",
       "Magnolia",
       "Garden",
+      "GardenGate",
     ]) {
       expect(terms, isNot(contains(credentialFragment)));
     }
@@ -158,6 +165,7 @@ void main() {
         trackedPaths: const ["src/C#/Compiler.cs", "src/F#/Parser.fs"],
         metadataDocuments: const ["AcmeCompiler supports C#, F#, and C++."],
       ),
+      maximumTerms: 100,
     );
 
     expect(terms, containsAll(["C#", "F#", "C++"]));
@@ -170,14 +178,112 @@ void main() {
         repositoryName: null,
         trackedPaths: const [],
         metadataDocuments: const [
-          "quasar appears here beside incidentalword",
-          "quasar appears in another project manifest",
+          "zustand appears here beside incidentalword",
+          "zustand appears in another project manifest",
         ],
       ),
+      maximumTerms: 100,
     );
 
-    expect(terms, contains("quasar"));
+    expect(terms, contains("zustand"));
     expect(terms, isNot(contains("incidentalword")));
+  });
+
+  test("drops common English words, their inflections, and generic scaffolding names", () {
+    final terms = calculator.calculate(
+      source: ProjectGlossarySource(
+        projectName: "AcmeCompiler",
+        repositoryName: null,
+        trackedPaths: const [
+          "lib/notifications/deprecated_handlers.dart",
+          "lib/notifications/stopped_entries.dart",
+          "android/app/src/main/AndroidManifest.xml",
+          "android/app/src/main/res/mipmap-hdpi/ic_launcher.png",
+        ],
+        metadataDocuments: const [
+          "For both How and Why: Riverpod keeps running notifications.",
+          "For both How and Why: Riverpod keeps running notifications.",
+        ],
+      ),
+      maximumTerms: 100,
+    );
+
+    expect(terms, contains("Riverpod"));
+    final foldedTerms = terms.map((term) => term.toLowerCase()).toSet();
+    for (final common in [
+      "for",
+      "and",
+      "both",
+      "how",
+      "why",
+      "keeps",
+      "running",
+      "notifications",
+      "deprecated",
+      "handlers",
+      "stopped",
+      "entries",
+      "androidmanifest",
+      "mipmap",
+      "hdpi",
+      "launcher",
+    ]) {
+      expect(foldedTerms, isNot(contains(common)));
+    }
+  });
+
+  test("drops hash, serial, icon-size, and non-ASCII word fragments but keeps technical names", () {
+    final terms = calculator.calculate(
+      source: ProjectGlossarySource(
+        projectName: "AcmeCompiler",
+        repositoryName: null,
+        trackedPaths: const [
+          "docs/p01-overview.md",
+          "assets/c4f042.png",
+          "icons/Square30x30Logo.png",
+          "dist/acme-bridge-darwin-arm64",
+        ],
+        metadataDocuments: const [
+          "Badge ffcb47 in Español, Français, and Übersicht. See README.md for arm64.",
+          // "Español" decomposed, as macOS can store it, and names that look like hashes or numbering.
+          "Español builds for x64 with D3D11, Ed25519, X25519, and H264. See L23.",
+        ],
+      ),
+      maximumTerms: 100,
+    );
+
+    expect(terms, containsAll(["arm64", "x64", "D3D11", "Ed25519", "X25519", "H264"]));
+    for (final fragment in [
+      "p01",
+      "L23",
+      "c4f042",
+      "Square30x30Logo",
+      "acme-bridge-darwin-arm64",
+      "ffcb47",
+      "Espa",
+      "Espan",
+      "Fran",
+      "ais",
+      "bersicht",
+      "README.md",
+    ]) {
+      expect(terms, isNot(contains(fragment)));
+    }
+  });
+
+  test("keeps a singular term without its plural", () {
+    final terms = calculator.calculate(
+      source: ProjectGlossarySource(
+        projectName: "AcmeCompiler",
+        repositoryName: null,
+        trackedPaths: const ["lib/keybind.dart", "lib/keybinds/defaults.dart"],
+        metadataDocuments: const [],
+      ),
+      maximumTerms: 100,
+    );
+
+    expect(terms, contains("keybind"));
+    expect(terms, isNot(contains("keybinds")));
   });
 
   test("returns a deterministic maximum of fifty terms", () {
@@ -191,10 +297,10 @@ void main() {
       metadataDocuments: const [],
     );
 
-    final first = calculator.calculate(source: source);
-    final second = calculator.calculate(source: source);
+    final first = calculator.calculate(source: source, maximumTerms: 50);
+    final second = calculator.calculate(source: source, maximumTerms: 50);
 
-    expect(first, hasLength(ProjectGlossaryTermCalculator.maximumTerms));
+    expect(first, hasLength(50));
     expect(second, first);
     expect(first.first, "AcmeCompiler");
   });

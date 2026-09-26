@@ -11,6 +11,7 @@ import "package:sesori_desktop/core/platform/desktop_image_clipboard.dart";
 import "package:sesori_desktop/core/platform/desktop_image_sharer.dart";
 import "package:sesori_desktop/core/platform/desktop_route_source.dart";
 import "package:sesori_desktop/core/platform/no_op_analytics_client.dart";
+import "package:sesori_desktop/core/platform/no_op_feedback_prompt_config_source.dart";
 import "package:sesori_desktop/core/platform/path_provider_temporary_directory_provider.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
@@ -68,6 +69,8 @@ void main() {
     expect(getIt<AnalyticsClient>(), isA<NoOpAnalyticsClient>());
     expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);
     expect(getIt<ProductAnalyticsService>(), isA<ProductAnalyticsService>());
+    expect(getIt<FeedbackPromptConfigSource>(), isA<NoOpFeedbackPromptConfigSource>());
+    expect(getIt<FeedbackPromptService>(), isA<FeedbackPromptService>());
     expect(getIt.isRegistered<DesktopApplicationSupportDirectory>(), isTrue);
     expect(getIt.isRegistered<PersistenceDatabase>(), isTrue);
     expect(getIt.isRegistered<MasterKeyStore>(), isTrue);

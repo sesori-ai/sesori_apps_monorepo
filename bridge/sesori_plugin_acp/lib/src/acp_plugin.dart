@@ -1702,6 +1702,9 @@ abstract class AcpPlugin({
       // busy set empties.
       if (!childSessionTracker.hasActiveWorkForRoot(sessionId: sessionId)) {
         _emitRootIdle(sessionId: sessionId);
+      } else {
+        // The summary's main agent stopped running while its children go on.
+        _eventBuffer.add(const BridgeSseProjectUpdated());
       }
     }
     _syncWorkState();

@@ -103,18 +103,6 @@ abstract class AppLocalizations {
   /// **'Sesori Mobile'**
   String get appTitle;
 
-  /// No description provided for @persistenceStartupFailureTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Storage upgrade paused'**
-  String get persistenceStartupFailureTitle;
-
-  /// No description provided for @persistenceStartupFailureDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Sesori couldn’t finish upgrading your local storage. Close and reopen Sesori to try again.'**
-  String get persistenceStartupFailureDescription;
-
   /// No description provided for @connectErrorUnexpectedFormat.
   ///
   /// In en, this message translates to:
@@ -313,11 +301,11 @@ abstract class AppLocalizations {
   /// **'What should we work on?'**
   String get newSessionHeading;
 
-  /// Desktop session page toolbar button that opens the session's file changes.
+  /// Control that opens the session's file changes: the desktop toolbar button and the phone's menu row.
   ///
   /// In en, this message translates to:
   /// **'Changes'**
-  String get desktopSessionPageChanges;
+  String get sessionChangesLabel;
 
   /// Desktop subtask toolbar breadcrumb that returns to the session that started the subtask.
   ///
@@ -1885,6 +1873,138 @@ abstract class AppLocalizations {
   /// **'DM on X'**
   String get settingsSupportX;
 
+  /// Settings account row that opens the rating sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Rate Sesori'**
+  String get settingsRateSesori;
+
+  /// No description provided for @feedbackRatingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you enjoying Sesori?'**
+  String get feedbackRatingTitle;
+
+  /// Positive answer on the rating sheet; starts the celebration
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, love it!'**
+  String get feedbackLove;
+
+  /// Negative answer on the rating sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Could be better'**
+  String get feedbackCouldBeBetter;
+
+  /// Accessibility label of the rating sheet's close button
+  ///
+  /// In en, this message translates to:
+  /// **'Close feedback'**
+  String get feedbackClose;
+
+  /// Title of the rating sheet step shown after the user said they love the app
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks! Leave a review?'**
+  String get feedbackReviewTitle;
+
+  /// Body of the review confirmation step
+  ///
+  /// In en, this message translates to:
+  /// **'It takes a minute and helps other developers find Sesori.'**
+  String get feedbackReviewBody;
+
+  /// Confirms opening the store review page
+  ///
+  /// In en, this message translates to:
+  /// **'Leave a review'**
+  String get feedbackLeaveReview;
+
+  /// Closes the rating sheet without opening the store
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get feedbackNotNow;
+
+  /// Title of the private feedback step after Could be better
+  ///
+  /// In en, this message translates to:
+  /// **'What should we improve?'**
+  String get feedbackPrivateTitle;
+
+  /// Private feedback issue pill
+  ///
+  /// In en, this message translates to:
+  /// **'Hard to navigate'**
+  String get feedbackIssueHardToNavigate;
+
+  /// Private feedback issue pill
+  ///
+  /// In en, this message translates to:
+  /// **'Connection drops'**
+  String get feedbackIssueConnectionDrops;
+
+  /// Private feedback issue pill
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications don’t arrive'**
+  String get feedbackIssueNotificationsMissing;
+
+  /// Private feedback issue pill
+  ///
+  /// In en, this message translates to:
+  /// **'App feels slow'**
+  String get feedbackIssueAppSlow;
+
+  /// Placeholder of the private feedback text field
+  ///
+  /// In en, this message translates to:
+  /// **'Example: Hard to navigate'**
+  String get feedbackMessageHint;
+
+  /// Quiet line below the private feedback text field saying who receives it
+  ///
+  /// In en, this message translates to:
+  /// **'Sent privately to the Sesori team.'**
+  String get feedbackRecipient;
+
+  /// Accessibility label of the private feedback send button
+  ///
+  /// In en, this message translates to:
+  /// **'Send feedback'**
+  String get feedbackSend;
+
+  /// Inline error after private feedback failed to send
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t send feedback. Your draft is still here.'**
+  String get feedbackSendFailed;
+
+  /// Retries sending private feedback
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get feedbackRetry;
+
+  /// Closes the private feedback step without sending
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get feedbackCancel;
+
+  /// Toast after private feedback was sent
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback sent. Thank you!'**
+  String get feedbackSent;
+
+  /// Counter shown when the private feedback text nears its length limit
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 character left} other{{count} characters left}}'**
+  String feedbackCharactersLeft(int count);
+
   /// No description provided for @settingsSectionLegal.
   ///
   /// In en, this message translates to:
@@ -2485,53 +2605,101 @@ abstract class AppLocalizations {
   /// **'Follow'**
   String get sessionDetailFollowOutput;
 
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript, present when the agent thought at least once, e.g. 'Thought · 3 steps'.
-  ///
-  /// In en, this message translates to:
-  /// **'Thought'**
-  String get transcriptSummaryThought;
-
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many other tool calls the agent made, e.g. 'Thought · read 1 file · 3 steps'.
+  /// The one-line summary of a collapsed group of agent steps in a session transcript: how many finished steps it holds, where every thinking block, tool call and sub-agent counts as one step, e.g. '7 steps'.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 step} other{{count} steps}}'**
   String transcriptSummarySteps(int count);
 
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file reads the agent made, counted per call, e.g. 'Thought · read 2 files · ran 1 command'.
+  /// Part of the one line a folded turn of a session transcript shows: how many steps the agent took in it, e.g. '3 steps · 1m 02s — Fixed the failing test'.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{read 1 file} other{read {count} files}}'**
-  String transcriptSummaryRead(int count);
+  /// **'{count, plural, =0{No steps} =1{1 step} other{{count} steps}}'**
+  String transcriptTurnSteps(int count);
 
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file edits the agent made, counted per call, e.g. 'read 2 files · edited 1 file'.
+  /// The line a folded turn of a session transcript shows while the agent works on it and has taken no step yet.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{edited 1 file} other{edited {count} files}}'**
-  String transcriptSummaryEdited(int count);
+  /// **'Running'**
+  String get transcriptTurnRunning;
 
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many shell commands the agent ran, e.g. 'Thought · ran 3 commands'.
+  /// The line a folded turn of a session transcript shows while the agent works on it: how many steps it has taken so far, e.g. 'Running · step 3'.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{ran 1 command} other{ran {count} commands}}'**
-  String transcriptSummaryRan(int count);
+  /// **'Running · step {step}'**
+  String transcriptTurnRunningStep(int step);
 
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file or web searches the agent made, e.g. 'Thought · 2 searches · read 1 file'.
+  /// Start of the line a folded turn of a session transcript shows when the turn ended in an error, followed by the error's first line when there is one, e.g. 'Ended with an error · Rate limit reached'.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 search} other{{count} searches}}'**
-  String transcriptSummarySearches(int count);
+  /// **'Ended with an error'**
+  String get transcriptTurnFailed;
 
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many sub-agents the agent ran, e.g. '3 steps · 2 sub-agents'.
+  /// Start of the line a folded session transcript shows for the messages before the first loaded prompt, whose own prompt may be on an older page that has not loaded, followed by the step count, e.g. 'Earlier turn, partly loaded · 3 steps'.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 sub-agent} other{{count} sub-agents}}'**
-  String transcriptSummarySubAgents(int count);
+  /// **'Earlier turn, partly loaded'**
+  String get transcriptTurnPartlyLoaded;
 
-  /// Last part of the one-line summary of a collapsed group of agent steps in a session transcript: how many of the steps failed, e.g. '3 steps · 1 failed'.
+  /// Start of the line a folded session transcript shows for the messages before the user's first prompt, such as automation, followed by the step count, e.g. 'Before the first prompt · 2 steps'.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 failed} other{{count} failed}}'**
-  String transcriptSummaryFailed(int count);
+  /// **'Before the first prompt'**
+  String get transcriptTurnBeforeFirstPrompt;
+
+  /// A session transcript duration under a minute, such as how long a folded turn took or how long the agent has been working, e.g. '42s'.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds}s'**
+  String transcriptTurnSeconds(int seconds);
+
+  /// A session transcript duration under an hour, such as how long a folded turn took or how long the agent has been working. The seconds always have two digits, e.g. '1m 02s'.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m {seconds}s'**
+  String transcriptTurnMinutes(int minutes, String seconds);
+
+  /// A session transcript duration of an hour or more, such as how long a folded turn took or how long the agent has been working. The minutes and seconds always have two digits, e.g. '1h 05m 12s'.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {minutes}m {seconds}s'**
+  String transcriptTurnHours(int hours, String minutes, String seconds);
+
+  /// First line of the transcript's live row while only sub-agents work and the main agent does nothing itself. The elapsed time may follow after ' · ', e.g. '2 sub-agents running in the background · 3m 05s'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 sub-agent running in the background} other{{count} sub-agents running in the background}}'**
+  String transcriptSubAgentsRunning(int count);
+
+  /// Muted second line of the transcript's sub-agent row: a prompt sent now reaches the main agent while the sub-agents keep running.
+  ///
+  /// In en, this message translates to:
+  /// **'You can keep chatting meanwhile.'**
+  String get transcriptSubAgentsKeepChatting;
+
+  /// Label of the session toolbar button that folds every turn of the transcript to one line each.
+  ///
+  /// In en, this message translates to:
+  /// **'Fold all turns'**
+  String get transcriptFoldAll;
+
+  /// Label of the session toolbar button that unfolds every folded turn of the transcript.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfold all turns'**
+  String get transcriptUnfoldAll;
+
+  /// Screen reader hint of the prompt pinned at the top of a session transcript while the user reads that prompt's turn. Activating it scrolls the transcript to the prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to this prompt'**
+  String get transcriptStickyPromptJumpHint;
+
+  /// What the prompt pinned at the top of a session transcript shows when the prompt has no text and its first attachment has no file name.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachment'**
+  String get transcriptStickyPromptAttachment;
 
   /// Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages.
   ///
@@ -3222,6 +3390,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Continue with Google'**
   String get desktopLoginContinueWithGoogle;
+
+  /// Marker on the desktop sign-in method this device signed in with last.
+  ///
+  /// In en, this message translates to:
+  /// **'Last used'**
+  String get desktopLoginLastUsed;
 
   /// Subtitle above the desktop email sign-in form.
   ///
@@ -4176,12 +4350,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Custom'**
   String get commandSourceCustom;
-
-  /// No description provided for @sessionDetailFileChangesTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'File changes'**
-  String get sessionDetailFileChangesTooltip;
 
   /// No description provided for @diffBinaryFileChanged.
   ///

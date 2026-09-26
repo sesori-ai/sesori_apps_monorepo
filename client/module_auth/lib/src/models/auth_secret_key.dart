@@ -9,4 +9,5 @@ enum AuthSecretKey({@override required final String storageKey}) implements Secr
   oauthProvider(storageKey: "oauth_provider"),
   oauthSessionToken(storageKey: "oauth_session_token"),
   oauthSessionExpiry(storageKey: "oauth_session_expiry"),
+  lastSignInProvider(storageKey: "last_sign_in_provider"),
 }

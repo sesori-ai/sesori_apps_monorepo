@@ -9,6 +9,14 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/routing/adaptive_session_router_test_harness.dart";
 import "../../helpers/test_helpers.dart";
 
+/// Opens the session page's menu and picks Changes, which is where the phone
+/// bar keeps it so the centred title has room.
+Future<void> _openChanges(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key("session-detail-more")));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key("session-detail-changes")));
+}
+
 void main() {
   setUpAll(registerAllFallbackValues);
 
@@ -31,7 +39,7 @@ void main() {
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(TablerRegular.git_compare));
+    await _openChanges(tester);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
@@ -59,9 +67,8 @@ void main() {
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(TablerRegular.git_compare));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await _openChanges(tester);
+    await tester.pumpAndSettle();
 
     expect(harness.router.state.uri.toString(), "/projects/p1/sessions/session-1/diffs");
     expect(harness.router.canPop(), isTrue);
@@ -72,7 +79,9 @@ void main() {
       find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-diffs-session-1"))),
       findsOneWidget,
     );
-    expect(find.text("Session One"), findsOneWidget);
+    // The session route is retained under the pushed diffs route, so its title
+    // is still in the tree — offstage, as any covered route's is.
+    expect(find.text("Session One", skipOffstage: false), findsOneWidget);
 
     harness.router.pop();
     await tester.pumpAndSettle();
@@ -118,7 +127,7 @@ void main() {
     );
     expect(find.descendant(of: rightPane, matching: find.byIcon(TablerRegular.chevron_left)), findsOneWidget);
 
-    await tester.tap(find.byIcon(TablerRegular.git_compare));
+    await _openChanges(tester);
     await tester.pumpAndSettle();
 
     expect(

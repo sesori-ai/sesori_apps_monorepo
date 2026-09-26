@@ -69,6 +69,8 @@ class FakeMasterKeyStore() implements MasterKeyStore {
 
 class FakeLegacyStorage({required final Map<String, String> values}) implements LegacyNativeStorage {
   int reads = 0;
+  int clears = 0;
+  Object? clearFailure;
   final deleted = <String>[];
   ({Object error, StackTrace stackTrace})? readFailure;
   ({String key, Object error})? deleteFailure;
@@ -79,6 +81,13 @@ class FakeLegacyStorage({required final Map<String, String> values}) implements 
     reads++;
     if (readFailure case final failure?) Error.throwWithStackTrace(failure.error, failure.stackTrace);
     return Map.of(values);
+  }
+
+  @override
+  Future<void> clear() async {
+    clears++;
+    if (clearFailure case final error?) throw error;
+    values.clear();
   }
 
   @override

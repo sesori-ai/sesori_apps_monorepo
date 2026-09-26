@@ -20,6 +20,8 @@ class LegacyNativeStorageMigrationRepository({required final LegacyNativeStorage
 
   Future<void> delete({required String sourceKey}) => api.delete(key: sourceKey);
 
+  Future<void> clear() => api.clear();
+
   LegacyPersistenceValue? _classify({required String sourceKey, required String value}) {
     final secretKey = const <SecretStorageKey>[
       ...AuthSecretKey.values,

@@ -1,18 +1,33 @@
-# MT Gate C — Agent-Run Manual QA Plan
+# MT Gate C — Retired QA Checkpoint
 
 ## Status
 
 - **Parent plan:** `desktop-app`
 - **Checkpoint:** MT Gate C — cockpit parity + mobile regression
 - **Plan date:** 2026-09-03
-- **Execution:** next user-requested working session
-- **State:** partial external evidence recorded; complete Gate C run and acceptance pending
-- **Approach:** **option (a)** — run and document one complete baseline before
-  changing code, then fix confirmed issues together and retest on one final
-  build. A blocking failure marks dependent cases `Blocked`; it does not cause a
-  mid-run code change while independent cases remain runnable.
-- **Gate authority:** the agent records evidence and a Pass/Partial/Fail/Blocked
-  recommendation; the user accepts the gate before the tracker changes to done.
+- **State:** retired by explicit user decision on 2026-09-26; coverage gaps accepted
+- **Execution:** no further gate run required; the checklist below is optional reference
+- **Gate authority:** the user directed: **“retire this gate and continue”** after
+  receiving the itemized missing QA. Retirement is acceptance of limitations, not
+  a claim that the unexecuted cases passed.
+
+## Accepted limitation and continuation — 2026-09-26
+
+The user retired the remaining macOS 12 execution, phone/live-harness and
+candidate-specific manual coverage requirements, including the unknown build behind
+the M4 confirmation. Existing manual and automated successes remain valid within
+their recorded boundaries; the 82-test shutdown audit is not reopened or relabeled
+as native fault injection. No new pass results are manufactured.
+
+Gate C and parent closeout no longer block macOS distribution. Continue the existing
+shared release cycle with macOS publication admitted, while preserving native
+signing/notarization, immutable public-asset verification and `store-production`
+approval. Windows/Linux trust and publication requirements are unchanged. Parent
+steps 21–22 remain separately tracked; this retires the gate, not the whole plan.
+
+Do not reinstate this gate, request blanket repeated testing, or interrupt the user's
+running desktop/bridge. The original scenarios below remain useful regression
+reference, not mandatory release prerequisites.
 
 ## Distribution evidence reconciliation — 2026-09-25
 
@@ -241,16 +256,9 @@ microphone, picker, push provider, or real-device lifecycle.
    build or wait for the post-merge matching internal build; never claim the old
    binary proves the fix.
 
-## Gate completion rule
+## Retired completion rule
 
-Recommend **Pass** only when C1–C12, A1–A3/A5, and M1–M6 pass on one final
-source/build line, automated baseline and exact-commit release evidence are
-green, process cleanup succeeds, and there is no unresolved material failure.
-A4 may be explicitly `Not run` because its destructive account transition is
-already covered automatically and is not part of the parent Gate C sentence;
-if run, it must pass. Any unavailable physical phone, real plugin login,
-managed install, native notification, scoped network fault, or live permission
-boundary makes the gate Partial/Blocked rather than silently reducing scope.
-
-After reporting the result, wait for user acceptance before marking MT Gate C
-`done` or advancing Steps 21–22.
+The user-accepted reduction above supersedes the original all-cases completion
+requirement. Gate C is closed with accepted coverage gaps, not a full L3 pass.
+If a scenario is exercised later, record its actual source/build and result; do not
+make that optional follow-up a prerequisite for distribution or parent closeout.

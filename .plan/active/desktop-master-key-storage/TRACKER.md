@@ -2,29 +2,23 @@
 
 ## Execution
 
-- Status: #1758 merged. Native qualification is partial: mobile development flows,
-  production-scope native import/reopen fixtures and signed macOS shared-store
-  roundtrip/reopen have evidence. See [MOBILE_MIGRATION.md](MOBILE_MIGRATION.md) for
-  exact proof limits and the repaired iOS runner-uninstall incident. Desktop
-  replacement and native adverse/restore gates remain. Plan stays active.
-- New user direction (2026-09-26): replace blocking failed-migration recovery with
-  scoped local reset and normal logged-out startup. Normal account/server analytics
-  rules apply; user explicitly accepted loss of pending local-only opt-out. Design
-  review is pending; production code has not changed. Existing preserve/retry
-  failure entries below record the merged baseline, not the new target policy.
+- Status: #1751 and regression reconciliation #1758 merged. Native qualification
+  is partial. #1779 merged as `8fe13f3`; later merged recovery exceptions were
+  explicitly rejected by the user. Corrective #1808 merged with 22 passing checks;
+  qualification resumes with its native gates still required.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
   with a retirement condition and deletion checklist.
-- Current branch: `sesori/desktop-master-key-storage-qualification`, from fixed
-  main `d550856` in the supplied worktree. No additional worktree is allowed.
-  Planned PR 12 remains an incomplete qualification checkpoint, not ready for
-  retirement; no final PR is opened or marked ready.
+- Current branch: `sesori/desktop-master-key-storage-qualification`, retaining
+  checkpoint `975e286` and merging current main after #1808. No additional worktree is allowed.
+  Qualification checkpoint `975e286` remains preserved on its published branch;
+  no final qualification PR is open.
 - #1717 is closed as superseded, not merged. Its published desktop checkpoint
   `4a27888` and the full shared checkpoint `de38951` remain in history.
-- One open PR and at most one local successor. Current total: **12 PRs** after
-  splitting the backend at SQL/secret ownership and extracting startup recovery
-  from the 1,650-line consumer cutover. Published titles use the same total.
+- One open PR and at most one local successor. Current total: **14 PRs** after
+  adding the user-requested reset follow-up before final qualification/retirement.
+  Keep published series titles synchronized; no published history is rewritten.
 - Source of truth: [PLAN.md](PLAN.md). Original directory slug stays stable.
 
 | Milestone | State | PR / evidence |
@@ -39,8 +33,10 @@
 | 4.b — Native capabilities and backup | Merged | #1744; 28 tests, two analyses, architecture approval and 24 passing checks; no native qualification. |
 | 4.c — Startup recovery | Merged | #1749; eight tests, three analyses, architecture approval and 22 passing checks; no storage cutover. |
 | 4.d — Both-client cutover | Merged | #1751; architecture approved, 24 reconciled shell cases plus retained auth/core evidence, README feedback fixed and 34 passing checks. |
-| 5 — Regression reconciliation | Merged | #1758; 139 authored lines; Codex coverage finding fixed, seven passing checks at readiness. Terminal report was 7/8 done, not a confirmed final eight-check pass. |
-| 6 — Required qualification/retirement | Partial / blocked | PR 12; see [QUALIFICATION.md](QUALIFICATION.md). Mobile development flows and signed macOS roundtrip pass; missing matrix remains, with no coverage waiver. |
+| 5 — Regression reconciliation | Merged | #1758; explicit replacement on all three desktops, 139 authored lines, 7 checks passed at readiness. |
+| 5.a — Failed-import reset follow-up | Merged | #1779 (PR 12), `8fe13f3`; later changes allowed stale-session exceptions, rejected by user. |
+| 5.b — Durable recovery intent | Merged | #1808 (PR 13), 22 passing checks; 134 focused cases, four owning analyses. Reset-only intent, blocked secrets until completion, obsolete exceptions removed. Architecture review `77c2c6f9` approved `83a00c8..498200d` (19 paths, 482 authored lines). |
+| 6 — Required qualification/retirement | Partial / blocked | PR 14; checkpoint `975e286` retains mobile/signed-macOS evidence. Missing native matrix still blocks retirement. |
 
 ## Decisions and code-informed constraints
 
@@ -51,9 +47,9 @@
 - Deprecated mobile import lives under core's
   `migrations/deprecated_native_storage_v1/` and a matching mobile platform area.
   It is awaited before auth, analytics, deep links or other consumers resolve.
-- Copy every present known value, then remove copied native items, then mark
-  complete. Retry by merging remaining source values into committed destination
-  rows; never replace/clear a partial snapshot or run legacy fallback reads.
+- Successful import copies known values, deletes copied native items, then marks
+  complete. After process interruption, merge remaining source into committed
+  rows. Caught failures instead attempt scoped reset; no legacy fallback reads.
 - Mobile production data includes all auth/OAuth fields, the relay room key,
   scoped plugin preferences and pending analytics opt-out JSON.
 - iOS currently shares its bundle ID between build modes. Only production scope
@@ -67,11 +63,23 @@
 - Keep the new native master namespace separate from the deprecated source.
   iOS legacy enumeration omits the accessibility query filter without changing
   stored ACLs; native legacy-envelope completeness/error behavior needs proof.
-- Mobile import failure must preserve data and present a startup failure state;
-  it must not silently boot logged out or start analytics with default consent.
-- Native cleanup completes before the marker. Current-device logout is local,
-  so leaving usable old auth items as a parallel source is not an acceptable
-  successful migration outcome. Failure/relaunch recovery is explicitly tested.
+- User explicitly requested failed-import reset on 2026-09-26: clear scoped
+  secrets/preferences/legacy data, replace the master and continue logged out.
+  Normal account/server analytics preferences apply; pending local-only opt-out
+  may be lost. No separate consent flag or blocking recovery screen.
+- Completion absence means ordinary import; false means pending destructive
+  recovery; true means handled. Persist false before destruction and retain it
+  atomically while clearing preferences. Incomplete recovery blocks secret use;
+  cold launches retry reset only, never source import. Native/SQL errors reach the
+  existing file sink. Permanent denial is never reported as successful erasure.
+- Plan review `d98e5c42` rejected the generic transaction callback, underspecified
+  admission failures and optional state mapper. Applied corrections directly:
+  narrow `clearAndWriteBool`, synchronous I/O-free `blockAccess` in the existing
+  cache owner, and nullable-bool branching in the migration service.
+- No repair is added for ambiguous unpublished #1779 stores with absent marker,
+  surviving legacy values and fresh destination credentials. Those internal stores
+  cannot be distinguished from interrupted imports and have no compatibility
+  guarantee. Released-mobile upgrades and normal interruption merging remain.
 - Desktop is unpublished: sign out in the old build before cutover, then sign in
   once. No legacy desktop migration, automatic old-Keychain cleanup or claims
   that new local logout revokes old internal builds' separate sessions.
@@ -84,6 +92,13 @@
   No dedicated physical devices are available; this is not a coverage waiver.
 
 ## Evidence retained, not overclaimed
+
+- Recovery-fence follow-up at base `83a00c8`: 57 persistence, 20 migration,
+  three mobile admission, 53 auth-manager and one desktop smoke case pass.
+  Persistence/core/auth/desktop analyses are clean. Tests cover atomic rollback,
+  unused blocked-future observation, exact cause/stack retention, one-/two-leg reset
+  failures, pending-intent admission refusal, and failed completion with both
+  successful and failed native source clearing. No native qualification claimed.
 
 - Read-only wallet inspection informed typed primitives/selective encryption.
   The discarded unwired file-store prototype established no compatibility data.
@@ -202,8 +217,8 @@
 - Native qualification must replace the authenticated macOS fixture's old
   per-value seeding and retained desktop baseline before using it with this
   cutover. Seed with production Dart storage; do not copy SQL/crypto into Swift
-  or Python. Later source-bound execution of the shared-store packaged platform
-  probe is recorded in [QUALIFICATION.md](QUALIFICATION.md).
+  or Python. The CI-only packaged platform probe already uses shared storage,
+  with initial source/unit verification only; later signed-run evidence is below.
 - #1751 merged after current-head Codex completed without further findings.
   Its terminal monitor recorded 34 passing checks; the README thread was resolved
   and the narrow deprecated call acknowledgment was justified explicitly.
@@ -216,14 +231,57 @@
   existing plan and are not reduced or represented as passing. Codex identified
   omitted Windows/Linux replacement wording; L3 now explicitly preserves the
   database/master pairing through new-format replacement on all three desktops.
-- #1758 merged as `09e4e02`; current-head Codex completed after the coverage fix.
-  Read-only inspection of existing release run `36221737896` then established
-  native signed macOS arm64/x64 roundtrip and cold reopen for source `e510d11`.
-  Native mobile testing used the global slot skill on source `d550856`: iOS 26.5
-  and Android 16 sign-in, encrypted persistence, cold restoration, preferences,
-  logout cleanup and re-login passed. Only owned test processes/devices were
-  stopped; the existing personal desktop and bridge stayed running.
-- Full boundaries, the initial unsigned-simulator setup failure, artifact hashes,
-  user permissions, cleanup and missing gates are in
-  [QUALIFICATION.md](QUALIFICATION.md). Released-mobile migration, backup/restore,
-  replacement and actual prompt-count qualification remain unestablished.
+- Later native evidence is preserved on qualification checkpoint `975e286`, not
+  replaced or represented as execution of the new reset policy:
+  [mobile migration](https://github.com/sesori-ai/sesori_apps_monorepo/blob/975e286/.plan/active/desktop-master-key-storage/MOBILE_MIGRATION.md)
+  and [qualification](https://github.com/sesori-ai/sesori_apps_monorepo/blob/975e286/.plan/active/desktop-master-key-storage/QUALIFICATION.md).
+  Android retained seed/migrate/reopen passed; iOS import checks passed before a
+  bad fixture assertion failed, then corrected separate-process reopen passed.
+  The owned iOS runner uninstall incident was disclosed and repaired; no claim
+  of a wholly green first iOS invocation or byte-identical sandbox preservation.
+- Signed macOS roundtrip/reopen evidence from Actions run `36221737896` is reused
+  with source/digest checks. Windows/Linux native execution, all-desktop new-format
+  replacement, native denied-access/reset, actual distributed upgrades and hardware
+  backup/restore remain missing. No physical devices or coverage waiver exist.
+- Reset plan review `18a9a582-7357-41c4-be8f-8085526806ed` approved the scoped
+  ownership/startup/cache design, with B-Client in scope and no violations.
+  B-Bridge/B-Shared were skipped. This is design approval, not native qualification.
+- Reset implementation: 77 focused cases pass (54 persistence, 12 migration,
+  11 mobile admission/native-channel/startup). Persistence/core analyses are clean;
+  mobile/shared-UI analyses are retained from unchanged shell/UI inputs. Localization
+  was regenerated. Successful import and process-interruption merging remain intact.
+  Secret reset attempts deletion and key replacement independently, retaining both
+  errors: native-key invalidation must not be skipped when SQL deletion fails.
+  Fresh-instance tests prove surviving ciphertext cannot restore with the new key.
+  No native adverse-state/reset, hardware restore or final qualification is claimed.
+- Implementation review `ba733ea6-4935-45fe-8740-ef7632798ebf` approved exact
+  `b1d4c57..6a32232` (38 paths, 1,098 lines: 1,079 authored and 19 generated),
+  without architectural violations. B-Client applied; B-Bridge/B-Shared skipped.
+- Two font-loaded normal-login/email-form previews passed and were inspected in
+  light/dark themes. Fixture-only images/GIF are on `pr-media` at `bd7f0d6934`;
+  they do not demonstrate native migration or a real authentication request.
+- Before resuming qualification, update its retained native fixture's
+  `_NoLegacyReads` for the new `clear()` capability without reseeding or erasing
+  retained slot data. Required new reset/native adverse-state coverage remains.
+- #1779 initial CI found two omitted in-memory test implementations of the new
+  `SecureStorageRepository.reset()` contract, in auth-manager and desktop smoke
+  fixtures. Both now clear their in-memory maps. Their 53/1 cases and owning
+  analyses pass; production code is unchanged from the approved implementation.
+  This adds 54 focused cases to the previous 77, not a fresh full-matrix run.
+- Current-head CI passed 21 checks at `5f0c5a9`; Codex then identified missing
+  file-sink admission, suppressed diagnostic causes and unsafe completion after
+  failed secret reset. Corrections install the existing sink before import,
+  retain native/SQL messages and both reset stacks while omitting parser source
+  buffers, and preserve remaining source/leave import retryable when reset fails.
+  No new persistent flag, coordinator or fallback store was added.
+- Review-fix verification: 14 migration and 26 mobile startup/DI/channel/file-log
+  cases pass, with clean core/mobile analyses. Retain the unchanged persistence
+  54, auth 53 and desktop one-case evidence: 148 unique latest-per-suite cases,
+  not a full-matrix rerun. The file-sink assertion reads an actual temporary log;
+  the dual-reset-failure fixture retries on a fresh repository before auth.
+- Final implementation-review pass `a91ed23a-5ddd-48d5-bd92-4de6fb58ec81`
+  approved `b1d4c57..d18fd88` (40 paths, 1,225 changed lines), with no findings.
+  B-Client applied; B-Bridge/B-Shared skipped. Its full 4,937-byte report was
+  recovered from the completed child session (line 295) after an acknowledgement
+  overwrote the artifact; SHA256
+  `e6811751948a5c5a67c673538cab87280692e5e86f887f5f50c34ed13b2cb5b8`.

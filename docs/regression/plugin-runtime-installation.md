@@ -28,6 +28,9 @@ from the app or management API, or at bridge start when Sesori manages an older 
 - Artifact installation writes the pinned version into the harness's own managed state
   area; placement preserves a published bare executable, an archived executable, or its
   required package directory, never installs system-wide, touches files elsewhere, or starts the backend.
+  OpenCode selects six integrity-pinned npm `@opencode/cli-<target>` `.tgz` archives,
+  finds `package/bin/opencode[.exe]`, and installs only the self-contained executable
+  under its canonical name. The host's Node/npm installation is not involved.
   OMP selects its official Linux glibc or musl executable from bounded Alpine-marker and
   `ldd` evidence; macOS and Windows use direct target mapping, including the official
   `omp-windows-arm64.exe` on Windows ARM64. OMP has eight pinned direct-binary mappings;

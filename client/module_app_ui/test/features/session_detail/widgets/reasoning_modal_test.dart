@@ -38,6 +38,7 @@ SessionDetailState _loadedState({
     interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
     messages: messages,
     olderMessagesCursor: null,
+    transcriptFolded: false,
     streamingText: streamingText,
     sessionStatus: const SessionStatus.idle(),
     pendingQuestions: const [],

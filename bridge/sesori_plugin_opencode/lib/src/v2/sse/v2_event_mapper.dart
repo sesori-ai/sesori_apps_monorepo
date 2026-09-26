@@ -107,7 +107,6 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
               sessionID: event.sessionID,
               messageID: event.assistantMessageID,
               tool: event.name,
-              kind: _messageMapper.toolKind(name: event.name),
               state: const PluginToolState(
                 status: PluginToolStatus.pending,
                 title: null,
@@ -180,6 +179,11 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
     for (final part in message.parts) BridgeSseMessagePartUpdated(part: part),
     if (message.parts.any((part) => part is PluginMessagePartCompaction))
       BridgeSseSessionCompacted(sessionID: message.info.sessionID),
+    // A named compaction finishes without a user-message echo. Do not settle it
+    // on a running snapshot or on the HTTP acceptance response.
+    if (message.info is! PluginMessageUser && message.info.time?.completed != null)
+      if (V2MessageMapper.promptIdForMessage(messageId: message.info.id) case final promptId?)
+        BridgeSsePromptSettled(sessionID: message.info.sessionID, promptID: promptId),
   ];
 
   List<BridgeSseEvent> mapNotice({required V2EventEnvelope envelope, required V2AgentNames agentNames}) {

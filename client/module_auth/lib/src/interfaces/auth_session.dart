@@ -26,6 +26,10 @@ abstract interface class AuthSession() {
   /// usable. This never calls the auth server and does not emit auth state.
   Future<bool> hasLocallyValidSession();
 
+  /// The provider of the last interactive sign-in on this device, or `null`
+  /// when there is none. Logout keeps it, so the login screen can mark it.
+  Future<AuthProvider?> lastSignedInProvider();
+
   /// Invalidates all sessions across all devices by calling the auth server.
   /// On success, clears local tokens and emits unauthenticated.
   /// On failure, throws — local tokens are NOT cleared (the server-side

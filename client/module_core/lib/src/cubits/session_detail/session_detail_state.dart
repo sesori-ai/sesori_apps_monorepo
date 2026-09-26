@@ -29,6 +29,11 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// Whether a load-older request is in flight, so the action is not
     /// re-issued while it runs.
     @Default(false) bool isLoadingOlderMessages,
+
+    /// Whether the transcript shows each turn folded to its prompt and a
+    /// one-line summary. Required, so no construction site can reset the
+    /// fold by omission; it lasts for the cubit, through full reloads.
+    required bool transcriptFolded,
     required Map<String, String> streamingText,
     required SessionStatus sessionStatus,
     required List<SesoriQuestionAsked> pendingQuestions,
@@ -93,6 +98,11 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// The connected bridge's YOLO setting, as last known by
     /// `BridgeSettingsService`. See [SessionDetailLoadedX.approvalControl].
     @Default(YoloSettingsResponse(enabled: false)) YoloSettingsResponse bridgeYolo,
+
+    /// Whether the bridge reports the main agent mid-turn, as last known by
+    /// `SseEventTracker`. Its root status alone cannot tell, since some
+    /// harnesses hold it busy while only sub-agents work.
+    @Default(false) bool mainAgentRunning,
 
     /// Whether a change to the session's approval mode awaits the bridge.
     @Default(false) bool isUpdatingApproval,

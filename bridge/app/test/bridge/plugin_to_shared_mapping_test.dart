@@ -125,12 +125,6 @@ void main() {
     });
   });
 
-  test("PluginToolKindMapping.toShared() maps every kind by name", () {
-    for (final kind in PluginToolKind.values) {
-      expect(kind.toShared().name, kind.name);
-    }
-  });
-
   group("PluginToolStatusMapping.toShared()", () {
     test("maps every plugin status to the matching shared ToolStatus", () {
       expect(PluginToolStatus.pending.toShared(), equals(ToolStatus.pending));
@@ -263,7 +257,6 @@ void main() {
         sessionID: "s",
         messageID: "m",
         tool: "shell",
-        kind: PluginToolKind.command,
         state: PluginToolState(
           status: PluginToolStatus.error,
           title: "display",
@@ -273,7 +266,6 @@ void main() {
           attachments: const [],
         ),
       ).toShared(sessionId: "s") as MessagePartTool;
-      expect(state.kind, ToolKind.command);
       expect(state.state.output, "😀" * maxToolOutputLength);
       expect(state.state.error, "😀" * maxToolOutputLength);
       expect(state.state.shellCommand, "😀" * maxToolOutputLength);

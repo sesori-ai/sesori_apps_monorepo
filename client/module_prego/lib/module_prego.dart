@@ -9,6 +9,7 @@ export 'components/buttons/prego_composer_chip.dart';
 export 'components/buttons/prego_copy_icon_button.dart';
 export 'components/buttons/prego_picker_button.dart';
 export 'components/buttons/prego_switch.dart';
+export 'components/buttons/prego_voice_cancel_button.dart';
 export 'components/icons/prego_avatar_initials.dart';
 export 'components/icons/prego_avatar_user.dart';
 export 'components/icons/prego_brand_logo.dart';

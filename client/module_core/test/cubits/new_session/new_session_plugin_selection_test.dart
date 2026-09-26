@@ -146,6 +146,7 @@ void main() {
       selectionTracker: selectionTracker,
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
+      feedbackPromptService: FakeFeedbackPromptService(),
       projectId: "project-1",
     );
 

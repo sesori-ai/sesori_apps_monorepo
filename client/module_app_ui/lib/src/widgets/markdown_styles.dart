@@ -95,7 +95,11 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
       decorationColor: foreground,
     ),
     // Chat renders fenced blocks as a [CodeBlock], so this only reaches inline code.
-    code: base.code?.copyWith(color: foreground, backgroundColor: prego.colors.bgTertiary),
+    //
+    // The chip must stay translucent: a paragraph paints its selection
+    // highlight before its glyphs, so an opaque run background covers the
+    // highlight and a selection crossing inline code looks like it skipped it.
+    code: base.code?.copyWith(color: foreground, backgroundColor: prego.colors.alphaBlack10),
     h1: prego.textTheme.textXl.bold.copyWith(color: foreground),
     h2: prego.textTheme.textLg.bold.copyWith(color: foreground),
     h3: prego.textTheme.textMd.bold.copyWith(color: foreground),
@@ -127,6 +131,24 @@ Map<String, MarkdownElementBuilder> buildSessionMarkdownBuilders({
       copyTooltip: copyTooltip,
     ),
   };
+}
+
+/// The chat bubble's typography for a preview of a message, such as the pinned
+/// prompt: the same as [buildChatMessageMarkdownStyleSheet], except that a link
+/// reads as ordinary text. A preview is a still picture whose own tap belongs to
+/// what it previews, so nothing in it may look pressable.
+MarkdownStyleSheet buildChatMessagePreviewMarkdownStyleSheet({required PregoDesignSystem prego}) {
+  final base = buildChatMessageMarkdownStyleSheet(prego: prego);
+  return base.copyWith(a: base.p);
+}
+
+/// Custom [MarkdownBody.builders] for a preview of session chat markdown, such
+/// as the pinned prompt. A fenced block renders as a still [CodeBlockPreview]:
+/// a preview has no room for a copy or open-all control, its own tap belongs to
+/// whatever it previews, and a scroll view inside it would report its metrics
+/// to the list the preview sits over.
+Map<String, MarkdownElementBuilder> buildSessionMarkdownPreviewBuilders() {
+  return <String, MarkdownElementBuilder>{"pre": CodeBlockPreviewMarkdownBuilder()};
 }
 
 /// Renders a raw HTML block as a code block instead of dropping it.

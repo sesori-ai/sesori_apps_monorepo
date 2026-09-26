@@ -6,6 +6,7 @@
 *.steps.dart linguist-generated=true
 *.mocks.dart linguist-generated=true
 **/drift_schemas/** linguist-generated=true
+bridge/app/lib/src/services/project_glossary_english_words.dart linguist-generated=true
 
 # Flutter platform-specific generated files
 **/GeneratedPluginRegistrant.* linguist-generated=true

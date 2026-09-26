@@ -17,7 +17,6 @@ dependencies:
   sesori_shared:
     path: ../../shared/sesori_shared
   flutter_svg: ^2.3.0
-  universal_platform: ^1.1.0
   liquid_glass_widgets: 1.6.2
   cue: ^0.4.0
 

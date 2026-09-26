@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.d
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/feedback_prompt_service.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_approval_service.dart";
@@ -267,6 +268,7 @@ void main() {
         ),
       ).thenThrow(Exception("boom"));
 
+      final feedbackPromptService = FakeFeedbackPromptService();
       final cubit = _buildCubit(
         sessionId: sessionId,
         projectId: "project-1",
@@ -276,6 +278,7 @@ void main() {
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
+        feedbackPromptService: feedbackPromptService,
       );
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);
@@ -303,6 +306,8 @@ void main() {
       );
 
       expect(result, isFalse);
+      expect(feedbackPromptService.failures, 1);
+      expect(feedbackPromptService.positiveInteractions, 0);
       verify(
         () => mockSessionService.getMessages(
           sessionId: sessionId,
@@ -368,6 +373,7 @@ void main() {
 
     test("successful permission replies report only their bounded decisions", () async {
       final analyticsService = stubbedProductAnalyticsService();
+      final feedbackPromptService = FakeFeedbackPromptService();
       final cubit = _buildCubit(
         sessionId: sessionId,
         projectId: "project-1",
@@ -378,6 +384,7 @@ void main() {
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
         productAnalyticsService: analyticsService,
+        feedbackPromptService: feedbackPromptService,
       );
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);
@@ -410,6 +417,8 @@ void main() {
           decision: AnalyticsPermissionDecision.reject,
         ),
       ]);
+      expect(feedbackPromptService.positiveInteractions, 3);
+      expect(feedbackPromptService.failures, 0);
     });
 
     test("successful question controls and abort report content-free outcomes", () async {
@@ -433,6 +442,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<bool>.success(false));
       final analyticsService = stubbedProductAnalyticsService();
+      final feedbackPromptService = FakeFeedbackPromptService();
       final cubit = _buildCubit(
         sessionId: sessionId,
         projectId: "project-1",
@@ -443,6 +453,7 @@ void main() {
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
         productAnalyticsService: analyticsService,
+        feedbackPromptService: feedbackPromptService,
       );
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);
@@ -469,6 +480,8 @@ void main() {
         const ProductAnalyticsEvent.sessionQuestionRejected(),
         const ProductAnalyticsEvent.sessionAbortSucceeded(),
       ]);
+      // Answering and rejecting a question each count; an abort does not.
+      expect(feedbackPromptService.positiveInteractions, 2);
     });
 
     test("non-loaded state buffers permission events and replays after loaded", () async {
@@ -793,6 +806,7 @@ SessionDetailCubit _buildCubit({
   required MockPermissionRepository permissionRepository,
   required MockFailureReporter failureReporter,
   ProductAnalyticsService? productAnalyticsService,
+  FeedbackPromptService? feedbackPromptService,
 }) {
   return SessionDetailCubit(
     connectionService,
@@ -810,11 +824,13 @@ SessionDetailCubit _buildCubit({
     lifecycleSource: FakeLifecycleSource(),
     composerDraftRepository: inMemoryComposerDraftRepository(),
     productAnalyticsService: productAnalyticsService ?? stubbedProductAnalyticsService(),
+    feedbackPromptService: feedbackPromptService ?? FakeFeedbackPromptService(),
     sessionId: sessionId,
     projectId: projectId,
     notificationCanceller: notificationCanceller,
     failureReporter: failureReporter,
     bridgeSettingsService: stubbedBridgeSettingsService(),
+    sseEventTracker: MockSseEventTracker(),
   );
 }
 

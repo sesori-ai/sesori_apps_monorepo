@@ -8,6 +8,16 @@ import "../foundation/persistence/persistence_database.dart";
 class PersisterApi({required PersistenceDatabase database}) {
   final PersistenceDatabase _database = database;
 
+  Future<void> clear() => _database.batch((batch) {
+    batch.deleteAll(_database.stringValues);
+    batch.deleteAll(_database.boolValues);
+  });
+
+  Future<void> clearAndWriteBool({required String key, required bool value}) => _database.transaction(() async {
+    await clear();
+    await writeBool(key: key, value: value);
+  });
+
   Future<String?> readString({required String key}) => (_database.select(
     _database.stringValues,
   )..where((table) => table.key.equals(key))).map((row) => row.value).getSingleOrNull();

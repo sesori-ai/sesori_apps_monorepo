@@ -27,12 +27,14 @@ void main() {
       expect(calls, isEmpty);
       expect(await storage.readAll(), {"access_token": "fixture-token", "unknown": ""});
       await storage.delete(key: "access_token");
+      await storage.clear();
       final options = platform == TargetPlatform.android
           ? const AndroidOptions(resetOnError: false).toMap()
           : const IOSOptions(accessibility: null).toMap();
-      expect(calls.map((call) => call.method), ["readAll", "delete"]);
+      expect(calls.map((call) => call.method), ["readAll", "delete", "deleteAll"]);
       expect(calls[0].arguments, {"options": options});
       expect(calls[1].arguments, {"key": "access_token", "options": options});
+      expect(calls[2].arguments, {"options": options});
       if (platform == TargetPlatform.iOS) {
         expect(options.containsKey("accessibility"), false);
         expect(options["accountName"], IOSOptions.defaultOptions.accountName);
@@ -51,7 +53,8 @@ void main() {
       final failure = throwsA(isA<PlatformException>().having((error) => error.code, "code", "fixture-denied"));
       await expectLater(storage.readAll(), failure);
       await expectLater(storage.delete(key: "access_token"), failure);
-      expect(attempts, 2);
+      await expectLater(storage.clear(), failure);
+      expect(attempts, 3);
     });
   }
 }

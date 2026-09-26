@@ -7,6 +7,7 @@ enum CoreSecretKey({@override required final String storageKey}) implements Secr
 enum StringPreferenceKey({@override required final String storageKey}) implements StringPersistenceKey {
   appearanceMode(storageKey: "appearance_mode"),
   chatInputMode(storageKey: "chat_input_mode"),
+  feedbackPrompt(storageKey: "feedback_prompt_v1"),
   notificationPreferencesDeviceId(storageKey: "notification_preferences_device_id_v1"),
 }
 

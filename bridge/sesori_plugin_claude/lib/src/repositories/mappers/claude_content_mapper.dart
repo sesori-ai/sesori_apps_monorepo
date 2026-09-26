@@ -14,7 +14,6 @@ import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_task_notification.dart";
 import "claude_shell_command_mapper.dart";
 import "claude_task_status_mapping.dart";
-import "claude_tool_kind_mapper.dart";
 import "claude_tool_title_mapper.dart";
 
 sealed class const ClaudeMappedContentBlock();
@@ -221,7 +220,6 @@ final class const ClaudeContentMapper() {
       sessionID: sessionId,
       messageID: messageId,
       tool: notification.summary,
-      kind: PluginToolKind.other,
       state: PluginToolState(
         status: status,
         title: null,
@@ -461,7 +459,6 @@ final class const ClaudeContentMapper() {
         sessionID: sessionId,
         messageID: messageId,
         tool: name,
-        kind: ClaudeToolKindMapper.map(name: name),
         state: PluginToolState(
           status: PluginToolStatus.pending,
           title: ClaudeToolTitleMapper.map(input: input),
@@ -477,8 +474,6 @@ final class const ClaudeContentMapper() {
           sessionID: sessionId,
           messageID: messageId,
           tool: null,
-          // A result names no tool; replay and live dispatch merge it onto its call, whose kind stays.
-          kind: PluginToolKind.other,
           state: PluginToolState(
             status: isError ? PluginToolStatus.error : PluginToolStatus.completed,
             title: null,

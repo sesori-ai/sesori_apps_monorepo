@@ -10,4 +10,7 @@ class FlutterLegacyNativeStorageAdapter({required final FlutterSecureStorage sto
 
   @override
   Future<void> delete({required String key}) => storage.delete(key: key);
+
+  @override
+  Future<void> clear() => storage.deleteAll();
 }

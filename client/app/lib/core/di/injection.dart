@@ -11,7 +11,7 @@ import "injection.config.dart";
 final getIt = GetIt.instance;
 
 // Platform → persistence → auth → core → production migration → consumers.
-// Registrations stay lazy until migration succeeds. Only then prepare analytics
+// Registrations stay lazy until import or its reset recovery finishes. Then prepare analytics
 // without awaiting its remote crawl-gate decision and register its capability
 // before consumer resolution. Development never resolves the legacy source.
 @InjectableInit(ignoreUnregisteredTypes: [PersistenceScope])
@@ -31,6 +31,8 @@ Future<AnalyticsRuntimeBootstrap> configureDependencies({
   configurePersistenceDependencies(getIt: getIt);
   configureAuthDependencies(getIt);
   configureCoreDependencies(getIt);
+  // Recovery continues startup, so retain its diagnostics in the app log too.
+  setLogSink(sink: getIt<LogSink>());
   if (getIt<PersistenceScope>() == PersistenceScope.production) {
     // COMPATIBILITY 2026-09-25 (v1.9.1): retain this deprecated import until
     // supported direct upgrades exclude all per-value-native production builds.

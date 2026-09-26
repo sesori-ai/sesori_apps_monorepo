@@ -3,15 +3,17 @@ import "dart:math" show min;
 import "package:path/path.dart" as p;
 
 import "../repositories/models/project_glossary_source.dart";
+import "project_glossary_english_words.dart";
 
 /// Selects a small, deterministic set of likely spoken technical terms from
 /// bounded project metadata and tracked path names.
 class const ProjectGlossaryTermCalculator() {
-  static const int maximumTerms = 50;
-
+  // Whole ASCII words only, so "Español" leaves no "Espa" fragment, nor "Espan" when its accent is a combining mark.
   static final RegExp _metadataTokenPattern = RegExp(
-    r"(?:[Cc]\+\+|[CFcf]#|[A-Za-z][A-Za-z0-9]*(?:[.+#-][A-Za-z0-9]+)*)",
+    r"(?<![\p{L}\p{M}\p{N}])(?:[Cc]\+\+|[CFcf]#|[A-Za-z][A-Za-z0-9]*(?![\p{L}\p{M}\p{N}]))",
+    unicode: true,
   );
+  static final RegExp _identifierPattern = RegExp(r"^[A-Za-z][A-Za-z0-9]*$");
   static final RegExp _metadataSecretSpanPattern = RegExp(
     "[A-Za-z0-9][A-Za-z0-9_./+=#-]{15,}",
   );
@@ -55,13 +57,16 @@ class const ProjectGlossaryTermCalculator() {
     "[A-Za-z0-9_./+=#-]{8,}",
     caseSensitive: false,
   );
-  static final RegExp _hexTokenPattern = RegExp(r"^[A-Fa-f0-9]{12,}$");
+  // Hash and color fragments such as "c4f042" or "ffcb47". Short ones must be lowercase, so "D3D11" and "Ed25519" stay.
+  static final RegExp _hexTokenPattern = RegExp(r"^(?:[A-Fa-f0-9]{12,}|(?=.*[0-9])[a-f0-9]{5,})$");
+  // File numbering, line anchors, or icon sizes such as "p01", "L23", or "Square30x30Logo". An x or H prefix names an
+  // architecture, curve, or codec such as "x64", "X25519", or "H264", so those stay.
+  static final RegExp _serialTokenPattern = RegExp(r"^(?![HhXx])[A-Za-z][0-9]{2,}$|[0-9]x[0-9]");
   static final RegExp _allCapsPattern = RegExp(r"^[A-Z]{2,}$");
   static final RegExp _hasUpperPattern = RegExp("[A-Z]");
   static final RegExp _hasLowerPattern = RegExp("[a-z]");
   static final RegExp _hasDigitPattern = RegExp("[0-9]");
   static final RegExp _hasLetterPattern = RegExp("[A-Za-z]");
-  static final RegExp _startsWithLetterPattern = RegExp("^[A-Za-z]");
   static final RegExp _credentialNonAlphaNumericPattern = RegExp("[^A-Za-z0-9]");
   static final RegExp _credentialDelimiterPattern = RegExp("[/=_+.]");
 
@@ -100,28 +105,34 @@ class const ProjectGlossaryTermCalculator() {
     "xoxs",
   };
 
+  // Generic software and scaffolding vocabulary that the English word list does not cover.
   static const String _stopWordsText = """
-a about action actions active after agent all also an and any agents analytics android api app apps are as
-architecture asset assets assets.xcassets at auth authentication background backend base before bin bridge
-build builder by cache catalog cmakelists class client code command common connection component components
-config configuration const controller core create current data database debug default delete design desktop
-detail directory dev docs document documents error event events example examples extension factory fake
-feature features file foundation files final for from generated get git handler has helper home host http
-https if injection icon ios icons image implementation import info install in index input interface internal
-is json launch launcher lifecycle light lib linux license list lists local login macos main make managed
-management manager manifest metadata message messages mobile model models module monorepo new not of open on
-or output package packages page parser part path plan platform plugin plugins prefer product project
-projects push progress protocol provider public read readme register release repository request routing
-runner runner.xcodeproj relay response route runtime screen server service session sessions settings setup
-skill shared source src start startup state status storage store theme tracker support terminal test testing
-tests text that the this to token tool tools type update use used user utils value values version view voice
-when with web widget widgets will windows window workspace www
+androidmanifest api app appdelegate appfile appinfo async auth backend bmp changelog cli cmakelists cmd com
+config const css debugprofile dev devdependencies dir dockerfile dockerignore drawable env etc fastfile favicon
+gemfile generatedpluginregistrant gif git gitattributes gitignore gitkeep gradle hdpi html http ide
+ideworkspacechecks impl imageset init ios jpeg jpg json lifecycle linux login macos makefile mdpi metadata mipmap
+monorepo multi non npmrc org param parser plugin png podfile pre prettierignore prettierrc pubspec readme repo res
+runnertests runtime sdk src startup svg toml tsconfig txt uri url util webp widget workflow workspace www xcassets
+xcodeproj xcshareddata xcworkspace xhdpi xml xxhdpi xxxhdpi yaml yml
 """;
   static final Set<String> _stopWords = Set.unmodifiable(
     _stopWordsText.trim().split(RegExp(r"\s+")),
   );
+  static final Set<String> _englishWords = Set.unmodifiable(
+    projectGlossaryEnglishWordsText.trim().split(RegExp(r"\s+")),
+  );
+  static const List<(String, String)> _inflectionSuffixes = [
+    ("ies", "y"),
+    ("ied", "y"),
+    ("es", ""),
+    ("s", ""),
+    ("ed", ""),
+    ("ed", "e"),
+    ("ing", ""),
+    ("ing", "e"),
+  ];
 
-  List<String> calculate({required ProjectGlossarySource source}) {
+  List<String> calculate({required ProjectGlossarySource source, required int maximumTerms}) {
     final candidates = <String, _GlossaryCandidate>{};
 
     _recordIdentifier(
@@ -180,7 +191,16 @@ when with web widget widgets will windows window workspace www
         return left.canonical.compareTo(right.canonical);
       });
 
-    return ranked.take(maximumTerms).map((candidate) => candidate.canonical).toList(growable: false);
+    final rankedKeys = {for (final candidate in ranked) candidate.canonical.toLowerCase()};
+    return ranked
+        .map((candidate) => candidate.canonical)
+        // A plural adds nothing beside its ranked singular, such as "schemas" beside "schema".
+        .where((term) {
+          final key = term.toLowerCase();
+          return !key.endsWith("s") || !rankedKeys.contains(key.substring(0, key.length - 1));
+        })
+        .take(maximumTerms)
+        .toList(growable: false);
   }
 
   void _recordIdentifier({
@@ -193,7 +213,8 @@ when with web widget widgets will windows window workspace www
     final filtered = _filterCredentialSpans(value).trim();
     if (filtered.isEmpty) return;
 
-    if (includeCompound && !filtered.contains("_") && !filtered.contains(RegExp(r"\s"))) {
+    // Only a single identifier such as "GoRouter" stays whole; "sesori-bridge-arm64" contributes its parts.
+    if (includeCompound && _identifierPattern.hasMatch(filtered)) {
       _recordTerm(
         candidates: candidates,
         term: filtered,
@@ -211,8 +232,7 @@ when with web widget widgets will windows window workspace www
         .replaceAllMapped(
           RegExp("([a-z0-9])([A-Z])"),
           (match) => "${match.group(1)} ${match.group(2)}",
-        )
-        .replaceAll(RegExp(r"[-_\s.]+"), " ");
+        );
 
     for (final match in _metadataTokenPattern.allMatches(separated)) {
       _recordTerm(
@@ -356,33 +376,45 @@ when with web widget widgets will windows window workspace www
     required bool isCompound,
     Set<String>? distinctTerms,
   }) {
-    final normalized = term.trim().replaceAll(RegExp(r"^[.-]+|[.-]+$"), "");
-    if (!_isEligible(normalized)) return;
+    if (!_isEligible(term)) return;
 
-    final key = normalized.toLowerCase();
+    final key = term.toLowerCase();
     if (distinctTerms != null && !distinctTerms.add(key)) return;
 
     final candidate = candidates.putIfAbsent(
       key,
-      () => _GlossaryCandidate(canonical: normalized, canonicalPriority: origin.priority),
+      () => _GlossaryCandidate(canonical: term, canonicalPriority: origin.priority),
     );
-    candidate.record(term: normalized, origin: origin, isCompound: isCompound);
+    candidate.record(term: term, origin: origin, isCompound: isCompound);
   }
 
   bool _isEligible(String term) {
-    if (term.length > 40 || !_hasLetterPattern.hasMatch(term) || !_startsWithLetterPattern.hasMatch(term)) {
-      return false;
-    }
+    if (term.length > 40) return false;
     final folded = term.toLowerCase();
-    if (_stopWords.contains(folded)) return false;
-    if (_hexTokenPattern.hasMatch(term)) return false;
+    if (_isCommonWord(word: folded)) return false;
+    if (_hexTokenPattern.hasMatch(term) || _serialTokenPattern.hasMatch(term)) return false;
     if (_looksCredentialShaped(term)) return false;
 
-    final minimumLength = _allCapsPattern.hasMatch(term) ? 2 : 3;
-    if (term.length < minimumLength && !_shortSymbolicTerms.contains(folded)) return false;
+    if (term.length < 3 && !_shortSymbolicTerms.contains(folded)) return false;
     if (_hasDigitPattern.allMatches(term).length > 6) return false;
     return true;
   }
+
+  // ponytail: suffix folding, not a stemmer; an irregular form passes unless it is listed itself.
+  static bool _isCommonWord({required String word}) {
+    if (_isListedWord(word: word)) return true;
+    for (final (suffix, replacement) in _inflectionSuffixes) {
+      if (!word.endsWith(suffix)) continue;
+      final stem = word.substring(0, word.length - suffix.length);
+      if (_isListedWord(word: "$stem$replacement")) return true;
+      // Doubled final consonant: "stopped" -> "stop", "running" -> "run".
+      final isDoubled = replacement.isEmpty && stem.length > 3 && stem[stem.length - 1] == stem[stem.length - 2];
+      if (isDoubled && _isListedWord(word: stem.substring(0, stem.length - 1))) return true;
+    }
+    return false;
+  }
+
+  static bool _isListedWord({required String word}) => _stopWords.contains(word) || _englishWords.contains(word);
 
   static bool _looksCredentialShaped(String value) {
     final compact = value.replaceAll(_credentialNonAlphaNumericPattern, "");

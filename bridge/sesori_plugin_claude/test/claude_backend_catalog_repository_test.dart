@@ -195,6 +195,39 @@ void main() {
       expect(catalog.catalogModelId(apiModel: "claude-haiku-5"), isNull);
     });
 
+    test("offers only each family's newest model, ranked by what it resolves to", () {
+      // Claude CLI 2.1.283's catalog: family aliases beside pinned older versions.
+      final catalog = repository.map(
+        handshake: {
+          "models": [
+            {"value": "default", "resolvedModel": "claude-opus-5-5"},
+            {"value": "opus", "resolvedModel": "claude-opus-5-5"},
+            {"value": "claude-fable-5-1", "resolvedModel": "claude-fable-5-1"},
+            {"value": "sonnet", "resolvedModel": "claude-sonnet-5"},
+            {"value": "haiku", "resolvedModel": "claude-haiku-4-5-20251001"},
+            {"value": "claude-opus-5", "resolvedModel": "claude-opus-5"},
+            {"value": "claude-fable-5", "resolvedModel": "claude-fable-5"},
+            {"value": "claude-opus-4-8", "resolvedModel": "claude-opus-4-8"},
+            {"value": "claude-opus-4-7", "resolvedModel": "claude-opus-4-7"},
+            {"value": "claude-sonnet-4-6", "resolvedModel": "claude-sonnet-4-6"},
+            {"value": "opus[1m]", "resolvedModel": "claude-opus-5-5[1m]"},
+          ],
+        },
+      );
+
+      final provider = catalog.providers.providers.single;
+      expect(provider.models.map((model) => model.id), [
+        "claude-fable-5-1",
+        "opus",
+        "opus[1m]",
+        "sonnet",
+        "haiku",
+      ]);
+      expect(provider.defaultModelID, "opus");
+      expect(catalog.catalogModelId(apiModel: "claude-opus-5-5"), "opus");
+      expect(catalog.catalogModelId(apiModel: "claude-opus-4-8"), isNull, reason: "a hidden model has no picker id");
+    });
+
     test("filters malformed entries and falls back to the first model", () {
       final catalog = repository.map(
         handshake: {

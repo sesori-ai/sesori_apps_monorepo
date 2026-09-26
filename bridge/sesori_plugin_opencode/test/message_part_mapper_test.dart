@@ -210,8 +210,6 @@ void main() {
 
     expect(shell.state.shellCommand, "git status --short");
     expect(read.state.shellCommand, isNull);
-    expect((shell as PluginMessagePartTool).kind, PluginToolKind.command);
-    expect((read as PluginMessagePartTool).kind, PluginToolKind.read);
   });
 
   test("carries a bounded number of completed tool attachments through tool state", () {

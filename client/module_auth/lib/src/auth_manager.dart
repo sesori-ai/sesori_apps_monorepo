@@ -18,6 +18,7 @@ import "models/auth_state.dart";
 import "models/oauth_flow_errors.dart";
 import "models/oauth_handoff.dart";
 import "platform/oauth_device_descriptor_provider.dart";
+import "storage/last_sign_in_storage.dart";
 import "storage/oauth_storage_service.dart";
 import "storage/token_storage_service.dart";
 
@@ -27,6 +28,7 @@ class AuthManager(
   final TokenStorageService _tokenStorage,
   final OAuthStorageService _oAuthStorage,
   final OAuthDeviceDescriptorProvider _deviceDescriptorProvider, {
+  required final LastSignInStorage _lastSignInStorage,
   @visibleForTesting final Duration _pollInterval = _defaultPollInterval,
   @visibleForTesting final Duration _pollTimeout = _defaultPollTimeout,
   @visibleForTesting Future<void> Function(Duration duration)? delay,
@@ -42,6 +44,11 @@ class AuthManager(
   final _AuthMutationLock _mutationLock = _AuthMutationLock();
   String? _oAuthSessionToken;
   int? _oAuthSessionGeneration;
+
+  /// The provider of the flow [startOAuthFlow] began last. Releasing
+  /// ownership keeps it, so a poll interrupted in the background and resumed
+  /// in this process still knows which provider signed in.
+  ({String sessionToken, OAuthProvider provider})? _startedOAuthFlow;
   int _logoutGeneration = 0;
 
   this : _authState = BehaviorSubject.seeded(const AuthState.initial());
@@ -58,8 +65,15 @@ class AuthManager(
     http.Client client,
     TokenStorageService tokenStorage,
     OAuthStorageService oAuthStorage,
-    OAuthDeviceDescriptorProvider deviceDescriptorProvider,
-  ) => AuthManager(client, tokenStorage, oAuthStorage, deviceDescriptorProvider);
+    OAuthDeviceDescriptorProvider deviceDescriptorProvider, {
+    required LastSignInStorage lastSignInStorage,
+  }) => AuthManager(
+    client,
+    tokenStorage,
+    oAuthStorage,
+    deviceDescriptorProvider,
+    lastSignInStorage: lastSignInStorage,
+  );
 
   @override
   ValueStream<AuthState> get authStateStream => _authState.stream;
@@ -140,6 +154,7 @@ class AuthManager(
     final String sessionToken = _generateSessionToken();
     _oAuthSessionToken = sessionToken;
     _oAuthSessionGeneration = generation;
+    _startedOAuthFlow = (sessionToken: sessionToken, provider: provider);
 
     try {
       final descriptor = await _deviceDescriptorProvider.describe();
@@ -278,6 +293,7 @@ class AuthManager(
             :final user,
             :final accountStatus,
           ):
+            final startedFlow = _startedOAuthFlow;
             final bool persisted = await _persistAuthenticatedResult(
               generation: generation,
               accessToken: accessToken,
@@ -286,6 +302,9 @@ class AuthManager(
               clearOAuthState: true,
               requireOAuthOwnership: true,
               oauthSessionToken: sessionToken,
+              signInProvider: startedFlow != null && startedFlow.sessionToken == sessionToken
+                  ? startedFlow.provider
+                  : null,
             );
             if (!persisted) {
               throw const _AuthFlowSuperseded();
@@ -353,6 +372,7 @@ class AuthManager(
     required bool clearOAuthState,
     required bool requireOAuthOwnership,
     required String? oauthSessionToken,
+    required AuthProvider? signInProvider,
   }) {
     return _mutationLock.run(
       action: () async {
@@ -404,6 +424,9 @@ class AuthManager(
           return false;
         }
         _authState.add(AuthState.authenticated(user: user));
+        if (signInProvider != null) {
+          await _lastSignInStorage.save(provider: signInProvider);
+        }
         return true;
       },
     );
@@ -648,6 +671,9 @@ class AuthManager(
   }
 
   @override
+  Future<AuthProvider?> lastSignedInProvider() => _lastSignInStorage.read();
+
+  @override
   Future<bool> restoreSession() async {
     final int generation = _logoutGeneration;
     final AuthUser? user = await _getCurrentUser(generation: generation);
@@ -723,7 +749,11 @@ class AuthManager(
     }
     _ensureSuccess(response, context: "Email/password login failed");
 
-    return await _completeInteractiveLogin(generation: generation, authResponse: _parseLoginResponse(response));
+    return await _completeInteractiveLogin(
+      generation: generation,
+      authResponse: _parseLoginResponse(response),
+      signInProvider: AuthProvider.email,
+    );
   }
 
   @override
@@ -737,7 +767,11 @@ class AuthManager(
 
     _ensureSuccess(response, context: "Apple Sign-In failed");
 
-    return await _completeInteractiveLogin(generation: generation, authResponse: _parseLoginResponse(response));
+    return await _completeInteractiveLogin(
+      generation: generation,
+      authResponse: _parseLoginResponse(response),
+      signInProvider: AuthProvider.apple,
+    );
   }
 
   AuthLoginResponse _parseLoginResponse(http.Response response) {
@@ -754,6 +788,7 @@ class AuthManager(
   Future<AuthLoginResult> _completeInteractiveLogin({
     required int generation,
     required AuthLoginResponse authResponse,
+    required AuthProvider signInProvider,
   }) async {
     final bool persisted = await _persistAuthenticatedResult(
       generation: generation,
@@ -763,6 +798,7 @@ class AuthManager(
       clearOAuthState: true,
       requireOAuthOwnership: false,
       oauthSessionToken: null,
+      signInProvider: signInProvider,
     );
     if (!persisted) {
       throw const _AuthFlowSuperseded();
@@ -804,6 +840,7 @@ class AuthManager(
   Future<void> _clearLocalAuthState({required int generation}) {
     return _mutationLock.run(
       action: () async {
+        // The last sign-in provider deliberately survives logout.
         await Future.wait([
           _tokenStorage.clearTokens(),
           _oAuthStorage.clearPkceVerifier(),

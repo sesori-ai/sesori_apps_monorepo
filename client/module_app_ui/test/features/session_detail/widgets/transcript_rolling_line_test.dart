@@ -1,7 +1,12 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_rolling_line.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
+
+enum _Segment() {
+  thought,
+  read,
+  command,
+}
 
 Widget _line({required List<TranscriptLineSegment> segments, bool disableAnimations = false}) => Directionality(
   textDirection: TextDirection.ltr,
@@ -18,16 +23,16 @@ Widget _line({required List<TranscriptLineSegment> segments, bool disableAnimati
   ),
 );
 
-const _thought = (key: TranscriptStepKind.thinking, text: "Thought");
+const _thought = (key: _Segment.thought, text: "Thought");
 
 double _width(WidgetTester tester) => tester.getSize(find.byType(TranscriptRollingLine)).width;
 
 void main() {
   testWidgets("a changed count rolls only what changed and eases the line's width", (tester) async {
-    await tester.pumpWidget(_line(segments: [_thought, (key: TranscriptStepKind.read, text: " · read 9 files")]));
+    await tester.pumpWidget(_line(segments: [_thought, (key: _Segment.read, text: " · read 9 files")]));
     final before = _width(tester);
 
-    await tester.pumpWidget(_line(segments: [_thought, (key: TranscriptStepKind.read, text: " · read 10 files")]));
+    await tester.pumpWidget(_line(segments: [_thought, (key: _Segment.read, text: " · read 10 files")]));
     await tester.pump(const Duration(milliseconds: 100));
 
     // The unchanged text holds still while the number rolls up and away.
@@ -50,7 +55,7 @@ void main() {
     await tester.pumpWidget(_line(segments: [_thought]));
     final before = _width(tester);
 
-    await tester.pumpWidget(_line(segments: [_thought, (key: TranscriptStepKind.command, text: " · ran 1 command")]));
+    await tester.pumpWidget(_line(segments: [_thought, (key: _Segment.command, text: " · ran 1 command")]));
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text(" · ran 1 command"), findsOneWidget);
     final midway = _width(tester);
@@ -62,8 +67,8 @@ void main() {
 
   testWidgets("a rolling line reads as the line it is heading to", (tester) async {
     final semantics = tester.ensureSemantics();
-    await tester.pumpWidget(_line(segments: [(key: TranscriptStepKind.read, text: "read 2 files")]));
-    await tester.pumpWidget(_line(segments: [(key: TranscriptStepKind.read, text: "read 3 files")]));
+    await tester.pumpWidget(_line(segments: [(key: _Segment.read, text: "read 2 files")]));
+    await tester.pumpWidget(_line(segments: [(key: _Segment.read, text: "read 3 files")]));
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text("2"), findsOneWidget);
@@ -74,10 +79,10 @@ void main() {
 
   testWidgets("reduced motion changes the line at once", (tester) async {
     await tester.pumpWidget(
-      _line(segments: [(key: TranscriptStepKind.read, text: "read 2 files")], disableAnimations: true),
+      _line(segments: [(key: _Segment.read, text: "read 2 files")], disableAnimations: true),
     );
     await tester.pumpWidget(
-      _line(segments: [(key: TranscriptStepKind.read, text: "read 3 files")], disableAnimations: true),
+      _line(segments: [(key: _Segment.read, text: "read 3 files")], disableAnimations: true),
     );
 
     expect(find.text("read 3 files"), findsOneWidget);

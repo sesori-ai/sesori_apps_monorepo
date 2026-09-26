@@ -20,7 +20,6 @@ import "composer_options_accordion.dart";
 import "composer_surface_style.dart";
 import "image_attachment_viewer.dart";
 import "prompt_editor_sheet.dart";
-import "voice_cancel_button.dart";
 
 // WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
 // ignore: use_primary_constructors
@@ -1877,8 +1876,9 @@ class _PromptInputState() extends State<PromptInput> {
       _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("accordion"), child: _buildOptionsAccordion()),
       _VoicePresentation.recording => KeyedSubtree(
         key: const ValueKey("cancel-target"),
-        child: VoiceCancelButton(
+        child: PregoVoiceCancelButton(
           key: _cancelTargetKey,
+          semanticLabel: loc.voiceCancelRecording,
           progress: _cancelDragProgress,
           onCancel: _cancelVoiceInteractionWithFeedback,
         ),

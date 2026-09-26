@@ -69,6 +69,15 @@ reconnect or restart.
   defaults. The bridge persists that selection and returns it with the replay so
   the opening client cannot retain older session metadata fetched in parallel.
   A replay with no assistant/error attribution leaves existing defaults intact.
+- OpenCode v2 replays its flat native content with the same message/part identity
+  used by live updates, including tool cards, retry errors and agent-switch
+  notices. Switch notices are system-authored and agent labels are display-ready.
+  Live tool readback hydrates the named tool only; terminal assistant readback
+  must not replay unrelated text ahead of queued deltas. Inbox acceptance is not
+  delivery, and delivered control entries need not create a transcript bubble.
+  A history failure remains a failure, not a successful empty transcript.
+  Native reconnect refreshes metadata, activity and pending input before later
+  events; failed refresh preserves useful state without claiming trusted idle.
 - When DeepSeek needs a first or stale backfill, its plugin calls
   `deepseek/session/history` through the one long-lived adapter connection and
   reads isolated persistence without resuming an agent or starting a scratch
@@ -178,7 +187,12 @@ reconnect or restart.
   transcript.
 - Client history uses a reversed list. Nearing its oldest edge prefetches the
   next page, one request at a time, so paging back through history rarely stops
-  dead at the edge; prepended rows become visible without shifting the detached
+  dead at the edge. The check also runs after layout without any scroll: a
+  first page, a fold, or a taller window that leaves the oldest edge within
+  reach loads the next page, and pages keep loading until the screen fills or
+  the start of the transcript is loaded. A failed page is not retried on its
+  own; the next scroll, layout change or finished refresh asks again. A page a
+  silent refresh dropped or discarded is asked for again when the refresh ends. Prepended rows become visible without shifting the detached
   reading position or admitting messages and streaming changes that arrived at
   the newest edge while detached.
 - After a reconnect inside the replay window, buffered events are delivered;
@@ -285,7 +299,8 @@ bridge restart, and forced ACP process replacement for the same imported
 session. For Grok, also vary a changed loaded model/effort and confirm replay
 uses the loaded tuple without replacing live defaults. Vary root versus child
 sessions and content types, since tool and image parts converge by their own
-rules where supported.
+rules where supported. Page back and re-import with turns folded too:
+`transcript-turn-navigation.md` owns how turn boundaries react to both.
 
 ## Failure Signals
 
@@ -416,3 +431,9 @@ code and focused metadata, blocking, reload-race and event-buffer tests; Pi
 session process repository, storage API, and history mapper; shared ACP event mapper, turn serialization,
 and session loader plus Antigravity, Copilot, Cursor, and Grok plugins and package tests; shared
 pagination cursor; client detail load service and cubit.
+
+OpenCode v2: `bridge/sesori_plugin_opencode/lib/src/v2/repositories/v2_message_mapper.dart`,
+`bridge/sesori_plugin_opencode/lib/src/v2/sse/v2_event_mapper.dart`,
+`bridge/sesori_plugin_opencode/lib/src/v2/services/opencode_v2_service.dart`, and
+`v2_message_mapper_test.dart`, `v2_event_mapper_test.dart`, `v2_activity_service_test.dart`
+and `opencode_v2_plugin_test.dart` under `bridge/sesori_plugin_opencode/test/v2/`.

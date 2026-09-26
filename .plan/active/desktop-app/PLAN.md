@@ -3,12 +3,12 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — step 20 complete; MT Gate C planned (MT gate B accepted 2026-09-01)
+- **Status:** Active — step 20 complete; MT Gate C retired with user-accepted gaps (2026-09-26)
 - **Plan date:** 2026-08-28
 - **Distribution planning (2026-09-15):** the user requested the
   [desktop-distribution successor](../desktop-distribution/PLAN.md) now, before
-  this plan's retirement. Gate C and steps 21–22 remain pending; successor
-  planning does not imply their acceptance.
+  this plan's retirement. Gate C was explicitly retired on 2026-09-26; steps 21–22
+  remain separately tracked and no longer block macOS publication.
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
 - **Delivery:** 22-step PR series titled
@@ -40,7 +40,8 @@ signing, notarization, installers, self-update, release-pipeline legs, store or
 download channels, and all certificate work for every OS. The user requested
 [desktop-distribution planning](../desktop-distribution/PLAN.md) early on
 2026-09-15. Step 22 still retires this implementation plan and hands off its
-coverage; distribution work does not silently waive the pending gates.
+coverage; the explicit 2026-09-26 gate retirement below supersedes the earlier
+parent-closeout prerequisite for macOS publication.
 
 ## Where this plan starts from (verified 2026-08-28)
 
@@ -635,12 +636,15 @@ registration, migration/backfill, compatibility shim, global coordination
 registry, or background retry worker.
 
 All three replacement slices are merged: PRs #1267, #1269, and #1274. Step 20
-is complete. The user delegated MT Gate C execution to the agent on 2026-09-03;
-the concrete runbook is [`MT_GATE_C.md`](MT_GATE_C.md), and user acceptance
-still closes the checkpoint.
+is complete. The user explicitly retired MT Gate C on 2026-09-26 after the remaining
+QA was enumerated: **“retire this gate and continue”**. The decision and optional
+reference checklist live in [`MT_GATE_C.md`](MT_GATE_C.md). macOS 12 execution,
+remaining phone/live-harness cases and candidate-specific manual attribution remain
+unexecuted/unconfirmed, with those limitations accepted rather than reported as passes.
+This gate and parent closeout no longer block admitted macOS publication. Existing
+`store-production`, signing and public integrity checks remain required.
 
-> **MT gate C — cockpit parity + mobile regression (agent-run at the user's
-> request after step 20; user acceptance closes the gate).** Desktop: manage harnesses end-to-end (install + login a real one) ·
+> **Retired MT gate C — reference coverage, not a release prerequisite.** Desktop: manage harnesses end-to-end ·
 > browse projects/sessions · full chat round-trip incl. a permission answer ·
 > diffs · new session (worktree) · bridge-off → Start-the-bridge recovers ·
 > internet-down shows truthful offline while supervision still works · window
@@ -694,12 +698,18 @@ before commit `586dec5a6d`; they are research input, not locked decisions.
 - **Plugins:** representative for supervision and cockpit browsing/chat; for
   harness management journeys, one plugin per declared capability actually
   exercised (one with managed install, one with plugin login).
-- **Platforms:** desktop release-target host = **macOS** (dev build). Mobile
-  release-target platform regression per MT gate C.
+- **Platforms:** desktop release-target host = **macOS** (dev build). The previously
+  required physical-mobile and remaining Gate C matrix was retired by the user on
+  2026-09-26. Carry its actual limitations forward without a new gate run.
 - **Accepted reduction (user-approved via this plan):** Windows and Linux
   desktop L3 journeys are deferred to the `desktop-distribution` plan's
   verification; within this plan they get CI builds plus best-effort dev-build
   smoke at MT gates. GNOME tray-fallback verification rides that smoke.
+
+- **Accepted reduction (2026-09-26):** retire remaining Gate C QA after the user's
+  explicit direction. Preserve existing M4, native package/replacement, shared-cycle
+  and automated shutdown evidence; do not claim a complete fresh-build L3 sweep.
+  Parent steps 21–22 reconcile and carry this evidence, not reinstate the waived gate.
 
 ## Complexity budget
 
@@ -742,8 +752,9 @@ relay key exchange; the desktop inherits it through `ConnectionService`).
   more common; takeover UX degrades gracefully. Stage C multi-bridge is a
   roadmap decision outside this plan.
 - **Extraction regression risk (steps 14–19)** is the plan's main risk:
-  mitigated by slice-per-PR with mobile analyze/tests green per step, device
-  regression at MT gate C, and the `session_split` adaptive precedent.
+  mitigated by slice-per-PR with mobile analyze/tests green per step and the
+  `session_split` adaptive precedent; remaining Gate C device coverage was accepted
+  as a limitation when the user retired that gate.
 - **UI series overlap:** `claude-inline-subtasks` is completed and its merged
   subtask/force-dialog behavior must be preserved. Check any still-active UI
   series before extracting `new_session_screen`, `session_detail_body`,

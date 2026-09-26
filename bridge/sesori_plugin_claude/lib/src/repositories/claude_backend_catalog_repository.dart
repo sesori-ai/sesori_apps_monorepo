@@ -56,10 +56,11 @@ final class const ClaudeBackendCatalogRepository() {
   ClaudeBackendCatalog map({required Map<String, Object?> handshake}) {
     final dto = ClaudeBackendCatalogDto.fromJson(handshake);
     final fastMode = _fastMode(disabledReason: dto.fastModeDisabledReason);
-    final models = CatalogStrengthOrder.models(
-      [for (final model in dto.models) ?_model(model, fastMode: fastMode)],
-      idOf: (model) => model.id,
-    );
+    final entries = _newestPerFamily([
+      for (final model in dto.models)
+        if (_model(model, fastMode: fastMode) case final mapped?) (dto: model, model: mapped),
+    ]);
+    final models = [for (final entry in entries) entry.model];
     final defaultModel =
         models.where((model) => _family(modelId: model.id) == _defaultModelFamily).firstOrNull ?? models.firstOrNull;
     final agentModel = defaultModel == null
@@ -97,7 +98,7 @@ final class const ClaudeBackendCatalogRepository() {
       commands: List.unmodifiable([
         for (final command in dto.commands) ?_command(command),
       ]),
-      modelIdsByApiModel: Map.unmodifiable(_modelIdsByApiModel(dto.models)),
+      modelIdsByApiModel: Map.unmodifiable(_modelIdsByApiModel(entries)),
     );
   }
 
@@ -146,11 +147,29 @@ final class const ClaudeBackendCatalogRepository() {
     return PluginFastModeUnavailableReason.unknown;
   }
 
-  Map<String, String> _modelIdsByApiModel(List<ClaudeModelDto> models) {
-    final mappedModels = [
-      for (final dto in models)
-        if (_model(dto, fastMode: null) case final model?) (dto: dto, model: model),
-    ];
+  /// Each family's newest model per context window, strongest first. Claude
+  /// CLI 2.1.283 lists pinned older versions (`claude-opus-4-8`) beside the
+  /// family aliases; the picker offers only the newest, as it did when the CLI
+  /// listed aliases alone. They are dropped rather than tagged with a family:
+  /// the CLI reports no release dates, so a client grouping by family would
+  /// pick its representative by id, which puts `claude-opus-4-6` above `opus`.
+  /// Ranked by the resolved model, because an alias id (`opus`) carries no
+  /// version and would otherwise sort below every pinned one.
+  List<_CatalogEntry> _newestPerFamily(List<_CatalogEntry> entries) {
+    final ranked = CatalogStrengthOrder.models(
+      entries,
+      idOf: (entry) => entry.dto.resolvedModel?.trim() ?? entry.model.id,
+    );
+    final families = <String>{};
+    final newest = <_CatalogEntry>[];
+    for (final entry in ranked) {
+      final family = _familyAlias(modelId: entry.model.id);
+      if (family == null || families.add(family)) newest.add(entry);
+    }
+    return newest;
+  }
+
+  Map<String, String> _modelIdsByApiModel(List<_CatalogEntry> mappedModels) {
     final ids = <String, String>{};
     for (final entry in mappedModels) {
       if (entry.dto.resolvedModel?.trim() case final resolved? when resolved.isNotEmpty) {
@@ -222,3 +241,5 @@ final class const ClaudeBackendCatalogRepository() {
     );
   }
 }
+
+typedef _CatalogEntry = ({ClaudeModelDto dto, PluginModel model});

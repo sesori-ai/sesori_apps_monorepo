@@ -3,6 +3,7 @@ import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../platform/external_link_opener.dart";
 import "../../../widgets/markdown_styles.dart";
 import "../session_detail_presentation_scope.dart";
 import "text_part_widget.dart";
@@ -46,22 +47,80 @@ class const CompactionPartWidget({super.key, required final String? summary}) ex
       context: context,
       title: context.loc.sessionDetailCompactionSummaryTitle,
       width: PregoModalWidth.reading,
-      builder: (modalContext) {
-        final prego = modalContext.prego;
-        return PregoReadableSelectionArea(
-          child: MarkdownBody(
-            data: summary,
-            selectable: false,
-            blockSyntaxes: sessionMarkdownBlockSyntaxes,
-            imageBuilder: (uri, title, alt) => MarkdownMessageImage(uri: uri, semanticLabel: alt),
-            onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
-            styleSheet: buildSessionMarkdownStyleSheet(
-              prego: prego,
-              paragraphStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-            ),
-          ),
-        );
-      },
+      builder: (modalContext) => _CompactionSummary(
+        summary: summary,
+        openExternalLink: openExternalLink,
+        entry: ModalRoute.of(modalContext)?.animation,
+      ),
+    );
+  }
+}
+
+/// The summary as Markdown, built once the modal has finished opening, with a
+/// spinner in its place until then. A summary can run to tens of kilobytes, and
+/// laying it out in the modal's first frame held that frame long enough to
+/// swallow the tap's ripple and skip the entry transition.
+class const _CompactionSummary({
+  required final String summary,
+  required final ExternalLinkOpener openExternalLink,
+
+  /// The modal route's entry transition.
+  required final Animation<double>? entry,
+}) extends StatefulWidget {
+  @override
+  State<_CompactionSummary> createState() => _CompactionSummaryState();
+}
+
+class _CompactionSummaryState() extends State<_CompactionSummary> {
+  static const _loadingHeight = 220.0;
+
+  /// The entry transition while it still runs; null once the summary builds.
+  Animation<double>? _opening;
+
+  @override
+  void initState() {
+    super.initState();
+    // Only a transition running forward completes later: a modal opened
+    // without one, under reduced motion, is already open.
+    final entry = widget.entry;
+    if (entry != null && entry.status == AnimationStatus.forward) {
+      _opening = entry..addStatusListener(_onEntryStatus);
+    }
+  }
+
+  void _onEntryStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed) return;
+    _opening?.removeStatusListener(_onEntryStatus);
+    setState(() => _opening = null);
+  }
+
+  @override
+  void dispose() {
+    _opening?.removeStatusListener(_onEntryStatus);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_opening != null) {
+      return const SizedBox(
+        height: _loadingHeight,
+        child: Center(child: PregoActivityIndicator(color: null)),
+      );
+    }
+    final prego = context.prego;
+    return PregoReadableSelectionArea(
+      child: MarkdownBody(
+        data: widget.summary,
+        selectable: false,
+        blockSyntaxes: sessionMarkdownBlockSyntaxes,
+        imageBuilder: (uri, title, alt) => MarkdownMessageImage(uri: uri, semanticLabel: alt),
+        onTapLink: buildMarkdownLinkTapHandler(openExternalLink: widget.openExternalLink),
+        styleSheet: buildSessionMarkdownStyleSheet(
+          prego: prego,
+          paragraphStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+        ),
+      ),
     );
   }
 }

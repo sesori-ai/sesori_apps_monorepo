@@ -82,9 +82,6 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     required String sessionID,
     required String messageID,
     @JsonKey(includeToJson: true) required String? tool,
-
-    /// What the call does, classified by the plugin from its own tool names.
-    @JsonKey(includeToJson: true) required PluginToolKind kind,
     @JsonKey(includeToJson: true) required PluginToolState state,
   }) = PluginMessagePartTool;
 
@@ -259,9 +256,8 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     required String sessionID,
     required String messageID,
     required String tool,
-    required PluginToolKind kind,
     required PluginToolState state,
-  }) => .tool(id: id, sessionID: sessionID, messageID: messageID, tool: tool, kind: kind, state: state);
+  }) => .tool(id: id, sessionID: sessionID, messageID: messageID, tool: tool, state: state);
 }
 
 /// A backend-normalized attachment that is safe to expose outside the plugin.
@@ -285,24 +281,6 @@ sealed class PluginMessageAttachment with _$PluginMessageAttachment {
     required String mime,
     required String? filename,
   }) = PluginMessageAttachmentMetadata;
-}
-
-/// What a tool call does, in backend-neutral words. Each plugin classifies its
-/// own tool names; a call that fits none of these is [other].
-@JsonEnum()
-enum PluginToolKind() {
-  /// Reads files.
-  read,
-
-  /// Creates, changes, moves or deletes files.
-  edit,
-
-  /// Runs a shell command.
-  command,
-
-  /// Searches files or the web.
-  search,
-  other,
 }
 
 /// Lifecycle status of a tool invocation, and of a subtask that reports one.

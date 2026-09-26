@@ -30,7 +30,12 @@ class ConnectionOverlayCubit(
   /// How long a reconnect must persist before [ConnectionOverlayState.reconnecting]
   /// is surfaced. Routine fast reconnects (foreground resume, a bridge handover)
   /// complete within this window, so the banner appears only when the relay link
-  /// is genuinely interrupted; the previous state is retained meanwhile.
+  /// is genuinely interrupted. Meanwhile the previous state is retained, except
+  /// that a connection-lost banner is cleared at once: it says automatic
+  /// reconnect has stopped, which is no longer true once a reconnect runs. This
+  /// is what keeps a phone resume quiet — a relay drop observed while the app is
+  /// backgrounded parks in connection lost, and the resume reconnect replaces it
+  /// before the first foreground frame.
   static const Duration defaultReconnectingGrace = Duration(seconds: 3);
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
@@ -47,6 +52,7 @@ class ConnectionOverlayCubit(
     if (isClosed) return;
     if (derived is ConnectionOverlayReconnecting) {
       if (state is ConnectionOverlayReconnecting) return;
+      if (state is ConnectionOverlayConnectionLost) emit(const ConnectionOverlayState.hidden(connected: false));
       _reconnectingGraceTimer ??= Timer(_reconnectingGrace, () {
         _reconnectingGraceTimer = null;
         if (!isClosed) emit(const ConnectionOverlayState.reconnecting());

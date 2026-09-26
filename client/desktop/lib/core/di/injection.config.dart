@@ -69,6 +69,8 @@ import 'package:sesori_desktop/core/platform/no_op_attribution_claim_storage.dar
     as _i804;
 import 'package:sesori_desktop/core/platform/no_op_attribution_client.dart'
     as _i91;
+import 'package:sesori_desktop/core/platform/no_op_feedback_prompt_config_source.dart'
+    as _i191;
 import 'package:sesori_desktop/core/platform/path_provider_temporary_directory_provider.dart'
     as _i393;
 import 'package:sesori_desktop_core/sesori_desktop_core.dart' as _i316;
@@ -114,6 +116,9 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.singleton<_i948.LifecycleSource>(() => _i670.DesktopLifecycleObserver());
+    gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
+      () => _i191.NoOpFeedbackPromptConfigSource(),
+    );
     gh.lazySingleton<_i316.BridgeExecutablePathResolver>(
       () => _i964.DesktopBridgeExecutablePathResolver(),
     );

@@ -465,6 +465,7 @@ void main() {
     GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
     GetIt.instance.registerSingleton<ComposerDraftRepository>(composerDraftRepository);
     GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
+    GetIt.instance.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
   });
 
   tearDown(() async {

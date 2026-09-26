@@ -7,7 +7,6 @@ import "../../models/claude_task_status.dart";
 import "../../models/claude_tool_use_result.dart";
 import "../mappers/claude_shell_command_mapper.dart";
 import "../mappers/claude_task_status_mapping.dart";
-import "../mappers/claude_tool_kind_mapper.dart";
 import "../mappers/claude_tool_title_mapper.dart";
 
 /// An immutable presentation snapshot of one Claude tool call.
@@ -39,7 +38,6 @@ sealed class const ClaudeTrackedTool({
       sessionID: sessionId,
       messageID: messageId,
       tool: name,
-      kind: ClaudeToolKindMapper.map(name: name),
       state: state,
     ),
     ClaudeTrackedTask(:final childSessionId) => switch (input) {

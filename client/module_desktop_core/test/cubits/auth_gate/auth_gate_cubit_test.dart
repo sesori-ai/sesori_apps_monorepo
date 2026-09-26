@@ -13,6 +13,8 @@ class _MockDesktopLogoutOrchestrator() extends Mock implements DesktopLogoutOrch
 
 class _MockDesktopRelayConnectionService() extends Mock implements DesktopRelayConnectionService;
 
+class _MockWindowHost() extends Mock implements WindowHost;
+
 class _RecordingLogSink() implements LogSink {
   final List<LogRecord> records = <LogRecord>[];
 
@@ -34,12 +36,15 @@ void main() {
   late _MockAuthSession authSession;
   late _MockDesktopLogoutOrchestrator logoutOrchestrator;
   late _MockDesktopRelayConnectionService relayConnectionService;
+  late _MockWindowHost windowHost;
   late BehaviorSubject<AuthState> authStates;
 
   setUp(() {
     authSession = _MockAuthSession();
     logoutOrchestrator = _MockDesktopLogoutOrchestrator();
     relayConnectionService = _MockDesktopRelayConnectionService();
+    windowHost = _MockWindowHost();
+    when(() => windowHost.show()).thenAnswer((_) async {});
     authStates = BehaviorSubject<AuthState>.seeded(const AuthState.initial());
     when(() => authSession.authStateStream).thenAnswer((_) => authStates.stream);
     when(() => authSession.currentState).thenAnswer((_) => authStates.value);
@@ -65,6 +70,7 @@ void main() {
       authSession: authSession,
       logoutOrchestrator: logoutOrchestrator,
       relayConnectionService: relayConnectionService,
+      windowHost: windowHost,
     );
     addTearDown(cubit.close);
     // Let the async restore-and-subscribe bootstrap settle.
@@ -93,6 +99,33 @@ void main() {
     final AuthGateCubit cubit = await pumpCubit();
 
     expect(cubit.state, const AuthGateState.signedIn(user: _user));
+    // A window launched hidden at login stays hidden.
+    verifyNever(() => windowHost.show());
+  });
+
+  test("signing in from the login screen brings the window forward", () async {
+    final AuthGateCubit cubit = await pumpCubit();
+    expect(cubit.state, const AuthGateState.signedOut());
+
+    authStates.add(const AuthState.authenticated(user: _user));
+    await pumpEventQueue();
+
+    expect(cubit.state, const AuthGateState.signedIn(user: _user));
+    verify(() => windowHost.show()).called(1);
+  });
+
+  test("a window that fails to come forward is logged and the gate still signs in", () async {
+    final _RecordingLogSink sink = _RecordingLogSink();
+    setLogSink(sink: sink);
+    addTearDown(() => setLogSink(sink: const StdoutLogSink()));
+    when(() => windowHost.show()).thenThrow(StateError("no window"));
+    final AuthGateCubit cubit = await pumpCubit();
+
+    authStates.add(const AuthState.authenticated(user: _user));
+    await pumpEventQueue();
+
+    expect(cubit.state, const AuthGateState.signedIn(user: _user));
+    expect(sink.records.map((record) => record.message), contains("Failed to show the desktop window"));
   });
 
   test("a live sign-out flips the gate back to signedOut", () async {
@@ -132,6 +165,7 @@ void main() {
       authSession: authSession,
       logoutOrchestrator: logoutOrchestrator,
       relayConnectionService: relayConnectionService,
+      windowHost: windowHost,
     );
     addTearDown(cubit.close);
     final List<AuthGateState> emitted = <AuthGateState>[];
@@ -147,6 +181,7 @@ void main() {
       contains("Desktop auth gate could not restore the local session"),
     );
     verify(() => authSession.restoreSession()).called(1);
+    verifyNever(() => windowHost.show());
   });
 
   test("sign out delegates immediately while background restore is pending", () async {
@@ -162,6 +197,7 @@ void main() {
       authSession: authSession,
       logoutOrchestrator: logoutOrchestrator,
       relayConnectionService: relayConnectionService,
+      windowHost: windowHost,
     );
     addTearDown(cubit.close);
     await pumpEventQueue();

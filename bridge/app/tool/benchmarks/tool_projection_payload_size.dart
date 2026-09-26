@@ -60,7 +60,7 @@ void main() {
               taskState: state,
               childSessionID: "child",
             )
-          : PluginMessagePart.tool(id: "t", sessionID: "s", messageID: "m", tool: "tool", kind: .other, state: state);
+          : PluginMessagePart.tool(id: "t", sessionID: "s", messageID: "m", tool: "tool", state: state);
       final projected = part.toShared(sessionId: "s");
       final after = switch (projected) {
         MessagePartTool(:final state) => state,

@@ -271,12 +271,18 @@ void main() {
     );
 
     // The pending tool is a live row; the sub-agent without a lifecycle has
-    // finished and, alone, keeps its own row.
+    // finished and folds into the summary.
     expect(find.text("Tool"), findsOneWidget);
-    expect(find.text("1 sub-agent"), findsNothing);
-    expect(find.text("Agent Background task"), findsOneWidget);
+    expect(find.text("1 step"), findsOneWidget);
+    expect(find.text("Agent Background task"), findsNothing);
     expect(find.text("Agent"), findsOneWidget);
     expect(find.text("Retry"), findsOneWidget);
+
+    // The pending tool's label shimmers forever, so pump past the easing.
+    await tester.tap(find.text("1 step"));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Agent Background task"), findsOneWidget);
   });
 
   testWidgets("renders an active compaction tool as running", (tester) async {

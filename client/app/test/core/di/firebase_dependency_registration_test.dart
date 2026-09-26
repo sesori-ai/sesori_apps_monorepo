@@ -12,6 +12,7 @@ import "package:sesori_mobile/core/platform/firebase/firebase_messaging_static_a
 import "package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_analytics_release_cutoff_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart";
+import "package:sesori_mobile/core/platform/firebase/no_op_feedback_prompt_config_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart";
 import "package:sesori_mobile/core/platform/package_info_installed_app_build_source.dart";
 import "package:sesori_mobile/core/platform/path_provider_temporary_directory_provider.dart";
@@ -54,6 +55,8 @@ void main() {
       isA<AnalyticsReleaseCutoffRepository>(),
     );
     expect(getIt<AnalyticsCrawlGateService>(), isA<AnalyticsCrawlGateService>());
+    expect(getIt<FeedbackPromptConfigSource>(), isA<NoOpFeedbackPromptConfigSource>());
+    expect(getIt<FeedbackPromptService>(), isA<FeedbackPromptService>());
   });
 
   test("Singular attribution resolves independently of Firebase", () {

@@ -1,10 +1,15 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:clock/clock.dart";
 import "package:flutter/gestures.dart";
+import "package:flutter/rendering.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_prompt_overlay.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_turn_stub.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -19,6 +24,7 @@ class const _SessionDetailMessageListHarness({
   final Future<void> Function()? onLoadOlderMessages,
   final TargetPlatform? platform,
   final EdgeInsets systemGestureInsets = EdgeInsets.zero,
+  final double topInset = 0,
 }) extends StatefulWidget {
   @override
   State<_SessionDetailMessageListHarness> createState() => _SessionDetailMessageListHarnessState();
@@ -36,8 +42,17 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   final List<String> cancelledBridgePromptIds = [];
   late String? _retryErrorMessage;
   bool _isBusy = false;
+  bool _mainAgentRunning = false;
+  List<Session> _children = const [];
+  Map<String, SessionStatus> _childStatuses = const {};
   bool _isLoadingOlderMessages = false;
+  bool _transcriptFolded = false;
+  bool _hasOlderMessages = true;
+  bool _isRefreshing = false;
   int? lastCancelledQueuedMessageIndex;
+
+  /// Fold switches the list asked for.
+  int foldRequests = 0;
 
   @override
   void initState() {
@@ -57,10 +72,11 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     setState(() => _isLoadingOlderMessages = false);
   }
 
-  void prependOlderMessages({required List<MessageWithParts> older}) {
+  void prependOlderMessages({required List<MessageWithParts> older, required bool hasOlderMessages}) {
     setState(() {
       _messages = [...older, ..._messages];
       _isLoadingOlderMessages = false;
+      _hasOlderMessages = hasOlderMessages;
     });
   }
 
@@ -72,6 +88,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     setState(() => _messages = [..._messages.where((m) => m.info.id != messageId)]);
   }
 
+  void replaceMessages(List<MessageWithParts> messages) {
+    setState(() => _messages = messages);
+  }
+
   void updateStreamingText({required String partId, required String text}) {
     setState(() => _streamingText = {..._streamingText, partId: text});
   }
@@ -80,12 +100,31 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     setState(() => _isBusy = isBusy);
   }
 
+  void setMainAgentRunning(bool running) {
+    setState(() => _mainAgentRunning = running);
+  }
+
+  void setChildren({required List<Session> children, required Map<String, SessionStatus> childStatuses}) {
+    setState(() {
+      _children = children;
+      _childStatuses = childStatuses;
+    });
+  }
+
   void clearStreamingText() {
     setState(() => _streamingText = const {});
   }
 
   void setRetryErrorMessage(String? message) {
     setState(() => _retryErrorMessage = message);
+  }
+
+  void setRefreshing({required bool refreshing}) {
+    setState(() => _isRefreshing = refreshing);
+  }
+
+  void setTranscriptFolded({required bool folded}) {
+    setState(() => _transcriptFolded = folded);
   }
 
   void cancelQueuedMessage(int index) {
@@ -180,7 +219,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
             );
           },
           projectId: null,
-          onLoadOlderMessages: widget.onLoadOlderMessages,
+          onLoadOlderMessages: _hasOlderMessages ? widget.onLoadOlderMessages : null,
           messages: _messages,
           localSend: _localSend,
           harnessName: "OpenCode",
@@ -196,10 +235,18 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           awaitingBridgeSubmissions: _awaitingBridgeSubmissions,
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
+          isRefreshing: _isRefreshing,
+          transcriptFolded: _transcriptFolded,
+          onTranscriptFoldedChanged: ({required folded}) {
+            foldRequests++;
+            setTranscriptFolded(folded: folded);
+          },
+          topInset: widget.topInset,
           streamingText: _streamingText,
-          children: const <Session>[],
-          childStatuses: const <String, SessionStatus>{},
+          children: _children,
+          childStatuses: _childStatuses,
           isBusy: _isBusy,
+          mainAgentRunning: _mainAgentRunning,
           retryErrorMessage: _retryErrorMessage,
           onCancelQueuedMessage: cancelQueuedMessage,
         ),
@@ -290,9 +337,71 @@ List<MessageWithParts> _userMessages({required int count}) {
   );
 }
 
+/// [count] one-line user messages, ids prefixed by [prefix].
+List<MessageWithParts> _page({required String prefix, required int count}) => [
+  for (var index = 0; index < count; index++)
+    _message(messageId: "$prefix-$index", role: "user", text: "$prefix message $index"),
+];
+
 String _multilineText({required String label, required int lines}) {
   return List.generate(lines, (index) => "$label line $index").join("\n");
 }
+
+/// Eight tall turns, with the prompt of turn [id] replaced by [text].
+List<MessageWithParts> _turnsWithPrompt({required String id, required String text}) => [
+  for (final message in _turns(count: 8, promptLines: 40, answers: 4, paragraphs: 24))
+    if (message.info.id == id) _message(messageId: id, role: "user", text: text) else message,
+];
+
+/// A prompt whose blocks each render taller than a line of body text.
+const _markdownPrompt = '''
+**Refactor** the parser
+
+| field | type |
+|---|---|
+| id | String |
+| name | String |
+
+```dart
+void main() {
+  print("parsed");
+}
+```
+
+![diagram](https://example.com/diagram.png)
+''';
+
+/// A prompt that is one short fenced code block.
+const _fencedPrompt = '''
+```dart
+void main() {}
+```
+''';
+
+/// A prompt whose words carry Markdown syntax around them.
+const _decoratedPrompt = "Fix **bold** and `code` in [the spec](https://example.com/spec)";
+
+/// A prompt reaching every block and inline element the chat renderer builds.
+const _everyBlockPrompt = '''
+# Heading with [a link](https://example.com/spec)
+
+> quoted
+
+- [ ] a task
+- item with `code`
+
+| field | type |
+|---|---|
+| id | String |
+
+```dart
+void main() {}
+```
+
+![diagram](https://example.com/diagram.png)
+
+---
+''';
 
 const _listViewKey = Key("session-detail-message-list-view");
 const _jumpToLatestKey = Key("session-detail-jump-to-latest");
@@ -315,6 +424,68 @@ Future<void> _sendPointerScroll({required WidgetTester tester, required Finder t
   await tester.sendEventToBinding(pointer.scroll(delta));
 }
 
+const _topInset = 40.0;
+
+/// [count] turns, each a prompt of [promptLines] lines answered by [answers]
+/// messages of [paragraphs] paragraphs.
+List<MessageWithParts> _turns({
+  required int count,
+  required int promptLines,
+  required int answers,
+  required int paragraphs,
+}) => [
+  for (var turn = 0; turn < count; turn++) ...[
+    _message(
+      messageId: "u$turn",
+      role: "user",
+      text: _multilineText(label: "Prompt $turn", lines: promptLines),
+    ),
+    for (var answer = 0; answer < answers; answer++)
+      _message(
+        messageId: "a$turn-$answer",
+        role: "assistant",
+        text: List.generate(paragraphs, (index) => "Answer $turn.$answer, paragraph $index").join("\n\n"),
+      ),
+  ],
+];
+
+Future<_SessionDetailMessageListHarnessState> _pumpTurns(
+  WidgetTester tester, {
+  required List<MessageWithParts> messages,
+  required bool folded,
+}) async {
+  await tester.pumpWidget(
+    _SessionDetailMessageListHarness(initialMessages: messages, initialStreamingText: const {}, topInset: _topInset),
+  );
+  final harness = tester.state<_SessionDetailMessageListHarnessState>(find.byType(_SessionDetailMessageListHarness));
+  harness.setTranscriptFolded(folded: folded);
+  await tester.pumpAndSettle();
+  return harness;
+}
+
+double _topOf(WidgetTester tester, String rowId) => tester.getTopLeft(_messageKey(rowId)).dy;
+
+/// Every scroll offset the list takes from now on.
+List<double> _recordMoves(WidgetTester tester) {
+  final position = _position(tester);
+  final moves = <double>[];
+  position.addListener(() => moves.add(position.pixels));
+  return moves;
+}
+
+/// Scrolls up to the older row [rowId], less than a viewport at a time, and
+/// rests its top at [top]. Scrolling away from the latest edge detaches.
+Future<void> _scrollRowTo(WidgetTester tester, {required String rowId, required double top}) async {
+  final position = _position(tester);
+  while (_messageKey(rowId).evaluate().isEmpty) {
+    position.jumpTo(position.pixels + 500);
+    await tester.pump();
+  }
+  position.jumpTo(position.pixels + top - _topOf(tester, rowId));
+  await tester.pumpAndSettle();
+  expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+}
+
 Future<void> _detachViewport(WidgetTester tester) async {
   await tester.drag(find.byKey(_listViewKey), const Offset(0, -500));
   await tester.pumpAndSettle();
@@ -324,6 +495,44 @@ Future<void> _detachViewport(WidgetTester tester) async {
   await tester.pumpAndSettle();
   expect(_position(tester).pixels, greaterThan(20));
   expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+}
+
+const _pinchPlatforms = TargetPlatformVariant({TargetPlatform.iOS, TargetPlatform.android, TargetPlatform.macOS});
+
+/// Two fingers land [from] px apart across [center] along [axis] and spread to
+/// [to] px apart. With [stillFinger], the first finger holds still and the
+/// second travels the whole change.
+Future<void> _touchPinch(
+  WidgetTester tester, {
+  required Offset center,
+  required double from,
+  required double to,
+  Offset axis = const Offset(1, 0),
+  bool stillFinger = false,
+}) async {
+  final first = await tester.startGesture(center - axis * (from / 2));
+  final second = await tester.startGesture(center + axis * (from / 2));
+  for (var step = 1; step <= 5; step++) {
+    final gap = from + (to - from) * step / 5;
+    if (!stillFinger) await first.moveTo(center - axis * (gap / 2));
+    await second.moveTo(center - axis * (from / 2) + axis * (stillFinger ? gap : gap / 2 + from / 2));
+    await tester.pump();
+  }
+  await first.up();
+  await second.up();
+  await tester.pumpAndSettle();
+}
+
+/// A trackpad pinch at [center] that scales to [scale].
+Future<void> _trackpadPinch(WidgetTester tester, {required Offset center, required double scale}) async {
+  final gesture = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+  await gesture.panZoomStart(center);
+  for (var step = 1; step <= 5; step++) {
+    await gesture.panZoomUpdate(center, scale: 1 + (scale - 1) * step / 5);
+    await tester.pump();
+  }
+  await gesture.panZoomEnd();
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -859,6 +1068,7 @@ void main() {
       older: [
         for (var index = 0; index < 10; index++) _message(messageId: "m$index", role: "user", text: "message $index"),
       ],
+      hasOlderMessages: true,
     );
     await tester.pumpAndSettle();
 
@@ -900,6 +1110,7 @@ void main() {
       older: [
         for (var index = 0; index < 10; index++) _message(messageId: "m$index", role: "user", text: "message $index"),
       ],
+      hasOlderMessages: true,
     );
     await tester.pumpAndSettle();
 
@@ -939,7 +1150,11 @@ void main() {
       _SessionDetailMessageListHarness(
         initialMessages: _userMessages(count: 12),
         initialStreamingText: const {},
-        onLoadOlderMessages: () async => requested++,
+        // The page stays on its way, as a real one does across the next frames.
+        onLoadOlderMessages: () {
+          requested++;
+          return Completer<void>().future;
+        },
       ),
     );
     await tester.pumpAndSettle();
@@ -1013,7 +1228,8 @@ void main() {
     await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
     await tester.pump();
 
-    expect(requested, 2);
+    // An instant failure can be asked again by each scroll frame near the edge.
+    expect(requested, greaterThan(1));
     expect(tester.takeException(), isNull);
   });
 
@@ -1042,6 +1258,228 @@ void main() {
     await tester.pump();
     await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
     await tester.pump();
+    expect(requested, 1);
+  });
+
+  group("a transcript shorter than the screen", () {
+    testWidgets("pages back without a scroll until it fills the screen", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      var requested = 0;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () async {
+            requested++;
+            key.currentState?.prependOlderMessages(
+              older: _page(prefix: "page$requested", count: 2),
+              hasOlderMessages: true,
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(requested, greaterThan(1), reason: "each page still too short must ask for the next one");
+      expect(requested, lessThan(20), reason: "paging must stop once the screen is filled");
+      expect(_position(tester).maxScrollExtent, greaterThan(0));
+    });
+
+    testWidgets("stops when no older page remains, even if pages add no visible rows", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      var requested = 0;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () async {
+            requested++;
+            key.currentState?.prependOlderMessages(
+              older: [
+                MessageWithParts(
+                  info: Message.user(
+                    promptId: null,
+                    id: "hidden-$requested",
+                    sessionID: "session-1",
+                    agent: null,
+                    time: null,
+                  ),
+                  parts: const [],
+                ),
+              ],
+              hasOlderMessages: requested < 3,
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(requested, 3);
+    });
+
+    testWidgets("asks for no older page while one is on its way", (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      final pages = <Completer<void>>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () {
+            final page = Completer<void>();
+            pages.add(page);
+            return page.future;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      // A taller window and a new oldest message would each ask again.
+      await tester.binding.setSurfaceSize(const Size(800, 700));
+      key.currentState?.replaceMessages([
+        _message(messageId: "earlier", role: "user", text: "earlier"),
+        ..._page(prefix: "newest", count: 2),
+      ]);
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      // The page lands with its load, still too short, so the next one follows.
+      key.currentState?.prependOlderMessages(older: _page(prefix: "older", count: 2), hasOlderMessages: true);
+      pages.single.complete();
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(2));
+    });
+
+    testWidgets("asks again when a refresh ends, for a page the refresh dropped", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      var requested = 0;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          // The cubit ignores a request while a refresh runs.
+          onLoadOlderMessages: () async => requested++,
+        ),
+      );
+      key.currentState?.setRefreshing(refreshing: true);
+      await tester.pumpAndSettle();
+      expect(requested, 1);
+
+      // The refresh lands on the same newest page.
+      key.currentState?.replaceMessages(_page(prefix: "newest", count: 2));
+      key.currentState?.setRefreshing(refreshing: false);
+      await tester.pumpAndSettle();
+      expect(requested, 2);
+    });
+
+    testWidgets("asks again once a page the refresh discarded settles", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      final pages = <Completer<void>>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () {
+            final page = Completer<void>();
+            pages.add(page);
+            return page.future;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      key.currentState?.setRefreshing(refreshing: true);
+      await tester.pump();
+      key.currentState?.setRefreshing(refreshing: false);
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      // The discarded page returns after the refresh landed.
+      pages.single.complete();
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(2));
+    });
+
+    testWidgets("asks for a failed page again on the next scroll, not in a loop", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      final pages = <Completer<void>>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () {
+            key.currentState?.startLoadingOlderMessages();
+            final page = Completer<void>();
+            pages.add(page);
+            return page.future;
+          },
+        ),
+      );
+      await tester.pump();
+      expect(pages, hasLength(1));
+
+      // The bridge fails the page: the cursor stays and loading stops.
+      key.currentState?.finishLoadingOlderMessages();
+      pages.single.complete();
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 300));
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(2));
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  testWidgets("folding a transcript shorter than the screen loads the older page", (tester) async {
+    final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: key,
+        initialMessages: _turns(count: 3, promptLines: 1, answers: 4, paragraphs: 4),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () {
+          requested++;
+          return Completer<void>().future;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(requested, 0);
+
+    key.currentState?.setTranscriptFolded(folded: true);
+    await tester.pumpAndSettle();
+    expect(requested, 1);
+  });
+
+  testWidgets("a taller window loads the older page", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: _userMessages(count: 6),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () {
+          requested++;
+          return Completer<void>().future;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(requested, 0);
+
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    await tester.pumpAndSettle();
     expect(requested, 1);
   });
 
@@ -1117,7 +1555,7 @@ void main() {
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   });
 
-  testWidgets("the jump button names the step running now while the rows hold still", (tester) async {
+  testWidgets("the jump button keeps its constant label whatever the session runs", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -1156,13 +1594,13 @@ void main() {
     harnessKey.currentState!.appendNewestMessage(toolMessage(id: "run-1", status: ToolStatus.running));
     await _pumpListUpdate(tester);
     final pill = find.byKey(_jumpToLatestKey);
-    expect(find.descendant(of: pill, matching: find.text(r"Running $ make check")), findsOneWidget);
-    expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsOneWidget);
+    expect(find.descendant(of: pill, matching: find.text("Jump to latest")), findsOneWidget);
+    expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsNothing);
 
     harnessKey.currentState!.removeMessage("run-1");
     harnessKey.currentState!.appendNewestMessage(toolMessage(id: "queued", status: ToolStatus.pending));
     await _pumpListUpdate(tester);
-    expect(find.descendant(of: pill, matching: find.text(r"Pending $ make check")), findsOneWidget);
+    expect(find.descendant(of: pill, matching: find.text("Jump to latest")), findsOneWidget);
 
     harnessKey.currentState!.removeMessage("queued");
     harnessKey.currentState!.appendNewestMessage(toolMessage(id: "run-2", status: ToolStatus.completed));
@@ -1256,6 +1694,111 @@ void main() {
       ..setRetryErrorMessage("Rate limited");
     await settle();
     expect(find.text("Working…"), findsNothing);
+  });
+
+  testWidgets("a folded running turn keeps its row without a timer, the timed Working row under it", (tester) async {
+    await withClock(Clock(() => tester.binding.clock.now()), () async {
+      final harness = await _pumpTurns(
+        tester,
+        messages: _turns(count: 1, promptLines: 1, answers: 1, paragraphs: 1),
+        folded: true,
+      );
+      final sentAt = tester.binding.clock.now().millisecondsSinceEpoch - 65000;
+      harness
+        ..appendNewestMessage(
+          MessageWithParts(
+            info: Message.user(
+              promptId: null,
+              id: "u1",
+              sessionID: "session-1",
+              agent: null,
+              time: MessageTime(created: sentAt, completed: null),
+            ),
+            parts: const [MessagePart.text(id: "u1-part", sessionID: "session-1", messageID: "u1", text: "Fix it")],
+          ),
+        )
+        ..setBusy(true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text("Running"), findsOneWidget);
+      expect(find.text("Working… · "), findsOneWidget);
+      expect(find.text("1m 05s"), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text("1m 06s"), findsOneWidget);
+
+      harness.setBusy(false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("Working… · "), findsNothing);
+    });
+  });
+
+  testWidgets("the sub-agent row takes over from Working… with an ease while only sub-agents run", (tester) async {
+    await withClock(Clock(() => tester.binding.clock.now()), () async {
+      final harness = await _pumpTurns(
+        tester,
+        messages: _turns(count: 1, promptLines: 1, answers: 1, paragraphs: 1),
+        folded: false,
+      );
+      harness.setBusy(true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("Working…"), findsOneWidget);
+
+      final startedAt = tester.binding.clock.now().millisecondsSinceEpoch - 185000;
+      final child = Session(
+        approvalOverride: null,
+        id: "child-1",
+        projectID: "p",
+        directory: "/d",
+        parentID: "session-1",
+        title: "Explore",
+        time: SessionTime(created: startedAt, updated: startedAt, archived: null),
+        pullRequest: null,
+        promptDefaults: null,
+        branchName: null,
+        lastUserActivityAt: null,
+        autoContinuation: null,
+      );
+      harness.setChildren(children: [child], childStatuses: const {"child-1": SessionStatus.busy()});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      // Mid-ease both rows show: Working… folds away as the sub-agent row grows in.
+      expect(find.text("Working…"), findsOneWidget);
+      expect(find.text("You can keep chatting meanwhile."), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text("Working…"), findsNothing);
+      expect(find.text("1 sub-agent running in the background · "), findsOneWidget);
+      expect(find.text("3m 05s"), findsOneWidget);
+      expect(find.byType(PregoActivityIndicator), findsOneWidget);
+      expect(find.byType(PregoAiLoader), findsNothing);
+
+      // The main agent back mid-turn, or blocked on a foreground sub-agent:
+      // a new prompt would wait, so the row gives way to Working….
+      harness.setMainAgentRunning(true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("You can keep chatting meanwhile."), findsNothing);
+      expect(find.text("Working…"), findsOneWidget);
+      harness.setMainAgentRunning(false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("You can keep chatting meanwhile."), findsOneWidget);
+
+      // A question or permission clears isBusy, and with it the row.
+      harness.setBusy(false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("You can keep chatting meanwhile."), findsNothing);
+
+      harness
+        ..setBusy(true)
+        ..setChildren(children: [child], childStatuses: const {"child-1": SessionStatus.idle()});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("Working…"), findsOneWidget);
+    });
   });
 
   testWidgets("a reader pinned at the bottom stays pinned while a finished step folds into its group", (
@@ -1376,7 +1919,7 @@ void main() {
 
     expect(_position(tester).pixels, lessThanOrEqualTo(20));
     expect(find.byKey(_jumpToLatestKey), findsNothing);
-  });
+  }, variant: _pinchPlatforms);
 
   testWidgets("desktop pointer scroll detaches immediately", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -1801,6 +2344,799 @@ void main() {
     expect(_messageKey("user-2"), findsOneWidget);
   });
 
+  testWidgets("folded, each turn shows its prompt and one stub while the synthetic rows stay", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    // RetryErrorMessageCard shimmers forever, so this test never settles.
+    const queued = QueuedSessionSubmission.text(
+      promptId: "queued-1",
+      text: "Queued behind the turn",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+      fastMode: false,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _automatedMessage(messageId: "setup", text: "Automation report", sender: MessageSender.system),
+          _message(messageId: "u1", role: "user", text: "First prompt"),
+          _message(messageId: "a1", role: "assistant", text: "First answer"),
+          _message(messageId: "u2", role: "user", text: "Second prompt", promptId: "p2"),
+          _message(messageId: "a2", role: "assistant", text: "Second answer"),
+        ],
+        initialStreamingText: const {},
+        initialQueuedMessages: const [queued],
+        initialRetryErrorMessage: "Provider is overloaded",
+      ),
+    );
+    await tester.pump();
+
+    harnessKey.currentState?.setTranscriptFolded(folded: true);
+    await _pumpListUpdate(tester);
+
+    // Oldest first: the leading segment's stub, then each prompt and its stub.
+    final tops = [
+      for (final row in [
+        "session-detail-turn-head",
+        "u1",
+        "session-detail-turn-u1",
+        "session-detail-prompt-p2",
+        "session-detail-turn-u2",
+      ])
+        tester.getTopLeft(_messageKey(row)).dy,
+    ];
+    expect(tops, [...tops]..sort());
+    expect(find.text("Before the first prompt · No steps"), findsOneWidget);
+    expect(find.text("No steps — First answer"), findsOneWidget);
+    expect(find.text("No steps — Second answer"), findsOneWidget);
+    for (final hidden in ["setup", "a1", "a2"]) {
+      expect(_messageKey(hidden), findsNothing);
+    }
+    final lastStubBottom = tester.getBottomLeft(_messageKey("session-detail-turn-u2")).dy;
+    expect(tester.getTopLeft(find.byType(RetryErrorMessageCard)).dy, greaterThanOrEqualTo(lastStubBottom));
+    expect(tester.getTopLeft(find.text("Queued behind the turn")).dy, greaterThan(lastStubBottom));
+
+    harnessKey.currentState?.setTranscriptFolded(folded: false);
+    await _pumpListUpdate(tester);
+
+    for (final shown in ["setup", "u1", "a1", "session-detail-prompt-p2", "a2"]) {
+      expect(_messageKey(shown), findsOneWidget);
+    }
+    expect(find.byType(TranscriptTurnStub), findsNothing);
+    expect(find.byType(RetryErrorMessageCard), findsOneWidget);
+    expect(find.text("Queued behind the turn"), findsOneWidget);
+  });
+
+  testWidgets("a fold switch eases no row in", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _message(messageId: "u1", role: "user", text: "First prompt"),
+          _message(messageId: "a1", role: "assistant", text: "First answer"),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    Iterable<String> moving() => tester
+        .stateList(find.byType(TranscriptPresence, skipOffstage: false))
+        .map((state) => "$state")
+        .where((state) => state.contains("tracking 1 ticker"));
+
+    for (final folded in [true, false]) {
+      harnessKey.currentState?.setTranscriptFolded(folded: folded);
+      await tester.pump();
+      expect(moving(), isEmpty);
+      expect(_messageKey("session-detail-turn-u1"), folded ? findsOneWidget : findsNothing);
+      expect(_messageKey("a1"), folded ? findsNothing : findsOneWidget);
+    }
+  });
+
+  group("a fold switch keeps the reader's turn in place", () {
+    // Folded, the 20 turns still overflow the 600 px viewport.
+    final shortTurns = _turns(count: 20, promptLines: 1, answers: 1, paragraphs: 12);
+    // Every prompt and answer is taller than the viewport.
+    final tallTurns = _turns(count: 16, promptLines: 40, answers: 4, paragraphs: 24);
+
+    testWidgets("mid-turn, that turn's prompt lands at the top edge", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+      expect(tester.getBottomLeft(_messageKey("a8-0")).dy, greaterThan(_topInset));
+
+      harness.setTranscriptFolded(folded: true);
+      await tester.pumpAndSettle();
+
+      expect(_messageKey("session-detail-turn-u8"), findsOneWidget);
+      expect(_topOf(tester, "u8"), moreOrLessEquals(_topInset, epsilon: 1));
+    });
+
+    testWidgets("a prompt on screen keeps its distance from the top edge", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: true);
+      await _scrollRowTo(tester, rowId: "u8", top: _topInset - 10);
+
+      harness.setTranscriptFolded(folded: false);
+      await tester.pumpAndSettle();
+
+      expect(_messageKey("a8-0"), findsOneWidget);
+      expect(_topOf(tester, "u8"), moreOrLessEquals(_topInset - 10, epsilon: 1));
+    });
+
+    testWidgets("tapping a folded turn unfolds every turn and keeps that one in place", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: true);
+      final top = _topOf(tester, "u17");
+
+      await tester.tap(_messageKey("session-detail-turn-u17"));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TranscriptTurnStub), findsNothing);
+      expect(_messageKey("a17-0"), findsOneWidget);
+      expect(_topOf(tester, "u17"), moreOrLessEquals(top, epsilon: 1));
+    }, variant: _pinchPlatforms);
+
+    testWidgets("a prompt pushed out of the built rows is searched for from below it", (tester) async {
+      final harness = await _pumpTurns(tester, messages: tallTurns, folded: true);
+      await _scrollRowTo(tester, rowId: "session-detail-turn-u12", top: _topInset - 20);
+      final moves = _recordMoves(tester);
+
+      harness.setTranscriptFolded(folded: false);
+      await tester.pump();
+      // Unfolding grew the rows below the prompt past the built ones.
+      expect(find.byKey(const ValueKey("u12"), skipOffstage: false), findsNothing);
+      await tester.pumpAndSettle();
+
+      // Up through several rows, one frame each, and never past the prompt.
+      expect(moves, hasLength(greaterThan(4)));
+      expect(moves, orderedEquals([...moves]..sort()));
+      expect(_topOf(tester, "u12"), moreOrLessEquals(_topInset, epsilon: 1));
+      expect(tester.getSize(_messageKey("u12")).height, greaterThan(600));
+    });
+
+    testWidgets("a prompt pushed out of the built rows is searched for from above it", (tester) async {
+      final harness = await _pumpTurns(tester, messages: tallTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a6-1", top: _topInset - 100);
+      final moves = _recordMoves(tester);
+
+      harness.setTranscriptFolded(folded: true);
+      await tester.pump();
+      // Folding far up rebuilt the list from its oldest row.
+      expect(find.byKey(const ValueKey("u6"), skipOffstage: false), findsNothing);
+      await tester.pumpAndSettle();
+
+      expect(moves, hasLength(greaterThan(4)));
+      expect(moves, orderedEquals(<double>[...moves]..sort((a, b) => b.compareTo(a))));
+      expect(_topOf(tester, "u6"), moreOrLessEquals(_topInset, epsilon: 1));
+    });
+
+    /// The turn at the top edge, and where its prompt should rest after a
+    /// switch: in place while any of it shows, else at the edge.
+    ({String promptId, double top}) topEdgePrompt(WidgetTester tester, {required bool folded}) {
+      for (var turn = 0; turn < 20; turn++) {
+        final lastRow = folded ? _messageKey("session-detail-turn-u$turn") : _messageKey("a$turn-0");
+        if (lastRow.evaluate().isEmpty || tester.getBottomLeft(lastRow).dy <= _topInset) continue;
+        final prompt = _messageKey("u$turn");
+        final shown = prompt.evaluate().isNotEmpty && tester.getBottomLeft(prompt).dy > _topInset;
+        return (promptId: "u$turn", top: shown ? _topOf(tester, "u$turn") : _topInset);
+      }
+      fail("no turn reaches below the top edge");
+    }
+
+    testWidgets("folding from a late turn clamps at the latest edge, and unfolding holds the top-edge turn", (
+      tester,
+    ) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a18-0", top: _topInset - 100);
+
+      harness.setTranscriptFolded(folded: true);
+      await tester.pumpAndSettle();
+      // Too little is folded below turn 18 to lift its prompt to the edge, yet
+      // the list stays detached, so new output does not pull the reader on.
+      expect(_position(tester).pixels, lessThan(1));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+      final held = topEdgePrompt(tester, folded: true);
+
+      harness.setTranscriptFolded(folded: false);
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, held.promptId), moreOrLessEquals(held.top, epsilon: 1));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    });
+
+    testWidgets("while following, a switch holds the top-edge turn and stops following", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: true);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+      final held = topEdgePrompt(tester, folded: true);
+
+      harness.setTranscriptFolded(folded: false);
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, held.promptId), moreOrLessEquals(held.top, epsilon: 1));
+      expect(_position(tester).pixels, greaterThan(20));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    });
+
+    testWidgets("an anchor whose row goes ends, so the row coming back moves nothing", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: true);
+
+      await tester.tap(_messageKey("session-detail-turn-u17"));
+      harness.removeMessage("u17");
+      await tester.pumpAndSettle();
+      harness.replaceMessages(shortTurns);
+      await tester.pumpAndSettle();
+
+      expect(_position(tester).pixels, 0);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+    });
+  });
+
+  group("a pinch", () {
+    final shortTurns = _turns(count: 20, promptLines: 1, answers: 1, paragraphs: 12);
+    Offset center(WidgetTester tester) => tester.getCenter(find.byKey(_listViewKey));
+
+    testWidgets("in folds once, and out unfolds once", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+
+      await _touchPinch(tester, center: center(tester), from: 300, to: 40);
+      expect(find.byType(TranscriptTurnStub), findsWidgets);
+      expect(harness.foldRequests, 1);
+
+      await _touchPinch(tester, center: center(tester), from: 40, to: 300);
+      expect(find.byType(TranscriptTurnStub), findsNothing);
+      expect(harness.foldRequests, 2);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("with one finger held still folds on a vertical pinch", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+
+      await _touchPinch(
+        tester,
+        center: center(tester),
+        from: 300,
+        to: 120,
+        axis: const Offset(0, 1),
+        stillFinger: true,
+      );
+
+      expect(find.byType(TranscriptTurnStub), findsWidgets);
+      expect(harness.foldRequests, 1);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("on a trackpad folds and unfolds", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+
+      await _trackpadPinch(tester, center: center(tester), scale: 0.6);
+      expect(find.byType(TranscriptTurnStub), findsWidgets);
+
+      await _trackpadPinch(tester, center: center(tester), scale: 1.6);
+      expect(find.byType(TranscriptTurnStub), findsNothing);
+      expect(harness.foldRequests, 2);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("below the thresholds switches, scrolls and detaches nothing", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+
+      await _touchPinch(tester, center: center(tester), from: 200, to: 180, axis: const Offset(0, 1));
+      await _trackpadPinch(tester, center: center(tester), scale: 0.9);
+
+      expect(harness.foldRequests, 0);
+      expect(_position(tester).pixels, 0);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("while following holds the turn under the fingers and stops following", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: true);
+      final stub = _messageKey("session-detail-turn-u17");
+      final top = _topOf(tester, "u17");
+
+      await _trackpadPinch(tester, center: tester.getCenter(stub), scale: 1.6);
+
+      expect(_messageKey("a17-0"), findsOneWidget);
+      expect(_topOf(tester, "u17"), moreOrLessEquals(top, epsilon: 1));
+      expect(_position(tester).pixels, greaterThan(20));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("while reading history holds the turn under the fingers and stays detached", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "u8", top: 300);
+      // The turn at the top edge is an earlier one.
+      expect(tester.getTopLeft(_messageKey("a7-0")).dy, lessThan(_topInset));
+
+      await _touchPinch(
+        tester,
+        center: Offset(400, tester.getBottomLeft(_messageKey("u8")).dy + 60),
+        from: 300,
+        to: 40,
+      );
+
+      expect(_messageKey("session-detail-turn-u8"), findsOneWidget);
+      expect(_topOf(tester, "u8"), moreOrLessEquals(300, epsilon: 1));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("while reading history stays detached when its hold clamps at the latest edge", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a18-0", top: _topInset - 100);
+
+      await _touchPinch(tester, center: tester.getCenter(_messageKey("a18-0")), from: 300, to: 40);
+      expect(_position(tester).pixels, lessThan(1));
+
+      harness.appendNewestMessage(_message(messageId: "late", role: "assistant", text: "Late output"));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+      expect(_messageKey("late"), findsNothing);
+    }, variant: _pinchPlatforms);
+  });
+
+  group("the sticky prompt", () {
+    final shortTurns = _turns(count: 20, promptLines: 1, answers: 1, paragraphs: 12);
+    // Every prompt and answer is taller than the viewport.
+    final tallTurns = _turns(count: 16, promptLines: 40, answers: 4, paragraphs: 24);
+    final overlay = find.byType(TranscriptStickyPromptOverlay);
+    // The band paints nothing of its own; it is the full-width layer that
+    // swallows a tap beside the bubble, and the only thing excluded from
+    // semantics. The bubble's box encloses anything a preview paints, so the
+    // outermost DecoratedBox is the bubble whatever the prompt renders as.
+    // Both are anchored outermost-first rather than by a property they are
+    // asserted on, so a regression trips the assertion instead of the finder.
+    final band = find.descendant(of: overlay, matching: find.byType(GestureDetector)).first;
+    final boxes = find.descendant(of: overlay, matching: find.byType(DecoratedBox));
+    final bubble = boxes.first;
+    Finder pinned(String text) => find.descendant(of: overlay, matching: find.text(text, findRichText: true));
+    RenderParagraph pinnedParagraph(WidgetTester tester) =>
+        tester.renderObject(find.descendant(of: overlay, matching: find.byType(RichText)).first);
+
+    /// Every style the pinned row paints text with.
+    List<TextStyle?> pinnedTextStyles(WidgetTester tester) {
+      final styles = <TextStyle?>[];
+      for (final element in find.descendant(of: overlay, matching: find.byType(RichText)).evaluate()) {
+        final paragraph = element.renderObject;
+        if (paragraph is! RenderParagraph) continue;
+        paragraph.text.visitChildren((span) {
+          if (span is TextSpan) styles.add(span.style);
+          return true;
+        });
+      }
+      return styles;
+    }
+
+    /// Pins a prompt that renders as a single image mention and checks that the
+    /// eye and a screen reader are given the same [words]: the label is all a
+    /// reader gets, so it must never fall back to the image's source.
+    Future<void> expectPinnedImageNamed(WidgetTester tester, {required String prompt, required String words}) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: prompt),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      final mention = find.descendant(of: overlay, matching: find.byType(Text));
+      expect(mention, findsOneWidget);
+      expect(tester.widget<Text>(mention).data, words, reason: "the words the row shows");
+      expect(
+        tester.getSemantics(bubble),
+        isSemantics(label: words, hint: "Jump to this prompt", isButton: true, hasTapAction: true),
+        reason: "the words a screen reader hears",
+      );
+
+      semantics.dispose();
+    }
+
+    testWidgets("pins the turn's prompt once it leaves the top edge", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "u8", top: 200);
+      // The earlier turn is the one at the top edge.
+      expect(pinned("Prompt 7 line 0"), findsOneWidget);
+
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+
+      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+      expect(tester.getTopLeft(band).dy, moreOrLessEquals(_topInset, epsilon: 0.5));
+    });
+
+    testWidgets("paints no full-width scrim, so the rows beside it stay whole", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+
+      // The bubble is the only thing the band paints, and it is narrower than
+      // the band, so a row running past it to the left is left whole.
+      expect(boxes, findsOneWidget);
+      expect(tester.getSize(bubble).width, lessThan(tester.getSize(band).width));
+      expect(
+        tester.widget<DecoratedBox>(bubble).decoration,
+        isA<BoxDecoration>().having((decoration) => decoration.gradient, "gradient", isNull),
+      );
+    });
+
+    testWidgets("is pushed out by the next turn's prompt", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "u9", top: _topInset + 300);
+      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+      expect(tester.getTopLeft(band).dy, moreOrLessEquals(_topInset, epsilon: 0.5));
+      final height = tester.getSize(band).height;
+
+      await _scrollRowTo(tester, rowId: "u9", top: _topInset + height / 2);
+
+      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+      expect(tester.getTopLeft(band).dy, moreOrLessEquals(_topInset - height / 2, epsilon: 0.5));
+      expect(tester.getBottomLeft(band).dy, moreOrLessEquals(_topOf(tester, "u9"), epsilon: 0.5));
+    });
+
+    testWidgets("hides while folded", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+
+      harness.setTranscriptFolded(folded: true);
+      await tester.pumpAndSettle();
+
+      expect(boxes, findsNothing);
+    });
+
+    testWidgets("pins nothing over the messages before the first prompt", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: [
+          _automatedMessage(
+            messageId: "setup",
+            text: List.generate(40, (index) => "Automation paragraph $index").join("\n\n"),
+            sender: MessageSender.system,
+          ),
+          ...shortTurns,
+        ],
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "setup", top: _topInset - 300);
+
+      expect(boxes, findsNothing);
+    });
+
+    /// Expects a 40-line prompt to be pinned exactly as tall as a prompt of
+    /// three short lines, which fits whole, whatever a line measures here.
+    Future<void> expectThreeLineCut(WidgetTester tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: "A\nB\nC"),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+      expect(pinned("A\nB\nC"), findsOneWidget);
+      final threeLines = tester.getSize(bubble).height;
+
+      await _scrollRowTo(tester, rowId: "a3-1", top: _topInset - 100);
+
+      final paragraph = pinnedParagraph(tester);
+      expect(paragraph.text.toPlainText(), _multilineText(label: "Prompt 3", lines: 40));
+      expect(paragraph.size.height, greaterThan(threeLines), reason: "the fixture must overflow the cut");
+      expect(tester.getSize(bubble).height, moreOrLessEquals(threeLines, epsilon: 1));
+    }
+
+    testWidgets("cuts a long prompt at three lines at a narrow width", (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 640));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await expectThreeLineCut(tester);
+    });
+
+    testWidgets("cuts a long prompt at three lines at a large text scale", (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await expectThreeLineCut(tester);
+    });
+
+    testWidgets("renders the prompt's Markdown, and no block makes the row grow", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: _markdownPrompt),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+      final markdownHeight = tester.getSize(bubble).height;
+      // The source is rendered, not shown: the emphasis markers are gone and
+      // the fence is a code block with its own surface.
+      expect(pinned(_markdownPrompt), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.textContaining("Refactor", findRichText: true)), findsWidgets);
+      expect(find.descendant(of: overlay, matching: find.textContaining("**", findRichText: true)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(Table)), findsOneWidget);
+
+      // A table, a fence and an image leave the row exactly as tall as a plain
+      // prompt cut at the same three lines.
+      await _scrollRowTo(tester, rowId: "a3-1", top: _topInset - 100);
+
+      expect(pinned(_multilineText(label: "Prompt 3", lines: 40)), findsOneWidget);
+      expect(markdownHeight, moreOrLessEquals(tester.getSize(bubble).height, epsilon: 0.5));
+    });
+
+    testWidgets("pins a remote image as a plain mention, never a fetch or a control", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: "![diagram](https://example.com/diagram.png)"),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // A prompt can name any host, so pinning it must not contact that host.
+      expect(find.descendant(of: overlay, matching: find.byType(MarkdownMessageImage)), findsNothing);
+      // Nor offer a press: the bubble's tap jumps to the prompt, so the real
+      // bubble's open-image button would open nothing here. The transcript's
+      // own bubble keeps that button (see the session detail body's test).
+      expect(find.descendant(of: overlay, matching: find.byType(TextButton)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(InkWell)), findsNothing);
+      expect(pinned("diagram"), findsOneWidget);
+    });
+
+    testWidgets("builds only the start of a pasted document", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(
+          id: "u4",
+          text: _multilineText(label: "Pasted", lines: 2000),
+        ),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // Only three lines are ever painted, so the rest is not built: pinning a
+      // prompt costs the same whatever was pasted into it.
+      final built = pinnedParagraph(tester).text.toPlainText();
+      expect(built, startsWith("Pasted line 0\nPasted line 1\n"));
+      expect(built, isNot(contains("Pasted line 500")));
+    });
+
+    testWidgets("pins a link as ordinary text, not as something to press", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: _decoratedPrompt),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // The row's own tap jumps to the prompt, so link-looking text here would
+      // promise an open that never comes.
+      expect(pinned("Fix bold and code in the spec"), findsOneWidget);
+      expect(
+        pinnedTextStyles(tester).map((style) => style?.decoration),
+        everyElement(isNot(TextDecoration.underline)),
+      );
+    });
+
+    testWidgets("labels the pinned bubble with the prompt's words, not its Markdown", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: _decoratedPrompt),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // The rendered row is hidden from semantics, so this label is all a
+      // screen reader gets; it must not read out markers, backticks and URLs.
+      expect(
+        tester.getSemantics(bubble),
+        isSemantics(
+          label: "Fix bold and code in the spec",
+          hint: "Jump to this prompt",
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+
+      semantics.dispose();
+    });
+
+    testWidgets("reads a pinned list, table and struck word as the row lays them out", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(
+          id: "u4",
+          text: "- Fix login\n- Fix signup\n\n| col |\n| --- |\n| cell |\n\n~~dropped~~",
+        ),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // Each item, cell and paragraph has a line of its own in the row, so none
+      // of them may run into the next word. And the label is read with the same
+      // extensions the row is rendered with, or a table would be spoken as its
+      // pipes and a struck word as its tildes.
+      expect(
+        tester.getSemantics(bubble),
+        isSemantics(label: "Fix login\nFix signup\ncol\ncell\ndropped", isButton: true),
+      );
+
+      semantics.dispose();
+    });
+
+    testWidgets("reads an image-only prompt out as its alt text", (tester) async {
+      await expectPinnedImageNamed(
+        tester,
+        prompt: "![diagram](https://example.com/diagram.png)",
+        words: "diagram",
+      );
+    });
+
+    testWidgets("reads an image-only prompt with no alt text out as the row names it", (tester) async {
+      await expectPinnedImageNamed(
+        tester,
+        prompt: "![](https://example.com/diagram.png)",
+        words: "Open image",
+      );
+    });
+
+    testWidgets("pins every block with nothing pressable and nothing scrollable", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: _everyBlockPrompt),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // A still picture: every element the renderer can build for a prompt, and
+      // not one control or scroll view among them.
+      expect(find.descendant(of: overlay, matching: find.byType(Table)), findsOneWidget);
+      expect(find.descendant(of: overlay, matching: find.byType(Scrollable)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(Scrollbar)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(TextButton)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(IconButton)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(InkWell)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(PregoCopyIconButton)), findsNothing);
+      expect(
+        pinnedTextStyles(tester).map((style) => style?.decoration),
+        everyElement(isNot(TextDecoration.underline)),
+      );
+    });
+
+    testWidgets("pins a code block as a still preview, with nothing to press", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: _fencedPrompt),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // The row's own tap jumps to the prompt, so a copy or open-all control
+      // here would do something other than what it shows.
+      expect(find.descendant(of: overlay, matching: find.byType(CodeBlockPreview)), findsOneWidget);
+      expect(find.descendant(of: overlay, matching: find.byType(CodeBlock)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(PregoCopyIconButton)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(TextButton)), findsNothing);
+      expect(pinned("void main() {}"), findsOneWidget);
+    });
+
+    testWidgets("a pinned code block asks for no older page", (tester) async {
+      var requested = 0;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: _turnsWithPrompt(id: "u4", text: _fencedPrompt),
+          initialStreamingText: const {},
+          topInset: _topInset,
+          onLoadOlderMessages: () async => requested++,
+        ),
+      );
+      final harness = tester.state<_SessionDetailMessageListHarnessState>(
+        find.byType(_SessionDetailMessageListHarness),
+      );
+      harness.setTranscriptFolded(folded: false);
+      await tester.pumpAndSettle();
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // The overlay is the list's sibling, so a scroll view in the pinned row
+      // reports its metrics at depth 0 and the list reads them as its own.
+      expect(requested, 0, reason: "the pinned prompt must not page history the reader never asked for");
+    });
+
+    testWidgets("pins a fence left open by the cut as a code block, not backticks", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(
+          id: "u4",
+          text: "```dart\n${_multilineText(label: "// pasted", lines: 400)}\n```",
+        ),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      expect(find.descendant(of: overlay, matching: find.byType(CodeBlockPreview)), findsOneWidget);
+      expect(find.descendant(of: overlay, matching: find.textContaining("```", findRichText: true)), findsNothing);
+    });
+
+    testWidgets("a tap on the bubble puts its prompt at the top edge and stops following", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+
+      await tester.tap(bubble, warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, "u8"), moreOrLessEquals(_topInset, epsilon: 1));
+      expect(pinned("Prompt 8 line 0"), findsNothing);
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    });
+
+    testWidgets("a tap on the band beside the bubble does nothing", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+      final offset = _position(tester).pixels;
+
+      await tester.tapAt(Offset(tester.getTopLeft(bubble).dx / 2, tester.getCenter(band).dy));
+      await tester.pumpAndSettle();
+
+      expect(_position(tester).pixels, offset);
+      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+    });
+
+    testWidgets("a drag that starts on the band still scrolls the rows beneath", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+      final offset = _position(tester).pixels;
+
+      await tester.drag(band, const Offset(0, -120), warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(_position(tester).pixels, isNot(moreOrLessEquals(offset, epsilon: 1)));
+    });
+
+    testWidgets("while pinned is a labelled button that jumps to its unbuilt prompt", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpTurns(tester, messages: tallTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a6-2", top: _topInset - 100);
+      expect(find.byKey(const ValueKey("u6"), skipOffstage: false), findsNothing);
+
+      final node = tester.getSemantics(bubble);
+      expect(
+        node,
+        isSemantics(
+          label: _multilineText(label: "Prompt 6", lines: 40),
+          hint: "Jump to this prompt",
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      node.owner?.performAction(node.id, SemanticsAction.tap);
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, "u6"), moreOrLessEquals(_topInset, epsilon: 1));
+      semantics.dispose();
+    });
+
+    testWidgets("offers the bubble's action alone, never the band's no-op tap", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+
+      // The band's tap only swallows presses beside the bubble, so announcing
+      // it would put an inert action next to the real one.
+      expect(tester.getSemantics(band), isNot(isSemantics(hasTapAction: true)));
+      expect(tester.getSemantics(bubble), isSemantics(isButton: true, hasTapAction: true));
+
+      semantics.dispose();
+    });
+  });
+
   testWidgets("removing a message while following drops its row and stays pinned", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -1914,7 +3250,7 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
-  });
+  }, variant: _pinchPlatforms);
 
   testWidgets("iOS system-back edge does not peek timestamps", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -2069,7 +3405,7 @@ void main() {
 
     await trackpad.panZoomEnd();
     await tester.pumpAndSettle();
-  });
+  }, variant: _pinchPlatforms);
 
   testWidgets("peeking timestamps while detached does not snap back to the latest edge", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -2339,7 +3675,7 @@ void main() {
     await gesture.panZoomEnd();
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
-  });
+  }, variant: _pinchPlatforms);
 }
 
 QueuedSessionSubmission _textSubmission({required String promptId, required String text}) =>

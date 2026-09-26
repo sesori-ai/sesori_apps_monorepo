@@ -1,6 +1,7 @@
 import "dart:math" as math;
 
 import "package:material_ui/material_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -39,17 +40,12 @@ class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
 
   final OverlayPortalController _overlayController = OverlayPortalController();
 
-  bool _isRunning(Session child) {
-    final status = widget.childStatuses[child.id];
-    return status is SessionStatusBusy || status is SessionStatusRetry;
-  }
-
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
     final count = widget.children.length;
-    final runningCount = widget.children.where(_isRunning).length;
+    final runningCount = runningChildren(children: widget.children, childStatuses: widget.childStatuses).length;
     // The running count is what matters most, so the total steps back while
     // anything runs.
     final foreground = prego.colors.textSecondary;
@@ -116,8 +112,11 @@ class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
 
   Widget _buildOverlay({required BuildContext context, required OverlayChildLayoutInfo info}) {
     final prego = context.prego;
-    final running = widget.children.where(_isRunning).toList();
-    final idle = widget.children.where((child) => !_isRunning(child)).toList();
+    final running = runningChildren(children: widget.children, childStatuses: widget.childStatuses);
+    final idle = [
+      for (final child in widget.children)
+        if (!running.contains(child)) child,
+    ];
     // A tall draft, an open keyboard or a short window can leave too little
     // room above the pill: the list then opens toward the roomier side and
     // scrolls within it instead of running off screen.

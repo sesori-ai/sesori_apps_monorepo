@@ -14,13 +14,20 @@ concrete problem can justify a documented temporary hold with a resolution path.
 
 ## OpenCode
 
-- **Source:** stable `anomalyco/opencode` GitHub release (`vX.Y.Z`); compare
-  `npm view opencode-ai version` when available.
+- **Source:** stable `@opencode/cli` npm version and matching `anomalyco/opencode`
+  source tag, resolved to an immutable commit. As verified 2026-09-26, v2 is
+  published through npm while GitHub latest and `opencode-ai` still select v1;
+  recheck both channels rather than assuming they identify the same protocol.
 - **Pin:** `bridge/sesori_plugin_opencode/lib/src/runtime/open_code_runtime_manifest.dart`.
-  Preserve `minPathVersion`; `targetVersion` drives `bundledVersion`.
-- **Assets:** six, with GitHub SHA-256 digests:
-  `opencode-darwin-{arm64,x64}.zip`, `opencode-linux-{arm64,x64}.tar.gz`,
-  `opencode-windows-{arm64,x64}.zip`. Preserve the manifest's entrypoint/layout.
+  Preserve `minPathVersion`; `targetVersion` drives `bundledVersion`. PATH v1
+  remains supported; managed v1 upgrades migrate the native database one-way.
+- **Assets:** six npm packages `@opencode/cli-{darwin,linux,windows}-{arm64,x64}`.
+  Fetch exact-version registry metadata, verify each downloaded `.tgz` against
+  published integrity, and independently compute its manifest SHA-256. URLs are
+  `https://registry.npmjs.org/@opencode/cli-<target>/-/cli-<target>-<version>.tgz`.
+  All use `ArchiveFormat.tarGz` with `package/bin/opencode[.exe]`, normalized by
+  `RuntimeArchiveLayout.singleBinary`. Verify members; do not assume helpers
+  are unnecessary if a future release changes the layout.
 - **Audit:** REST/SSE schemas and serialization, sessions/messages, permission and
   question replies, models, subagents, cancellation, and database/history shape.
   Inspect `bridge/sesori_plugin_opencode/tool/opencode_v1_surface.json` and the

@@ -393,8 +393,14 @@ void main() {
     expect(width("build"), lessThan(240));
   });
 
-  for (final (width, chips, labels) in [(320.0, 2, false), (390.0, 0, true)]) {
-    testWidgets("a touch row at $width points with $chips status chips fits (labels: $labels)", (tester) async {
+  for (final (width, chips, labels, compact) in [
+    (320.0, 2, false, false),
+    (390.0, 0, true, false),
+    // A pointer composer squeezed by a narrow window.
+    (240.0, 0, false, true),
+  ]) {
+    final shell = compact ? "pointer" : "touch";
+    testWidgets("a $shell row at $width points with $chips status chips fits (labels: $labels)", (tester) async {
       tester.view.physicalSize = Size(width, 800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -431,7 +437,7 @@ void main() {
                 fastModeControl: FastModeControl.off,
                 decideFastModeToggle: () => null,
                 onFastModeChanged: (_) {},
-                compact: false,
+                compact: compact,
                 trailing: [square("YOLO"), square("Auto-continue")].take(chips).toList(),
               ),
             ),

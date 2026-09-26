@@ -25,33 +25,45 @@ void main() {
       }
     });
 
-    test("darwin/windows ship .zip, linux ships .tar.gz", () {
-      ArchiveRuntimeAsset asset(PlatformOs os, PlatformArch arch) =>
-          manifest.assetFor(
-                target: PlatformTarget(os: os, arch: arch),
-              )!
-              as ArchiveRuntimeAsset;
-
-      expect(asset(PlatformOs.macos, PlatformArch.arm64).format, ArchiveFormat.zip);
-      expect(asset(PlatformOs.macos, PlatformArch.arm64).assetName, endsWith(".zip"));
-      expect(asset(PlatformOs.windows, PlatformArch.x64).format, ArchiveFormat.zip);
-      expect(asset(PlatformOs.windows, PlatformArch.x64).assetName, endsWith(".zip"));
-      expect(asset(PlatformOs.linux, PlatformArch.x64).format, ArchiveFormat.tarGz);
-      expect(asset(PlatformOs.linux, PlatformArch.x64).assetName, endsWith(".tar.gz"));
+    test("all six npm tarballs select the nested executable as a single binary", () {
+      var count = 0;
+      for (final os in PlatformOs.values) {
+        for (final arch in PlatformArch.values) {
+          final asset =
+              manifest.assetFor(
+                    target: PlatformTarget(os: os, arch: arch),
+                  )!
+                  as ArchiveRuntimeAsset;
+          final platform = switch (os) {
+            PlatformOs.macos => "darwin",
+            PlatformOs.linux => "linux",
+            PlatformOs.windows => "windows",
+          };
+          final package = "cli-$platform-${arch.name}";
+          final filename = "$package-${OpenCodeRuntimeManifest.targetVersion}.tgz";
+          expect(asset.assetName, filename);
+          expect(asset.format, ArchiveFormat.tarGz);
+          expect(asset.archiveBinaryName, "package/bin/opencode${os == PlatformOs.windows ? ".exe" : ""}");
+          expect(asset.layout, RuntimeArchiveLayout.singleBinary);
+          expect(manifest.downloadUrlFor(asset: asset), "https://registry.npmjs.org/@opencode/$package/-/$filename");
+          count++;
+        }
+      }
+      expect(count, 6);
     });
 
-    test("download URL preserves the v release tag and asset name", () {
+    test("download URL pins the npm version rather than a moving latest alias", () {
       final asset = manifest.assetFor(
         target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
       )!;
       expect(
         manifest.downloadUrlFor(asset: asset),
-        equals("https://github.com/anomalyco/opencode/releases/download/v1.18.32/opencode-darwin-arm64.zip"),
+        equals("https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.0.18.tgz"),
       );
     });
 
     test("bundled version is at least the minimum supported version", () {
-      expect(OpenCodeRuntimeManifest.targetVersion, "1.18.32");
+      expect(OpenCodeRuntimeManifest.targetVersion, "2.0.18");
       expect(manifest.bundledVersion.toString(), OpenCodeRuntimeManifest.targetVersion);
       expect(manifest.minPathVersion.toString(), "1.14.0");
       expect(

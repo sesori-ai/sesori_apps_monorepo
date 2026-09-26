@@ -9,6 +9,7 @@ import "package:opencode_plugin/src/v2/models/openapi/form_reply.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/location_public_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/location_public_ref.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/model_info.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/model_ref.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_reply.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_request.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/project.g.dart";
@@ -72,11 +73,10 @@ void main() {
       ),
     ];
     final projects = await repository.getProjects();
-    expect(projects.first.project.id, directory);
-    expect(projects.first.sandboxes, [worktree]);
-    expect(projects.first.project.activity!.createdAt, 5);
-    expect(projects.first.project.activity!.updatedAt, 40);
-    expect(projects.last.project.activity, isNull);
+    expect(projects.first.id, directory);
+    expect(projects.first.activity!.createdAt, 5);
+    expect(projects.first.activity!.updatedAt, 40);
+    expect(projects.last.activity, isNull);
     expect(api.rootQueries, <String?>[null]);
   });
 
@@ -100,6 +100,25 @@ void main() {
     expect(children.single.parentID, "session-fixture");
     expect(children.single.projectID, directory);
     expect(api.sessionQueries.single, (directory: null, parentId: "session-fixture"));
+  });
+
+  test("reads global activity metadata without fetching directory option catalogs", () async {
+    api.sessions = [
+      api.initialSession,
+      api.initialSession.copyWith(
+        id: "child",
+        parentID: "session-fixture",
+        location: const LocationPublicRef(directory: worktree),
+      ),
+    ];
+    final sessions = await repository.getSessionMetadata();
+    expect(api.sessionQueries, [(directory: null, parentId: null)]);
+    expect(sessions.map((session) => session.id), ["session-fixture", "child"]);
+    expect(sessions.last.projectID, directory);
+    expect(sessions.last.directory, worktree);
+    expect(sessions.last.pluginId, "fixture-plugin");
+    expect(sessions.last.promptDefaults, isNull);
+    expect(api.agentDirectories, isEmpty);
   });
 
   test("uses the session location for display names and preserves native transcript identities", () async {
@@ -180,6 +199,7 @@ void main() {
   test("serializes text and supported file parts without adding inbox behavior", () async {
     await repository.sendPrompt(
       sessionId: "session-fixture",
+      promptId: null,
       parts: const [
         PluginPromptPart.text(text: "First"),
         PluginPromptPart.text(text: "Second"),
@@ -222,7 +242,7 @@ void main() {
     expect(api.syntheticBody!.text, "Internal fixture");
     expect(api.syntheticBody!.description, "Visible fixture");
     expect(api.syntheticBody!.resume, isFalse);
-    await repository.compact(sessionId: "session-fixture");
+    await repository.compact(sessionId: "session-fixture", promptId: null);
     for (final reply in PluginPermissionReply.values) {
       await repository.replyToPermission(sessionId: "session-fixture", requestId: "permission", reply: reply);
     }
@@ -292,6 +312,23 @@ void main() {
     expect(api.agentDirectories, isEmpty);
   });
 
+  test("variant selection resolves a native session override or the directory default", () async {
+    api.currentSession = api.initialSession.copyWith(
+      model: const ModelRef(providerID: "p", id: "m", variant: "high"),
+    );
+    expect(
+      await repository.getSessionModel(sessionId: "session-fixture"),
+      const PluginAgentModel(providerID: "p", modelID: "m", variant: "high"),
+    );
+    expect(api.catalogDirectories, isEmpty);
+    api.currentSession = SessionInfo.fromJson({...api.initialSession.toJson(), "model": null});
+    expect(
+      await repository.getSessionModel(sessionId: "session-fixture"),
+      PluginAgentModel(providerID: api.model.providerID, modelID: api.model.id, variant: null),
+    );
+    expect(api.catalogDirectories, [api.initialSession.location.directory]);
+  });
+
   test("propagates history failures rather than returning an empty transcript", () async {
     final failure = StateError("Fixture transport failure");
     api.historyFailure = failure;
@@ -313,7 +350,7 @@ class FakeV2Api({
   List<SessionMessageInfo> messages = [];
   final sessionQueries = <({String? directory, String? parentId})>[];
   final agentDirectories = <String>[];
-  final catalogDirectories = <String>[];
+  final catalogDirectories = <String?>[];
   final pendingDirectories = <String>[];
   final calls = <String>[];
   final decisions = <PermissionReply>[];
@@ -423,7 +460,7 @@ class FakeV2Api({
   }
 
   @override
-  Future<List<CommandInfo>> listCommands({required String directory}) async {
+  Future<List<CommandInfo>> listCommands({required String? directory}) async {
     catalogDirectories.add(directory);
     return [
       CommandInfo.fromJson(const <String, dynamic>{"name": "review"}),
