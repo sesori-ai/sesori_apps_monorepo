@@ -8,6 +8,7 @@ import "../api/claude_transcript_api.dart";
 import "../api/models/claude_subagent_meta_dto.dart";
 import "../api/models/claude_transcript_record_dto.dart";
 import "../models/claude_effort_level.dart";
+import "../models/claude_message_origin_kind.dart";
 import "../models/claude_subagent_session_id.dart";
 import "models/claude_session_record.dart";
 import "models/claude_transcript_record.dart";
@@ -369,6 +370,32 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
       );
     }
     return _unreplayableMessageRecord(line: line);
+  }
+
+  final attachment = dto.attachment;
+  if (type == ClaudeTranscriptContextKind.attachment.wireType &&
+      attachment != null &&
+      attachment.type == ClaudeTranscriptQueuedCommandRecord.attachmentType) {
+    final id = _nonEmpty(attachment.sourceUuid) ?? _nonEmpty(dto.uuid);
+    if (id != null) {
+      return ClaudeTranscriptQueuedCommandRecord(
+        id: id,
+        prompt: attachment.prompt,
+        isMeta: attachment.isMeta ?? false,
+        // The command mode shares the origin vocabulary (`task-notification`).
+        originKind: attachment.originKind == ClaudeMessageOriginKind.unknown
+            ? ClaudeMessageOriginKind.parse(kind: attachment.commandMode)
+            : attachment.originKind,
+        cwd: dto.cwd,
+        timestamp: dto.timestamp,
+        isSidechain: dto.isSidechain,
+        agentId: dto.agentId,
+        gitBranch: dto.gitBranch,
+        version: dto.version,
+        sessionId: dto.sessionId,
+        raw: line.raw,
+      );
+    }
   }
 
   final contextKind = ClaudeTranscriptContextKind.tryParse(type);

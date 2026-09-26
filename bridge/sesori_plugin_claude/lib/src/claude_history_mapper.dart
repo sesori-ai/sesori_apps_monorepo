@@ -140,39 +140,30 @@ final class const ClaudeHistoryMapper({
             if (targets.length == 1) targets.single.content.add(record.content);
             continue;
           }
-          // The CLI's own delivery of a task outcome to the model, never a
-          // user-authored message: a known task absorbs it, anything else
-          // replays as the same Automation row the live path shows.
-          if (_content.isTaskNotification(blocks: blocks, originKind: record.originKind)) {
-            final notifications = [
-              for (final block in blocks)
-                if (block is ClaudeMappedTaskNotificationContentBlock) block.notification,
-            ];
-            final unclaimed = [
-              for (final notification in notifications)
-                if (tasks.envelopeNotified(notification: notification) == null) notification,
-            ];
-            if (notifications.isNotEmpty && unclaimed.isEmpty) continue;
-            final automation = _content.taskNotificationMessage(
-              sessionId: sessionId,
-              messageId: record.id,
-              time: _messageTime(record.timestamp),
-              content: record.content,
-              notifications: unclaimed,
-            );
-            if (automation != null) entries.add(_MappedHistoryMessage(message: automation));
-            continue;
-          }
-
-          final user = _content.userMessage(
-            content: record.content,
+          final message = _userTurn(
             sessionId: sessionId,
             messageId: record.id,
-            time: _messageTime(record.timestamp),
+            timestamp: record.timestamp,
+            content: record.content,
+            blocks: blocks,
             originKind: record.originKind,
-            promptId: null,
+            tasks: tasks,
           );
-          if (user != null) entries.add(_MappedHistoryMessage(message: user));
+          if (message != null) entries.add(_MappedHistoryMessage(message: message));
+        case ClaudeTranscriptQueuedCommandRecord():
+          if (skip(record) || (record.isMeta && record.originKind != ClaudeMessageOriginKind.peer)) continue;
+          final blocks = _content.map(content: record.prompt);
+          if (_content.containsInternalCommandOutput(blocks: blocks)) continue;
+          final message = _userTurn(
+            sessionId: sessionId,
+            messageId: record.id,
+            timestamp: record.timestamp,
+            content: record.prompt,
+            blocks: blocks,
+            originKind: record.originKind,
+            tasks: tasks,
+          );
+          if (message != null) entries.add(_MappedHistoryMessage(message: message));
         case ClaudeTranscriptContextRecord() ||
             ClaudeTranscriptUnreplayableMessageRecord() ||
             ClaudeTranscriptTitleRecord() ||
@@ -201,6 +192,48 @@ final class const ClaudeHistoryMapper({
       }
     }
     return messages;
+  }
+
+  /// A user-role turn, mapped as the live path maps its frame. Null when
+  /// nothing is shown.
+  PluginMessageWithParts? _userTurn({
+    required String sessionId,
+    required String messageId,
+    required DateTime? timestamp,
+    required Object? content,
+    required List<ClaudeMappedContentBlock> blocks,
+    required ClaudeMessageOriginKind originKind,
+    required ClaudeToolTracker tasks,
+  }) {
+    // The CLI's own delivery of a task outcome to the model, never a
+    // user-authored message: a known task absorbs it, anything else
+    // replays as the same Automation row the live path shows.
+    if (_content.isTaskNotification(blocks: blocks, originKind: originKind)) {
+      final notifications = [
+        for (final block in blocks)
+          if (block is ClaudeMappedTaskNotificationContentBlock) block.notification,
+      ];
+      final unclaimed = [
+        for (final notification in notifications)
+          if (tasks.envelopeNotified(notification: notification) == null) notification,
+      ];
+      if (notifications.isNotEmpty && unclaimed.isEmpty) return null;
+      return _content.taskNotificationMessage(
+        sessionId: sessionId,
+        messageId: messageId,
+        time: _messageTime(timestamp),
+        content: content,
+        notifications: unclaimed,
+      );
+    }
+    return _content.userMessage(
+      content: content,
+      sessionId: sessionId,
+      messageId: messageId,
+      time: _messageTime(timestamp),
+      originKind: originKind,
+      promptId: null,
+    );
   }
 
   PluginMessageWithParts _buildApiError({
