@@ -21,6 +21,7 @@ import "system_message_card.dart";
 import "tool_part_widget.dart";
 import "transcript_live_row.dart";
 import "transcript_motion.dart";
+import "transcript_pinch_detector.dart";
 import "transcript_row_reporter.dart";
 import "transcript_turn_stub.dart";
 import "user_message_card.dart";
@@ -66,6 +67,10 @@ class const SessionDetailMessageList({
   required final Future<void> Function()? onLoadOlderMessages,
   required final ValueChanged<int>? onCancelQueuedMessage,
   required final bool isLoadingOlderMessages,
+
+  /// Whether a refresh is replacing the transcript. One ending asks again for
+  /// an older page the refresh dropped, when the transcript is still short.
+  required final bool isRefreshing,
 
   /// Whether each turn shows folded: its prompt, then one line for the rest.
   required final bool transcriptFolded,
@@ -189,6 +194,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   _DetachedSnapshot? _snapshot;
   bool _loadOlderCallbackInFlight = false;
 
+  /// Set when the oldest edge needed a check while a page was on its way, so
+  /// the check runs once that load settles.
+  bool _checkOldestEdgeAfterLoad = false;
+
   /// Cache for the id → data-source-index map consumed by the row
   /// builder. Keyed on a content signature of `(length, firstId,
   /// lastId)` — NOT list identity. The cubit's `state.messages` getter
@@ -220,6 +229,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// The one turn being held in place, until its row settles or goes.
   _TurnAnchor? _anchor;
 
+  /// Captured when a pinch's first pointer lands, before a trackpad pan-zoom
+  /// start detaches the list, so a pinch that switches nothing leaves
+  /// following alone.
+  bool _pinchStartedFollowing = false;
+  bool _pinchDetachSuppressed = false;
+
   @override
   void initState() {
     super.initState();
@@ -246,11 +261,31 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       // The rows a fold switch brings in are not new, so they must not ease in.
       _knownRowIds = null;
       // Unless a control in the list already chose the turn, hold the one at
-      // the top edge, measured in the last frame's layout. Following keeps the
-      // newest turn in view by itself.
-      if (_anchor == null && !_follow.following) {
+      // the top edge, measured in the last frame's layout. That holds while
+      // following too: the hold's first jump detaches the list, as a stub tap's
+      // does, so a round trip returns to the same turn.
+      if (_anchor == null) {
         if (_topEdgeTurn() case final turn?) _holdTurn(turn: turn, folded: widget.transcriptFolded);
       }
+    }
+    // A page that leaves the transcript shorter than the viewport moves no
+    // scroll extent, so no metrics notification follows it. Check the oldest
+    // edge once the page is laid out, to keep paging until the viewport fills.
+    // A refresh drops or discards an older page asked for meanwhile, and can
+    // land on the same oldest message, so its end checks too. A failed page
+    // keeps the oldest message, so a failing bridge is not asked again until
+    // the list scrolls, its layout changes or a refresh ends.
+    final refreshEnded = oldWidget.isRefreshing && !widget.isRefreshing;
+    if (refreshEnded || widget.messages.firstOrNull?.info.id != oldWidget.messages.firstOrNull?.info.id) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        // A discarded page can still be on its way; check once it settles.
+        if (_loadOlderCallbackInFlight) {
+          _checkOldestEdgeAfterLoad = true;
+        } else {
+          _checkOldestEdge();
+        }
+      });
     }
     final olderPageRequestCompleted = oldWidget.isLoadingOlderMessages && !widget.isLoadingOlderMessages;
     // While detached the snapshot keeps the list structure from shifting
@@ -407,9 +442,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final pixels = (position.pixels + delta).clamp(position.minScrollExtent, position.maxScrollExtent);
     if ((pixels - position.pixels).abs() <= 0.5) return;
     _anchor = anchor;
-    // The jump ends a scroll, so the tracker detaches the list, or follows
-    // again when it lands within the latest edge's tolerance.
+    // A held turn stops following, even where the jump ends within the latest
+    // edge's tolerance and the tracker would follow again, so later output
+    // never pulls the reader away from it.
     position.jumpTo(pixels);
+    _follow.detach();
     WidgetsBinding.instance.addPostFrameCallback((_) => _stepAnchor(anchor: anchor, first: false));
   }
 
@@ -417,6 +454,51 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   void _unfoldAt({required TranscriptTurn turn}) {
     _holdTurn(turn: turn, folded: false);
     widget.onTranscriptFoldedChanged(folded: false);
+  }
+
+  /// The turn of the built row under [globalPosition].
+  TranscriptTurn? _turnAt({required Offset globalPosition}) {
+    final list = context.findRenderObject();
+    if (list is! RenderBox) return null;
+    final y = list.globalToLocal(globalPosition).dy;
+    for (final rowId in _rowContexts.keys) {
+      final span = _spanOf(rowId: rowId);
+      if (span != null && span.top <= y && y < span.bottom) return _rowTurns[rowId];
+    }
+    return null;
+  }
+
+  void _onPinchPointerDown() => _pinchStartedFollowing = _follow.following;
+
+  /// Keeps a list that followed when the pinch began following while it
+  /// pinches, undoing a trackpad pan-zoom start's detach.
+  void _onPinchStart() {
+    if (!_pinchStartedFollowing || _pinchDetachSuppressed) return;
+    _pinchDetachSuppressed = true;
+    _follow.suppressDetach();
+  }
+
+  /// Switches to [folded] and holds the turn under the fingers, like a button
+  /// holds the top-edge turn. The hold's jump stops following, as theirs does.
+  void _onPinchFoldRequested({required bool folded, required Offset focalPoint}) {
+    if (folded == widget.transcriptFolded) return;
+    // A switching pinch stops following, so the hold's jump must detach.
+    _releasePinchDetachSuppression();
+    if (_turnAt(globalPosition: focalPoint) ?? _topEdgeTurn() case final turn?) {
+      _holdTurn(turn: turn, folded: folded);
+    }
+    widget.onTranscriptFoldedChanged(folded: folded);
+  }
+
+  void _onPinchGestureEnd() {
+    _pinchStartedFollowing = false;
+    _releasePinchDetachSuppression();
+  }
+
+  void _releasePinchDetachSuppression() {
+    if (!_pinchDetachSuppressed) return;
+    _pinchDetachSuppressed = false;
+    _follow.releaseDetachSuppression();
   }
 
   bool _transientSubmissionsMatch({required SessionDetailMessageList oldWidget}) {
@@ -637,64 +719,70 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       //   path ignores the mouse kind) so it keeps selecting message
       //   text; hijacking it for the peek would make selection impossible.
       //
-      child: NotificationListener<ScrollNotification>(
-        onNotification: _onScrollNotification,
-        child: PregoHorizontalDragGestureDetector(
-          behavior: HitTestBehavior.translucent,
-          supportedDevices: _kRevealPointerDevices,
-          onHorizontalDragDown: _onRevealDragDown,
-          onHorizontalDragStart: _onRevealDragStart,
-          onHorizontalDragUpdate: _onRevealDragUpdate,
-          onHorizontalDragEnd: _onRevealDragEnd,
-          onHorizontalDragCancel: _onRevealDragCancel,
-          pendingRejectionSlop: _kRevealPendingRejectionSlop,
-          direction: PregoHorizontalDragDirection.left,
-          dragStartBehavior: DragStartBehavior.down,
-          child: ListView.builder(
-            key: _kListViewKey,
-            reverse: true,
-            controller: _follow.scrollController,
-            padding: EdgeInsetsDirectional.only(
-              start: widget.horizontalInset,
-              end: widget.horizontalInset,
-              top: 8 + widget.topInset,
-              bottom: 8 + widget.bottomInset,
-            ),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: rowIds.length,
-            findChildIndexCallback: (key) {
-              if (key case ValueKey<String>(value: final rowId)) {
-                final domainIndex = rowIds.indexOf(rowId);
-                return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
-              }
-              return null;
-            },
-            itemBuilder: (context, index) {
-              final entryId = rowIds[rowIds.length - index - 1];
-              return TranscriptRowReporter(
-                key: ValueKey(entryId),
-                rowId: entryId,
-                onMount: _onRowMount,
-                onUnmount: _onRowUnmount,
-                child: TranscriptPresence(
-                  entering: enteringRowIds.contains(entryId),
-                  exiting: false,
-                  onExited: null,
-                  child: _buildRow(
-                    entryId: entryId,
-                    messages: messages,
-                    indexById: indexById,
-                    rowTurns: rowTurns,
-                    transientSubmissions: transientSubmissions,
-                    transcript: transcript,
-                    streamingText: streamingText,
-                    retryErrorMessage: retryErrorMessage,
-                    isBusy: isBusy,
+      child: TranscriptPinchDetector(
+        onPointerDown: _onPinchPointerDown,
+        onPinchStart: _onPinchStart,
+        onFoldRequested: _onPinchFoldRequested,
+        onGestureEnd: _onPinchGestureEnd,
+        child: NotificationListener<Notification>(
+          onNotification: _onScrollNotification,
+          child: PregoHorizontalDragGestureDetector(
+            behavior: HitTestBehavior.translucent,
+            supportedDevices: _kRevealPointerDevices,
+            onHorizontalDragDown: _onRevealDragDown,
+            onHorizontalDragStart: _onRevealDragStart,
+            onHorizontalDragUpdate: _onRevealDragUpdate,
+            onHorizontalDragEnd: _onRevealDragEnd,
+            onHorizontalDragCancel: _onRevealDragCancel,
+            pendingRejectionSlop: _kRevealPendingRejectionSlop,
+            direction: PregoHorizontalDragDirection.left,
+            dragStartBehavior: DragStartBehavior.down,
+            child: ListView.builder(
+              key: _kListViewKey,
+              reverse: true,
+              controller: _follow.scrollController,
+              padding: EdgeInsetsDirectional.only(
+                start: widget.horizontalInset,
+                end: widget.horizontalInset,
+                top: 8 + widget.topInset,
+                bottom: 8 + widget.bottomInset,
+              ),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: rowIds.length,
+              findChildIndexCallback: (key) {
+                if (key case ValueKey<String>(value: final rowId)) {
+                  final domainIndex = rowIds.indexOf(rowId);
+                  return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
+                }
+                return null;
+              },
+              itemBuilder: (context, index) {
+                final entryId = rowIds[rowIds.length - index - 1];
+                return TranscriptRowReporter(
+                  key: ValueKey(entryId),
+                  rowId: entryId,
+                  onMount: _onRowMount,
+                  onUnmount: _onRowUnmount,
+                  child: TranscriptPresence(
+                    entering: enteringRowIds.contains(entryId),
+                    exiting: false,
+                    onExited: null,
+                    child: _buildRow(
+                      entryId: entryId,
+                      messages: messages,
+                      indexById: indexById,
+                      rowTurns: rowTurns,
+                      transientSubmissions: transientSubmissions,
+                      transcript: transcript,
+                      streamingText: streamingText,
+                      retryErrorMessage: retryErrorMessage,
+                      isBusy: isBusy,
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -925,26 +1013,37 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _endReveal();
   }
 
-  bool _onScrollNotification(ScrollNotification notification) {
-    final loadOlderMessages = widget.onLoadOlderMessages;
-    // Prefetch on scroll updates nearing the oldest edge, so paging back
-    // through history feels continuous. The scroll-end check is the fallback
-    // for a transcript too short to scroll: clamping physics emits no update
-    // at zero extent, only the end notification.
+  bool _onScrollNotification(Notification notification) {
+    // Nearing the oldest edge prefetches the older page, so paging back through
+    // history feels continuous. Scroll updates report it while scrolling; the
+    // metrics notification reports it after a layout without a scroll, such as
+    // the first page, a fold or a taller window, so a transcript shorter than
+    // the viewport pages on its own. The scroll-end check is the fallback for
+    // a transcript too short to scroll: clamping physics moves nothing at zero
+    // extent, so only the end notification reports the attempt. A nested
+    // scrollable's notifications (depth above 0) do not count.
     final nearingOldestEdge = switch (notification) {
-      ScrollUpdateNotification(:final metrics) => metrics.extentAfter < _kOlderPagePrefetchExtent,
-      ScrollEndNotification(:final metrics) => metrics.extentAfter == 0,
+      ScrollUpdateNotification(depth: 0, :final metrics) ||
+      ScrollMetricsNotification(depth: 0, :final metrics) => metrics.extentAfter < _kOlderPagePrefetchExtent,
+      ScrollEndNotification(depth: 0, :final metrics) => metrics.extentAfter == 0,
       _ => false,
     };
-    if (nearingOldestEdge &&
-        notification.metrics.axis == Axis.vertical &&
-        !_loadOlderCallbackInFlight &&
-        !widget.isLoadingOlderMessages &&
-        loadOlderMessages != null) {
-      _loadOlderCallbackInFlight = true;
-      unawaited(_loadOlderMessages(loadOlderMessages));
-    }
-    return _onNestedScrollNotification(notification);
+    if (nearingOldestEdge) _requestOlderPage();
+    return notification is ScrollNotification && _onNestedScrollNotification(notification);
+  }
+
+  void _checkOldestEdge() {
+    final position = _follow.scrollController.position;
+    if (position.hasContentDimensions && position.extentAfter < _kOlderPagePrefetchExtent) _requestOlderPage();
+  }
+
+  /// Asks for the page before the oldest message, unless the start of the
+  /// transcript is loaded or a page is already on its way.
+  void _requestOlderPage() {
+    final loadOlderMessages = widget.onLoadOlderMessages;
+    if (loadOlderMessages == null || _loadOlderCallbackInFlight || widget.isLoadingOlderMessages) return;
+    _loadOlderCallbackInFlight = true;
+    unawaited(_loadOlderMessages(loadOlderMessages));
   }
 
   Future<void> _loadOlderMessages(Future<void> Function() loadOlderMessages) async {
@@ -953,7 +1052,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     } catch (error, stackTrace) {
       loge("Failed to load older session messages", error, stackTrace);
     } finally {
-      if (mounted) _loadOlderCallbackInFlight = false;
+      if (mounted) {
+        _loadOlderCallbackInFlight = false;
+        if (_checkOldestEdgeAfterLoad) {
+          _checkOldestEdgeAfterLoad = false;
+          _checkOldestEdge();
+        }
+      }
     }
   }
 

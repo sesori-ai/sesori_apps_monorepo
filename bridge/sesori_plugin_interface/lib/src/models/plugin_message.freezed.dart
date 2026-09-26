@@ -416,15 +416,13 @@ as String,
 @JsonSerializable(createFactory: false)
 
 class PluginMessagePartTool extends PluginMessagePart {
-  const PluginMessagePartTool({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.tool, @JsonKey(includeToJson: true) required this.kind, @JsonKey(includeToJson: true) required this.state,  String? $type}): $type = $type ?? 'tool',super._();
+  const PluginMessagePartTool({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.tool, @JsonKey(includeToJson: true) required this.state,  String? $type}): $type = $type ?? 'tool',super._();
   
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
 @JsonKey(includeToJson: true) final  String? tool;
-/// What the call does, classified by the plugin from its own tool names.
-@JsonKey(includeToJson: true) final  PluginToolKind kind;
 @JsonKey(includeToJson: true) final  PluginToolState state;
 
 @JsonKey(name: 'type')
@@ -444,18 +442,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartTool&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.state, state) || other.state == state));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartTool&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,sessionID,messageID,tool,kind,state);
+    return Object.hash(runtimeType,id,sessionID,messageID,tool,state);
 }
 
 @override
 String toString() {
-    return 'PluginMessagePart.tool(id: $id, sessionID: $sessionID, messageID: $messageID, tool: $tool, kind: $kind, state: $state)';
+    return 'PluginMessagePart.tool(id: $id, sessionID: $sessionID, messageID: $messageID, tool: $tool, state: $state)';
 }
 
 
@@ -466,7 +464,7 @@ abstract mixin class $PluginMessagePartToolCopyWith<$Res> implements $PluginMess
   factory $PluginMessagePartToolCopyWith(PluginMessagePartTool value, $Res Function(PluginMessagePartTool) _then) = _$PluginMessagePartToolCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID,@JsonKey(includeToJson: true) String? tool,@JsonKey(includeToJson: true) PluginToolKind kind,@JsonKey(includeToJson: true) PluginToolState state
+ String id, String sessionID, String messageID,@JsonKey(includeToJson: true) String? tool,@JsonKey(includeToJson: true) PluginToolState state
 });
 
 
@@ -483,14 +481,13 @@ class _$PluginMessagePartToolCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? tool = freezed,Object? kind = null,Object? state = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? tool = freezed,Object? state = null,}) {
   return _then(PluginMessagePartTool(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
 as String,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
-as String?,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
-as PluginToolKind,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
+as String?,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as PluginToolState,
   ));
 }

@@ -818,67 +818,9 @@
   "sessionDetailShell": "Shell",
   "sessionDetailCommandRan": "Ran",
   "sessionDetailFollowOutput": "Follow",
-  "transcriptSummaryThought": "Thought",
-  "@transcriptSummaryThought": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript, present when the agent thought at least once, e.g. 'Thought · 3 steps'."
-  },
   "transcriptSummarySteps": "{count, plural, =1{1 step} other{{count} steps}}",
   "@transcriptSummarySteps": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many other tool calls the agent made, e.g. 'Thought · read 1 file · 3 steps'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptSummaryRead": "{count, plural, =1{read 1 file} other{read {count} files}}",
-  "@transcriptSummaryRead": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file reads the agent made, counted per call, e.g. 'Thought · read 2 files · ran 1 command'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptSummaryEdited": "{count, plural, =1{edited 1 file} other{edited {count} files}}",
-  "@transcriptSummaryEdited": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file edits the agent made, counted per call, e.g. 'read 2 files · edited 1 file'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptSummaryRan": "{count, plural, =1{ran 1 command} other{ran {count} commands}}",
-  "@transcriptSummaryRan": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many shell commands the agent ran, e.g. 'Thought · ran 3 commands'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptSummarySearches": "{count, plural, =1{1 search} other{{count} searches}}",
-  "@transcriptSummarySearches": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file or web searches the agent made, e.g. 'Thought · 2 searches · read 1 file'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptSummarySubAgents": "{count, plural, =1{1 sub-agent} other{{count} sub-agents}}",
-  "@transcriptSummarySubAgents": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many sub-agents the agent ran, e.g. '3 steps · 2 sub-agents'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptSummaryFailed": "{count, plural, =1{1 failed} other{{count} failed}}",
-  "@transcriptSummaryFailed": {
-    "description": "Last part of the one-line summary of a collapsed group of agent steps in a session transcript: how many of the steps failed, e.g. '3 steps · 1 failed'.",
+    "description": "The one-line summary of a collapsed group of agent steps in a session transcript: how many finished steps it holds, where every thinking block, tool call and sub-agent counts as one step, e.g. '7 steps'.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -951,6 +893,14 @@
         "type": "String"
       }
     }
+  },
+  "transcriptFoldAll": "Fold all turns",
+  "@transcriptFoldAll": {
+    "description": "Label of the session toolbar button that folds every turn of the transcript to one line each."
+  },
+  "transcriptUnfoldAll": "Unfold all turns",
+  "@transcriptUnfoldAll": {
+    "description": "Label of the session toolbar button that unfolds every folded turn of the transcript."
   },
   "sessionDetailJumpToLatest": "Jump to latest",
   "@sessionDetailJumpToLatest": {

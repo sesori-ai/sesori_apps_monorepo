@@ -4,7 +4,7 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 7.b (PR 11/14) — activation verified and architecture-approved; ready for publication.
+- Current step: 7.b (PR 11/14) — [#1780](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1780) open; CI/review pending.
   Branch: `sesori/opencode-v2-step-7b-activation`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
@@ -217,7 +217,10 @@
   do not satisfy them.
 - First architecture implementation review approved the complete range `a7c3f49ae5...594ef58e7e` with no findings:
   all 20 paths, 1,248 additions + 143 deletions = 1,391 authored changed lines, no generated churn. Applied
-  A1–A13 and B-Bridge B-B1–B-B6; B-Client/B-Shared were not applicable. No production changes followed review.
+  A1–A13 and B-Bridge B-B1–B-B6; B-Client/B-Shared were not applicable. No task-specific production changes followed review.
+- Merged incoming `main` at `a10540c018` after the publication-time conflict. Retained its tool-kind removal and
+  the active-v2 capability section; only capability documentation required manual resolution. The incoming v1/v2
+  mapper changes passed 46 affected mapper/event/facade cases and owning-package fatal-info analysis.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.

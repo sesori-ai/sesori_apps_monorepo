@@ -58,6 +58,21 @@ sender and parts, at the point the model received it. Verified on
 **2026-09-26** with native Claude Code **2.1.281** captures and live rows the
 bridge stored from CLIs 2.1.237 to 2.1.281.
 
+## Transcript turn boundaries
+
+The client groups a transcript into turns from its messages alone, so a
+follow-up sent while a turn runs stays inside that turn only where the harness
+delivers it into the running turn. See
+`docs/regression/transcript-turn-navigation.md`.
+
+| Harness | Follow-up sent while a turn runs | Stays in the running turn |
+|---|---|---|
+| Claude Code | Taken at the next tool boundary; history replays it where the model received it | ✅ |
+| Codex | `turn/start` steers the active turn | ✅ |
+| Pi | Sent with the `steer` streaming behavior | ✅ |
+| OpenCode | Sent at once into the running turn | ✅ |
+| ACP family: Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes, OMP | Stop-and-send: the bridge cancels the turn, then sends | 🚫 Opens a new turn: ACP v1 has no steering operation, and no ACP plugin overrides the shared stop-and-send (checked in code on 2026-09-26). |
+
 ## Quota-reset auto continuation
 
 Claude/Pi also implement named-session readiness for idle, retry, queued work
@@ -192,20 +207,6 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 | OpenCode | ✅ Native tool part `title`. |
 | Codex | ✅ Argument-derived title (`cmd`, `command`, `path`, `filePath`, `query`, else bounded raw arguments). |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ Agent-supplied ACP `tool_call` title, when the agent sends one; Sesori does not derive titles from ACP inputs. A call without `kind` uses its title as the tool name and drops the title, so the card does not say it twice. |
-
-## Tool kinds
-
-Each plugin classifies its own tool names into read, edit, command, search or
-other, and the transcript summary names calls by kind (“read 2 files · ran 1
-command”). Other calls count as plain steps.
-
-| Harness | Status and kind source |
-|---|---|
-| Claude | ✅ Built-in names: `Read`/`NotebookRead`; `Edit`/`MultiEdit`/`NotebookEdit`/`Write`; `Bash`; `Grep`/`Glob`/`LS`/`WebSearch`. MCP and other tools are other. |
-| OpenCode | ✅ Built-in names: `read`; `edit`/`multiedit`/`write`/`patch`/`apply_patch`; `bash`; `grep`/`glob`/`list`/`codesearch`/`websearch`. |
-| Pi | ✅ Built-in names: `read`; `edit`/`write`; `bash`; `grep`/`find`/`ls`. Extension tools are other. |
-| Codex | ✅ Partial: shell calls are commands, file changes are edits and web searches are searches. Codex reads and searches files through shell commands, so those count as commands, not reads. |
-| Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ The ACP tool `kind`: `read`; `edit`/`delete`/`move`; `execute`; `search`. A call without a `kind`, or with `fetch`, `think` or `other`, counts as a plain step. |
 
 ## OpenCode v2 adapter
 

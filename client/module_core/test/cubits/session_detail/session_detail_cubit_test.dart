@@ -371,6 +371,30 @@ void main() {
         expect(emitted.map((state) => (state as SessionDetailLoaded).transcriptFolded), [true, false]);
       });
 
+      test("reports a fold once, and an unfold or a repeated fold reports nothing", () async {
+        final cubit = await loadedCubit(pageSessionId: sessionId);
+        clearInteractions(mockProductAnalyticsService);
+
+        cubit.setTranscriptFolded(folded: true);
+        cubit.setTranscriptFolded(folded: true);
+        await pumpEventQueue();
+        verify(
+          () => mockProductAnalyticsService.logEvent(
+            event: const ProductAnalyticsEvent.transcriptTurnsFolded(),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        ).called(1);
+
+        cubit.setTranscriptFolded(folded: false);
+        await pumpEventQueue();
+        verifyNever(
+          () => mockProductAnalyticsService.logEvent(
+            event: any(named: "event"),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        );
+      });
+
       test("keeps the fold through a full reload, while another session starts unfolded", () async {
         final cubit = await loadedCubit(pageSessionId: sessionId);
         cubit.setTranscriptFolded(folded: true);

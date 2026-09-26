@@ -2485,53 +2485,11 @@ abstract class AppLocalizations {
   /// **'Follow'**
   String get sessionDetailFollowOutput;
 
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript, present when the agent thought at least once, e.g. 'Thought · 3 steps'.
-  ///
-  /// In en, this message translates to:
-  /// **'Thought'**
-  String get transcriptSummaryThought;
-
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many other tool calls the agent made, e.g. 'Thought · read 1 file · 3 steps'.
+  /// The one-line summary of a collapsed group of agent steps in a session transcript: how many finished steps it holds, where every thinking block, tool call and sub-agent counts as one step, e.g. '7 steps'.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 step} other{{count} steps}}'**
   String transcriptSummarySteps(int count);
-
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file reads the agent made, counted per call, e.g. 'Thought · read 2 files · ran 1 command'.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{read 1 file} other{read {count} files}}'**
-  String transcriptSummaryRead(int count);
-
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file edits the agent made, counted per call, e.g. 'read 2 files · edited 1 file'.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{edited 1 file} other{edited {count} files}}'**
-  String transcriptSummaryEdited(int count);
-
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many shell commands the agent ran, e.g. 'Thought · ran 3 commands'.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{ran 1 command} other{ran {count} commands}}'**
-  String transcriptSummaryRan(int count);
-
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file or web searches the agent made, e.g. 'Thought · 2 searches · read 1 file'.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 search} other{{count} searches}}'**
-  String transcriptSummarySearches(int count);
-
-  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many sub-agents the agent ran, e.g. '3 steps · 2 sub-agents'.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 sub-agent} other{{count} sub-agents}}'**
-  String transcriptSummarySubAgents(int count);
-
-  /// Last part of the one-line summary of a collapsed group of agent steps in a session transcript: how many of the steps failed, e.g. '3 steps · 1 failed'.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 failed} other{{count} failed}}'**
-  String transcriptSummaryFailed(int count);
 
   /// Part of the one line a folded turn of a session transcript shows: how many steps the agent took in it, e.g. '3 steps · 1m 02s — Fixed the failing test'.
   ///
@@ -2586,6 +2544,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{hours}h {minutes}m'**
   String transcriptTurnHours(int hours, String minutes);
+
+  /// Label of the session toolbar button that folds every turn of the transcript to one line each.
+  ///
+  /// In en, this message translates to:
+  /// **'Fold all turns'**
+  String get transcriptFoldAll;
+
+  /// Label of the session toolbar button that unfolds every folded turn of the transcript.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfold all turns'**
+  String get transcriptUnfoldAll;
 
   /// Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages.
   ///

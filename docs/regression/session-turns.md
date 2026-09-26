@@ -674,7 +674,9 @@ Vary prompt shape, prompt versus slash command, explicit versus default
 agent/model, aborting early versus late, sending while busy to steer at a tool
 boundary where supported or stop-and-send over ACP, sending a command or
 selection change that must wait, cancelling before dispatch, leaving and
-reopening while an entry is visible, turn length, and client count. For
+reopening while an entry is visible, turn length, and client count. Where a
+busy follow-up lands also decides its transcript turn; run the busy send with
+`transcript-turn-navigation.md`'s follow-up check. For
 Antigravity, vary first-turn account defaults, normalized model plus High/Medium/Low variants, exact native dispatch,
 live/replay metadata, slash commands, early and late abort, two sessions, process exit and lazy reconnect. For Hermes,
 include text and image prompts, tool updates, a permission decision, cold history

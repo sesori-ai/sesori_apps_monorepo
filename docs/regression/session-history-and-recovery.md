@@ -178,7 +178,12 @@ reconnect or restart.
   transcript.
 - Client history uses a reversed list. Nearing its oldest edge prefetches the
   next page, one request at a time, so paging back through history rarely stops
-  dead at the edge; prepended rows become visible without shifting the detached
+  dead at the edge. The check also runs after layout without any scroll: a
+  first page, a fold, or a taller window that leaves the oldest edge within
+  reach loads the next page, and pages keep loading until the screen fills or
+  the start of the transcript is loaded. A failed page is not retried on its
+  own; the next scroll, layout change or finished refresh asks again. A page a
+  silent refresh dropped or discarded is asked for again when the refresh ends. Prepended rows become visible without shifting the detached
   reading position or admitting messages and streaming changes that arrived at
   the newest edge while detached.
 - After a reconnect inside the replay window, buffered events are delivered;
@@ -285,7 +290,8 @@ bridge restart, and forced ACP process replacement for the same imported
 session. For Grok, also vary a changed loaded model/effort and confirm replay
 uses the loaded tuple without replacing live defaults. Vary root versus child
 sessions and content types, since tool and image parts converge by their own
-rules where supported.
+rules where supported. Page back and re-import with turns folded too:
+`transcript-turn-navigation.md` owns how turn boundaries react to both.
 
 ## Failure Signals
 

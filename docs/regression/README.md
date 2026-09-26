@@ -174,6 +174,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Plugin runtime installation](plugin-runtime-installation.md)
 - [Plugin setup and lifecycle](plugin-setup-and-lifecycle.md)
 - [Popup alerts](popup-alerts.md)
+- [Prego button interactions](prego-button-interactions.md)
 - [Projects and sessions](projects-and-sessions.md)
 - [Provider route conformance](provider-route-conformance.md)
 - [Pull request monitoring](pull-request-monitoring.md)
@@ -184,4 +185,5 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Session history and recovery](session-history-and-recovery.md)
 - [Session turns](session-turns.md)
 - [Tools and file changes](tools-and-file-changes.md)
+- [Transcript turn navigation](transcript-turn-navigation.md)
 - [Voice input](voice-input.md)
