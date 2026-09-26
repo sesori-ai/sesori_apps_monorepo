@@ -33,6 +33,10 @@ class const SesoriLogo({
   static const Offset _squareOrigin = Offset(15.3334, 2.66663);
   static const double _squareRadius = 30.6667;
 
+  /// Keeps every logo's bevel cached as an image. Snapshotting is never
+  /// toggled or cleared, so this shared controller needs no disposal.
+  static final SnapshotController _bevelSnapshot = SnapshotController(allowSnapshotting: true);
+
   @override
   Widget build(BuildContext context) {
     final scale = squareSize / _svgSquare;
@@ -90,8 +94,17 @@ class const SesoriLogo({
           Positioned.fromRect(
             rect: squareRect,
             child: IgnorePointer(
-              child: CustomPaint(
-                painter: _BevelPainter(radius: radius, scale: scale),
+              // Impeller draws the bevel's blurred rect-with-a-hole paths with
+              // offscreen blur passes and has no raster cache, so repainting
+              // them (every scroll frame in settings) drops frames. The bevel
+              // is static: rasterize it once and draw the image. autoresize
+              // re-snapshots when squareSize changes.
+              child: SnapshotWidget(
+                controller: _bevelSnapshot,
+                autoresize: true,
+                child: CustomPaint(
+                  painter: _BevelPainter(radius: radius, scale: scale),
+                ),
               ),
             ),
           ),
