@@ -244,15 +244,18 @@ sub-agents finish.
 | Grok | ❌ No time: no message or child session carries one, so the row shows no timer. | ✅ `session/prompt` at once while the root is idle. A prompt sent during the wake turn that follows a finished sub-agent cancels that turn and is then answered. |
 | Cursor, Antigravity, Copilot, Hermes, OMP, Pi | Not applicable: no running sub-agent lifecycle reaches the client, so the row never shows. | Not applicable. |
 
-## OpenCode v2 adapter (not yet active)
+## OpenCode v2 adapter
 
-The staged adapter targets the public 2.0.11–2.0.16 API; active v1 behavior is unchanged.
+Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.0.18.
+V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the native database one-way.
 
 | Capability | Status |
 |---|---|
 | Explicit parent-linked creation | Not supported by the native create API; refused before mutation. Native forks remain standalone roots, never children of their source. |
 | Conditional/external form rendering | Not implemented; native-only. Visible replies preserve native keys/types and numeric bounds; native validation remains authoritative. |
 | Native archival | Not supported; archival stays in the bridge database. |
+| Prompt/compaction correlation | Implemented with caller-supplied native IDs and stateless projection. |
+| Custom-command correlation | Not supported by the native command route: no caller ID or result ID is exposed. Command dispatch still waits for native acceptance. |
 
 ## Managed runtime
 
@@ -565,7 +568,8 @@ row, which opens the carried-forward summary when the harness exposes it.
 | Harness | Compaction row | Summary |
 |---|---|---|
 | Claude | ✅ | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.281). |
-| OpenCode | ✅ | ✅ The text of the `summary: true` assistant message. |
+| OpenCode v1 | ✅ | ✅ The text of the `summary: true` assistant message. |
+| OpenCode v2 | ✅ | ✅ The completed native compaction message's `summary`; a running snapshot is not a completed marker. |
 | Pi | ✅ | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
 | Codex | ✅ | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
 | DeepSeek | ⬜ | ⬜ The runtime reports a live `compaction_completed` status without message identity or a replayable history record, so Sesori maps it only to a session-compacted event; a live-only row would vanish on reload. |
@@ -590,7 +594,9 @@ end with `session.prompt-settled` so clients can remove its optimistic row.
 | Harness | Status and settlement source |
 |---|---|
 | Claude | ✅ Command dispatch publishes a correlated synthetic user message. |
-| OpenCode | ✅ Reserved message identity correlates the backend user echo. |
+| OpenCode v1 | ✅ Correlated backend user echoes cover prompts, commands and manual compaction. |
+| OpenCode v2 prompts / fallback compaction | ✅ Caller-supplied native IDs correlate prompt echoes; completed or failed compaction snapshots emit explicit prompt settlement. |
+| OpenCode v2 native commands | 🚫 The 2.0.18 command route exposes neither caller nor result message identity. There is no correlated echo or explicit settlement; an optimistic command row can remain after acceptance. |
 | Codex | ✅ Turn-backed commands correlate their user echo; native `compact` emits explicit prompt settlement because it returns no turn identity. |
 | Pi | ✅ User echoes and agent-running fallback synthesis remain transcript-backed; an accepted slash command with no agent work emits explicit prompt settlement after its state barrier. |
 | Antigravity, Copilot, Cursor, Hermes, OMP, DeepSeek, Grok | ✅ Shared ACP dispatch publishes a correlated user message; no silent accepted-command path is exposed. |

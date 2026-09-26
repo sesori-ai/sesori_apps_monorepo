@@ -48,8 +48,10 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   and never delays the route response, recording, or transcription.
 - Glossary population derives an exact opaque repository or bridge-local scope, caches the validated key for later
   current-project responses, scans bounded local Git/filesystem evidence, filters credential-shaped content before
-  tokenization, and reconciles at most 50 deterministic terms. Only the opaque scope and filtered terms leave the
-  bridge. Scope, scan, or publication failure leaves voice input available without an updated glossary.
+  tokenization, and reconciles at most 100 deterministic terms. Terms are whole ASCII identifiers; common English
+  words and their simple inflections, generic scaffolding names, hash/serial fragments, and a plural beside its
+  singular are dropped. Only the opaque scope and filtered terms leave the bridge. Scope, scan, or publication failure
+  leaves voice input available without an updated glossary.
 - The preference defaults to voice-first, persists, and falls back to voice-first on a corrupt or unknown stored
   value.
 - Mobile Settings groups Harnesses and Default input under Sessions. The keyboard row shows the live
@@ -65,7 +67,7 @@ independently prepares optional project-scoped vocabulary from bounded local evi
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, current-project/active-view glossary triggers, serialized bounded inference, exact-scope reconciliation, and shutdown cancellation. |
+| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, current-project/active-view glossary triggers, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, and shutdown cancellation. |
 | L3 Release | Mobile client E2E: [recording and preference navigation](#client-release-coverage-l3). |
 | L4 Extended | Client end to end on iOS: change harness availability from another surface while recording and while transcription is pending; no text or send lands after the block, and voice returns only after session prerequisites recover. Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording. |
@@ -100,6 +102,7 @@ interruptions such as a call.
   abandonment duplicates a submission or lets a retry finish into the cleared composer; cleanup is not attempted on
   terminal paths; a deletion failure is unlogged; or the wake lock stays held.
 - Audio is uploaded despite denied permission, or denial is reported as a generic network or server failure.
+- A project glossary contains connector or everyday English words, or exceeds 100 terms.
 - Text is sent without review, or a message with surviving voice text is classified as typed.
 - Any audio, transcript, or prompt content reaches logs or analytics; raw project identity, project paths, repository
   origins, filenames, or metadata source text reach auth voice transport; glossary failure blocks recording or

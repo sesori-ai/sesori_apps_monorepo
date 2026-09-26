@@ -17,6 +17,8 @@ class ProjectGlossaryPopulationService({
   required final ProjectGlossaryTermCalculator _termCalculator,
   required final ProjectGlossaryPublicationRepository _publicationRepository,
 }) {
+  // The auth server's per-request word limit. Every desired word is added in
+  // one request, so this also caps the glossary size.
   static const int _maximumMutationWords = 100;
 
   final ParallelLock _populationLock = ParallelLock(maxParallelOperations: 1);
@@ -43,7 +45,7 @@ class ProjectGlossaryPopulationService({
             if (scope == null || !_accepting) return;
 
             final source = await _glossaryRepository.loadSource(projectPath: project.path);
-            final desiredWords = _termCalculator.calculate(source: source);
+            final desiredWords = _termCalculator.calculate(source: source, maximumTerms: _maximumMutationWords);
             if (!_accepting) return;
 
             final existingWords = await _publicationRepository.getWords(projectKey: scope.projectKey);

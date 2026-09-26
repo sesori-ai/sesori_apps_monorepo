@@ -5,6 +5,7 @@ export "src/extensions/appearance_mode_x.dart";
 export "src/extensions/build_context_x.dart";
 export "src/extensions/login_failed_reason_x.dart";
 export "src/extensions/remote_failure_x.dart";
+export "src/features/feedback/feedback_sheet.dart";
 export "src/features/login/email_login_form.dart";
 export "src/features/new_session/new_session_header.dart";
 export "src/features/new_session/new_session_plugin_chooser.dart";

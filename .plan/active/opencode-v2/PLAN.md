@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-v2`
-- **Status:** Active; through Step 6.b merged, Step 7.a writes/forms verified and architecture-approved; ready for PR 10/14.
+- **Status:** Active; through Step 8 merged (#1794). Step 9 reconciles docs for PR 13/14; final L3 coverage remains required.
 - **Plan date:** 2026-09-25
 - **Implementation base:** `main` at `fed841c2f9`
 - **Trigger:** issue #1677 — OpenCode 2.0.11 on PATH fails cold start with `FormatException ... <!doctype html>`.
@@ -47,7 +47,7 @@ Verified against source tags `v2.0.11` / `v2.0.16` and a sandboxed live `opencod
 - **Codegen:** `tool/generate_opencode_client.dart` generates v2 REST models from `packages/protocol/openapi.json`
   (trial run: 71 models, no errors). The event union is opaque in the spec (`V2EventEncoded` is a JSON string), so v2
   events need a hand-written manifest like v1's `tool/opencode_events_v1.json`.
-- **Distribution:** v2 ships as npm packages `@opencode/cli-<target>` (latest `2.0.16`). All six managed targets exist:
+- **Distribution:** v2 ships as npm packages `@opencode/cli-<target>` (Step 8 selects `2.0.18`). All six managed targets exist:
   darwin, linux and windows, each on arm64 and x64. Each tarball holds `package/bin/opencode[.exe]`, which
   `ArchiveRuntimeAsset.archiveBinaryName` already supports as a nested path. The GitHub "latest" release and
   `opencode.ai/install` still ship 1.18.x.
@@ -69,8 +69,8 @@ Verified against source tags `v2.0.11` / `v2.0.16` and a sandboxed live `opencod
   `200` no longer counts as healthy.
 - **D4 — Version bounds.**
   - v2 minimum is `2.0.11`. The descriptor refuses anything below it with `PluginStartException`.
-  - The generated models and the managed runtime target `2.0.16`, or whatever v2 is latest when Step 8 lands; if so,
-    the models are regenerated from that tag in the same PR.
+  - Step 8 selects the latest stable v2, `2.0.18` (`cd9a14a6b688d4021bee381dfd39d2cef9c0f862`),
+    and regenerates models from that tag in the same PR. The consumed model/event shapes are unchanged.
   - `minPathVersion` stays `1.14.0`, so a v1 PATH install is still used as-is, because PATH is authoritative.
 - **D5 — Catalog snapshot.** `OpenCodeCatalogRepository.read` returns `PluginCatalogSnapshotUnavailable` when the
   database contains `session_v2`, and the existing live import runs. Reading the v2 schema directly is out of scope.
@@ -116,6 +116,8 @@ Verified against source tags `v2.0.11` / `v2.0.16` and a sandboxed live `opencod
 - New v2-only features: inbox/queue, revert, shell, fork.
 - `opencode upgrade` v2 awareness. That belongs to the `path-runtime-authority-split` plan's updater step.
 - The orphaned `serve` child from #1677, which is tracked separately if it reproduces.
+- Runtime updates for the other ten registered harnesses: Antigravity, Codex, Copilot, Cursor, Claude,
+  Hermes, Pi, OMP, DeepSeek and Grok. This approved plan explicitly scopes the update to OpenCode.
 
 ## Layout
 
@@ -179,13 +181,13 @@ no history rewrite, compatibility shim or new mutable owner is needed. Count all
    - `SseConnection` takes its event path as a parameter.
    - `V2EventParser` decodes the envelope; unknown types are logged and dropped.
    - Tests: `MockClient` HTTP tests and parser tests.
-5.a. **⚙️ v2 catalog normalization (PR 5/12).**
+5.a. **⚙️ v2 catalog normalization (PR 5/14).**
    - `V2ModelMapper`: project and session (`location.directory`, `time`, `parentID`) → plugin models and
      `shared.Session`; agents, providers/models/variants, commands and form/permission presentation.
    - `V2AgentNames`: immutable catalog lookup keeps display names in selections and session defaults,
      with reverse translation to native IDs inside the plugin. No cache or mutable lifecycle owner.
    - Tests: native 2.0.16 catalog/session fixtures and source-derived form projection cases.
-5.b. **🚧 v2 transcript mapping (PR 6/12).**
+5.b. **🚧 v2 transcript mapping (PR 6/14).**
    - Restore the transcript mapper and typed tool-display DTOs preserved in `ef5015416a`.
    - Flat v2 messages → existing plugin message/part models. Text/reasoning retain `<messageID>:<ordinal>`;
      tools retain their native tool IDs. Apply the catalog's agent-name lookup at projection boundaries.
@@ -194,7 +196,7 @@ no history rewrite, compatibility shim or new mutable owner is needed. Count all
    - Include assistant retry metadata (`<messageID>:retry`, independent of content growth) and
      system-authored agent-switch notices (`<messageID>:0`) raised during #1733 review.
    - Source-derived transcript tests; no caches, timers, persistence or lifecycle owners.
-5.c. **🚧 v2 repository integration (PR 7/12).**
+5.c. **🚧 v2 repository integration (PR 7/14).**
    - `OpenCodeV2Repository` (Api → mapped plugin models) reads projects, sessions, children, messages, agents, models
      with variants and commands. Root paging uses the native project-ID filter across worktrees; canonical project
      identity stays separate from an opened directory. Project activity comes only from root sessions.
@@ -255,9 +257,11 @@ no history rewrite, compatibility shim or new mutable owner is needed. Count all
        (the D4 check stays in the descriptor), and passes the protocol to `_defaultBuildApi`.
      - `_defaultBuildApi` switches on the protocol to construct `OpenCodePlugin` or `OpenCodeV2Plugin`.
      - The Step 2 blanket refusal is removed.
-     - `--no-auto-start` with no server at start (`handle == null`) has no protocol to probe. Decide how the
-       server that appears later gets its adapter: probe on late connect, or require a bridge restart. Today
-       that path silently builds the v1 adapter.
+     - `--no-auto-start` with no server at start (`handle == null`) has no protocol to probe. Preserve degraded
+       v1 recovery; a later v2 server requires a bridge restart for adapter selection. Do not add runtime switching.
+   - Preserve supported prompt/compaction correlation using native caller-supplied message IDs and stateless ID
+     projection, not another correlation map. Native custom commands return 204 and accept no ID; document that gap.
+   - Normalize raw HTTP failures into typed plugin failures at the API boundary, retaining the original cause.
    - Tests: a plugin test against a loopback fake v2 server, as the v1 impl test does.
 8. **🌿 Managed runtime on v2 (D9).**
    - `OpenCodeRuntimeManifest`:
@@ -267,14 +271,20 @@ no history rewrite, compatibility shim or new mutable owner is needed. Count all
        the downloaded tarballs;
      - `downloadUrlFor` returns `https://registry.npmjs.org/@opencode/cli-<target>/-/cli-<target>-<version>.tgz`.
    - The class doc's bump procedure is updated for npm.
-   - Tests: manifest tests, plus an install-service test extracting a nested-path tarball if none exists.
+   - Regenerate v2 REST models and audit/regenerate SSE against the selected tag; keep v1 output unchanged.
+   - Tests: all six manifest mappings and single-binary nested-path placement, plus model/API/event coverage.
+     Exercise the production installer/version validator and authenticated REST/SSE startup on isolated macOS arm64.
+   - Complexity budget: static release facts only, reusing the existing installer/extractor/validator. No new mutable
+     state, production classes, dependencies or contracts. Final-stage L3 and v1-upgrade checks remain required.
 9. **🌱 Reconcile docs.**
    - `docs/HARNESS_CAPABILITIES.md`: v2 row, D7 gaps and the managed v2 runtime.
    - `docs/regression/plugin-setup-and-lifecycle.md`: v2 detection, bounds, health and the managed target.
    - `docs/regression/plugin-runtime-installation.md`: npm asset source.
-   - `docs/regression/projects-and-sessions.md`: catalog guard.
-   - Touch `session-turns.md`, `session-history-and-recovery.md` and `session-creation-and-options.md` only where v2
-     behavior differs.
+   - `docs/regression/projects-and-sessions.md`: catalog guard, canonical/worktree identity and standalone forks.
+   - Reconcile `session-turns.md`, `session-history-and-recovery.md`, `session-creation-and-options.md` and
+     `questions-and-permissions.md` only where v2 differs: correlation and native-command gaps, replay/readback,
+     explicit parent refusal, typed form replies and native-only conditional/external rendering.
+   - Preserve the matrix below; documentation and startup-only probes do not satisfy native L3 coverage.
 10. **🌱 Run coverage and retire.** Run the matrix below, record the results, and move the plan to
     `.plan/completed/`.
 
@@ -308,11 +318,14 @@ requires the user's explicit acceptance recorded here.
 - **Flat-content → part mapping fidelity** for tool metadata and diffs. Accepted: tool output and state are mapped;
   rare metadata-only fields may not render.
 - **Managed users migrate one-way** to a v2 database (D9, user-accepted).
-- **Evidence level:** protocol facts include a live sandbox probe and Step 5 native catalog/session REST fixtures.
-  Transcript/form examples and streaming event order remain source-derived; native turn/event parity still requires
-  the later native-fixture and L3 gates.
+- **Evidence level:** protocol facts include Step 5 native catalog/session REST fixtures and Step 8's sandboxed
+  production install/version validation and authenticated REST/SSE startup. Transcript/form examples and streaming
+  event order remain source/fixture-derived; real-provider turn/history/write parity and native reconnect still
+  require the final L3 matrix.
 
 ## Cleanup Assessment
 
 No v1 code becomes obsolete, because v1 stays supported on PATH and through explicit binaries. Step 2's refusal branch
-is removed by Step 7.b. The v1.18.32 GitHub asset pins are replaced in Step 8. No other cleanup was found.
+was removed in Step 7.b. The v1.18.32 GitHub asset pins were replaced in Step 8. Step 9 scopes the old v1-only command,
+compaction-correlation and best-effort hydration documentation rather than applying those claims to v2. No other
+cleanup was found.

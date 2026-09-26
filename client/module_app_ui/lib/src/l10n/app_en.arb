@@ -577,6 +577,96 @@
   "settingsSupportEmail": "Email",
   "settingsSupportDiscord": "Discord",
   "settingsSupportX": "DM on X",
+  "settingsRateSesori": "Rate Sesori",
+  "@settingsRateSesori": {
+    "description": "Settings account row that opens the rating sheet"
+  },
+  "feedbackRatingTitle": "Are you enjoying Sesori?",
+  "feedbackLove": "Yes, love it!",
+  "@feedbackLove": {
+    "description": "Positive answer on the rating sheet; starts the celebration"
+  },
+  "feedbackCouldBeBetter": "Could be better",
+  "@feedbackCouldBeBetter": {
+    "description": "Negative answer on the rating sheet"
+  },
+  "feedbackClose": "Close feedback",
+  "@feedbackClose": {
+    "description": "Accessibility label of the rating sheet's close button"
+  },
+  "feedbackReviewTitle": "Thanks! Leave a review?",
+  "@feedbackReviewTitle": {
+    "description": "Title of the rating sheet step shown after the user said they love the app"
+  },
+  "feedbackReviewBody": "It takes a minute and helps other developers find Sesori.",
+  "@feedbackReviewBody": {
+    "description": "Body of the review confirmation step"
+  },
+  "feedbackLeaveReview": "Leave a review",
+  "@feedbackLeaveReview": {
+    "description": "Confirms opening the store review page"
+  },
+  "feedbackNotNow": "Not now",
+  "@feedbackNotNow": {
+    "description": "Closes the rating sheet without opening the store"
+  },
+  "feedbackPrivateTitle": "What should we improve?",
+  "@feedbackPrivateTitle": {
+    "description": "Title of the private feedback step after Could be better"
+  },
+  "feedbackIssueHardToNavigate": "Hard to navigate",
+  "@feedbackIssueHardToNavigate": {
+    "description": "Private feedback issue pill"
+  },
+  "feedbackIssueConnectionDrops": "Connection drops",
+  "@feedbackIssueConnectionDrops": {
+    "description": "Private feedback issue pill"
+  },
+  "feedbackIssueNotificationsMissing": "Notifications don’t arrive",
+  "@feedbackIssueNotificationsMissing": {
+    "description": "Private feedback issue pill"
+  },
+  "feedbackIssueAppSlow": "App feels slow",
+  "@feedbackIssueAppSlow": {
+    "description": "Private feedback issue pill"
+  },
+  "feedbackMessageHint": "Example: Hard to navigate",
+  "@feedbackMessageHint": {
+    "description": "Placeholder of the private feedback text field"
+  },
+  "feedbackRecipient": "Sent privately to the Sesori team.",
+  "@feedbackRecipient": {
+    "description": "Quiet line below the private feedback text field saying who receives it"
+  },
+  "feedbackSend": "Send feedback",
+  "@feedbackSend": {
+    "description": "Accessibility label of the private feedback send button"
+  },
+  "feedbackSendFailed": "Couldn’t send feedback. Your draft is still here.",
+  "@feedbackSendFailed": {
+    "description": "Inline error after private feedback failed to send"
+  },
+  "feedbackRetry": "Retry",
+  "@feedbackRetry": {
+    "description": "Retries sending private feedback"
+  },
+  "feedbackCancel": "Cancel",
+  "@feedbackCancel": {
+    "description": "Closes the private feedback step without sending"
+  },
+  "feedbackSent": "Feedback sent. Thank you!",
+  "@feedbackSent": {
+    "description": "Toast after private feedback was sent"
+  },
+  "feedbackCharactersLeft": "{count, plural, =1{1 character left} other{{count} characters left}}",
+  "@feedbackCharactersLeft": {
+    "description": "Counter shown when the private feedback text nears its length limit",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "settingsSectionLegal": "Legal",
   "settingsLegalTerms": "Terms of service",
   "settingsLegalPrivacy": "Privacy policy",
