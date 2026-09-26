@@ -252,12 +252,11 @@ class const _IssuePill({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final selectionTint = prego.colors.bgBrandHover;
+    // A light brand tint over the unselected fill, like a selected session
+    // tile, so the pill reads as chosen in both themes.
     final selectedFill = Color.alphaBlend(
-      Theme.of(context).brightness == Brightness.dark
-          ? selectionTint
-          : selectionTint.withValues(alpha: selectionTint.a / 2),
-      prego.colors.bgSurface2,
+      prego.colors.bgBrandSolid.withValues(alpha: 0.16),
+      prego.colors.bgSurface5,
     );
     return Semantics(
       label: label,
@@ -284,7 +283,11 @@ class const _IssuePill({
                   decoration: BoxDecoration(
                     color: Color.lerp(prego.colors.bgSurface5, selectedFill, progress),
                     borderRadius: BorderRadius.circular(PregoRadius.full),
-                    border: Border.all(color: prego.colors.borderSecondary),
+                    border: Border.all(
+                      color:
+                          Color.lerp(prego.colors.borderSecondary, prego.colors.borderBrand, progress) ??
+                          prego.colors.borderSecondary,
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -310,7 +313,9 @@ class const _IssuePill({
                       Flexible(
                         child: Text(
                           label,
-                          style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary),
+                          style: prego.textTheme.textMd.medium.copyWith(
+                            color: Color.lerp(prego.colors.textSecondary, prego.colors.textBrandPrimary, progress),
+                          ),
                         ),
                       ),
                     ],
