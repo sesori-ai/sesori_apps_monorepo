@@ -289,8 +289,8 @@ Fixed titles live in [TRACKER](TRACKER.md#fixed-pr-titles).
    - Add `FeedbackApi`, `FeedbackSubmitRequest`, `FeedbackRepository`,
      `FeedbackIssue`, `FeedbackSource`, `InstalledAppBuildSource.readVersion()`
      and `AppReviewClient` (store page only in this step).
-   - Settings: a **Rate Sesori** row in the Support section of the mobile
-     `SettingsView`. Yes → celebration → store write-review page. Could be
+   - Settings: a **Rate Sesori** row, second in the Account section of the
+     mobile `SettingsView`. Yes → celebration → store write-review page. Could be
      better → private step (typing only; the voice button arrives in step 4)
      → submit to `/feedback` → top toast. Errors keep the draft.
    - Delete the preview launcher, simulated states, `FEEDBACK_PREVIEW.md` and

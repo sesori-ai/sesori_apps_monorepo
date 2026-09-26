@@ -1005,15 +1005,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get feedbackReviewTitle => 'Thanks! Leave a review?';
 
   @override
-  String feedbackReviewBody(String store) {
-    return 'It takes a minute on $store and helps other developers find Sesori.';
-  }
-
-  @override
-  String get feedbackStoreAppStore => 'the App Store';
-
-  @override
-  String get feedbackStoreGooglePlay => 'Google Play';
+  String get feedbackReviewBody => 'It takes a minute and helps other developers find Sesori.';
 
   @override
   String get feedbackLeaveReview => 'Leave a review';

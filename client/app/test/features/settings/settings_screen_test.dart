@@ -754,6 +754,16 @@ void main() {
     ).called(1);
   });
 
+  testWidgets("Rate Sesori is the Account section's second row", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    final rateTop = tester.getTopLeft(find.text("Rate Sesori")).dy;
+    expect(tester.getTopLeft(find.text("Account").last).dy, lessThan(rateTop));
+    expect(rateTop, lessThan(tester.getTopLeft(find.text("Bridge")).dy));
+  });
+
   testWidgets("Rate Sesori opens the store only after the confirmed sheet has closed", (tester) async {
     final appReviewClient = _MockAppReviewClient();
     final sheetsAtStoreOpen = <bool>[];

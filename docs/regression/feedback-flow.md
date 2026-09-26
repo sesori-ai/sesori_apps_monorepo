@@ -5,20 +5,21 @@
 The mobile rating sheet that asks whether the user enjoys Sesori. A positive
 answer can hand the user to the platform's store review page. A negative answer
 collects private feedback, which is sent to the Sesori auth server. The sheet
-opens from **Rate Sesori** in the Support section of mobile Settings. Desktop
-Settings does not show the row.
+opens from **Rate Sesori**, the second row of the Account section in mobile
+Settings. Desktop Settings does not show the row.
 
 ## Required Behavior
 
 - The sheet opens as a bottom sheet with a grabber. It asks "Are you enjoying
   Sesori?" and offers **Yes, love it!** and **Could be better**. A close button
-  labelled for assistive technology dismisses it without an answer.
+  labelled for assistive technology dismisses it without an answer. It sits on
+  a dark disc so it stays legible over the celebration artwork.
 - An answer is final. After the first tap, both answers are locked, so repeated
   or crossed taps cannot change it.
 - **Yes, love it!** plays the 1.5 s celebration. The hero stays in place while
-  the answers cross-fade into "Thanks! Leave a review?". The body names the App
-  Store on iOS and Google Play on Android. The actions are **Leave a review**
-  (primary) and **Not now** (secondary).
+  the answers cross-fade into "Thanks! Leave a review?". The body does not name
+  a store. The actions are **Leave a review** (primary) and **Not now**
+  (secondary).
 - **Leave a review** closes the sheet. The store opens only after the sheet's
   exit animation has finished:
   - iOS opens the App Store write-review page.
@@ -57,7 +58,7 @@ Settings does not show the row.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: the sheet widget suite proves the celebration timing, the confirmation copy for each store, the locked answers, that the outcome resolves only after the sheet has closed, the outcomes for dismiss, Not now, close during the celebration and Cancel, private Send with its toast after closing, the recipient line, that Cancel, back, a barrier tap, and a swipe down cannot dismiss the sheet mid-send, a failed send that keeps the draft and retries, the 4,000-character limit and counter, reduced motion (at open, turned on mid-flight, and while writing), and the narrow large-text layout. The cubit, repository, API, store-client, and Settings suites prove the outcome mapping, send locking and failure, message trimming and omission, the request's wire values, the store URLs with the Android fallback, that Settings opens the store only after the sheet has closed, and that Settings sends with the `settings` source. |
+| L1 Smoke | Automated: the sheet widget suite proves the celebration timing, the confirmation copy, the locked answers, that the outcome resolves only after the sheet has closed, the outcomes for dismiss, Not now, close during the celebration and Cancel, private Send with its toast after closing, the recipient line, that Cancel, back, a barrier tap, and a swipe down cannot dismiss the sheet mid-send, a failed send that keeps the draft and retries, the 4,000-character limit and counter, reduced motion (at open, turned on mid-flight, and while writing), and the narrow large-text layout. The cubit, repository, API, store-client, and Settings suites prove the outcome mapping, send locking and failure, message trimming and omission, the request's wire values, the store URLs with the Android fallback, that Settings opens the store only after the sheet has closed, and that Settings sends with the `settings` source. |
 | L2 Routine | Client end to end on the release-target client platform against the dev auth server: Settings shows **Rate Sesori**; **Yes**, then **Leave a review**, opens the store review page after the sheet has closed; **Not now** returns to Settings without leaving the app; **Could be better** sends ticked issues and fixture text, closes the sheet, and shows the toast, and the stored document matches (message omitted when blank). |
 | L3 Release | Client end to end on the alternate client platform: the same journey opens that platform's store. |
 | L4 Extended | Client end to end with Reduce Motion or Remove animations enabled and at accessibility text sizes. On Android, a device without the Play Store app falls back to the web listing. Sending offline or past the server's rate limit shows the inline error, keeps the draft, and Retry succeeds once the server accepts it. |
@@ -68,8 +69,7 @@ Settings does not show the row.
 - The store opens while the sheet is still visible or animating out, or opens
   after **Not now**, the close button, or a swipe down.
 - A second tap changes a recorded answer, or reopening resumes a finished step.
-- The confirmation names the wrong store, or Android shows nothing when the Play
-  Store app is unavailable.
+- Android shows nothing when the Play Store app is unavailable.
 - A send failure clears the draft or issues, closes the sheet, or shows the
   success toast.
 - The sheet closes while a send is in flight, so a successful send shows no
@@ -79,7 +79,8 @@ Settings does not show the row.
 - The message text appears in a log.
 - With reduced motion enabled, the celebration or sheet travel still animates.
 - The sheet clips or overflows on a small screen or at large text sizes.
-- **Rate Sesori** appears in desktop Settings.
+- **Rate Sesori** appears in desktop Settings, or outside the mobile Account
+  section.
 
 ## Sources
 

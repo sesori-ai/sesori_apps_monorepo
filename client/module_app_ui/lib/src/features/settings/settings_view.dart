@@ -96,6 +96,12 @@ class const SettingsView({
                           trailing: const Icon(TablerRegular.chevron_right),
                           onTap: onOpenProfile,
                         ),
+                      PregoGroupedRow(
+                        icon: TablerRegular.heart,
+                        title: Text(loc.settingsRateSesori),
+                        trailing: const Icon(TablerRegular.chevron_right),
+                        onTap: onOpenRateSesori,
+                      ),
                     ],
                   ),
                 ),
@@ -163,7 +169,6 @@ class const SettingsView({
                 ),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsAppInfo(
-                  onOpenRateSesori: onOpenRateSesori,
                   openSupportLink: openSupportLink,
                   openLegalDocument: openLegalDocument,
                   loadAppVersionInfo: loadAppVersionInfo,
@@ -184,8 +189,6 @@ class const SettingsView({
 /// Account-neutral app information reused by full-page and tabbed settings.
 class const SettingsAppInfo({
   super.key,
-  // Only the mobile app can be rated in a store; desktop passes null.
-  required final VoidCallback? onOpenRateSesori,
   required final Future<void> Function({required Uri url}) openSupportLink,
   required final Future<void> Function({required LegalDocument document}) openLegalDocument,
   required final Future<AppVersionInfo?> Function() loadAppVersionInfo,
@@ -194,7 +197,6 @@ class const SettingsAppInfo({
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final onOpenRateSesori = this.onOpenRateSesori;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -202,13 +204,6 @@ class const SettingsAppInfo({
           title: loc.settingsSectionSupport,
           child: PregoGroupedRows(
             children: [
-              if (onOpenRateSesori != null)
-                PregoGroupedRow(
-                  icon: TablerRegular.heart,
-                  title: Text(loc.settingsRateSesori),
-                  trailing: const Icon(TablerRegular.chevron_right),
-                  onTap: onOpenRateSesori,
-                ),
               _SupportRow(
                 icon: TablerRegular.mail,
                 title: loc.settingsSupportEmail,

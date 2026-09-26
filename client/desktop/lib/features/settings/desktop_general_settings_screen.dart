@@ -91,7 +91,6 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
                   ),
                 ),
                 SettingsAppInfo(
-                  onOpenRateSesori: null,
                   openSupportLink: ({required url}) =>
                       openDesktopExternalLink(url: url, mode: UrlLaunchMode.externalApp),
                   openLegalDocument: ({required document}) => openDesktopExternalLink(
