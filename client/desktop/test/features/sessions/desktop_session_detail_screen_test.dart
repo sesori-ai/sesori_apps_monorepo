@@ -615,11 +615,9 @@ void main() {
     });
 
     testWidgets(
-      "Cmd/Ctrl+- folds every turn and Cmd/Ctrl+= unfolds them while focus is in the page",
+      "Cmd/Ctrl+- folds every turn and Cmd/Ctrl+= unfolds them before the composer is focused",
       (tester) async {
         await pumpPage(tester, session: _session);
-        await tester.tap(find.text("Follow up..."));
-        await tester.pumpAndSettle();
         final isMacOS = defaultTargetPlatform == TargetPlatform.macOS;
         final modifier = isMacOS ? LogicalKeyboardKey.metaLeft : LogicalKeyboardKey.controlLeft;
         final otherModifier = isMacOS ? LogicalKeyboardKey.controlLeft : LogicalKeyboardKey.metaLeft;
@@ -635,6 +633,16 @@ void main() {
         verify(() => cubit.setTranscriptFolded(folded: true)).called(1);
         await press(modifier: modifier, key: LogicalKeyboardKey.equal);
         verify(() => cubit.setTranscriptFolded(folded: false)).called(1);
+
+        // Focus that left the page, as to the sidebar, returns with a click in it.
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pump();
+        await press(modifier: modifier, key: LogicalKeyboardKey.minus);
+        verifyNever(() => cubit.setTranscriptFolded(folded: any(named: "folded")));
+        await tester.tapAt(tester.getCenter(find.byType(Scaffold).last));
+        await tester.pump();
+        await press(modifier: modifier, key: LogicalKeyboardKey.minus);
+        verify(() => cubit.setTranscriptFolded(folded: true)).called(1);
         expect(
           tester.widget<IconButton>(find.byKey(const Key("desktop-session-page-fold"))).tooltip,
           isMacOS ? "Fold all turns (⌘-)" : "Fold all turns (Ctrl+-)",

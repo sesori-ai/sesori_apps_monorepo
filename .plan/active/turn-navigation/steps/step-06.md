@@ -61,6 +61,11 @@ clean in `module_core`, `module_app_ui`, `client/app` and `client/desktop`.
 `architecture-implementation-review` over `origin/main...HEAD` approved with no
 findings.
 
+Codex found that the page shortcuts fired only once the composer had focus.
+The desktop page now takes focus when it opens and when a click lands in it,
+leaving focus already inside it alone. The shortcut test no longer focuses
+the composer and covers a click returning focus.
+
 ## Manual
 
 - iOS: run on simulator `sesori-dev-2` with slot 2's own bridge and a synthetic

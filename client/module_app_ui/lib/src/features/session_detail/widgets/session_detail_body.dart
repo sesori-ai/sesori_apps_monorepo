@@ -269,27 +269,29 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
           pageChrome.foldActivator: () => cubit.setTranscriptFolded(folded: true),
           pageChrome.unfoldActivator: () => cubit.setTranscriptFolded(folded: false),
         },
-        child: Scaffold(
-          body: Column(
-            children: [
-              pageChrome.headerBuilder(
-                context: context,
-                title: title,
-                isBusy: isBusy,
-                onShowDiffs: canShowDiffs ? onShowDiffs : null,
-                session: state.hydratedSession,
-              ),
-              ?banner,
-              // The header sits above the transcript, so nothing scrolls behind a
-              // bar and the transcript needs no top inset for one.
-              Expanded(
-                child: PregoTopBarInsetScope(
-                  baseInset: 0,
-                  bannerHeight: const AlwaysStoppedAnimation<double>(0),
-                  child: content,
+        child: _PageFocus(
+          child: Scaffold(
+            body: Column(
+              children: [
+                pageChrome.headerBuilder(
+                  context: context,
+                  title: title,
+                  isBusy: isBusy,
+                  onShowDiffs: canShowDiffs ? onShowDiffs : null,
+                  session: state.hydratedSession,
                 ),
-              ),
-            ],
+                ?banner,
+                // The header sits above the transcript, so nothing scrolls behind a
+                // bar and the transcript needs no top inset for one.
+                Expanded(
+                  child: PregoTopBarInsetScope(
+                    baseInset: 0,
+                    bannerHeight: const AlwaysStoppedAnimation<double>(0),
+                    child: content,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -571,4 +573,38 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       variant: PregoPopupAlertsNotificationsVariant.error,
     );
   }
+}
+
+/// Holds keyboard focus inside the page when it opens and when a click lands
+/// in it, so the page's shortcuts work before the composer is focused. Focus
+/// already inside the page, such as the composer's, is left alone.
+class const _PageFocus({required final Widget child}) extends StatefulWidget {
+  @override
+  State<_PageFocus> createState() => _PageFocusState();
+}
+
+class _PageFocusState() extends State<_PageFocus> {
+  final _node = FocusNode(debugLabel: "session page");
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _claim());
+  }
+
+  void _claim() {
+    if (mounted && !_node.hasFocus) _node.requestFocus();
+  }
+
+  @override
+  void dispose() {
+    _node.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Listener(
+    onPointerDown: (_) => _claim(),
+    child: Focus(focusNode: _node, child: widget.child),
+  );
 }
