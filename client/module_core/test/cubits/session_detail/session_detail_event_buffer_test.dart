@@ -106,6 +106,7 @@ void main() {
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
         bridgeSettingsService: stubbedBridgeSettingsService(),
+        sseEventTracker: MockSseEventTracker(),
       );
       addTearDown(cubit.close);
       return cubit;

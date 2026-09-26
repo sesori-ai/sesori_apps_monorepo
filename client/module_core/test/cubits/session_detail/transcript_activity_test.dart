@@ -61,6 +61,7 @@ MessagePart _tool({required ToolStatus status}) => MessagePart.tool(
 TranscriptActivity _activity({
   required List<MessageWithParts> messages,
   required bool isBusy,
+  bool mainAgentRunning = false,
   String? retryErrorMessage,
   Map<String, String> streamingText = const {},
   List<Session> children = const [],
@@ -82,6 +83,7 @@ TranscriptActivity _activity({
     ),
     messages: messages,
     isBusy: isBusy,
+    mainAgentRunning: mainAgentRunning,
     retryErrorMessage: retryErrorMessage,
     hasStreamingText: streamingText.isNotEmpty,
     children: children,
@@ -244,6 +246,20 @@ void main() {
         );
       });
 
+      test("give way while the main agent is mid-turn, as when it waits on a foreground sub-agent", () {
+        // The running sub-agent steps show instead, and a prompt would wait.
+        expect(
+          _activity(
+            messages: [prompt, spawned],
+            isBusy: true,
+            mainAgentRunning: true,
+            children: children,
+            childStatuses: bothRunning,
+          ),
+          isA<TranscriptActivityIdle>(),
+        );
+      });
+
       test("hide when the session is not busy", () {
         expect(
           _activity(messages: [prompt, spawned], isBusy: false, children: children, childStatuses: bothRunning),
@@ -263,6 +279,13 @@ void main() {
         );
       });
     });
+  });
+
+  test("isChildRunning holds for busy and retrying statuses only", () {
+    expect(isChildRunning(status: const SessionStatus.busy()), isTrue);
+    expect(isChildRunning(status: const SessionStatus.retry(attempt: 1, message: "", next: 0)), isTrue);
+    expect(isChildRunning(status: const SessionStatus.idle()), isFalse);
+    expect(isChildRunning(status: null), isFalse);
   });
 
   test("runningChildren keeps busy and retrying children", () {

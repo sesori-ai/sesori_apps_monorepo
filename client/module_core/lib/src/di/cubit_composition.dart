@@ -65,6 +65,7 @@ SessionDetailCubit createSessionDetailCubit({
     notificationCanceller: locator<NotificationCanceller>(),
     failureReporter: locator<FailureReporter>(),
     bridgeSettingsService: locator<BridgeSettingsService>(),
+    sseEventTracker: locator<SseEventTracker>(),
   );
 }
 

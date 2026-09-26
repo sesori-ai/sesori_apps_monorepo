@@ -30,6 +30,7 @@ import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/bridge_settings_service.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
+import "../../services/models/session_activity_info.dart";
 import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
@@ -41,6 +42,7 @@ import "../../services/session_detail_load_service.dart";
 import "../../services/session_interaction_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
+import "../../services/sse_event_tracker.dart";
 import "../../services/transcript_snapshot_calculator.dart";
 import "deferred_part_event_buffer.dart";
 import "local_send_phase.dart";
@@ -106,6 +108,7 @@ class SessionDetailCubit(
   required final NotificationCanceller? _notificationCanceller,
   required final FailureReporter _failureReporter,
   required final BridgeSettingsService _bridgeSettingsService,
+  required final SseEventTracker _sseEventTracker,
 
   /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
@@ -239,7 +242,8 @@ class SessionDetailCubit(
         ),
       )
       ..add(_lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged))
-      ..add(_bridgeSettingsService.yoloSettings.listen(_onYoloSettings));
+      ..add(_bridgeSettingsService.yoloSettings.listen(_onYoloSettings))
+      ..add(_sseEventTracker.sessionActivity.listen(_onSessionActivity));
     unawaited(_pluginManagementService.refresh());
     unawaited(_loadMessages(isReload: false));
   }
@@ -248,6 +252,19 @@ class SessionDetailCubit(
     if (isClosed) return;
     if (state case final SessionDetailLoaded current when current.bridgeYolo != settings) {
       emit(current.copyWith(bridgeYolo: settings));
+    }
+  }
+
+  /// Whether the bridge reports this session's main agent mid-turn. A session
+  /// with no activity entry is idle.
+  bool get _mainAgentRunning =>
+      _sseEventTracker.currentSessionActivity[_projectId]?[_sessionId]?.mainAgentRunning ?? false;
+
+  void _onSessionActivity(Map<String, Map<String, SessionActivityInfo>> _) {
+    if (isClosed) return;
+    final running = _mainAgentRunning;
+    if (state case final SessionDetailLoaded current when current.mainAgentRunning != running) {
+      emit(current.copyWith(mainAgentRunning: running));
     }
   }
 
@@ -2999,6 +3016,7 @@ class SessionDetailCubit(
       isRefreshing: false,
       availableVariants: reconciled.availableVariants,
       bridgeYolo: _bridgeSettingsService.yoloSettings.value,
+      mainAgentRunning: _mainAgentRunning,
       isUpdatingApproval: _approvalUpdateInFlight,
     );
   }

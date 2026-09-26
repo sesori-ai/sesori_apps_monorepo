@@ -243,6 +243,7 @@ void main() {
         notificationCanceller: MockNotificationCanceller(),
         failureReporter: MockFailureReporter(),
         bridgeSettingsService: stubbedBridgeSettingsService(),
+        sseEventTracker: MockSseEventTracker(),
       );
       addTearDown(cubit.close);
       await cubit.stream.firstWhere((state) => state is SessionDetailLoaded);

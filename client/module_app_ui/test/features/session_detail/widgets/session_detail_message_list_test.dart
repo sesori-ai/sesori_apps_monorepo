@@ -42,6 +42,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   final List<String> cancelledBridgePromptIds = [];
   late String? _retryErrorMessage;
   bool _isBusy = false;
+  bool _mainAgentRunning = false;
   List<Session> _children = const [];
   Map<String, SessionStatus> _childStatuses = const {};
   bool _isLoadingOlderMessages = false;
@@ -97,6 +98,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
 
   void setBusy(bool isBusy) {
     setState(() => _isBusy = isBusy);
+  }
+
+  void setMainAgentRunning(bool running) {
+    setState(() => _mainAgentRunning = running);
   }
 
   void setChildren({required List<Session> children, required Map<String, SessionStatus> childStatuses}) {
@@ -241,6 +246,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           children: _children,
           childStatuses: _childStatuses,
           isBusy: _isBusy,
+          mainAgentRunning: _mainAgentRunning,
           retryErrorMessage: _retryErrorMessage,
           onCancelQueuedMessage: cancelQueuedMessage,
         ),
@@ -1711,6 +1717,18 @@ void main() {
       expect(find.text("3m 05s"), findsOneWidget);
       expect(find.byType(PregoActivityIndicator), findsOneWidget);
       expect(find.byType(PregoAiLoader), findsNothing);
+
+      // The main agent back mid-turn, or blocked on a foreground sub-agent:
+      // a new prompt would wait, so the row gives way to Working….
+      harness.setMainAgentRunning(true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("You can keep chatting meanwhile."), findsNothing);
+      expect(find.text("Working…"), findsOneWidget);
+      harness.setMainAgentRunning(false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("You can keep chatting meanwhile."), findsOneWidget);
 
       // A question or permission clears isBusy, and with it the row.
       harness.setBusy(false);

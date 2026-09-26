@@ -67,14 +67,46 @@ No probe contradicted the second line, so no capability was added.
   cancels that turn (`_cancelActiveTurnForQueuedInput`) and is then answered.
   The row itself never needs a hold to show, so the line holds; the cancel is
   recorded in `HARNESS_CAPABILITIES.md`.
-- Claude and OpenCode were already verified in the plan.
+- Claude and OpenCode were already verified in the plan, for background
+  children only. The PR review found the foreground case (below).
+
+## Review follow-up: foreground sub-agents
+
+The Opus review of #1787 found that a Claude foreground `Agent` call (no
+`run_in_background`) also becomes a running sub-agent part, while the parent
+turn waits on it, so the row would have claimed chatting.
+
+- **Claude: verified live.** Claude CLI in stream-json with
+  `--replay-user-messages`, haiku, 2026-09-26. The foreground `Agent` tool_use
+  came at 4.7 s; a second prompt was written at 12.7 s; the `Agent`
+  tool_result came at 23.6 s, and only then was the prompt echoed as replayed
+  and answered ("PONG" at 30.6 s). A prompt sent during a foreground call
+  waits for it. The plugin tells the two apart only by the tool result
+  (`ClaudeToolUseResultAsyncLaunched` for a background launch), and its turn
+  state already reports the difference: `mainAgentRunning` is `isTurnRunning`,
+  true while the parent turn waits on the call.
+- **Other harnesses.** DeepSeek's foreground children keep the parent's ACP
+  turn running (the September probe), so `mainAgentRunning` holds. A Codex
+  parent waiting on its sub-agent is mid-turn. OpenCode's foreground Task was
+  already the parent's own step. Grok's sub-agents run while the root idles.
+- **Fix, client-only and backend-neutral.** No wire or contract change: the
+  existing `ActiveSession.mainAgentRunning`, which every plugin already sets
+  from its own turn state, now reaches the session detail.
+  `SessionDetailCubit` reads it from `SseEventTracker` into
+  `SessionDetailLoaded.mainAgentRunning`, and `TranscriptActivityBuilder`
+  shows the row only while it is false. While it is true the running sub-agent
+  tile shows, or "Working…" between steps.
+- The review's second finding: `hasActiveWork` now uses the shared
+  `isChildRunning` status rule, which `runningChildren` also uses.
 
 ## Verification
 
 - `dart analyze --fatal-infos`: `module_core`, `module_app_ui`. No issues.
 - `dart test test/cubits/session_detail` (`module_core`, including the
   sub-agent rule table and start precedence in
-  `transcript_activity_test.dart` and `runningChildren`): pass.
+  `transcript_activity_test.dart`, `runningChildren`, `isChildRunning`, and
+  the cubit following `mainAgentRunning` in `session_detail_cubit_test.dart`):
+  pass.
 - `flutter test test/features/session_detail` (`module_app_ui`: the row's
   spinner, two lines, ticking time, semantics and steady height without a
   time; the eased handover with "Working…" in the message list; the pill's

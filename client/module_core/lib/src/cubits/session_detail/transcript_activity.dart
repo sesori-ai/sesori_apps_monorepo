@@ -45,16 +45,18 @@ class const TranscriptActivityBuilder() {
 
     /// Whether the session works, with no question or permission waiting.
     required bool isBusy,
+
+    /// Whether the bridge reports the main agent mid-turn; a turn blocked on a
+    /// foreground sub-agent still counts, since a new prompt waits for it.
+    required bool mainAgentRunning,
     required String? retryErrorMessage,
     required bool hasStreamingText,
     required List<Session> children,
     required Map<String, SessionStatus> childStatuses,
   }) {
     if (!isBusy || retryErrorMessage != null || hasStreamingText) return const TranscriptActivityIdle();
-    // The root's status cannot tell whether the main agent itself works (some
-    // harnesses hold it busy for their sub-agents), so the transcript decides.
     final running = runningChildren(children: children, childStatuses: childStatuses);
-    if (running.isNotEmpty && !_hasOwnRunningStep(transcript: transcript)) {
+    if (running.isNotEmpty && !mainAgentRunning && !_hasOwnRunningStep(transcript: transcript)) {
       return TranscriptActivitySubAgents(
         count: running.length,
         sinceMs: _earliestStart(running: running, transcript: transcript, messages: messages),
