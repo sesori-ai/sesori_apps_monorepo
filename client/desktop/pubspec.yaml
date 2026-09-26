@@ -10,6 +10,7 @@ environment:
   sdk: ^3.13.4
 
 dependencies:
+  clock: ^1.1.3
   cupertino_ui: ^1.1.0
   dbus: ^0.7.15
   device_info_plus: ^13.2.0
