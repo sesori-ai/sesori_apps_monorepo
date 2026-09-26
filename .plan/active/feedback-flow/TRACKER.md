@@ -9,7 +9,8 @@ GitHub.
 |---|---|---|
 | 1 | monorepo | `🌱 [feedback-flow] Plan the production feedback flow [step 1/9]` |
 | 2 | sesori_auth_server | `⚙️ [feedback-flow] Add an authenticated feedback endpoint [step 2/9]` |
-| 3 | monorepo | `🚧 [feedback-flow] Open the rating sheet from Settings and send private feedback [step 3/9]` |
+| 3.a | monorepo | `🚧 [feedback-flow] Open the rating sheet from Settings and ask for a store review [step 3.a/9]` |
+| 3.b | monorepo | `🚧 [feedback-flow] Send private feedback from the rating sheet [step 3.b/9]` |
 | 4 | monorepo | `⚙️ [feedback-flow] Add voice input to private feedback [step 4/9]` |
 | 5 | monorepo | `⚙️ [feedback-flow] Request the OS review prompt in release builds [step 5/9]` |
 | 6 | monorepo | `🚧 [feedback-flow] Show the rating sheet automatically after good sessions [step 6/9]` |

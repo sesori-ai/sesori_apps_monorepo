@@ -60,6 +60,8 @@ import 'package:sesori_mobile/core/platform/firebase_analytics_startup.dart'
     as _i950;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
+import 'package:sesori_mobile/core/platform/flutter_app_review_client.dart'
+    as _i291;
 import 'package:sesori_mobile/core/platform/flutter_composer_image_picker.dart'
     as _i111;
 import 'package:sesori_mobile/core/platform/flutter_image_clipboard.dart'
@@ -320,6 +322,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i902.DeepLinkService>(
       () => _i902.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i948.AppReviewClient>(
+      () => _i291.FlutterAppReviewClient(urlLauncher: gh<_i948.UrlLauncher>()),
     );
     gh.lazySingleton<_i948.AnalyticsReleaseCutoffSource>(
       () => _i425.FirebaseAnalyticsReleaseCutoffSource(

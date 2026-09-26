@@ -1885,6 +1885,60 @@ abstract class AppLocalizations {
   /// **'DM on X'**
   String get settingsSupportX;
 
+  /// Settings account row that opens the rating sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Rate Sesori'**
+  String get settingsRateSesori;
+
+  /// No description provided for @feedbackRatingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you enjoying Sesori?'**
+  String get feedbackRatingTitle;
+
+  /// Positive answer on the rating sheet; starts the celebration
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, love it!'**
+  String get feedbackLove;
+
+  /// Negative answer on the rating sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Could be better'**
+  String get feedbackCouldBeBetter;
+
+  /// Accessibility label of the rating sheet's close button
+  ///
+  /// In en, this message translates to:
+  /// **'Close feedback'**
+  String get feedbackClose;
+
+  /// Title of the rating sheet step shown after the user said they love the app
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks! Leave a review?'**
+  String get feedbackReviewTitle;
+
+  /// Body of the review confirmation step
+  ///
+  /// In en, this message translates to:
+  /// **'It takes a minute and helps other developers find Sesori.'**
+  String get feedbackReviewBody;
+
+  /// Confirms opening the store review page
+  ///
+  /// In en, this message translates to:
+  /// **'Leave a review'**
+  String get feedbackLeaveReview;
+
+  /// Closes the rating sheet without opening the store
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get feedbackNotNow;
+
   /// No description provided for @settingsSectionLegal.
   ///
   /// In en, this message translates to:

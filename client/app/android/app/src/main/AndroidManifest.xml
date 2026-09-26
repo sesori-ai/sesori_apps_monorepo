@@ -35,7 +35,7 @@
         </provider>
 
         <activity
-            android:name="${mainActivityName}"
+            android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:taskAffinity=""
