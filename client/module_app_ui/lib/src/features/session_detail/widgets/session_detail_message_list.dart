@@ -21,6 +21,7 @@ import "system_message_card.dart";
 import "tool_part_widget.dart";
 import "transcript_live_row.dart";
 import "transcript_motion.dart";
+import "transcript_pinch_detector.dart";
 import "transcript_row_reporter.dart";
 import "transcript_turn_stub.dart";
 import "user_message_card.dart";
@@ -227,6 +228,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// The one turn being held in place, until its row settles or goes.
   _TurnAnchor? _anchor;
+
+  /// Captured when a pinch's first pointer lands, before a trackpad pan-zoom
+  /// start detaches the list, so a pinch that switches nothing leaves
+  /// following alone.
+  bool _pinchStartedFollowing = false;
+  bool _pinchDetachSuppressed = false;
 
   @override
   void initState() {
@@ -447,6 +454,45 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     widget.onTranscriptFoldedChanged(folded: false);
   }
 
+  /// The turn of the built row under [globalPosition].
+  TranscriptTurn? _turnAt({required Offset globalPosition}) {
+    final list = context.findRenderObject();
+    if (list is! RenderBox) return null;
+    final y = list.globalToLocal(globalPosition).dy;
+    for (final rowId in _rowContexts.keys) {
+      final span = _spanOf(rowId: rowId);
+      if (span != null && span.top <= y && y < span.bottom) return _rowTurns[rowId];
+    }
+    return null;
+  }
+
+  void _onPinchPointerDown() => _pinchStartedFollowing = _follow.following;
+
+  /// Keeps a list that followed when the pinch began following while it
+  /// pinches, undoing a trackpad pan-zoom start's detach.
+  void _onPinchStart() {
+    if (!_pinchStartedFollowing || _pinchDetachSuppressed) return;
+    _pinchDetachSuppressed = true;
+    _follow.suppressDetach();
+  }
+
+  /// Switches to [folded] and holds the turn under the fingers, like a button
+  /// holds the top-edge turn. The hold's jump stops following, as theirs does.
+  void _onPinchFoldRequested({required bool folded, required Offset focalPoint}) {
+    if (folded == widget.transcriptFolded) return;
+    if (_turnAt(globalPosition: focalPoint) ?? _topEdgeTurn() case final turn?) {
+      _holdTurn(turn: turn, folded: folded);
+    }
+    widget.onTranscriptFoldedChanged(folded: folded);
+  }
+
+  void _onPinchGestureEnd() {
+    _pinchStartedFollowing = false;
+    if (!_pinchDetachSuppressed) return;
+    _pinchDetachSuppressed = false;
+    _follow.releaseDetachSuppression();
+  }
+
   bool _transientSubmissionsMatch({required SessionDetailMessageList oldWidget}) {
     if (oldWidget.localSend != widget.localSend) return false;
     if (oldWidget.queuedMessages.length != widget.queuedMessages.length) return false;
@@ -665,64 +711,70 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       //   path ignores the mouse kind) so it keeps selecting message
       //   text; hijacking it for the peek would make selection impossible.
       //
-      child: NotificationListener<Notification>(
-        onNotification: _onScrollNotification,
-        child: PregoHorizontalDragGestureDetector(
-          behavior: HitTestBehavior.translucent,
-          supportedDevices: _kRevealPointerDevices,
-          onHorizontalDragDown: _onRevealDragDown,
-          onHorizontalDragStart: _onRevealDragStart,
-          onHorizontalDragUpdate: _onRevealDragUpdate,
-          onHorizontalDragEnd: _onRevealDragEnd,
-          onHorizontalDragCancel: _onRevealDragCancel,
-          pendingRejectionSlop: _kRevealPendingRejectionSlop,
-          direction: PregoHorizontalDragDirection.left,
-          dragStartBehavior: DragStartBehavior.down,
-          child: ListView.builder(
-            key: _kListViewKey,
-            reverse: true,
-            controller: _follow.scrollController,
-            padding: EdgeInsetsDirectional.only(
-              start: widget.horizontalInset,
-              end: widget.horizontalInset,
-              top: 8 + widget.topInset,
-              bottom: 8 + widget.bottomInset,
-            ),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: rowIds.length,
-            findChildIndexCallback: (key) {
-              if (key case ValueKey<String>(value: final rowId)) {
-                final domainIndex = rowIds.indexOf(rowId);
-                return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
-              }
-              return null;
-            },
-            itemBuilder: (context, index) {
-              final entryId = rowIds[rowIds.length - index - 1];
-              return TranscriptRowReporter(
-                key: ValueKey(entryId),
-                rowId: entryId,
-                onMount: _onRowMount,
-                onUnmount: _onRowUnmount,
-                child: TranscriptPresence(
-                  entering: enteringRowIds.contains(entryId),
-                  exiting: false,
-                  onExited: null,
-                  child: _buildRow(
-                    entryId: entryId,
-                    messages: messages,
-                    indexById: indexById,
-                    rowTurns: rowTurns,
-                    transientSubmissions: transientSubmissions,
-                    transcript: transcript,
-                    streamingText: streamingText,
-                    retryErrorMessage: retryErrorMessage,
-                    isBusy: isBusy,
+      child: TranscriptPinchDetector(
+        onPointerDown: _onPinchPointerDown,
+        onPinchStart: _onPinchStart,
+        onFoldRequested: _onPinchFoldRequested,
+        onGestureEnd: _onPinchGestureEnd,
+        child: NotificationListener<Notification>(
+          onNotification: _onScrollNotification,
+          child: PregoHorizontalDragGestureDetector(
+            behavior: HitTestBehavior.translucent,
+            supportedDevices: _kRevealPointerDevices,
+            onHorizontalDragDown: _onRevealDragDown,
+            onHorizontalDragStart: _onRevealDragStart,
+            onHorizontalDragUpdate: _onRevealDragUpdate,
+            onHorizontalDragEnd: _onRevealDragEnd,
+            onHorizontalDragCancel: _onRevealDragCancel,
+            pendingRejectionSlop: _kRevealPendingRejectionSlop,
+            direction: PregoHorizontalDragDirection.left,
+            dragStartBehavior: DragStartBehavior.down,
+            child: ListView.builder(
+              key: _kListViewKey,
+              reverse: true,
+              controller: _follow.scrollController,
+              padding: EdgeInsetsDirectional.only(
+                start: widget.horizontalInset,
+                end: widget.horizontalInset,
+                top: 8 + widget.topInset,
+                bottom: 8 + widget.bottomInset,
+              ),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: rowIds.length,
+              findChildIndexCallback: (key) {
+                if (key case ValueKey<String>(value: final rowId)) {
+                  final domainIndex = rowIds.indexOf(rowId);
+                  return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
+                }
+                return null;
+              },
+              itemBuilder: (context, index) {
+                final entryId = rowIds[rowIds.length - index - 1];
+                return TranscriptRowReporter(
+                  key: ValueKey(entryId),
+                  rowId: entryId,
+                  onMount: _onRowMount,
+                  onUnmount: _onRowUnmount,
+                  child: TranscriptPresence(
+                    entering: enteringRowIds.contains(entryId),
+                    exiting: false,
+                    onExited: null,
+                    child: _buildRow(
+                      entryId: entryId,
+                      messages: messages,
+                      indexById: indexById,
+                      rowTurns: rowTurns,
+                      transientSubmissions: transientSubmissions,
+                      transcript: transcript,
+                      streamingText: streamingText,
+                      retryErrorMessage: retryErrorMessage,
+                      isBusy: isBusy,
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
