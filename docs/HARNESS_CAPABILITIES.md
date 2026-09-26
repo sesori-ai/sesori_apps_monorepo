@@ -229,7 +229,11 @@ row shows no timer. The second line claims that a prompt sent now reaches the
 main agent at once; no harness where the row shows queues it behind the
 sub-agents. A main agent blocked on a foreground sub-agent is still mid-turn
 (`mainAgentRunning`), so the row stays hidden and the running sub-agent step
-shows instead: a prompt sent then waits for the sub-agent to return.
+shows instead: a prompt sent then waits for the sub-agent to return. Claude
+and the ACP harnesses republish the activity summary when the main turn ends
+with sub-agents still running; a bridge released before this does not, so the
+flag stays set there and "Working…" shows in place of the row until the
+sub-agents finish.
 
 | Harness | Sub-agent start | Prompt while sub-agents run |
 |---|---|---|

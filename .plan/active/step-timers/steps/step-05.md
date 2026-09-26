@@ -89,13 +89,32 @@ turn waits on it, so the row would have claimed chatting.
   turn running (the September probe), so `mainAgentRunning` holds. A Codex
   parent waiting on its sub-agent is mid-turn. OpenCode's foreground Task was
   already the parent's own step. Grok's sub-agents run while the root idles.
-- **Fix, client-only and backend-neutral.** No wire or contract change: the
-  existing `ActiveSession.mainAgentRunning`, which every plugin already sets
-  from its own turn state, now reaches the session detail.
+- **Fix, backend-neutral, no wire or contract change.** The existing
+  `ActiveSession.mainAgentRunning`, which every plugin already sets from its
+  own turn state, now reaches the session detail.
   `SessionDetailCubit` reads it from `SseEventTracker` into
   `SessionDetailLoaded.mainAgentRunning`, and `TranscriptActivityBuilder`
   shows the row only while it is false. While it is true the running sub-agent
   tile shows, or "Working…" between steps.
+- **Plugin follow-up (architecture review).** The bridge rebuilds the
+  activity summary only on `BridgeSseProjectUpdated`. Claude emitted none when
+  a turn ended on a background agent (`_settleIdle` returned early while tasks
+  ran; `_finish` and `_endSelfStartedTurn` both go through it), and ACP's
+  `_finishTurn` emitted none while children stayed active, so the client kept
+  `mainAgentRunning` true and never showed the row. Both now emit it when the
+  main turn ends with background work left. OpenCode's root status drives the
+  flag and already invalidates the summary on status changes; Codex and Pi
+  already emit on their activity changes. Tests: `claude_plugin_impl_test.dart`
+  (async-launched `Agent` result, then the turn's result: summary republished,
+  `mainAgentRunning` false, session still busy) and
+  `acp_plugin_child_busy_test.dart` (an invalidation at turn end); both fail
+  without the fix. Older released bridges do not send it, so there the row
+  stays hidden for Claude and ACP background sub-agents and "Working…" shows
+  instead; accepted, no client shim.
+- **Live re-check.** The background CLI probe shows the parent's `result` at
+  7.6 s with the sub-agent still running, and a prompt at 13.9 s answered at
+  14.9 s: the turn end the plugin now republishes. A full bridge-plus-client
+  run was not done.
 - The review's second finding: `hasActiveWork` now uses the shared
   `isChildRunning` status rule, which `runningChildren` also uses.
 
