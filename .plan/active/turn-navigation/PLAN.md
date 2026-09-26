@@ -338,12 +338,17 @@ helper stay private to the list state.
 - `TranscriptTurnSummary`, shared by every variant, holds:
   - `steps`: every step in the turn's step groups, running steps included.
   - `failedSteps`: the sum of the groups' `failedCount`.
-  - `outcome`, a sealed type:
-    - running: the newest turn while `isBusy`;
-    - failed: the turn's last non-automation message is a `MessageError`.
-      Carries the first line of `errorMessage`.
-    - done: carries the first non-empty line of the last stored text of the
-      turn's agent messages, or null when there is none.
+  - `outcome`, a sealed type. A finished turn's outcome comes from how the
+    turn ends, that is its last agent output or `MessageError`. Automation
+    and follow-ups are skipped.
+    - running: the newest turn while `isBusy`.
+    - failed: the turn ends in a `MessageError`, carrying the first line of
+      `errorMessage`, or in a failed tool or sub-agent step, with no excerpt.
+    - done: every other ending. A turn that ends in text carries that text's
+      first non-empty line. A turn that ends in a step, a file or no output
+      carries none, so earlier narration is never shown as the answer. A
+      cancelled last step is done without an excerpt, because there is no
+      stopped state (D12).
 
     Streaming text is not read.
 - Tests (`client/module_core/test/cubits/session_detail/transcript_turns_test.dart`):
@@ -352,6 +357,8 @@ helper stay private to the list state.
   - automation first, with and without older pages;
   - hidden user messages;
   - the summary fields, running and failed;
+  - each ending: a final answer, narration then a step, a failed last step
+    and a cancelled last step;
   - determinism: the same input gives the same output.
 
 ### 2. Claude follow-ups and automation survive history load (step 3)

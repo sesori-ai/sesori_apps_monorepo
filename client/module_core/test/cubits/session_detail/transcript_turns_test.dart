@@ -366,7 +366,7 @@ void main() {
       expect((summary.steps, summary.failedSteps), (5, 1));
     });
 
-    test("a finished turn carries the first line of the agent's last stored text", () {
+    test("a turn that ends in text carries that text's first line", () {
       final turns = _turns(
         messages: [
           _prompt(id: "u1"),
@@ -394,6 +394,57 @@ void main() {
       expect(_outcomes(turns: turns), ["done: Fixed the build.", "done: null"]);
     });
 
+    test("a finished turn's outcome comes from how it ends, not from earlier narration", () {
+      final endings = {
+        "a final answer": (
+          parts: [
+            _text(text: "Checking."),
+            _tool(status: ToolStatus.error),
+            _text(text: "Fixed it."),
+          ],
+          outcome: "done: Fixed it.",
+        ),
+        "narration, then a step": (
+          parts: [
+            _text(text: "I'll check the logs."),
+            _tool(),
+          ],
+          outcome: "done: null",
+        ),
+        "a failed last step": (
+          parts: [
+            _text(text: "Running the tests."),
+            _tool(status: ToolStatus.error),
+          ],
+          outcome: "failed: null",
+        ),
+        "a failed last sub-agent": (
+          parts: [
+            _text(),
+            _subAgent(status: ToolStatus.error),
+          ],
+          outcome: "failed: null",
+        ),
+        "a cancelled last step": (
+          parts: [
+            _text(),
+            _tool(status: ToolStatus.cancelled),
+          ],
+          outcome: "done: null",
+        ),
+      };
+      for (final MapEntry(key: ending, value: (:parts, :outcome)) in endings.entries) {
+        final turns = _turns(
+          messages: [
+            _prompt(id: "u1"),
+            _agent(id: "a1", parts: parts),
+          ],
+        );
+
+        expect(_outcomes(turns: turns), [outcome], reason: ending);
+      }
+    });
+
     test("only the newest turn runs while the session is busy, with its follow-ups", () {
       final messages = [
         _prompt(id: "u1"),
@@ -412,7 +463,7 @@ void main() {
       expect(_outcomes(turns: _turns(messages: messages)), ["done: Done.", "done: null"]);
     });
 
-    test("a turn fails when its last message other than automation is an error", () {
+    test("an error message fails the turn with its first line until the agent answers again", () {
       final turns = _turns(
         messages: [
           _prompt(id: "u1"),

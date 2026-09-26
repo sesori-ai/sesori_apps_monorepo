@@ -4,23 +4,26 @@ import "package:sesori_shared/sesori_shared.dart";
 import "session_detail_resolvers.dart";
 import "transcript_builder.dart";
 
-/// Where a turn stands.
+/// Where a turn stands. A finished turn's outcome comes from how it ends: its
+/// last agent output or error, with automation and follow-ups skipped.
 @immutable
 sealed class const TranscriptTurnOutcome();
 
 /// The newest turn while the session is busy.
 final class const TranscriptTurnRunning() extends TranscriptTurnOutcome;
 
-/// A turn whose last message other than automation is an error.
+/// A turn that ends in an error message or a failed step.
 final class const TranscriptTurnFailed({
-  /// The first line of the error text; null when it has none.
+  /// The first line of the error message; null when a failed step ends the
+  /// turn or the message has no text.
   required final String? errorLine,
 }) extends TranscriptTurnOutcome;
 
-/// A turn that finished without an error.
+/// A turn that ends without failing. A cancelled last step counts as done,
+/// since there is no stopped state yet.
 final class const TranscriptTurnDone({
-  /// The first line of the agent's last stored text in the turn; null when it
-  /// wrote none. Streaming text is not read.
+  /// The first line of the text the turn ends in; null when it ends in a step,
+  /// a file or no output. Streaming text is not read.
   required final String? answerLine,
 }) extends TranscriptTurnOutcome;
 
@@ -153,8 +156,7 @@ class const TranscriptTurnBuilder() {
   }) {
     var steps = 0;
     var failedSteps = 0;
-    String? lastText;
-    MessageError? lastError;
+    TranscriptTurnOutcome ending = const TranscriptTurnDone(answerLine: null);
     for (final message in messages) {
       for (final block in transcript.blocksFor(messageId: message.info.id)) {
         if (block is! TranscriptGroupBlock) continue;
@@ -163,30 +165,39 @@ class const TranscriptTurnBuilder() {
       }
       switch (message.info) {
         case MessageAssistant(sender: MessageSender.agent):
-          lastError = null;
           for (final part in message.parts) {
-            if (part case MessagePartText(:final text) when text.isNotEmpty) lastText = text;
+            ending = _endingIn(part: part) ?? ending;
           }
-        case MessageAssistant():
-          // Automation neither answers nor fails the turn.
+        case MessageError(:final errorMessage):
+          ending = TranscriptTurnFailed(errorLine: _firstLine(text: errorMessage));
+        case MessageAssistant() || MessageUser():
+          // Automation and follow-ups neither answer nor fail the turn.
           break;
-        case final MessageError error:
-          lastError = error;
-        case MessageUser():
-          lastError = null;
       }
     }
-
-    final TranscriptTurnOutcome outcome;
-    if (isRunning) {
-      outcome = const TranscriptTurnRunning();
-    } else if (lastError != null) {
-      outcome = TranscriptTurnFailed(errorLine: _firstLine(text: lastError.errorMessage));
-    } else {
-      outcome = TranscriptTurnDone(answerLine: lastText == null ? null : _firstLine(text: lastText));
-    }
-    return TranscriptTurnSummary(steps: steps, failedSteps: failedSteps, outcome: outcome);
+    return TranscriptTurnSummary(
+      steps: steps,
+      failedSteps: failedSteps,
+      outcome: isRunning ? const TranscriptTurnRunning() : ending,
+    );
   }
+
+  /// The outcome of a turn that ends in [part], or null when [part] shows no
+  /// output. Only text gives an excerpt, and only a failed step fails.
+  static TranscriptTurnOutcome? _endingIn({required MessagePart part}) => switch (part) {
+    MessagePartText(:final text) => text.isEmpty ? null : TranscriptTurnDone(answerLine: _firstLine(text: text)),
+    MessagePartTool(state: ToolState(status: ToolStatus.error)) ||
+    MessagePartSubtask(taskState: ToolState(status: ToolStatus.error)) => const TranscriptTurnFailed(errorLine: null),
+    MessagePartTool() || MessagePartSubtask() || MessagePartFile() => const TranscriptTurnDone(answerLine: null),
+    MessagePartReasoning(:final text) => text.isEmpty ? null : const TranscriptTurnDone(answerLine: null),
+    MessagePartStepStart() ||
+    MessagePartStepFinish() ||
+    MessagePartSnapshot() ||
+    MessagePartPatch() ||
+    MessagePartAgent() ||
+    MessagePartRetry() ||
+    MessagePartCompaction() => null,
+  };
 
   static Duration? _durationOf({required MessageWithParts opener, required List<MessageWithParts> messages}) {
     final start = opener.info.time?.created;
