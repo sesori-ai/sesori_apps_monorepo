@@ -41,6 +41,8 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   bool _isBusy = false;
   bool _isLoadingOlderMessages = false;
   bool _transcriptFolded = false;
+  bool _hasOlderMessages = true;
+  bool _isRefreshing = false;
   int? lastCancelledQueuedMessageIndex;
 
   @override
@@ -61,10 +63,11 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     setState(() => _isLoadingOlderMessages = false);
   }
 
-  void prependOlderMessages({required List<MessageWithParts> older}) {
+  void prependOlderMessages({required List<MessageWithParts> older, required bool hasOlderMessages}) {
     setState(() {
       _messages = [...older, ..._messages];
       _isLoadingOlderMessages = false;
+      _hasOlderMessages = hasOlderMessages;
     });
   }
 
@@ -94,6 +97,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
 
   void setRetryErrorMessage(String? message) {
     setState(() => _retryErrorMessage = message);
+  }
+
+  void setRefreshing({required bool refreshing}) {
+    setState(() => _isRefreshing = refreshing);
   }
 
   void setTranscriptFolded({required bool folded}) {
@@ -192,7 +199,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
             );
           },
           projectId: null,
-          onLoadOlderMessages: widget.onLoadOlderMessages,
+          onLoadOlderMessages: _hasOlderMessages ? widget.onLoadOlderMessages : null,
           messages: _messages,
           localSend: _localSend,
           harnessName: "OpenCode",
@@ -208,6 +215,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           awaitingBridgeSubmissions: _awaitingBridgeSubmissions,
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
+          isRefreshing: _isRefreshing,
           transcriptFolded: _transcriptFolded,
           onTranscriptFoldedChanged: setTranscriptFolded,
           topInset: widget.topInset,
@@ -304,6 +312,12 @@ List<MessageWithParts> _userMessages({required int count}) {
     ),
   );
 }
+
+/// [count] one-line user messages, ids prefixed by [prefix].
+List<MessageWithParts> _page({required String prefix, required int count}) => [
+  for (var index = 0; index < count; index++)
+    _message(messageId: "$prefix-$index", role: "user", text: "$prefix message $index"),
+];
 
 String _multilineText({required String label, required int lines}) {
   return List.generate(lines, (index) => "$label line $index").join("\n");
@@ -936,6 +950,7 @@ void main() {
       older: [
         for (var index = 0; index < 10; index++) _message(messageId: "m$index", role: "user", text: "message $index"),
       ],
+      hasOlderMessages: true,
     );
     await tester.pumpAndSettle();
 
@@ -977,6 +992,7 @@ void main() {
       older: [
         for (var index = 0; index < 10; index++) _message(messageId: "m$index", role: "user", text: "message $index"),
       ],
+      hasOlderMessages: true,
     );
     await tester.pumpAndSettle();
 
@@ -1016,7 +1032,11 @@ void main() {
       _SessionDetailMessageListHarness(
         initialMessages: _userMessages(count: 12),
         initialStreamingText: const {},
-        onLoadOlderMessages: () async => requested++,
+        // The page stays on its way, as a real one does across the next frames.
+        onLoadOlderMessages: () {
+          requested++;
+          return Completer<void>().future;
+        },
       ),
     );
     await tester.pumpAndSettle();
@@ -1090,7 +1110,8 @@ void main() {
     await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
     await tester.pump();
 
-    expect(requested, 2);
+    // An instant failure can be asked again by each scroll frame near the edge.
+    expect(requested, greaterThan(1));
     expect(tester.takeException(), isNull);
   });
 
@@ -1119,6 +1140,228 @@ void main() {
     await tester.pump();
     await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
     await tester.pump();
+    expect(requested, 1);
+  });
+
+  group("a transcript shorter than the screen", () {
+    testWidgets("pages back without a scroll until it fills the screen", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      var requested = 0;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () async {
+            requested++;
+            key.currentState?.prependOlderMessages(
+              older: _page(prefix: "page$requested", count: 2),
+              hasOlderMessages: true,
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(requested, greaterThan(1), reason: "each page still too short must ask for the next one");
+      expect(requested, lessThan(20), reason: "paging must stop once the screen is filled");
+      expect(_position(tester).maxScrollExtent, greaterThan(0));
+    });
+
+    testWidgets("stops when no older page remains, even if pages add no visible rows", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      var requested = 0;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () async {
+            requested++;
+            key.currentState?.prependOlderMessages(
+              older: [
+                MessageWithParts(
+                  info: Message.user(
+                    promptId: null,
+                    id: "hidden-$requested",
+                    sessionID: "session-1",
+                    agent: null,
+                    time: null,
+                  ),
+                  parts: const [],
+                ),
+              ],
+              hasOlderMessages: requested < 3,
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(requested, 3);
+    });
+
+    testWidgets("asks for no older page while one is on its way", (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      final pages = <Completer<void>>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () {
+            final page = Completer<void>();
+            pages.add(page);
+            return page.future;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      // A taller window and a new oldest message would each ask again.
+      await tester.binding.setSurfaceSize(const Size(800, 700));
+      key.currentState?.replaceMessages([
+        _message(messageId: "earlier", role: "user", text: "earlier"),
+        ..._page(prefix: "newest", count: 2),
+      ]);
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      // The page lands with its load, still too short, so the next one follows.
+      key.currentState?.prependOlderMessages(older: _page(prefix: "older", count: 2), hasOlderMessages: true);
+      pages.single.complete();
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(2));
+    });
+
+    testWidgets("asks again when a refresh ends, for a page the refresh dropped", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      var requested = 0;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          // The cubit ignores a request while a refresh runs.
+          onLoadOlderMessages: () async => requested++,
+        ),
+      );
+      key.currentState?.setRefreshing(refreshing: true);
+      await tester.pumpAndSettle();
+      expect(requested, 1);
+
+      // The refresh lands on the same newest page.
+      key.currentState?.replaceMessages(_page(prefix: "newest", count: 2));
+      key.currentState?.setRefreshing(refreshing: false);
+      await tester.pumpAndSettle();
+      expect(requested, 2);
+    });
+
+    testWidgets("asks again once a page the refresh discarded settles", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      final pages = <Completer<void>>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () {
+            final page = Completer<void>();
+            pages.add(page);
+            return page.future;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      key.currentState?.setRefreshing(refreshing: true);
+      await tester.pump();
+      key.currentState?.setRefreshing(refreshing: false);
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      // The discarded page returns after the refresh landed.
+      pages.single.complete();
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(2));
+    });
+
+    testWidgets("asks for a failed page again on the next scroll, not in a loop", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      final pages = <Completer<void>>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () {
+            key.currentState?.startLoadingOlderMessages();
+            final page = Completer<void>();
+            pages.add(page);
+            return page.future;
+          },
+        ),
+      );
+      await tester.pump();
+      expect(pages, hasLength(1));
+
+      // The bridge fails the page: the cursor stays and loading stops.
+      key.currentState?.finishLoadingOlderMessages();
+      pages.single.complete();
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 300));
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(2));
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  testWidgets("folding a transcript shorter than the screen loads the older page", (tester) async {
+    final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: key,
+        initialMessages: _turns(count: 3, promptLines: 1, answers: 4, paragraphs: 4),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () {
+          requested++;
+          return Completer<void>().future;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(requested, 0);
+
+    key.currentState?.setTranscriptFolded(folded: true);
+    await tester.pumpAndSettle();
+    expect(requested, 1);
+  });
+
+  testWidgets("a taller window loads the older page", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: _userMessages(count: 6),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () {
+          requested++;
+          return Completer<void>().future;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(requested, 0);
+
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    await tester.pumpAndSettle();
     expect(requested, 1);
   });
 
@@ -2046,6 +2289,51 @@ void main() {
       expect(moves, hasLength(greaterThan(4)));
       expect(moves, orderedEquals(<double>[...moves]..sort((a, b) => b.compareTo(a))));
       expect(_topOf(tester, "u6"), moreOrLessEquals(_topInset, epsilon: 1));
+    });
+
+    /// The turn at the top edge, and where its prompt should rest after a
+    /// switch: in place while any of it shows, else at the edge.
+    ({String promptId, double top}) topEdgePrompt(WidgetTester tester, {required bool folded}) {
+      for (var turn = 0; turn < 20; turn++) {
+        final lastRow = folded ? _messageKey("session-detail-turn-u$turn") : _messageKey("a$turn-0");
+        if (lastRow.evaluate().isEmpty || tester.getBottomLeft(lastRow).dy <= _topInset) continue;
+        final prompt = _messageKey("u$turn");
+        final shown = prompt.evaluate().isNotEmpty && tester.getBottomLeft(prompt).dy > _topInset;
+        return (promptId: "u$turn", top: shown ? _topOf(tester, "u$turn") : _topInset);
+      }
+      fail("no turn reaches below the top edge");
+    }
+
+    testWidgets("folding from a late turn clamps at the latest edge, and unfolding holds the top-edge turn", (
+      tester,
+    ) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a18-0", top: _topInset - 100);
+
+      harness.setTranscriptFolded(folded: true);
+      await tester.pumpAndSettle();
+      // Too little is folded below turn 18 to lift its prompt to the edge.
+      expect(_position(tester).pixels, lessThan(1));
+      final held = topEdgePrompt(tester, folded: true);
+
+      harness.setTranscriptFolded(folded: false);
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, held.promptId), moreOrLessEquals(held.top, epsilon: 1));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    });
+
+    testWidgets("while following, a switch holds the top-edge turn and stops following", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: true);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+      final held = topEdgePrompt(tester, folded: true);
+
+      harness.setTranscriptFolded(folded: false);
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, held.promptId), moreOrLessEquals(held.top, epsilon: 1));
+      expect(_position(tester).pixels, greaterThan(20));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
     });
 
     testWidgets("an anchor whose row goes ends, so the row coming back moves nothing", (tester) async {

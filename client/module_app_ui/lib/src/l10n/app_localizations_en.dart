@@ -1462,6 +1462,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get transcriptFoldAll => 'Fold all turns';
+
+  @override
+  String get transcriptUnfoldAll => 'Unfold all turns';
+
+  @override
   String get sessionDetailJumpToLatest => 'Jump to latest';
 
   @override

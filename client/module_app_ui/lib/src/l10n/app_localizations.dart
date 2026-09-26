@@ -2587,6 +2587,18 @@ abstract class AppLocalizations {
   /// **'{hours}h {minutes}m'**
   String transcriptTurnHours(int hours, String minutes);
 
+  /// Label of the session toolbar button that folds every turn of the transcript to one line each.
+  ///
+  /// In en, this message translates to:
+  /// **'Fold all turns'**
+  String get transcriptFoldAll;
+
+  /// Label of the session toolbar button that unfolds every folded turn of the transcript.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfold all turns'**
+  String get transcriptUnfoldAll;
+
   /// Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages.
   ///
   /// In en, this message translates to:

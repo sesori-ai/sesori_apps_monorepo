@@ -77,8 +77,10 @@ sub-agent parts, plus the signal that a tool changed files.
 - A finished context compaction renders as one quiet "Context compacted" row in
   the step style; like visible text it ends a group. While it runs, Pi and Codex
   show a running `compact` tool that the finished row replaces in place. When the
-  harness exposes the carried-forward summary, tapping the row opens it as
-  Markdown in a reading-width modal; without a summary the row is inert. See
+  harness exposes the carried-forward summary, tapping the row opens a
+  reading-width modal at once with a spinner, and the summary replaces the
+  spinner as Markdown once the modal's entry transition ends (at once under
+  reduced motion); without a summary the row is inert. See
   `docs/HARNESS_CAPABILITIES.md` for which harnesses mark compaction.
 - A running tool or sub-agent is a live row: the turning outline sparkle leads
   it and a primary-text band sweeps across its dimmed label, visible in both
@@ -268,7 +270,9 @@ one permission-gated mutation, one repeated terminal update, and a verified
 shell command with long output. Reload a root with completed/cancelled children
 and each child transcript; verify prompt provenance, tile order, and both
 lifecycle extension methods. Denial remains unverified and carries no replay
-guarantee.
+guarantee. Fold every turn over the same mixes: a folded turn counts its step
+groups' steps on one line, and the jump button still returns to the latest
+edge (see `transcript-turn-navigation.md`).
 
 ## Failure Signals
 
@@ -311,8 +315,9 @@ guarantee.
   or new; a reloaded session reports different kinds than the live one did.
 - A finished compaction shows no row, shows its summary inline as a user or
   assistant message, leaves a running `compact` tool beside the row, or opens an
-  empty modal; the Claude summary appears live but not after reload, or the
-  reverse.
+  empty modal; tapping a long summary stalls before the ripple, skips the
+  modal's entry transition, or leaves the spinner in place; the Claude summary
+  appears live but not after reload, or the reverse.
 - A live row spins or shimmers under reduced motion, a thinking tail hides the
   newest words or wraps past one line, or the jump button keeps naming a step
   that has finished.
@@ -420,6 +425,9 @@ guarantee.
 - `client/module_app_ui/test/features/session_detail/widgets/transcript_step_row_test.dart`
   measures every step kind's icon, label inset, height and label weight at
   phone and desktop density.
+- `client/module_app_ui/test/features/session_detail/widgets/compaction_part_widget_test.dart`
+  opens the compaction summary behind a spinner at both densities and shows it
+  at once under reduced motion.
 - Owning Claude content/history/tracker, Pi history/dispatcher, OpenCode part
   mapper, Codex rollout/tracker/history, ACP replay/content, Grok adapter,
   Antigravity normalizer and DeepSeek replay/time tests guard backend semantics.

@@ -104,6 +104,11 @@ void main() {
         const {"change_state": "non_empty"},
       ),
       (
+        const ProductAnalyticsEvent.transcriptTurnsFolded(),
+        "transcript_turns_folded",
+        const {},
+      ),
+      (
         const ProductAnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),
         "onboarding_need_help_opened",
         const {"surface": "connect_setup"},

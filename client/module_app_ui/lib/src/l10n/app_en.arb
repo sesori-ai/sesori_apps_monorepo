@@ -952,6 +952,14 @@
       }
     }
   },
+  "transcriptFoldAll": "Fold all turns",
+  "@transcriptFoldAll": {
+    "description": "Label of the session toolbar button that folds every turn of the transcript to one line each."
+  },
+  "transcriptUnfoldAll": "Unfold all turns",
+  "@transcriptUnfoldAll": {
+    "description": "Label of the session toolbar button that unfolds every folded turn of the transcript."
+  },
   "sessionDetailJumpToLatest": "Jump to latest",
   "@sessionDetailJumpToLatest": {
     "description": "Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages."
