@@ -44,7 +44,8 @@ void main() {
       BlocProvider<ConnectionOverlayCubit>(
         create: (_) => StubConnectionOverlayCubit(),
         child: BlocProvider(
-          create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+          create: (_) =>
+              PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
           child: MaterialApp(
             theme: ThemeData(extensions: [PregoDesignSystem.light]),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -200,7 +201,8 @@ void main() {
       BlocProvider<ConnectionOverlayCubit>(
         create: (_) => StubConnectionOverlayCubit(),
         child: BlocProvider(
-          create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+          create: (_) =>
+              PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
           child: MaterialApp.router(
             routerConfig: router,
             theme: ThemeData(extensions: [PregoDesignSystem.light]),

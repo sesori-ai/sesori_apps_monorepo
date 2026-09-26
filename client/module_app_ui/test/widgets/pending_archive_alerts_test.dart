@@ -30,7 +30,8 @@ void main() {
             GoRoute(
               path: "/",
               builder: (_, _) => BlocProvider(
-                create: (_) => cubit = PendingSessionArchiveCubit(repository: repository),
+                create: (_) =>
+                    cubit = PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: repository)),
                 child: const PendingArchiveAlerts(navigatorKey: null, child: Scaffold()),
               ),
             ),
@@ -45,7 +46,8 @@ void main() {
     final navigatorKey = GlobalKey<NavigatorState>();
     await tester.pumpWidget(
       BlocProvider(
-        create: (_) => cubit = PendingSessionArchiveCubit(repository: repository),
+        create: (_) =>
+            cubit = PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: repository)),
         child: MaterialApp.router(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,

@@ -28,7 +28,7 @@ void main() {
 
   setUp(() {
     repository = _MockSessionRepository();
-    cubit = PendingSessionArchiveCubit(repository: repository);
+    cubit = PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: repository));
     outcomes = [];
     cubit.outcomes.listen(outcomes.add);
   });
@@ -120,10 +120,7 @@ void main() {
 
       verify(() => repository.archiveSession(sessionId: "first", deleteWorktree: false, force: false)).called(1);
       verifyNever(() => repository.archiveSession(sessionId: "first", deleteWorktree: true, force: true));
-      expect(
-        outcomes.single,
-        isA<PendingSessionArchiveCommitted>().having((o) => o.worktreeKept, "worktreeKept", isTrue),
-      );
+      expect(outcomes.single, isA<PendingSessionArchiveWorktreeKept>());
       expect(cubit.state.hiddenIds, {"first"});
     });
   });
@@ -153,10 +150,7 @@ void main() {
       async.flushMicrotasks();
 
       verify(() => repository.archiveSession(sessionId: "first", deleteWorktree: true, force: true)).called(1);
-      expect(
-        outcomes.single,
-        isA<PendingSessionArchiveCommitted>().having((o) => o.worktreeKept, "worktreeKept", isFalse),
-      );
+      expect(outcomes.single, isA<PendingSessionArchiveCommitted>());
       expect(cubit.state.hiddenIds, {"first"});
     });
   });

@@ -24,6 +24,7 @@ import "../services/project_viewing_service.dart";
 import "../services/session_abort_service.dart";
 import "../services/session_approval_service.dart";
 import "../services/session_auto_continuation_service.dart";
+import "../services/session_cleanup_service.dart";
 import "../services/session_detail_load_service.dart";
 import "../services/session_interaction_calculator.dart";
 import "../services/session_list_service.dart";
@@ -76,6 +77,7 @@ SessionListCubit createSessionListCubit({
   return SessionListCubit(
     mode: mode,
     sessionRepository: locator<SessionRepository>(),
+    sessionCleanupService: locator<SessionCleanupService>(),
     sessionListService: locator<SessionListService>(),
     projectRepository: locator<ProjectRepository>(),
     connectionService: locator<ConnectionService>(),

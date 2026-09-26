@@ -17,8 +17,10 @@ import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejecti
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/models/catalog_rescan_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
+import "package:sesori_dart_core/src/services/models/session_cleanup_outcome.dart";
 import "package:sesori_dart_core/src/services/models/session_list_filter.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
+import "package:sesori_dart_core/src/services/session_cleanup_service.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -92,6 +94,7 @@ void main() {
     SessionListCubit buildCubit({SessionListFilter filter = SessionListFilter.active}) => SessionListCubit(
       mode: SessionListMode.view(filter: filter),
       sessionRepository: mockSessionService,
+      sessionCleanupService: SessionCleanupService(repository: mockSessionService),
       sessionListService: sessionListService,
       projectRepository: mockProjectRepository,
       connectionService: mockConnectionService,
@@ -112,6 +115,7 @@ void main() {
       final cubit = SessionListCubit(
         mode: SessionListMode.actions(sessions: [session]),
         sessionRepository: mockSessionService,
+        sessionCleanupService: SessionCleanupService(repository: mockSessionService),
         sessionListService: sessionListService,
         projectRepository: mockProjectRepository,
         connectionService: mockConnectionService,
@@ -560,7 +564,7 @@ void main() {
           deleteWorktree: false,
           force: false,
         );
-        expect(result, isTrue);
+        expect(result, SessionCleanupOutcome.completed);
       },
       skip: 1,
       expect: () => [
@@ -597,7 +601,7 @@ void main() {
           deleteWorktree: true,
           force: false,
         );
-        expect(result, isFalse);
+        expect(result, isNull);
         expect(cubit.lastCleanupRejection?.issues.first, const CleanupIssue.unstagedChanges());
       },
       skip: 1,
@@ -1499,6 +1503,7 @@ void main() {
         return SessionListCubit(
           mode: const SessionListMode.view(filter: SessionListFilter.active),
           sessionRepository: mockSessionService,
+          sessionCleanupService: SessionCleanupService(repository: mockSessionService),
           sessionListService: sessionListService,
           projectRepository: mockProjectRepository,
           connectionService: mockConnectionService,
@@ -2395,6 +2400,7 @@ void main() {
       final cubit = SessionListCubit(
         mode: SessionListMode.actions(sessions: [session]),
         sessionRepository: mockSessionService,
+        sessionCleanupService: SessionCleanupService(repository: mockSessionService),
         sessionListService: sessionListService,
         projectRepository: mockProjectRepository,
         connectionService: mockConnectionService,
@@ -2421,7 +2427,7 @@ void main() {
       await mutation;
       expect(cubit.isClosed, isFalse);
       deleteReply.complete(ApiResponse.success(null));
-      expect(await deletion, isTrue);
+      expect(await deletion, SessionCleanupOutcome.completed);
       expect(cubit.isClosed, isFalse);
       renameReply.complete(ApiResponse.error(ApiError.generic()));
       expect(await rename, isFalse);

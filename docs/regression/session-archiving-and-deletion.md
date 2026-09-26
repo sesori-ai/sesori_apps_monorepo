@@ -250,4 +250,5 @@ mobile `session_detail_activity_navigation_test` and
 `archived_sessions_navigation_test`, desktop `desktop_session_detail_screen_test`, shared
 `pending_archive_alerts_test`, `pending_session_archive_cubit_test` and
 `session_cleanup_flow_test`, which covers the row menu, both shells' delete
-confirmations, the forced refusal and the shared-worktree retry.
+confirmations, the forced refusal and the kept-worktree notice; and
+`session_cleanup_service_test`, the one owner of the shared-worktree retry.

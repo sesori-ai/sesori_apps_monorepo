@@ -106,7 +106,11 @@ void main() {
             providers: [
               BlocProvider<SessionListCubit>.value(value: cubit),
               BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
-              BlocProvider(create: (_) => archives = PendingSessionArchiveCubit(repository: MockSessionRepository())),
+              BlocProvider(
+                create: (_) => archives = PendingSessionArchiveCubit(
+                  cleanupService: SessionCleanupService(repository: MockSessionRepository()),
+                ),
+              ),
               BlocProvider<ChatInputModeCubit>.value(value: inputMode),
             ],
             child: DesktopSessionListView(

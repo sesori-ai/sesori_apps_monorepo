@@ -36,7 +36,8 @@ Widget _buildScreenApp({required Widget child}) {
   return BlocProvider<ConnectionOverlayCubit>(
     create: (_) => StubConnectionOverlayCubit(),
     child: BlocProvider(
-      create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+      create: (_) =>
+          PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
       child: MaterialApp(
         theme: ThemeData(
           colorScheme: PregoColors.light.toFlutterColorScheme(),

@@ -94,7 +94,11 @@ void main() {
             BlocProvider<RecentSessionsCubit>.value(value: recent),
             BlocProvider(create: (_) => DesktopSidebarRefreshCubit(service: refreshService)),
             BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
-            BlocProvider(create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository())),
+            BlocProvider(
+              create: (_) => PendingSessionArchiveCubit(
+                cleanupService: SessionCleanupService(repository: MockSessionRepository()),
+              ),
+            ),
           ],
           child:
               child ??

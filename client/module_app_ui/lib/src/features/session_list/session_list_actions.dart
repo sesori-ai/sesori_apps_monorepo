@@ -43,27 +43,26 @@ Future<void> _deleteSession({
   required String sessionId,
   required bool deleteWorktree,
   bool force = false,
-
-  /// Set by the shared-worktree retry below, so the success alert says the
-  /// worktree survived rather than claiming a clean removal.
-  bool worktreeKept = false,
   required SessionDeletedRouteHandler? onSessionDeleted,
 }) async {
   final loc = context.loc;
-  final success = await cubit.deleteSession(
+  final outcome = await cubit.deleteSession(
     sessionId: sessionId,
     deleteWorktree: deleteWorktree,
     force: force,
   );
   if (!context.mounted) return;
 
-  if (success) {
+  if (outcome != null) {
     PregoPopupAlertPresenter.of(context).show(
       title: loc.sessionListDeleted,
       variant: PregoPopupAlertsNotificationsVariant.success,
-      content: worktreeKept
-          ? PregoPopupAlertContent(message: loc.sessionListCleanupWorktreeKept)
-          : const PregoPopupAlertContent(),
+      content: switch (outcome) {
+        SessionCleanupOutcome.completed => const PregoPopupAlertContent(),
+        SessionCleanupOutcome.sharedWorktreeKept => PregoPopupAlertContent(
+          message: loc.sessionListCleanupWorktreeKept,
+        ),
+      },
     );
     onSessionDeleted?.call(context: context, sessionId: sessionId);
     return;
@@ -72,20 +71,6 @@ Future<void> _deleteSession({
   // Check for cleanup rejection (409).
   final rejection = cubit.lastCleanupRejection;
   if (rejection != null) {
-    // A worktree another live session still uses is not the user's problem to
-    // solve: delete the session and leave that worktree to the other one. The
-    // retry sends deleteWorktree: false, so it cannot be refused again.
-    if (deleteWorktree && rejection.isOnlySharedWorktree) {
-      await _deleteSession(
-        context: context,
-        cubit: cubit,
-        sessionId: sessionId,
-        deleteWorktree: false,
-        worktreeKept: true,
-        onSessionDeleted: onSessionDeleted,
-      );
-      return;
-    }
     await _showForceDialog(
       context: context,
       cubit: cubit,

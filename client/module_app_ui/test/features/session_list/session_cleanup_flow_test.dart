@@ -22,7 +22,7 @@ void main() {
   setUp(() {
     cubit = _MockSessionListCubit();
     archived = [];
-    archives = PendingSessionArchiveCubit(repository: MockSessionRepository());
+    archives = PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository()));
     when(() => cubit.retainActionScope()).thenReturn(() {});
   });
 
@@ -158,7 +158,7 @@ void main() {
     ///
     /// Each entry of [rejections] answers one `deleteSession` call: a rejection
     /// fails that call and is published as the cubit's last rejection, null lets
-    /// it succeed. Calls past the end succeed.
+    /// it complete. Calls past the end complete.
     Future<void> pumpDeleteButton({
       required WidgetTester tester,
       required shared.Session target,
@@ -179,7 +179,7 @@ void main() {
         ),
       ).thenAnswer((_) async {
         lastRejection = pending.isEmpty ? null : pending.removeAt(0);
-        return lastRejection == null;
+        return lastRejection == null ? SessionCleanupOutcome.completed : null;
       });
 
       final dispatcher = SessionListActionDispatcher(
@@ -294,30 +294,19 @@ void main() {
       );
     });
 
-    testWidgets("a worktree another session shares is kept without asking, and said so once", (tester) async {
+    testWidgets("a worktree the cubit reports kept is said so once, without asking", (tester) async {
       await pumpDeleteButton(
         tester: tester,
         target: worktreeSession,
         deleteConfirmation: SessionDeleteConfirmation.alert,
-        rejections: const [
-          SessionCleanupRejection(issues: [shared.CleanupIssue.sharedWorktree()]),
-        ],
       );
+      when(
+        () => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, force: false),
+      ).thenAnswer((_) async => SessionCleanupOutcome.sharedWorktreeKept);
       await confirmDelete(tester);
 
-      // No modal, no force: the session goes, the other session's worktree stays.
       expect(find.text("Delete anyway"), findsNothing);
-      verifyInOrder([
-        () => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, force: false),
-        () => cubit.deleteSession(sessionId: "s1", deleteWorktree: false, force: false),
-      ]);
-      verifyNever(
-        () => cubit.deleteSession(
-          sessionId: "s1",
-          deleteWorktree: any(named: "deleteWorktree"),
-          force: true,
-        ),
-      );
+      verify(() => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, force: false)).called(1);
       expect(find.text("Session deleted"), findsOneWidget);
       expect(find.text("Another session is still using the worktree, so it was left in place."), findsOneWidget);
     });

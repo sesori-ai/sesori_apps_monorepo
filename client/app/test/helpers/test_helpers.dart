@@ -133,6 +133,11 @@ void _registerListServices({
     ),
   );
   getIt.registerSingleton<ProductAnalyticsService>(analyticsService);
+  if (getIt.isRegistered<SessionCleanupService>()) {
+    getIt.unregister<SessionCleanupService>();
+  }
+  // Lazy: callers register their SessionRepository after the list services.
+  getIt.registerFactory<SessionCleanupService>(() => SessionCleanupService(repository: getIt<SessionRepository>()));
   // The list cubits project the catalog scan onto their state, so every test
   // that renders a list needs one. Registered here rather than per test file
   // because it is a dependency of the lists themselves, not of any one screen.

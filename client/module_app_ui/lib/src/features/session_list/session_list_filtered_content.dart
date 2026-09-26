@@ -46,7 +46,8 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
     // refreshes the list for the Archived view to show the session at once.
     final sessions = context.read<SessionListCubit>();
     _archiveOutcomes = context.read<PendingSessionArchiveCubit>().outcomes.listen((outcome) {
-      if (outcome is PendingSessionArchiveCommitted && outcome.session.projectID == sessions.projectId) {
+      if (outcome case PendingSessionArchiveCommitted() || PendingSessionArchiveWorktreeKept()
+          when outcome.session.projectID == sessions.projectId) {
         unawaited(sessions.refreshSessions());
       }
     });

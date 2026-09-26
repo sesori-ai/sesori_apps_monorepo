@@ -20,9 +20,11 @@ import "../../services/catalog_rescan_service.dart";
 import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/optimistic_rename_tracker.dart";
 import "../../services/models/session_activity_info.dart";
+import "../../services/models/session_cleanup_outcome.dart";
 import "../../services/models/session_list_filter.dart";
 import "../../services/models/session_list_item_state.dart";
 import "../../services/project_viewing_service.dart";
+import "../../services/session_cleanup_service.dart";
 import "../../services/session_list_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
@@ -38,6 +40,7 @@ enum _SessionFetchOutcome() {
 class SessionListCubit({
   required SessionListMode mode,
   required final SessionRepository _sessionRepository,
+  required final SessionCleanupService _sessionCleanupService,
   required final SessionListService _sessionListService,
   required final ProjectRepository _projectRepository,
   required final ConnectionService _connectionService,
@@ -492,8 +495,9 @@ class SessionListCubit({
     _emitFiltered();
   }
 
-  /// Deletes a session permanently.
-  Future<bool> deleteSession({
+  /// Deletes a session permanently. Null when it was not deleted; then
+  /// [lastCleanupRejection] says whether the bridge refused the cleanup.
+  Future<SessionCleanupOutcome?> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
     required bool force,
@@ -505,15 +509,15 @@ class SessionListCubit({
     ),
   );
 
-  Future<bool> _deleteSession({
+  Future<SessionCleanupOutcome?> _deleteSession({
     required String sessionId,
     required bool deleteWorktree,
     required bool force,
   }) async {
-    if (state is! SessionListLoaded) return false;
+    if (state is! SessionListLoaded) return null;
 
     final index = _allSessions.indexWhere((s) => s.id == sessionId);
-    if (index < 0) return false;
+    if (index < 0) return null;
 
     final originalSession = _allSessions[index];
 
@@ -526,9 +530,9 @@ class SessionListCubit({
 
     _lastCleanupRejection = null;
 
-    final ApiResponse<void> response;
+    final ApiResponse<SessionCleanupOutcome> response;
     try {
-      response = await _sessionRepository.deleteSession(
+      response = await _sessionCleanupService.deleteSession(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
         force: force,
@@ -537,17 +541,17 @@ class SessionListCubit({
       logd("[SessionList] delete rejected: cleanup issues=${error.rejection.issues}");
       _lastCleanupRejection = error.rejection;
       _reinsertSession(originalSession);
-      return false;
+      return null;
     }
 
-    if (isClosed) return false;
+    if (isClosed) return null;
 
     return switch (response) {
-      SuccessResponse() => true,
+      SuccessResponse(:final data) => data,
       ErrorResponse(:final error) => () {
         loge("Failed to delete session: ${error.toString()}");
         _reinsertSession(originalSession);
-        return false;
+        return null;
       }(),
     };
   }

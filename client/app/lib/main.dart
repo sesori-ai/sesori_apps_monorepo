@@ -390,7 +390,7 @@ class const _SesoriAppShell() extends StatelessWidget {
                 // Above the router, so an archive's Undo window survives
                 // leaving the project it was started in.
                 child: BlocProvider(
-                  create: (_) => PendingSessionArchiveCubit(repository: getIt<SessionRepository>()),
+                  create: (_) => PendingSessionArchiveCubit(cleanupService: getIt<SessionCleanupService>()),
                   child: PendingArchiveAlerts(
                     navigatorKey: appRootNavigatorKey,
                     child: child ?? const SizedBox.shrink(),

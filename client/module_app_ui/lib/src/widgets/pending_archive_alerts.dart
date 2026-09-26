@@ -102,8 +102,10 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
   Future<void> _onOutcome(PendingSessionArchiveOutcome outcome) async {
     if (!mounted) return;
     switch (outcome) {
-      case PendingSessionArchiveCommitted(:final worktreeKept):
-        if (worktreeKept) _showWorktreeKept();
+      case PendingSessionArchiveCommitted():
+        return;
+      case PendingSessionArchiveWorktreeKept():
+        _showWorktreeKept();
       case PendingSessionArchiveFailed():
         if (context.read<PendingSessionArchiveCubit>().state.window is PendingArchiveOpen) {
           _failureHeld = true;
