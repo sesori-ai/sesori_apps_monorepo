@@ -1,0 +1,131 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Feedback polish</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, system-ui, sans-serif; background: #f4f4f5; color: #161616; line-height: 1.45; }
+main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 120px; }
+h1 { font-size: 26px; margin: 0 0 6px; }
+h2 { font-size: 20px; margin: 44px 0 6px; padding-top: 16px; border-top: 1px solid #ddd; }
+p.lead { color: #444; margin: 0 0 14px; font-size: 16px; }
+.box { background: #fff; border-radius: 14px; padding: 14px 18px; margin: 14px 0; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.box.settled { border-left: 4px solid #12a150; }
+.box.how { border-left: 4px solid #1a6dff; }
+.box h3 { margin: 0 0 6px; font-size: 16px; }
+ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
+
+.bar { position: sticky; top: 0; z-index: 10; background: rgba(244,244,245,.95); backdrop-filter: blur(8px); border-bottom: 1px solid #e0e0e0; }
+.bar .in { max-width: 1100px; margin: 0 auto; padding: 8px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.bar .prog { font-weight: 700; font-size: 14px; }
+#copy { margin-left: auto; background: #1a6dff; color: #fff; border: 0; border-radius: 10px; padding: 9px 16px; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+#toast { font-size: 14px; color: #12813f; font-weight: 700; }
+#fallback { width: 100%; height: 160px; font: 13px ui-monospace, monospace; }
+
+.q { background: #fff; border-radius: 16px; padding: 16px 16px 14px; margin: 18px 0; box-shadow: 0 1px 3px rgba(0,0,0,.08); border: 1.5px solid transparent; }
+.q.answered { border-color: #cfe0ff; }
+.qh { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
+.qid { flex: none; font-size: 13px; font-weight: 700; color: #fff; background: #161616; border-radius: 8px; padding: 2px 8px; }
+.qt { font-size: 17px; font-weight: 700; }
+.qsub { color: #444; margin: 0 0 12px; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.opt { display: block; border: 1.5px solid #ddd; border-radius: 12px; padding: 12px; cursor: pointer; background: #fff; }
+.opt.on { border-color: #1a6dff; background: #f2f6ff; box-shadow: 0 0 0 3px rgba(26,109,255,.12); }
+.oh { display: flex; align-items: center; gap: 8px; font-size: 15px; margin-bottom: 8px; flex-wrap: wrap; }
+.oh input { width: 18px; height: 18px; margin: 0; accent-color: #1a6dff; flex: none; }
+.oh .letter { font-weight: 700; }
+.sug { font-size: 12px; font-weight: 700; color: #0f7a3d; background: #dcf5e6; border-radius: 99px; padding: 2px 8px; margin-left: auto; white-space: nowrap; }
+.why { font-size: 14px; color: #444; margin: 8px 0 0; }
+.note-in { display: block; margin-top: 12px; width: 100%; border: 1.5px solid #e2e2e2; border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 14px; resize: vertical; min-height: 40px; }
+#other { min-height: 110px; }
+
+.cap { font-size: 12px; color: #666; text-align: center; margin-top: 6px; }
+.shot { width: 100%; max-width: 260px; display: block; margin: 0 auto; border-radius: 16px; border: 1px solid #ddd; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; align-items: start; }
+<style>.wide{width:100%;max-width:1100px;border-radius:12px;border:1px solid #ddd;display:block}</style></head><body>
+<div class="bar"><div class="in"><span class="prog" id="prog"></span><span id="toast"></span><button id="copy">Copy response</button></div></div>
+<main>
+<h1>Feedback polish</h1>
+<p class="lead">This page shows the real app on the iOS simulator, using fixture data. On the left of each image or pair is the version on main; on the right is the fix on branch <code>sesori/feedback-polish</code>.</p>
+<textarea id="fallback" hidden></textarea>
+
+<div class="q" data-id="Q1" data-title="Rate Sesori row">
+<div class="qh"><span class="qid">Q1</span><span class="qt">Rate Sesori row in Settings</span></div>
+<p class="qsub">The row now uses the same 40 px tile as the account avatar, with a heart in place of the person icon. Its title lines up with the account title, both rows are the same height, and the divider starts under the text. The new second line reads "Tell us how Sesori feels".</p>
+<img class="wide" src="settings-account-dark-before-after.png" alt="Dark, before and after"><div class="cap">Dark: before (left), after (right)</div><br>
+<img class="wide" src="settings-account-light-before-after.png" alt="Light, before and after"><div class="cap">Light: before (left), after (right)</div>
+<div class="opts" style="margin-top:12px">
+<label class="opt" data-label="Ship as shown"><div class="oh"><input type="radio" name="Q1" value="a"><span class="letter">A.</span> Ship as shown<span class="sug">Suggested</span></div><p class="why">Same tile, height and title position as the account row.</p></label>
+<label class="opt" data-label="Same tile, no second line"><div class="oh"><input type="radio" name="Q1" value="b"><span class="letter">B.</span> Same tile, drop the second line</div></label>
+<label class="opt" data-label="Different wording for the second line"><div class="oh"><input type="radio" name="Q1" value="c"><span class="letter">C.</span> Keep the second line, change the words (put yours in the note)</div></label>
+</div><textarea class="note-in" placeholder="Notes"></textarea></div>
+
+<div class="q" data-id="Q2" data-title="I like it handoff">
+<div class="qh"><span class="qid">Q2</span><span class="qt">After tapping "Yes, love it!"</span></div>
+<p class="qsub">The review question now takes over 300 ms after the tap, right after the button's pink pop, instead of 1.5 s. The old buttons fade out and move up 12 px; the question fades in and rises 20 px. The celebration keeps playing at the top. On the automatic iPhone prompt, the sheet now closes for Apple's review prompt after 0.8 s instead of 1.5 s.</p>
+<div class="two"><div><video class="shot" src="love-dark-before.mp4" autoplay loop muted playsinline controls></video><div class="cap">Dark: before</div></div> <div><video class="shot" src="love-dark-after.mp4" autoplay loop muted playsinline controls></video><div class="cap">Dark: after</div></div></div><br>
+<div class="two"><div><video class="shot" src="love-light-before.mp4" autoplay loop muted playsinline controls></video><div class="cap">Light: before</div></div> <div><video class="shot" src="love-light-after.mp4" autoplay loop muted playsinline controls></video><div class="cap">Light: after</div></div></div>
+<div class="opts" style="margin-top:12px">
+<label class="opt" data-label="Ship as shown"><div class="oh"><input type="radio" name="Q2" value="a"><span class="letter">A.</span> Ship as shown<span class="sug">Suggested</span></div><p class="why">The tap feels answered at once, and the question clearly arrives.</p></label>
+<label class="opt" data-label="Faster: hand over immediately"><div class="oh"><input type="radio" name="Q2" value="b"><span class="letter">B.</span> Even faster: start the swap as soon as the tap lands</div><p class="why">The pop and the swap overlap.</p></label>
+<label class="opt" data-label="Stronger arrival"><div class="oh"><input type="radio" name="Q2" value="c"><span class="letter">C.</span> Same timing, a stronger arrival (more travel, or buttons after the title)</div></label>
+</div><textarea class="note-in" placeholder="Notes"></textarea></div>
+
+<h2>Anything else</h2><textarea class="note-in" id="other" placeholder="Anything else"></textarea>
+</main>
+<script>
+const KEY = "sesori-feedback-polish-r1";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }
+const save = () => localStorage.setItem(KEY, JSON.stringify(state));
+const questions = [...document.querySelectorAll(".q[data-id]")];
+function refresh() {
+  let picked = 0;
+  for (const q of questions) {
+    const s = state[q.dataset.id] || {};
+    if (s.v) picked++;
+    q.classList.toggle("answered", Boolean(s.v));
+    q.querySelectorAll("input[type=radio]").forEach((r) => {
+      r.checked = r.value === s.v;
+      r.closest(".opt").classList.toggle("on", r.checked);
+    });
+  }
+  document.getElementById("prog").textContent = `${picked} of ${questions.length} picked`;
+}
+for (const q of questions) {
+  const id = q.dataset.id;
+  q.querySelectorAll("input[type=radio]").forEach((r) => r.addEventListener("change", () => {
+    (state[id] ||= {}).v = r.value; save(); refresh();
+  }));
+  const note = q.querySelector(".note-in");
+  note.value = (state[id] || {}).n || "";
+  note.addEventListener("input", () => { (state[id] ||= {}).n = note.value; save(); });
+}
+const other = document.getElementById("other");
+other.value = state.other || "";
+other.addEventListener("input", () => { state.other = other.value; save(); });
+
+function response() {
+  const lines = ["Feedback polish (Rate Sesori row + love handoff): answers", ""];
+  for (const q of questions) {
+    const s = state[q.dataset.id] || {};
+    const opt = s.v ? q.querySelector(`input[value="${s.v}"]`).closest(".opt") : null;
+    const pick = opt ? `${s.v.toUpperCase()}. ${opt.dataset.label}${opt.querySelector(".sug") ? " (suggested)" : ""}` : "no answer";
+    lines.push(`${q.dataset.id} ${q.dataset.title}: ${pick}`);
+    if (s.n && s.n.trim()) lines.push(`    Note: ${s.n.trim()}`);
+  }
+  if (state.other && state.other.trim()) lines.push("", `Anything else: ${state.other.trim()}`);
+  return lines.join("\n") + "\n";
+}
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = response();
+  const toast = document.getElementById("toast");
+  const fallback = document.getElementById("fallback");
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.textContent = "Copied";
+  } catch (e) {
+    fallback.hidden = false; fallback.value = text; fallback.focus(); fallback.select();
+    toast.textContent = "Copy the selected text";
+  }
+  setTimeout(() => { toast.textContent = ""; }, 2500);
+});
+refresh();
+</script></body></html>
