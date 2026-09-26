@@ -584,7 +584,8 @@ class const _PageFocus({required final Widget child}) extends StatefulWidget {
 }
 
 class _PageFocusState() extends State<_PageFocus> {
-  final _node = FocusNode(debugLabel: "session page");
+  // Out of Tab order: the page itself is no stop, only a home for its shortcuts.
+  final _node = FocusNode(debugLabel: "session page", skipTraversal: true);
 
   @override
   void initState() {

@@ -618,6 +618,8 @@ void main() {
       "Cmd/Ctrl+- folds every turn and Cmd/Ctrl+= unfolds them before the composer is focused",
       (tester) async {
         await pumpPage(tester, session: _session);
+        // The page holds focus for its shortcuts but is no Tab stop.
+        expect(FocusManager.instance.primaryFocus?.skipTraversal, isTrue);
         final isMacOS = defaultTargetPlatform == TargetPlatform.macOS;
         final modifier = isMacOS ? LogicalKeyboardKey.metaLeft : LogicalKeyboardKey.controlLeft;
         final otherModifier = isMacOS ? LogicalKeyboardKey.controlLeft : LogicalKeyboardKey.metaLeft;
