@@ -13,6 +13,10 @@ class PersisterRepository({required PersisterApi persisterApi}) {
   /// Clears both primitive tables in this repository's scope.
   Future<void> clear() => _api.clear();
 
+  /// Atomically replaces all preferences with one typed boolean value.
+  Future<void> clearAndWriteBool({required BoolPersistenceKey key, required bool value}) =>
+      _api.clearAndWriteBool(key: key.storageKey, value: value);
+
   Future<String?> readString({required StringPersistenceKey key}) => _api.readString(key: key.storageKey);
 
   Future<String> readStringOrDefault({required StringPersistenceKey key, required String defaultValue}) async =>

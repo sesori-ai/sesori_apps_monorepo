@@ -3,19 +3,19 @@
 ## Execution
 
 - Status: #1751 and regression reconciliation #1758 merged. Native qualification
-  is partial. The user-requested failed-import reset follow-up is open in #1779,
-  with architecture approval; current-head CI/review still gates readiness.
+  is partial. #1779 merged as `8fe13f3`; later merged recovery exceptions were
+  explicitly rejected by the user. Correcting restart safety before qualification.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
   with a retirement condition and deletion checklist.
-- Current branch: `sesori/desktop-master-key-storage-reset-recovery`, from fixed
-  main `b1d4c57` in the supplied worktree. No additional worktree is allowed.
+- Current branch: `sesori/desktop-master-key-storage-recovery-fence`, from fixed
+  main `83a00c8` in the supplied worktree. No additional worktree is allowed.
   Qualification checkpoint `975e286` remains preserved on its published branch;
   no final qualification PR is open.
 - #1717 is closed as superseded, not merged. Its published desktop checkpoint
   `4a27888` and the full shared checkpoint `de38951` remain in history.
-- One open PR and at most one local successor. Current total: **13 PRs** after
+- One open PR and at most one local successor. Current total: **14 PRs** after
   adding the user-requested reset follow-up before final qualification/retirement.
   Keep published series titles synchronized; no published history is rewritten.
 - Source of truth: [PLAN.md](PLAN.md). Original directory slug stays stable.
@@ -33,8 +33,9 @@
 | 4.c — Startup recovery | Merged | #1749; eight tests, three analyses, architecture approval and 22 passing checks; no storage cutover. |
 | 4.d — Both-client cutover | Merged | #1751; architecture approved, 24 reconciled shell cases plus retained auth/core evidence, README feedback fixed and 34 passing checks. |
 | 5 — Regression reconciliation | Merged | #1758; explicit replacement on all three desktops, 139 authored lines, 7 checks passed at readiness. |
-| 5.a — Failed-import reset follow-up | In review | #1779 (PR 12); 148 focused cases across local suites, six analyses, generated localization and fixture visuals. Review follow-up verification recorded below. |
-| 6 — Required qualification/retirement | Partial / blocked | PR 13; checkpoint `975e286` retains mobile/signed-macOS evidence. Missing native matrix still blocks retirement. |
+| 5.a — Failed-import reset follow-up | Merged | #1779 (PR 12), `8fe13f3`; later changes allowed stale-session exceptions, rejected by user. |
+| 5.b — Durable recovery intent | Verified locally | PR 13; 134 focused cases, four owning analyses. Reset-only intent, blocked secrets until completion, obsolete exceptions removed. Architecture review `77c2c6f9` approved `83a00c8..498200d` (19 paths, 482 authored lines). |
+| 6 — Required qualification/retirement | Partial / blocked | PR 14; checkpoint `975e286` retains mobile/signed-macOS evidence. Missing native matrix still blocks retirement. |
 
 ## Decisions and code-informed constraints
 
@@ -65,11 +66,19 @@
   secrets/preferences/legacy data, replace the master and continue logged out.
   Normal account/server analytics preferences apply; pending local-only opt-out
   may be lost. No separate consent flag or blocking recovery screen.
-- Recovery retires source/attempts completion only after secret reset succeeds;
-  failed reset preserves the remaining source and leaves import retryable on cold
-  launch. Preference/source cleanup errors stay logged. The file sink is installed
-  before migration, with underlying native/SQL diagnostics retained and parser
-  source buffers omitted. Permanent denial is never reported as successful erasure.
+- Completion absence means ordinary import; false means pending destructive
+  recovery; true means handled. Persist false before destruction and retain it
+  atomically while clearing preferences. Incomplete recovery blocks secret use;
+  cold launches retry reset only, never source import. Native/SQL errors reach the
+  existing file sink. Permanent denial is never reported as successful erasure.
+- Plan review `d98e5c42` rejected the generic transaction callback, underspecified
+  admission failures and optional state mapper. Applied corrections directly:
+  narrow `clearAndWriteBool`, synchronous I/O-free `blockAccess` in the existing
+  cache owner, and nullable-bool branching in the migration service.
+- No repair is added for ambiguous unpublished #1779 stores with absent marker,
+  surviving legacy values and fresh destination credentials. Those internal stores
+  cannot be distinguished from interrupted imports and have no compatibility
+  guarantee. Released-mobile upgrades and normal interruption merging remain.
 - Desktop is unpublished: sign out in the old build before cutover, then sign in
   once. No legacy desktop migration, automatic old-Keychain cleanup or claims
   that new local logout revokes old internal builds' separate sessions.
@@ -79,6 +88,13 @@
   wallet modifications are authorized by fixture tests or plan editing.
 
 ## Evidence retained, not overclaimed
+
+- Recovery-fence follow-up at base `83a00c8`: 57 persistence, 20 migration,
+  three mobile admission, 53 auth-manager and one desktop smoke case pass.
+  Persistence/core/auth/desktop analyses are clean. Tests cover atomic rollback,
+  unused blocked-future observation, exact cause/stack retention, one-/two-leg reset
+  failures, pending-intent admission refusal, and failed completion with both
+  successful and failed native source clearing. No native qualification claimed.
 
 - Read-only wallet inspection informed typed primitives/selective encryption.
   The discarded unwired file-store prototype established no compatibility data.

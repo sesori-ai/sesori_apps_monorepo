@@ -61,6 +61,26 @@ void main() {
     expect(native.writes, 1);
   });
 
+  test("clear and write bool rolls back both deletions if the replacement write fails", () async {
+    final database = PersistenceDatabase(executor: NativeDatabase.memory());
+    addTearDown(database.close);
+    final api = PersisterApi(database: database);
+    await api.writeString(key: "theme", value: "dark");
+    await api.writeBool(key: "pending", value: false);
+    await database.customStatement("""
+      CREATE TRIGGER reject_replacement BEFORE INSERT ON bool_values
+      BEGIN SELECT RAISE(ABORT, 'replacement denied'); END;
+    """);
+    await expectLater(api.clearAndWriteBool(key: "pending", value: false), throwsA(isA<Exception>()));
+    expect(await api.readString(key: "theme"), "dark");
+    expect(await api.readBool(key: "pending"), false);
+    await database.customStatement("DROP TRIGGER reject_replacement");
+    await api.clearAndWriteBool(key: "pending", value: false);
+    expect(await api.readString(key: "theme"), isNull);
+    expect(await api.readBool(key: "pending"), false);
+    expect(await database.select(database.boolValues).get(), hasLength(1));
+  });
+
   test("file open is lazy, enables WAL and keeps scopes separate across reopen", () async {
     final directory = Directory.systemTemp.createTempSync("sesori-storage-scope-");
     addTearDown(() => directory.deleteSync(recursive: true));

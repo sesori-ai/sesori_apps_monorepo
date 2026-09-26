@@ -50,17 +50,17 @@ desktop do not resolve it. No coding plugin participates.
 - Production admission occurs after lazy platform/persistence/auth/core
   registration and before analytics runtime creation, auth restoration, deep
   links or preference reads. Development must not even construct the source.
-- On caught import failure, attempt scoped secret reset and atomic primitive
-  clearing before normal logged-out startup. Retire the import only when the
-  destination is whole: the copy committed every value, or the reset emptied it.
-  Otherwise preserve the untouched source and leave import retryable on cold launch;
-  never mark half-copied or half-fenced destination state handled. A committed copy
-  stays trusted when unfenced, and its source remainder is never imported in halves.
-  After secret reset succeeds, clear the old namespace and attempt completion even
-  after preference/source cleanup failure. Either clearing or the marker fences the
-  source; when neither can be recorded it stays importable, and a session
-  established before the next launch may be replaced by that import. The new
-  master belongs to a separate namespace. No automatic retry or blocking screen.
+- Before destructive recovery, write `false` to the existing completion key.
+  Absence permits ordinary import; `false` permits only reset; `true` skips both.
+  Unreadable completion or failed intent admission blocks secret use without
+  authorizing destruction. No durable erasure is claimed when storage is denied.
+- Reset secrets and atomically clear primitives while retaining `false`. Only
+  after both succeed attempt old-namespace clearing and `true` completion. Every
+  incomplete recovery blocks existing encrypted reads and fresh secret writes
+  for that launch. Missing-row reads remain null and normal login UI stays usable,
+  but persistence can fail explicitly. Cold launch retries reset, never old import.
+  Completion is required even if native clearing succeeds: pending recovery must
+  not later erase a new session. No new table, native item or blocking screen.
 - Install the app file sink before migration. Log the original and each recovery
   failure, including underlying native/SQL messages/codes and both reset stacks.
   Exclude parser source buffers containing values/keys, not all diagnostic details.
@@ -146,6 +146,12 @@ channel mocks and old-format package evidence do not establish the L3/L4 matrix.
   Keystore keys, or an iOS restore losing the usable database/master pairing.
 
 ## Known Limitations
+
+- Ambiguous stores from unpublished #1779 builds (no marker, surviving legacy
+  values and fresh destination credentials) are not repaired. They cannot be
+  distinguished from an interrupted ordinary import; no compatibility/safety
+  guarantee is made for those internal stores. Released-mobile upgrades remain
+  supported.
 
 - Isolated tests exercise real shell registration, SQL/crypto and startup
   ordering, but do not establish actual native enumeration/error behavior,

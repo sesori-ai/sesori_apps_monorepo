@@ -31,6 +31,30 @@ void main() {
 
   tearDown(() => database.close());
 
+  test("blocking is synchronous and I/O-free, retains cause/stack and observes an unused failed future", () async {
+    await repository.write(key: first, value: "old");
+    final cause = StateError("fixture incomplete operation");
+    final stack = StackTrace.fromString("fixture original stack");
+    final reads = native.reads;
+    final writes = native.writes;
+    repository.blockAccess(error: cause, stackTrace: stack);
+    await Future<void>.delayed(Duration.zero);
+    expect(native.reads, reads);
+    expect(native.writes, writes);
+    expect(await repository.read(key: second), isNull);
+    await expectLater(repository.read(key: first), throwsA(same(cause)));
+    try {
+      await repository.write(key: second, value: "fresh");
+      fail("blocked write succeeded");
+    } on Object catch (error, trace) {
+      expect(error, same(cause));
+      expect(trace.toString(), stack.toString());
+    }
+    await repository.reset();
+    await repository.write(key: first, value: "after recovery");
+    expect(await repository.read(key: first), "after recovery");
+  });
+
   test("missing reads and deletes require no native key", () async {
     expect(await repository.read(key: first), isNull);
     await repository.delete(key: first);

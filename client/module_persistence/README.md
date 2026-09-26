@@ -15,6 +15,12 @@ No dependency on Flutter or product/domain packages.
   immediately and publishes its new key only after both operations succeed.
   Failed reset stays cached; successful key replacement also invalidates old
   ciphertext if deletion failed. Missing-row reads/deletes need no native key.
+  `blockAccess(error:, stackTrace:)` synchronously replaces the cached future with
+  an observed failure, without I/O, so an incomplete startup operation cannot
+  admit new secret writes. Missing rows still return null; existing reads fail.
+- `PersisterRepository.clearAndWriteBool` atomically replaces primitive tables
+  with one typed bool. Its API owns the transaction; callers never supply SQL or
+  transaction callbacks. A failed replacement rolls back both deletions.
 - A missing master key is created only for a store without encrypted rows, and
   saved natively before ciphertext. Normal reads/writes never clear or re-key
   existing rows after key loss/corruption. Destructive reset is an explicit

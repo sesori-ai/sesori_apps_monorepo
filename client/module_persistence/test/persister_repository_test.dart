@@ -112,6 +112,15 @@ void main() {
     expect(storage.bools, isEmpty);
   });
 
+  test("clear and write retains exactly the requested typed bool", () async {
+    final persister = repository();
+    await persister.writeString(key: _StringKey.first, value: "old");
+    await persister.writeBool(key: _BoolKey.first, value: true);
+    await persister.clearAndWriteBool(key: _BoolKey.second, value: false);
+    expect(storage.strings, isEmpty);
+    expect(storage.bools, {"fixture.second": false});
+  });
+
   test("all operations preserve backend failures, including reads with defaults", () async {
     final persister = repository();
     final error = StateError("fixture storage unavailable");
@@ -132,6 +141,7 @@ void main() {
     await expectLater(persister.writeBool(key: _BoolKey.first, value: true), throwsA(same(error)));
     await expectLater(persister.deleteBool(key: _BoolKey.first), throwsA(same(error)));
     await expectLater(persister.clear(), throwsA(same(error)));
+    await expectLater(persister.clearAndWriteBool(key: _BoolKey.first, value: false), throwsA(same(error)));
     expect(storage.strings, isEmpty);
     expect(storage.bools, isEmpty);
   });
@@ -168,6 +178,14 @@ class _MemoryPersisterApi() implements PersisterApi {
     _recordOperation();
     strings.clear();
     bools.clear();
+  }
+
+  @override
+  Future<void> clearAndWriteBool({required String key, required bool value}) async {
+    _recordOperation();
+    strings.clear();
+    bools.clear();
+    bools[key] = value;
   }
 
   @override

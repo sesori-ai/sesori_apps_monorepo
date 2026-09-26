@@ -262,10 +262,17 @@ itself make retained public upgrade compatibility safe to delete.
   retains native/SQL messages and both reset stacks, omitting only parser source
   buffers. Attempt ciphertext clearing and replacement-master save independently;
   then attempt atomic primitive clearing. Log every failure.
-- Failed secret reset retains the remaining legacy source and leaves import
-  retryable on cold launch, not marked handled. Only after secret reset succeeds,
-  clear the old namespace and attempt completion even if preference/source cleanup
-  failed. The cached reset future also prevents in-process partial auth restoration.
+- Before destructive recovery, persist false in the existing completion key.
+  Absence means ordinary import; false means recovery-only; true means handled.
+  Atomically clear primitives and retain false through `clearAndWriteBool`, without
+  a generic transaction callback. Failed marker admission authorizes no destruction.
+- Every incomplete recovery blocks secret access synchronously through the existing
+  cached-future owner. After secret reset and primitive clearing succeed, attempt
+  source clearing and true completion. Until true commits, no new credentials can
+  persist. Cold launch retries reset rather than importing stale source values.
+- No new table, native item, cache or mapper. No compatibility repair for ambiguous
+  unpublished #1779 stores (absent marker, residual source and fresh credentials);
+  document that limit rather than claiming those stores are safe.
 - Continue normal logged-out startup after recovery. Successful reset permits
   fresh login and normal account/server analytics preferences; no new consent
   flag or alternate store. Persistent native/SQL denial can still fail ordinary
@@ -391,7 +398,7 @@ failed-import reset uses the explicitly approved normal-account policy.
 
 Keep this worktree only, one open PR and at most one local successor. The stable
 slug remains `desktop-master-key-storage`; the approved scope is now all native
-clients. Current total: **13 PRs**, including the requested reset follow-up. #1717 is closed as superseded, not merged.
+clients. Current total: **14 PRs**, including the requested reset follow-up. #1717 is closed as superseded, not merged.
 Its published branch/review evidence stays intact; never force-push it to fake a
 smaller history. Carry applicable feedback into shared-backend PRs 5/6.
 
@@ -410,19 +417,20 @@ qualification still precedes plan retirement.
 
 | Milestone | Exact PR title | Scope / expected result | Estimate |
 |---|---|---|---|
-| 1 | 🌿 [desktop-master-key-storage] Plan typed Drift desktop persistence [step 1/13] | #1698 merged; original reviewed plan. | Completed |
-| 2 | ⚙️ [desktop-master-key-storage] Add typed client persistence contracts [step 2/13] | #1708 merged; unwired shared contracts. | Completed |
-| 3.a | ⚙️ [desktop-master-key-storage] Add scoped desktop secret encryption [step 3/13] | #1715 merged; unwired cipher foundation. | Completed |
-| 3.b | ⚙️ [desktop-master-key-storage] Share client storage foundations [step 4/13] | #1726 merged; shared cipher/capabilities and Android reset safety; no database cutover. | Completed: 1,260 lines including 13 generated |
-| 3.c | ⚙️ [desktop-master-key-storage] Add shared Drift persistence [step 5/13] | #1729 merged; schema/direct primitives, lazy lifecycle and tests; no shell cutover. | Completed: 1,194 lines (517 authored, 621 generated, 56 lockfile) |
-| 3.d | 🚧 [desktop-master-key-storage] Add cached shared secret storage [step 6/13] | #1734 merged; cached-key repository, encryption/recovery/concurrency tests and docs; no shell cutover. | Completed: 672 lines (655 authored, 17 generated) |
-| 4.a | 🚧 [desktop-master-key-storage] Prepare deprecated mobile storage migration [step 7/13] | #1739 merged; domain keys and deprecated importer with recovery tests; not invoked yet. | Completed: 946 lines (773 authored, 173 generated) |
-| 4.b | 🚧 [desktop-master-key-storage] Provide native client persistence capabilities [step 8/13] | #1744 merged; lazy master/directory/source ports and DB-only Android backup exclusion; no shell cutover. | Completed: 590 lines (565 authored, 25 generated) |
-| 4.c | ⚙️ [desktop-master-key-storage] Prepare storage-upgrade recovery [step 9/13] | #1749 merged; localized recovery root and typed bootstrap catch/disposal; no storage cutover. | Completed: 280 lines (261 authored, 19 generated) |
-| 4.d | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 10/13] | #1751 merged; coherent consumers/admission, backup rules and obsolete-adapter removal. Native qualification remains. | Completed: 1,634 lines (1,548 authored, 86 generated) |
-| 5 | 🌿 [desktop-master-key-storage] Complete shared persistence regression documentation [step 11/13] | #1758 merged; explicit three-desktop replacement coverage. | Completed: 139 authored |
-| 5.a | ⚙️ [desktop-master-key-storage] Recover failed mobile migrations to login [step 12/13] | User-requested scoped reset, normal login/analytics, focused tests and reconciled regression/DI guidance. Remove blocking recovery UI. | 900–1,400 including generated deletions |
-| 6 | ⚙️ [desktop-master-key-storage] Qualify and retire shared client persistence [step 13/13] | Required full recorded matrix and bounded evidence; retire plan only after qualification passes or precisely named gaps are accepted, not the still-required deprecated importer. | Partial evidence retained; final delivery blocked |
+| 1 | 🌿 [desktop-master-key-storage] Plan typed Drift desktop persistence [step 1/14] | #1698 merged; original reviewed plan. | Completed |
+| 2 | ⚙️ [desktop-master-key-storage] Add typed client persistence contracts [step 2/14] | #1708 merged; unwired shared contracts. | Completed |
+| 3.a | ⚙️ [desktop-master-key-storage] Add scoped desktop secret encryption [step 3/14] | #1715 merged; unwired cipher foundation. | Completed |
+| 3.b | ⚙️ [desktop-master-key-storage] Share client storage foundations [step 4/14] | #1726 merged; shared cipher/capabilities and Android reset safety; no database cutover. | Completed: 1,260 lines including 13 generated |
+| 3.c | ⚙️ [desktop-master-key-storage] Add shared Drift persistence [step 5/14] | #1729 merged; schema/direct primitives, lazy lifecycle and tests; no shell cutover. | Completed: 1,194 lines (517 authored, 621 generated, 56 lockfile) |
+| 3.d | 🚧 [desktop-master-key-storage] Add cached shared secret storage [step 6/14] | #1734 merged; cached-key repository, encryption/recovery/concurrency tests and docs; no shell cutover. | Completed: 672 lines (655 authored, 17 generated) |
+| 4.a | 🚧 [desktop-master-key-storage] Prepare deprecated mobile storage migration [step 7/14] | #1739 merged; domain keys and deprecated importer with recovery tests; not invoked yet. | Completed: 946 lines (773 authored, 173 generated) |
+| 4.b | 🚧 [desktop-master-key-storage] Provide native client persistence capabilities [step 8/14] | #1744 merged; lazy master/directory/source ports and DB-only Android backup exclusion; no shell cutover. | Completed: 590 lines (565 authored, 25 generated) |
+| 4.c | ⚙️ [desktop-master-key-storage] Prepare storage-upgrade recovery [step 9/14] | #1749 merged; localized recovery root and typed bootstrap catch/disposal; no storage cutover. | Completed: 280 lines (261 authored, 19 generated) |
+| 4.d | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 10/14] | #1751 merged; coherent consumers/admission, backup rules and obsolete-adapter removal. Native qualification remains. | Completed: 1,634 lines (1,548 authored, 86 generated) |
+| 5 | 🌿 [desktop-master-key-storage] Complete shared persistence regression documentation [step 11/14] | #1758 merged; explicit three-desktop replacement coverage. | Completed: 139 authored |
+| 5.a | ⚙️ [desktop-master-key-storage] Recover failed mobile migrations to login [step 12/14] | User-requested scoped reset, normal login/analytics, focused tests and reconciled regression/DI guidance. Remove blocking recovery UI. | 900–1,400 including generated deletions |
+| 5.b | 🚧 [desktop-master-key-storage] Preserve recovery intent across client restarts [step 13/14] | User rejected stale-session restoration/overwrite exceptions merged in #1779. Persist recovery-only intent, fail secret use until completion, replace obsolete bypass tests/docs. | 400–800 authored |
+| 6 | ⚙️ [desktop-master-key-storage] Qualify and retire shared client persistence [step 14/14] | Required full recorded matrix and bounded evidence; retire plan only after qualification passes or precisely named gaps are accepted, not the still-required deprecated importer. | Partial evidence retained; final delivery blocked |
 
 Dependencies follow row order. Generated schema stays with source. No temporary
 schemas, compatibility adapters or incomplete mobile cutover to manufacture a
