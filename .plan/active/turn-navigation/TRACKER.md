@@ -17,6 +17,12 @@ step lives in `steps/step-NN.md`, written only by that step's own PR.
   clause, D15, D16, D17 and D18, and narrow D8.
 - D32–D37 are defaults adopted for the Prompts screen without individual
   answers. The user may override any of them.
+- **D38–D39 are the user's decisions of 2026-09-26, round 4.** The bridge keeps
+  the ACP prompt instant it already computes, so prompts Sesori sent are timed on
+  all harnesses while prompts read back from a harness's own history stay undated
+  (supersedes D31's "the bridge does not stamp its own time"); and the prompt list
+  keeps the transcript's chronological order and opens anchored on the prompt the
+  reader was nearest (supersedes D34).
 
 See [PLAN](PLAN.md#decisions) for each one, including which are superseded.
 
@@ -43,8 +49,14 @@ See [PLAN](PLAN.md#decisions) for each one, including which are superseded.
   forwards the jump notifier to the message list.
 - Row numbers come from the bridge or not at all. No client-side numbering
   fallback, and no shim for an older bridge.
-- Times and day headers come from `time.created` or not at all. Nothing is
-  invented, on either side of the wire.
+- Times and day headers come from `time.created` or not at all. The bridge may
+  stamp only an instant it actually observed; nothing is guessed, defaulted or
+  invented on either side of the wire, and an undated prompt stays undated and
+  groups under "No date".
+- The Prompts list is chronological, like the transcript: earlier above, later
+  below, each follow-up under its opener. It opens anchored on the prompt the
+  reader was nearest, and content already on screen never moves when earlier
+  prompts load.
 - Step 13 does not close until the pinch entry has been checked on a real
   iPhone and on a real macOS trackpad.
 
@@ -71,7 +83,7 @@ phase, and the original step 10 (retirement) is renumbered to step 18, as
 | 12 | `turn-navigation/prompts-transition` | [12](#fixed-pr-titles) | ≤ 350 | 11 |
 | 13 | `turn-navigation/prompts-pinch` | [13](#fixed-pr-titles) | ≤ 400 | 11 |
 | 14 | `turn-navigation/remove-fold` | [14](#fixed-pr-titles) | ≤ 1,300 | 13 |
-| 15 | `turn-navigation/prompt-numbers` | [15](#fixed-pr-titles) | ≤ 800 | 11 |
+| 15 | `turn-navigation/prompt-numbers` | [15](#fixed-pr-titles) | ≤ 900 | 11 |
 | 16 | `turn-navigation/prompts-search` | [16](#fixed-pr-titles) | ≤ 900 | 15 |
 | 17 | `turn-navigation/docs` | [17](#fixed-pr-titles) | ≤ 400 | 10–16 |
 | 18 | `turn-navigation/retire` | [18](#fixed-pr-titles) | ≤ 250 | 2–17 |
@@ -80,7 +92,9 @@ Step 9 is documentation only; its target is the plain soft cap, and the whole
 diff is this plan and this tracker. Step 3's target includes regenerated DTO output. Step 4's includes the
 regenerated `SessionDetailState` output. Steps 4, 6, 8, 11, 14 and 16 include
 generated localization files. Step 15's target includes regenerated shared DTO
-and client state output.
+and client state output, and it also carries D38's ACP prompt stamp: one hook
+body, two deleted overrides and mapper tests, which is why its target is 900
+rather than 800.
 
 Step 14 is almost all deletion: about 1,050 lines measured from the merged
 diffs of steps 4–7 (~285 production, ~580 test, ~105 localization, ~85
@@ -109,7 +123,7 @@ left exactly as they were published; only steps 9 onwards carry `/18`.
 12. `🌿 [turn-navigation] Connect the transcript and the Prompts screen with one transition [step 12/18]`
 13. `⚙️ [turn-navigation] Pinch the transcript to open the Prompts screen [step 13/18]`
 14. `⚙️ [turn-navigation] Remove the in-place transcript fold [step 14/18]`
-15. `🚧 [turn-navigation] Number prompts absolutely from the bridge's page count [step 15/18]`
+15. `🚧 [turn-navigation] Number and time prompts from the bridge [step 15/18]`
 16. `⚙️ [turn-navigation] Search the loaded prompts from the screen's header [step 16/18]`
 17. `🌱 [turn-navigation] Reconcile the turn-navigation documents with what shipped [step 17/18]`
 18. `🌱 [turn-navigation] Record the L3 matrix and retire the plan [step 18/18]`

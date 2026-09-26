@@ -30,6 +30,8 @@
     sticky evidence below.
   - Three review rounds with the user on 2026-09-26 that settled the Prompts
     screen after the fold was rejected. Its decisions are D24–D31.
+  - A fourth round the same day, which settled prompt times and list order:
+    D38 and D39.
 
 ## Goal
 
@@ -42,9 +44,11 @@ In a long session it is hard to find your own prompts. The goals:
 
 The transcript itself never changes shape. It does not fold, relayout or move.
 
-The client works on the loaded messages. The one bridge change in this phase is
-an additive count on the paged-messages response, so prompt numbers can be
-absolute (D29).
+The client works on the loaded messages. Two bridge changes serve it: an additive
+count on the paged-messages response, so prompt numbers can be absolute (D29),
+and keeping the ACP prompt instant the bridge already computes and currently
+throws away, so the six ACP harnesses get times for the prompts Sesori itself
+sent (D38).
 
 ## Revision 2026-09-26: The Fold Becomes A Prompts Screen
 
@@ -232,13 +236,28 @@ Automation:
   `sesori_plugin_acp`, whose `localUserMessageTime`
   (`bridge/sesori_plugin_acp/lib/src/acp_event_mapper.dart:105`) and
   `messageTimeForNotification` (`:102`) default to `null`; only DeepSeek
-  overrides them. `docs/HARNESS_CAPABILITIES.md`'s "Live timers" section already
-  records exactly this split.
-- **Nothing stamps a receipt time.** The only clock-fed `MessageTime` in the
-  bridge is Claude's synthetic slash-command bubble
-  (`bridge/sesori_plugin_claude/lib/src/claude_plugin_impl.dart:733-745`). The
-  ACP plugin does compute a receipt instant and passes it to
-  `localUserMessageTime`, which discards it. See Open Questions.
+  overrides them (`deepseek_event_mapper.dart:24-26`). Copilot, Hermes and OMP
+  use `AcpEventMapper` itself; Cursor, Grok and Antigravity subclass it and
+  override neither hook. `docs/HARNESS_CAPABILITIES.md`'s "Live timers" section
+  already records exactly this split.
+- **The bridge computes a prompt instant and throws it away.** The only clock-fed
+  `MessageTime` in the bridge today is Claude's synthetic slash-command bubble
+  (`bridge/sesori_plugin_claude/lib/src/claude_plugin_impl.dart:733-745`). The ACP
+  plugin already computes an instant for every prompt it sends and hands it to
+  `localUserMessageTime`, which returns `null` and discards it:
+  `mapSentPrompt` (`acp_event_mapper.dart:389`) is called from
+  `_markTurnDispatched` (`acp_plugin.dart:1649`) with
+  `createdAtMs: DateTime.now().millisecondsSinceEpoch`, and `mapInitialPrompt`
+  (`:373`) is called from session creation (`acp_plugin.dart:1064`) with the
+  session's own `createdAt`. D38 keeps that instant instead of discarding it.
+- **History replay is a different path, and it has no time to keep.**
+  `AcpSessionLoader` builds replayed messages from `session/load` and takes its
+  times from `AcpReplayMessageTimeResolver`
+  (`bridge/sesori_plugin_acp/lib/src/acp_session_loader.dart:11`, `:54`, `:93`),
+  which is null for all six harnesses because their protocol carries no message
+  time. So a prompt read back from the harness's own history has no instant the
+  bridge ever observed, and never will. This is why D38 leaves those prompts
+  undated rather than inventing something.
 - **The paged-messages contract.** `POST /session/messages`
   (`bridge/app/lib/src/routing/get_session_messages_handler.dart`) answers
   `MessageWithPartsResponse(messages, nextCursor, replayedPromptDefaults,
@@ -334,19 +353,52 @@ this plan implements them and does not reopen them.
   - The total prompt count moves out of the top to the end of the list.
   - Search filters only what the app has loaded, and says so: a row at the end
     states the match count within the loaded range and offers "Load earlier
-    prompts" to extend it.
+    prompts" to extend it. **Placement adjusted by D39:** the match count stays at
+    the end, and "Load earlier prompts" moves to the top, which is the older end of
+    a chronological list.
   - No bridge search route and no search index.
   - A matching row **grows** to show the match in context underneath the
     prompt's opening words, with the match highlighted, so the reason for the
     match is visible even when it falls past the one-line cut.
-- **D31 No invented times.** On the six harnesses that never send a prompt
-  timestamp (Grok, Antigravity, Copilot, Cursor, Hermes, OMP — confirmed in code
-  on 2026-09-26, and already recorded in `docs/HARNESS_CAPABILITIES.md`'s
-  "Live timers" section) the Prompts screen shows **no time column and no day
-  headers**. Nothing is invented and the bridge does not stamp its own time.
-  Recorded in `docs/HARNESS_CAPABILITIES.md`. See Open Questions: a bridge-side
-  ACP prompt stamp is already recorded as planned elsewhere, and D31 neither
-  requires nor cancels it.
+- **D31 No invented times. PARTLY SUPERSEDED on 2026-09-26 by D38.** Nothing is
+  invented, on either side of the wire: that half stands and is a guardrail. Its
+  other half — "the bridge does not stamp its own time", so the six harnesses
+  (Grok, Antigravity, Copilot, Cursor, Hermes, OMP) show no time column and no
+  day headers — is replaced by D38, which keeps an instant the bridge genuinely
+  observed.
+
+### User decisions of 2026-09-26, round 4 (times and order)
+
+- **D38 The bridge stamps what it can and leaves the rest undated.** Chosen over
+  "no times on six harnesses" after the plan found that the bridge already knows
+  when it sent each prompt and discards it.
+  - For a prompt **Sesori sent**, the ACP plugin keeps the instant it already
+    computes, so Grok, Antigravity, Copilot, Cursor, Hermes and OMP get prompt
+    times, day headers and the "Working…" timer.
+  - For a prompt **read back from the harness's own history** — anything from
+    before Sesori attached, or a session started outside Sesori — there is no
+    such instant and never will be. Those prompts stay **undated**.
+  - So a long session on one of those harnesses shows times on its recent rows
+    and an undated group for its older ones. **The user accepted this asymmetry
+    knowingly**; it is expected behavior, not a bug and not a gap to close.
+  - Still nothing invented: no clock is started on the client, no time is guessed
+    from a neighbouring message, and no undated prompt is given a placeholder.
+  - Implemented by step 15; see
+    [Architecture 16](#16-the-acp-prompt-accept-stamp-step-15).
+- **D39 The list keeps the transcript's order, and opens where you were.**
+  Chosen over newest-first.
+  - **Chronological, exactly like the transcript**: up is earlier, down is later,
+    the newest prompt last. A follow-up child therefore sits below its parent,
+    which is how it reads in the transcript too.
+  - The screen **opens anchored on the prompt you were nearest**, highlighted, so
+    the reading position is never lost.
+  - Why: the pinch must read as zooming out of what you were reading, not as
+    jumping to another screen. A reversed list would make the same gesture feel
+    like a different place.
+  - Supersedes D34. Its consequences — the undated group at the top, "Load
+    earlier prompts" at the top, numbers ascending downward — are in
+    [Architecture 10](#10-the-prompts-screen-steps-10-and-11) and
+    [Architecture 15](#15-search-step-16).
 
 Defaults this plan adopts for the Prompts screen. **Each is a default the user
 may override:**
@@ -363,12 +415,11 @@ may override:**
   feature reaches both shells. The always-visible desktop index pane of D6/D18
   is deferred; the screen covers the same need and the pane's extra value on top
   of it is unproven. See Open Questions.
-- **D34 Newest prompt first, at the top.** D30 puts both the match-count row and
-  the total count "at the end of the list", and "Load earlier prompts" extends
-  the loaded range, so the oldest end is the end of the list. Numbers therefore
-  descend down the screen, and opening the screen shows the most recent prompts
-  first, which is the common need. This is derived from D30's placement, not
-  separately decided; flagged in Open Questions.
+- **D34 Newest prompt first, at the top. SUPERSEDED on 2026-09-26 by D39.** It
+  was derived from D30's "at the end of the list" placement rather than decided,
+  and the user chose the transcript's order instead. D30's counts stay at the end
+  of the list, which is now the bottom; "Load earlier prompts" moves to the top,
+  because in chronological order the top is the older boundary it extends.
 - **D35 The transition is one focal-point page transition, not a per-row hero.**
   The Prompts screen scales and fades in from the pinch's focal point, or from
   the bar button, over a dimmed transcript, and reverses on the way out.
@@ -487,8 +538,9 @@ Out of phase 1:
 - The always-visible desktop index pane (D6/D18, deferred).
 - A bridge search route or search index; searching anything the client has not
   loaded.
-- A bridge-side prompt timestamp for the six untimed harnesses, and any
-  client-invented time (D31, see Open Questions).
+- Any client-invented time, any placeholder for an undated prompt, and any
+  attempt to give a time to a prompt read back from a harness's own history
+  (D31, D38). The bridge stamp of D38 **is** in scope, in step 15.
 - Any client-side numbering fallback for an older bridge (D29).
 - A phone density switch.
 - The "stopped" state.
@@ -519,7 +571,7 @@ helper stay private to the list state; the Prompts layer's open flag, transition
 controller and jump controller stay private to `_SessionDetailBodyState`.
 
 Sections 1–8 describe the first revision, with what survives, what is repointed
-and what is removed marked at each heading. Sections 9–15 describe this revision.
+and what is removed marked at each heading. Sections 9–16 describe this revision.
 
 ### 1. Turn model in `module_core` (step 2)
 
@@ -924,7 +976,7 @@ state can go stale. What outlives a build is small and global:
 
 - the fold flag, held by the cubit;
 - one pending anchor;
-- the sticky value (step 8) and the current-turn value (step 9), both
+- the sticky value (step 8) and the current top-edge opener id (step 11), both
   republished after every frame that scrolled or laid out;
 - the registry, which mirrors the mounted rows.
 
@@ -948,9 +1000,11 @@ How each kind of re-sync behaves:
 - **F1 later.** See the revision rule under Later Phases.
 - **The Prompts screen.** It reads the same loaded messages through the same
   cubit, so every re-sync above reaches it on the next build. It holds no copy
-  of the list. Its own state is the query string, the scroll offset and the open
-  flag. A row whose message id disappears simply stops being listed; if it was
-  the row the reader tapped, the jump ends with no move (section 11).
+  of the list. Its own state is the query string, the scroll offset, the anchor id
+  it opened with and the open flag. A row whose message id disappears simply stops
+  being listed; if it was the row the reader tapped, the jump ends with no move
+  (section 11), and if it was the anchored row, the highlight goes with it and
+  nothing scrolls.
 
 ### 9. Removing the in-place fold (step 14)
 
@@ -1090,17 +1144,19 @@ runs over what the list renders.
     and, for a follow-up, which opener it belongs to
     (`turnIndexByMessageId` and each turn's ids).
 - It returns `TranscriptPromptList(entries, hasTimes, promptCount)` with entries
-  **newest first** (D34).
+  **oldest first, in the transcript's own order** (D39). The newest prompt is the
+  last entry, and a follow-up sits directly below the opener it belongs to.
 - A sealed `TranscriptPromptEntry` with two variants, so a child row cannot
   carry opener-only data and vice versa:
   - `TranscriptPromptOpener(messageId, text, createdAt?, dayKey?, number?)`;
   - `TranscriptPromptFollowUp(messageId, text, createdAt?, dayKey?, number?,
     openerMessageId)`.
-- The builder walks `messages` **oldest first**, so numbering is a single pass:
+- The builder walks `messages` **oldest first**, so numbering and the list order
+  are the same single pass:
   - every role-`user` message advances the number, renderable or not;
   - a renderable one becomes an entry, a follow-up when `turns` puts it inside a
     turn it did not open and an opener otherwise;
-  - the entry list is reversed at the end for D34.
+  - nothing is reversed at the end: the walk order **is** the list order (D39).
   Messages before the first opener become openers, because before the first
   opener there is no turn to be a child of.
 - `text` is the first non-empty line of the user message's text, or the first
@@ -1109,9 +1165,14 @@ runs over what the list renders.
   than writing a third copy; `transcript_sticky_prompt_overlay.dart`'s `_textOf`
   is the second copy and step 8's review already noted it waits for a third
   caller.
-- `hasTimes` is false when no listed entry has a `createdAt`. Then the screen
-  shows no time column and no day headers (D31). It is not per-row: a session
-  either has prompt times or it does not.
+- `hasTimes` is false only when **no** listed entry has a `createdAt`. Then the
+  screen shows no time column and no day headers: that is a session nothing ever
+  timed, such as an ACP session Sesori never sent a prompt to (D38).
+- **A mixed list is normal, not an edge case** (D38). On the six ACP harnesses the
+  prompts Sesori sent are timed and the ones read back from the harness's own
+  history are not, so one session routinely holds both. `hasTimes` is then true,
+  the time column exists, and an undated row simply leaves its time cell empty.
+  Nothing is invented to fill it.
 - **Grouping is decided in the model, never inferred by the view.** Every entry
   carries `dayKey`, the local calendar day of its `createdAt`:
   - a timed entry gets its own day;
@@ -1119,16 +1180,22 @@ runs over what the list renders.
     that turn;
   - an untimed opener gets `null`.
 
-  The view groups by `dayKey` in list order and puts the `null` group last,
-  under the "No date" header. A mixed session (a Claude session with one untimed
-  record) therefore has a defined layout instead of a row with no group.
+  The view groups by `dayKey` in list order and puts the `null` group **first**,
+  at the top, under the "No date" header (D38, D39). It sits at the top because
+  undated prompts are the older ones — they were read back from the harness's own
+  history, before Sesori was attached — and in chronological order older means
+  higher. So a long session on one of the six harnesses reads: "No date" at the
+  top, then the earliest dated day, down to "Today" at the bottom. That is the
+  expected shape, not a defect.
 - `number` is null unless `userMessagesBefore` is non-null
   ([Architecture 12](#12-absolute-prompt-numbers-step-15)).
 - Tests: openers and follow-ups in order; a turn with several follow-ups; a
   hidden user message contributing no entry but advancing the number; messages
   before the first opener as openers; `hasTimes` false with no times and true
   with one; an untimed follow-up inheriting its opener's day and an untimed
-  opener getting a null `dayKey`; newest-first ordering; determinism.
+  opener getting a null `dayKey`; **oldest-first ordering matching the message
+  list, with each follow-up directly after its opener**; a mixed list of undated
+  older entries and timed newer ones; determinism.
 
 #### The screen (step 11)
 
@@ -1140,22 +1207,31 @@ and the desktop a header builder; the Prompts layer draws its own header on both
 shells — its header is the search field (D30) — so no shell-specific variant
 exists and none is added. Files:
 
-- `session_prompts_view.dart` — the layer. A `CustomScrollView`:
+- `session_prompts_view.dart` — the layer. A non-reversed `CustomScrollView`, in
+  the transcript's order: earlier above, later below (D39). Top to bottom:
   - a pinned `SliverPersistentHeader` holding the search field (step 16 fills
     it; step 11 ships it as the title row so the header's height never changes
     under the reader);
-  - one `SliverMainAxisGroup` per day, each with a pinned
-    `SliverPersistentHeader` day header and a `SliverList` of rows, modelled on
-    `session_diffs_view.dart:189-208` and `DiffFileHeaderDelegate`;
+  - from step 16, "Load earlier prompts" as the **first** scrolling sliver: it
+    extends the older end of the list, which is now the top, so it must sit
+    there or it points the wrong way (D39);
+  - the `null`-`dayKey` group first when one exists, under the "No date" header
+    (D38);
+  - then one `SliverMainAxisGroup` per day, **oldest day first**, each with a
+    pinned `SliverPersistentHeader` day header and a `SliverList` of rows,
+    modelled on `session_diffs_view.dart:189-208` and `DiffFileHeaderDelegate`;
   - when `hasTimes` is false, one flat `SliverList` and no day headers;
   - a final sliver: the total prompt count (D30), and from step 16 the match
-    count and "Load earlier prompts".
+    count. D30's "end of the list" is the bottom, which is where both stay.
 - `widgets/prompt_spine_row.dart` — the D4 spine row. A fixed-width leading
   column draws a 1 px vertical rail with a dot on it, then the number, then the
   one-line ellipsised text, then the time. A follow-up row indents the rail and
-  draws the subtler child indicator (D26). No `CustomPainter`: a `Stack` of a
-  1 px `Container` and a small dot is enough, and nothing reusable exists to
-  extend.
+  draws the subtler child indicator (D26). An undated row leaves the time cell
+  empty (D38). The row's height is **fixed** in the unsearched state — one clipped
+  line plus fixed padding, from one shared `promptRowExtent(TextScaler)` helper —
+  which is what lets the opening anchor below be computed arithmetically. No
+  `CustomPainter`: a `Stack` of a 1 px `Container` and a small dot is enough, and
+  nothing reusable exists to extend.
 - `widgets/prompt_day_header.dart` and its `SliverPersistentHeaderDelegate`,
   with a fixed extent as `DiffFileHeaderDelegate` requires.
 - Day grouping and the time column use `formatMessageTimestamp`'s conventions so
@@ -1185,6 +1261,38 @@ Entry points:
 
 Analytics: `transcript_prompts_opened` with `entry: session_bar` here, and
 `entry: pinch` from step 13. See [Analytics](#analytics).
+
+#### Opening anchored on the prompt you were reading (step 11)
+
+D39's second half: the screen opens at the prompt you were nearest, highlighted,
+so the pinch reads as zooming out of what you were reading. Three small pieces,
+all reusing what already exists:
+
+- **Which prompt.** The opener of the turn at the transcript's top edge — the same
+  turn the sticky prompt names, so the highlighted row is the prompt the transcript
+  was showing above it. `_topEdgeTurn` is already computed in the post-frame pass
+  that publishes the sticky value ([Architecture 6](#6-sticky-prompt-step-8)),
+  after every frame that scrolled or laid out.
+- **The seam.** `_SessionDetailBodyState` owns a `ValueNotifier<String?>` holding
+  that opener id, passed through `SessionDetailLoadedView` to the list, which
+  **writes** it in that same post-frame pass. It mirrors `TranscriptJumpNotifier`
+  in the opposite direction: one nullable value, one writer, one reader, read by
+  the body when it opens the layer. All three entry points go through the one open
+  method, so all three anchor alike. The focal point keeps only its transition job
+  (D35), so `_turnAt` still loses its last caller in step 13.
+- **Where the list starts.** The view's `ScrollController` gets an
+  `initialScrollOffset` computed from the entries above the anchor — their fixed
+  row extent plus each day header's fixed extent — clamped to the scroll range and
+  offset so the row sits just below the pinned header. The arithmetic is exact
+  because both extents are fixed and the query is always empty on open, so step
+  16's grown rows cannot be in play. No `ensureVisible`, no lazy-row search, no
+  animation: the list is already there on the first frame, which is also what keeps
+  the opening transition from sliding content under the reader.
+- **The highlight.** `PromptSpineRow` takes one bool; the anchored row draws a
+  subtle background tint while the screen is open. No pulse, no timer, nothing that
+  moves.
+- **Nothing to anchor.** An empty list, or an anchor that is not in the list, opens
+  at the newest end with no highlight. One null check, not a fallback path.
 
 ### 11. Returning to the transcript (step 11)
 
@@ -1347,13 +1455,84 @@ depends on it.
   The window is a fixed number of characters either side, clipped at the text's
   ends, and the row stays a single extra line. Non-matching rows are filtered
   out, so the spine stays continuous.
-- Day headers keep grouping whatever rows remain; a day with no match
-  contributes no group.
+- Day headers keep grouping whatever rows remain, still oldest day first with the
+  "No date" group above them; a day with no match contributes no group.
 - The last sliver states the honest scope: the match count within the loaded
-  range, and "Load earlier prompts" while `olderMessagesCursor != null`, which
-  calls the cubit's existing `loadOlderMessages` and is disabled while
-  `isLoadingOlderMessages`. Newly loaded entries are filtered by the same query
-  on the next build, so the count grows in place.
+  range. Newly loaded entries are filtered by the same query on the next build,
+  so the count grows in place.
+- **"Load earlier prompts" is the first scrolling sliver, not the last** (D39).
+  It shows while `olderMessagesCursor != null`, calls the cubit's existing
+  `loadOlderMessages` and is disabled while `isLoadingOlderMessages`. In
+  chronological order the older boundary is the top, so a control that loads
+  earlier prompts belongs there; putting it under the newest prompt would point
+  the wrong way.
+- Newly loaded prompts are **prepended** above it, so without a correction the
+  reader's rows would move down by the added extent. Every added row and header has
+  the same fixed extent as the ones already there, so the view adds that extent to
+  its offset in the same frame and what the reader is looking at stays put. This is
+  the one place on this screen where content could jump, so it is the one place the
+  step measures a row's position across a load.
+
+### 16. The ACP prompt accept stamp (step 15)
+
+D38, and the smallest change in the plan: one hook stops discarding a value the
+bridge already computes.
+
+**The change.** `AcpEventMapper.localUserMessageTime({required int createdAtMs})`
+(`bridge/sesori_plugin_acp/lib/src/acp_event_mapper.dart:105`) returns
+`PluginMessageTime(created: createdAtMs, completed: null)` instead of `null`, and
+its doc comment stops calling the value backend-authoritative: the base now
+answers with the instant the bridge itself observed, and a harness override
+replaces it with a backend time when it has one.
+
+- Both callers already pass a real instant:
+  `mapSentPrompt` (`:389`) from `_markTurnDispatched`
+  (`bridge/sesori_plugin_acp/lib/src/acp_plugin.dart:1649`), and
+  `mapInitialPrompt` (`:373`) from session creation (`acp_plugin.dart:1064`).
+- It reaches all six harnesses at once with no per-plugin work: Copilot, Hermes
+  and OMP construct `AcpEventMapper` itself, and Cursor, Grok and Antigravity
+  subclass it without overriding this hook.
+- **It makes DeepSeek's override obsolete.** `DeepSeekEventMapper`
+  (`bridge/sesori_plugin_deepseek/lib/src/deepseek_event_mapper.dart:24-26`)
+  returns exactly the new base value, so step 15 deletes it, as AGENTS.md
+  requires. Its `messageTimeForNotification` override stays: that one carries a
+  real backend time. The test fake at
+  `bridge/sesori_plugin_acp/test/acp_turn_serialization_test.dart:65` overrides
+  the hook only to make it non-null and goes with it.
+- **Not touched.** `messageTimeForNotification` (`:102`) still returns `null` for
+  the six: assistant-message times are a different gap and no harness sends them.
+  `AcpSessionLoader`'s `messageTimeResolver` also stays as it is, which is
+  precisely why history-read prompts stay undated (D38).
+
+**What the stamp means, exactly.** The instant the bridge dispatched the prompt,
+not the instant the user pressed send; for a prompt that waited behind a running
+turn those differ by however long the queue held it. Accepted: no reader can see
+the difference in a day header or a time column, and threading
+`AcceptedPromptsRepository`'s own `acceptedAt`
+(`bridge/app/lib/src/repositories/accepted_prompts_repository.dart:21`) through the
+queue into the plugin is real machinery for an invisible gain.
+
+**A forced re-import can undo it.** `replaceSessionMessages` matches replayed rows
+against retained live ones and "the imported row remains authoritative for replay
+metadata" (`bridge/app/lib/src/repositories/chat_history_repository.dart:445-462`),
+so a stamped prompt the harness also reports in its own history can come back
+undated and join the "No date" group — the shape D38 already accepts. Nothing is
+added to prevent it: a correct row losing its time is cosmetic, and defending it
+means changing the history merge.
+
+**Client work: none.** The prompt list model already carries per-entry `createdAt`
+and `dayKey`, already groups undated entries and already keeps `hasTimes` for the
+fully untimed case. The stamp only changes which of those paths a session takes.
+
+**Documentation.** Step 15 rewrites the Grok/Antigravity/Copilot/Cursor/Hermes/OMP
+row of `docs/HARNESS_CAPABILITIES.md`'s "Live timers" section, which today says
+"❌ Not implemented… A bridge-side prompt stamp is planned". It becomes: implemented
+for prompts Sesori sent, from the bridge's own dispatch instant; not available for
+prompts read back from the harness's own history, because the ACP protocol carries
+no message time. "Working…" always has a timer, since a running turn's prompt is
+always one Sesori sent. The row is not touched before the code lands: step 11
+records the state at step 11, and step 15 updates the same row when the stamp
+ships.
 
 ## Approved Copy
 
@@ -1391,8 +1570,9 @@ Planning copy, not from a mock. Review may polish the wording, not the meaning.
 | Search field hint (step 16) | "Search prompts" |
 | Total count, last row | "{n} prompts loaded". Use "1 prompt loaded". |
 | Match count, last row while searching | "{n} matches in the prompts loaded so far". Use "1 match in the prompts loaded so far", and "No matches in the prompts loaded so far". |
-| Load earlier | "Load earlier prompts" |
-| Day header | The date, in `formatMessageTimestamp`'s conventions: "Today", "Yesterday", then the date. |
+| Load earlier | "Load earlier prompts", at the top of the list (D39). |
+| Day header | The date, in `formatMessageTimestamp`'s conventions: "Today", "Yesterday", then the date. Oldest day at the top. |
+| Undated day header | "No date", above every dated day (D38). |
 | Follow-up row, screen readers | The row's text, prefixed "Follow-up:" so a child row is not read as a peer. |
 | Row, screen readers | The number where there is one, the text, and the time where there is one, as one button labelled with them; the tap hint is the existing "Jump to this prompt". |
 | No prompts yet | "No prompts in this session yet" |
@@ -1441,11 +1621,14 @@ Git history holds it.
 
 ## Security And Privacy
 
-- Two bridge changes in this phase: the Claude mapping fix (step 3), which reads
+- Three bridge changes in this phase: the Claude mapping fix (step 3), which reads
   records already on disk and maps them to the same neutral messages the live
-  path emits, and D29's count (step 15). The count is an integer derived from
-  rows the same response already returns messages from; it exposes no new data
-  to the client and no data at all to anything else.
+  path emits, D29's count (step 15), and D38's prompt stamp (step 15). The count
+  is an integer derived from rows the same response already returns messages from;
+  it exposes no new data to the client and no data at all to anything else. The
+  stamp is an instant the bridge already computed in the same call and then
+  discarded, so it reveals nothing that was not already local; it says when a
+  prompt was sent, never what it said.
 - The Prompts screen, the sticky header and the search excerpt show only text
   the transcript already shows, to the same authenticated client.
 - Search runs entirely in the client's memory. No query text leaves the device,
@@ -1459,7 +1642,7 @@ Git history holds it.
 ## Complexity Budget
 
 Mutable parts after step 14, counting what this revision adds and what it
-removes. The net count goes **down by one** while the feature grows.
+removes. One leaves and seven arrive; each has one owner and one reader.
 
 Kept from steps 5–8:
 
@@ -1485,16 +1668,28 @@ Added by steps 11–16:
 8. **`SessionDetailLoaded.userMessagesBeforeOldest`**: one nullable int, written
    only where a page is merged (step 15).
 9. **The query string** in the Prompts view's state (step 16).
+10. **The current top-edge opener `ValueNotifier<String?>`** (step 11), written by
+    the list in the post-frame pass it already runs and read only when the layer
+    opens, to anchor the list (D39).
+11. **The Prompts view's `ScrollController` and the anchor id it opened with**
+    (step 11), both owned by the view: the controller for the opening offset and
+    for correcting the offset when earlier prompts are prepended (step 16), the id
+    only so one row draws the highlight. Neither is written again while the screen
+    is open.
 
 Never added:
 
-- The old step 9's current-turn `ValueNotifier` and index-pane `ScrollController`
-  — the pane is dropped.
+- The old step 9's index-pane `ScrollController` — the pane is dropped. Its
+  current-turn `ValueNotifier` does arrive, in a smaller form and with a different
+  reader: one nullable opener id for the opening anchor (item 10), not a pane
+  kept in sync with the scroll.
 - A second load path, a prompt cache, a search index, or any stored prompt data.
 - A cubit for the Prompts screen. It reads the session cubit it already sits in.
 - A route, an `AppRouteDef` value, a route allowlist entry, or route analytics.
 - A per-turn or persisted fold state, and a fold scope or notifier.
-- Timestamp heuristics, an invented time, or a bridge-side prompt stamp.
+- Timestamp heuristics, an invented time, or any placeholder for an undated
+  prompt. The bridge stamp is added (D38), but it only keeps an instant the bridge
+  already had; it holds no new state.
 - A database column, index or migration.
 - A client-side numbering fallback.
 - A search debounce: `ListSearchField` documents that the list narrows what it
@@ -1528,10 +1723,13 @@ mostly cleanup, and it is the largest single item in the series.
   search, the three duration ARB keys, the peek's detach suppression and the
   desktop shortcut-hint helpers — each has a live reader named in
   [Architecture 9](#9-removing-the-in-place-fold-step-14).
-- **No cleanup caused by the new work.** Steps 10–16 add a feature directory, one
-  wire field and one state field; they make nothing else obsolete. Step 11 does
-  extract the shared prompt-text resolver that step 8's review flagged as
-  duplicated, because step 11 is its third caller.
+- **Two small removals caused by the new work.** Step 11 extracts the shared
+  prompt-text resolver that step 8's review flagged as duplicated, because step 11
+  is its third caller. Step 15's prompt stamp (D38) makes
+  `DeepSeekEventMapper.localUserMessageTime` and the ACP test fake's override of
+  the same hook identical to the base, so both go in that PR
+  ([Architecture 16](#16-the-acp-prompt-accept-stamp-step-15)). Nothing else in
+  steps 10–16 makes existing code obsolete.
 
 Each step re-checks this for its own diff.
 
@@ -1547,7 +1745,10 @@ Evidence levels:
   Flutter's test harness. Real-device checks are named per step.
 - **Read from code on 2026-09-26.** The six untimed harnesses, the absence of a
   role column and of any existing count field, the routing and cubit-scope facts
-  that decide the screen's shape, and the fold-removal inventory.
+  that decide the screen's shape, and the fold-removal inventory. Re-read the same
+  day for round 4: the discarded ACP prompt instant and its two callers, which
+  plugins override the hook, the replay path's separate time resolver, and the
+  history merge's "imported row is authoritative" rule.
 
 Accepted:
 
@@ -1563,8 +1764,14 @@ Accepted:
 - Numbers are hidden entirely against an older bridge, rather than partly
   guessed.
 - A number is skipped where a user message exists but the transcript hides it.
-- No times and no day headers on six harnesses, until something else gives those
-  prompts a time.
+- **A mixed timed/undated list on the six ACP harnesses** (D38): recent prompts
+  carry times and day headers, older ones read back from the harness's own history
+  sit in the "No date" group at the top. The user accepted this asymmetry
+  knowingly. A session Sesori never sent a prompt to still has no time column at
+  all.
+- The stamp is the dispatch instant, so a prompt that queued behind a running turn
+  is stamped when it left the queue, not when it was sent.
+- A forced history re-import can return a stamped prompt to the undated group.
 - Search sees only the loaded range, and says so on screen.
 - One `COUNT(*)` with `json_extract` per page fetch, unindexed.
 - The screen has no URL and no deep link.
@@ -1594,12 +1801,12 @@ Steps 4 and 5 ship nothing users can reach, so they change none.
 | 6 | Creates `docs/regression/transcript-turn-navigation.md` and adds it to the Feature Index: capability, required behavior, levels L1–L5, exploration guidance, failure signals, known limitations and sources, for folding, its controls and place-keeping. Adds the cross-references from `session-turns.md` (busy follow-ups), `session-history-and-recovery.md` (paging, re-import) and `tools-and-file-changes.md` (step groups, jump to latest), and the `docs/HARNESS_CAPABILITIES.md` section. |
 | 7 | Pinch, including its follow-state rules. |
 | 8 | The sticky prompt, including its screen reader node. |
-| 11 | Rewrites the capability paragraph around the Prompts screen and adds its required behavior, levels, exploration guidance, failure signals and limitations. Adds the `docs/HARNESS_CAPABILITIES.md` prompt-times note (D31). |
+| 11 | Rewrites the capability paragraph around the Prompts screen and adds its required behavior, levels, exploration guidance, failure signals and limitations, including the transcript's order, the opening anchor and the undated group (D38, D39). Adds the `docs/HARNESS_CAPABILITIES.md` prompt-times note for the state at this step: the six ACP harnesses still show no times. |
 | 12 | The transition, including reduced motion. |
 | 13 | Pinch opens the screen; the fold clauses of pinch go in step 14. |
 | 14 | Removes the fold and pinch-to-fold behavior from `transcript-turn-navigation.md` and the fold cross-references in `session-history-and-recovery.md` and `tools-and-file-changes.md`, and re-words the `session-turns.md` one. No tombstones. |
-| 15 | Prompt numbers, their stability across an older page, and the no-number case against an older bridge. Cross-reference from `session-history-and-recovery.md` for the new response field. |
-| 16 | Search, the grown match row and "Load earlier prompts". |
+| 15 | Prompt numbers, their stability across an older page, and the no-number case against an older bridge. Cross-reference from `session-history-and-recovery.md` for the new response field. The ACP prompt stamp: which prompts get a time, which stay undated, and the "Working…" timer arriving on the six harnesses — in the regression document and in the `docs/HARNESS_CAPABILITIES.md` "Live timers" row that step 11 left saying otherwise. |
+| 16 | Search, the grown match row, and "Load earlier prompts" at the top of the list with no jump when earlier prompts arrive. |
 | 17 | Reconciles every document with what shipped. |
 | 18 | Records the L3 result. |
 
@@ -1611,20 +1818,24 @@ Failure signals, each added by the step that ships the behavior:
 - step 7 (rewritten by step 13): a pinch scrolls or a scroll folds;
 - step 8: a follow-up or automation shows as a sticky prompt;
 - step 11: **the transcript moves, reflows or loses its place when the Prompts
-  screen opens or closes**; a follow-up is listed as a peer instead of a child; a
-  tap lands on the wrong prompt or on nothing; an untimed session shows a day
-  header or an empty time column;
+  screen opens or closes**; a follow-up is listed as a peer instead of a child, or
+  above its parent; a tap lands on the wrong prompt or on nothing; the screen opens
+  at the end of the list instead of at the prompt that was being read; a
+  fully untimed session shows a day header or an empty time column; the "No date"
+  group appears below a dated day;
 - step 13: a pinch scrolls the transcript, opens the screen twice, or a
   one-finger scroll or peek opens it;
 - step 15: a number changes when an older page loads; numbers appear against a
-  bridge that sends no count;
+  bridge that sends no count; a prompt Sesori sent through an ACP harness has no
+  time; a prompt read back from a harness's history shows one;
 - step 16: a filtered row shows no reason for its match; the match count claims
-  more than the loaded range.
+  more than the loaded range; the rows under the reader move when earlier prompts
+  load.
 
 **Highest level: L3 Release.** The boundary was client end to end; after step 15
 it runs through the real bridge, because the numbers come from a bridge query and
 degrade against an older bridge. It covers every supporting production plugin for
-turn grouping and one of the six untimed harnesses, on the release-target client
+turn grouping and one of the six ACP harnesses, on the release-target client
 platform plus macOS for the desktop behavior.
 
 Required matrix, recorded now; any reduction needs the user's acceptance in
@@ -1632,12 +1843,12 @@ this file before retirement:
 
 | Platform | Coverage |
 |---|---|
-| iOS phone, real device (release target) | On a session of three or more pages: a pinch in opens the Prompts screen and **the transcript behind it has not moved when the screen closes** — check the same row is at the same place. The bar button opens it too. Openers and follow-up child rows, with numbers ascending toward the oldest end and no renumbering after "Load earlier prompts". Sticky day headers while scrolling. Tapping an opener and tapping a follow-up each land on that message. Search: a match whose reason is past the one-line cut shows the grown excerpt, the match count names the loaded range, and "Load earlier prompts" extends it. The transition in and out, and again with Reduce Motion on. The sticky prompt appears mid-turn, is pushed out by the next prompt, clamps a long prompt, and scrolls to it on tap. One-finger scroll, the timestamp peek and a code block's horizontal scroll are unaffected. VoiceOver reads the rows, the follow-up prefix, the entry button and the pinned prompt. `transcript_prompts_opened` arrives with both entry values. |
-| macOS desktop | Trackpad pinch opens the screen, while following and while reading history, and the transcript is where it was on the way back. The toolbar button. The same list, numbering, day headers, tap-to-return and search checks. Trackpad scroll and the trackpad peek are unaffected. No fold shortcut does anything. |
+| iOS phone, real device (release target) | On a session of three or more pages: a pinch in opens the Prompts screen and **the transcript behind it has not moved when the screen closes** — check the same row is at the same place. The bar button opens it too. **The screen opens on the prompt that was under the reader, highlighted and on screen, from both entry points.** Openers and follow-up child rows in the transcript's order, each child below its parent, with numbers ascending down the screen and no renumbering after "Load earlier prompts". Sticky day headers while scrolling, oldest day at the top. "Load earlier prompts" is at the top, and the rows already on screen do not move when it loads. Tapping an opener and tapping a follow-up each land on that message. Search: a match whose reason is past the one-line cut shows the grown excerpt, the match count names the loaded range, and "Load earlier prompts" extends it. The transition in and out, and again with Reduce Motion on. The sticky prompt appears mid-turn, is pushed out by the next prompt, clamps a long prompt, and scrolls to it on tap. One-finger scroll, the timestamp peek and a code block's horizontal scroll are unaffected. VoiceOver reads the rows, the follow-up prefix, the entry button and the pinned prompt. `transcript_prompts_opened` arrives with both entry values. |
+| macOS desktop | Trackpad pinch opens the screen, while following and while reading history, and the transcript is where it was on the way back. The toolbar button. The same list order, opening anchor, numbering, day headers, tap-to-return and search checks. Trackpad scroll and the trackpad peek are unaffected. No fold shortcut does anything. |
 | Android phone | Pinch and the bar button open the screen; a list, tap-to-return and sticky prompt smoke check. |
 | Windows and Linux desktop | The toolbar button, a list and tap-to-return smoke check. |
 | Bridge plus client | A session with more than one page: the numbers match the prompts actually sent, counted independently, and do not change as pages load. One archived (read-only) session, whose pages come from the audit file rather than the database. A current app against a bridge built before step 15: no numbers, everything else works. |
-| Plugins (live plugin plus client) | A follow-up sent while a turn runs: with Claude, Codex, Pi and OpenCode it stays inside the running turn and is listed as its child. With one ACP plugin (the stop-and-send base is shared) it opens a new turn, as the capability doc records. Claude and Pi automation is never listed and is never a sticky prompt. After a forced Claude history re-import, follow-ups, peer messages and task notifications are still present, with the same ids and order. With one of the six untimed ACP harnesses, the screen shows no time column and no day headers. Run together with `session-turns.md`'s busy-send check. |
+| Plugins (live plugin plus client) | A follow-up sent while a turn runs: with Claude, Codex, Pi and OpenCode it stays inside the running turn and is listed as its child. With one ACP plugin (the stop-and-send base is shared) it opens a new turn, as the capability doc records. Claude and Pi automation is never listed and is never a sticky prompt. After a forced Claude history re-import, follow-ups, peer messages and task notifications are still present, with the same ids and order. With one of the six ACP harnesses (D38): a session Sesori prompts through shows times and day headers for those prompts; a session with history from before Sesori attached shows those older prompts in the "No date" group at the top, and the same session shows both at once; a session Sesori has never prompted shows no time column at all; and "Working…" now ticks. Run together with `session-turns.md`'s busy-send check. |
 
 Automated coverage in the steps:
 
@@ -1646,15 +1857,20 @@ Automated coverage in the steps:
 - widget tests for the pinch arena with touch and trackpad variants (steps 7 and
   13), and sticky push-out and semantics (step 8);
 - widget tests for the Prompts screen (step 11): the row shapes, child
-  indentation, day headers, the untimed case, tap-to-return to an opener and to a
-  follow-up including an unbuilt row, and the transcript's scroll offset being
-  unchanged across open and close;
+  indentation, day headers with the oldest day and the "No date" group at the top,
+  the fully untimed case, a mixed timed/undated list, the screen opening with the
+  top-edge prompt highlighted and visible and with no anchor to find,
+  tap-to-return to an opener and to a follow-up including an unbuilt row, and the
+  transcript's scroll offset being unchanged across open and close;
 - the transition, including reduced motion (step 12);
 - the response field, the numbering rule and its stability across three page
   loads, on both the database and archived paths, plus the no-field case
   (step 15);
-- search filtering, the grown excerpt, the match count and "Load earlier
-  prompts" (step 16);
+- the ACP prompt stamp (step 15): the base mapper stamps a sent prompt and the
+  initial prompt, a harness override still wins, and the replay path still
+  produces no time;
+- search filtering, the grown excerpt, the match count, "Load earlier prompts" at
+  the top, and a row keeping its position across a prepend (step 16);
 - the analytics event and its closed parameter (step 11), and the fold event's
   removal (step 14).
 
@@ -1824,8 +2040,12 @@ No user-visible change.
 
 - Confirm first, and record, that a rendered follow-up row's id is its message
   id and that `_holdRow` reaches it, so D27 needs no turn fallback.
-- Widget tests: the row shapes and the child indentation; sticky day headers; the
-  untimed case with no time column and no day headers; the total count row;
+- Widget tests: the row shapes and the child indentation; the transcript's order,
+  with each follow-up below its opener; sticky day headers, oldest day first, with
+  the "No date" group above them; the fully untimed case with no time column and no
+  day headers, and a mixed list where only some rows have a time; the opening
+  anchor — the top-edge prompt is highlighted and on screen, and an empty list or
+  an unknown anchor opens at the newest end with no highlight; the total count row;
   opening and closing the layer leaves the transcript's scroll offset and follow
   state unchanged; tapping an opener and tapping a follow-up each reach that
   message, including when its row is not built; a vanished row id ends the jump
@@ -1874,21 +2094,34 @@ rebuilt or scrolled by it. Also a short recording on a real iPhone and on macOS.
 
 No new user-visible behavior; the fold's controls and gesture meaning disappear.
 
-**Step 15 — absolute prompt numbers.**
-[Architecture 12](#12-absolute-prompt-numbers-step-15). Verify:
+**Step 15 — absolute prompt numbers and the ACP prompt stamp.**
+[Architecture 12](#12-absolute-prompt-numbers-step-15) and
+[Architecture 16](#16-the-acp-prompt-accept-stamp-step-15). The two changes share
+one PR because they are the series' only bridge work, they are the only two things
+the bridge owes a prompt row, and they need the same live headless-bridge check on
+the same harnesses. Verify:
 
 - Bridge tests, against the DAO method and then through the repository: the count
   on a first page, a middle page, the last page, an unlimited read and an empty
   page; a session whose only messages are assistant ones; the archived path; and
   that the count ignores automation.
+- ACP mapper tests: `mapSentPrompt` and `mapInitialPrompt` stamp
+  `time.created` from the `createdAtMs` they are given; a subclass override still
+  wins; `AcpSessionLoader` still produces no time without a resolver. Confirm
+  first, and record, that no plugin other than DeepSeek overrode
+  `localUserMessageTime`, then delete DeepSeek's override and the ACP test fake's.
 - Client tests: numbering from the base; numbers unchanged across three older-page
   loads; no numbers when the field is absent; a hidden user message consuming a
   number.
 - Regenerate with `make -C shared codegen`, `make -C bridge codegen` and
   `make -C client codegen`; never hand-edit generated output.
 - A live check with the headless bridge: numbers on a multi-page session match a
-  hand count, and a current app against a pre-step-15 bridge shows none.
-- Analyze `bridge/app`, `sesori_shared`, `module_core` and `module_app_ui`.
+  hand count, and a current app against a pre-step-15 bridge shows none. On one of
+  the six ACP harnesses, a prompt sent through Sesori carries a time and appears
+  under a day header, prompts from that session's own earlier history stay in the
+  "No date" group, and "Working…" ticks.
+- Analyze `bridge/app`, `sesori_plugin_acp`, `sesori_plugin_deepseek`,
+  `sesori_shared`, `module_core` and `module_app_ui`.
 
 **Step 16 — search.** [Architecture 15](#15-search-step-16). Verify with widget
 tests:
@@ -1896,9 +2129,10 @@ tests:
 - the field filters as it is typed and clears;
 - a match past the one-line cut grows the row and highlights the match;
 - day headers keep only the days that still have rows;
-- the match count names the loaded range, and "Load earlier prompts" calls the
-  cubit's loader and is disabled while it runs;
-- newly loaded prompts join the current filter.
+- the match count names the loaded range, and "Load earlier prompts", at the top
+  of the list, calls the cubit's loader and is disabled while it runs;
+- newly loaded prompts join the current filter, arrive above the control, and
+  leave a row that was on screen at the same offset.
 
 Also screenshots and the regression document.
 
@@ -1941,8 +2175,6 @@ the result in `steps/step-18.md`, and move the plan to `.plan/completed/`.
   - the always-visible desktop index pane (old step 9, D6/D18), if the Prompts
     screen proves the need for a persistent one;
   - a keyboard shortcut and alt+↑/↓ prompt stepping on desktop;
-  - a bridge-side prompt stamp for the six untimed harnesses, which would give
-    them times and day headers with no client change (see Open Questions);
   - a phone density switch for very long sessions.
 
 ## Open Questions
@@ -1962,25 +2194,18 @@ settle on its own. None of them blocks step 10.
    transcript on wide desktop windows, on top of the Prompts screen?
 3. **No keyboard shortcut for the Prompts screen** (D37). ⌘− and ⌘= die with the
    fold. Do you want a shortcut, and which keys?
-4. **Newest prompt first** (D34) is derived from D30's instruction to put the
-   total and the match count "at the end of the list" together with "Load earlier
-   prompts". If you meant oldest first, those three move to the top instead.
-5. **The bridge already has an ACP prompt receipt time and throws it away.**
-   `AcpEventMapper.localUserMessageTime`
-   (`bridge/sesori_plugin_acp/lib/src/acp_event_mapper.dart:105`) receives a
-   `createdAtMs` the plugin computed and returns `null`, and
-   `docs/HARNESS_CAPABILITIES.md`'s Live timers row already says "A bridge-side
-   prompt stamp is planned". D31 keeps that out of this plan, so six harnesses
-   show no times and no day headers here. Should that stamp land as its own PR,
-   outside this series? Note it would only fix the live path; re-imported ACP
-   history stays untimed unless the stored time is treated as authoritative.
-6. **Claude's live-only `isMeta` user bubbles** (image placeholders, skill
+4. **Claude's live-only `isMeta` user bubbles** (image placeholders, skill
    notices, interrupt markers) are dropped on history load. They would appear as
    Prompts rows live and vanish after a reload. Fix separately, as its own PR?
-7. Can the Windows and Linux rows of the matrix run on real machines?
-8. Defaults D9–D18 that survive: D11 (the turn rule), D12 (no stopped state) and
+5. Can the Windows and Linux rows of the matrix run on real machines?
+6. Defaults D9–D18 that survive: D11 (the turn rule), D12 (no stopped state) and
    D19–D23 stand unless you say otherwise. D32–D37 are this revision's defaults
-   and are equally open.
+   and are equally open, except D34, which D39 superseded. D38 and D39 are the
+   user's own decisions and are settled.
+
+Answered in round 4, kept here so the record is complete: list order (D39,
+chronological and anchored) and prompt times (D38, the bridge stamps what it can
+and leaves the rest undated).
 
 ## Plan Review Record
 
@@ -2049,7 +2274,8 @@ seven were applied directly, without re-review, as AGENTS.md allows.
 6. Day grouping was undefined for an untimed opener. Applied: every entry
    carries a `dayKey`; a timed entry gets its own day, an untimed follow-up
    inherits its opener's, an untimed opener gets none, and the null group renders
-   last under a "No date" header (Architecture 10).
+   under a "No date" header (Architecture 10). Round 4 then moved that group to
+   the **top** of the list, where D39's chronological order puts older prompts.
 7. Accuracy note: the shipped `TranscriptTurnSummary` has only `steps` and
    `outcome`. Applied: the invented `failedSteps` member is gone from
    Architecture 1, the Architecture 9 removal inventory and the cleanup
