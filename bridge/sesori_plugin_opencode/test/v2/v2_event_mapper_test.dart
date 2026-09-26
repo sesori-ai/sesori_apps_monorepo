@@ -299,6 +299,29 @@ void main() {
     expect(result.last, isA<BridgeSseSessionCompacted>());
   });
 
+  test("named compaction settles its prompt only after a terminal native snapshot", () {
+    final id = V2MessageMapper.withPromptId(messageId: "msg_fixture", promptId: "compact-fixture");
+    for (final status in ["running", "completed", "failed"]) {
+      final message = messages.mapMessage(
+        sessionId: "s",
+        agentNames: names,
+        message: SessionMessageInfo.fromJson(<String, dynamic>{
+          "id": id,
+          "type": "compaction",
+          "status": status,
+          "reason": "manual",
+          "summary": "Fixture",
+          "recent": "",
+          "time": const <String, int>{"created": 1},
+          if (status == "failed") "error": const <String, String>{"type": "fixture", "message": "Failed"},
+        }),
+      )!;
+      final settled = mapper.mapMessageSnapshot(message: message).whereType<BridgeSsePromptSettled>();
+      expect(settled, status == "running" ? isEmpty : hasLength(1));
+      if (settled.isNotEmpty) expect(settled.single.promptID, "compact-fixture");
+    }
+  });
+
   test("pending inputs reuse catalog mapping and retain root display attribution", () {
     final permission =
         mapper

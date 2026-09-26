@@ -46,6 +46,36 @@ class OpenCodeV2Service({
   }
 
   void reset() => _tracker.reset();
+  void invalidateBaseline() => _tracker.invalidateBaseline();
+
+  Future<bool> healthCheck() => _repository.healthCheck();
+  Future<List<PluginProject>> getProjects() => _repository.getProjects();
+  Future<PluginProject> getProject({required String projectId}) => _repository.getProject(directory: projectId);
+  Future<PluginProject> renameProject({required String projectId, required String name}) =>
+      _repository.renameProject(directory: projectId, name: name);
+  Future<List<PluginAgent>> getAgents({required String projectId}) => _repository.getAgents(directory: projectId);
+  Future<PluginProvidersResult> getProviders({required String projectId}) =>
+      _repository.getProviders(directory: projectId);
+  Future<List<PluginSession>> getChildSessions({required String sessionId}) =>
+      _repository.getChildSessions(sessionId: sessionId);
+  Future<List<PluginMessageWithParts>> getMessages({required String sessionId}) =>
+      _repository.getMessages(sessionId: sessionId);
+
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) async {
+    final sessions = await _repository.getSessions(directory: projectId);
+    return sessions.skip(start ?? 0).take(limit ?? sessions.length).toList();
+  }
+
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {
+    for (final id in await _repository.getActiveSessionIds())
+      id: _tracker.status(sessionId: id) ?? const PluginSessionStatus.busy(),
+  };
+
+  Future<Set<String>> interruptActiveWork() async {
+    final ids = _tracker.workingSessionIds;
+    await Future.wait([for (final id in ids) _repository.interrupt(sessionId: id, resume: false)]);
+    return ids;
+  }
 
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
     final commands = await _repository.getCommands(directory: projectId);
@@ -92,6 +122,7 @@ class OpenCodeV2Service({
     if (parts.isNotEmpty) {
       await sendPrompt(
         sessionId: session.id,
+        promptId: null,
         parts: parts,
         agent: null,
         model: null,
@@ -103,18 +134,20 @@ class OpenCodeV2Service({
 
   Future<void> sendPrompt({
     required String sessionId,
+    required String? promptId,
     required List<PluginPromptPart> parts,
     required String? agent,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
   }) async {
     await _select(sessionId: sessionId, agent: agent, model: model, variant: variant);
-    await _repository.sendPrompt(sessionId: sessionId, parts: parts);
+    await _repository.sendPrompt(sessionId: sessionId, promptId: promptId, parts: parts);
     // Native events own activity; acceptance can arrive after a fast terminal event.
   }
 
   Future<void> sendCommand({
     required String sessionId,
+    required String? promptId,
     required String command,
     required String arguments,
     required String? userVisibleArguments,
@@ -141,7 +174,7 @@ class OpenCodeV2Service({
           resume: false,
         );
       }
-      await _repository.compact(sessionId: sessionId);
+      await _repository.compact(sessionId: sessionId, promptId: promptId);
     } else {
       await _repository.sendCommand(sessionId: sessionId, command: command, arguments: arguments);
     }

@@ -16,6 +16,7 @@ import "package:opencode_plugin/src/v2/models/openapi/worktree_remove_input.g.da
 import "package:opencode_plugin/src/v2/models/v2_decode_exception.dart";
 import "package:opencode_plugin/src/v2/models/v2_message_filter.dart";
 import "package:opencode_plugin/src/v2/models/v2_request_bodies.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "support/v2_fixtures.dart";
@@ -164,7 +165,12 @@ void main() {
     final api = makeApi(handler: (_) async => http.Response("Fixture failure", 500));
     await expectLater(
       api.getMessage(sessionId: "s", messageId: "m"),
-      throwsA(isA<OpenCodeApiException>().having((error) => error.statusCode, "statusCode", 500)),
+      throwsA(
+        isA<PluginOperationException>()
+            .having((error) => error.statusCode, "statusCode", 500)
+            .having((error) => error.cause, "cause", isA<OpenCodeApiException>())
+            .having((error) => error.toString(), "presentation", isNot(contains("Fixture failure"))),
+      ),
     );
   });
 
@@ -454,7 +460,7 @@ void main() {
     final failed = makeApi(handler: (_) async => http.Response("backend unavailable", 503));
     await expectLater(
       failed.getServerInfo(),
-      throwsA(isA<OpenCodeApiException>().having((error) => error.statusCode, "status", 503)),
+      throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 503)),
     );
   });
 }

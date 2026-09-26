@@ -4,7 +4,13 @@ Implements the `BridgePlugin` interface for the [OpenCode](https://github.com/an
 
 ## Architecture
 
-The plugin is layered. Each layer has a single responsibility:
+The descriptor selects `OpenCodePlugin` for v1 or `OpenCodeV2Plugin` for v2 (minimum 2.0.11).
+Both share the raw HTTP client and `SseConnection`, not business state. The v2 stack lives under
+`src/v2/`: facade → service → repository → API, with stateless mappers and an activity tracker.
+Its complete cold-start/reconnect snapshot establishes baseline trust; failed refresh preserves
+useful state but reports unknown work. Managed downloads remain on 1.18.32 until the runtime refresh.
+
+The v1 stack below remains layered. Each layer has a single responsibility:
 
 ```
 OpenCodePlugin          BridgePlugin implementation — coordinates all layers, maps types
@@ -24,7 +30,7 @@ Compatibility note: the plugin keeps bridge-facing SSE behavior intentionally na
 
 ### `OpenCodePlugin`
 
-The main entry point. Implements all 8 `BridgePlugin` methods and wires together the other components.
+The v1 entry point. Implements the plugin API and wires together the other components.
 
 ```dart
 OpenCodePlugin({
@@ -46,12 +52,14 @@ SseConnection({
   required String targetUrl,
   required String eventPath,
   required String? password,
-  required void Function(String rawData) onEvent,
+  required FutureOr<void> Function(String rawData) onEvent,
   Future<void> Function()? onReconnect,
 })
 ```
 
-Call `start()` to begin streaming and `stop()` to disconnect.
+Call `start(recoverOnFirstConnect: false)` to begin streaming and `stop()` to disconnect.
+The connection awaits event callbacks and reconnect refresh serially. The v2 facade drops
+publication when an in-flight enrichment completes after disposal.
 
 ### `SseEventParser`
 

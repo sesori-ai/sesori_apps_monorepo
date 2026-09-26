@@ -40,6 +40,16 @@ import "../models/v2_tool_presentation_fields.dart";
 class const V2MessageMapper() {
   static const _rasterMimeTypes = {"image/bmp", "image/gif", "image/jpeg", "image/png", "image/webp"};
 
+  // Preserve the native sortable prefix. Its generated body has no underscores,
+  // so this suffix restores prompt correlation through events and history alike.
+  static const _promptMarker = "_sesori_";
+  static String withPromptId({required String messageId, required String promptId}) =>
+      "$messageId$_promptMarker$promptId";
+  static String? promptIdForMessage({required String messageId}) {
+    final index = messageId.indexOf(_promptMarker);
+    return index < 0 ? null : messageId.substring(index + _promptMarker.length);
+  }
+
   static String partId({required String messageId, required int ordinal}) => "$messageId:$ordinal";
 
   static String retryPartId({required String messageId}) => "$messageId:retry";
@@ -58,7 +68,7 @@ class const V2MessageMapper() {
           sessionID: sessionId,
           agent: null,
           time: PluginMessageTime(created: message.time.created.toInt(), completed: null),
-          promptId: null,
+          promptId: promptIdForMessage(messageId: message.id),
         );
         parts = [
           PluginMessagePart.text(
