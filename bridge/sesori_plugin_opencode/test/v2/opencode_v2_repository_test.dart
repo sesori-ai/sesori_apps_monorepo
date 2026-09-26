@@ -102,6 +102,25 @@ void main() {
     expect(api.sessionQueries.single, (directory: null, parentId: "session-fixture"));
   });
 
+  test("reads global activity metadata without fetching directory option catalogs", () async {
+    api.sessions = [
+      api.initialSession,
+      api.initialSession.copyWith(
+        id: "child",
+        parentID: "session-fixture",
+        location: const LocationPublicRef(directory: worktree),
+      ),
+    ];
+    final sessions = await repository.getSessionMetadata();
+    expect(api.sessionQueries, [(directory: null, parentId: null)]);
+    expect(sessions.map((session) => session.id), ["session-fixture", "child"]);
+    expect(sessions.last.projectID, directory);
+    expect(sessions.last.directory, worktree);
+    expect(sessions.last.pluginId, "fixture-plugin");
+    expect(sessions.last.promptDefaults, isNull);
+    expect(api.agentDirectories, isEmpty);
+  });
+
   test("uses the session location for display names and preserves native transcript identities", () async {
     api.currentSession = api.initialSession.copyWith(
       agent: "build",

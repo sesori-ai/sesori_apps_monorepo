@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-v2`
-- **Status:** Active; Steps 1–5 merged, Step 6.a event projection implemented and approved for PR 8/13 review.
+- **Status:** Active; through Step 6.a merged, Step 6.b activity/service preparing PR 9/13.
 - **Plan date:** 2026-09-25
 - **Implementation base:** `main` at `fed841c2f9`
 - **Trigger:** issue #1677 — OpenCode 2.0.11 on PATH fails cold start with `FormatException ... <!doctype html>`.
@@ -219,8 +219,9 @@ no history rewrite, compatibility shim or new mutable owner is needed. Count all
      It exposes `seed(...)`, `apply(event)` and `reset()`; deletion can use previously observed session metadata.
    - `OpenCodeV2Service` owns cold start and reconnect re-fetch through the repository, seeds the tracker, resolves
      event enrichments and uses the stateless mapper. It builds activity summaries and never touches `OpenCodeV2Api`.
-   - Seed session metadata globally, then read pending inputs for the observed session directories and active IDs
-     globally. Preserve unknown work state until a complete baseline; do not copy v1's instance/alias registries.
+   - Seed session metadata globally without agent-catalog lookups, then read pending inputs for observed session
+     directories and active IDs globally. Keep useful state on refresh failure, but preserve unknown work state until
+     a complete baseline. Reuse the existing shared session value; do not copy v1's instance/alias registries.
    - Tests: event-sequence tests for tracker state, and service tests over a fake repository.
 7. **🚧 v2 writes and activation.**
    - `OpenCodeV2Service` gains the write flows:
@@ -235,7 +236,8 @@ no history rewrite, compatibility shim or new mutable owner is needed. Count all
      - archive as a no-op (D7).
    - `OpenCodeV2Plugin` implements `OpenCodeManagedApi` and delegates every operation to `OpenCodeV2Service`. It
      composes `SseConnection → V2EventParser → OpenCodeV2Service → V2EventMapper → event buffer` and holds no business
-     logic.
+     logic. Extend the existing SSE callback to await enrichment before the next frame/reconnect refresh; keep one
+     transport owner rather than adding a separate queue, and drop late publication after plugin disposal.
    - Activation:
      - `OpenCodeManagedApiFactory` gains `required OpenCodeProtocol protocol`.
      - The descriptor's `start` runs `probeOpenCodeProtocol`, refuses a v2 below `2.0.11` with `PluginStartException`

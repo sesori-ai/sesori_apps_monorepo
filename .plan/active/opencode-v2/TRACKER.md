@@ -4,16 +4,17 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 6.a (PR 8/13) — event projection, architecture approved and ready for review.
-  Branch: `sesori/opencode-v2-step-6a-event-projection`.
+- Current step: 6.b (PR 9/13) — activity/service integration, local implementation.
+  Branch: `sesori/opencode-v2-step-6b-activity-service`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
   Step 3 [#1716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1716),
   Step 4 [#1720](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1720),
   Step 5.a [#1733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1733),
   Step 5.b [#1743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1743),
-  Step 5.c [#1748](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1748).
-- One-step-ahead successor: Step 6.b activity/service (PR 9/13); do not start before Step 6.a is in PR.
+  Step 5.c [#1748](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1748),
+  Step 6.a [#1755](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1755).
+- One-step-ahead successor: Step 7 writes/activation (PR 10/13); keep local until Step 6.b merges.
 - Takeover: continue from `aqua-hummingbird`; preserve the existing published Step 2/3 history.
 - Plan architecture review: first pass rejected 9 layering points; all applied (see PLAN.md Status)
 
@@ -144,6 +145,21 @@
   targeted tool/assistant updates never replay unrelated snapshot text ahead of queued deltas.
 - The event slice ceiling is revised from 1,200 to 1,400 after measuring approximately 1,100 authored plus 202
   generated lines. Keep generated output with the six new event definitions; activity/service remains a separate PR.
+
+- #1755 merged at accepted head `cc66328`, with CI 21/21 and 1,159 authored + 202 generated changed lines.
+  The pure-mapper dependency finding was declined: converters share REST/event policies; the mapper owns no
+  subscription or I/O and does not bypass service enrichment. Prefixed disposition: discussion `4110268203`.
+- Step 6.b starts from `main` at `03f60664ed`. Session metadata uses the existing shared session value; baseline
+  projection does not fetch agent catalogs merely to retain metadata for activity/deletion. Full session reads
+  continue to supply display-ready defaults. Tracker owns four maps and baseline trust; service has no mutable state.
+- Cold-start/reconnect seeding commits only a complete repository snapshot. A failed refresh leaves useful prior
+  state intact but cannot claim trusted idle. The later transport consumer must serialize refresh and event handling.
+- Step 6.b implements repository-only cold start, native pending-input bookkeeping, root/direct-child summaries,
+  and selective live-event enrichment. Missing metadata/snapshots are logged without suppressing native status/input.
+  Cached session metadata supplies deletion events; no request is made for an already-deleted row.
+- Focused repository/model/activity-service coverage passes 35 cases. The new 14-case activity/service suite was
+  rerun after supplying the native compaction event's required `recent` field; unchanged passing suites were not.
+  Package analysis is clean. No generator inputs changed. Architecture implementation review is pending.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.

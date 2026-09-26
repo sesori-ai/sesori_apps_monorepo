@@ -68,6 +68,21 @@ class OpenCodeV2Repository({
     ];
   }
 
+  /// Global roots and children, without directory-specific option discovery.
+  Future<List<shared.Session>> getSessionMetadata() async {
+    final (sessions, projects) = await shared.wait2(
+      _api.listSessions(directory: null, parentId: null),
+      _api.listProjects(),
+    );
+    return [
+      for (final session in sessions)
+        _modelMapper.mapSessionMetadata(
+          session: session,
+          projectId: _projectId(session: session, projects: projects),
+        ),
+    ];
+  }
+
   Future<List<PluginSession>> getChildSessions({required String sessionId}) async {
     final (sessions, projects) = await shared.wait2(
       _api.listSessions(directory: null, parentId: sessionId),
