@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:math" as math;
 
+import "package:clock/clock.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:material_ui/material_ui.dart";
@@ -23,6 +24,7 @@ const double _brandPanelWidthFactor = 0.44;
 const double _brandPanelMaxWidth = 560;
 const double _columnMaxWidth = 380;
 const double _buttonGap = 12;
+const double _noticeGap = 16;
 const Duration _logoDuration = Duration(milliseconds: 200);
 
 /// Desktop sign-in: every sign-in method through the shared [LoginCubit].
@@ -191,16 +193,52 @@ class const _Heading({required final String title, required final String subtitl
   }
 }
 
-class const _ProviderSignIn({required final VoidCallback onShowEmailForm}) extends StatelessWidget {
+class const _ProviderSignIn({required final VoidCallback onShowEmailForm}) extends StatefulWidget {
+  @override
+  State<_ProviderSignIn> createState() => _ProviderSignInState();
+}
+
+class _ProviderSignInState() extends State<_ProviderSignIn> {
+  /// The provider whose button spins while its sign-in starts.
+  OAuthProvider? _starting;
+
+  void _start({required OAuthProvider provider}) {
+    setState(() => _starting = provider);
+    unawaited(context.read<LoginCubit>().loginWithProvider(provider));
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
 
     return BlocBuilder<LoginCubit, LoginState>(
       builder: (context, state) {
+        final heading = _Heading(title: loc.desktopLoginTitle, subtitle: loc.desktopLoginSubtitle);
+        if (state case LoginPolling(:final handoff)) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              heading,
+              _DesktopHandoffCard(handoff: handoff),
+            ],
+          );
+        }
+
         // LoginSuccess counts as busy: the auth gate flips a moment later, and
         // re-enabled buttons would flash and allow a duplicate tap.
-        final isBusy = state is LoginAuthenticating || state is LoginPolling || state is LoginSuccess;
+        final isBusy = state is LoginAuthenticating || state is LoginSuccess;
+        final notice = switch (state) {
+          LoginTimeout() => _Notice(title: loc.desktopLoginExpiredTitle, message: loc.desktopLoginExpiredMessage),
+          LoginFailed(reason: LoginFailedReason.declined) => _Notice(
+            title: loc.desktopLoginDeclinedTitle,
+            message: loc.desktopLoginDeclinedMessage,
+          ),
+          LoginFailed(:final reason) => _Notice(
+            title: loc.loginAuthenticationFailedTitle,
+            message: reason.localizedMessage(loc: loc),
+          ),
+          LoginIdle() || LoginAuthenticating() || LoginPolling() || LoginSuccess() => null,
+        };
 
         Widget provider({required String label, required IconData icon, required OAuthProvider provider}) =>
             PregoButtonsSolid(
@@ -209,13 +247,29 @@ class const _ProviderSignIn({required final VoidCallback onShowEmailForm}) exten
               size: PregoButtonsSolidSize.xl,
               leadingIcon: icon,
               fullWidth: true,
-              onPressed: isBusy ? null : () => unawaited(context.read<LoginCubit>().loginWithProvider(provider)),
+              isLoading: state is LoginAuthenticating && _starting == provider,
+              onPressed: isBusy ? null : () => _start(provider: provider),
             );
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Heading(title: loc.desktopLoginTitle, subtitle: loc.desktopLoginSubtitle),
+            // A notice covers the heading, which keeps its footprint, so the
+            // buttons stay put while a failure appears and clears. Only the
+            // footprint stays: screen readers skip the covered heading.
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Visibility(
+                  visible: notice == null,
+                  maintainSize: true,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  child: heading,
+                ),
+                if (notice != null) PositionedDirectional(start: 0, end: 0, bottom: _noticeGap, child: notice),
+              ],
+            ),
             provider(label: loc.desktopLoginContinueWithGithub, icon: VESPRSolid.github, provider: AuthProvider.github),
             const SizedBox(height: _buttonGap),
             provider(label: loc.desktopLoginContinueWithApple, icon: VESPRSolid.apple, provider: AuthProvider.apple),
@@ -227,9 +281,8 @@ class const _ProviderSignIn({required final VoidCallback onShowEmailForm}) exten
               hierarchy: PregoButtonsSolidHierarchy.tertiary,
               size: PregoButtonsSolidSize.xl,
               fullWidth: true,
-              onPressed: isBusy ? null : onShowEmailForm,
+              onPressed: isBusy ? null : widget.onShowEmailForm,
             ),
-            _LoginStatus(state: state),
           ],
         );
       },
@@ -255,61 +308,224 @@ class const _EmailSignIn({required final VoidCallback onBack}) extends Stateless
   }
 }
 
-/// Interim waiting and failure line under the provider buttons.
-class const _LoginStatus({required final LoginState state}) extends StatelessWidget {
+/// An expired or failed sign-in, drawn over the heading above the buttons.
+class const _Notice({required final String title, required final String message}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final colors = prego.colors;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.bgErrorPrimary,
+        borderRadius: BorderRadius.circular(PregoRadius.xl),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(TablerRegular.alert_circle, size: 20, color: colors.fgErrorPrimary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: prego.textTheme.textSm.bold.copyWith(color: colors.textPrimary)),
+                  Text(message, style: prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A browser sign-in waiting for the user, in place of the provider buttons:
+/// the device name the browser page will ask to confirm, how long the link
+/// stays valid, and ways to reopen, copy or abandon it.
+class const _DesktopHandoffCard({required final LoginHandoff handoff}) extends StatefulWidget {
+  @override
+  State<_DesktopHandoffCard> createState() => _DesktopHandoffCardState();
+}
+
+class _DesktopHandoffCardState() extends State<_DesktopHandoffCard> {
+  late final Timer _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (ticker) {
+      setState(() {});
+      if (_remaining() == Duration.zero) ticker.cancel();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker.cancel();
+    super.dispose();
+  }
+
+  Duration _remaining() {
+    final remaining = widget.handoff.oauth.expiresAt.difference(clock.now());
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  Future<void> _copyLink() async {
+    final popups = PregoPopupAlertPresenter.of(context);
+    final copied = context.loc.desktopLoginLinkCopied;
+    if (!await copyTextToClipboard(text: widget.handoff.oauth.authUrl.toString(), operation: "sign-in link")) return;
+    popups.show(title: copied, variant: PregoPopupAlertsNotificationsVariant.info);
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
-    final errorStyle = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textErrorPrimary);
-    final status = switch (state) {
-      LoginIdle() || LoginSuccess() => null,
-      LoginAuthenticating() => _StatusRow(message: loc.loginAuthenticating),
-      LoginPolling(:final handoff) => Column(
-        children: [
-          _StatusRow(
-            message: handoff.browser == LoginBrowserLaunch.failed ? loc.loginBrowserOpenFailed : loc.loginPolling,
+    final colors = prego.colors;
+    final cubit = context.read<LoginCubit>();
+    final handoff = widget.handoff;
+    final remaining = _remaining();
+    final countdown = "${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, "0")}";
+
+    Widget header({required Widget leading, required String title, required Color color}) => Row(
+      children: [
+        leading,
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(title, style: prego.textTheme.textLg.bold.copyWith(color: color)),
+        ),
+      ],
+    );
+    Widget button({
+      required String label,
+      required IconData? icon,
+      required PregoButtonsSolidHierarchy hierarchy,
+      required VoidCallback onPressed,
+    }) => PregoButtonsSolid(
+      label: label,
+      leadingIcon: icon,
+      hierarchy: hierarchy,
+      size: PregoButtonsSolidSize.md,
+      onPressed: onPressed,
+    );
+    void reopen() => unawaited(cubit.reopenBrowser());
+    void copyLink() => unawaited(_copyLink());
+
+    final (title, message, actions) = switch (handoff.browser) {
+      LoginBrowserLaunch.opened => (
+        header(
+          leading: const SizedBox.square(dimension: 18, child: PregoActivityIndicator(color: null)),
+          title: loc.desktopLoginWaitingTitle,
+          color: colors.textPrimary,
+        ),
+        _waitingMessage(handoff: handoff),
+        [
+          button(
+            label: loc.desktopLoginOpenAgain,
+            icon: TablerRegular.world,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            onPressed: reopen,
           ),
-          const SizedBox(height: 8),
-          PregoButtonsSolid(
-            label: loc.loginCancel,
+          button(
+            label: loc.desktopLoginCopyLink,
+            icon: null,
             hierarchy: PregoButtonsSolidHierarchy.tertiary,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: () => unawaited(context.read<LoginCubit>().cancel()),
+            onPressed: copyLink,
           ),
         ],
       ),
-      LoginTimeout() => Text(loc.loginTimeout, textAlign: TextAlign.center, style: errorStyle),
-      LoginFailed(:final reason) => Text(
-        reason.localizedMessage(loc: loc),
-        textAlign: TextAlign.center,
-        style: errorStyle,
+      LoginBrowserLaunch.failed => (
+        header(
+          leading: Icon(TablerRegular.alert_circle, size: 22, color: colors.fgErrorPrimary),
+          title: loc.desktopLoginBrowserFailedTitle,
+          color: colors.textErrorPrimary,
+        ),
+        Text(loc.desktopLoginBrowserFailedMessage),
+        [
+          button(
+            label: loc.desktopLoginCopyLink,
+            icon: null,
+            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+            onPressed: copyLink,
+          ),
+          button(
+            label: loc.desktopLoginTryAgain,
+            icon: null,
+            hierarchy: PregoButtonsSolidHierarchy.tertiary,
+            onPressed: reopen,
+          ),
+        ],
       ),
     };
-    if (status == null) return const SizedBox.shrink();
-    return Padding(padding: const EdgeInsetsDirectional.only(top: 20), child: status);
-  }
-}
 
-class const _StatusRow({required final String message}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox.square(
-          dimension: 16,
-          child: PregoActivityIndicator(color: null),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: colors.bgSecondary,
+            border: Border.all(color: colors.borderSecondary),
+            borderRadius: BorderRadius.circular(PregoRadius.x2l),
+          ),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(22, 22, 22, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                title,
+                const SizedBox(height: 10),
+                DefaultTextStyle.merge(
+                  style: prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary),
+                  child: message,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  loc.desktopLoginExpiresIn(countdown),
+                  style: prego.textTheme.textXs.regular.copyWith(color: colors.textTertiary),
+                ),
+                const SizedBox(height: 16),
+                Wrap(spacing: 8, runSpacing: 8, children: actions),
+              ],
+            ),
+          ),
         ),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Text(
-            message,
-            style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+        const SizedBox(height: 14),
+        Center(
+          child: PregoButtonsSolid(
+            label: loc.desktopLoginCancelHandoff,
+            hierarchy: PregoButtonsSolidHierarchy.tertiary,
+            size: PregoButtonsSolidSize.md,
+            onPressed: () => unawaited(cubit.cancel()),
           ),
         ),
       ],
     );
+  }
+
+  /// The waiting copy with the device name set off, so it is easy to match on
+  /// the browser page. The copy is formatted around a marker to find where
+  /// the name goes.
+  Widget _waitingMessage({required LoginHandoff handoff}) {
+    final prego = context.prego;
+    final loc = context.loc;
+    const marker = "\u0000";
+    return switch (loc.desktopLoginWaitingMessage(handoff.provider.label, marker).split(marker)) {
+      [final before, final after] => Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: before),
+            TextSpan(
+              text: handoff.oauth.deviceName,
+              style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
+            ),
+            TextSpan(text: after),
+          ],
+        ),
+      ),
+      _ => Text(loc.desktopLoginWaitingMessage(handoff.provider.label, handoff.oauth.deviceName)),
+    };
   }
 }

@@ -20,7 +20,8 @@ participates.
 - Email sign-in uses one shared form on every shell that offers it: it
   validates before submitting, shows a failure inline next to the fields, and
   marks no field with a required asterisk. Every shell shows the same message
-  for each login failure reason.
+  for each login failure reason, except a declined browser page, which the
+  desktop words as a call to choose another way.
 - The desktop offers GitHub, Apple and Google through the browser and email
   inline, with the Terms and Privacy sentence opening in the browser. From 820
   points wide a brand panel sits beside the sign-in column; narrower, it folds
@@ -28,6 +29,12 @@ participates.
   change and scrolls at the 560×480 minimum. Switching between the providers
   and the email form clears a pending failure, so a provider failure never shows
   inside the form and an email failure never outlives it.
+- On the desktop, a browser sign-in replaces the buttons with a card that names
+  the provider and the device the page will ask to confirm, counts down to the
+  link's expiry, and offers Open again, Copy link, and Cancel and choose another
+  way. A browser that fails to open turns the card into Copy link and Try again.
+  An expired, declined or failed sign-in shows its notice in the heading's place
+  above the re-enabled buttons, which stay put as it appears and clears.
 - Startup routing uses local session state only, with no network work at splash.
 - Client tokens are encrypted rows in shared persistence with an OS-protected
   master; auth owns runtime mutations. Tokens refresh before expiry and are
