@@ -4,11 +4,16 @@ import "package:flutter_svg/flutter_svg.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../extensions/build_context_x.dart";
+
 // Figma NILKXLD9cwuWHhLnGqPqeJ / 5527:8368, exported 2026-09-08.
 // All ten animated nodes share the sheet's timeline. Keyframes retain Figma's
 // normalized 2s source; the sheet preserves the opening and shortens the tail.
 // Geometry is in the original 370×190 hero coordinates, scaled as one unit.
 // Static image treatments are baked into two 3× exports; vector art is retained.
+
+/// The artwork ships with this package, so every loader names it.
+const _package = "sesori_app_ui";
 
 class const FeedbackRatingHero({super.key, required final Animation<double> animation}) extends StatelessWidget {
   @override
@@ -43,7 +48,11 @@ class const FeedbackRatingHero({super.key, required final Animation<double> anim
                     clipBehavior: Clip.none,
                     children: [
                       Positioned.fill(
-                        child: Image.asset("assets/images/feedback_rating_background.webp", fit: BoxFit.fill),
+                        child: Image.asset(
+                          "assets/images/feedback_rating_background.webp",
+                          package: _package,
+                          fit: BoxFit.fill,
+                        ),
                       ),
                       _HeroLayer(
                         animation: animation,
@@ -127,7 +136,13 @@ class const FeedbackRatingHero({super.key, required final Animation<double> anim
                         ),
                       ),
                       // The rising hearts pass behind the phone, as in Figma.
-                      Positioned.fill(child: Image.asset("assets/images/feedback_rating_phone.webp", fit: BoxFit.fill)),
+                      Positioned.fill(
+                        child: Image.asset(
+                          "assets/images/feedback_rating_phone.webp",
+                          package: _package,
+                          fit: BoxFit.fill,
+                        ),
+                      ),
                       _HeroLayer(
                         animation: animation,
                         bounds: const Rect.fromLTWH(43.555, -6, 97.445, 96.476),
@@ -210,7 +225,7 @@ class const _HeroArt({
               top: -height * outset.top,
               width: width * (1 + outset.horizontal),
               height: height * (1 + outset.vertical),
-              child: SvgPicture.asset("assets/images/feedback_rating_$asset.svg", fit: BoxFit.fill),
+              child: SvgPicture.asset("assets/images/feedback_rating_$asset.svg", package: _package, fit: BoxFit.fill),
             ),
           ],
         ),
@@ -302,7 +317,8 @@ class const FeedbackLoveButton({
                     StadiumBorder(
                       side: BorderSide(
                         color: isLight
-                            ? Color.lerp(prego.colors.alphaWhite10, prego.colors.borderSecondary, colorProgress)!
+                            ? Color.lerp(prego.colors.alphaWhite10, prego.colors.borderSecondary, colorProgress) ??
+                                  prego.colors.alphaWhite10
                             : prego.colors.alphaWhite10,
                         width: 2,
                       ),
@@ -316,7 +332,7 @@ class const FeedbackLoveButton({
                   ),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text("Yes, love it!"),
+                child: Text(context.loc.feedbackLove),
               ),
             ),
           );

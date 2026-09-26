@@ -987,6 +987,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSupportX => 'DM on X';
 
   @override
+  String get settingsRateSesori => 'Rate Sesori';
+
+  @override
+  String get feedbackRatingTitle => 'Are you enjoying Sesori?';
+
+  @override
+  String get feedbackLove => 'Yes, love it!';
+
+  @override
+  String get feedbackCouldBeBetter => 'Could be better';
+
+  @override
+  String get feedbackClose => 'Close feedback';
+
+  @override
+  String get feedbackReviewTitle => 'Thanks! Leave a review?';
+
+  @override
+  String feedbackReviewBody(String store) {
+    return 'It takes a minute on $store and helps other developers find Sesori.';
+  }
+
+  @override
+  String get feedbackStoreAppStore => 'the App Store';
+
+  @override
+  String get feedbackStoreGooglePlay => 'Google Play';
+
+  @override
+  String get feedbackLeaveReview => 'Leave a review';
+
+  @override
+  String get feedbackNotNow => 'Not now';
+
+  @override
   String get settingsSectionLegal => 'Legal';
 
   @override

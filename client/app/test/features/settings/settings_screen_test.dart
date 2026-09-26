@@ -43,6 +43,8 @@ class _MockLegalRepository() extends Mock implements LegalRepository;
 
 class _MockBridgeSettingsService() extends Mock implements BridgeSettingsService;
 
+class _MockAppReviewClient() extends Mock implements AppReviewClient;
+
 const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null);
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _connectionConfig, health: _health);
@@ -748,6 +750,30 @@ void main() {
         mode: UrlLaunchMode.externalApp,
       ),
     ).called(1);
+  });
+
+  testWidgets("Rate Sesori opens the store only after the confirmed sheet has closed", (tester) async {
+    final appReviewClient = _MockAppReviewClient();
+    final sheetsAtStoreOpen = <bool>[];
+    when(appReviewClient.openStoreReviewPage).thenAnswer((_) async {
+      sheetsAtStoreOpen.add(find.byType(BottomSheet, skipOffstage: false).evaluate().isNotEmpty);
+    });
+    GetIt.instance.registerSingleton<AppReviewClient>(appReviewClient);
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Rate Sesori"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Yes, love it!"));
+    await tester.pumpAndSettle();
+    verifyNever(appReviewClient.openStoreReviewPage);
+
+    await tester.tap(find.text("Leave a review"));
+    await tester.pumpAndSettle();
+
+    verify(appReviewClient.openStoreReviewPage).called(1);
+    expect(sheetsAtStoreOpen, [false]);
   });
 
   testWidgets("basic usage analytics lives on Account with concise copy", (tester) async {

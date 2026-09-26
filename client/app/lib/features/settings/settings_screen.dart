@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -24,6 +26,9 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
           ),
         ),
         BlocProvider(
+          create: (_) => FeedbackSheetCubit(appReviewClient: getIt<AppReviewClient>()),
+        ),
+        BlocProvider(
           create: (_) => BridgeSettingsCubit(
             service: getIt<BridgeSettingsService>(),
             connectionService: getIt<ConnectionService>(),
@@ -48,6 +53,7 @@ class const _MobileSettingsView() extends StatelessWidget {
         const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.pushed),
       ),
       onOpenDefaultInput: () => context.pushRoute(const AppRoute.settingsDefaultInput()),
+      onOpenRateSesori: () => unawaited(_openRateSesori(context: context)),
       additionalSettings: null,
       openSupportLink: ({required url}) async {
         await openExternalLink(url: url, mode: UrlLaunchMode.externalApp);
@@ -59,6 +65,12 @@ class const _MobileSettingsView() extends StatelessWidget {
       footerLogo: const SesoriLogo(squareSize: 52),
     );
   }
+}
+
+Future<void> _openRateSesori({required BuildContext context}) async {
+  final cubit = context.read<FeedbackSheetCubit>();
+  final outcome = await showFeedbackSheet(context: context, cubit: cubit);
+  if (outcome case FeedbackSheetOutcomeLove(leaveReview: true)) await cubit.requestStoreReview();
 }
 
 Future<AppVersionInfo?> _loadAppVersionInfo() async {
