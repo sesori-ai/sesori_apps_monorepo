@@ -129,6 +129,15 @@ Map<String, MarkdownElementBuilder> buildSessionMarkdownBuilders({
   };
 }
 
+/// Custom [MarkdownBody.builders] for a preview of session chat markdown, such
+/// as the pinned prompt. A fenced block renders as a still [CodeBlockPreview]:
+/// a preview has no room for a copy or open-all control, its own tap belongs to
+/// whatever it previews, and a scroll view inside it would report its metrics
+/// to the list the preview sits over.
+Map<String, MarkdownElementBuilder> buildSessionMarkdownPreviewBuilders() {
+  return <String, MarkdownElementBuilder>{"pre": CodeBlockPreviewMarkdownBuilder()};
+}
+
 /// Renders a raw HTML block as a code block instead of dropping it.
 ///
 /// The default [md.HtmlBlockSyntax] emits a bare text node under the document

@@ -356,6 +356,13 @@ void main() {
 ![diagram](https://example.com/diagram.png)
 ''';
 
+/// A prompt that is one short fenced code block.
+const _fencedPrompt = '''
+```dart
+void main() {}
+```
+''';
+
 const _listViewKey = Key("session-detail-message-list-view");
 const _jumpToLatestKey = Key("session-detail-jump-to-latest");
 
@@ -2727,6 +2734,47 @@ void main() {
       expect(built, isNot(contains("Pasted line 500")));
     });
 
+    testWidgets("pins a code block as a still preview, with nothing to press", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: _fencedPrompt),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // The row's own tap jumps to the prompt, so a copy or open-all control
+      // here would do something other than what it shows.
+      expect(find.descendant(of: overlay, matching: find.byType(CodeBlockPreview)), findsOneWidget);
+      expect(find.descendant(of: overlay, matching: find.byType(CodeBlock)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(PregoCopyIconButton)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(TextButton)), findsNothing);
+      expect(pinned("void main() {}"), findsOneWidget);
+    });
+
+    testWidgets("a pinned code block asks for no older page", (tester) async {
+      var requested = 0;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: _turnsWithPrompt(id: "u4", text: _fencedPrompt),
+          initialStreamingText: const {},
+          topInset: _topInset,
+          onLoadOlderMessages: () async => requested++,
+        ),
+      );
+      final harness = tester.state<_SessionDetailMessageListHarnessState>(
+        find.byType(_SessionDetailMessageListHarness),
+      );
+      harness.setTranscriptFolded(folded: false);
+      await tester.pumpAndSettle();
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // The overlay is the list's sibling, so a scroll view in the pinned row
+      // reports its metrics at depth 0 and the list reads them as its own.
+      expect(requested, 0, reason: "the pinned prompt must not page history the reader never asked for");
+    });
+
     testWidgets("pins a fence left open by the cut as a code block, not backticks", (tester) async {
       await _pumpTurns(
         tester,
@@ -2739,7 +2787,7 @@ void main() {
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
 
-      expect(find.descendant(of: overlay, matching: find.byType(CodeBlock)), findsOneWidget);
+      expect(find.descendant(of: overlay, matching: find.byType(CodeBlockPreview)), findsOneWidget);
       expect(find.descendant(of: overlay, matching: find.textContaining("```", findRichText: true)), findsNothing);
     });
 

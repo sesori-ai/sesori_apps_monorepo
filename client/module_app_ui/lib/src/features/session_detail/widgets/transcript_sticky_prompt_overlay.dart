@@ -155,7 +155,10 @@ class const TranscriptStickyPromptOverlay({
         imageBuilder: (uri, _, alt) =>
             buildUserPromptMarkdownImage(context: context, uri: uri, semanticLabel: alt, interactive: false),
         blockSyntaxes: sessionMarkdownBlockSyntaxes,
-        builders: buildSessionMarkdownBuilders(highlightEnabled: true, copyTooltip: context.loc.sessionDetailCopy),
+        // A preview's fenced blocks are still pictures: nothing in the row is
+        // pressable, and nothing in it scrolls, because the transcript's list
+        // beneath reads a sibling scroll view's metrics as its own.
+        builders: buildSessionMarkdownPreviewBuilders(),
       ),
     );
   }
