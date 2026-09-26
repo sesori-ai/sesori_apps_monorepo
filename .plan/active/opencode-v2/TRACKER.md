@@ -4,7 +4,7 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 7.a (PR 10/14) — writes/forms implemented and verified; architecture review pending.
+- Current step: 7.a (PR 10/14) — writes/forms verified and architecture-approved; ready for publication.
   Branch: `sesori/opencode-v2-step-7a-writes`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
@@ -187,7 +187,8 @@
   Native events own activity: an acceptance arriving after a terminal event must not resurrect busy state.
 - 74 focused form/write/activity/repository/API cases and package analysis pass. No generator inputs changed;
   v1, the managed target and the v2 refusal stay unchanged. Native execution/reconnect remain later gates.
-  Measured scope is approximately 1,210 authored lines, no generated churn; the ceiling is adjusted to 1,250.
+  Architecture review approved `b30dcf8557...0b7f2f9` on its first pass: 15 files, 1,209 authored changed lines,
+  no generated churn and no findings. The ceiling is adjusted to 1,250 after measuring the complete slice.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.

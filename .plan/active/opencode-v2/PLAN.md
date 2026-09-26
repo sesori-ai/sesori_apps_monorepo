@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-v2`
-- **Status:** Active; through Step 6.b merged, Step 7.a writes/forms verified; architecture review pending for PR 10/14.
+- **Status:** Active; through Step 6.b merged, Step 7.a writes/forms verified and architecture-approved; ready for PR 10/14.
 - **Plan date:** 2026-09-25
 - **Implementation base:** `main` at `fed841c2f9`
 - **Trigger:** issue #1677 — OpenCode 2.0.11 on PATH fails cold start with `FormatException ... <!doctype html>`.
