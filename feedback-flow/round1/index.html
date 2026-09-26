@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feedback flow: open questions</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, system-ui, sans-serif; background: #f4f4f5; color: #161616; line-height: 1.45; }
+main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 120px; }
+h1 { font-size: 26px; margin: 0 0 6px; }
+h2 { font-size: 20px; margin: 44px 0 6px; padding-top: 16px; border-top: 1px solid #ddd; }
+p.lead { color: #444; margin: 0 0 14px; font-size: 16px; }
+.box { background: #fff; border-radius: 14px; padding: 14px 18px; margin: 14px 0; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.box.settled { border-left: 4px solid #12a150; }
+.box.how { border-left: 4px solid #1a6dff; }
+.box h3 { margin: 0 0 6px; font-size: 16px; }
+ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
+
+.bar { position: sticky; top: 0; z-index: 10; background: rgba(244,244,245,.95); backdrop-filter: blur(8px); border-bottom: 1px solid #e0e0e0; }
+.bar .in { max-width: 1100px; margin: 0 auto; padding: 8px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.bar .prog { font-weight: 700; font-size: 14px; }
+#copy { margin-left: auto; background: #1a6dff; color: #fff; border: 0; border-radius: 10px; padding: 9px 16px; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+#toast { font-size: 14px; color: #12813f; font-weight: 700; }
+#fallback { width: 100%; height: 160px; font: 13px ui-monospace, monospace; }
+
+.q { background: #fff; border-radius: 16px; padding: 16px 16px 14px; margin: 18px 0; box-shadow: 0 1px 3px rgba(0,0,0,.08); border: 1.5px solid transparent; }
+.q.answered { border-color: #cfe0ff; }
+.qh { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
+.qid { flex: none; font-size: 13px; font-weight: 700; color: #fff; background: #161616; border-radius: 8px; padding: 2px 8px; }
+.qt { font-size: 17px; font-weight: 700; }
+.qsub { color: #444; margin: 0 0 12px; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.opt { display: block; border: 1.5px solid #ddd; border-radius: 12px; padding: 12px; cursor: pointer; background: #fff; }
+.opt.on { border-color: #1a6dff; background: #f2f6ff; box-shadow: 0 0 0 3px rgba(26,109,255,.12); }
+.oh { display: flex; align-items: center; gap: 8px; font-size: 15px; margin-bottom: 8px; flex-wrap: wrap; }
+.oh input { width: 18px; height: 18px; margin: 0; accent-color: #1a6dff; flex: none; }
+.oh .letter { font-weight: 700; }
+.sug { font-size: 12px; font-weight: 700; color: #0f7a3d; background: #dcf5e6; border-radius: 99px; padding: 2px 8px; margin-left: auto; white-space: nowrap; }
+.why { font-size: 14px; color: #444; margin: 8px 0 0; }
+.note-in { display: block; margin-top: 12px; width: 100%; border: 1.5px solid #e2e2e2; border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 14px; resize: vertical; min-height: 40px; }
+#other { min-height: 110px; }
+
+/* Timeline mock: one row per event, with the counter. */
+.tl { font-size: 13px; border-radius: 10px; background: #fafafa; border: 1px solid #eee; padding: 6px 8px; }
+.tl div { display: flex; gap: 8px; padding: 3px 0; align-items: center; }
+.tl .d { flex: none; width: 58px; color: #777; font-variant-numeric: tabular-nums; }
+.tl .e { flex: 1; }
+.tl .c { flex: none; min-width: 34px; text-align: center; font-weight: 700; border-radius: 6px; padding: 0 4px; background: #ececef; }
+.tl .show { background: #fff3d6; border-radius: 6px; padding: 3px 6px; margin: 2px -6px; }
+.tl .none { color: #999; }
+
+/* Phone mocks: Prego dark tokens. */
+.phone { width: 100%; max-width: 300px; margin: 0 auto; background: #141414; color: #fdfdfd; border-radius: 22px; padding: 12px; font-size: 13px; line-height: 18px; overflow: hidden; border: 1px solid #333; position: relative; min-height: 360px; }
+.phone .scr { opacity: .35; }
+.phone .hdr { font-weight: 700; font-size: 15px; margin: 6px 4px 10px; }
+.phone .item { background: #1e1e1e; border-radius: 12px; padding: 10px; margin: 6px 0; color: #aeaeae; }
+.phone .msg { background: #1e1e1e; border-radius: 12px; padding: 8px 10px; margin: 6px 0 6px 40px; }
+.phone .ai { padding: 6px 4px; color: #d8d8d8; }
+.phone .comp { position: absolute; left: 12px; right: 12px; bottom: 12px; background: #1e1e1e; border-radius: 16px; padding: 10px; color: #777; }
+.sheet { position: absolute; left: 8px; right: 8px; bottom: 8px; background: #1e1e1e; border-radius: 24px; padding: 16px 14px 14px; box-shadow: 0 -8px 30px rgba(0,0,0,.6); }
+.sheet .art { height: 70px; border-radius: 14px; background: linear-gradient(135deg, #ff6aa2, #7a5cff); margin-bottom: 12px; display: grid; place-items: center; font-size: 28px; }
+.sheet .t { font-weight: 700; font-size: 16px; text-align: center; margin-bottom: 4px; }
+.sheet .b { color: #aeaeae; text-align: center; margin-bottom: 12px; }
+.btn { display: block; text-align: center; border-radius: 12px; padding: 10px; font-weight: 700; margin-top: 8px; }
+.btn.p { background: #fdfdfd; color: #141414; }
+.btn.s { background: #2a2a2a; color: #fdfdfd; }
+.dialog { position: absolute; left: 24px; right: 24px; top: 110px; background: #2a2a2a; border-radius: 18px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,.7); }
+.dialog .t { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.dialog .b { color: #bbb; margin-bottom: 10px; }
+.dialog .acts { display: flex; justify-content: flex-end; gap: 16px; font-weight: 700; color: #7fb0ff; }
+.cap { font-size: 12px; color: #666; text-align: center; margin-top: 6px; }
+.shot { width: 100%; max-width: 260px; display: block; margin: 0 auto; border-radius: 16px; border: 1px solid #ddd; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; align-items: start; }
+</style>
+</head>
+<body>
+
+<div class="bar"><div class="in">
+  <span class="prog" id="prog">0 of 7 picked</span>
+  <span id="toast"></span>
+  <button id="copy" type="button">Copy answers</button>
+</div>
+<div class="in" style="padding-top:0"><textarea id="fallback" hidden></textarea></div>
+</div>
+
+<main>
+<h1>Feedback flow: open questions</h1>
+<p class="lead">These are the choices in the <code>feedback-flow</code> plan (PR #1789) that you haven't decided yet. Pick one option per question. Add a note if you want something different. Then press <b>Copy answers</b> and paste the result back to me.</p>
+
+<div class="box how">
+  <h3>Background</h3>
+  <ul>
+    <li>Every good action adds <b>+1</b>: sending a message, starting a session with a message, answering a question, or answering a permission request. Any AI error (including a retry), a failed send, or a crash sets it back to <b>0</b>.</li>
+    <li>At <b>10</b> the rating sheet can appear. If the answer wasn't "Yes", it waits at least <b>30 days</b> before appearing again. Both numbers come from Remote Config.</li>
+    <li>My suggested pick for each question is marked <span class="sug" style="margin:0">Suggested</span>.</li>
+  </ul>
+</div>
+
+<h2>The sheet you approved</h2>
+<div class="two">
+  <figure style="margin:0"><img class="shot" src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/codex/feedback/01-rating-dark.png" alt="Approved rating sheet"><div class="cap">Rating sheet (#1361)</div></figure>
+  <figure style="margin:0"><img class="shot" src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/codex/feedback/05-private-chips-dark.png" alt="Private feedback step"><div class="cap">"Could be better" → private feedback</div></figure>
+</div>
+
+<!-- Q1 -->
+<h2>1. After "Yes, love it!"</h2>
+<div class="q" data-id="Q1" data-title="After Yes, may the sheet appear by itself again?">
+  <div class="qh"><span class="qid">Q1</span><span class="qt">Can the sheet appear by itself again after the user taps "Yes"?</span></div>
+  <p class="qsub">Settings → Rate Sesori always works, whatever you pick here.</p>
+  <div class="opts">
+    <label class="opt" data-label="Never again automatically"><span class="oh"><input type="radio" name="Q1" value="a"><span class="letter">A</span> Never again <span class="sug">Suggested</span></span>
+      <div class="tl">
+        <div><span class="d">Day 1</span><span class="e show">Sheet → <b>Yes</b></span><span class="c">0</span></div>
+        <div><span class="d">Day 90</span><span class="e">10 good actions</span><span class="c">10</span></div>
+        <div class="none"><span class="d">Day 90</span><span class="e">nothing appears</span><span class="c">—</span></div>
+      </div>
+      <p class="why">They already told us they like it. Asking again feels like nagging.</p></label>
+    <label class="opt" data-label="Again after a long wait (e.g. 1 year, Remote Config)"><span class="oh"><input type="radio" name="Q1" value="b"><span class="letter">B</span> Again after a long wait (e.g. 1 year)</span>
+      <div class="tl">
+        <div><span class="d">Day 1</span><span class="e show">Sheet → <b>Yes</b></span><span class="c">0</span></div>
+        <div><span class="d">Day 365</span><span class="e show">Sheet appears again</span><span class="c">10</span></div>
+      </div>
+      <p class="why">Useful after big releases, since store reviews age out. Adds a third Remote Config value.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<!-- Q2 -->
+<h2>2. Closing the sheet without answering</h2>
+<div class="q" data-id="Q2" data-title="Closing without answering">
+  <div class="qh"><span class="qid">Q2</span><span class="qt">If the user swipes the sheet away, what happens?</span></div>
+  <div class="opts">
+    <label class="opt" data-label="Counts as not now: wait 30 days"><span class="oh"><input type="radio" name="Q2" value="a"><span class="letter">A</span> Counts as "not now": wait 30 days <span class="sug">Suggested</span></span>
+      <div class="tl">
+        <div><span class="d">Day 1</span><span class="e show">Sheet → swiped away</span><span class="c">0</span></div>
+        <div class="none"><span class="d">Day 5</span><span class="e">10 good actions, still waiting</span><span class="c">10</span></div>
+        <div><span class="d">Day 31</span><span class="e show">Sheet appears again</span><span class="c">10</span></div>
+      </div>
+      <p class="why">Swiping it away is a clear "not now". Respect it.</p></label>
+    <label class="opt" data-label="Ignored: may appear again after 10 new good actions"><span class="oh"><input type="radio" name="Q2" value="b"><span class="letter">B</span> Ignored: can appear again soon</span>
+      <div class="tl">
+        <div><span class="d">Day 1</span><span class="e show">Sheet → swiped away</span><span class="c">0</span></div>
+        <div><span class="d">Day 5</span><span class="e show">Sheet appears again</span><span class="c">10</span></div>
+      </div>
+      <p class="why">More answers overall, but people who dismiss it get asked again within days.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<!-- Q3 -->
+<h2>3. The counter after the sheet appears</h2>
+<div class="q" data-id="Q3" data-title="Counter after the sheet appears">
+  <div class="qh"><span class="qid">Q3</span><span class="qt">Once the sheet has appeared, does the counter start from 0 again?</span></div>
+  <div class="opts">
+    <label class="opt" data-label="Reset to 0: next time needs 10 new good actions and 30 days"><span class="oh"><input type="radio" name="Q3" value="a"><span class="letter">A</span> Back to 0 <span class="sug">Suggested</span></span>
+      <div class="tl">
+        <div><span class="d">Day 1</span><span class="e show">Sheet → "Could be better"</span><span class="c">0</span></div>
+        <div><span class="d">Day 20</span><span class="e">AI error</span><span class="c">0</span></div>
+        <div class="none"><span class="d">Day 31</span><span class="e">only 4 good actions so far</span><span class="c">4</span></div>
+        <div><span class="d">Day 35</span><span class="e show">10 in a row → sheet</span><span class="c">10</span></div>
+      </div>
+      <p class="why">The next time it appears also follows a fresh good streak.</p></label>
+    <label class="opt" data-label="Keep counting: appears as soon as 30 days pass"><span class="oh"><input type="radio" name="Q3" value="b"><span class="letter">B</span> Keep counting</span>
+      <div class="tl">
+        <div><span class="d">Day 1</span><span class="e show">Sheet → "Could be better"</span><span class="c">10</span></div>
+        <div><span class="d">Day 31</span><span class="e show">Sheet appears again</span><span class="c">14</span></div>
+      </div>
+      <p class="why">Simpler, but the sheet can show up right after a bad session, as long as no error happened since.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<!-- Q4 -->
+<h2>4. Where the sheet can appear</h2>
+<div class="q" data-id="Q4" data-title="Where the sheet can appear">
+  <div class="qh"><span class="qid">Q4</span><span class="qt">When the 10th good action happens, where does the sheet open?</span></div>
+  <div class="opts">
+    <label class="opt" data-label="Only on the project list (on arrival, navigating back, or reopening the app)"><span class="oh"><input type="radio" name="Q4" value="a"><span class="letter">A</span> Only on the project list <span class="sug">Suggested</span></span>
+      <div class="phone"><div class="scr"><div class="hdr">Projects</div><div class="item">sesori-app</div><div class="item">landing-page</div><div class="item">auth-server</div></div>
+        <div class="sheet"><div class="art">♥</div><div class="t">Enjoying Sesori?</div><div class="btn p">Yes, love it!</div><div class="btn s">Could be better</div></div></div>
+      <p class="why">Waits until you leave the session. It appears the next time you land on the list or reopen the app there. It never interrupts work.</p></label>
+    <label class="opt" data-label="Right away, wherever the user is (e.g. over the session)"><span class="oh"><input type="radio" name="Q4" value="b"><span class="letter">B</span> Right away, wherever you are</span>
+      <div class="phone"><div class="scr"><div class="hdr">Fix login bug</div><div class="msg">Please add tests too</div><div class="ai">Sure, adding tests for the parser…</div><div class="comp">Message…</div></div>
+        <div class="sheet"><div class="art">♥</div><div class="t">Enjoying Sesori?</div><div class="btn p">Yes, love it!</div><div class="btn s">Could be better</div></div></div>
+      <p class="why">Catches the happy moment, but covers the session you are watching and the AI's reply.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<!-- Q5 -->
+<h2>5. The store-review confirmation you asked for</h2>
+<p class="qsub">Decided: before any jump to the Play Store (or to the App Store from Settings), the app asks first. The automatic prompt on iOS uses Apple's own popup inside the app, so it skips this step. Figma has no design for it. What's open is how it looks.</p>
+<div class="q" data-id="Q5" data-title="Store-review confirmation look">
+  <div class="qh"><span class="qid">Q5</span><span class="qt">How does the "leave a review?" question look?</span></div>
+  <div class="opts">
+    <label class="opt" data-label="A step inside the same sheet, after the celebration"><span class="oh"><input type="radio" name="Q5" value="a"><span class="letter">A</span> Next step in the same sheet <span class="sug">Suggested</span></span>
+      <div class="phone"><div class="scr"><div class="hdr">Projects</div><div class="item">sesori-app</div><div class="item">landing-page</div></div>
+        <div class="sheet"><div class="art">♥ ♥</div><div class="t">Thanks! Leave a review?</div><div class="b">It takes a minute on Google Play and helps other developers find Sesori.</div><div class="btn p">Leave a review</div><div class="btn s">Not now</div></div></div>
+      <p class="why">One continuous flow. The celebration leads straight into it, using the sheet's own look.</p></label>
+    <label class="opt" data-label="A small dialog after the sheet has closed"><span class="oh"><input type="radio" name="Q5" value="b"><span class="letter">B</span> Small dialog after the sheet closes</span>
+      <div class="phone"><div class="scr"><div class="hdr">Projects</div><div class="item">sesori-app</div><div class="item">landing-page</div><div class="item">auth-server</div></div>
+        <div class="dialog"><div class="t">Leave a review on Google Play?</div><div class="b">It helps other developers find Sesori.</div><div class="acts"><span>Not now</span><span>Leave a review</span></div></div></div>
+      <p class="why">Simpler to build, but it's a second pop-up right after the first one closes.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note, e.g. different wording (optional)"></textarea>
+</div>
+
+<!-- Q6 -->
+<h2>6. Desktop</h2>
+<div class="q" data-id="Q6" data-title="Desktop">
+  <div class="qh"><span class="qid">Q6</span><span class="qt">Does the desktop app get any of this now?</span></div>
+  <div class="opts">
+    <label class="opt" data-label="Phones only for now; desktop later"><span class="oh"><input type="radio" name="Q6" value="a"><span class="letter">A</span> Phones only for now <span class="sug">Suggested</span></span>
+      <p class="why">Desktop isn't sold through a store, so there is nothing to review, and it has no Firebase for the two numbers. Desktop private feedback stays a later idea.</p></label>
+    <label class="opt" data-label="Also add private feedback to desktop Settings now"><span class="oh"><input type="radio" name="Q6" value="b"><span class="letter">B</span> Add private feedback to desktop Settings too</span>
+      <p class="why">The "Could be better" form and chips in the desktop Settings window. No automatic prompt, no store. Roughly one more PR.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<!-- Q7 -->
+<h2>7. Per phone or per account</h2>
+<div class="q" data-id="Q7" data-title="Counter per phone or per account">
+  <div class="qh"><span class="qid">Q7</span><span class="qt">Does the counter and the 30-day wait belong to the phone or to the account?</span></div>
+  <div class="opts">
+    <label class="opt" data-label="Per phone (stored on the device)"><span class="oh"><input type="radio" name="Q7" value="a"><span class="letter">A</span> Per phone <span class="sug">Suggested</span></span>
+      <p class="why">Stored on the phone and simple. A second phone or a reinstall starts fresh. Store reviews are per device/store account anyway.</p></label>
+    <label class="opt" data-label="Per account (stored on the server, shared across devices)"><span class="oh"><input type="radio" name="Q7" value="b"><span class="letter">B</span> Per account</span>
+      <p class="why">Same state on every phone, but it needs server storage, sync, and more work in two repos.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" style="border-color:#ddd">
+  <div class="qh"><span class="qt">Anything else?</span></div>
+  <textarea id="other" placeholder="Free text (optional)"></textarea>
+</div>
+
+<div class="box settled">
+  <h3>Already decided (no choice needed)</h3>
+  <ul>
+    <li>The approved UI moves into the app. Settings gets a <b>Rate Sesori</b> row.</li>
+    <li>Private feedback goes to a new auth-server endpoint and is stored in MongoDB. It's deleted when the account is deleted.</li>
+    <li>+1 for each good action and back to 0 on any AI error, failed send or crash. Shown at 10, waits 30 days after a non-Yes answer. Both numbers come from Remote Config.</li>
+    <li>Android never uses Google's in-app review popup, because Google forbids asking "do you like it" before it. "Yes" leads to the store page after the confirmation (Q5).</li>
+    <li>The store opens only after the sheet has fully closed.</li>
+  </ul>
+</div>
+</main>
+
+<script>
+const KEY = "sesori-feedback-flow-round1";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }
+const save = () => localStorage.setItem(KEY, JSON.stringify(state));
+const questions = [...document.querySelectorAll(".q[data-id]")];
+function refresh() {
+  let picked = 0;
+  for (const q of questions) {
+    const s = state[q.dataset.id] || {};
+    if (s.v) picked++;
+    q.classList.toggle("answered", Boolean(s.v));
+    q.querySelectorAll("input[type=radio]").forEach((r) => {
+      r.checked = r.value === s.v;
+      r.closest(".opt").classList.toggle("on", r.checked);
+    });
+  }
+  document.getElementById("prog").textContent = `${picked} of ${questions.length} picked`;
+}
+for (const q of questions) {
+  const id = q.dataset.id;
+  q.querySelectorAll("input[type=radio]").forEach((r) => r.addEventListener("change", () => {
+    (state[id] ||= {}).v = r.value; save(); refresh();
+  }));
+  const note = q.querySelector(".note-in");
+  note.value = (state[id] || {}).n || "";
+  note.addEventListener("input", () => { (state[id] ||= {}).n = note.value; save(); });
+}
+const other = document.getElementById("other");
+other.value = state.other || "";
+other.addEventListener("input", () => { state.other = other.value; save(); });
+
+function response() {
+  const lines = ["Feedback flow plan (#1789): answers to the open questions", ""];
+  for (const q of questions) {
+    const s = state[q.dataset.id] || {};
+    const opt = s.v ? q.querySelector(`input[value="${s.v}"]`).closest(".opt") : null;
+    const pick = opt ? `${s.v.toUpperCase()}. ${opt.dataset.label}${opt.querySelector(".sug") ? " (suggested)" : ""}` : "no answer";
+    lines.push(`${q.dataset.id} ${q.dataset.title}: ${pick}`);
+    if (s.n && s.n.trim()) lines.push(`    Note: ${s.n.trim()}`);
+  }
+  if (state.other && state.other.trim()) lines.push("", `Anything else: ${state.other.trim()}`);
+  return lines.join("\n") + "\n";
+}
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = response();
+  const toast = document.getElementById("toast");
+  const fallback = document.getElementById("fallback");
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.textContent = "Copied";
+  } catch (e) {
+    fallback.hidden = false; fallback.value = text; fallback.focus(); fallback.select();
+    toast.textContent = "Copy the selected text";
+  }
+  setTimeout(() => { toast.textContent = ""; }, 2500);
+});
+refresh();
+</script>
+</body>
+</html>
