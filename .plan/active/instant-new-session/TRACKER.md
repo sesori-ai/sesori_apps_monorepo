@@ -4,7 +4,7 @@
 
 | Step | PR title | Status | Notes |
 |---|---|---|---|
-| 1/7 | 🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7] | In review | Removes the superseded `instant-session-launch` plan. Reworked for Q3 and Q4, then for the settled D1–D9, then for two code-review waves |
+| 1/7 | 🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7] | In review | Removes the superseded `instant-session-launch` plan. Reworked for Q3 and Q4, then for the settled D1–D9, then for three code-review waves |
 | 2/7 | ⚙️ [instant-new-session] Show the first message while a new session is created [step 2/7] | Planned | Instant screen only; composer still replaced while sending |
 | 3/7 | 🚧 [instant-new-session] Hand the first message off to the session screen [step 3/7] | Planned | Introduces the launch owner, including the typed outcome stream |
 | 4/7 | 🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 4/7] | Planned | Q3. Delivery is owned by `SessionLaunchService`, not the session screen |
@@ -127,3 +127,20 @@ in `PLAN.md`, rather than patched in four places.
 | 12 | D1's merged attachments bypass the budget check, because restoration uses `_attachments.addAll` | Accepted. Restoration stages through `_stageAttachment`, so the existing limit and notice actually run |
 | 13 | The bubble's 2 s slow-send timer restarts on each widget replacement, so "Sending to `<harness>`…" reverts | Accepted; verified per-`State` in `queued_message_bubble.dart:59-86`. The launch carries `startedAt` and the sending presentation gains `sendingSince`, so each rendering initialises from elapsed time |
 | 14 | The Activity hosts relayout instantly, since they use a plain `SliverList.list` and `Column` | Accepted. Both wrap the pending rows in a 240 ms height transition, instant under reduced motion, reusing D8's idiom. The sidebar needs nothing, being an animated list already |
+
+## Code Review, third wave (2026-09-26)
+
+Eight findings (5 × P1, 3 × P2), all accepted. Three sharpened the lifetime rule
+in `PLAN.md` ("The launch's lifetime, stated once") instead of adding branches;
+the rest are local.
+
+| # | Finding | Verdict |
+|---|---|---|
+| 1 | Launch follow-ups were bare `QueuedSessionSubmission`s, so a failed one could not be told from a pending one or show its reason | Accepted. Sealed `LaunchFollowUp` (queued, sending, accepted, failed), shaped like the existing `LocalSendPhase`; only the failed variant carries `PromptSendFailure`, which moves to `foundation/models/composer/` in step 2. A failed follow-up is now owed until the user retries or removes it |
+| 2 | Retaining an accepted follow-up depended on a screen already being open, so one accepted before the replacement screen mounted blanked | Accepted (lifetime rule). An accepted follow-up belongs to the handoff: held on the launch until the handoff is taken (and then parked by the taker) or released, whether or not a screen existed at acceptance |
+| 3 | `session.created` reaches the lists before the first activity statement, so the Activity placeholder detoured through Recent | Accepted (lifetime rule). A placeholder is held until the surface would draw the real row in its slot — the projection's Activity entry on Activity hosts, the head of Today in a session list — and the surface leaves the session out of its other sections meanwhile. A one-update bound stops a first command that never runs from leaving "Creating…" behind; the residual early-release window is recorded as a risk |
+| 4 | Moving creation into the service dropped `recordPositiveInteraction` / `recordFailure` | Accepted. Both move into `SessionLaunchService` with the creation outcome; follow-up failures also record a failure |
+| 5 | The empty-state check counted launches D4 hides while searching, leaving a blank page | Accepted. The empty state counts only launch rows the list actually draws |
+| 6 | Unsent composer content (text, staged command, attachments) was lost at the route replacement, and the text reappeared in a later new session | Accepted. The handoff carries an `UnsentComposer`; `NewSessionCubit` hands it over before emitting `created` and clears the new-session draft key, and the detail composer starts from it |
+| 7 | Sidebar Activity gates ignored pending-only launches | Accepted. The rail trigger, expanded header and popout-close gates, and the group list, count pending rows; the phone home's Activity gate does too |
+| 8 | Service-owned follow-up send failures lost the detail cubit's `logw` with the original error and stack | Accepted. The service logs both failure paths with the original error, stack trace and launch/prompt/session context |
