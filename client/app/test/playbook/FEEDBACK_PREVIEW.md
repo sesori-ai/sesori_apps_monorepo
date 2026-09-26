@@ -11,24 +11,23 @@ Captured from the preview on an iPhone 17 Pro simulator running iOS 26.5:
 
 | Rating · dark | Keyboard · dark | Apple native rating |
 | --- | --- | --- |
-| ![Rating sheet](feedback_preview/rating-dark.png) | ![Private feedback with the iOS keyboard](feedback_preview/keyboard-dark.png) | ![Apple StoreKit rating prompt](feedback_preview/native-ios.png) |
+| ![Rating sheet](https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/codex/feedback/handoff/rating-dark.png) | ![Private feedback with the iOS keyboard](https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/codex/feedback/handoff/keyboard-dark.png) | ![Apple StoreKit rating prompt](https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/codex/feedback/handoff/native-ios.png) |
 
 The updated entry uses **Yes, love it!** and **Could be better**.
 
 | Rating · light | Celebration and native handoff |
 | --- | --- |
-| ![Light rating sheet](feedback_preview/rating-light.png) | [Dark preview](feedback_preview/rating-celebration.mp4) · [Light preview](feedback_preview/rating-celebration-light.mp4) |
+| ![Light rating sheet](https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/codex/feedback/handoff/rating-light.png) | [Dark preview](https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/codex/feedback/handoff/rating-celebration.mp4) · [Light preview](https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/codex/feedback/handoff/rating-celebration-light.mp4) |
 
 Feedback input corrected to [Figma `5035:11030`](https://www.figma.com/design/NILKXLD9cwuWHhLnGqPqeJ/Sesori?node-id=5035-11030):
 
 | Voice first | Transcribed · dark | Transcribed · light |
 | --- | --- | --- |
-| ![Voice-first input](feedback_preview/input-voice-first-dark.png) | ![Transcript with one Send action](feedback_preview/input-transcribed-dark.png) | ![Light transcript with one Send action](feedback_preview/input-transcribed-light.png) |
+| ![Voice-first input](https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/codex/feedback/handoff/input-voice-first-dark.png) | ![Transcript with one Send action](https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/codex/feedback/handoff/input-transcribed-dark.png) | ![Light transcript with one Send action](https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/codex/feedback/handoff/input-transcribed-light.png) |
 
 ## Run locally
 
-Use the Flutter version pinned in the repository's `.tool-versions` (currently
-3.47.2-stable). From `client/`, run `flutter pub get`, then from `client/app/`:
+Use the Flutter version pinned in the repository's `.tool-versions`. From `client/`, run `flutter pub get`, then from `client/app/`:
 
 ```sh
 flutter devices
