@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:test/test.dart";
 
 class _MockAppReviewClient() extends Mock implements AppReviewClient;
@@ -11,6 +12,7 @@ class _MockFeedbackRepository() extends Mock implements FeedbackRepository;
 void main() {
   late _MockAppReviewClient appReviewClient;
   late _MockFeedbackRepository feedbackRepository;
+  late FakeFeedbackPromptService feedbackPromptService;
   late FeedbackSheetCubit cubit;
 
   setUpAll(() {
@@ -21,10 +23,12 @@ void main() {
   setUp(() {
     appReviewClient = _MockAppReviewClient();
     feedbackRepository = _MockFeedbackRepository();
+    feedbackPromptService = FakeFeedbackPromptService();
     when(appReviewClient.openStoreReviewPage).thenAnswer((_) async {});
     cubit = FeedbackSheetCubit(
       appReviewClient: appReviewClient,
       feedbackRepository: feedbackRepository,
+      feedbackPromptService: feedbackPromptService,
       source: FeedbackSource.settings,
     );
   });
@@ -42,6 +46,16 @@ void main() {
   test("closing before answering is a dismissal", () {
     expect(cubit.state, const FeedbackSheetState.rating());
     expect(cubit.outcome, isA<FeedbackSheetOutcomeDismissed>());
+  });
+
+  test("Yes retires the automatic sheet once, and Could be better does not", () {
+    cubit.chooseCouldBeBetter();
+    expect(feedbackPromptService.yesAnswers, 0);
+
+    cubit.start();
+    cubit.chooseLove();
+    cubit.chooseLove();
+    expect(feedbackPromptService.yesAnswers, 1);
   });
 
   test("Yes counts as love from the celebration onward, and Leave a review is recorded", () {
@@ -98,6 +112,7 @@ void main() {
       automatic = FeedbackSheetCubit(
         appReviewClient: appReviewClient,
         feedbackRepository: feedbackRepository,
+        feedbackPromptService: feedbackPromptService,
         source: FeedbackSource.automatic,
       );
     });

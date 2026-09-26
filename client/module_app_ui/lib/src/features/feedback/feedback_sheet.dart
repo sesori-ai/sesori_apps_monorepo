@@ -19,6 +19,38 @@ Future<FeedbackSheetOutcome> showFeedbackSheet({
   required BuildContext context,
   required FeedbackSheetCubit cubit,
 }) async {
+  final outcome = await _presentFeedbackSheet(context: context, cubit: cubit);
+  if (outcome case FeedbackSheetOutcomeCouldBeBetter(sent: true) when context.mounted) {
+    _confirmFeedbackSent(context: context, alerts: PregoPopupAlertPresenter.of(context));
+  }
+  return outcome;
+}
+
+/// [showFeedbackSheet] for app-wide presenters above every route: presents on
+/// the navigator behind [navigatorKey] and confirms sent private feedback on
+/// that navigator's overlay. Resolves with null when the navigator is not
+/// mounted yet.
+Future<FeedbackSheetOutcome?> showFeedbackSheetOnNavigator({
+  required GlobalKey<NavigatorState> navigatorKey,
+  required FeedbackSheetCubit cubit,
+}) async {
+  final context = navigatorKey.currentContext;
+  final overlay = navigatorKey.currentState?.overlay;
+  if (context == null || overlay == null) {
+    logw("Cannot present the rating sheet before the navigator is ready");
+    return null;
+  }
+  final outcome = await _presentFeedbackSheet(context: context, cubit: cubit);
+  if (outcome case FeedbackSheetOutcomeCouldBeBetter(sent: true) when context.mounted) {
+    _confirmFeedbackSent(context: context, alerts: PregoPopupAlertPresenter.fromOverlayState(overlay));
+  }
+  return outcome;
+}
+
+Future<FeedbackSheetOutcome> _presentFeedbackSheet({
+  required BuildContext context,
+  required FeedbackSheetCubit cubit,
+}) async {
   cubit.start();
   final reducedMotion = prefersReducedMotion(context);
   ModalRoute<void>? sheetRoute;
@@ -42,14 +74,14 @@ Future<FeedbackSheetOutcome> showFeedbackSheet({
   );
   // A popped sheet's result completes before its closing animation does.
   await sheetRoute?.completed;
-  final outcome = cubit.outcome;
-  if (outcome case FeedbackSheetOutcomeCouldBeBetter(sent: true) when context.mounted) {
-    PregoPopupAlertPresenter.of(context).show(
-      title: context.loc.feedbackSent,
-      variant: PregoPopupAlertsNotificationsVariant.success,
-    );
-  }
-  return outcome;
+  return cubit.outcome;
+}
+
+void _confirmFeedbackSent({required BuildContext context, required PregoPopupAlertPresenter alerts}) {
+  alerts.show(
+    title: context.loc.feedbackSent,
+    variant: PregoPopupAlertsNotificationsVariant.success,
+  );
 }
 
 /// Grabber-only sheet from Figma 5527:8368. `PregoBottomSheet` carries a

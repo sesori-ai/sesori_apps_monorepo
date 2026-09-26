@@ -101,6 +101,7 @@ void main() {
         lifecycleSource: FakeLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: stubbedProductAnalyticsService(),
+        feedbackPromptService: FakeFeedbackPromptService(),
         sessionId: _sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,

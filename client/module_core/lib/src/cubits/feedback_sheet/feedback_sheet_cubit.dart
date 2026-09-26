@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:bloc/bloc.dart";
 
 import "../../foundation/models/feedback/feedback_issue.dart";
@@ -5,6 +7,7 @@ import "../../foundation/models/feedback/feedback_source.dart";
 import "../../logging/logging.dart";
 import "../../platform/app_review_client.dart";
 import "../../repositories/feedback_repository.dart";
+import "../../services/feedback_prompt_service.dart";
 import "feedback_sheet_outcome.dart";
 import "feedback_sheet_state.dart";
 
@@ -12,6 +15,7 @@ import "feedback_sheet_state.dart";
 class FeedbackSheetCubit({
   required final AppReviewClient _appReviewClient,
   required final FeedbackRepository _feedbackRepository,
+  required final FeedbackPromptService _feedbackPromptService,
   required final FeedbackSource _source,
 }) extends Cubit<FeedbackSheetState> {
   this : super(const FeedbackSheetState.rating());
@@ -19,9 +23,11 @@ class FeedbackSheetCubit({
   /// Resets to the first question; every presentation starts fresh.
   void start() => emit(const FeedbackSheetState.rating());
 
+  /// **Yes, love it!** from either entry also retires the automatic sheet.
   void chooseLove() {
     if (state is! FeedbackSheetRating) return;
     emit(const FeedbackSheetState.celebrating());
+    unawaited(_feedbackPromptService.recordYes());
   }
 
   void finishCelebration() {

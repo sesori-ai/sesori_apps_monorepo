@@ -17,6 +17,7 @@ import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
+import "../../services/feedback_prompt_service.dart";
 import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/models/new_session_selection_intent.dart";
@@ -38,6 +39,7 @@ class NewSessionCubit({
   required final NewSessionSelectionTracker _selectionTracker,
   required final ComposerDraftRepository _composerDraftRepository,
   required final ProductAnalyticsService _productAnalyticsService,
+  required final FeedbackPromptService _feedbackPromptService,
   required final String _projectId,
 }) extends Cubit<NewSessionState> {
   this
@@ -967,8 +969,10 @@ class NewSessionCubit({
             workspaceKind: data.hasWorktree ? AnalyticsWorkspaceKind.dedicatedWorktree : AnalyticsWorkspaceKind.project,
           ),
         );
+        unawaited(_feedbackPromptService.recordPositiveInteraction());
       case ErrorResponse(:final error):
         loge("New session creation failed", error);
+        unawaited(_feedbackPromptService.recordFailure());
         // Until creation is idempotent, unconfirmed outcomes remain counted by
         // the released failure event rather than being guessed as successes.
         _reportProductEvent(

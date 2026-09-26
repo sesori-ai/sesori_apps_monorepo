@@ -114,6 +114,16 @@ Implementation decisions (2026-09-26, step 3 review):
   state is a plain sealed class (no Freezed); `FeedbackPromptStorage` maps it
   to versioned JSON with map patterns and discards an unreadable value with a
   warning, which restarts the count from zero.
+- Step 6.b: `FeedbackSheetCubit` takes `FeedbackPromptService` and records
+  **Yes** itself, so both entries retire the automatic sheet. The app-root
+  `FeedbackPromptListener` opens the sheet through
+  `showFeedbackSheetOnNavigator`, which presents on the root navigator and
+  shows the sent toast on its overlay, because the navigator's own context sits
+  above that overlay. The crash handlers reset the count only where Crashlytics
+  is installed, and the previous-launch check uses
+  `didCrashOnPreviousExecution()` after `start()`; builds without Firebase do
+  not reset on crashes. An error the handlers catch before `start()` (during
+  bootstrap) does not reset the count.
 
 ## Current Behavior (origin/main after #1361, 2026-09-26)
 

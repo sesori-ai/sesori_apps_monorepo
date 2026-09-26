@@ -36,6 +36,7 @@ void main() {
         initializeDeepLinks: () => fail("Deep links must not start"),
         startAttributionFn: () => fail("Attribution must not start"),
         startProductAnalyticsFn: () async => fail("Analytics must not start"),
+        startFeedbackPromptFn: () => fail("The feedback prompt must not start"),
         startAnalyticsRouteListenerFn: () async => fail("Analytics routes must not start"),
         startNotificationStartupFn: () async => fail("Notifications must not start"),
         readAppearanceFn: () async => fail("Preferences must not be read"),

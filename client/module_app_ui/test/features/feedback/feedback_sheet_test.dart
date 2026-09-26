@@ -6,6 +6,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/feedback/feedback_rating_motion.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockAppReviewClient() extends Mock implements AppReviewClient;
@@ -32,6 +33,7 @@ void main() {
     cubit = FeedbackSheetCubit(
       appReviewClient: _MockAppReviewClient(),
       feedbackRepository: feedbackRepository,
+      feedbackPromptService: FakeFeedbackPromptService(),
       source: FeedbackSource.settings,
     );
     outcomes = [];
@@ -146,6 +148,7 @@ void main() {
     cubit = FeedbackSheetCubit(
       appReviewClient: appReviewClient,
       feedbackRepository: feedbackRepository,
+      feedbackPromptService: FakeFeedbackPromptService(),
       source: FeedbackSource.automatic,
     );
     await open(tester: tester);
