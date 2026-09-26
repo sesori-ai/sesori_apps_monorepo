@@ -222,9 +222,11 @@ void main() {
       ),
     ]) {
       testWidgets("“$title” shows above the re-enabled buttons without moving them", (tester) async {
+        final semantics = tester.ensureSemantics();
         await pumpLogin(tester, state: const LoginState.idle());
         final github = find.widgetWithText(PregoButtonsSolid, "Continue with GitHub");
         final buttonsAt = tester.getRect(github);
+        expect(find.semantics.byLabel("Sign in"), findsOne);
 
         cubitStates.add(state);
         await tester.pump();
@@ -235,12 +237,17 @@ void main() {
         for (final label in [..._providerLabels, "Sign in with email"]) {
           expect(button(tester, label).onPressed, isNotNull, reason: label);
         }
+        // Screen readers reach the notice, not the heading it covers.
+        expect(find.semantics.byLabel(title), findsOne);
+        expect(find.semantics.byLabel("Sign in"), findsNothing);
+        expect(find.semantics.byLabel("Use the same account as on your phone."), findsNothing);
 
         cubitStates.add(const LoginState.idle());
         await tester.pump();
 
         expect(find.text(title), findsNothing);
         expect(tester.getRect(github), buttonsAt);
+        semantics.dispose();
       });
     }
   });

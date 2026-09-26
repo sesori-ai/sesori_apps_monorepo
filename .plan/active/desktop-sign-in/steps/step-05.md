@@ -15,7 +15,7 @@ Branch `desktop-sign-in/handoff-card`. Architecture section 4, Approved Copy.
   - the approved declined copy;
   - "Authentication failed" over the shared `LoginFailedReason` message for any other reason.
 
-  The notice covers the heading, which keeps its footprint, so the buttons do not move as a notice appears or clears.
+  The notice covers the heading, which keeps its footprint, so the buttons do not move as a notice appears or clears. Screen readers skip the covered heading.
 - While a provider sign-in starts, the tapped button shows its spinner and every option is disabled.
 - Step 4's interim `_LoginStatus` and `_StatusRow` are gone. The 14 new strings are in `app_en.arb`.
 
@@ -46,6 +46,7 @@ The new desktop tests cover:
 - **Notices.** Each of expired, declined and an unknown failure:
   - shows its title and message above the GitHub button;
   - leaves every option enabled;
+  - takes the heading and subtitle out of the semantics tree while it shows;
   - keeps the GitHub button's rect equal to its idle rect while the notice shows and after it clears.
 - **Starting.** The tapped provider spins while the others are disabled.
 

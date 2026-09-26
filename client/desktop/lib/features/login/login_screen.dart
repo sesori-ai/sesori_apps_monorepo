@@ -255,11 +255,18 @@ class _ProviderSignInState() extends State<_ProviderSignIn> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // A notice covers the heading, which keeps its footprint, so the
-            // buttons stay put while a failure appears and clears.
+            // buttons stay put while a failure appears and clears. Only the
+            // footprint stays: screen readers skip the covered heading.
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Visibility.maintain(visible: notice == null, child: heading),
+                Visibility(
+                  visible: notice == null,
+                  maintainSize: true,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  child: heading,
+                ),
                 if (notice != null) PositionedDirectional(start: 0, end: 0, bottom: _noticeGap, child: notice),
               ],
             ),
