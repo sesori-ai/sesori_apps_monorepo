@@ -38,22 +38,22 @@ User decisions (2026-09-26):
     retries), a failed send or reply, or an app crash seen by the global
     handlers.
   - At 10 points the sheet shows. If the answer is not **Yes**, it may show
-    again at most every 30 days.
-  - Both numbers come from Firebase Remote Config, with 10 and 30 as the
+    again at most every 14 days (lowered from 30 in the user's round 1
+    answers).
+  - Both numbers come from Firebase Remote Config, with 10 and 14 as the
     defaults.
 
-Defaults chosen by the agent and reported to the user (change on request):
+User decisions from the round 1 question page (2026-09-26; page on the
+`pr-media` branch at `feedback-flow/round1/index.html`):
 
 - **D4 — Yes retires the automatic prompt.** After **Yes** (from either
   entry), the sheet never opens by itself again; Settings still opens it.
-  Dismissing the sheet counts as "not yes".
+  Dismissing the sheet counts as "not yes" and starts the cooldown.
 - **D5 — Showing resets the counter.** Each automatic showing sets the counter
   to zero, so the next one needs 10 new good interactions *and* the cooldown.
-- **D6 — When it appears.** Reaching the threshold only makes the prompt
-  due. The sheet opens when the project list is the visible route: it becomes
-  visible (app start or navigating back), or the app resumes while it is
-  visible. It never opens over a session or composer, which stay mounted
-  above the project list.
+- **D6 — It appears right away.** The sheet opens as soon as the good
+  interaction that reaches the threshold succeeds, over whatever screen is
+  showing (including a session), from an app-root presenter.
 - **D7 — Store review split.**
   - Automatic prompt on iOS: **Yes** asks StoreKit for its review prompt.
     Apple guideline 5.6.1 requires the system API and does not forbid a
@@ -187,19 +187,20 @@ API → Repository → Service:
 - `FeedbackPromptConfigApi` wraps the config source.
   `FeedbackPromptStorage` (`api/storage/`, one versioned JSON
   `StringPreferenceKey.feedbackPrompt`) holds the state.
-  `FeedbackPromptRepository` combines both and owns the 10/30 defaults and the
+  `FeedbackPromptRepository` combines both and owns the 10/14 defaults and the
   below-1 fallback when it builds `FeedbackPromptConfig`.
-- `FeedbackPromptService` (`@lazySingleton`), the single owner of D3–D5:
-  - `recordPositiveInteraction()`; `recordFailure()`.
+- `FeedbackPromptService` (`@lazySingleton`), the single owner of D3–D6:
+  - `recordPositiveInteraction()` increments the counter, then runs the due
+    check below; when it passes, it emits on a broadcast `prompts` stream.
+  - `recordFailure()`.
   - `start()` subscribes once to `ConnectionService.events` and calls
     `recordFailure()` for the three AI-error events. Only the mobile
     `bootstrapSesoriApp` wiring calls it, next to the product-analytics start;
     desktop never does. Resetting is idempotent, so replayed events need no
     dedupe.
-  - `claimDuePrompt()`: when counting, count ≥ threshold and the cooldown has
-    elapsed since `lastShownAt`, sets count → 0 and `lastShownAt` → now and
-    returns true. Checking and marking happen in one call, so D5 stays in the
-    service.
+  - Due check (private): when counting, count ≥ threshold and the cooldown
+    has elapsed since `lastShownAt`, it sets count → 0 and `lastShownAt` → now
+    in the same write that decides to emit, so D5 stays in the service.
   - `recordYes()` (→ retired).
   - An idempotent `@disposeMethod` cancels the subscription.
 
@@ -209,16 +210,14 @@ Consumers:
   `recordPositiveInteraction()` in their existing success branches and
   `recordFailure()` in their `ErrorResponse` branches. Desktop builds these
   cubits through the same composition; with no presenter and no `start()`,
-  its counting is inert.
+  its counting is inert (desktop's local state is never shown or synced).
 - `client/app/lib/main.dart` wraps the two global error handlers to call
   `recordFailure()` before forwarding to Crashlytics, and calls it at startup
   when `FirebaseCrashlytics.didCrashOnPreviousExecution()` is true (native
   crashes).
-- `FeedbackPromptCubit` (`cubits/feedback_prompt/`), dependencies
-  `FeedbackPromptService`, `RouteSource` and `LifecycleSource`: calls
-  `claimDuePrompt()` only while `RouteSource.projectPageVisibility` is true —
-  when it turns true, and on resume while it is true — and emits a one-shot
-  "show" state (D6).
+- `FeedbackPromptCubit` (`cubits/feedback_prompt/`), dependency
+  `FeedbackPromptService`: listens to `prompts` and emits a one-shot "show"
+  state (D6).
 - `FeedbackSheetCubit` (`cubits/feedback_sheet/`) owns one sheet instance:
   step (rating, private), selected issues, draft, submission state, source.
   The sheet ends with a typed `FeedbackSheetOutcome` (`love`,
@@ -228,8 +227,9 @@ Consumers:
   Dependencies grow per step: `FeedbackRepository` and `AppReviewClient`
   (step 3), `FeedbackPromptService` for `recordYes()` from either entry
   (step 6), `ProductAnalyticsService` (step 7).
-- Both cubits are created with `BlocProvider(create:)` in `client/app` (the
-  Settings screen and the project-list screen); the `module_app_ui` sheet reads
+- The cubits are created with `BlocProvider(create:)` in `client/app`:
+  `FeedbackSheetCubit` per sheet (Settings entry and app-root presenter),
+  `FeedbackPromptCubit` once at the app root; the `module_app_ui` sheet reads
   `FeedbackSheetCubit` from context. Step 4 builds its `VoiceInputCubit` in the
   app shell the same way.
 - The composer enforces the server's 4,000-character limit with a visible
@@ -242,8 +242,11 @@ Consumers:
   files.
 - Settings: `SettingsView` gains a required `onOpenRateSesori` callback (it is
   mobile-only, so desktop is unaffected).
-- The mobile project-list screen listens to `FeedbackPromptCubit` with a
-  `BlocListener` and opens the sheet with `FeedbackSource.automatic` (D6).
+- App-root presenter (D6): in `client/app/lib/main.dart`, next to
+  `SseToastListener`, a `BlocProvider` for `FeedbackPromptCubit` wraps a
+  `FeedbackPromptListener(navigatorKey: appRootNavigatorKey)` that opens the
+  sheet with `FeedbackSource.automatic` on the root navigator, over whatever
+  screen is showing.
 
 ### Native (step 5)
 
@@ -290,7 +293,7 @@ Fixed titles live in [TRACKER](TRACKER.md#fixed-pr-titles).
 6. **Automatic prompt** — config source (Firebase, app no-op, desktop no-op),
    config API, prompt state storage and repository, `FeedbackPromptService`
    with `start()` from mobile bootstrap, the `cubit_composition.dart` wiring,
-   global-handler hooks, `FeedbackPromptCubit` and the project-list presenter
+   global-handler hooks, `FeedbackPromptCubit` and the app-root presenter
    (D3–D6).
 7. **Analytics** — load `.opencode/skills/add-analytics/SKILL.md`. Proposed
    events: `feedback_prompt_answered` with `answer` (`love`,
@@ -306,18 +309,18 @@ Fixed titles live in [TRACKER](TRACKER.md#fixed-pr-titles).
 
 New mutable parts:
 - **Persistent (client):** one JSON string key holding `FeedbackPromptState`.
-  Needed: the counter must survive restarts and the cooldown spans 30 days.
+  Needed: the counter must survive restarts and the cooldown spans 14 days.
 - **Persistent (server):** the `feedback` collection (D1).
 - **In memory:** `FeedbackPromptService` keeps one SSE subscription (mobile
-  only) and reads state through its repository; `FeedbackPromptCubit` holds a
-  lifecycle subscription; `FeedbackSheetCubit` holds one sheet's draft.
+  only) and reads state through its repository; `FeedbackPromptCubit` holds one
+  `prompts` subscription; `FeedbackSheetCubit` holds one sheet's draft.
 
 Deliberately not added:
 - No dedupe of error events (reset is idempotent) and no per-session
   bookkeeping.
 - No server-side prompt state, per-account counters or cross-device sync (D9).
-- No "is another modal open" coordination; D6 presents only on the project
-  list.
+- No "is another modal open" or route-visibility coordination; D6 presents
+  immediately on the root navigator, as the user chose.
 - No retry queue for failed submissions: the draft stays and the user retries.
 - No generic feature-flag layer; one config source for two values, like the
   analytics cutoff.
@@ -356,14 +359,14 @@ Deliberately not added:
   - Settings → Yes → store page opens; Settings → Could be better → typed and
     voice feedback stored in MongoDB (dev auth server) with the right fields.
   - Automatic prompt with Remote Config lowered to threshold 2 / cooldown 1:
-    two sends show it on the project list; an AI retry in between resets it;
+    the second send opens it over the session; an AI retry in between resets it;
     Yes retires it; dismiss respects the cooldown.
   - iOS StoreKit prompt appears (debug build) only after the sheet has
     closed. Android **Yes** shows the confirmation step; **Leave a review**
     opens the Play Store listing and **Not now** only closes (D10).
   - Deleting the account removes its feedback documents (dev auth server).
 - Codex plan review (2026-09-26, 10 findings): applied route-visible claiming
-  (D6), feedback deletion with the account, package asset namespace, the
+  (later superseded by the user's D6: show right away), feedback deletion with the account, package asset namespace, the
   4,000-character client limit, empty submissions, subscription disposal,
   review after the sheet exit, the platform via `InstalledAppBuildApi`, and
   the Play policy question (D10, decided by the user). Declined one: separate Firebase and
@@ -385,7 +388,8 @@ Deliberately not added:
   desktop or another device and sub-agent sessions, so an AI error the phone
   never showed also resets the counter. It only delays the prompt; accepted
   under D3.
-- **Prompt interrupts** (ordinary flow). Avoided by D6.
+- **Prompt interrupts** (ordinary flow). Accepted by the user's D6: the sheet
+  may cover a session right after a successful send or reply.
 - **Feedback text privacy** (ordinary flow). Users may paste code or secrets.
   The private step says the text goes to the Sesori team; logs never include
   the text.
